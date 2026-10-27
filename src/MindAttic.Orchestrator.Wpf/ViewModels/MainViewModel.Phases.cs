@@ -215,6 +215,38 @@ public sealed partial class MainViewModel
     private string LoginName => tab.Title.EndsWith(" (fallback)", StringComparison.Ordinal) ? tab.Title[..^" (fallback)".Length]
         : tab.IsGlobal ? "the global login" : tab.Title;
 
+    // ── 5hr/weekly limit boxes (M.ORCH-T1168) ──────────────────────────────
+
+    /// <summary>The utilization panel's compact 5-hour readout: the same live 5-hour used percent already on the tab strip
+    /// (<see cref="FiveHourUsed"/>, M.ORCH-T968), surfaced here rather than computed anew.</summary>
+    public double FiveHourLimitPercent => Math.Max(0, FiveHourUsed ?? 0);
+
+    /// <summary>"5hr limit: 66%" (M.ORCH-T1168).</summary>
+    public string FiveHourLimitText => $"5hr limit: {FiveHourLimitPercent.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%";
+
+    /// <summary>The 5hr box's bar colour: the same Good/Warn/Over convention <see cref="BlockBrush"/> draws the (now unused)
+    /// budget tile in, judged against this login's own 5-hour cutoff (<see cref="FiveHourCutoff"/>, M.ORCH-T968) rather than a
+    /// newly invented threshold.</summary>
+    public Brush FiveHourLimitBrush => LimitBrush(FiveHourUsed, FiveHourCutoff);
+
+    /// <summary>The utilization panel's compact weekly readout: the live weekly used percent already on the tab strip
+    /// (<see cref="WeekUsed"/>).</summary>
+    public double WeeklyLimitPercent => Math.Max(0, WeekUsed ?? 0);
+
+    /// <summary>"Weekly limit: 22%" (M.ORCH-T1168).</summary>
+    public string WeeklyLimitText => $"Weekly limit: {WeeklyLimitPercent.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%";
+
+    /// <summary>The weekly box's bar colour, judged against this login's own weekly cutoff (<see cref="WeeklyCutoff"/>).</summary>
+    public Brush WeeklyLimitBrush => LimitBrush(WeekUsed, WeeklyCutoff);
+
+    /// <summary>Good under <paramref name="cutoff"/>, Warn from there to 100%, Over past it.</summary>
+    private static Brush LimitBrush(double? used, int cutoff) => used switch
+    {
+        { } u when u >= 100 => Palette.Over,
+        { } u when u >= cutoff => Palette.Waiting,
+        _ => Palette.Working,
+    };
+
     /// <summary>Nothing running on the login (M.ORCH-T629): none of its repos working and none of its agents working or with a
     /// subagent running.</summary>
     internal static bool IsLoginIdle(Snapshot s) =>
@@ -317,6 +349,8 @@ public sealed partial class MainViewModel
         foreach (var name in new[] { nameof(BudgetHeadline), nameof(BudgetCaption), nameof(BudgetDetail),
                                      nameof(WeeklyHeadline), nameof(WeeklyCaption), nameof(WeeklyAccountLine),
                                      nameof(Utilization), nameof(UtilizationText),
+                                     nameof(FiveHourLimitPercent), nameof(FiveHourLimitText), nameof(FiveHourLimitBrush),
+                                     nameof(WeeklyLimitPercent), nameof(WeeklyLimitText), nameof(WeeklyLimitBrush),
                                      nameof(CutoffsHeadline), nameof(CutoffsCaption), nameof(LastUpdatedHeadline), nameof(LastUpdatedCaption) })
             Raise(name);
     }

@@ -426,7 +426,33 @@
                             AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
                             Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
                         <StackPanel>
-                            <TextBlock Text="5-hour utilization" Style="{StaticResource MaSectionLabel}" />
+                            <!-- The panel's own title on the left, its 5hr/weekly cutoff readouts on the right (M.ORCH-T1168):
+                                 the same live percentages already on the tab strip (TabTrailing), just surfaced here too. -->
+                            <Grid x:Name="UtilizationHeaderRow">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="5-hour utilization" Style="{StaticResource MaSectionLabel}" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" Margin="{StaticResource SpaceRS}" MinWidth="104"
+                                            AutomationProperties.Name="{Binding FiveHourLimitText}">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding FiveHourLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" />
+                                            <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
+                                                         Value="{Binding FiveHourLimitPercent, Mode=OneWay}" Foreground="{Binding FiveHourLimitBrush}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" Margin="0" MinWidth="104"
+                                            AutomationProperties.Name="{Binding WeeklyLimitText}">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding WeeklyLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" />
+                                            <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
+                                                         Value="{Binding WeeklyLimitPercent, Mode=OneWay}" Foreground="{Binding WeeklyLimitBrush}" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
                             <mc:MaLineChart x:Name="UtilizationChart" Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"
                                             Height="130" Margin="{StaticResource SpaceH0VS}" />
                             <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
