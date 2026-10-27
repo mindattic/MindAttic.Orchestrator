@@ -2717,6 +2717,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-27T04:30:00Z', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-26T23:30:00Z', 'Under', 'ended at 37%', 37, 37, 5302558, 78, 0, NULL, NULL, 2, 0.8, 5, 0, 2, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-27T05:00:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T00:00:00Z', 'Under', 'ended at 7%', 7, 7, 944348, 106, 0, NULL, NULL, 0, 0, 0, 0, 1, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-27T08:00:00Z', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T03:00:00Z', 'Over', 'Claude reported 100%', 100, 100, 10859144, 96, 187.5, NULL, NULL, 10, 25.5, 31, 7, 5, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-27T09:30:00Z', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T04:30:00Z', 'Under', 'ended at 23%', 23, 23, 1389678, 84, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -3020,8 +3021,8 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-26', 'RogueTrader.Brevity', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1874639);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-26', 'Unity.Ricochet', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 288163);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 748083);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13410815);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 602309);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13924313);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 603131);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -3769,7 +3770,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('52d32bc1-0939-4dbe-8425-35585a84452a/agent-a573ed45a4f8a10a6', 'PRS-T227', 'fix', 'Prose', 58075, '2026-10-27T06:33:41.607Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('52d32bc1-0939-4dbe-8425-35585a84452a/agent-a949989549c49c6cb', 'PRS-T134', 'chore', 'Prose', 24159, '2026-10-27T07:31:25.766Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('52d32bc1-0939-4dbe-8425-35585a84452a/agent-a96a1f21025b032a3', 'PRS-T187', 'chore', 'Prose', 49020, '2026-10-27T07:30:33.29Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('52d32bc1-0939-4dbe-8425-35585a84452a/agent-a9a9c956404863f12', 'PRS-T133', 'chore', 'Prose', 487654, '2026-10-27T09:19:29.755Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('52d32bc1-0939-4dbe-8425-35585a84452a/agent-a9a9c956404863f12', 'PRS-T133', 'chore', 'Prose', 639724, '2026-10-27T09:31:41.705Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('52d32bc1-0939-4dbe-8425-35585a84452a/agent-ab68d9eb3271ab597', 'PRS-T105', 'fix', 'Prose', 62245, '2026-10-27T07:38:39.15Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('52d32bc1-0939-4dbe-8425-35585a84452a/agent-ab6e3a54122d29c90', 'PRS-T133', 'chore', 'Prose', 239793, '2026-10-27T07:14:27.036Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('52d32bc1-0939-4dbe-8425-35585a84452a/agent-ac10e250d1445ab30', 'PRS-T217', 'docs', 'Prose', 107472, '2026-10-27T07:43:03.369Z', 0, 'sonnet');
@@ -7932,7 +7933,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "a57a30142679f3ed216b7bb6a585534536b6391c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "4852f3b59ea0899b2baa4dabd8ed7d74ea9c0d15",
+    "Tested": "390e91808bec04da7a944b1fe292461922d1edd3",
     "Green": "55bc8ec24bc82b2ecee1990d6ea2f0c296150326"
   },
   "MindAttic.Psst": {
