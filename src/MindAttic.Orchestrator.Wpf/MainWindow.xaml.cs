@@ -125,6 +125,8 @@ public partial class MainWindow : Window
             // Launcher menu pane counts as its login's and the refresh doesn't open a second; reselected once the tabs are up.
             // Every CLI still running in its own TermHost gets its tab back first (M.ORCH-T926): a crash or a redeploy of the
             // dashboard never ended it, so it needs no restore.
+            // No Launcher respawns for a tab gone while the tabs come back (M.ORCH-T1150); the first refresh opens what's missing.
+            model.RestoringTerminals = true;
             if (restoreOnLoad) await model.AllTerminals.ReattachAsync();
             // And every 45s after (M.ORCH-T1001): a term-session announcement lost on the bus (sent while the daemon restarted)
             // never gave its host a tab, since the bus keeps no copy and the registry was read only here.
@@ -138,11 +140,15 @@ public partial class MainWindow : Window
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
             await model.RefreshAsync();
             if (restored) model.ReselectRestored();
+            model.RestoringTerminals = false;
             polling = true;
             Retime();
         };
+        // Closing, no tab gone spawns a Launcher (M.ORCH-T1150).
+        Closing += (_, _) => model.ShuttingDown = true;
         Closed += (_, _) =>
         {
+            model.ShuttingDown = true;
             polling = false;
             timer.Stop();
         };

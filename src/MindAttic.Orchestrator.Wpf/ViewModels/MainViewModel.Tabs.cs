@@ -244,14 +244,78 @@ public sealed partial class MainViewModel
             if (live) launchersEmbedded.Add(key);
             else if (launchersEmbedded.Remove(key)) launchersOpened.Remove(key);
         }
-        var wanted = loginTabs.Where(t => t.IsTabSignedIn && launchersOpened.Add(t.tab.Key)).Select(t => (t.ScopeEmail, t.TabTitle)).ToList();
+        if (ShuttingDown) return;
+        // Through the same cap as a last tab's respawn (M.ORCH-T1150): a Launcher that exits at once is reopened at most every 30s.
+        var now = DateTime.UtcNow;
+        var wanted = loginTabs.Where(t => t.IsTabSignedIn && !launchersOpened.Contains(t.tab.Key) && launcherRespawn.TryTake(t.tab.Key, now))
+            .Select(t => { launchersOpened.Add(t.tab.Key); return (t.ScopeEmail, t.TabTitle); }).ToList();
         foreach (var (email, title) in wanted) _ = OpenLauncherQuietlyAsync(email, title);
     }
 
-    private async Task OpenLauncherQuietlyAsync(string? email, string title)
+    private async Task OpenLauncherQuietlyAsync(string? email, string title, bool embedOnly = false)
     {
-        var (error, _) = await OpenLauncherPaneAsync(email, title);
+        var (error, _) = await OpenLauncherPaneAsync(email, title, embedOnly);
         if (error is { } e) OrchestratorLog.For("Launcher").Warning("Couldn't open {Login:l}'s Launcher tab: {Error:l}", title, e);
+    }
+
+    private readonly LauncherRespawn launcherRespawn = new();
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<TerminalPaneViewModel, object?> tabsGone = new();
+
+    /// <summary>The dashboard is closing (its window's Closing): no Launcher is opened, by a refresh or a last tab's close.</summary>
+    public bool ShuttingDown { get => Root.shuttingDown; set => Root.shuttingDown = value; }
+    private bool shuttingDown;
+
+    /// <summary>The dashboard is reattaching and restoring its tabs at start: a tab ended or closed meanwhile spawns no Launcher.</summary>
+    public bool RestoringTerminals { get => Root.restoringTerminals; set => Root.restoringTerminals = value; }
+    private bool restoringTerminals;
+
+    /// <summary>M.ORCH-T1150: every pane's close, and its CLI's exit, is checked for leaving its person with no live tab.</summary>
+    private void WatchForLastTab()
+    {
+        AllTerminals.Panes.CollectionChanged += (_, e) =>
+        {
+            foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? [])
+                added.PropertyChanged += (s, p) => { if (p.PropertyName == nameof(TerminalPaneViewModel.Ended) && s is TerminalPaneViewModel { Ended: true } ended) OnTabGone(ended); };
+            foreach (var gone in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) OnTabGone(gone);
+        };
+    }
+
+    /// <summary>
+    /// <paramref name="pane"/> was closed or its CLI exited (M.ORCH-T1150): when that leaves its person, signed in, with no live
+    /// tab, a new Launcher signed in as them opens embedded on their page (at most once per 30s each, logged), never during
+    /// shutdown or the start's restore. A Launcher held as open elsewhere (a standalone window, a fallback) is let go of, since
+    /// their page would otherwise stay empty.
+    /// </summary>
+    private void OnTabGone(TerminalPaneViewModel pane)
+    {
+        if (!IsGlobalTab) { Root.OnTabGone(pane); return; }
+        // Its CLI's exit and then its close are one tab gone, counted once.
+        if (tabsGone.TryGetValue(pane, out _)) return;
+        tabsGone.Add(pane, null);
+        try
+        {
+            var owner = OwnerOf(pane);
+            var key = owner.tab.Key;
+            var hasLive = AllTerminals.Panes.Any(p => !p.Ended && ReferenceEquals(OwnerOf(p), owner));
+            var outcome = launcherRespawn.Decide(key, owner.IsTabSignedIn, hasLive, ShuttingDown, RestoringTerminals, DateTime.UtcNow);
+            var log = OrchestratorLog.For("Launcher");
+            switch (outcome)
+            {
+                case LauncherRespawnOutcome.Spawn:
+                    log.Information("{Login:l}'s last tab ({Title:l}) is gone: opening a new Launcher as them", owner.TabTitle, pane.Title);
+                    launchersEmbedded.Remove(key);
+                    launchersOpened.Add(key);
+                    _ = OpenLauncherQuietlyAsync(owner.ScopeEmail, owner.TabTitle, embedOnly: true);
+                    break;
+                case LauncherRespawnOutcome.Capped:
+                    // Let the refresh reopen it once the cap is up.
+                    launchersEmbedded.Remove(key);
+                    launchersOpened.Remove(key);
+                    log.Warning("{Login:l}'s last tab ({Title:l}) is gone, but a Launcher opened for them under 30s ago: the next one waits", owner.TabTitle, pane.Title);
+                    break;
+            }
+        }
+        catch (Exception ex) { OrchestratorLog.For("Launcher").Error(ex, "Respawning a Launcher after a last tab closed failed; contained"); }
     }
 
     /// <summary>Opens <paramref name="email"/>'s Launcher menu (M.LNCH-T77): embedded as a Terminals panel tab, first among
@@ -260,7 +324,7 @@ public sealed partial class MainViewModel
     /// before this, or started by hand) -- off the UI thread, since finding it asks WMI. Embedding failing (rare) falls back
     /// to the login's own Windows Terminal window, as every Launcher tab opened before M.LNCH-T77. Returns an error for a
     /// toast (null on success, embedded or not) and a status line either way.</summary>
-    private async Task<(string? Error, string Status)> OpenLauncherPaneAsync(string? email, string tabTitle)
+    private async Task<(string? Error, string Status)> OpenLauncherPaneAsync(string? email, string tabTitle, bool embedOnly = false)
     {
         var normalized = AccountDirs.Normalize(email);
         if (Root.AllTerminals.Panes.FirstOrDefault(p => p.Request.IsMenu && !p.Ended &&
@@ -274,7 +338,8 @@ public sealed partial class MainViewModel
         // read from the Vault by the Launcher at each CLI's launch; it's never in this pane's command line or environment.
         if (ApiKeyPerson.Is(email) && await Task.Run(() => ApiKeyPerson.Prepare(new AccountDirs(), aggregator.BillingSwitch)) is { } notReady)
             return (notReady, notReady);
-        var running = await Task.Run(() => control.RunningLauncherOf(email));
+        // A last tab's respawn (M.ORCH-T1150) wants a tab on the person's page, not a standalone Launcher brought up.
+        var running = embedOnly ? null : await Task.Run(() => control.RunningLauncherOf(email));
         if (running is { } pid)
         {
             var title = control.LauncherTitleOf(email);
