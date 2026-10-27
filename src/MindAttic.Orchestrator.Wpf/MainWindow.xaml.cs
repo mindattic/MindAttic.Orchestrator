@@ -448,13 +448,16 @@ public partial class MainWindow : Window
     /// <summary>The least <see cref="AgentsBody"/> (and the sign-in prompt sharing its row) is ever given while the terminal
     /// shows: enough of the 5-hour/weekly chart card's own header and its 130px chart to clear the status bar below, so the
     /// chart's own bottom axis labels (its target and projection, M.ORCH-T191) never clip against it (M.ORCH-T1072, M.ORCH-T1095,
-    /// M.ORCH-T1169). Measured, not guessed: the card's own top padding and border (11), its header row (the title and, since
-    /// M.ORCH-T1168, the 5hr/weekly limit boxes beside it — unchanged at ~41, since the boxes are shorter than the title's own
-    /// MaSectionLabel margin and never grow the row) and the chart's own top margin (8) and height (130) come to ~190 before
-    /// the caption below it, which the floor leaves to the body's own ScrollViewer (MaBodyScroll) rather than guaranteeing too.
-    /// Above this floor the body shares the leftover room with the terminal (M.ORCH-T1166) rather than being pinned to it as a
-    /// fixed peek, so it isn't left showing only a sliver with a dead gap below the terminal above it.</summary>
-    private const double AgentsBodyPeek = 190;
+    /// M.ORCH-T1169, M.ORCH-T1180). The card's own top padding and border (11), its now-two-line header — a combined row of the
+    /// notification dots and the 5hr/weekly limit boxes (M.ORCH-T1180, moved out of sharing a row with the title), then the
+    /// title (MaSectionLabel) on its own line with its SpaceTS top margin — and the chart's own top margin (8) and height (130)
+    /// come to an estimated ~215 before the caption below it, which the floor leaves to the body's own ScrollViewer
+    /// (MaBodyScroll) rather than guaranteeing too. This is a reasoned estimate (the exact MaSectionLabel/MaCard metrics live in
+    /// a referenced library with no local source to measure against), the same way M.ORCH-T1095 and M.ORCH-T1169 nudged this
+    /// same constant after watching it run; if the chart's bottom labels clip again, nudge this up a little further rather than
+    /// reworking the approach. Above this floor the body shares the leftover room with the terminal (M.ORCH-T1166) rather than
+    /// being pinned to it as a fixed peek, so it isn't left showing only a sliver with a dead gap below the terminal above it.</summary>
+    private const double AgentsBodyPeek = 215;
 
     /// <summary>How tall the terminal row is let grow while a terminal shows (M.ORCH-T1166): comfortably more than a CLI
     /// needs for its visible transcript, so scrollback and a tall prompt still have room, but not so much that a short
