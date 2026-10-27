@@ -100,6 +100,7 @@ public partial class MainWindow : Window
         };
         TerminalClip.Attach(TerminalPanesHost);
         TerminalKeyboard.Attach(this, TerminalPanesHost);
+        TerminalMouse.Attach(this, TerminalPanesHost);
         PreviewKeyDown += TerminalPaste.OnPreviewKeyDown;
         // Ctrl+C / Ctrl+X with a selection copy / cut it (M.ORCH-T867, M.ORCH-T866); with none they still reach the CLI (^C, ^X).
         PreviewKeyDown += TerminalCopy.OnPreviewKeyDown;
