@@ -59,7 +59,12 @@ public static class OwnLogins
                 ? new OwnLoginResult(dir.Email, dir.Email, dir.Directory, OwnLoginOutcome.Failed, notReady, [])
                 : new OwnLoginResult(dir.Email, dir.Email, dir.Directory, OwnLoginOutcome.AlreadySignedIn,
                     $"{dir.Email} needs no sign-in: its CLIs bill the MindAttic Vault's Claude API key.", []);
-        var notes = new List<string>(dirs.Prepare(dir));
+        List<string> notes;
+        try { notes = new List<string>(dirs.Prepare(dir)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return new OwnLoginResult(dir.Email, dir.Email, dir.Directory, OwnLoginOutcome.Failed, $"Couldn't prepare {dir.Email}'s login ({ex.Message}).", []);
+        }
         // Its own login screen (M.ORCH-T610): a private window of the account's own browser profile, not the default browser
         // already signed in to claude.ai as whoever, so the page asks for this person's email and code.
         var opener = LoginBrowser.Prepare(dir, out var browserNote);
