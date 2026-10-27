@@ -40,6 +40,25 @@ public sealed class TabStatusTests
     }
 
     [Test]
+    public void A_stale_reading_is_marked_stale_on_the_tab_and_one_needing_a_new_sign_in_says_so()
+    {
+        // M.ORCH-T1119: Ryan's tab showed "5hr: 0% | wk: 0%" from an 11-hour-old reading as if current.
+        Assert.That(MainViewModel.TabUsageOf(10, 55, Now.AddMinutes(-3), false, Now), Is.EqualTo("5hr: 10% | wk: 55%"), "fresh");
+        Assert.That(MainViewModel.TabUsageOf(10, 55, null, false, Now), Is.EqualTo("5hr: 10% | wk: 55%"), "never read: nothing to call stale");
+        Assert.That(MainViewModel.TabUsageOf(0, 91, Now.AddHours(-11), false, Now), Is.EqualTo("stale · read 11h ago"), "its old figures never shown as current");
+        Assert.That(MainViewModel.TabUsageOf(0, 91, Now - UsageReport.StaleAfter - TimeSpan.FromMinutes(1), false, Now), Does.StartWith("stale"),
+            "stale as org usage calls it");
+        Assert.That(MainViewModel.TabUsageOf(0, 91, Now.AddHours(-11), true, Now), Is.EqualTo("sign in again"));
+        Assert.That(MainViewModel.TabStaleLineOf(0, 91, Now.AddHours(-11), Now),
+            Is.EqualTo(" Claude's meter was last read 11h ago (5hr: 0% | wk: 91%), so these figures may be out of date."), "the old figures, in the tooltip");
+        Assert.That(MainViewModel.TabStaleLineOf(0, 91, Now.AddMinutes(-3), Now), Is.Empty);
+
+        var (light, word) = MainViewModel.StatusOf(true, false, null, 50, 95, 40, 98, ClaudeMeterProbe.SignInAgain("ryan@x.com"));
+        Assert.That(light, Is.EqualTo(TabLight.Other));
+        Assert.That(word, Is.EqualTo("Claude's meter can't be read: sign in again (orchestrator login --account ryan@x.com)"));
+    }
+
+    [Test]
     public void The_tab_line_has_no_need_you_count_and_no_percent_left()
     {
         var root = TestContext.CurrentContext.TestDirectory;

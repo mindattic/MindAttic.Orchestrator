@@ -253,4 +253,23 @@ public sealed class UsageReportTests
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
     }
+
+    [Test]
+    public void A_login_whose_meter_needs_a_new_sign_in_says_so_first_with_the_command()
+    {
+        // T1119: "the meter probe failed 20 times in a row: no usable Claude sign-in" never said what to do.
+        var dir = Path.Combine(Path.GetTempPath(), "usage-report-db-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var db = new Settings.OrchestratorDb(Path.Combine(dir, "state.db"));
+            db.SaveState(AccountPacer.ProbeStateName, """{"a@x.com":{"failuresInRow":20,"lastResult":"no usable Claude sign-in to read the meter with: none is saved","needsSignIn":true},"b@x.com":{"failuresInRow":3,"lastResult":"Claude refused to refresh the sign-in (revoked or expired): sign in again (orchestrator login --account b@x.com)","needsSignIn":true},"c@x.com":{"failuresInRow":1,"lastResult":"HTTP 500","needsSignIn":false}}""");
+            var notes = UsageReport.ProbeNotes(db);
+            Assert.That(notes["a@x.com"], Is.EqualTo("sign in again (orchestrator login --account a@x.com): the meter probe failed 20 times in a row: no usable Claude sign-in to read the meter with: none is saved"));
+            Assert.That(notes["b@x.com"], Does.StartWith("the meter probe failed 3 times").And.EndWith("(orchestrator login --account b@x.com)"), "said once");
+            Assert.That(UsageReport.NeedingSignIn(db), Is.EquivalentTo(new[] { "a@x.com", "b@x.com" }));
+            Assert.That(UsageReport.NeedingSignIn(null), Is.Empty);
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
+    }
 }

@@ -35,13 +35,38 @@ public sealed class AccountPacer
     /// <summary>The members' own usage cutoffs (M.ORCH-T707, <see cref="UsageCutoffs"/>); null: the defaults for every login.</summary>
     public Func<IReadOnlyList<UsageCutoff>>? Cutoffs { get; init; }
 
+    /// <summary>Whether a live Claude CLI runs on the login (by email) right now (M.ORCH-T1119); null counts every login as having one.</summary>
+    public Func<string, bool>? CliOnLogin { get; init; }
+
+    /// <summary>Whether the login's tabs bill its long-lived token (<see cref="LoginTokens.TabEnv"/>: kept, unexpired and unsealable here),
+    /// so none of its CLIs holds the folder's own sign-in (M.ORCH-T1119).</summary>
+    public Func<string, bool> TabsUseToken { get; init; } = email =>
+        LoginTokens.Default.For(email) is { } t && t.Valid(DateTime.UtcNow) && LoginTokens.Reveal(t) is not null;
+
+    /// <summary>Whether the meter probe may refresh <paramref name="email"/>'s folder sign-in (M.ORCH-T1119).</summary>
+    private bool MayRefreshLogin(string email)
+    {
+        try { return MayRefresh(TabsUseToken(email), CliOnLogin?.Invoke(email) ?? true); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+    }
+
+    /// <summary>Refreshing a folder's sign-in rotates its refresh token, signing out a CLI still holding the old one (M.ORCH-T684),
+    /// so it's refreshed only when no CLI holds it: none runs on the login, or every tab on it bills the long-lived token instead.</summary>
+    internal static bool MayRefresh(bool tabsUseToken, bool cliOnLogin) => tabsUseToken || !cliOnLogin;
+
     private sealed class State(AccountDir dir, AccountPacer owner)
     {
         public RateLimitStatusWriter Writer { get; } = new(dir.StatusPath) { Db = null };
         public ContextCycler Marks { get; } = owner.ProjectsDir is { } p ? new(dir.MarksDirectory) { ProjectsDir = p } : new(dir.MarksDirectory);
         private ClaudeMeterProbe? meter;
         public ClaudeMeterProbe? Meter => owner.Probe
-            ? meter ??= new ClaudeMeterProbe { UsagePath = dir.UsagePath, CredentialsPath = dir.CredentialsPath, AccountKey = () => Account, Label = dir.Email }
+            ? meter ??= new ClaudeMeterProbe
+            {
+                UsagePath = dir.UsagePath, CredentialsPath = dir.CredentialsPath, AccountKey = () => Account, Label = dir.Email,
+                // Refreshed here too (M.ORCH-T1119): before, only the global login's probe was, so a login whose CLIs bill its
+                // long-lived token, which never refreshes the folder's sign-in, went blind once that sign-in's 8-hour token expired.
+                MayRefresh = () => owner.MayRefreshLogin(dir.Email),
+            }
             : null;
         public List<UsageSample>? Samples;
         /// <summary>Who's signed in to the folder, as of this tick.</summary>
@@ -189,6 +214,7 @@ public sealed class AccountPacer
             ["lastAskUtc"] = probe.LastAskUtc?.ToString("O"),
             ["lastResult"] = probe.LastResult,
             ["failuresInRow"] = probe.FailuresInRow,
+            ["needsSignIn"] = probe.NeedsSignIn,
             ["due"] = probe.IsDue,
             ["skipped"] = probe.Skipped,
             ["sessions"] = sessions,

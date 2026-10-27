@@ -70,7 +70,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// process writing the real rl-status.json writes theirs, and only for the real account folders.</summary>
     public AccountPacer Accounts
     {
-        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, Allowances = Allowances, Cutoffs = Cutoffs };
+        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, Allowances = Allowances, Cutoffs = Cutoffs, CliOnLogin = CliOnOwnLogin };
         init => accountPacer = value;
     }
 
@@ -89,6 +89,15 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     {
         var own = contextCycler.OnOwnLogin();
         return !contextCycler.LiveSessions(DateTime.UtcNow).Keys.Any(id => !own.ContainsKey(id));
+    }
+
+    /// <summary>Whether a live Claude CLI runs on the per-CLI login <paramref name="email"/> (M.ORCH-T1119), for its probe's refresh.</summary>
+    private bool CliOnOwnLogin(string email)
+    {
+        var own = contextCycler.OnOwnLogin();
+        var dirs = Accounts.Dirs;
+        return contextCycler.LiveSessions(DateTime.UtcNow).Keys.Any(id =>
+            own.TryGetValue(id, out var folder) && string.Equals(dirs.Of(folder)?.Email, email, StringComparison.OrdinalIgnoreCase));
     }
     private DateTime auditStamp;
 

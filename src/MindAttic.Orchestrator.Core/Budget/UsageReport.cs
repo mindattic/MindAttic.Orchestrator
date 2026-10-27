@@ -259,13 +259,35 @@ public sealed record UsageReport
                 if (login.Value.ValueKind != JsonValueKind.Object) continue;
                 string? Text(string name) => login.Value.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
                 var failures = login.Value.TryGetProperty("failuresInRow", out var f) && f.ValueKind == JsonValueKind.Number ? f.GetInt32() : 0;
-                if (Text("skipped") is { Length: > 0 } skipped) notes[login.Name] = $"the meter probe isn't asking: {skipped}";
-                else if (failures > 0) notes[login.Name] = $"the meter probe failed {failures} time{(failures == 1 ? "" : "s")} in a row" +
-                    (Text("lastResult") is { Length: > 0 } last ? $": {last}" : "");
+                var last = Text("lastResult");
+                // Only the person can mend it (M.ORCH-T1119): said first, with the command, not left at the end of the probe's last word.
+                var again = login.Value.TryGetProperty("needsSignIn", out var n) && n.ValueKind == JsonValueKind.True &&
+                    last?.Contains("sign in again", StringComparison.Ordinal) != true ? $"{ClaudeMeterProbe.SignInAgain(login.Name)}: " : "";
+                if (Text("skipped") is { Length: > 0 } skipped) notes[login.Name] = $"{again}the meter probe isn't asking: {skipped}";
+                else if (failures > 0) notes[login.Name] = $"{again}the meter probe failed {failures} time{(failures == 1 ? "" : "s")} in a row" +
+                    (last is { Length: > 0 } ? $": {last}" : "");
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or System.Data.Common.DbException or InvalidOperationException) { }
         return notes;
+    }
+
+    /// <summary>The logins (by email, as the probe row keys them) whose meter can't be read until the person signs in again
+    /// (M.ORCH-T1119), for the dashboard's tabs.</summary>
+    public static IReadOnlySet<string> NeedingSignIn(OrchestratorDb? stateDb)
+    {
+        var emails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (stateDb is null || !File.Exists(stateDb.Path) || stateDb.LoadState(AccountPacer.ProbeStateName) is not { } state) return emails;
+            using var doc = JsonDocument.Parse(state.Value);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return emails;
+            foreach (var login in doc.RootElement.EnumerateObject())
+                if (login.Value.ValueKind == JsonValueKind.Object && login.Value.TryGetProperty("needsSignIn", out var n) && n.ValueKind == JsonValueKind.True)
+                    emails.Add(login.Name);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or System.Data.Common.DbException or InvalidOperationException) { }
+        return emails;
     }
 
     // ---- The main table ---------------------------------------------------------------------------------------------------

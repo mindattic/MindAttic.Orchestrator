@@ -208,6 +208,39 @@ public sealed class ClaudeMeterProbe
     public int Asks { get; private set; }
     public int FailuresInRow { get; private set; }
 
+    /// <summary>Whether the last ask found a sign-in only the person can mend (M.ORCH-T1119): none saved, refused, or one that
+    /// can't be refreshed. Cleared by the next reading.</summary>
+    public bool NeedsSignIn { get; private set; }
+
+    /// <summary>What to tell the person whose login's meter can't be read until they sign in again (M.ORCH-T1119).</summary>
+    public static string SignInAgain(string? email) =>
+        email is { Length: > 0 } ? $"sign in again (orchestrator login --account {email})" : "sign in again (orchestrator login)";
+
+    /// <summary>
+    /// Why the saved sign-in at <paramref name="path"/> gave no token (M.ORCH-T1119), and whether only signing in again mends it:
+    /// none saved, no refresh token, or its refresh token expired. A token expired a moment ago is Claude Code's to refresh;
+    /// one this probe may not refresh (<see cref="MayRefresh"/>: a CLI on the login uses the folder's sign-in) is left to it.
+    /// </summary>
+    internal static (string Why, bool SignIn) WhyUnusable(string path, DateTime nowUtc, bool mayRefresh, string? email)
+    {
+        var again = SignInAgain(email);
+        JsonObject? oauth;
+        try { oauth = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path))?["claudeAiOauth"] as JsonObject : null; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return ($"its saved sign-in couldn't be read ({ex.GetType().Name})", false); }
+        if (oauth is null || Text(oauth, "accessToken") is null) return ($"none is saved in {Path.GetFileName(Path.GetDirectoryName(path))}: {again}", true);
+        var expires = Millis(oauth, "expiresAt");
+        if (expires is null || expires > nowUtc) return ("its saved token isn't usable", false);
+        var ago = Formatting.Span(nowUtc - expires.Value);
+        if (Text(oauth, "refreshToken") is null) return ($"its saved token expired {ago} ago and has no refresh token: {again}", true);
+        if (Millis(oauth, "refreshTokenExpiresAt") is { } dead && dead <= nowUtc) return ($"its saved token expired {ago} ago and so did its refresh token: {again}", true);
+        if (nowUtc - expires.Value < RefreshAfterExpired) return ($"its saved token expired {ago} ago, for Claude Code to refresh", false);
+        return mayRefresh ? ($"its saved token expired {ago} ago", false)
+            : ($"its saved token expired {ago} ago, and a CLI on it uses that sign-in, so it isn't refreshed here", false);
+
+        static string? Text(JsonObject o, string name) => o[name] is JsonValue v && v.TryGetValue<string>(out var s) && s.Length > 0 ? s : null;
+        static DateTime? Millis(JsonObject o, string name) => o[name] is JsonValue v && v.TryGetValue<long>(out var ms) ? DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime : null;
+    }
+
     /// <summary>When the next ask may start (<see cref="Tick"/> won't before).</summary>
     public DateTime NextAskUtc => nextUtc;
 
@@ -274,12 +307,14 @@ public sealed class ClaudeMeterProbe
         if (refusedRefresh)
         {
             refusedRefresh = false;
-            Fail("Claude refused to refresh the sign-in (revoked or expired); sign in again", NoMeterBackoff);
+            Fail($"Claude refused to refresh the sign-in (revoked or expired): {SignInAgain(Label)}", NoMeterBackoff, signIn: true);
             return;
         }
         if (token is null)
         {
-            Fail("no usable Claude sign-in to read the meter with");
+            // Why, and whether only the person can fix it (M.ORCH-T1119): "no usable sign-in" alone hid that nothing would ever refresh it.
+            var (unusable, signIn) = WhyUnusable(CredentialsPath, DateTime.UtcNow, MayRefresh?.Invoke() == true, Label);
+            Fail($"no usable Claude sign-in to read the meter with: {unusable}", signIn: signIn);
             return;
         }
         string? body;
@@ -309,6 +344,7 @@ public sealed class ClaudeMeterProbe
         try
         {
             LastReading = Write(UsagePath, reading, DateTime.UtcNow, account, Store);
+            NeedsSignIn = false;
             // An idle login has no running 5-hour window: the endpoint gives only the week (M.ORCH-T687).
             LastResult = reading.FiveHour is { } shown ? $"read Claude's meter: {shown.Percent:0}% of the 5-hour window"
                 : $"read Claude's meter: no 5-hour window running, week {reading.Week?.Percent:0}%";
@@ -328,9 +364,10 @@ public sealed class ClaudeMeterProbe
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
         }
 
-        void Fail(string why, TimeSpan? wait = null)
+        void Fail(string why, TimeSpan? wait = null, bool signIn = false)
         {
             LastResult = why;
+            NeedsSignIn = signIn;
             // The old account's ask failing (its credentials mid-rewrite by the /login) mustn't hold off reading the new one.
             lock (gate)
                 if (generation == asked) nextUtc = nowUtc + (wait ?? Backoff);

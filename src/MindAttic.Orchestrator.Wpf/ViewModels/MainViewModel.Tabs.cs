@@ -51,7 +51,7 @@ public sealed partial class MainViewModel
     /// <summary>Its title, its status icon's word (M.ORCH-T757) and its light's word (M.ORCH-T630: colour is never the only cue), its week left, its email and which
     /// login it is, and, with its red flag (M.ORCH-T790), how many of its CLIs are blocked waiting on your answer.</summary>
     public string TabTip =>
-        $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + (TabTrailing.Length > 0 ? $", {TabTrailing}" : "") + $". {tab.ToolTip}." + TabCutoffsLine +
+        $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + (TabTrailing.Length > 0 ? $", {TabTrailing}" : "") + $". {tab.ToolTip}." + TabStaleLine + TabCutoffsLine +
         (tab.SignedIn && !tab.IsApiKey ? ResetsLineOf(FiveHourResetUtc, WeekReset, DateTime.UtcNow) : "") +
         NeedsYouLine(TabAskingCount);
 

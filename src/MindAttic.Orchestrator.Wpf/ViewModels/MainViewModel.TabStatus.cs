@@ -70,7 +70,44 @@ public sealed partial class MainViewModel
     /// live cutoff ("5hr: 29% | wk: 15%", M.ORCH-T968), the cutoffs moved to the tooltip. Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
     public string TabTrailing => !tab.SignedIn ? ""
         : tab.IsApiKey ? ApiTrailingOf(Spend)
-        : TabUsagePairsOf(FiveHourUsed, WeekUsed);
+        : TabUsageOf(FiveHourUsed, WeekUsed, MeterReadUtc, NeedsSignInAgain, DateTime.UtcNow);
+
+    /// <summary>When this login's meter was last read: the pushed reading's, else its <c>claude-usage.json</c>'s; null on the global
+    /// login's tab, or never read (M.ORCH-T1119).</summary>
+    private DateTime? MeterReadUtc
+    {
+        get
+        {
+            if (ScopeEmail is not { } email) return null;
+            DateTime? file = Root.meterReadUtc.TryGetValue(email, out var f) ? f : null;
+            return Live?.ReadUtc is { } live && (file is null || live > file) ? live : file;
+        }
+    }
+
+    /// <summary>Whether this login's meter can't be read until the person signs in again (M.ORCH-T1119).</summary>
+    private bool NeedsSignInAgain => CutoffEmail is { } e && Root.signInAgain.Contains(e);
+
+    /// <summary>
+    /// The tab's usage text (M.ORCH-T1119): <see cref="TabUsagePairsOf"/> while the meter's reading is fresh; "sign in again" when
+    /// only the person can get it read again; and once it's older than <c>org usage</c>'s <see cref="UsageReport.StaleAfter"/>,
+    /// "stale · read 11h ago" instead of its figures, never shown as current (the tab is a fixed 230 wide, so the old figures
+    /// go to the tooltip, <see cref="TabStaleLineOf"/>).
+    /// </summary>
+    internal static string TabUsageOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, bool signInAgain, DateTime nowUtc) =>
+        signInAgain ? "sign in again"
+        : IsStale(readUtc, nowUtc) ? $"stale · read {Formatting.Ago(readUtc, nowUtc)}"
+        : TabUsagePairsOf(fiveHourUsed, weekUsed);
+
+    private static bool IsStale(DateTime? readUtc, DateTime nowUtc) => readUtc is { } r && nowUtc - r > UsageReport.StaleAfter;
+
+    /// <summary>For the tooltip, once the reading is stale (M.ORCH-T1119): " Claude's meter was last read 11h ago (5hr: 0% | wk: 91%),
+    /// so these figures may be out of date."; empty while it's fresh or never read.</summary>
+    internal static string TabStaleLineOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, DateTime nowUtc) =>
+        IsStale(readUtc, nowUtc)
+            ? $" Claude's meter was last read {Formatting.Ago(readUtc, nowUtc)} ({TabUsagePairsOf(fiveHourUsed, weekUsed)}), so these figures may be out of date."
+            : "";
+
+    internal string TabStaleLine => tab.SignedIn && !tab.IsApiKey ? TabStaleLineOf(FiveHourUsed, WeekUsed, MeterReadUtc, DateTime.UtcNow) : "";
 
     /// <summary>The cutoffs the visible label leaves out (M.ORCH-T968), for the tooltip and accessible name: "cutoffs 5-hour 98%, weekly 90%".</summary>
     internal string TabCutoffsLine => tab.SignedIn && !tab.IsApiKey ? $" Cutoffs: 5-hour {FiveHourCutoff}%, weekly {WeeklyCutoff}%." : "";
@@ -89,7 +126,7 @@ public sealed partial class MainViewModel
     private (TabLight Light, string Word) TabStatus => tab.IsApiKey
         ? ApiStatusOf(tab.SignedIn, Spend)
         : StatusOf(tab.SignedIn, string.Equals(Root.signingInEmail, tab.Email, StringComparison.OrdinalIgnoreCase) && tab.Email is not null,
-            SignedInAsOther, WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff);
+            SignedInAsOther, WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff, NeedsSignInAgain ? ClaudeMeterProbe.SignInAgain(CutoffEmail) : null);
 
     /// <summary>The API key's person's light (M.ORCH-T906): red with no key in the Vault, purple once its credit is spent, else green.</summary>
     internal static (TabLight Light, string Word) ApiStatusOf(bool hasKey, ApiSpend? spend) =>
@@ -98,13 +135,15 @@ public sealed partial class MainViewModel
         : (TabLight.Good, "Ready: its CLIs bill API credits");
 
     /// <summary>A person's light and its word: red signed out, purple while signing in, signed in as someone else, at its weekly
-    /// stop line (its own weekly cutoff, M.ORCH-T707) or at its 5-hour cutoff, else green.</summary>
+    /// stop line (its own weekly cutoff, M.ORCH-T707) or at its 5-hour cutoff, else green. Purple too, saying what to run, while
+    /// its meter can't be read until the person signs in again (<paramref name="signInAgain"/>, M.ORCH-T1119).</summary>
     internal static (TabLight Light, string Word) StatusOf(bool signedIn, bool signingIn, string? signedInAs, double? weekUsed,
-        int stopPercent, double? fiveHourUsed, int fiveHourStopPercent = 100)
+        int stopPercent, double? fiveHourUsed, int fiveHourStopPercent = 100, string? signInAgain = null)
     {
         if (signingIn) return (TabLight.Other, "Signing in");
         if (!signedIn) return (TabLight.Bad, "Signed out");
         if (signedInAs is not null) return (TabLight.Other, $"Login mismatch: signed in as {signedInAs}");
+        if (signInAgain is not null) return (TabLight.Other, $"Claude's meter can't be read: {signInAgain}");
         if (weekUsed >= stopPercent) return (TabLight.Other, $"At its weekly stop line ({stopPercent}%)");
         if (fiveHourUsed >= fiveHourStopPercent)
             return (TabLight.Other, fiveHourStopPercent >= 100 ? "5-hour limit hit" : $"At its 5-hour cutoff ({fiveHourStopPercent}%)");

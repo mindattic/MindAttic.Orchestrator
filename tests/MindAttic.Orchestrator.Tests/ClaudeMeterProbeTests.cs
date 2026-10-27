@@ -416,4 +416,62 @@ public sealed class ClaudeMeterProbeTests
         Assert.That(probe.LastResult, Does.Contain("refused to refresh"));
         Assert.That(probe.NextAskUtc, Is.GreaterThanOrEqualTo(Now + ClaudeMeterProbe.NoMeterBackoff));
     }
+
+    [Test]
+    public async Task A_refused_refresh_on_a_per_CLI_login_says_to_sign_in_again_with_the_command_and_a_reading_clears_it()
+    {
+        // T1119: Ryan's and Erin's folders went hours unread with only "no usable Claude sign-in"; what to run is said plainly.
+        var path = Path.Combine(dir, ".credentials.json");
+        var expired = new DateTimeOffset(DateTime.UtcNow.AddHours(-11)).ToUnixTimeMilliseconds();
+        File.WriteAllText(path, $$$"""{"claudeAiOauth":{"accessToken":"old","refreshToken":"r1","expiresAt":{{{expired}}}}}""");
+        var renew = false;
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = path, Label = "ryan@x.com",
+            MayRefresh = () => true,
+            Renew = (_, _) => Task.FromResult<ClaudeMeterProbe.RefreshedToken?>(renew ? new("new", "r2", 3600) : null),
+            Fetch = (_, _) => Task.FromResult<string?>(Body),
+        };
+        probe.Tick(null, [], Now, force: true);
+        await probe.Pending;
+        Assert.That(probe.LastResult, Does.Contain("sign in again (orchestrator login --account ryan@x.com)"));
+        Assert.That(probe.NeedsSignIn, Is.True);
+        renew = true;
+        probe.Reset();
+        probe.Tick(null, [], Now, force: true);
+        await probe.Pending;
+        Assert.That(probe.LastResult, Does.StartWith("read Claude's meter"));
+        Assert.That(probe.NeedsSignIn, Is.False);
+    }
+
+    [Test]
+    public void Why_a_saved_sign_in_gave_no_token_and_whether_only_signing_in_again_mends_it()
+    {
+        var path = Path.Combine(dir, ".credentials.json");
+        long Ms(DateTime t) => new DateTimeOffset(t).ToUnixTimeMilliseconds();
+
+        Assert.That(ClaudeMeterProbe.WhyUnusable(path, Now, true, "e@x.com"), Is.EqualTo(("none is saved in " + Path.GetFileName(dir) + ": sign in again (orchestrator login --account e@x.com)", true)));
+
+        File.WriteAllText(path, $$$"""{"claudeAiOauth":{"accessToken":"a","expiresAt":{{{Ms(Now.AddHours(-2))}}}}}""");
+        Assert.That(ClaudeMeterProbe.WhyUnusable(path, Now, true, "e@x.com"), Is.EqualTo(("its saved token expired 2h ago and has no refresh token: sign in again (orchestrator login --account e@x.com)", true)));
+
+        File.WriteAllText(path, $$$"""{"claudeAiOauth":{"accessToken":"a","refreshToken":"r","expiresAt":{{{Ms(Now.AddHours(-2))}}},"refreshTokenExpiresAt":{{{Ms(Now.AddDays(-1))}}}}}""");
+        Assert.That(ClaudeMeterProbe.WhyUnusable(path, Now, true, null).SignIn, Is.True, "its refresh token is dead too");
+        Assert.That(ClaudeMeterProbe.WhyUnusable(path, Now, true, null).Why, Does.EndWith("sign in again (orchestrator login)"));
+
+        File.WriteAllText(path, $$$"""{"claudeAiOauth":{"accessToken":"a","refreshToken":"r","expiresAt":{{{Ms(Now.AddHours(-2))}}},"refreshTokenExpiresAt":{{{Ms(Now.AddDays(20))}}}}}""");
+        Assert.That(ClaudeMeterProbe.WhyUnusable(path, Now, false, "e@x.com"),
+            Is.EqualTo(("its saved token expired 2h ago, and a CLI on it uses that sign-in, so it isn't refreshed here", false)), "a CLI can still refresh it");
+        File.WriteAllText(path, $$$"""{"claudeAiOauth":{"accessToken":"a","refreshToken":"r","expiresAt":{{{Ms(Now.AddMinutes(-3))}}}}}""");
+        Assert.That(ClaudeMeterProbe.WhyUnusable(path, Now, true, "e@x.com").SignIn, Is.False, "just expired: Claude Code's to refresh");
+    }
+
+    [Test]
+    public void A_per_CLI_logins_sign_in_is_refreshed_when_no_CLI_holds_it()
+    {
+        // T1119: tabs billing the long-lived token never refresh the folder's 8-hour sign-in, so the probe must.
+        Assert.That(AccountPacer.MayRefresh(tabsUseToken: true, cliOnLogin: true), Is.True);
+        Assert.That(AccountPacer.MayRefresh(tabsUseToken: false, cliOnLogin: false), Is.True);
+        Assert.That(AccountPacer.MayRefresh(tabsUseToken: false, cliOnLogin: true), Is.False, "a CLI on the folder's own sign-in holds its refresh token");
+    }
 }

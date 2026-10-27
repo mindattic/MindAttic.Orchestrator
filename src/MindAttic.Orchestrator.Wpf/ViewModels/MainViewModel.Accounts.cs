@@ -59,8 +59,33 @@ public sealed partial class MainViewModel
             try { cutoffs = UsageCutoffs.Load(store); allowances = WeeklyAllowances.Active(store, nowUtc); }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
             currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;
+            LoadMeterStates(nowUtc);
         }
         RaiseOwnNumbers();
+    }
+
+    /// <summary>When each per-CLI login's meter was last read (its <c>claude-usage.json</c>, as <c>org usage</c> reads it), and which
+    /// logins' meters can't be read until the person signs in again (M.ORCH-T1119); the global login's tab keeps them for every tab.</summary>
+    private IReadOnlyDictionary<string, DateTime> meterReadUtc = new Dictionary<string, DateTime>();
+    private IReadOnlySet<string> signInAgain = new HashSet<string>();
+    private DateTime meterStatesReadUtc;
+
+    /// <summary>How often <see cref="LoadMeterStates"/> rereads them: well inside <see cref="UsageReport.StaleAfter"/>.</summary>
+    private static readonly TimeSpan MeterStatesEvery = TimeSpan.FromSeconds(30);
+
+    private void LoadMeterStates(DateTime nowUtc)
+    {
+        if (nowUtc - meterStatesReadUtc < MeterStatesEvery) return;
+        meterStatesReadUtc = nowUtc;
+        try
+        {
+            var read = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+            foreach (var dir in OwnLoginDirs().All())
+                if (ReportedUsage.LoadAnyAge(dir.UsagePath) is { } r) read[dir.Email] = r.AtUtc;
+            meterReadUtc = read;
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { }
+        signInAgain = UsageReport.NeedingSignIn(ReportedUsage.DefaultDb);
     }
 
     private ICommand? toggleBillingCommand;
