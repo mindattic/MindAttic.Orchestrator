@@ -87,8 +87,9 @@ public static class ApiKeyPerson
     internal static void EnsureConfig(string configPath)
     {
         JsonObject config;
+        // A file that won't parse (often one Claude Code is rewriting) is left alone, never replaced with an empty one (M.ORCH-T1089).
         try { config = File.Exists(configPath) && JsonNode.Parse(File.ReadAllText(configPath)) is JsonObject o ? o : []; }
-        catch (JsonException) { config = []; }
+        catch (JsonException ex) { throw new InvalidDataException($"{configPath} couldn't be read as JSON; it's left as it is.", ex); }
         if (File.Exists(configPath) && config["hasCompletedOnboarding"] is JsonValue v && v.TryGetValue<bool>(out var done) && done) return;
         config["hasCompletedOnboarding"] = true;
         var temp = configPath + ".tmp";
