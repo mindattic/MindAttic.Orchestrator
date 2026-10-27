@@ -413,20 +413,27 @@ public partial class MainWindow : Window
             ? new DoubleAnimation(0.25, 0.95, TimeSpan.FromSeconds(1.3)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever }
             : new DoubleAnimation(exitOpacity, TimeSpan.FromSeconds(exitSeconds)));
 
-    /// <summary>The tallest the terminal frame gets, its margin's 8 below it included (it was a fixed 480, M.ORCH-T1020).</summary>
-    private const double TerminalRowMax = 480 + 8;
+    /// <summary>How tall <see cref="AgentsBody"/> (and the sign-in prompt sharing its row) peeks while the terminal fills the
+    /// rest of the window: just enough of the 5-hour/weekly chart or the queue to show there's more, and invite a scroll down
+    /// to it (M.ORCH-T1072). The body's own ScrollViewer (MaBodyScroll) reaches everything below the peek.</summary>
+    private const double AgentsBodyPeek = 120;
 
-    /// <summary>While the terminal shows, its row is a star row (three times the body's share, at most <see cref="TerminalRowMax"/>)
-    /// rather than a fixed 480 in an Auto row, so a short or zoomed window shrinks the terminal too and the scrolling body below
-    /// (stats, queue tabs, chart, tickets) never collapses to nothing (M.ORCH-T1020). Hidden, the row takes no room.</summary>
+    /// <summary>The terminal fills the remainder of the window under the tab strip (M.ORCH-T1072): while it shows, its row is
+    /// the Grid's one star row, so it takes every pixel left after the fixed rows above and below, and the scrolling body
+    /// (stats, queue tabs, the 5-hour/weekly chart, tickets) is pinned to a fixed <see cref="AgentsBodyPeek"/> rather than
+    /// sharing the room with it. It used to split 3:1 with the body, capped at a fixed 480 (M.ORCH-T1020), which left a tall or
+    /// wide window showing the whole body at once, nothing left to scroll down for. Hidden (no terminals open on this login),
+    /// the terminal's row takes no room and the body reclaims the star row, filling the window as it did before there was a
+    /// terminal to share it with.</summary>
     private void SizeTerminalRow()
     {
         try
         {
-            var row = Root.RowDefinitions[2];
+            var terminalRow = Root.RowDefinitions[2];
+            var bodyRow = Root.RowDefinitions[4];
             var shown = TerminalFrame.IsVisible;
-            row.Height = shown ? new GridLength(3, GridUnitType.Star) : GridLength.Auto;
-            row.MaxHeight = shown ? TerminalRowMax : double.PositiveInfinity;
+            terminalRow.Height = shown ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+            bodyRow.Height = shown ? new GridLength(AgentsBodyPeek) : new GridLength(1, GridUnitType.Star);
         }
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
     }

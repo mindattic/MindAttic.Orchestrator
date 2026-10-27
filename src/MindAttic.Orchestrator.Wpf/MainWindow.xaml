@@ -315,8 +315,10 @@
             </Border>
         </StackPanel>
         <!-- The chosen terminal, in its own fixed row right under the terminal tabs (M.ORCH-T861), outside the scrolling body:
-             shown on a signed-in person's page that has a terminal, like the tabs above. Up to 480 tall; in a short or zoomed window it shares
-             the room 3:1 with the body below (M.ORCH-T1020, MainWindow.xaml.cs SizeTerminalRow), so the body stays reachable. -->
+             shown on a signed-in person's page that has a terminal, like the tabs above. Fills the rest of the window below the
+             tab strip and the terminal tabs (M.ORCH-T1072, MainWindow.xaml.cs SizeTerminalRow): the body below (the stats, the
+             5-hour/weekly chart and the tickets) is pinned to a fixed peek instead of sharing the room 3:1 as it used to
+             (M.ORCH-T1020), so its own ScrollViewer is how you reach the rest of it, not a share of the visible window. -->
         <Grid x:Name="TerminalFrameRow" Grid.Row="2" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <Border x:Name="TerminalFrame" Style="{StaticResource MaInsetCard}" MinHeight="160" Margin="{StaticResource SpaceLXLRXLBS}"
                     Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
