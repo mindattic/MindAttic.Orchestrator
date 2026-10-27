@@ -40,7 +40,7 @@ public sealed class LandOnMainTests
         Git(repo, "remote", "set-head", "origin", "main");
 
         tree = Path.Combine(dir, "wt", "A-T1");
-        Assert.That(Dispatcher.EnsureWorktree(repo, tree, Dispatcher.BranchFor("A-T1")).Ok, Is.True);
+        Assert.That(LegacyWorktree.Add(repo, tree, Dispatcher.BranchFor("A-T1")).Ok, Is.True);
         a = new Assignment("A-T1", "A", tree, "Claude", Now, true);
     }
 

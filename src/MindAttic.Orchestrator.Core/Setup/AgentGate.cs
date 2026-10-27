@@ -1801,7 +1801,7 @@ public static class AgentGate
 
     internal const string AllocateCommand = """
         ---
-        description: Auto-allocates the open tickets of this CLI's repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") to its own subagents whenever one has a free slot, each in its own worktree, landing on main and closing the ticket, until none are left. /allocate off stops it in this CLI (its subagents finish, then it quicksaves its repo's handoff); /allocate off all in every CLI; -target=PID,PID|others|all turns it on or off in other CLIs.
+        description: Auto-allocates the open tickets of this CLI's repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") to its own subagents whenever one has a free slot, all in the repo's own checkout on main (no worktrees or branches), each landing on main and closing its ticket, until none are left. /allocate off stops it in this CLI (its subagents finish, then it quicksaves its repo's handoff); /allocate off all in every CLI; -target=PID,PID|others|all turns it on or off in other CLIs.
         argument-hint: "[off|off all|all] [-repo=A,B | -repo=GTFO.*] [-target=PID,session,name | -target=others | -target=all]"
         ---
         /allocate $ARGUMENTS is running in this CLI. MindAttic.Orchestrator's gates record it for this CLI only (no other CLI is affected) when the user typed it, or when you called it through the Skill tool because the user's own latest prompt asked for it; a Skill call the user didn't ask for is refused and records nothing, so never start it on your own. Once recorded, while it's on, the repos named (a wildcard such as GTFO.* names every repo it matches) are this CLI's cross-repo exception so your subagents can work and close tickets there.
@@ -1811,8 +1811,8 @@ public static class AgentGate
         If the arguments start with "off" (and have no -target): reply with one short line confirming /allocate is off in this CLI (with -repo, just for those repos; "off all": in every CLI). Claim no new ticket and start no new subagent; subagents already working finish, land and close their tickets. Once it's off for every repo here and this CLI's last subagent has, the orchestrator has it quicksave this repo's handoff, as /quicksave does, and say "<repo> quiet, handoff saved" (with nothing working, that's at the end of this turn). Then end your turn.
 
         Otherwise you work the tickets yourself, through subagents, now:
-        1. Run `orchestrator next --repos "<repos>" --claim`, where <repos> is the -repo list as typed (wildcards included), * for all, or this CLI's own repo when none are named; keep the quotes so no shell expands a wildcard. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), makes each its own git worktree, and prints each ticket's id, its `model:` line and a full prompt.
-        2. Start one subagent per ticket it printed, every one of them at once, all in one message, each with exactly the prompt printed for it and on the model its `model:` line names (the Agent tool's model: sonnet or opus; a general-purpose subagent, in the foreground). Don't hold a claimed ticket back because its files overlap another's: each works only in its own worktree, commits, rebases onto the repo's main line as it lands, and closes its ticket.
+        1. Run `orchestrator next --repos "<repos>" --claim`, where <repos> is the -repo list as typed (wildcards included), * for all, or this CLI's own repo when none are named; keep the quotes so no shell expands a wildcard. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), records each as this CLI's, and prints each ticket's id, its `model:` line and a full prompt. Every ticket is worked in its repo's own checkout on main: no worktree or branch is made.
+        2. Start one subagent per ticket it printed, every one of them at once, all in one message, each with exactly the prompt printed for it and on the model its `model:` line names (the Agent tool's model: sonnet or opus; a general-purpose subagent, in the foreground). Don't hold a claimed ticket back because its files overlap another's: they share the checkout, and each touches only its own ticket's files, stages them by explicit path (never git add -A), commits one ticket per commit, pulls with --rebase --autostash, pushes to main, and closes its ticket with --ref.
         3. When they've returned, say in one line per ticket what happened, and go back to step 1.
         4. Stop when `orchestrator next` hands out nothing (it says why: none left, waiting for approval, or the pace), and say so in one short line. Don't start anything else on your own. Nothing works these tickets in the background: it's this CLI's own subagents or nobody. /allocate stays on here, so when this turn ends while the repos still have workable tickets and the pace has room, the orchestrator sends this CLI back to step 1; /allocate off stops that.
         5. When it says the repos ran dry (no open tickets left at all, none waiting or being worked), and no subagent of yours is still working, offer a bug hunt and only offer it: ask the user in one line whether to run /bughunt on those repos, then end your turn. Never start a hunt unasked. Hunt only if the user's reply is an explicit yes (anything else, silence included, is a no; after a no, don't ask again until a ticket has been worked there since). On a yes, hunt those repos for real bugs as /bughunt does, but fix nothing yourself: file each confirmed bug as its own fix ticket in its repo (`tickets ticket new --repo <repo> --type fix --summary '<the bug and where> (found by bughunt)'`), say in one line how many you filed, and go back to step 1 so /allocate's subagents work them.
@@ -1953,7 +1953,7 @@ public static class AgentGate
 
         # The orchestrator's last-resort cool-off (M.ORCH-T786): a subagent it aborted to pull its login's 5-hour trend back under
         # the pace line has every tool call refused from here on, so it stops between calls (never mid-write or mid-commit, as a
-        # call already running finishes) and its worktree and uncommitted work stay as they are. Its claim is already released
+        # call already running finishes) and its uncommitted work stays as it is. Its claim is already released
         # and its ticket put first in the queue by the orchestrator.
         if data.get("agent_id"):
             aborted = abort = None
@@ -1970,7 +1970,7 @@ public static class AgentGate
                 why = (abort.get("why") if isinstance(abort, dict) else None) or "this login's 5-hour window is on course past its pace line"
                 refuse(f"ABORTED by the orchestrator to cool off this login: {why}. Stop now: make no more tool calls (each one is refused) "
                        f"and end your turn with a short report saying you were aborted, what you finished, and what's left uncommitted. "
-                       f"Don't commit, push, close or release anything: your worktree and uncommitted work are kept as they are, and "
+                       f"Don't commit, push, close or release anything: your uncommitted work is kept as it is, and "
                        f"the orchestrator already released {ticket}'s claim and put it first in the queue for the next round, so the "
                        f"CLI that started you shouldn't restart it now.")
 

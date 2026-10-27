@@ -9,7 +9,8 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// <see cref="OrchestratorSettings.ReviewDiffLines"/> lines, or touches a file in <see cref="OrchestratorSettings.RiskyFiles"/>
 /// (the gates, pacing, git landing). The reviewer gets the diff and the ticket's summary only, with no tools, so it never
 /// re-reads the repo; it's a headless <c>claude -p</c> on <see cref="ModelChoice.OpusId"/> whose prompt names the ticket, so its
-/// cost is the ticket's. <c>orchestrator review</c> runs it from the ticket's worktree, as the Sonnet subagent's prompt says to.
+/// cost is the ticket's. <c>orchestrator review</c> runs it from the ticket's repo checkout, as the Sonnet subagent's prompt says to,
+/// on the commits that name the ticket (M.ORCH-T1122: other agents' commits share that checkout).
 /// </summary>
 public static class DiffReview
 {
@@ -140,8 +141,8 @@ public static class DiffReview
     public const string Clean = "LGTM";
 
     /// <summary>
-    /// <c>orchestrator review</c>, run from ticket <paramref name="ticketId"/>'s worktree (<paramref name="directory"/>): judges the
-    /// commits on it past <c>origin/&lt;main line&gt;</c> and, for a Sonnet ticket whose diff needs it, runs its one Opus review and
+    /// <c>orchestrator review</c>, run from ticket <paramref name="ticketId"/>'s repo checkout (<paramref name="directory"/>): judges
+    /// the commits naming it past <c>origin/&lt;main line&gt;</c> (all of them where git can't list those) and, for a Sonnet ticket whose diff needs it, runs its one Opus review and
     /// records that on the ticket's claim, so it isn't run twice. The model is the one the claim recorded, else the one
     /// <see cref="ModelChoice"/> picks for <paramref name="ticket"/>. <paramref name="force"/> reviews any diff, however small and
     /// whatever the model, and even a second time; <paramref name="dryRun"/> only judges.
@@ -154,7 +155,7 @@ public static class DiffReview
         git ??= (dir, args) => Dispatcher.Git(dir, args);
         mainlineOf ??= Dispatcher.Mainline;
         var (topCode, topText) = git(directory, ["rev-parse", "--show-toplevel"]);
-        if (topCode != 0) return new($"{directory} isn't in a git checkout: run it from {ticketId}'s worktree.", false);
+        if (topCode != 0) return new($"{directory} isn't in a git checkout: run it from {ticketId}'s repo checkout.", false);
         var top = Path.GetFullPath(topText.Trim());
         claude ??= prompt => RunClaude(prompt, top);
 
@@ -166,13 +167,20 @@ public static class DiffReview
             : ModelChoice.Sonnet;
 
         var against = $"origin/{mainlineOf(top)}";
-        var (statCode, stat) = git(top, ["diff", "--numstat", $"{against}...HEAD"]);
+        // In the repo's shared checkout (M.ORCH-T1122) other agents' unpushed commits sit past origin/main too: only the commits
+        // naming this ticket are its diff. Where none can be listed (git can't tell), everything past origin/main is, as in a
+        // worktree of its own.
+        var (logCode, log) = git(top, ["log", "--format=%H", "--fixed-strings", $"--grep={ticketId}", $"{against}..HEAD"]);
+        var mine = logCode == 0 ? log.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) : null;
+        if (mine is { Length: 0 }) return new($"No commits naming {ticketId} past {against} here: commit its work first, then review it.", false);
+        string[] Diff(params string[] head) => mine is null ? [.. head, $"{against}...HEAD"] : ["show", "--format=", .. head[1..], .. mine];
+        var (statCode, stat) = git(top, Diff("diff", "--numstat"));
         if (statCode != 0) return new($"Couldn't diff {ticketId}'s commits against {against}: {stat.Trim()}", false);
         var verdict = Judge(ParseNumstat(stat), settings, force ? ModelChoice.Sonnet : model);
         if (!verdict.Review) return new($"No Opus review needed for {ticketId}: {verdict.Why}. Land it.", false, verdict);
         if (dryRun) return new($"{ticketId}'s diff gets its one Opus review: {verdict.Why} (not run: --dry-run).", false, verdict);
 
-        var (diffCode, diff) = git(top, ["diff", $"{against}...HEAD"]);
+        var (diffCode, diff) = git(top, Diff("diff"));
         if (diffCode != 0) return new($"Couldn't diff {ticketId}'s commits against {against}: {diff.Trim()}", false, verdict);
         var (ok, said) = claude(Prompt(ticketId, ticket?.Type ?? "fix", ticket?.Summary ?? "(its summary isn't known here)", diff));
         if (!ok) return new($"{ticketId}'s Opus review couldn't run ({said}). Land it without one, and say so when you report.", false, verdict);

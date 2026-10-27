@@ -6,7 +6,8 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>A ticket whose CLI or tab exited mid-task is seen at once and redispatched in its worktree (M.ORCH-T748).</summary>
+/// <summary>A ticket whose CLI or tab exited mid-task is seen at once and redispatched (M.ORCH-T748), in its repo's own checkout
+/// on main, where it's judged by repo and ticket, never by the folder other agents share (M.ORCH-T1122).</summary>
 public sealed class OrphanWatchTests
 {
     private string dir = "";
@@ -35,13 +36,13 @@ public sealed class OrphanWatchTests
 
     private static Ticket T(string id) => new(id, "2026-10-01", "fix", "open", $"summary of {id}", "");
 
-    private static Assignment Claim(DateTime started, int cli = DeadCli, string directory = Tree) =>
+    private static Assignment Claim(DateTime started, int cli = DeadCli, string directory = Repo) =>
         new("A-T1", "A", directory, Providers.Claude, started, true) { Cli = cli, CliSession = "dead-session" };
 
     private OrphanWatch Watch(params int[] alive) => new(store)
     {
         CliRunning = pid => alive.Contains(pid),
-        Inspect = (_, _) => (2, ["src/Half.cs", "docs/notes.md"]),
+        Inspect = (_, _, _, _) => (2, ["src/Half.cs", "docs/notes.md"]),
         StillOpen = (_, _) => true,
         MainlineOf = _ => "main",
         OpenTab = (item, prompt) =>
@@ -79,18 +80,18 @@ public sealed class OrphanWatchTests
         Assert.That(rec.Uncommitted, Is.EqualTo(new[] { "src/Half.cs", "docs/notes.md" }));
         Assert.That(opened, Is.Empty, "nothing is typed or opened: the claim machinery does it");
 
-        // Its next claim carries the work forward, in the same worktree.
+        // Its next claim carries the work forward, in the same checkout.
         var (again, _) = Planned(Now.AddMinutes(1));
         var (handed, _) = Allocate.Next(again, Settings, store, ["A"], 1, claim: true, Now.AddMinutes(1),
-            (_, path, _) => (true, path, ""), _ => "main", stillOpen: (_, _) => true);
-        Assert.That(handed.Single().Worktree, Is.EqualTo(Tree));
+            _ => "main", stillOpen: (_, _) => true);
+        Assert.That(handed.Single().Directory, Is.EqualTo(Repo));
         Assert.That(handed.Single().Prompt, Does.StartWith("A previous agent on A-T1 died mid-task").And.Contain("redispatch 1")
             .And.Contain("src/Half.cs").And.Contain("2 commits not on the main line").And.Contain("never discard").And.Contain("Work on ticket A-T1"));
         Assert.That(handed.Single().Prompt, Does.Not.Contain("\"").And.Not.Contain("\n"));
     }
 
     [Test]
-    public void With_no_allocate_cli_it_starts_again_in_a_new_tab_in_its_worktree_and_waits_when_no_login_has_room()
+    public void With_no_allocate_cli_it_starts_again_in_a_new_tab_in_its_checkout_and_waits_when_no_login_has_room()
     {
         store.SaveAssignments([Claim(Now.AddHours(-1))]);
         var watch = Watch();
@@ -106,14 +107,15 @@ public sealed class OrphanWatchTests
         watch.Tick(plan, snap, Settings, Pilots(false), Now.AddMinutes(2));
         var (item, prompt) = opened.Last();
         Assert.That(item.Id, Is.EqualTo("A-T1"));
-        Assert.That(prompt, Does.StartWith("A previous agent on A-T1 died mid-task").And.Contain(Tree).And.Contain("git push origin HEAD:main"));
+        Assert.That(prompt, Does.StartWith("A previous agent on A-T1 died mid-task").And.Contain(Repo).And.Contain("git push origin HEAD:main")
+            .And.Not.Contain(Tree), "restarted in the repo's checkout, never a worktree");
         var rec = OrphanWatch.Load(store).Single();
         Assert.That((rec.State, rec.Redispatches), Is.EqualTo((OrphanRecord.Reopened, 1)));
         Assert.That(rec.Open, Is.False, "running again: no longer listed as orphaned");
     }
 
     [Test]
-    public void A_live_cli_recent_work_in_the_worktree_or_a_fresh_claim_is_not_orphaned()
+    public void A_live_cli_recent_work_on_its_ticket_or_a_fresh_claim_is_not_orphaned()
     {
         store.SaveAssignments([Claim(Now.AddHours(-1))]);
         var (plan, snap) = Planned(Now);
@@ -125,7 +127,7 @@ public sealed class OrphanWatchTests
         };
         var busy = Snap(Now, sessions: [working]);
         Assert.That(Watch().Tick(Scheduler.Plan(busy, Settings, store.LoadAssignments()), busy, Settings, Pilots(true), Now), Is.Empty,
-            "something wrote from its worktree two minutes ago");
+            "a subagent on its ticket wrote two minutes ago");
 
         store.SaveAssignments([Claim(Now.AddMinutes(-3))]);
         (plan, snap) = Planned(Now);
@@ -179,6 +181,7 @@ public sealed class OrphanWatchTests
     [Test]
     public void Work_left_where_a_redispatch_wouldnt_start_is_never_left_behind()
     {
+        // An old worktree of its own (made before M.ORCH-T1122): a redispatch starts in the checkout and would leave it there.
         store.SaveAssignments([Claim(Now.AddHours(-1), directory: @"D:\Elsewhere\A-T1")]);
         var (plan, snap) = Planned(Now);
         var events = Watch().Tick(plan, snap, Settings, Pilots(true), Now);
@@ -212,6 +215,28 @@ public sealed class OrphanWatchTests
         store.SaveAssignments([Claim(Now.AddHours(-1)) with { Cli = null }]);
         var (plan, snap) = Planned(Now);
         Assert.That(OrphanWatch.Dark(plan, snap, _ => false, TimeSpan.FromMinutes(5)), Has.Count.EqualTo(1), "no tab and no host: dark");
-        Assert.That(OrphanWatch.Dark(plan, snap, _ => false, TimeSpan.FromMinutes(5), d => d == Tree), Is.Empty, "a live host runs it: not dark");
+        Assert.That(OrphanWatch.Dark(plan, snap, _ => false, TimeSpan.FromMinutes(5), (d, t) => d == Repo && t == "A-T1"), Is.Empty, "a live host runs it: not dark");
+        Assert.That(OrphanWatch.Dark(plan, snap, _ => false, TimeSpan.FromMinutes(5), (d, t) => d == Repo && t is null), Has.Count.EqualTo(1),
+            "in the shared checkout a host counts only for the ticket it's titled for");
+    }
+
+    [Test]
+    public void In_the_shared_checkout_only_what_works_its_own_ticket_keeps_it_from_going_dark()
+    {
+        // M.ORCH-T1122: other agents, and you, work in the same checkout; their tabs and sessions say nothing about A-T1.
+        store.SaveAssignments([Claim(Now.AddHours(-1)) with { Cli = null }]);
+        var quiet = TimeSpan.FromMinutes(5);
+        Snapshot With(IReadOnlyList<HostSession>? hosts = null, IReadOnlyList<TranscriptSession>? sessions = null) => Snap(Now, hosts, sessions);
+        IReadOnlyList<QueueItem> Dark(Snapshot s) => OrphanWatch.Dark(Scheduler.Plan(s, Settings, store.LoadAssignments()), s, _ => false, quiet);
+
+        var others = With(
+            hosts: [new HostSession("Claude", 9, "pipe", Repo) { Title = "A A-T2" }, new HostSession("Claude", 10, "pipe", Repo)],
+            sessions: [new TranscriptSession("you", Repo, Now.AddMinutes(-1), default, null), new TranscriptSession("other", Repo, Now.AddMinutes(-1), default, null) { TicketId = "A-T2" }]);
+        Assert.That(Dark(others), Has.Count.EqualTo(1), "another ticket's tab and sessions in the same checkout don't keep A-T1 alive");
+
+        Assert.That(Dark(With(hosts: [new HostSession("Claude", 9, "pipe", Repo) { Title = "A A-T1" }])), Is.Empty, "its own tab, titled for it, does");
+        Assert.That(Dark(With(sessions: [new TranscriptSession("mine", Repo, Now.AddMinutes(-1), default, null) { TicketId = "A-T1" }])), Is.Empty,
+            "a session started on it does");
+        Assert.That(Dark(With(hosts: [new HostSession("Claude", 9, "pipe", Repo) { Title = "A A-T12" }])), Has.Count.EqualTo(1), "A-T12 isn't A-T1");
     }
 }

@@ -85,15 +85,15 @@ public sealed class SchedulerTests
 
         Assert.That(plan.Occupied, Is.EqualTo(1));
         Assert.That(plan.Proposals.Select(p => p.Item.Id), Is.EqualTo(new[] { "B-T2", "C-T1" }), "B's newest; then C, on the same date and number");
-        Assert.That(plan.Proposals.All(p => !p.UseWorktree));
     }
 
     [Test]
-    public void A_busy_repo_gets_a_worktree()
+    public void A_busy_repo_is_proposed_in_its_own_checkout_not_a_worktree()
     {
+        // M.ORCH-T1122: a repo with a session shares its checkout; no ticket gets a worktree of its own.
         var plan = Scheduler.Plan(Snap(null, Repo("A", RepoState.Waiting, T("A-T1"))), new OrchestratorSettings(), []);
 
-        Assert.That(plan.Proposals.Single().UseWorktree, Is.True);
+        Assert.That(plan.Proposals.Single().Reason, Does.Contain("shares the checkout").And.Not.Contain("own worktree"));
     }
 
     [Test]
@@ -130,35 +130,6 @@ public sealed class SchedulerTests
     {
         var item = new QueueItem("Repo", @"D:\W\Repo", T("RP-T3", "fix"), 0, null, false);
         Assert.That(Scheduler.PromptFor(item), Does.Contain("tickets ticket close RP-T3 --repo Repo"));
-    }
-
-    [Test]
-    public void Worktrees_are_created_on_their_own_branch_and_reused()
-    {
-        var root = Path.Combine(Path.GetTempPath(), "orch-wt-" + Guid.NewGuid().ToString("N"));
-        var repo = Path.Combine(root, "repo");
-        Directory.CreateDirectory(repo);
-        try
-        {
-            Run(repo, "init", "-q");
-            File.WriteAllText(Path.Combine(repo, "a.txt"), "a");
-            Run(repo, "add", ".");
-            Run(repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init");
-
-            var wt = Path.Combine(root, "wt", "repo", "X-T1");
-            var first = Dispatcher.EnsureWorktree(repo, wt, "orch/x-t1");
-            var again = Dispatcher.EnsureWorktree(repo, wt, "orch/x-t1");
-
-            Assert.That(first.Ok, Is.True, first.Error);
-            Assert.That(again.Ok, Is.True);
-            Assert.That(File.Exists(Path.Combine(wt, "a.txt")));
-            Assert.That(Run(wt, "branch", "--show-current").Trim(), Is.EqualTo("orch/x-t1"));
-        }
-        finally
-        {
-            foreach (var f in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
-            Directory.Delete(root, recursive: true);
-        }
     }
 
     [Test]
@@ -225,7 +196,7 @@ public sealed class SchedulerTests
         new("A-T1", "A", Worktree, "Claude", DateTime.UtcNow.AddHours(-20), Worktree: true);
 
     [Test]
-    public void A_ticket_whose_session_went_quiet_goes_back_in_the_queue_and_back_to_its_worktree()
+    public void A_ticket_whose_session_went_quiet_in_an_old_worktree_goes_back_in_the_queue()
     {
         var now = DateTime.UtcNow;
         var plan = Scheduler.Plan(Activity(now, transcriptAt: now.AddHours(-13)), new OrchestratorSettings(), [Quiet]);
@@ -236,11 +207,27 @@ public sealed class SchedulerTests
         Assert.That(item.StaleSinceUtc, Is.EqualTo(now.AddHours(-13)), "the last sign of life, not the dispatch");
         var proposal = plan.Proposals.Single();
         Assert.That(proposal.Item.Id, Is.EqualTo("A-T1"), "it keeps its place in line rather than sinking");
-        Assert.That(proposal.UseWorktree, Is.True, "its partial work is in the worktree");
         Assert.That(proposal.Reason, Does.Contain("went quiet"));
-        Assert.That((item.RepoBusy, item.NeedsWorktree), Is.EqualTo((false, true)),
-            "started any other way (orchestrator dispatch, a queue row that isn't the proposal) it goes back there too");
-        Assert.That(plan.Queue.Single(q => q.Id == "A-T2").NeedsWorktree, Is.False, "a fresh ticket in a free repo starts in the repo");
+    }
+
+    [Test]
+    public void In_the_shared_checkout_only_work_on_its_own_ticket_keeps_an_assignment_from_going_stale()
+    {
+        // M.ORCH-T1122: you and other agents work in the same checkout; only a session or subagent on A-T1 is A-T1's sign of life.
+        var now = DateTime.UtcNow;
+        var claim = new Assignment("A-T1", "A", @"D:\W\A", "Claude", now.AddHours(-20), Worktree: true);
+        Snapshot With(params TranscriptSession[] sessions) => new(now, [new RepoStatus("A", @"D:\W\A", RepoState.Dormant, [], sessions,
+            [T("A-T1", date: "2026-10-02"), T("A-T2")], now, default)], []);
+
+        var others = With(new TranscriptSession("you", @"D:\W\A", now.AddMinutes(-5), default, null),
+            new TranscriptSession("other", @"D:\W\A", now.AddMinutes(-5), default, null) { TicketId = "A-T2" });
+        Assert.That(Scheduler.Plan(others, new OrchestratorSettings(), [claim]).Stale.Select(q => q.Id), Is.EqualTo(new[] { "A-T1" }),
+            "work on other tickets in the same folder isn't A-T1's");
+        var mine = With(new TranscriptSession("mine", @"D:\W\A", now.AddMinutes(-5), default, null) { TicketId = "A-T1" });
+        Assert.That(Scheduler.Plan(mine, new OrchestratorSettings(), [claim]).Stale, Is.Empty, "a session started on it is");
+        var tab = new Snapshot(now, [new RepoStatus("A", @"D:\W\A", RepoState.Dormant, [new HostSession("Claude", 1, "pipe", @"D:\W\A") { Title = "A A-T1" }], [],
+            [T("A-T1", date: "2026-10-02"), T("A-T2")], now, default)], []);
+        Assert.That(Scheduler.Plan(tab, new OrchestratorSettings(), [claim]).Stale, Is.Empty, "and so is a tab titled for it");
     }
 
     [Test]
@@ -311,7 +298,7 @@ public sealed class SchedulerTests
             Run(repo, "add", ".");
             Run(repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init");
             var wt = Path.Combine(root, "wt", "X-T1");
-            Assert.That(Dispatcher.EnsureWorktree(repo, wt, "orch/x-t1").Ok);
+            Assert.That(LegacyWorktree.Add(repo, wt, "orch/x-t1").Ok);
             Run(repo, "worktree", "remove", wt);
             Directory.CreateDirectory(wt); // the folder Windows wouldn't let go of
 

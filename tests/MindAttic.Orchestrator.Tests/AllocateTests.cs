@@ -37,19 +37,21 @@ public sealed class AllocateTests
     }
 
     [Test]
-    public void The_last_open_story_of_a_repo_is_landed_from_the_repos_own_checkout_not_its_worktree()
+    public void The_last_open_story_of_a_repo_is_finished_in_the_repos_own_checkout_with_no_worktree_to_land()
     {
+        // M.ORCH-T1122: the agent works and pushes from the repo's checkout on main, so there's no worktree to land or tidy.
         Cli(100, @"D:\W\A");
         var snap = Snap(("A", [T("A-T1")]));
         var pilot = Pilot();
         pilot.Tick(Paced(snap, 1), snap, new() { WorktreeRoot = @"D:\WT" }, Now);
+        Assert.That(started.Single().Dir, Is.EqualTo(@"D:\W\A"));
         agents.Clear();
-        landed.Add("A-T1");
 
         var after = Snap(("A", [])); // it closed the repo's last open story, so the queue has nothing for A
         var said = pilot.Tick(Paced(after, 1), after, new() { WorktreeRoot = @"D:\WT" }, Now.AddMinutes(30));
-        Assert.That(landedFrom["A-T1"], Is.EqualTo(@"D:\W\A"), "the worktree has no ticket database beside it, so a finished story was parked");
+        Assert.That(landedFrom, Is.Empty, "nothing to land: it pushed to main itself");
         Assert.That(said, Has.Some.Contains("finished A-T1"));
+        Assert.That(store.LoadAssignments(), Is.Empty);
     }
 
     [Test]
@@ -62,7 +64,7 @@ public sealed class AllocateTests
 
         var said = pilot.Tick(Paced(snap, 10), snap, new() { WorktreeRoot = @"D:\WT" }, Now);
 
-        Assert.That(started.Select(s => s.Dir), Is.EqualTo(new[] { @"D:\WT\B\B-T1" }), "B has no CLI open and still gets an agent; A is yours; C has nothing open");
+        Assert.That(started.Select(s => s.Dir), Is.EqualTo(new[] { @"D:\W\B" }), "B has no CLI open and still gets an agent; A is yours; C has nothing open");
         Assert.That(pilot.Repos, Is.EqualTo(new[] { "B" }));
         Assert.That(said, Has.None.Contains("no repo named"));
     }
@@ -79,7 +81,8 @@ public sealed class AllocateTests
 
         Pilot().Tick(plan, snap, new() { WorktreeRoot = @"D:\WT" }, Now);
 
-        Assert.That(started.Select(s => s.Dir).First(), Is.EqualTo(@"D:\WT\Launcher\M.LNCH-T21"), "the prioritized story goes first");
+        Assert.That(started.First().Prompt, Does.StartWith("Work on ticket M.LNCH-T21 "), "the prioritized story goes first");
+        Assert.That(started.Select(s => s.Dir).First(), Is.EqualTo(@"D:\W\Launcher"));
         Assert.That(started, Has.Count.EqualTo(2));
     }
 
@@ -92,15 +95,15 @@ public sealed class AllocateTests
         new Allocate(store, sessions)
         {
             Order = () => order, Alive = clis.Contains, IsRunning = _ => false, StartTimeOf = _ => null, LogDirectory = Path.Combine(dir, "logs"),
-            MakeWorktree = (repo, path, branch) => (true, path, ""), MainlineOf = _ => "master",
+            MainlineOf = _ => "master",
             Start = (d, prompt, log) => { started.Add((d, prompt, log, 1)); return 1; },
         }.Tick(Paced(snap, 1), snap, new() { WorktreeRoot = Path.Combine(dir, "wt") }, Now);
-        Assert.That(started.Single().Prompt, Does.Contain("git rebase origin/master").And.Contain("git push origin HEAD:master").And.Not.Contain("HEAD:main "));
+        Assert.That(started.Single().Prompt, Does.Contain("git pull --rebase --autostash origin master").And.Contain("git push origin HEAD:master").And.Not.Contain("HEAD:main "));
         Assert.That(started.Single().Prompt, Does.Contain("never in the background"), "a -p run ends with its last turn and cuts off background subagents");
     }
 
     [Test]
-    public void Landing_checks_the_repos_real_main_line_against_a_real_git_remote()
+    public void An_old_worktree_is_still_landed_against_the_repos_real_main_line_and_its_merged_branch_deleted()
     {
         static (int, string) Git(string cwd, params string[] args) => Dispatcher.Git(cwd, args);
         var origin = Path.Combine(dir, "origin.git");
@@ -119,15 +122,9 @@ public sealed class AllocateTests
         Git(repo, "remote", "set-head", "origin", "master");
         Assert.That(Dispatcher.Mainline(repo), Is.EqualTo("master"));
 
-        // Your checkout is on an unfinished branch of your own: the agent's branch must not start from it.
-        Git(repo, "checkout", "-q", "-b", "mine");
-        File.WriteAllText(Path.Combine(repo, "mine.txt"), "half done");
-        Git(repo, "add", "-A");
-        Git(repo, "commit", "-q", "-m", "my unfinished work");
+        // A ticket worktree left from before M.ORCH-T1122 (nothing makes one now) is still landed and tidied.
         var tree = Path.Combine(dir, "wt", "X-T1");
-        Assert.That(Dispatcher.EnsureWorktree(repo, tree, Dispatcher.BranchFor("X-T1")).Ok, Is.True);
-        Assert.That(File.Exists(Path.Combine(tree, "mine.txt")), Is.False, "the agent starts from origin/master, not your branch");
-        Git(repo, "checkout", "-q", "master");
+        Assert.That(LegacyWorktree.Add(repo, tree, Dispatcher.BranchFor("X-T1")).Ok, Is.True);
         File.WriteAllText(Path.Combine(tree, "docs", "USER_STORIES.md"), "| ID | Date | Type | Status | Summary | Ref |\n| X-T1 | 2026-10-15 | fix | closed | s | done |\n| X-T2 | 2026-10-15 | fix | closed | s | done |\n");
         Git(tree, "commit", "-q", "-am", "X-T1 done");
         var a = new Assignment("X-T1", "X", tree, "Claude", Now, true);
@@ -138,6 +135,7 @@ public sealed class AllocateTests
         Assert.That(closed, Is.True, note);
         Assert.That(note, Does.Contain("up to date"), "your checkout on master is fast-forwarded");
         Assert.That(Directory.Exists(tree), Is.False, "the worktree is removed");
+        Assert.That(Git(repo, "rev-parse", "--verify", "--quiet", "refs/heads/orch/x-t1").Item1, Is.Not.Zero, "and its fully merged orch/ branch deleted");
 
         // A worktree that was never on an orch/<id> branch, whose ticket is closed and whose work is on master, is landed
         // (found live: 35 such worktrees were reported unlanded because orch/<id> didn't exist).
@@ -229,40 +227,43 @@ public sealed class AllocateTests
     }
 
     [Test]
-    public void A_cli_running_allocate_is_handed_its_repos_workable_tickets_each_with_a_worktree_and_prompt_once()
+    public void A_cli_running_allocate_is_handed_its_repos_workable_tickets_each_in_the_repos_checkout_with_its_prompt_once()
     {
         // M.ORCH-T164: /allocate works tickets through the CLI's own subagents; `orchestrator next --claim` hands them out.
+        // M.ORCH-T1122: each is worked in the repo's own checkout on main, never a worktree or branch of its own.
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), new Ticket("A-T3", "2026-10-01", "feature", "open", "not approved", "")]), ("B", [T("B-T1")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
-        var made = new List<string>();
-        (bool, string, string) Make(string repo, string path, string branch) { made.Add(path); return (true, path, ""); }
         SchedulePlan Planned() => Paced(snap, 5) with { Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 4, Subagents = 2 } };
 
         var before = Planned(); // what a second CLI read before this one's claim landed
-        var (handed, why) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "master");
+        var (handed, why) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: true, Now, _ => "master");
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2", "A-T1" }), "A's fixes only (A-T3 awaits approval, B isn't named), up to the 2 the allowance has room for");
         Assert.That(why, Is.Null);
-        Assert.That(made, Is.EqualTo(new[] { @"D:\WT\A\A-T2", @"D:\WT\A\A-T1" }), "newest first (M.ORCH-T863)");
-        Assert.That(handed[1].Prompt, Does.Contain("Work on ticket A-T1").And.Contain("cd there first").And.Contain("HEAD:master").And.Contain("tickets ticket close A-T1"));
+        Assert.That(handed.Select(h => h.Directory), Is.EqualTo(new[] { @"D:\W\A", @"D:\W\A" }), "both in A's one checkout, newest first (M.ORCH-T863)");
+        Assert.That(handed[1].Prompt, Does.Contain("Work on ticket A-T1").And.Contain(@"Work in A's own checkout (D:\W\A) on master").And.Contain("cd there first")
+            .And.Contain("never git add -A").And.Contain("each by its explicit path").And.Contain("git pull --rebase --autostash origin master")
+            .And.Contain("HEAD:master").And.Contain("tickets ticket close A-T1").And.Not.Contain("orch/"));
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(new[] { "A-T1", "A-T2" }), "claimed, so not handed out twice");
+        Assert.That(store.LoadAssignments().Select(a => (a.Directory, a.IsClaim, a.InOwnWorktree(@"D:\W\A"))), Has.All.EqualTo((@"D:\W\A", true, false)),
+            "a claim in the checkout, not a worktree");
 
         // A second CLI whose plan was read before the first one's claim landed hands nothing out twice.
-        var (raced, whyRaced) = Allocate.Next(before, settings, store, ["A"], null, claim: true, Now.AddSeconds(1), Make, _ => "master");
+        var (raced, whyRaced) = Allocate.Next(before, settings, store, ["A"], null, claim: true, Now.AddSeconds(1), _ => "master");
         Assert.That(raced, Is.Empty, "both were claimed by the first CLI between this plan and its claim");
         Assert.That(whyRaced, Is.EqualTo("another CLI claimed them first; nothing else is ready"));
         Assert.That(store.LoadAssignments().Select(a => (a.TicketId, a.StartedUtc)), Is.EquivalentTo(new[] { ("A-T1", Now), ("A-T2", Now) }),
             "the first CLI's claims stand");
 
-        var (again, whyAgain) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main");
+        var (again, whyAgain) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: true, Now, _ => "main");
         Assert.That(again, Is.Empty);
         Assert.That(whyAgain, Does.Contain("2 already being worked"));
 
         var (waiting, whyWaiting) = Allocate.Next(Scheduler.Plan(Snap(("C", [new Ticket("C-T1", "2026-10-01", "chore", "open", "x", "")])), new(), []),
-            settings, store, ["C"], null, claim: false, Now, Make, _ => "main");
+            settings, store, ["C"], null, claim: false, Now, _ => "main");
         Assert.That((waiting.Count, whyWaiting), Is.EqualTo((0, "none left that may be worked: 1 wait for your approval (tickets ticket approve)")));
 
         var stopped = Planned() with { Pace = Planned().Pace! with { Stop = true } };
-        Assert.That(Allocate.Next(stopped, settings, store, ["*"], null, claim: false, Now, Make, _ => "main").Why, Does.Contain("at its target"));
+        Assert.That(Allocate.Next(stopped, settings, store, ["*"], null, claim: false, Now, _ => "main").Why, Does.Contain("at its target"));
         Assert.That((Allocate.Named(["GTFO.*"], "gtfo.Api"), Allocate.Named(["GTFO.*"], "GTFO"), Allocate.Named(["GTFO.*"], "MindAttic.GTFO.x"),
             Allocate.Named(["*"], "anything"), Allocate.Named(["A", "B"], "b")), Is.EqualTo((true, false, false, true, true)),
             "-repo=GTFO.* names every repo starting GTFO. (M.ORCH-T165)");
@@ -274,28 +275,27 @@ public sealed class AllocateTests
     {
         var snap = Snap(("A", [.. Enumerable.Range(1, 10).Select(i => T($"A-T{i}"))]), ("B", [T("B-T1"), T("B-T2"), T("B-T3"), T("B-T4"), T("B-T5")]), ("C", []));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         SchedulePlan Planned(int running = 0, Dictionary<int, int>? byCli = null) => Paced(snap, 5) with
         {
             Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 8, Subagents = running, SubagentsByCli = byCli ?? [] },
         };
         Dictionary<int, IReadOnlyList<string>> pilots = new() { [1] = ["A"], [2] = ["B"] };
 
-        var (handed, _) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots);
+        var (handed, _) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, _ => "main", cli: 1, pilots: pilots);
         Assert.That(handed, Has.Count.EqualTo(4), "CLI 2's /allocate has B's tickets to work: half the 8 is kept for it");
 
-        var (b, _) = Allocate.Next(Planned(4, new() { [1] = 4 }), settings, store, ["B"], null, claim: false, Now, Make, _ => "main", cli: 2, pilots: pilots);
+        var (b, _) = Allocate.Next(Planned(4, new() { [1] = 4 }), settings, store, ["B"], null, claim: false, Now, _ => "main", cli: 2, pilots: pilots);
         Assert.That(b, Has.Count.EqualTo(4), "and CLI 2 gets it");
 
-        var (full, why) = Allocate.Next(Planned(4, new() { [1] = 4 }), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots);
+        var (full, why) = Allocate.Next(Planned(4, new() { [1] = 4 }), settings, store, ["A"], null, claim: false, Now, _ => "main", cli: 1, pilots: pilots);
         Assert.That(full, Is.Empty);
         Assert.That(why, Does.Contain("fair share"));
 
         // A CLI whose repo has nothing workable lends its share: CLI 1 may have all 8.
         var idle = new Dictionary<int, IReadOnlyList<string>> { [1] = ["A"], [2] = ["C"] };
-        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: idle).Handed, Has.Count.EqualTo(8));
+        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, _ => "main", cli: 1, pilots: idle).Handed, Has.Count.EqualTo(8));
         // An explicit --count isn't held to a share.
-        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], 6, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots).Handed, Has.Count.EqualTo(6));
+        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], 6, claim: false, Now, _ => "main", cli: 1, pilots: pilots).Handed, Has.Count.EqualTo(6));
     }
 
     /// <summary>M.ORCH-T732: with no CLI resolved the fair-share block is skipped, so unstarted claims weren't counted and each
@@ -305,20 +305,19 @@ public sealed class AllocateTests
     {
         var snap = Snap(("A", [.. Enumerable.Range(1, 10).Select(i => T($"A-T{i}"))]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var plan = Paced(snap, 5) with { Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 4, Subagents = 0 } };
         store.SaveAssignments([new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now, true),
             new Assignment("A-T2", "A", @"D:\WT\A\A-T2", "Claude", Now, true)]);
         plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = plan.Pace };
 
-        var next = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cliRunning: _ => true);
+        var next = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, _ => "main", cliRunning: _ => true);
         Assert.That(next.Handed, Has.Count.EqualTo(2), "4 places, 2 already claimed with no subagent on yet");
 
         // A claim of a CLI that has closed starts nothing: it isn't counted (M.ORCH-T550).
         store.SaveAssignments([new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now, true),
             new Assignment("A-T2", "A", @"D:\WT\A\A-T2", "Claude", Now, true) { Cli = 99 }]);
         plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = plan.Pace };
-        var gone = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cliRunning: c => c != 99);
+        var gone = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, _ => "main", cliRunning: c => c != 99);
         Assert.That(gone.Handed, Has.Count.EqualTo(3), "4 places, 1 live claim");
     }
 
@@ -329,18 +328,17 @@ public sealed class AllocateTests
     {
         var snap = Snap(("A", [.. Enumerable.Range(1, 10).Select(i => T($"A-T{i}"))]), ("B", [T("B-T1"), T("B-T2"), T("B-T3")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var plan = Paced(snap, 5) with { Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 8, Subagents = 0 } };
         Dictionary<int, IReadOnlyList<string>> pilots = new() { [1] = ["A"], [2] = ["B"] };
         // CLI 2 has an unstarted claim of its own on another login: it isn't counted against this login's places either.
         store.SaveAssignments([new Assignment("B-T1", "B", @"D:\WT\B\B-T1", "Claude", Now, true) { Pilot = 2 }]);
         plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = plan.Pace };
 
-        var apart = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots,
+        var apart = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, _ => "main", cli: 1, pilots: pilots,
             cliRunning: _ => true, loginOf: pid => pid == 2 ? @"C:\Users\x\.claude-accounts\honey@mindattic.com" : null);
         Assert.That(apart.Handed, Has.Count.EqualTo(8), "CLI 2 bills Honey's login: CLI 1's login keeps all 8 of its own places");
 
-        var together = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots,
+        var together = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, _ => "main", cli: 1, pilots: pilots,
             cliRunning: _ => true, loginOf: _ => null);
         Assert.That(together.Handed, Has.Count.LessThan(8), "on the same login, CLI 2's share and claim are still kept for it");
     }
@@ -352,17 +350,16 @@ public sealed class AllocateTests
     {
         var snap = Snap(("A", [T("A-T1"), T("A-T2")]), ("B", [T("B-T1"), T("B-T2")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         SchedulePlan Planned(int running = 0, Dictionary<int, int>? byCli = null) => Paced(snap, 5) with
         {
             Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 8, Subagents = running, SubagentsByCli = byCli ?? [] },
         };
         Dictionary<int, IReadOnlyList<string>> pilots = new() { [1] = ["A"], [2] = ["B"], [3] = ["A"] };
         // CLI 2 claims one ticket and hasn't started its subagent yet: with 7 running that fills all 8 places.
-        Assert.That(Allocate.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["B"], 1, claim: true, Now, Make, _ => "main",
+        Assert.That(Allocate.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["B"], 1, claim: true, Now, _ => "main",
             cli: 2, pilots: pilots).Handed, Has.Count.EqualTo(1));
 
-        var (none, why) = Allocate.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["A"], null, claim: false, Now, Make, _ => "main",
+        var (none, why) = Allocate.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["A"], null, claim: false, Now, _ => "main",
             cli: 3, pilots: pilots);
         Assert.That(none, Is.Empty);
         Assert.That(why, Does.Contain("allowance is full (8 of 8: 7 running, 1 claimed by other CLIs with no subagent on yet)").And.Not.Contain("fair share"));
@@ -374,7 +371,6 @@ public sealed class AllocateTests
     {
         var snap = Snap(("A", [.. Enumerable.Range(1, 12).Select(i => T($"A-T{i}"))]), ("B", [T("B-T1"), T("B-T2")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         SchedulePlan Planned(int running = 0, Dictionary<int, int>? byCli = null) => Paced(snap, 5) with
         {
             Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 12, Subagents = running, SubagentsByCli = byCli ?? [] },
@@ -382,25 +378,25 @@ public sealed class AllocateTests
         Dictionary<int, IReadOnlyList<string>> alone = new() { [1] = ["A"] };
         var since = new Dictionary<int, DateTime> { [1] = Now };
 
-        var (first, _) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: alone, onSince: since);
+        var (first, _) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, _ => "main", cli: 1, pilots: alone, onSince: since);
         Assert.That(first, Has.Count.EqualTo(1), "minute 0: one, not all 12");
-        var (held, why) = Allocate.Next(Planned(1, new() { [1] = 1 }), settings, store, ["A"], null, claim: false, Now.AddSeconds(30), Make, _ => "main",
+        var (held, why) = Allocate.Next(Planned(1, new() { [1] = 1 }), settings, store, ["A"], null, claim: false, Now.AddSeconds(30), _ => "main",
             cli: 1, pilots: alone, onSince: since);
         Assert.That(held, Is.Empty);
         Assert.That(why, Does.Contain("warming up"));
-        Assert.That(Allocate.Next(Planned(1, new() { [1] = 1 }), settings, store, ["A"], null, claim: false, Now.AddMinutes(2.5), Make, _ => "main",
+        Assert.That(Allocate.Next(Planned(1, new() { [1] = 1 }), settings, store, ["A"], null, claim: false, Now.AddMinutes(2.5), _ => "main",
             cli: 1, pilots: alone, onSince: since).Handed, Has.Count.EqualTo(2), "minute 2: up to 3");
-        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now.AddMinutes(30), Make, _ => "main",
+        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now.AddMinutes(30), _ => "main",
             cli: 1, pilots: alone, onSince: since).Handed, Has.Count.EqualTo(12), "warmed up and alone: every place");
 
         // A CLI opened just after it turns /allocate on: it warms up from its own minute, and its share is kept for it.
         Dictionary<int, IReadOnlyList<string>> both = new() { [1] = ["A"], [2] = ["B"] };
         since[2] = Now.AddMinutes(3);
-        Assert.That(Allocate.Next(Planned(3, new() { [1] = 3 }), settings, store, ["A"], null, claim: false, Now.AddMinutes(10), Make, _ => "main",
+        Assert.That(Allocate.Next(Planned(3, new() { [1] = 3 }), settings, store, ["A"], null, claim: false, Now.AddMinutes(10), _ => "main",
             cli: 1, pilots: both, onSince: since).Handed, Has.Count.EqualTo(3), "CLI 1 gets up to its share of 6, the rest kept for CLI 2");
-        Assert.That(Allocate.Next(Planned(6, new() { [1] = 6 }), settings, store, ["B"], null, claim: false, Now.AddMinutes(3), Make, _ => "main",
+        Assert.That(Allocate.Next(Planned(6, new() { [1] = 6 }), settings, store, ["B"], null, claim: false, Now.AddMinutes(3), _ => "main",
             cli: 2, pilots: both, onSince: since).Handed, Has.Count.EqualTo(1), "CLI 2's own minute 0: one");
-        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: alone).Handed,
+        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, _ => "main", cli: 1, pilots: alone).Handed,
             Has.Count.EqualTo(12), "not known to be on: no warm-up");
     }
 
@@ -429,16 +425,15 @@ public sealed class AllocateTests
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
         var plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = pace };
         Assert.That(plan.Queue.Count(q => q.IsAssigned), Is.GreaterThanOrEqualTo(6));
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (handed, why) = Allocate.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "master", login: "fresh@example.com");
+        var (handed, why) = Allocate.Next(plan, settings, store, ["A"], null, claim: true, Now, _ => "master", login: "fresh@example.com");
 
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }), "the fresh login's own room, not the workspace's busy count");
         Assert.That(why, Is.Null);
     }
 
     [Test]
-    public void A_ticket_closed_after_the_queue_was_read_is_not_claimed_or_given_a_worktree()
+    public void A_ticket_closed_after_the_queue_was_read_is_not_claimed()
     {
         // M.ORCH-T489: `next --claim` handed out M.ORCH-T488, and made its worktree, a second after `tickets ticket close`
         // had closed it: the plan's ticket list was older than the close. The claim checks the database at that moment.
@@ -457,17 +452,15 @@ public sealed class AllocateTests
                 db.Close("A-T2", reference: "done"); // the newest, first in the queue (M.ORCH-T863)
             Assert.That((Allocate.StillOpen(repo, "A-T2"), Allocate.StillOpen(repo, "a-t1")), Is.EqualTo((false, true)));
 
-            var made = new List<string>();
-            (bool, string, string) Make(string r, string path, string branch) { made.Add(path); return (true, path, ""); }
             var settings = new OrchestratorSettings { WorktreeRoot = Path.Combine(dir, "wt") };
-            var (handed, why) = Allocate.Next(plan, settings, store, ["A"], 1, claim: true, Now, Make, _ => "main", pilotRunning: _ => false);
+            var (handed, why) = Allocate.Next(plan, settings, store, ["A"], 1, claim: true, Now, _ => "main", pilotRunning: _ => false);
             Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }), "the closed one is passed over for the next");
-            Assert.That(made, Is.EqualTo(new[] { Path.Combine(dir, "wt", "A", "A-T1") }), "no worktree for the closed one");
+            Assert.That(Directory.Exists(Path.Combine(dir, "wt")), Is.False, "no worktree for either (M.ORCH-T1122)");
             Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "A-T1" }));
 
             using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
                 db.Close("A-T1", reference: "done");
-            var (none, whyNone) = Allocate.Next(plan with { }, settings, new JsonStore(Path.Combine(dir, "store2")), ["A"], 1, claim: true, Now, Make, _ => "main",
+            var (none, whyNone) = Allocate.Next(plan with { }, settings, new JsonStore(Path.Combine(dir, "store2")), ["A"], 1, claim: true, Now, _ => "main",
                 pilotRunning: _ => false);
             Assert.That((none.Count, whyNone), Is.EqualTo((0, "they were closed since the queue was read; nothing else is ready")));
         }
@@ -478,9 +471,8 @@ public sealed class AllocateTests
     public void Pausing_allocate_quiet_hours_and_a_skipped_repo_apply_to_the_clis_that_run_it()
     {
         var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]));
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         (IReadOnlyList<Allocate.Handout> Handed, string? Why) Next(OrchestratorSettings s) =>
-            Allocate.Next(Paced(snap, 5), s with { WorktreeRoot = @"D:\WT" }, store, ["*"], null, claim: false, Now, Make, _ => "main");
+            Allocate.Next(Paced(snap, 5), s with { WorktreeRoot = @"D:\WT" }, store, ["*"], null, claim: false, Now, _ => "main");
 
         Assert.That(Next(new() { Allocate = false }).Why, Does.StartWith("allocate is paused"), "Settings' Pause, settings --allocate false");
         var local = Now.ToLocalTime();
@@ -498,7 +490,7 @@ public sealed class AllocateTests
         var snap = Snap(("A", [new Ticket("A-T1", "2026-10-01", "fix", "open", "crash, blocked by A-T2", ""),
                                new Ticket("A-T2", "2026-10-01", "feature", "open", "the API (not approved)", "")]));
         var (handed, why) = Allocate.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: false, Now,
-            (repo, path, branch) => (true, path, ""), _ => "main");
+            _ => "main");
         Assert.That(handed, Is.Empty);
         Assert.That(why, Does.Contain("1 wait on other open tickets").And.Not.Contain("no open fixes"));
     }
@@ -519,7 +511,7 @@ public sealed class AllocateTests
         // M.ORCH-T700: "Ask but don't do unless explicitly given permission."
         var snap = Snap(("A", []));
         var (handed, why) = Allocate.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now,
-            (repo, path, branch) => (true, path, ""), _ => "main");
+            _ => "main");
         Assert.That(handed, Is.Empty);
         Assert.That(why, Does.StartWith("no open fixes or approved tickets left there").And.Contain("Ask the user whether to run /bughunt on A")
             .And.Contain("explicit yes").And.Contain("fix ticket"));
@@ -528,7 +520,7 @@ public sealed class AllocateTests
         var held = Snap(("A", [new Ticket("A-T1", "2026-10-01", "fix", "open", "crash, blocked by A-T2", ""),
                                new Ticket("A-T2", "2026-10-01", "feature", "open", "the API (not approved)", "")]));
         var (_, notDry) = Allocate.Next(Paced(held, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: false, Now,
-            (repo, path, branch) => (true, path, ""), _ => "main");
+            _ => "main");
         Assert.That(notDry, Does.Not.Contain("/bughunt"), "open tickets held back aren't a dry queue");
 
         Assert.That(AgentGate.AllocateCommand, Does.Contain("ask the user in one line whether to run /bughunt").And.Contain("Never start a hunt unasked")
@@ -542,7 +534,7 @@ public sealed class AllocateTests
         var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]));
         Assert.That((Allocate.Named(["all"], "A"), Allocate.Named(["ALL"], "B"), Allocate.Named([" all "], "x")), Is.EqualTo((true, true, true)));
         var (handed, why) = Allocate.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["all"], null, claim: false, Now,
-            (repo, path, branch) => (true, path, ""), _ => "main");
+            _ => "main");
         Assert.That((handed.Select(h => h.Item.Id).Order().ToList(), why), Is.EqualTo((new List<string> { "A-T1", "B-T1" }, (string?)null)));
         Assert.That(Allocate.Unmatched(["all", "*", "A", "Nope", "B*"], snap), Is.EqualTo(new[] { "Nope" }));
     }
@@ -556,7 +548,7 @@ public sealed class AllocateTests
         Assert.That((plan.Pace, plan.Stopped), Is.EqualTo(((Pace?)null, true)));
 
         var (handed, why) = Allocate.Next(plan, new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now,
-            (repo, path, branch) => (true, path, ""), _ => "main");
+            _ => "main");
         Assert.That((handed.Count, why), Is.EqualTo((0, "the 5-hour window is at its target: nothing starts before it resets")));
         Assert.That(store.LoadAssignments(), Is.Empty);
     }
@@ -566,11 +558,10 @@ public sealed class AllocateTests
     {
         var snap = Snap(("A", [T("A-T1"), T("A-T2")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var before = Paced(snap, 5);
         store.UpdateAssignments(all => all.Add(new Assignment("A-T2", "A", @"D:\WT\A\A-T2", "Claude", Now, true))); // the other CLI, on the newest
 
-        var (handed, why) = Allocate.Next(before, settings, store, ["A"], 1, claim: true, Now.AddSeconds(1), Make, _ => "main");
+        var (handed, why) = Allocate.Next(before, settings, store, ["A"], 1, claim: true, Now.AddSeconds(1), _ => "main");
 
         Assert.That((handed.Select(h => h.Item.Id).Single(), why), Is.EqualTo(("A-T1", (string?)null)), "its one place goes to the next free ticket");
     }
@@ -592,7 +583,6 @@ public sealed class AllocateTests
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3"), T("A-T4"), T("A-T5"), T("A-T6")])) is var s0
             ? s0 with { Repos = [s0.Repos[0] with { Sessions = [cli, other] }] } : null!;
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var plan = Paced(snap, 5);
 
         Assert.That(plan.Worked.Select(w => (w.TicketId, w.SessionId, w.AgentId)), Is.EquivalentTo(new[]
@@ -601,12 +591,12 @@ public sealed class AllocateTests
         }), "A-T6's filer has been quiet an hour: it's the queue's again");
         Assert.That(plan.Proposals.Select(p => p.Item.Id), Has.None.AnyOf("A-T1", "A-T2", "A-T3", "A-T4"));
 
-        var (handed, _) = Allocate.Next(plan, settings, store, ["A"], 10, claim: false, Now, Make, _ => "main", self: "cli");
+        var (handed, _) = Allocate.Next(plan, settings, store, ["A"], 10, claim: false, Now, _ => "main", self: "cli");
         Assert.That(handed.Select(h => h.Item.Id), Is.EquivalentTo(new[] { "A-T2", "A-T5", "A-T6" }),
             "not what the calling CLI's subagent filed and is fixing, nor another session's; what the calling CLI filed itself is its to hand out");
 
         var onlyWorked = Paced(snap with { Repos = [snap.Repos[0] with { OpenTickets = [T("A-T1"), T("A-T3")] }] }, 5);
-        var (none, why) = Allocate.Next(onlyWorked, settings, store, ["A"], 10, claim: true, Now, Make, _ => "main", self: "cli");
+        var (none, why) = Allocate.Next(onlyWorked, settings, store, ["A"], 10, claim: true, Now, _ => "main", self: "cli");
         Assert.That((none.Count, why), Is.EqualTo((0, "2 already being worked; nothing else is ready")));
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Has.None.AnyOf("A-T1", "A-T3"), "never claimed");
     }
@@ -617,12 +607,11 @@ public sealed class AllocateTests
         // M.ORCH-T358: settings --repo-sessions was enforced only by the retired Tick; next --claim handed out all four.
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3"), T("A-T4")]), ("B", [T("B-T1")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", RepoMaxSessions = new() { ["A"] = 2 } };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (handed, _) = Allocate.Next(Paced(snap, 5), settings, store, ["*"], 10, claim: true, Now, Make, _ => "main");
+        var (handed, _) = Allocate.Next(Paced(snap, 5), settings, store, ["*"], 10, claim: true, Now, _ => "main");
         Assert.That(handed.Select(h => h.Item.Id), Is.EquivalentTo(new[] { "A-T4", "A-T3", "B-T1" }), "A's newest two (M.ORCH-T863)");
 
-        var (more, why) = Allocate.Next(Paced(snap, 5), settings, store, ["A"], 10, claim: true, Now, Make, _ => "main");
+        var (more, why) = Allocate.Next(Paced(snap, 5), settings, store, ["A"], 10, claim: true, Now, _ => "main");
         Assert.That((more.Count, why), Is.EqualTo((0, "A is at the cap you set (settings --repo-sessions or --repo-cap); nothing else is ready")), "its two are being worked");
     }
 
@@ -643,11 +632,10 @@ public sealed class AllocateTests
             }
             : null!;
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", RepoBudgetPercent = new() { ["A"] = 20 } };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = 5 } };
 
         Assert.That(plan.OverRepoCap, Is.EquivalentTo(new[] { "A" }), "3M of a 10M limit is past A's 20%");
-        var (handed, _) = Allocate.Next(plan, settings, store, ["*"], 10, claim: false, Now, Make, _ => "main");
+        var (handed, _) = Allocate.Next(plan, settings, store, ["*"], 10, claim: false, Now, _ => "main");
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "B-T1" }));
     }
 
@@ -661,9 +649,8 @@ public sealed class AllocateTests
             TicketId = "A-T1", Filing = [new FiledTicket("A-T2", null, Now.AddMinutes(-1))],
         };
         var snap = Snap(("A", [T("A-T1"), T("A-T2")])) is var s0 ? s0 with { Repos = [s0.Repos[0] with { Sessions = [cli] }] } : null!;
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (handed, _) = Allocate.Next(Paced(snap, 5), new() { WorktreeRoot = @"D:\WT" }, store, ["A"], 10, claim: false, Now, Make, _ => "main", self: "cli");
+        var (handed, _) = Allocate.Next(Paced(snap, 5), new() { WorktreeRoot = @"D:\WT" }, store, ["A"], 10, claim: false, Now, _ => "main", self: "cli");
 
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2" }));
     }
@@ -675,13 +662,12 @@ public sealed class AllocateTests
         store.UpdateAssignments(all => all.Add(new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now.AddHours(-30), true) { Pilot = 4242 }));
         var plan = Paced(Snap(("A", [T("A-T1")])), 5);
         Assert.That(plan.Queue.Single().IsStale, Is.True);
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (held, why) = Allocate.Next(plan, new() { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now, Make, _ => "main",
+        var (held, why) = Allocate.Next(plan, new() { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now, _ => "main",
             pilotRunning: a => a.Pilot == 4242);
         Assert.That((held.Count, why), Is.EqualTo((0, "1 already being worked; nothing else is ready")));
 
-        var (handed, _) = Allocate.Next(plan, new() { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now, Make, _ => "main",
+        var (handed, _) = Allocate.Next(plan, new() { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now, _ => "main",
             pilotRunning: _ => false);
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }), "once its agent is gone, the stale ticket is back in the queue");
     }
@@ -692,7 +678,6 @@ public sealed class AllocateTests
         // M.ORCH-T195: /unthrottle reaches `orchestrator next --claim` as it reaches the pace gate's holds.
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", MaxConcurrentSessions = 2 };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var plan = Paced(snap, 5);
         // A-T1 costs more than is left.
         plan = plan with
@@ -701,13 +686,13 @@ public sealed class AllocateTests
             Pace = plan.Pace! with { SubagentAllowance = 2, Subagents = 2, RoomTokens = 1_000 },
         };
 
-        var (handed, whyNot) = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", unthrottled: true);
+        var (handed, whyNot) = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, _ => "main", unthrottled: true);
         Assert.That((handed.Count, whyNot), Is.EqualTo((2, (string?)null)), "MaxConcurrentSessions of them, whatever the allowance or room");
-        Assert.That(Allocate.Next(plan, settings, store, ["A"], 3, claim: false, Now, Make, _ => "main", unthrottled: true).Handed, Has.Count.EqualTo(3),
+        Assert.That(Allocate.Next(plan, settings, store, ["A"], 3, claim: false, Now, _ => "main", unthrottled: true).Handed, Has.Count.EqualTo(3),
             "--count is honoured as asked");
 
         var stopped = plan with { Pace = plan.Pace! with { Stop = true } };
-        Assert.That(Allocate.Next(stopped, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", unthrottled: true).Why,
+        Assert.That(Allocate.Next(stopped, settings, store, ["A"], null, claim: false, Now, _ => "main", unthrottled: true).Why,
             Does.Contain("at its target"), "the window's hard stop still applies");
     }
 
@@ -721,17 +706,16 @@ public sealed class AllocateTests
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3"), T("A-T4"), T("A-T5"), T("A-T6")])) is var s0
             ? s0 with { Repos = [s0.Repos[0] with { Sessions = [worker] }] } : null!;
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", MaxConcurrentSessions = 4, Pacing = false };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var plan = Scheduler.Plan(snap, settings, store.LoadAssignments());
         Assert.That(plan.Pace, Is.Null);
 
-        var (handed, _) = Allocate.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "main", stillOpen: (_, _) => true, pilotRunning: _ => false);
+        var (handed, _) = Allocate.Next(plan, settings, store, ["A"], null, claim: true, Now, _ => "main", stillOpen: (_, _) => true, pilotRunning: _ => false);
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T6" }), "one place left of the four, the newest");
 
-        var (none, why) = Allocate.Next(Scheduler.Plan(snap, settings, store.LoadAssignments()), settings, store, ["A"], null, claim: true, Now, Make, _ => "main",
+        var (none, why) = Allocate.Next(Scheduler.Plan(snap, settings, store.LoadAssignments()), settings, store, ["A"], null, claim: true, Now, _ => "main",
             stillOpen: (_, _) => true, pilotRunning: _ => false);
         Assert.That((none.Count, why), Is.EqualTo((0, "the pace has no room for another subagent right now; run it again in a few minutes")), "the next call: all four are taken");
-        Assert.That(Allocate.Next(plan, settings, store, ["A"], 2, claim: false, Now, Make, _ => "main", pilotRunning: _ => false).Handed, Has.Count.EqualTo(2),
+        Assert.That(Allocate.Next(plan, settings, store, ["A"], 2, claim: false, Now, _ => "main", pilotRunning: _ => false).Handed, Has.Count.EqualTo(2),
             "an explicit --count is still honoured as asked");
     }
 
@@ -776,7 +760,6 @@ public sealed class AllocateTests
         IsRunning = a => agents.Contains(a.Pilot!.Value),
         StartTimeOf = _ => null,
         LogDirectory = Path.Combine(dir, "logs"),
-        MakeWorktree = (repo, path, branch) => (true, path, ""),
         Land = (a, repo) => { landedFrom[a.TicketId] = repo; return (landed.Contains(a.TicketId), ""); },
         Start = (d, prompt, log) =>
         {
@@ -822,14 +805,13 @@ public sealed class AllocateTests
         var snap = Snap(("A", [T("A-T1")]), ("S", [T("S-T1")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", RepoOrgs = new() { ["s"] = "sales" } };
         var orgs = SalesOwnsS(settings);
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var plan = Paced(snap, 5);
         IReadOnlyList<string> Ids(string login, IReadOnlyList<string> repos, OrgRouting routing) =>
-            [.. Allocate.Next(plan, settings, store, repos, null, claim: false, Now, Make, _ => "main", login: login, orgs: routing).Handed.Select(h => h.Item.Id)];
+            [.. Allocate.Next(plan, settings, store, repos, null, claim: false, Now, _ => "main", login: login, orgs: routing).Handed.Select(h => h.Item.Id)];
 
         Assert.That(Ids("ryan@example.com", ["*"], orgs), Is.EqualTo(new[] { "A-T1" }), "the default org's login gets the default org's repo only");
         Assert.That(Ids("JORDAN@example.com", ["*"], orgs), Is.EqualTo(new[] { "S-T1" }), "a Sales member's login gets Sales's repo only");
-        var (none, why) = Allocate.Next(plan, settings, store, ["S"], null, claim: false, Now, Make, _ => "main", login: "ryan@example.com", orgs: orgs);
+        var (none, why) = Allocate.Next(plan, settings, store, ["S"], null, claim: false, Now, _ => "main", login: "ryan@example.com", orgs: orgs);
         Assert.That(none, Is.Empty);
         Assert.That(why, Does.Contain("1 belong to Sales").And.Contain("only to their members' logins"));
         Assert.That(Ids("ryan@example.com", ["*"], OrgRouting.Single), Is.EqualTo(new[] { "A-T1", "S-T1" }), "one org: exactly as before");
@@ -847,9 +829,8 @@ public sealed class AllocateTests
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
         var plan = Scheduler.Plan(snap, settings, []);
         plan = plan with { Queue = [.. plan.Queue.Select(q => q.Id == "A-T1" ? q with { Estimate = new CostEstimate(1_500, 3, "fixes") } : q)] };
-        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (handed, why) = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main");
+        var (handed, why) = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, _ => "main");
 
         Assert.That(handed, Is.Empty, "1.5k fits the 3k left but not the 1k that B-T1's reservation leaves");
         Assert.That(why, Does.Contain("estimated past what's left"));
@@ -860,10 +841,10 @@ public sealed class AllocateTests
     {
         // M.ORCH-T178: push and close chained together let a rejected push still close the ticket on a pre-rebase hash.
         var item = new QueueItem("A", @"D:\W\A", T("A-T1"), 0, null, false);
-        var prompt = Allocate.PromptFor(item, @"D:\WT\A\A-T1", "orch/a-t1", "master");
+        var prompt = Allocate.PromptFor(item, @"D:\W\A", "master");
 
         var push = prompt.IndexOf("git push origin HEAD:master", StringComparison.Ordinal);
-        var retry = prompt.IndexOf("If the push is rejected because master moved, fetch, rebase and push again", StringComparison.Ordinal);
+        var retry = prompt.IndexOf("If the push is rejected because master moved, pull --rebase --autostash and push again", StringComparison.Ordinal);
         var onlyOnce = prompt.IndexOf("Only once the push has succeeded, as its own step", StringComparison.Ordinal);
         var close = prompt.IndexOf("tickets ticket close A-T1 --ref", StringComparison.Ordinal);
         Assert.That(new[] { push, retry, onlyOnce, close }, Has.All.GreaterThanOrEqualTo(0), prompt);
@@ -873,7 +854,7 @@ public sealed class AllocateTests
     }
 
     [Test]
-    public void Repos_with_an_open_cli_get_parallel_background_agents_each_in_its_own_worktree_and_nothing_is_typed()
+    public void Repos_with_an_open_cli_get_parallel_background_agents_sharing_the_repos_checkout_and_nothing_is_typed()
     {
         Cli(100, @"D:\W\A");
         Cli(200, @"D:\W\B\src");
@@ -884,16 +865,18 @@ public sealed class AllocateTests
         var said = pilot.Tick(Paced(snap, 10), snap, new() { WorktreeRoot = @"D:\WT" }, Now);
         Assert.That(started.Select(s => (s.Dir, s.Prompt[..19])), Is.EquivalentTo(new[]
         {
-            (@"D:\WT\A\A-T1", "Work on ticket A-T1"), (@"D:\WT\A\A-T2", "Work on ticket A-T2"), (@"D:\WT\A\A-T3", "Work on ticket A-T3"),
-            (@"D:\WT\B\B-T1", "Work on ticket B-T1"),
-        }), "with room, all of A's stories run at once, each in its worktree; C has no CLI open");
+            (@"D:\W\A", "Work on ticket A-T1"), (@"D:\W\A", "Work on ticket A-T2"), (@"D:\W\A", "Work on ticket A-T3"),
+            (@"D:\W\B", "Work on ticket B-T1"),
+        }), "with room, all of A's stories run at once, sharing A's own checkout on main (M.ORCH-T1122); C has no CLI open");
         // Newest first (M.ORCH-T863): A-T3 starts first.
-        Assert.That(started[0].Prompt, Does.Contain("own git worktree").And.Contains("branch orch/a-t3").And.Contains("/commit")
-            .And.Contains("git push origin HEAD:main").And.Contains("tickets ticket close A-T3 --ref"));
+        Assert.That(started[0].Prompt, Does.Contain(@"Work in A's own checkout (D:\W\A) on main, never a separate branch or worktree")
+            .And.Contains("touch only the files this ticket needs").And.Contains("/commit").And.Contains("git pull --rebase --autostash origin main")
+            .And.Contains("git push origin HEAD:main").And.Contains("tickets ticket close A-T3 --ref").And.Not.Contains("orch/"));
         Assert.That(started[0].Log, Does.StartWith(Path.Combine(dir, "logs")).And.Contains("T3-"));
         Assert.That(said, Has.Some.Contains("in the background"));
         var a = store.LoadAssignments().Single(x => x.TicketId == "A-T3");
-        Assert.That((a.Directory, a.Worktree, a.Pilot), Is.EqualTo((@"D:\WT\A\A-T3", true, (int?)started[0].Pid)));
+        Assert.That((a.Directory, a.Worktree, a.Pilot), Is.EqualTo((@"D:\W\A", true, (int?)started[0].Pid)));
+        Assert.That(a.InOwnWorktree(@"D:\W\A"), Is.False);
         Assert.That(pilot.Working, Has.Count.EqualTo(4));
 
         pilot.Tick(Paced(snap, 10), snap, new() { WorktreeRoot = @"D:\WT" }, Now.AddMinutes(1));
@@ -952,7 +935,7 @@ public sealed class AllocateTests
         var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]));
         order = ["b", "Nope"];
         var said = Pilot().Tick(Plan(snap), snap, new(), Now);
-        Assert.That(started.Single().Dir, Does.EndWith(@"\B\B-T1"));
+        Assert.That(started.Single().Dir, Is.EqualTo(@"D:\W\B"));
         Assert.That(said, Has.Some.Contains("no repo named Nope"));
 
         order = null;
@@ -999,7 +982,7 @@ public sealed class AllocateTests
         var snap = Snap(("A", [T("A-T1"), T("A-T2")]));
         store.SaveAssignments([new Assignment("A-T1", "A", @"D:\W\A", "Claude", Now, false)]);
         Pilot().Tick(Plan(snap), snap, new(), Now);
-        Assert.That(started.Single().Prompt, Does.StartWith("Work on ticket A-T2"), "A-T1 is the tab's; the agent takes the next, in its own worktree");
+        Assert.That(started.Single().Prompt, Does.StartWith("Work on ticket A-T2"), "A-T1 is the tab's; the agent takes the next, in the same checkout");
         started.Clear();
         agents.Clear();
 
@@ -1084,7 +1067,7 @@ public sealed class AllocateTests
     }
 
     [Test]
-    public void A_worktree_agent_that_pushed_its_closed_ticket_to_main_is_landed_and_tidied_up()
+    public void An_old_worktree_agent_that_pushed_its_closed_ticket_to_main_is_landed_and_tidied_up()
     {
         var origin = Path.Combine(dir, "origin.git");
         var repo = Path.Combine(dir, "A");
@@ -1097,7 +1080,7 @@ public sealed class AllocateTests
         Git(repo, "push", "-q", "origin", "HEAD:main");
 
         var tree = Path.Combine(dir, "wt", "A-T1");
-        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t1").Ok);
+        Assert.That(LegacyWorktree.Add(repo, tree, "orch/a-t1").Ok);
         var a = new Assignment("A-T1", "A", tree, "Claude", Now, true) { Pilot = 1, Log = "x.log" };
         Assert.That(Allocate.LandOnMain(a, repo).Closed, Is.False, "not pushed yet");
 
@@ -1131,14 +1114,14 @@ public sealed class AllocateTests
             using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
                 db.Import([new MindAttic.Tickets.Repo("A", repo)]);
             var tree = Path.Combine(dir, "wt", "OLD-T9");
-            Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/old-t9").Ok);
+            Assert.That(LegacyWorktree.Add(repo, tree, "orch/old-t9").Ok);
 
             var (closed, note) = Allocate.LandOnMain(new Assignment("OLD-T9", "A", tree, "Claude", Now, true), repo);
 
             Assert.That(closed, Is.True, note);
             Assert.That(Directory.Exists(tree), Is.False, "tidied");
             var open = Path.Combine(dir, "wt", "A-T1");
-            Assert.That(Dispatcher.EnsureWorktree(repo, open, "orch/a-t1").Ok);
+            Assert.That(LegacyWorktree.Add(repo, open, "orch/a-t1").Ok);
             Assert.That(Allocate.LandOnMain(new Assignment("A-T1", "A", open, "Claude", Now, true), repo).Closed, Is.False, "a known open ticket isn't");
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
@@ -1170,7 +1153,7 @@ public sealed class AllocateTests
             using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
                 db.Import([new MindAttic.Tickets.Repo("B", inDb)]); // A isn't migrated yet
             var tree = Path.Combine(dir, "wt", "A-T1");
-            Assert.That(Dispatcher.EnsureWorktree(a, tree, "orch/a-t1").Ok);
+            Assert.That(LegacyWorktree.Add(a, tree, "orch/a-t1").Ok);
             var assignment = new Assignment("A-T1", "A", tree, "Claude", Now, true);
 
             var (closed, note) = Allocate.LandOnMain(assignment, a);

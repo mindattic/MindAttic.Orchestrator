@@ -68,7 +68,7 @@ public sealed class ModelChoiceTests
         };
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
 
-        var (handed, why) = Allocate.Next(plan, settings, store, ["A"], null, claim: true, Now, (_, path, _) => (true, path, ""), _ => "main");
+        var (handed, why) = Allocate.Next(plan, settings, store, ["A"], null, claim: true, Now, _ => "main");
 
         Assert.That(why, Is.Null);
         var byId = handed.ToDictionary(h => h.Item.Id);
@@ -76,7 +76,7 @@ public sealed class ModelChoiceTests
         Assert.That(ModelChoice.Line(byId["A-T1"].Model!), Is.EqualTo("model: sonnet (claude-sonnet-5-5): a fix"));
         Assert.That(byId["A-T1"].Prompt, Does.Contain("orchestrator review A-T1").And.Contain("Work on ticket A-T1 (fix)"));
         Assert.That(byId["A-T1"].Prompt!.IndexOf("orchestrator review", StringComparison.Ordinal),
-            Is.GreaterThan(byId["A-T1"].Prompt!.IndexOf("/commit", StringComparison.Ordinal)).And.LessThan(byId["A-T1"].Prompt!.IndexOf("git fetch origin", StringComparison.Ordinal)),
+            Is.GreaterThan(byId["A-T1"].Prompt!.IndexOf("/commit", StringComparison.Ordinal)).And.LessThan(byId["A-T1"].Prompt!.IndexOf("git pull --rebase --autostash", StringComparison.Ordinal)),
             "reviewed after its commit, before it lands");
         Assert.That(byId["A-T2"].Prompt, Does.Not.Contain("orchestrator review"), "an Opus ticket isn't reviewed");
         Assert.That(store.LoadAssignments().ToDictionary(a => a.TicketId, a => a.Model), Is.EqualTo(new Dictionary<string, string?> { ["A-T1"] = "sonnet", ["A-T2"] = "opus" }),
@@ -156,6 +156,42 @@ public sealed class ModelChoiceTests
         Assert.That(failed.Text, Does.Contain("couldn't run").And.Contain("Land it without one"));
         Assert.That(store.LoadAssignments().Single().ReviewedUtc, Is.Null, "a review that didn't run isn't recorded");
         Assert.That(DiffReview.CommandLine(@"C:\t\p.txt"), Does.Contain("--model claude-opus-5-5").And.Contain("--tools \"\""));
+    }
+
+    [Test]
+    public void In_the_shared_checkout_the_review_judges_only_the_commits_naming_its_ticket()
+    {
+        // M.ORCH-T1122: other agents' unpushed commits sit past origin/main in the same checkout; they're not this ticket's diff.
+        var tree = temps.New();
+        var ticket = Tk("A-T1", "fix", "off by one in the pacer");
+        var settings = new OrchestratorSettings { ReviewDiffLines = 100 };
+        string mine = "aaa111\nbbb222\n";
+        var gitCalls = new List<string>();
+        (int, string) Git(string dir, string[] args)
+        {
+            gitCalls.Add(string.Join(' ', args));
+            return args[0] switch
+            {
+                "rev-parse" => (0, tree + "\n"),
+                "log" => (0, mine),
+                "show" when args.Contains("--numstat") => (0, "3\t1\tsrc/MindAttic.Orchestrator.Core/Budget/Pacer.cs\n"),
+                "show" => (0, "diff --git a/x b/x\n+mine\n"),
+                _ => (1, "unexpected"),
+            };
+        }
+        var prompts = new List<string>();
+        var done = DiffReview.Review(store, settings, tree, "A-T1", ticket, "A", force: false, dryRun: false, Now, Git,
+            p => { prompts.Add(p); return (true, "LGTM"); }, _ => "main");
+
+        Assert.That(done.Reviewed, Is.True, done.Text);
+        Assert.That(gitCalls, Does.Contain("log --format=%H --fixed-strings --grep=A-T1 origin/main..HEAD")
+            .And.Contain("show --format= --numstat aaa111 bbb222").And.Contain("show --format= aaa111 bbb222"));
+        Assert.That(gitCalls, Has.None.Contains("origin/main...HEAD"), "never everything past origin/main");
+        Assert.That(prompts.Single(), Does.Contain("+mine"));
+
+        mine = "";
+        var none = DiffReview.Review(store, settings, tree, "A-T1", ticket, "A", force: true, dryRun: false, Now, Git, _ => (true, "LGTM"), _ => "main");
+        Assert.That((none.Reviewed, none.Text), Is.EqualTo((false, "No commits naming A-T1 past origin/main here: commit its work first, then review it.")));
     }
 
     [Test]

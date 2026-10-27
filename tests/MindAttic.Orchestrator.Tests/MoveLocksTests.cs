@@ -143,7 +143,7 @@ public sealed class MoveLocksTests
     }
 
     [Test]
-    public void Once_it_lands_on_the_new_login_its_tickets_are_handed_back_to_start_again_in_their_worktrees()
+    public void Once_it_lands_on_the_new_login_its_tickets_are_handed_back_to_start_again_where_they_were()
     {
         store.SaveAssignments([Claim("A-T1", OldPid), Claim("A-T2", 999, "other")]);
         var locks = new MoveLocks(store) { IsAlive = _ => false };
@@ -169,8 +169,8 @@ public sealed class MoveLocksTests
         Assert.That(store.LoadAssignments().Single(a => a.TicketId == "A-T1") is { Cli: NewPid, CliSession: "sess-2" }, "the claim is the CLI's as it is now");
         Assert.That(store.LoadAssignments().Single(a => a.TicketId == "A-T2").Cli, Is.EqualTo(999), "another CLI's claim is left alone");
         Assert.That(nudged.Single().Pid, Is.EqualTo(NewPid), "left for the CLI's hook as it runs now, never typed into its tab (M.ORCH-T864)");
-        Assert.That(nudged.Single().Text, Does.Contain("moved to Bea").And.Contain(@"A-T1 (worktree D:\WT\A\A-T1, model sonnet)")
-            .And.Contain("same worktree").And.Not.Contain("A-T2").And.Not.Contain("\""));
+        Assert.That(nudged.Single().Text, Does.Contain("moved to Bea").And.Contain(@"A-T1 (in D:\WT\A\A-T1, model sonnet)")
+            .And.Contain("same folder").And.Contain("never a new worktree or branch").And.Not.Contain("A-T2").And.Not.Contain("\""));
     }
 
     [Test]

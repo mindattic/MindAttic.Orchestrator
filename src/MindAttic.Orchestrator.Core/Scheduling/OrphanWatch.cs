@@ -6,7 +6,8 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// <summary>
 /// A dispatched ticket whose session went dark (M.ORCH-T748): the CLI that claimed it (or the Launcher tab it was started in)
 /// exited for any reason but a window's reset (closed, crashed, the machine slept), so its subagent died with it, the ticket is
-/// still open, and nothing has worked its worktree since. Kept in the store's <see cref="OrphanWatch.StoreName"/> row so
+/// still open, and nothing has worked it since (by repo and ticket in the repo's shared checkout, M.ORCH-T1122; by folder in an
+/// old worktree of its own). Kept in the store's <see cref="OrphanWatch.StoreName"/> row so
 /// <c>orchestrator status</c> and <c>orchestrator queue</c> show it at once, apart from an ordinary open ticket.
 /// </summary>
 public sealed record OrphanRecord(string TicketId, string Repo, string Directory, DateTime FirstSeenUtc)
@@ -17,7 +18,7 @@ public sealed record OrphanRecord(string TicketId, string Repo, string Directory
     /// <summary>Its dead claim was dropped so the /allocate CLI on its repo claims it again with <c>orchestrator next --claim</c>.</summary>
     public const string HandedBack = "handed back";
 
-    /// <summary>Started again in a new Launcher tab in its worktree.</summary>
+    /// <summary>Started again in a new Launcher tab in its repo's checkout.</summary>
     public const string Reopened = "reopened";
 
     /// <summary>Not redispatched again: it died once per redispatch allowed, or its work can't be carried forward by itself.</summary>
@@ -42,10 +43,12 @@ public sealed record OrphanRecord(string TicketId, string Repo, string Directory
     /// <summary>The CLI (process id) whose exit orphaned it; null for a tab's.</summary>
     public int? Cli { get; init; }
 
-    /// <summary>Commits on its worktree's branch not on the main line yet, when it went dark.</summary>
+    /// <summary>Its commits not on the main line yet, when it went dark: in the repo's checkout those naming its ticket, in an old
+    /// worktree every one on its branch.</summary>
     public int Ahead { get; init; }
 
-    /// <summary>Uncommitted paths in its worktree when it went dark (at most <see cref="OrphanWatch.MaxPaths"/>).</summary>
+    /// <summary>Uncommitted paths in its old worktree when it went dark (at most <see cref="OrphanWatch.MaxPaths"/>); none in the
+    /// repo's shared checkout, whose changes can be anyone's.</summary>
     public List<string> Uncommitted { get; init; } = [];
 
     /// <summary>Still to be acted on: waiting, or given up on (not yet running again).</summary>
@@ -56,10 +59,11 @@ public sealed record OrphanRecord(string TicketId, string Repo, string Directory
 /// Finds dispatched tickets whose session went dark and redispatches them (M.ORCH-T748), as the daemon resumes a CLI after its
 /// window resets (<see cref="LimitWaker"/>) but for a host process that disappeared mid-task. Only through the existing claim
 /// and dispatch machinery, never by typing into a session: the dead claim is handed back to the live /allocate CLI on its repo
-/// (its next <c>orchestrator next --claim</c> restarts it in the same worktree, the prompt carrying the work forward), else a
-/// new Launcher tab is opened on it in its worktree (<see cref="Dispatcher"/>: a login with room under its cutoffs, never the
+/// (its next <c>orchestrator next --claim</c> restarts it in the repo's checkout, the prompt carrying the work forward), else a
+/// new Launcher tab is opened on it there (<see cref="Dispatcher"/>: a login with room under its cutoffs, never the
 /// global login, the API key only when the owner has API billing on). It waits while the window is at its target, allocate is
-/// paused, quiet hours run or no login has room; it never hands out a worktree whose work it can't carry forward, and after
+/// paused, quiet hours run or no login has room; it never redispatches a ticket whose work is left in an old worktree (made
+/// before M.ORCH-T1122), which a redispatch in the checkout would leave behind, and after
 /// <see cref="OrchestratorSettings.OrphanRedispatches"/> redispatches it stops and says the ticket keeps dying.
 /// </summary>
 public sealed class OrphanWatch(JsonStore store)
@@ -73,19 +77,25 @@ public sealed class OrphanWatch(JsonStore store)
     internal Func<int, bool> CliRunning { get; init; } = ContextCycler.IsClaude;
 
     /// <summary>Whether a live TermHost runs a CLI in a folder (seam; M.ORCH-T928): a hosted CLI outlives a dashboard restart, so its
-    /// tab vanishing from the dashboard (no Launcher tab seen) never makes its ticket dark.</summary>
-    internal Func<string, bool> HostedIn { get; init; } = DefaultHostedIn;
+    /// tab vanishing from the dashboard (no Launcher tab seen) never makes its ticket dark. With a ticket (the repo's shared
+    /// checkout, M.ORCH-T1122) only a host titled for that ticket counts; null takes any host in the folder (an old worktree).</summary>
+    internal Func<string, string?, bool> HostedIn { get; init; } = DefaultHostedIn;
 
-    private static bool DefaultHostedIn(string directory)
+    private static bool DefaultHostedIn(string directory, string? ticketId)
     {
-        try { return Term.TermSessions.Enumerate().Any(t => !t.Exited && IsUnder(t.Cwd, directory)); }
+        try
+        {
+            return Term.TermSessions.Enumerate().Any(t => !t.Exited && IsUnder(t.Cwd, directory) &&
+                (ticketId is null || TicketActivity.NamesTicket(t.Title, ticketId)));
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { return false; }
     }
 
-    /// <summary>A worktree's commits ahead of the main line and its uncommitted paths; null when it can't be read (seam).</summary>
-    internal Func<string, string, (int Ahead, IReadOnlyList<string> Dirty)?> Inspect { get; init; } = InspectWorktree;
+    /// <summary>Where a dark ticket's work stands (seam; directory, repo path, ticket, whether it's an old worktree of its own): its
+    /// commits ahead of the main line and its uncommitted paths; null when it can't be read.</summary>
+    internal Func<string, string, string, bool, (int Ahead, IReadOnlyList<string> Dirty)?> Inspect { get; init; } = InspectWork;
 
-    /// <summary>Opens a new tab on a ticket in its worktree with the prompt given (seam); null opens none.</summary>
+    /// <summary>Opens a new tab on a ticket in its repo's checkout with the prompt given (seam); null opens none.</summary>
     internal Func<QueueItem, string, Dispatcher.Result>? OpenTab { get; init; }
 
     /// <summary>Whether a ticket is still open right now (seam; <see cref="Allocate.StillOpen"/>).</summary>
@@ -110,43 +120,29 @@ public sealed class OrphanWatch(JsonStore store)
     }
 
     /// <summary>
-    /// The assignments gone dark: a worktree claim or tab (no background agent) on an open ticket, dispatched at least
+    /// The assignments gone dark: a dispatched claim or tab (no background agent) on an open ticket, dispatched at least
     /// <paramref name="quiet"/> ago and not moving between logins, whose owner is gone (the claiming CLI's process, or, with no
-    /// CLI recorded, any Launcher tab in its worktree), with nothing written in its worktree for <paramref name="quiet"/> and no
-    /// other live session working it.
+    /// CLI recorded, the Launcher tab running it), with nothing working it for <paramref name="quiet"/> and no other live session
+    /// on it. In the repo's shared checkout (M.ORCH-T1122) all of that is judged by repo and ticket, never by the folder other
+    /// agents work in too (<see cref="TicketActivity"/>); only an old worktree of its own is judged by its folder.
     /// </summary>
-    internal static IReadOnlyList<QueueItem> Dark(SchedulePlan plan, Snapshot snapshot, Func<int, bool> cliRunning, TimeSpan quiet, Func<string, bool>? hostedIn = null)
+    internal static IReadOnlyList<QueueItem> Dark(SchedulePlan plan, Snapshot snapshot, Func<int, bool> cliRunning, TimeSpan quiet, Func<string, string?, bool>? hostedIn = null)
     {
         var dark = new List<QueueItem>();
         foreach (var q in plan.Queue)
         {
             if (q.Assignment is not { Worktree: true, Pilot: null, Log: null } a || q.Moving is not null) continue;
             if (snapshot.TakenUtc - a.StartedUtc < quiet) continue;
+            var byFolder = q.RepoPath.Length == 0 || a.InOwnWorktree(q.RepoPath);
             var ownerGone = a.Cli is { } cli ? !cliRunning(cli)
-                : !snapshot.Repos.Any(r => r.Hosts.Any(h => IsUnder(h.WorkingDirectory, a.Directory))) && hostedIn?.Invoke(a.Directory) != true;
+                : !snapshot.Repos.Any(r => r.Hosts.Any(h => TicketActivity.Hosts(h, a, byFolder))) && hostedIn?.Invoke(a.Directory, byFolder ? null : a.TicketId) != true;
             if (!ownerGone) continue;
             // Another live session working it (not the dead CLI's own, whose subagents died with it).
             if (plan.Worked.Any(w => Same(w.TicketId, q.Id) && (a.CliSession is null || w.SessionId != a.CliSession))) continue;
-            if (Active(a.Directory, snapshot, quiet)) continue;
+            if (TicketActivity.Active(a, snapshot, at => snapshot.TakenUtc - at < quiet)) continue;
             dark.Add(q);
         }
         return dark;
-    }
-
-    /// <summary>A tab open in the worktree, or a session or ticketed subagent that wrote from it within <paramref name="quiet"/>.</summary>
-    private static bool Active(string directory, Snapshot snapshot, TimeSpan quiet)
-    {
-        bool Recent(DateTime at) => snapshot.TakenUtc - at < quiet;
-        foreach (var repo in snapshot.Repos)
-        {
-            if (repo.Hosts.Any(h => IsUnder(h.WorkingDirectory, directory))) return true;
-            foreach (var s in repo.Sessions)
-            {
-                if (Recent(s.LastWriteUtc) && IsUnder(s.Cwd, directory)) return true;
-                if (s.TicketedSubagents.Any(t => t.Events.Count > 0 && Recent(t.Events[^1].AtUtc) && IsUnder(t.Cwd, directory))) return true;
-            }
-        }
-        return false;
     }
 
     /// <summary>
@@ -174,8 +170,8 @@ public sealed class OrphanWatch(JsonStore store)
             var rec = i >= 0 ? records[i] : new OrphanRecord(q.Id, q.Repo, a.Directory, nowUtc);
             if (rec.DeadStartedUtc != a.StartedUtc)
             {
-                // A new death: its worktree read as it was left, so the next agent is told what's there.
-                var state = Inspect(a.Directory, q.RepoPath);
+                // A new death: its work read as it was left, so the next agent is told what's there.
+                var state = Inspect(a.Directory, q.RepoPath, q.Id, a.InOwnWorktree(q.RepoPath));
                 rec = rec with
                 {
                     Directory = a.Directory, Deaths = rec.Deaths + 1, DeadStartedUtc = a.StartedUtc, Cli = a.Cli,
@@ -183,7 +179,7 @@ public sealed class OrphanWatch(JsonStore store)
                     Ahead = state?.Ahead ?? 0, Uncommitted = [.. (state?.Dirty ?? []).Take(MaxPaths)],
                 };
                 var owner = a.Cli is { } c ? $"the CLI that claimed it (pid {c}) is gone" : "the tab it was started in is gone";
-                var text = $"{q.Id} in {q.Repo}: {owner} and nothing has worked {a.Directory} for {quiet.TotalMinutes:0}+ min; the ticket is still open" +
+                var text = $"{q.Id} in {q.Repo}: {owner} and nothing has worked it ({a.Directory}) for {quiet.TotalMinutes:0}+ min; the ticket is still open" +
                     (rec.Deaths > 1 ? $" (it went dark {Times(rec.Deaths)})" : "");
                 events.Add(new Event($"orphaned: {text}", true, ("Orphaned ticket", text, false)));
             }
@@ -217,8 +213,9 @@ public sealed class OrphanWatch(JsonStore store)
         if (max == 0) return Wait("redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself");
         if (rec.Redispatches >= max)
             return GiveUp($"it went dark {Times(rec.Deaths)} and was redispatched {Times(rec.Redispatches)}, so it isn't redispatched again; its work is in {rec.Directory} (orchestrator release {q.Id} hands it back to you)");
-        // Its work is carried forward only where a new claim or tab opens: the worktree <root>\<repo>\<ticket>.
-        var tree = Path.Combine(settings.WorktreeRoot, q.Repo, q.Id);
+        // Its work is carried forward only where a new claim or tab opens: the repo's own checkout, on main (M.ORCH-T1122). Work
+        // left in an old worktree of its own would stay behind there, so that one is yours.
+        var tree = q.RepoPath;
         if (!SamePath(rec.Directory, tree) && (rec.Ahead > 0 || rec.Uncommitted.Count > 0))
             return GiveUp($"its work is in {rec.Directory}, not {tree} where a redispatch would start, so it isn't redispatched (that would leave the work behind)");
         if (!settings.Allocate) return Wait("allocate is paused");
@@ -229,8 +226,8 @@ public sealed class OrphanWatch(JsonStore store)
         var cli = pilots.Where(p => Allocate.Named(p.Value, q.Repo)).Select(p => (int?)p.Key).Order().FirstOrDefault();
         if (cli is { } pilot)
         {
-            // Handed back: the dead claim goes, so the /allocate CLI's next `orchestrator next --claim` claims it again in the same
-            // worktree (nothing is typed into it; keep-going and AllocateWaker send it on as they do any workable ticket).
+            // Handed back: the dead claim goes, so the /allocate CLI's next `orchestrator next --claim` claims it again in the repo's
+            // checkout (nothing is typed into it; keep-going and AllocateWaker send it on as they do any workable ticket).
             var dead = q.Assignment!;
             store.UpdateAssignments(all => all.RemoveAll(x => Same(x.TicketId, q.Id) && x.StartedUtc == dead.StartedUtc && x.Cli == dead.Cli));
             // Nobody works it until that claim (M.ORCH-T766), which records its new owner; a tab opened below records its own.
@@ -239,10 +236,10 @@ public sealed class OrphanWatch(JsonStore store)
             return rec with { State = OrphanRecord.HandedBack, Redispatches = rec.Redispatches + 1, RedispatchedUtc = nowUtc, Why = $"handed back to the /allocate CLI {pilot}" };
         }
         if (OpenTab is not { } open) return Wait("no /allocate CLI works its repo, and this process can't open a tab");
-        var prompt = CarryForward(rec) + Allocate.PromptFor(q, tree, Dispatcher.BranchFor(q.Id), MainlineOf(q.RepoPath));
+        var prompt = CarryForward(rec) + Allocate.PromptFor(q, tree, MainlineOf(q.RepoPath));
         var result = open(q, prompt);
         if (!result.Ok) return Wait(result.Message);
-        events.Add(new Event($"orphaned: started {q.Id} again in a new tab: {result.Message}", false, ("Redispatched", $"{q.Id} in {q.Repo} went dark; started again in a new tab in its worktree.", false)));
+        events.Add(new Event($"orphaned: started {q.Id} again in a new tab: {result.Message}", false, ("Redispatched", $"{q.Id} in {q.Repo} went dark; started again in a new tab in its checkout.", false)));
         return rec with { State = OrphanRecord.Reopened, Redispatches = rec.Redispatches + 1, RedispatchedUtc = nowUtc, Why = "started again in a new tab" };
     }
 
@@ -255,9 +252,9 @@ public sealed class OrphanWatch(JsonStore store)
         // Counted once it's redispatched: before that (a tab's prompt is written first) this is the next one.
         var attempt = rec.State == OrphanRecord.Orphaned ? rec.Redispatches + 1 : Math.Max(1, rec.Redispatches);
         return $"A previous agent on {rec.TicketId} died mid-task (its host process exited without closing the ticket; this is redispatch {attempt}). " +
-            $"Its work so far is in the worktree {rec.Directory}" + (work.Count > 0 ? ": " + string.Join("; ", work) : "") + ". " +
-            "Start by reading git status, git log and git diff there and any notes it left (docs or other files in the worktree), and carry that work forward: " +
-            "never discard, reset or stash it away. ";
+            $"Its work so far is in {rec.Directory}" + (work.Count > 0 ? ": " + string.Join("; ", work) : "") + ". " +
+            $"Start by reading git status, git log and git diff there (its commits name {rec.TicketId}) and any notes it left, and carry forward what is this ticket's " +
+            "(other agents may share that checkout; their changes are theirs): never discard, reset or stash any of it away. ";
     }
 
     /// <summary>The line <c>orchestrator status</c> and <c>orchestrator queue</c> show for a record.</summary>
@@ -268,14 +265,22 @@ public sealed class OrphanWatch(JsonStore store)
         _ => $"{r.TicketId} in {r.Repo} went dark {Times(r.Deaths)}; {r.Why ?? r.State} {Formatting.Ago(r.RedispatchedUtc, nowUtc)}",
     };
 
-    private static (int Ahead, IReadOnlyList<string> Dirty)? InspectWorktree(string directory, string repoPath)
+    /// <summary>In an old worktree of its own: every commit on it past the main line and every uncommitted path. In the repo's
+    /// shared checkout (M.ORCH-T1122): only the unpushed commits naming its ticket, and no uncommitted paths, which can be any
+    /// agent's.</summary>
+    private static (int Ahead, IReadOnlyList<string> Dirty)? InspectWork(string directory, string repoPath, string ticketId, bool ownWorktree)
     {
         if (!System.IO.Directory.Exists(directory)) return null;
-        var (code, status) = Dispatcher.Git(directory, "status", "--porcelain");
-        if (code != 0) return null;
+        var mainline = Dispatcher.Mainline(repoPath);
+        if (!ownWorktree)
+        {
+            var (code, mine) = Dispatcher.Git(directory, "rev-list", "--count", "--fixed-strings", $"--grep={ticketId}", $"origin/{mainline}..HEAD");
+            return code == 0 && int.TryParse(mine.Trim(), out var own) ? (own, []) : null;
+        }
+        var (statusCode, status) = Dispatcher.Git(directory, "status", "--porcelain");
+        if (statusCode != 0) return null;
         var dirty = status.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(l => l.Length > 3 ? l[3..].Trim().Trim('"') : l).ToList();
-        var mainline = Dispatcher.Mainline(repoPath);
         var (aheadCode, ahead) = Dispatcher.Git(directory, "rev-list", "--count", $"origin/{mainline}..HEAD");
         return (aheadCode == 0 && int.TryParse(ahead.Trim(), out var n) ? n : 0, dirty);
     }

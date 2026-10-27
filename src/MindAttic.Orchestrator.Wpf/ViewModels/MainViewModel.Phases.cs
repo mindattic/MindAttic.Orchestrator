@@ -374,7 +374,8 @@ public sealed partial class MainViewModel
 
     public bool IsStarting(string ticketId) => Root.starting.Contains(ticketId);
 
-    public async void Dispatch(QueueItem item, bool worktree)
+    /// <summary>Starts <paramref name="item"/> in its repo's own checkout on main (M.ORCH-T1122: never a worktree).</summary>
+    public async void Dispatch(QueueItem item)
     {
         if (Locked(item.Id)) return;
         var starting = Root.starting;
@@ -404,7 +405,7 @@ public sealed partial class MainViewModel
                 if (await OwnLoginDirAsync(own, m => QueueMessage = m) is not { } dir) return;
                 login = new(dir, own);
             }
-            var r = await Task.Run(() => dispatcher.Dispatch(item, providerKey, worktree, login: login));
+            var r = await Task.Run(() => dispatcher.Dispatch(item, providerKey, login: login));
             QueueMessage = r.Message;
             Record(r, "Dispatch");
             await RefreshAsync();

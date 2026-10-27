@@ -212,7 +212,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // A CLI that stopped for a window is told to carry on (or you're told it's waiting) once that window resets (M.ORCH-T256).
                 if (wakeLease.TryAcquire())
                 {
-                    // A moved CLI that landed on its new login gets its tickets back to start again in their worktrees; one that
+                    // A moved CLI that landed on its new login gets its tickets back to start again in their repos' checkouts; one that
                     // didn't land in time is unlocked with its old owner keeping them (M.ORCH-T637).
                     ReportMoves(snapshot.Agents, DateTime.UtcNow);
                     ReportWakes(waker.Tick(snapshot.Pace, s.ResumeAfterReset, DateTime.UtcNow));
@@ -223,12 +223,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     // them now (M.ORCH-T529: two sat unstarted at a projected 65% of 98% until the user asked).
                     ReportAllocateWakes(pilotWaker.TickClaims(snapshot, plan, s, DateTime.UtcNow), alert: false);
                     // A dispatch whose CLI or tab exited mid-task (closed, crashed, slept) is orphaned: said at once, and handed back to
-                    // the repo's /allocate CLI or started again in a new tab in its worktree (M.ORCH-T748), as a window's stop is resumed.
+                    // the repo's /allocate CLI or started again in a new tab in its repo's checkout (M.ORCH-T748), as a window's stop is resumed.
                     try
                     {
                         orphans ??= new OrphanWatch(store)
                         {
-                            OpenTab = (item, prompt) => new Dispatcher(new SessionControl(options), store).Dispatch(item, Providers.Claude, useWorktree: true, submit: true, prompt: prompt),
+                            OpenTab = (item, prompt) => new Dispatcher(new SessionControl(options), store).Dispatch(item, Providers.Claude, submit: true, prompt: prompt),
                         };
                         ReportOrphans(orphans.Tick(plan, snapshot, s, cycler.AllocateClis(), DateTime.UtcNow));
                     }
@@ -273,7 +273,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                         foreach (var a in aborter.Tick(snapshot, s, DateTime.UtcNow))
                             Say(LogEventLevel.Warning, $"agent-abort [{a.Login ?? "global login"}]: aborted subagent {a.AgentId} on {a.TicketId} " +
                                 $"(burning ~{a.PercentPerHour:0.#}% of the 5-hour window an hour): the window is on course for {a.ProjectedPercent:0}%, past its " +
-                                $"{a.TargetPercent:0}% pace line even with new subagents slowed. It stops at its next tool call, its worktree kept as it is; " +
+                                $"{a.TargetPercent:0}% pace line even with new subagents slowed. It stops at its next tool call, its work kept as it is; " +
                                 $"{a.TicketId}'s claim is released and it's first in the queue for the next round.");
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
@@ -1065,7 +1065,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         // Only a push that lands counts the dump as synced (M.ORCH-T538): a failed one is tried again on the next try.
         void Push(bool retry)
         {
-            // Agents land through their own worktrees, so main moves under this checkout: integrate origin/main first or every
+            // Agents push to main from their checkouts (this one's included, M.ORCH-T1122), so main moves under this checkout: integrate origin/main first or every
             // push is rejected as non-fast-forward (M.ORCH-T620). A merge, not a rebase --autostash: the daemon keeps the
             // dirty data/ files open and changing so the autostash itself fails (M.ORCH-T624), and incoming commits never touch
             // them, so no stash is needed (merge commits pass the commit-msg hook).

@@ -8,10 +8,10 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>
-/// Dispatcher against real temp git repos (M.ORCH-T136): EnsureWorktree reuses, checks out or creates the ticket's
-/// branch and says what git said when it can't; Git is killed past its timeout and never waits on a credential prompt;
-/// Dispatch and Release change assignments through UpdateAssignments; RemoveWorktree keeps a dirty tree and the branch.
-/// No Windows Terminal tab is opened (seam: OpenTab).
+/// Dispatcher against real temp git repos (M.ORCH-T136): Dispatch opens every ticket in the repo's own checkout on main and
+/// never makes a worktree or a branch (M.ORCH-T1122); Git is killed past its timeout and never waits on a credential prompt;
+/// Dispatch and Release change assignments through UpdateAssignments; RemoveWorktree keeps an old worktree that's dirty, and
+/// its branch. No Windows Terminal tab is opened (seam: OpenTab).
 /// </summary>
 public sealed class DispatcherTests
 {
@@ -47,135 +47,6 @@ public sealed class DispatcherTests
             Directory.Delete(dir, true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-    }
-
-    // ---- EnsureWorktree ----
-
-    [Test]
-    public void A_unity_worktree_gets_its_manifests_sibling_repos_linked_beside_it()
-    {
-        // M.ORCH-T652: file:../../Sib from Packages resolves to wtRoot\A inside a worktree, not to the real sibling.
-        var sib = Path.Combine(dir, "Sib");
-        Directory.CreateDirectory(Path.Combine(sib, "unity"));
-        File.WriteAllText(Path.Combine(sib, "unity", "marker.txt"), "x");
-        Directory.CreateDirectory(Path.Combine(repo, "Packages"));
-        File.WriteAllText(Path.Combine(repo, "Packages", "manifest.json"), "{\"dependencies\":{\"com.x\":\"file:../../Sib/unity\"}}");
-        Git(repo, "add", "-A");
-        Git(repo, "commit", "-qm", "manifest");
-        var tree = Path.Combine(wtRoot, "A", "A-T9");
-
-        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t9").Ok, Is.True);
-
-        var resolved = Path.GetFullPath(Path.Combine(tree, "Packages", "../../Sib/unity", "marker.txt"));
-        Assert.That(File.Exists(resolved), Is.True, resolved);
-    }
-
-    [Test]
-    public void A_worktree_folder_deleted_by_hand_is_made_again_not_refused_for_good()
-    {
-        var tree = Path.Combine(wtRoot, "A", "A-T5");
-        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t5").Ok, Is.True);
-        Directory.Delete(tree, recursive: true); // Explorer: git still has it registered, its branch checked out there
-
-        var (ok, path, error) = Dispatcher.EnsureWorktree(repo, tree, "orch/a-t5");
-
-        Assert.That(ok, Is.True, error);
-        Assert.That(Directory.Exists(Path.Combine(path, ".git")) || File.Exists(Path.Combine(path, ".git")), Is.True);
-    }
-
-    [Test]
-    public void An_existing_worktree_is_reused_as_it_is()
-    {
-        var tree = Path.Combine(wtRoot, "A", "A-T1");
-        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t1").Ok, Is.True);
-        File.WriteAllText(Path.Combine(tree, "work.txt"), "in progress");
-        var listed = Dispatcher.Git(repo, "worktree", "list", "--porcelain").Output;
-
-        var (ok, path, error) = Dispatcher.EnsureWorktree(repo, tree, "orch/a-t1");
-
-        Assert.That(ok, Is.True, error);
-        Assert.That(path, Is.EqualTo(tree));
-        Assert.That(File.ReadAllText(Path.Combine(tree, "work.txt")), Is.EqualTo("in progress"), "the agent's work is untouched");
-        Assert.That(Dispatcher.Git(repo, "worktree", "list", "--porcelain").Output, Is.EqualTo(listed), "no second worktree");
-    }
-
-    [Test]
-    public void A_clean_landed_worktree_handed_out_again_is_moved_up_to_the_main_line()
-    {
-        // M.ORCH-T367: its claim went stale (or the ticket reopened) while its worktree stayed, days behind main.
-        var tree = Path.Combine(wtRoot, "A", "A-T5");
-        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t5").Ok, Is.True);
-        File.WriteAllText(Path.Combine(repo, "file.txt"), "main moved on\n");
-        Git(repo, "commit", "-qam", "later work on main");
-
-        var (ok, _, error) = Dispatcher.EnsureWorktree(repo, tree, "orch/a-t5");
-
-        Assert.That(ok, Is.True, error);
-        Assert.That(Head(tree), Is.EqualTo(Head(repo)), "fast-forwarded to the main line");
-        Assert.That(File.ReadAllText(Path.Combine(tree, "file.txt")), Is.EqualTo("main moved on\n"));
-    }
-
-    [Test]
-    public void An_existing_branch_is_checked_out_not_recreated()
-    {
-        Git(repo, "switch", "-q", "-c", "orch/a-t2");
-        File.WriteAllText(Path.Combine(repo, "file.txt"), "earlier work\n");
-        Git(repo, "commit", "-qam", "earlier work");
-        var branchTip = Head(repo);
-        Git(repo, "switch", "-q", "main");
-        var tree = Path.Combine(wtRoot, "A", "A-T2");
-
-        var (ok, _, error) = Dispatcher.EnsureWorktree(repo, tree, "orch/a-t2");
-
-        Assert.That(ok, Is.True, error);
-        Assert.That(Head(tree), Is.EqualTo(branchTip), "the branch's earlier work is what's checked out");
-        Assert.That(Dispatcher.Git(tree, "branch", "--show-current").Output.Trim(), Is.EqualTo("orch/a-t2"));
-        Assert.That(File.ReadAllText(Path.Combine(tree, "file.txt")), Is.EqualTo("earlier work\n"));
-    }
-
-    [Test]
-    public void A_landed_branch_claimed_again_starts_from_the_main_line_not_where_it_landed()
-    {
-        // M.ORCH-T360: the ticket's work landed, the main line moved on, the ticket was reopened and claimed again.
-        Git(repo, "branch", "orch/a-t4");
-        File.WriteAllText(Path.Combine(repo, "file.txt"), "main moved on\n");
-        Git(repo, "commit", "-qam", "later work on main");
-        var tree = Path.Combine(wtRoot, "A", "A-T4");
-
-        var (ok, _, error) = Dispatcher.EnsureWorktree(repo, tree, "orch/a-t4");
-
-        Assert.That(ok, Is.True, error);
-        Assert.That(Head(tree), Is.EqualTo(Head(repo)), "from the main line as it is now");
-        Assert.That(Dispatcher.Git(tree, "branch", "--show-current").Output.Trim(), Is.EqualTo("orch/a-t4"));
-    }
-
-    [Test]
-    public void A_new_branch_is_created_from_HEAD_when_there_is_no_origin()
-    {
-        var tree = Path.Combine(wtRoot, "A", "A-T3");
-
-        var (ok, _, error) = Dispatcher.EnsureWorktree(repo, tree, "orch/a-t3");
-
-        Assert.That(ok, Is.True, error);
-        Assert.That(Dispatcher.Git(repo, "rev-parse", "--verify", "--quiet", "refs/heads/orch/a-t3").Code, Is.Zero, "the branch exists");
-        Assert.That(Head(tree), Is.EqualTo(Head(repo)), "it starts where your checkout's HEAD is");
-        Assert.That(Dispatcher.Git(tree, "branch", "--show-current").Output.Trim(), Is.EqualTo("orch/a-t3"));
-    }
-
-    [Test]
-    public void A_failed_worktree_add_reports_what_git_said()
-    {
-        // A folder that's there but isn't a worktree: git won't add one over it.
-        var tree = Path.Combine(wtRoot, "A", "A-T4");
-        Directory.CreateDirectory(tree);
-        File.WriteAllText(Path.Combine(tree, "stray.txt"), "not a worktree");
-
-        var (ok, path, error) = Dispatcher.EnsureWorktree(repo, tree, "orch/a-t4");
-
-        Assert.That(ok, Is.False);
-        Assert.That(path, Is.EqualTo(tree));
-        Assert.That(error, Does.StartWith("git worktree add failed: "));
-        Assert.That(error, Does.Contain("already exists"), "git's own words are passed on");
     }
 
     // ---- Git ----
@@ -224,7 +95,7 @@ public sealed class DispatcherTests
     // ---- Dispatch and Release ----
 
     [Test]
-    public void Dispatch_in_a_worktree_records_the_assignment_through_UpdateAssignments()
+    public void Dispatch_opens_in_the_repos_own_checkout_on_main_and_records_the_assignment_through_UpdateAssignments()
     {
         var stale = Assign("A-T1", "A", @"C:\stale", false);
         store.SaveAssignments([Assign("B-T9", "B", @"C:\elsewhere", false), stale]);
@@ -237,25 +108,26 @@ public sealed class DispatcherTests
             return (null, Task.FromResult(true));
         });
 
-        var result = dispatcher.Dispatch(Item("A-T1") with { Assignment = stale, StaleSinceUtc = Now }, "Claude", useWorktree: true, submit: true);
+        var result = dispatcher.Dispatch(Item("A-T1") with { Assignment = stale, StaleSinceUtc = Now }, "Claude", submit: true);
 
-        var tree = Path.Combine(wtRoot, "A", "A-T1");
         Assert.That(result.Ok, Is.True, result.Message);
-        Assert.That(result.Message, Does.Contain($"worktree {tree} (branch orch/a-t1)"));
+        Assert.That(result.Message, Does.Contain($"in A's checkout ({repo}), on main"));
         Assert.That(result.Message, Does.Contain("submits by itself"));
         Assert.That(result.CameUp!.Result, Is.True);
         Assert.That(opened, Has.Count.EqualTo(1));
-        Assert.That(opened[0].Title, Is.EqualTo("A A-T1"));
-        Assert.That(opened[0].Directory, Is.EqualTo(tree));
+        Assert.That(opened[0].Title, Is.EqualTo("A A-T1"), "titled for its ticket, which tells it apart from others in the same checkout");
+        Assert.That(opened[0].Directory, Is.EqualTo(repo));
         Assert.That(opened[0].Submit, Is.True);
         Assert.That(opened[0].Prompt, Is.EqualTo(Scheduler.PromptFor(Item("A-T1"))));
-        Assert.That(Directory.Exists(tree), Is.True);
+        Assert.That(opened[0].Prompt, Does.Contain("own checkout on main, never a separate branch or worktree"));
+        Assert.That(Directory.Exists(wtRoot), Is.False, "no worktree is made");
+        Assert.That(Dispatcher.Git(repo, "branch", "--list", "orch/*").Output.Trim(), Is.Empty, "nor an orch/ branch");
 
         var saved = store.LoadAssignments();
         Assert.That(saved.Select(a => a.TicketId), Is.EquivalentTo(new[] { "B-T9", "C-T5", "A-T1" }));
         var mine = saved.Single(a => a.TicketId == "A-T1");
-        Assert.That(mine.Directory, Is.EqualTo(tree), "the stale entry is replaced, not duplicated");
-        Assert.That(mine.Worktree, Is.True);
+        Assert.That(mine.Directory, Is.EqualTo(repo), "the stale entry is replaced, not duplicated");
+        Assert.That((mine.Worktree, mine.IsClaim, mine.InOwnWorktree(repo)), Is.EqualTo((true, true, false)), "dispatched, in the checkout");
         Assert.That(mine.Provider, Is.EqualTo("Claude"));
         Assert.That(result.Assignment, Is.EqualTo(mine));
     }
@@ -265,12 +137,12 @@ public sealed class DispatcherTests
     {
         var dispatcher = Make((_, _, _, _, _) => (null, Task.FromResult(true)));
 
-        var result = dispatcher.Dispatch(Item("A-T1"), "Codex", useWorktree: false);
+        var result = dispatcher.Dispatch(Item("A-T1"), "Codex");
 
         Assert.That(result.Ok, Is.True, result.Message);
         Assert.That(result.Message, Does.Contain("press Enter in the tab"));
         var mine = store.LoadAssignments().Single();
-        Assert.That((mine.Directory, mine.Worktree, mine.Provider), Is.EqualTo((repo, false, "Codex")));
+        Assert.That((mine.Directory, mine.Provider), Is.EqualTo((repo, "Codex")));
         Assert.That(Directory.Exists(wtRoot), Is.False, "no worktree");
     }
 
@@ -282,7 +154,7 @@ public sealed class DispatcherTests
         var opened = 0;
         var dispatcher = Make((_, _, _, _, _) => { opened++; return (null, Task.FromResult(true)); });
 
-        var result = dispatcher.Dispatch(Item("A-T1"), "Claude", useWorktree: false); // the plan saw it unassigned
+        var result = dispatcher.Dispatch(Item("A-T1"), "Claude"); // the plan saw it unassigned
 
         Assert.That((result.Ok, opened), Is.EqualTo((false, 0)));
         Assert.That(result.Message, Does.Contain("claimed elsewhere"));
@@ -295,7 +167,7 @@ public sealed class DispatcherTests
         store.SaveAssignments([Assign("B-T9", "B", @"C:\elsewhere", false)]);
         var dispatcher = Make((_, _, _, _, _) => ("Launcher not found", null));
 
-        var result = dispatcher.Dispatch(Item("A-T1"), "Claude", useWorktree: false);
+        var result = dispatcher.Dispatch(Item("A-T1"), "Claude");
 
         Assert.That(result.Ok, Is.False);
         Assert.That(result.Message, Is.EqualTo("Launcher not found"));
@@ -304,27 +176,10 @@ public sealed class DispatcherTests
     }
 
     [Test]
-    public void A_worktree_that_cannot_be_made_opens_no_tab()
-    {
-        var tree = Path.Combine(wtRoot, "A", "A-T1");
-        Directory.CreateDirectory(tree);
-        File.WriteAllText(Path.Combine(tree, "stray.txt"), "x");
-        var opened = 0;
-        var dispatcher = Make((_, _, _, _, _) => { opened++; return (null, Task.FromResult(true)); });
-
-        var result = dispatcher.Dispatch(Item("A-T1"), "Claude", useWorktree: true);
-
-        Assert.That(result.Ok, Is.False);
-        Assert.That(result.Message, Does.StartWith("git worktree add failed: "));
-        Assert.That(opened, Is.Zero);
-        Assert.That(store.LoadAssignments(), Is.Empty);
-    }
-
-    [Test]
     public void Release_drops_only_that_ticket_and_keeps_its_worktree()
     {
         var tree = Path.Combine(wtRoot, "A", "A-T1");
-        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t1").Ok, Is.True);
+        Assert.That(LegacyWorktree.Add(repo, tree, "orch/a-t1").Ok, Is.True);
         store.SaveAssignments([Assign("A-T1", "A", tree, true), Assign("B-T9", "B", @"C:\elsewhere", false)]);
 
         Make().Release("A-T1");
@@ -339,7 +194,7 @@ public sealed class DispatcherTests
     public void A_dirty_worktree_is_refused_and_its_assignment_kept()
     {
         var tree = Path.Combine(wtRoot, "A", "A-T1");
-        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t1").Ok, Is.True);
+        Assert.That(LegacyWorktree.Add(repo, tree, "orch/a-t1").Ok, Is.True);
         File.WriteAllText(Path.Combine(tree, "file.txt"), "uncommitted\n");
         var a = Assign("A-T1", "A", tree, true);
         store.SaveAssignments([a]);
@@ -357,7 +212,7 @@ public sealed class DispatcherTests
     public void A_clean_worktree_is_removed_and_its_branch_kept()
     {
         var tree = Path.Combine(wtRoot, "A", "A-T1");
-        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t1").Ok, Is.True);
+        Assert.That(LegacyWorktree.Add(repo, tree, "orch/a-t1").Ok, Is.True);
         File.WriteAllText(Path.Combine(tree, "file.txt"), "committed work\n");
         Git(tree, "commit", "-qam", "work");
         var tip = Head(tree);
@@ -374,17 +229,20 @@ public sealed class DispatcherTests
     }
 
     [Test]
-    public void An_assignment_without_a_worktree_is_just_released()
+    public void An_assignment_without_a_worktree_of_its_own_is_just_released()
     {
-        var a = Assign("A-T1", "A", repo, false);
-        store.SaveAssignments([a]);
+        foreach (var dispatched in new[] { false, true }) // a tab's of old, and a claim in the checkout (M.ORCH-T1122)
+        {
+            var a = Assign("A-T1", "A", repo, dispatched);
+            store.SaveAssignments([a]);
 
-        var result = Make().RemoveWorktree(a, repo);
+            var result = Make().RemoveWorktree(a, repo);
 
-        Assert.That(result.Ok, Is.True);
-        Assert.That(result.Message, Is.EqualTo("A-T1 released."));
-        Assert.That(Directory.Exists(repo), Is.True);
-        Assert.That(store.LoadAssignments(), Is.Empty);
+            Assert.That(result.Ok, Is.True);
+            Assert.That(result.Message, Is.EqualTo("A-T1 released."));
+            Assert.That(Directory.Exists(repo), Is.True, "the repo's own checkout is never removed");
+            Assert.That(store.LoadAssignments(), Is.Empty);
+        }
     }
 
     [Test]
@@ -399,16 +257,16 @@ public sealed class DispatcherTests
                 Logins = new LoginPicker(empty, () => []),
             };
 
-        var off = Real(false).Dispatch(Item("A-T1"), "Claude", useWorktree: false);
+        var off = Real(false).Dispatch(Item("A-T1"), "Claude");
         Assert.That(off.Ok, Is.False);
         Assert.That(off.Message, Does.Contain("API billing is off"));
         Assert.That(store.LoadAssignments(), Is.Empty, "it waits: nothing is claimed");
 
-        var on = Real(true).Dispatch(Item("A-T1"), "Claude", useWorktree: false);
+        var on = Real(true).Dispatch(Item("A-T1"), "Claude");
         Assert.That(on.Message, Does.Not.Contain("API billing is off"), "past the gate; the missing launcher is what stops it here");
         Assert.That(on.Message, Does.Contain("Launcher not found"));
 
-        var codex = Real(false).Dispatch(Item("A-T1"), "Codex", useWorktree: false);
+        var codex = Real(false).Dispatch(Item("A-T1"), "Codex");
         Assert.That(codex.Message, Does.Not.Contain("API billing is off"), "Codex has no Claude login to wait for");
     }
 
@@ -425,14 +283,14 @@ public sealed class DispatcherTests
             Orgs = () => routing,
         };
 
-        var refused = Org(orgs).Dispatch(Item("A-T1"), "Claude", useWorktree: false, login: new Dispatcher.TabLogin(@"D:\acc\amy", "amy@example.com"));
+        var refused = Org(orgs).Dispatch(Item("A-T1"), "Claude", login: new Dispatcher.TabLogin(@"D:\acc\amy", "amy@example.com"));
         Assert.That(refused.Ok, Is.False);
         Assert.That(refused.Message, Does.Contain("Sales's").And.Contain("amy@example.com"));
         Assert.That((opened, store.LoadAssignments().Count), Is.EqualTo((0, 0)), "nothing opened or claimed");
 
-        Assert.That(Org(orgs).Dispatch(Item("A-T1"), "Claude", useWorktree: false, login: new Dispatcher.TabLogin(@"D:\acc\jordan", "jordan@example.com")).Ok, Is.True);
+        Assert.That(Org(orgs).Dispatch(Item("A-T1"), "Claude", login: new Dispatcher.TabLogin(@"D:\acc\jordan", "jordan@example.com")).Ok, Is.True);
         store.UpdateAssignments(all => all.Clear());
-        Assert.That(Org(OrgRouting.Single).Dispatch(Item("A-T1"), "Claude", useWorktree: false, login: new Dispatcher.TabLogin(@"D:\acc\amy", "amy@example.com")).Ok,
+        Assert.That(Org(OrgRouting.Single).Dispatch(Item("A-T1"), "Claude", login: new Dispatcher.TabLogin(@"D:\acc\amy", "amy@example.com")).Ok,
             Is.True, "one org: any login, as before");
     }
 

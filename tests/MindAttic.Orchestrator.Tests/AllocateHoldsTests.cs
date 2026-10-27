@@ -11,7 +11,7 @@ namespace MindAttic.Orchestrator.Tests;
 /// <summary>
 /// Allocate's holds and parking (M.ORCH-T135): an agent halted by the window's stop isn't parked, a parked story is
 /// never retried, a lease held elsewhere starts and reaps nothing, which hold <see cref="Allocate.Paused"/> names first,
-/// what the statusline's waiting file holds, a repo's session cap is told once, and a worktree failure skips only that repo.
+/// what the statusline's waiting file holds, a repo's session cap is told once, and a start that fails skips only that repo.
 /// </summary>
 public sealed class AllocateHoldsTests
 {
@@ -23,8 +23,8 @@ public sealed class AllocateHoldsTests
     private readonly HashSet<int> agents = [];
     private readonly HashSet<string> landed = new(StringComparer.Ordinal);
     private readonly List<string> landCalls = [];
-    private readonly List<string> worktreeCalls = [];
-    private Func<string, bool> worktreeFails = _ => false;
+    private readonly List<string> startCalls = [];
+    private Func<string, bool> startFails = _ => false;
     private IReadOnlyList<string>? order = [];
     private int nextPid = 7000;
 
@@ -39,8 +39,8 @@ public sealed class AllocateHoldsTests
         agents.Clear();
         landed.Clear();
         landCalls.Clear();
-        worktreeCalls.Clear();
-        worktreeFails = _ => false;
+        startCalls.Clear();
+        startFails = _ => false;
         nextPid = 7000;
     }
 
@@ -224,7 +224,8 @@ public sealed class AllocateHoldsTests
         const string cap = "allocate: A has 1 agents working, the cap you set for it (settings --repo-sessions)";
 
         var first = pilot.Tick(Paced(snap, 10), snap, capped, Now);
-        Assert.That(started.Select(s => s.Dir), Is.EquivalentTo(new[] { @"D:\WT\A\A-T3", @"D:\WT\B\B-T1" }), "A's newest (M.ORCH-T863)");
+        Assert.That(started.Select(s => s.Dir), Is.EquivalentTo(new[] { @"D:\W\A", @"D:\W\B" }), "each in its repo's own checkout");
+        Assert.That(started[0].Prompt, Does.StartWith("Work on ticket A-T3"), "A's newest (M.ORCH-T863)");
         Assert.That(first.Count(l => l == cap), Is.EqualTo(1), "A-T2 and A-T1 both hit the cap; it's said once");
 
         var second = pilot.Tick(Paced(snap, 10), snap, capped, Now.AddMinutes(20));
@@ -233,24 +234,26 @@ public sealed class AllocateHoldsTests
     }
 
     [Test]
-    public void A_worktree_failure_skips_only_that_repo_and_only_for_the_tick()
+    public void A_start_that_fails_skips_only_that_repo_and_only_for_the_tick_and_no_worktree_is_ever_made()
     {
+        // M.ORCH-T1122: every agent starts in its repo's own checkout on main; nothing makes a worktree or a branch.
         order = ["A", "B"];
         var snap = Snap(("A", [T("A-T1"), T("A-T2")]), ("B", [T("B-T1")]));
-        worktreeFails = repo => repo == @"D:\W\A";
+        startFails = d => d == @"D:\W\A";
         var pilot = Pilot();
 
         var said = pilot.Tick(Paced(snap, 10), snap, Settings(), Now);
-        Assert.That(started.Select(s => s.Dir), Is.EqualTo(new[] { @"D:\WT\B\B-T1" }), "B starts despite A's failure");
-        Assert.That(worktreeCalls.Count(p => p.StartsWith(@"D:\WT\A\", StringComparison.Ordinal)), Is.EqualTo(1), "A-T1 isn't tried once A-T2 (the newest) failed");
-        Assert.That(said, Has.Some.EqualTo("allocate: couldn't make a worktree for A-T2: disk full"));
+        Assert.That(started.Select(s => s.Dir), Is.EqualTo(new[] { @"D:\W\B" }), "B starts despite A's failure");
+        Assert.That(startCalls.Count(d => d == @"D:\W\A"), Is.EqualTo(1), "A-T1 isn't tried once A-T2 (the newest) failed");
+        Assert.That(said, Has.Some.EqualTo("allocate: couldn't start an agent in A"));
         Assert.That(said, Has.None.Contains("A has no open stories").And.None.Contains("A's open stories"), "a failure isn't reported as nothing to do");
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "B-T1" }), "nothing is claimed for A");
+        Assert.That(Directory.Exists(Path.Combine(dir, "wt")), Is.False, "no worktree is made for anything");
 
-        worktreeFails = _ => false;
+        startFails = _ => false;
         pilot.Tick(Paced(snap, 10), snap, Settings(), Now.AddMinutes(20));
-        Assert.That(started.Select(s => s.Dir), Is.EquivalentTo(new[] { @"D:\WT\B\B-T1", @"D:\WT\A\A-T1", @"D:\WT\A\A-T2" }),
-            "the next tick tries A again");
+        Assert.That(started.Select(s => s.Dir), Is.EquivalentTo(new[] { @"D:\W\B", @"D:\W\A", @"D:\W\A" }),
+            "the next tick tries A again, both of its tickets in its one checkout");
     }
 
     private Allocate Pilot(DispatchLease? lease = null, string? waiting = null) => new(store, sessions, lease)
@@ -262,14 +265,11 @@ public sealed class AllocateHoldsTests
         StartTimeOf = _ => null,
         LogDirectory = Path.Combine(dir, "logs"),
         MainlineOf = _ => "main",
-        MakeWorktree = (repo, path, branch) =>
-        {
-            worktreeCalls.Add(path);
-            return worktreeFails(repo) ? (false, "", "disk full") : (true, path, "");
-        },
         Land = (a, repo) => { landCalls.Add(a.TicketId); return (landed.Contains(a.TicketId), ""); },
         Start = (d, prompt, log) =>
         {
+            startCalls.Add(d);
+            if (startFails(d)) return null;
             var pid = nextPid++;
             agents.Add(pid);
             started.Add((d, prompt, pid));
@@ -277,7 +277,7 @@ public sealed class AllocateHoldsTests
         },
     };
 
-    private static OrchestratorSettings Settings() => new() { WorktreeRoot = @"D:\WT" };
+    private OrchestratorSettings Settings() => new() { WorktreeRoot = Path.Combine(dir, "wt") };
 
     private static Ticket T(string id) => new(id, "2026-10-01", "fix", "open", $"summary of {id}", "");
 

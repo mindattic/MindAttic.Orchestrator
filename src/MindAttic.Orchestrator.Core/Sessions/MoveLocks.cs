@@ -150,7 +150,7 @@ public sealed class MoveLocks(JsonStore store)
 
 /// <summary>
 /// Hands a moved CLI's tickets back (M.ORCH-T637). Landed: its claims are put on the CLI as it is now (its process and session on
-/// the new login) and its CLI is left a nudge to start their subagents again in the same worktrees, under the new account (added to its next
+/// the new login) and its CLI is left a nudge to start their subagents again where they were (the repo's own checkout on main, M.ORCH-T1122), under the new account (added to its next
 /// turn's context by its UserPromptSubmit hook, <see cref="CliNudges"/>; never typed into its box, M.ORCH-T864).
 /// Failed or timed out: the claims stay with the old owner, as they were, and its CLI (if it's still running) is told the same.
 /// </summary>
@@ -206,8 +206,8 @@ public sealed class MoveHandback(JsonStore store)
         }
         var tickets = string.Join(", ", ids);
         return new Result(end, ids, left, left
-            ? $"{headline}; it's told at its next prompt to start its subagents again on {tickets} in their worktrees."
-            : $"{headline}. Tell it to start its subagents again on {tickets} in their worktrees ({(pid is null ? "its CLI isn't running" : "its nudge couldn't be written")}).");
+            ? $"{headline}; it's told at its next prompt to start its subagents again on {tickets} where they were."
+            : $"{headline}. Tell it to start its subagents again on {tickets} where they were ({(pid is null ? "its CLI isn't running" : "its nudge couldn't be written")}).");
     }
 
     /// <summary>What the CLI is told, as hook context (see <see cref="AllocateWaker.Prompt"/>).</summary>
@@ -218,10 +218,10 @@ public sealed class MoveHandback(JsonStore store)
             ? $"This CLI has just moved to {m.ToName}'s login. "
             : $"Moving this CLI to {m.ToName}'s login didn't happen ({end.Why}), so it stays on its login. ";
         return head + (m.Interrupted ? "The subagents it had running were stopped for the move. " : "") +
-            $"{(claims.Count == 1 ? "This ticket is" : "These tickets are")} still claimed for this CLI, with {(claims.Count == 1 ? "its worktree" : "their worktrees")} and uncommitted changes kept: " +
-            string.Join("; ", claims.Select(c => $"{c.TicketId} (worktree {c.Directory}{(c.Model is { } model ? $", model {model}" : "")})")) + ". " +
+            $"{(claims.Count == 1 ? "This ticket is" : "These tickets are")} still claimed for this CLI, with {(claims.Count == 1 ? "its" : "their")} uncommitted changes kept: " +
+            string.Join("; ", claims.Select(c => $"{c.TicketId} (in {c.Directory}{(c.Model is { } model ? $", model {model}" : "")})")) + ". " +
             "Start a subagent on each again now, all in one message, each on the model named and with the prompt orchestrator next printed for it when it was claimed, " +
-            "working in that same worktree: don't make a new one or reset it, carry on from its uncommitted changes; land it on main and close the ticket as before. " +
+            "working in that same folder (the repo's own checkout on main, shared with its other agents; never a new worktree or branch): don't reset or stash anything, carry on from its own uncommitted changes; land it on main and close the ticket as before. " +
             "Then carry on as you were.";
     }
 }

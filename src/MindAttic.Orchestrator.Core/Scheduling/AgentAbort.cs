@@ -30,7 +30,7 @@ public sealed record AbortMark(string AgentId, DateTime AtUtc, double PercentPer
 /// login's in-flight ticket subagents to pull the trend back under (<see cref="Choose"/>: the ones not landing first, the fastest
 /// burning first) and aborts them: an abort mark in the login's <c>session-context\subagent-aborts</c> that the pace gate reads
 /// before each of that subagent's tool calls and refuses it with "stop now" (so it stops between tool calls, never mid-write or
-/// mid-commit, its worktree and uncommitted work left as they are); its claim is released and its ticket goes to the front of
+/// mid-commit, its uncommitted work left as it is); its claim is released and its ticket goes to the front of
 /// the queue for the next round (<see cref="Requeued"/>). Only subagents working a ticket are ever picked: a CLI itself, and a
 /// manual session's own subagents, are never touched.
 /// </summary>
@@ -174,7 +174,7 @@ public static partial class AgentAbort
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
-    /// <summary>Releases <paramref name="ticketId"/>'s claim (the ticket returns to the queue; its worktree is never touched) and
+    /// <summary>Releases <paramref name="ticketId"/>'s claim (the ticket returns to the queue; its work is never touched) and
     /// records it requeued, so it sorts first in the queue for the next round.</summary>
     public static void Requeue(JsonStore store, string ticketId, DateTime nowUtc)
     {

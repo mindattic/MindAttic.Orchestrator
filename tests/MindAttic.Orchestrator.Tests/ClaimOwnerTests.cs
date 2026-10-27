@@ -94,7 +94,7 @@ public sealed class ClaimOwnerTests
     {
         var snap = Snap(T("A-T1"));
         var (handed, why) = Allocate.Next(Plan(snap, []), Settings, store, ["A"], 1, claim: true, Now,
-            (repo, path, branch) => (true, path, ""), _ => "main", stillOpen: (_, _) => true, self: "sess-41", cli: First);
+            _ => "main", stillOpen: (_, _) => true, self: "sess-41", cli: First);
 
         Assert.That(why, Is.Null);
         Assert.That(handed.Single().Item.Id, Is.EqualTo("A-T1"));

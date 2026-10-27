@@ -239,7 +239,7 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
             return new(false, $"Couldn't ask the Launcher tab running the CLI in {cli.Where} (pid {cli.Pid}) to move it (no control pipe: a Launcher from before " +
                               $"M.LNCH-T52?): close it and reopen it on {to} (claude --resume {cli.SessionId}).");
         }
-        // Its subagents move with it: stopped now (their tickets stay claimed, their worktrees kept), handed back once it lands.
+        // Its subagents move with it: stopped now (their tickets stay claimed, their uncommitted work kept), handed back once it lands.
         var stopped = "";
         if (locked is { Tickets.Count: > 0 })
         {
@@ -250,7 +250,7 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
                 try { Locks!.Put(locked with { Interrupted = true }); }
                 catch (IOException) { }
             stopped = interrupted
-                ? $" Its subagents were stopped; {string.Join(", ", locked.Tickets)} stay claimed with their worktrees and are handed back to it to start again once it's there."
+                ? $" Its subagents were stopped; {string.Join(", ", locked.Tickets)} stay claimed with their work and are handed back to it to start again once it's there."
                 : $" Its subagents couldn't be stopped (sending Esc to its tab failed), so it moves once they finish; {string.Join(", ", locked.Tickets)} stay locked until then.";
         }
         return new(true, $"Asked the Launcher to move the CLI in {cli.Where} (pid {cli.Pid}) from {current ?? GlobalLabel.ToLowerInvariant()} to {(normalized ?? GlobalLabel.ToLowerInvariant())}: " +

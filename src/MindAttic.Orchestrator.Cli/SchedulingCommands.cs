@@ -103,7 +103,7 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var (_, _, _, plan) = Ctx.Load();
+        var (_, _, snapshot, plan) = Ctx.Load();
         AnsiConsole.MarkupLine($"{plan.Queue.Count} open tickets · {plan.Occupied} of {plan.Slots} session slots in use" +
             (plan.Cap < plan.Slots ? $" · pacing allows {plan.Cap}" : ""));
         AnsiConsole.MarkupLine("[grey]Order: an explicit priority (tickets ticket bump, a failing-test fix) first, then newest created first " +
@@ -118,7 +118,7 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
         foreach (var q in plan.Stale)
             AnsiConsole.MarkupLine($"[yellow]stale:[/] {q.Id} was dispatched {Formatting.Ago(q.Assignment!.StartedUtc, DateTime.UtcNow)} but nothing has happened in {Markup.Escape(q.Assignment.Directory)} since {Formatting.Ago(q.StaleSinceUtc, DateTime.UtcNow)}; it's back in the queue");
         foreach (var f in plan.Finished)
-            AnsiConsole.MarkupLine($"[aqua]done:[/] {f.TicketId} is closed{(f.Worktree ? $"; worktree {Markup.Escape(f.Directory)} can go: orchestrator release {f.TicketId} --remove-worktree" : "")}");
+            AnsiConsole.MarkupLine($"[aqua]done:[/] {f.TicketId} is closed{(OldWorktree(f, snapshot) ? $"; its old worktree {Markup.Escape(f.Directory)} can go: orchestrator release {f.TicketId} --remove-worktree" : "")}");
         // Went dark mid-task (M.ORCH-T748): apart from an ordinary open ticket, at once rather than at the next session's start.
         var orphaned = WriteOrphans(Ctx.Store()).Where(r => r.Open).ToDictionary(r => r.TicketId, StringComparer.OrdinalIgnoreCase);
 
@@ -142,6 +142,10 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
 
     private static string Trim(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
 
+    /// <summary>Whether a finished assignment has a worktree of its own to remove: only one made before M.ORCH-T1122.</summary>
+    private static bool OldWorktree(Assignment a, Snapshot snapshot) =>
+        snapshot.Repos.FirstOrDefault(r => r.Path.Length > 0 && r.Name.Equals(a.Repo, StringComparison.OrdinalIgnoreCase)) is { } repo && a.InOwnWorktree(repo.Path);
+
     /// <summary>Says each ticket that went dark mid-task and what became of it (M.ORCH-T748): waiting or given up on in red,
     /// redispatched in grey. Returns the records.</summary>
     internal static IReadOnlyList<OrphanRecord> WriteOrphans(JsonStore store)
@@ -163,10 +167,6 @@ internal sealed class DispatchCommand : Command<DispatchCommand.Settings>
 
         [CommandOption("--provider <PROVIDER>")]
         public string? Provider { get; init; }
-
-        [CommandOption("--worktree")]
-        [Description("Force a worktree even when the repo is free.")]
-        public bool Worktree { get; init; }
     }
 
     public override int Execute(CommandContext context, Settings settings)
@@ -184,7 +184,8 @@ internal sealed class DispatchCommand : Command<DispatchCommand.Settings>
         if (item.IsAssigned) { AnsiConsole.MarkupLine($"[yellow]{item.Id} is already assigned; release it first.[/]"); return 1; }
 
         if (Ctx.Provider(settings.Provider ?? store.LoadSettings().DefaultProvider) is not { } provider) return 1;
-        var r = Ctx.Dispatcher(store).Dispatch(item, provider, settings.Worktree || item.NeedsWorktree);
+        // In the repo's own checkout on main, whatever else runs there (M.ORCH-T1122): no worktree, no branch.
+        var r = Ctx.Dispatcher(store).Dispatch(item, provider);
         AnsiConsole.MarkupLine(r.Ok ? Markup.Escape(r.Message) : $"[red]{Markup.Escape(r.Message)}[/]");
         return r.Ok ? 0 : 1;
     }
@@ -198,6 +199,7 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
         public string Ticket { get; init; } = "";
 
         [CommandOption("--remove-worktree")]
+        [Description("Also remove its old worktree (one made before M.ORCH-T1122; nothing makes one now).")]
         public bool RemoveWorktree { get; init; }
     }
 
@@ -207,7 +209,7 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
         var a = store.LoadAssignments().FirstOrDefault(x => x.TicketId.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase));
         // An orphaned ticket released is yours (M.ORCH-T748): the daemon no longer redispatches or holds it back.
         var wasOrphan = OrphanWatch.Forget(store, settings.Ticket);
-        if (wasOrphan) AnsiConsole.MarkupLine($"{Markup.Escape(settings.Ticket)} is no longer tracked as orphaned; its worktree is left as it is.");
+        if (wasOrphan) AnsiConsole.MarkupLine($"{Markup.Escape(settings.Ticket)} is no longer tracked as orphaned; its work is left as it is.");
         if (a is null && wasOrphan) return 0;
         if (a is null) { AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(settings.Ticket)} isn't assigned.[/]"); return 1; }
         var dispatcher = Ctx.Dispatcher(store);
@@ -329,11 +331,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public bool? ResumeAfterReset { get; init; }
 
         [CommandOption("--orphan-redispatches <N>")]
-        [Description("How many times a ticket whose CLI or tab exited mid-task (orphaned) is redispatched, handed back to its repo's /allocate CLI or started again in a new tab in its worktree, before it's left for you as one that keeps dying (default 3; 0 only shows it as orphaned).")]
+        [Description("How many times a ticket whose CLI or tab exited mid-task (orphaned) is redispatched, handed back to its repo's /allocate CLI or started again in a new tab in its repo's checkout, before it's left for you as one that keeps dying (default 3; 0 only shows it as orphaned).")]
         public int? OrphanRedispatches { get; init; }
 
         [CommandOption("--orphan-quiet <MINUTES>")]
-        [Description("Minutes a dispatch's CLI or tab must be gone, with nothing written in its worktree, before it counts as orphaned (default 10).")]
+        [Description("Minutes a dispatch's CLI or tab must be gone, with nothing working its ticket, before it counts as orphaned (default 10).")]
         public int? OrphanQuiet { get; init; }
 
         [CommandOption("--tab-blink-tokens <N>")]
@@ -376,7 +378,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public string? AlertTo { get; init; }
 
         [CommandOption("--hand-minutes <N>")]
-        [Description("Kept for older setups; it has no effect now: /allocate hands tickets to the typing CLI's own subagents, each in its own worktree.")]
+        [Description("Kept for older setups; it has no effect now: /allocate hands tickets to the typing CLI's own subagents, all in the repo's own checkout on main.")]
         public int? HandMinutes { get; init; }
 
         [CommandOption("--allocate-skip <REPOS>")]
@@ -659,7 +661,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             " · a new CLI starts with it off until /allocate is typed there" +
             (s.KeepGoing ? " · /allocate CLIs keep going through their workable tickets without asking" : " · /allocate CLIs may stop between tickets") +
             (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset") +
-            (s.OrphanRedispatches > 0 ? $" · a ticket whose CLI or tab exited mid-task is orphaned after {s.OrphanQuietMinutes} quiet min and redispatched in its worktree, up to {s.OrphanRedispatches} times"
+            (s.OrphanRedispatches > 0 ? $" · a ticket whose CLI or tab exited mid-task is orphaned after {s.OrphanQuietMinutes} quiet min and redispatched in its repo's checkout, up to {s.OrphanRedispatches} times"
                 : $" · a ticket whose CLI or tab exited mid-task is shown as orphaned after {s.OrphanQuietMinutes} quiet min, not redispatched") +
             (s.AutoLogin ? " · a new Claude tab goes on a free per-CLI login (one CLI per account), else the global login" : " · a new Claude tab uses the global login unless given --account") +
             (s.RebalanceLogins ? " · a CLI on a login that runs low moves to a free login with more headroom" : " · a CLI stays on its login when it runs low") +
@@ -677,7 +679,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (!string.IsNullOrWhiteSpace(s.PsstAlertTo) ? $"text {Markup.Escape(s.PsstAlertTo!)} through Psst (--alert-to)" : "text nobody (--alert-to)"));
         AnsiConsole.MarkupLine("  exempt from pacing (their turns skip every gate, spend still counted): " +
             (s.ExemptCommands.Count > 0 ? Markup.Escape(string.Join(", ", s.ExemptCommands)) : "none"));
-        AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} · " +
+        AnsiConsole.MarkupLine($"  tickets worked in each repo's own checkout on main; tool worktrees under {Markup.Escape(s.WorktreeRoot)} · " +
             (s.StaleAfterHours > 0 ? $"assignments go stale after {s.StaleAfterHours}h quiet" : "assignments never go stale") + " · " +
             (s.DiskWarnGb > 0 ? $"alerts under {s.DiskWarnGb:0.#} GB free disk (urgent under {Math.Min(s.DiskCriticalGb, s.DiskWarnGb):0.#} GB)" : "disk space not watched"));
         AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} · {s.MaxSessionsPerRepo} sessions per repo" +

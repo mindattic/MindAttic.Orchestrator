@@ -5,9 +5,9 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Scheduling;
 
 /// <summary>
-/// Starts a queued ticket: in the repo itself when it's free, otherwise in a git worktree on its own
-/// branch so two agents never edit the same checkout. Records the assignment so the ticket leaves the
-/// queue until it's closed.
+/// Starts a queued ticket in the repo's own checkout, on main (M.ORCH-T1122: never a worktree or a branch of its own, so
+/// parallel agents in one repo share the checkout and each touches only its ticket's files). Records the assignment so the
+/// ticket leaves the queue until it's closed.
 /// </summary>
 public sealed class Dispatcher(SessionControl sessions, JsonStore store)
 {
@@ -26,10 +26,9 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     /// <param name="submit">Press Enter on the pre-filled prompt once the agent is up (auto-submit repos only).</param>
     /// <param name="login">The login a Claude tab opens on; null picks one as a new tab's is (Auto, else the global login).</param>
     /// <param name="prompt">The tab's opening prompt; null is <see cref="Scheduler.PromptFor"/>'s (M.ORCH-T748: a redispatch carries its work forward).</param>
-    public Result Dispatch(QueueItem item, string provider, bool useWorktree, bool submit = false, TabLogin? login = null, string? prompt = null)
+    public Result Dispatch(QueueItem item, string provider, bool submit = false, TabLogin? login = null, string? prompt = null)
     {
         prompt ??= Scheduler.PromptFor(item);
-        var settings = store.LoadSettings();
         // The caller's plan may be seconds old: an /allocate CLI's `next --claim` (or another window) may have taken the
         // ticket since. Only the assignment the plan saw (a stale one) may be replaced.
         bool ClaimedElsewhere(IEnumerable<Assignment> all) => all.Any(a => a.TicketId == item.Id && a != item.Assignment);
@@ -52,15 +51,10 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         if (orgs.Active && !item.IsPinned && provider == Providers.Claude && login?.Email is { } chosen && orgs.OrgOfLogin(chosen) != orgId)
             return new Result(false, $"{item.Id} is {orgs.NameOf(orgId)}'s: it starts only on its members' logins, not {chosen} ({orgs.NameOf(orgs.OrgOfLogin(chosen))}). " +
                 "orchestrator orgs repo moves a repo to another org.", null);
+        // The repo's own checkout, on main (M.ORCH-T1122): no worktree, no branch. The title names the ticket, which is how a
+        // tab in a checkout other agents share is told apart from theirs (OrphanWatch).
         var directory = item.RepoPath;
-        if (useWorktree)
-        {
-            var (ok, path, error) = EnsureWorktree(item.RepoPath, Path.Combine(settings.WorktreeRoot, item.Repo, item.Id), BranchFor(item.Id));
-            if (!ok) return new Result(false, error, null);
-            directory = path;
-        }
-
-        var title = useWorktree ? $"{item.Repo} {item.Id}" : item.Repo;
+        var title = $"{item.Repo} {item.Id}";
         Func<string, bool>? eligible = orgs.Active && !item.IsPinned ? email => orgs.OrgOfLogin(email) == orgId : null;
         string? pickedEmail = null;
         var (startError, cameUp) = OpenTab is { } seam ? seam(title, directory, provider, prompt, submit)
@@ -68,7 +62,8 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         if (startError is not null) return new Result(false, startError, null);
 
         // With no login chosen, the one the picker chose works it (bughunt 2026-10-27).
-        var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree) { Account = AccountDirs.Normalize(login?.Email ?? pickedEmail) };
+        // Recorded as dispatched (the Worktree flag, M.ORCH-T1122) so the orphan watch and the claim counts see it, in the checkout.
+        var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, true) { Account = AccountDirs.Normalize(login?.Email ?? pickedEmail) };
         var raced = false;
         store.UpdateAssignments(all =>
         {
@@ -80,8 +75,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         // Who works it, for Tickets Desktop's link back (M.ORCH-T766): its login now, its session once the daemon sees the tab's.
         Tickets.TicketWorking.Set(Path.GetDirectoryName(item.RepoPath), item.Id, assignment.Account, null);
 
-        var where = useWorktree ? $"worktree {directory} (branch {BranchFor(item.Id)})" : item.Repo;
-        return new Result(true, $"Opened {provider} on {item.Id} in {where}. " + (!submit
+        return new Result(true, $"Opened {provider} on {item.Id} in {item.Repo}'s checkout ({directory}), on main. " + (!submit
             ? "Its prompt is pre-filled; press Enter in the tab to begin."
             : "Its prompt submits by itself once the agent is up."), assignment, cameUp);
     }
@@ -187,11 +181,11 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         if (workspaceRoot is not null) Tickets.TicketWorking.Clear(workspaceRoot, ticketId);
     }
 
-    /// <summary>Removes a finished assignment's worktree. git refuses if it has uncommitted changes,
-    /// and the branch is kept, so nothing unmerged is lost.</summary>
+    /// <summary>Removes a finished assignment's worktree: only one made before M.ORCH-T1122 has one (any other is just released).
+    /// git refuses if it has uncommitted changes, and the branch is kept, so nothing unmerged is lost.</summary>
     public Result RemoveWorktree(Assignment a, string repoPath)
     {
-        if (!a.Worktree) { Release(a.TicketId); return new Result(true, $"{a.TicketId} released.", null); }
+        if (!a.InOwnWorktree(repoPath)) { Release(a.TicketId); return new Result(true, $"{a.TicketId} released.", null); }
         var (code, output) = Git(repoPath, "worktree", "remove", a.Directory);
         if (code != 0 && IsWorktree(repoPath, a.Directory))
             return new Result(false, output.Contains("Permission denied", StringComparison.OrdinalIgnoreCase)
@@ -220,84 +214,9 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             string.Equals(Path.GetFullPath(l[9..].Trim()).TrimEnd('\\', '/'), target, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>The branch a ticket's worktree was on before M.ORCH-T1122 (orch/&lt;id&gt;). Nothing makes one now; landing and the
+    /// sweep still recognize an old one, and delete it once it's fully merged.</summary>
     public static string BranchFor(string ticketId) => "orch/" + ticketId.ToLowerInvariant();
-
-    internal static (bool Ok, string Path, string Error) EnsureWorktree(string repoPath, string path, string branch)
-    {
-        if (Directory.Exists(path) && (File.Exists(Path.Combine(path, ".git")) || Directory.Exists(Path.Combine(path, ".git"))))
-        {
-            // Reused as it is, unless it's clean and everything in it is already on the main line (the ticket landed, then
-            // was reopened or its claim went stale): then it moves up to the main line, not handed out days behind (M.ORCH-T367).
-            // As a commit: with no origin the start point is the repo's own HEAD, which inside the worktree would mean its own.
-            var current = Git(repoPath, "rev-parse", StartPoint(repoPath)).Output.Trim();
-            if (current.Length > 0 && Git(path, "status", "--porcelain").Output.Trim().Length == 0 &&
-                Git(path, "merge-base", "--is-ancestor", "HEAD", current).Code == 0)
-                Git(path, "merge", "--ff-only", "-q", current);
-            LinkSiblingPackages(repoPath, path);
-            return (true, path, "");
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        // A worktree folder deleted by hand is still registered with git, its branch "checked out" there, so adding it again
-        // would fail every time: let git forget worktrees whose folders are gone first.
-        Git(repoPath, "worktree", "prune");
-        var (exists, _) = Git(repoPath, "rev-parse", "--verify", "--quiet", "refs/heads/" + branch);
-        var start = StartPoint(repoPath);
-        // A branch with work of its own is checked out as it is; one whose every commit is already on the main line (the
-        // ticket landed, was reopened and claimed again) starts over from it, not from where it landed weeks ago (M.ORCH-T360).
-        var landed = exists == 0 && Git(repoPath, "merge-base", "--is-ancestor", "refs/heads/" + branch, start).Code == 0;
-        var (code, output) = exists == 0 && !landed
-            ? Git(repoPath, "worktree", "add", path, branch)
-            : Git(repoPath, "worktree", "add", landed ? "-B" : "-b", branch, path, start);
-        if (code == 0) LinkSiblingPackages(repoPath, path);
-        return code == 0 ? (true, path, "") : (false, path, $"git worktree add failed: {output.Trim()}");
-    }
-
-    /// <summary>A Unity manifest's <c>file:../../Sibling/...</c> package paths resolve from the repo's Packages folder to its
-    /// sibling repos; from a worktree (root\Repo\Ticket) they'd land in root\Repo. Junction each referenced sibling into
-    /// that folder so the packages load unedited (M.ORCH-T652). Best effort: a failure leaves the worktree as it was.</summary>
-    internal static void LinkSiblingPackages(string repoPath, string worktree)
-    {
-        try
-        {
-            var manifest = Path.Combine(worktree, "Packages", "manifest.json");
-            if (!File.Exists(manifest)) return;
-            var siblings = Path.GetDirectoryName(Path.GetFullPath(repoPath).TrimEnd('\\', '/'));
-            var linkDir = Path.GetDirectoryName(Path.GetFullPath(worktree).TrimEnd('\\', '/'));
-            if (siblings is null || linkDir is null) return;
-            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(
-                         File.ReadAllText(manifest), "\"file:\\.\\./\\.\\./([^/\\\\\"]+)"))
-                names.Add(m.Groups[1].Value);
-            foreach (var name in names)
-            {
-                var target = Path.Combine(siblings, name);
-                var link = Path.Combine(linkDir, name);
-                if (!Directory.Exists(target) || Directory.Exists(link) || File.Exists(link)) continue;
-                if (OperatingSystem.IsWindows())
-                {
-                    if (!AccountDirs.TryMklinkArguments(link, target, out var cmdLine)) continue;
-                    var psi = new ProcessStartInfo("cmd.exe") { Arguments = cmdLine, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
-                    using var p = Process.Start(psi);
-                    p?.StandardOutput.ReadToEnd();
-                    p?.StandardError.ReadToEnd();
-                    p?.WaitForExit(10_000);
-                }
-                else Directory.CreateSymbolicLink(link, target);
-            }
-        }
-        catch (Exception) { } // the worktree exists by now: nothing here may fail it
-    }
-
-    /// <summary>Where a new ticket branch starts: the repo's main line as origin has it, not whatever your checkout has
-    /// checked out (a feature branch of yours would otherwise ride along onto main with the agent's work); HEAD only
-    /// when there's no origin to start from.</summary>
-    internal static string StartPoint(string repoPath)
-    {
-        Git(repoPath, "fetch", "-q", "origin");
-        var line = "origin/" + Mainline(repoPath);
-        return Git(repoPath, "rev-parse", "--verify", "--quiet", line).Code == 0 ? line : "HEAD";
-    }
 
     internal static readonly TimeSpan GitTimeout = TimeSpan.FromMinutes(2);
 

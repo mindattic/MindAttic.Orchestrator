@@ -169,7 +169,7 @@ public sealed class AllocateWakerTests
         Assert.That(w.Tickets, Is.EqualTo(new[] { "A-T2", "A-T1" }), "in queue order: newest first (M.ORCH-T863)");
         // M.ORCH-T864: the user's input box was typed over mid-sentence; the nudge is hook context now, never typed.
         Assert.That(File.ReadAllText(Path.Combine(cycler.Directory, $"nudge-{Cli}-claims.txt")),
-            Does.Contain("near 65%, under its 98% target").And.Contain(@"A-T1 (worktree D:\WT\A\A-T1)").And.Contain("Overlapping files are no reason to wait"));
+            Does.Contain("near 65%, under its 98% target").And.Contain(@"A-T1 (in D:\WT\A\A-T1)").And.Contain("Overlapping files are no reason to wait"));
 
         Assert.That(waker.TickClaims(snap, plan, Settings, Now.AddMinutes(1)), Is.Empty, "one wake, not one every tick");
         Assert.That(Nudges(), Has.Count.EqualTo(1));

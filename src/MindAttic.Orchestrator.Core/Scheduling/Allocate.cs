@@ -7,8 +7,8 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// <summary>
 /// The daemon's side of allocate. <c>/allocate</c> runs inside the CLI it's typed into, as that CLI's subagents
 /// (<c>orchestrator next --claim</c>); here the lease holder (<see cref="DispatchLease"/>) reaps headless background
-/// agents started before that (M.ORCH-T164), giving back a ticket one left unclosed, sweeps the worktrees of landed
-/// tickets, and works out why allocate would wait (switched off, quiet hours, machine health, the pace). The
+/// agents started before that (M.ORCH-T164), giving back a ticket one left unclosed, sweeps the old worktrees of landed
+/// tickets (none is made since M.ORCH-T1122: every ticket is worked in its repo's own checkout on main), and works out why allocate would wait (switched off, quiet hours, machine health, the pace). The
 /// starting half of <see cref="Tick"/> runs only when <see cref="Order"/> names repos, which nothing in production does.
 /// </summary>
 public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLease? lease = null)
@@ -17,11 +17,10 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     internal Func<Assignment, bool> IsRunning { get; init; } = a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
     internal Func<int, DateTime?> StartTimeOf { get; init; } = BackgroundAgent.StartTimeOf;
     // The daemon no longer starts headless background agents (M.ORCH-T164): /allocate runs inside the CLI it's typed into, as
-    // that CLI's subagents (see Next). Tick still reaps agents started before, lands their work and sweeps finished worktrees.
+    // that CLI's subagents (see Next). Tick still reaps agents started before, lands their work and sweeps old finished worktrees.
     internal Func<IReadOnlyList<string>?> Order { get; init; } = () => null;
     internal Func<int, bool> Alive { get; init; } = ContextCycler.IsClaude;
     internal string LogDirectory { get; init; } = BackgroundAgent.LogDirectory;
-    internal Func<string, string, string, (bool Ok, string Path, string Error)> MakeWorktree { get; init; } = Dispatcher.EnsureWorktree;
     internal Func<string, string> MainlineOf { get; init; } = Dispatcher.Mainline;
 
     /// <summary>Where the shared statusline reads which repos wait on the pace (<see cref="DefaultWaitingPath"/>);
@@ -118,8 +117,8 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             : PaceHold(plan, snapshot);
         if (repos.Count == 0 || Paused is not null || HeldElsewhere) return Done(Paused is not null && Paused == PaceHold(plan, snapshot));
 
-        // Every agent gets its own worktree, so a repo runs as many stories at once as its session limit and the
-        // pace allow, and nobody's checkout (yours included) is ever edited under them.
+        // Every agent works in its repo's own checkout on main (M.ORCH-T1122), touching only its ticket's files, so a repo
+        // runs as many stories at once as its session limit and the pace allow.
         var running = Working.Count;
         // Weekly-aware (M.ORCH-T666): a ticket must fit the week's room too.
         var room = settings.WeeklyAwarePacing ? plan.Pace?.FitRoomTokens : plan.Pace?.RoomTokens;
@@ -145,7 +144,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 paceBound = true;
                 break;
             }
-            // Worktrees keep agents apart, so a repo is only capped if you've capped it yourself.
+            // Each agent touches only its own ticket's files, so a repo is only capped if you've capped it yourself.
             if (inRepo[repo.Name] >= OrchestratorSettings.ForRepo(settings.RepoMaxSessions, repo.Name, int.MaxValue))
             {
                 Tell(repo.Name, $"allocate: {repo.Name} has {inRepo[repo.Name]} agents working, the cap you set for it (settings --repo-sessions)");
@@ -160,16 +159,10 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 continue;
             }
 
-            var branch = Dispatcher.BranchFor(next.Id);
-            var (ok, tree, error) = MakeWorktree(repo.Path, Path.Combine(settings.WorktreeRoot, repo.Name, next.Id), branch);
-            if (!ok)
-            {
-                Tell(repo.Name, $"allocate: couldn't make a worktree for {next.Id}: {error}");
-                failed.Add(repo.Name);
-                continue;
-            }
+            // In the repo's own checkout, on main: no worktree, no branch (M.ORCH-T1122).
+            var tree = repo.Path;
             var log = Path.Combine(LogDirectory, $"{next.Id}-{nowUtc.ToLocalTime():yyyyMMdd-HHmm}.log");
-            if (Start(tree, PromptFor(next, tree, branch, MainlineOf(repo.Path)), log) is not { } pid)
+            if (Start(tree, PromptFor(next, tree, MainlineOf(repo.Path)), log) is not { } pid)
             {
                 Tell(repo.Name, $"allocate: couldn't start an agent in {repo.Name}");
                 failed.Add(repo.Name);
@@ -221,14 +214,17 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     }
 
     /// <summary>
-    /// The story's prompt for an agent in its own worktree. It starts like <see cref="Scheduler.PromptFor"/> (so its
-    /// session is tied to the ticket), lands the branch on main itself, then closes the ticket in the ticket
-    /// database (the same database from any folder, worktrees included).
+    /// The story's prompt for an agent (M.ORCH-T1122): it works in the repo's own checkout on main, which other agents on the
+    /// same repo share, never a worktree or branch of its own. It starts like <see cref="Scheduler.PromptFor"/> (so its
+    /// session is tied to the ticket), stages only its own files, lands on main itself, then closes the ticket in the ticket
+    /// database.
     /// </summary>
-    internal static string PromptFor(QueueItem item, string worktree, string branch, string mainline = "main", ModelChoice.Choice? model = null) =>
+    internal static string PromptFor(QueueItem item, string checkout, string mainline = "main", ModelChoice.Choice? model = null) =>
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
-        $"You have your own git worktree of {item.Repo} ({worktree}, branch {branch}) so other agents can work {item.Repo} at the same time: " +
-        "run every command from that folder (cd there first) and edit only files under it; work, build and test only there. " +
+        $"Work in {item.Repo}'s own checkout ({checkout}) on {mainline}, never a separate branch or worktree: run every command from that folder (cd there first). " +
+        $"Other agents may be working {item.Repo} in this same checkout at the same time, so touch only the files this ticket needs and leave every change " +
+        "you didn't make as it is (never git add -A or git add ., git stash, git reset, git checkout -- or git clean). " +
+        $"If the checkout isn't on {mainline}, don't switch it: say so and stop. " +
         // Run headless (-p): the run ends with your last turn, so a subagent left running in the background is cut off with it.
         "Run any subagents in the foreground, never in the background. " +
         // M.ORCH-T561: the full suite (often 20+ minutes that spend no tokens) is the daemon's, run on main after the landing
@@ -238,12 +234,14 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         "Do these steps in order: " +
         "1. When the work is done, build it to check it; do not run any tests (not even the ones your change touches), " +
         $"because once you land, the orchestrator runs {item.Repo}'s full suite on {mainline} itself and files a fix ticket for any test that fails, so don't wait for a full run. " +
-        $"2. Commit with plain git commit (not /commit, whose gate runs the test suite), with {item.Id} at the end of the subject; no push yet, the steps below do that, so keep going. " +
+        $"2. Commit this ticket's work alone, as one commit: stage only the files you changed, each by its explicit path (git add <path> ...), then plain git commit " +
+        $"(not /commit, whose gate runs the test suite), with {item.Id} at the end of the subject; no push yet, the steps below do that, so keep going. " +
         // M.ORCH-T563: a Sonnet ticket's big or risky diff gets one Opus review of the diff alone before it lands.
         (model is { IsSonnet: true } ? "3. " + ReviewStep(item.Id) : "") +
-        $"{(model is { IsSonnet: true } ? 4 : 3)}. Land it on {item.Repo}'s main line, {mainline}: git fetch origin, git rebase origin/{mainline} (resolve any conflicts, then rebuild), git push origin HEAD:{mainline}. " +
+        $"{(model is { IsSonnet: true } ? 4 : 3)}. Land it on {item.Repo}'s main line, {mainline}: git pull --rebase --autostash origin {mainline} " +
+        $"(resolve any conflicts in your own files, then rebuild), then git push origin HEAD:{mainline}. " +
         // Found live (M.ORCH-T178): chained after the push, a rejected push (main moved) still closed the ticket, unlanded, on a pre-rebase hash.
-        $"If the push is rejected because {mainline} moved, fetch, rebase and push again. " +
+        $"If the push is rejected because {mainline} moved, pull --rebase --autostash and push again. " +
         $"{(model is { IsSonnet: true } ? 5 : 4)}. Only once the push has succeeded, as its own step, " +
         $"mark it finished: tickets ticket close {item.Id} --ref <the commit hash as it landed on {mainline}>. " +
         "You are done only when the push has succeeded and the ticket is closed. " +
@@ -251,21 +249,21 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
 
     /// <summary>What a Sonnet ticket's prompt says between its commit and its landing (M.ORCH-T563).</summary>
     internal static string ReviewStep(string id) =>
-        $"Before landing, run orchestrator review {id} from the worktree: it decides whether this Sonnet ticket's diff needs its one Opus " +
+        $"Before landing, run orchestrator review {id} from the checkout: it decides whether this Sonnet ticket's diff needs its one Opus " +
         "review (a big diff, or one touching the gates, pacing or git landing) and, if so, runs it on the diff alone. Fix what the review " +
         "finds that's really wrong, rebuild and commit that with plain git commit; don't run the review again. ";
 
     /// <summary>
-    /// Agents that exited. A worktree agent is done when its ticket is closed (in the ticket database, or on origin/main
-    /// before the migration) and its branch is on origin/main: then your checkout is fast-forwarded (git refuses if that
-    /// would touch your own changes) and the worktree removed (git keeps it if anything there is uncommitted). Otherwise
-    /// the ticket goes back in the queue, parked for you.
+    /// Agents that exited. One in the repo's checkout (every one since M.ORCH-T1122) is done when its ticket is closed: it
+    /// pushed to main itself. One started before in a worktree of its own is done when its ticket is closed (in the ticket
+    /// database, or on origin/main before the migration) and its branch is on origin/main: then your checkout is
+    /// fast-forwarded (git refuses if that would touch your own changes) and the worktree removed (git keeps it if anything
+    /// there is uncommitted). Otherwise the ticket goes back in the queue, parked for you.
     /// </summary>
     private void Reap(SchedulePlan plan, Snapshot snapshot, List<string> said)
     {
-        // A tab's assignment (no agent of ours, no worktree to tidy) whose ticket closed is simply done; kept, it was
-        // listed as "done" by every queue forever.
-        // A claim by a CLI's subagent (orchestrator next) is the same: its worktree is tidied by the sweep once landed.
+        // A tab's assignment (no agent of ours) whose ticket closed is simply done; kept, it was listed as "done" by every
+        // queue forever. A claim by a CLI's subagent (orchestrator next) is the same; an old one's worktree is tidied by the sweep.
         var finishedTabs = plan.Finished.Where(a => a.Log is null).Select(a => a.TicketId).ToHashSet(StringComparer.Ordinal);
         if (finishedTabs.Count > 0) store.UpdateAssignments(all => all.RemoveAll(a => a.Log is null && finishedTabs.Contains(a.TicketId)));
         // Nobody works a finished ticket (M.ORCH-T766): cleared in the ticket database, as the daemon's sync would next tick.
@@ -282,7 +280,9 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 ?? plan.Queue.FirstOrDefault(q => Same(q.Repo, a.Repo))?.RepoPath ?? a.Directory;
             bool closed;
             string note;
-            try { (closed, note) = a.Worktree ? Land(a, repoPath) : (!plan.Queue.Any(q => q.Id == a.TicketId), ""); }
+            // Only an agent started before M.ORCH-T1122 has a worktree of its own to land and tidy; one in the checkout pushed
+            // to main itself, so it's done when its ticket is closed.
+            try { (closed, note) = a.InOwnWorktree(repoPath) ? Land(a, repoPath) : (!plan.Queue.Any(q => q.Id == a.TicketId), ""); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
             {
                 // The ticket database busy (as StillOpen allows for): unknown, not unfinished. Kept, and judged again next tick,
@@ -291,7 +291,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 said.Add($"allocate: couldn't tell whether {a.TicketId} in {a.Repo} landed ({ex.Message}); trying again next tick");
                 continue;
             }
-            // Halted by the window's stop, it didn't fail: its work stays in its worktree and it carries on after the reset.
+            // Halted by the window's stop, it didn't fail: its work stays where it was and it carries on after the reset.
             var halted = !closed && plan.Stopped;
             if (!closed && !halted) parked.Add(a.TicketId);
             // Landed, given back or halted, its agent is gone: nobody works it now (M.ORCH-T766).
@@ -313,7 +313,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     private DateTime sweptUtc;
 
     /// <summary>
-    /// Worktrees under <see cref="OrchestratorSettings.WorktreeRoot"/> that no agent is on (no assignment, no tab open there, no
+    /// Old ticket worktrees (made before M.ORCH-T1122; nothing makes one now) under <see cref="OrchestratorSettings.WorktreeRoot"/> that no agent is on (no assignment, no tab open there, no
     /// session written from there in <see cref="Scheduler.WorkingWithin"/>) and whose ticket is no longer
     /// open: landed, they're removed (as <see cref="Land"/> would have, had it not missed them, e.g. on a repo landing on
     /// master before that was understood); not landed, they're kept and named once, since the work is only there.
@@ -358,7 +358,8 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         }
     }
 
-    /// <summary>Whether a worktree agent's ticket landed closed on origin/main, after tidying up; and what to add about it.</summary>
+    /// <summary>Whether an old worktree agent's ticket landed closed on origin/main, after tidying up; and what to add about it.
+    /// Only for a worktree made before M.ORCH-T1122: an assignment in the repo's checkout never comes here.</summary>
     internal Func<Assignment, string, (bool Closed, string Note)> Land { get; init; } = LandOnMain;
 
     internal static (bool Closed, string Note) LandOnMain(Assignment a, string repoPath)
@@ -396,14 +397,27 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             note += Dispatcher.Git(repoPath, "merge", "--ff-only", "-q", $"origin/{mainline}").Code == 0
                 ? "; your checkout is up to date with it" : $"; pull {mainline} to get it (your checkout has changes in the way)";
         if (closed)
-            note += Dispatcher.Git(repoPath, "worktree", "remove", a.Directory).Code == 0
-                ? "" : $"; its worktree {a.Directory} kept (something there is uncommitted)";
+        {
+            if (Dispatcher.Git(repoPath, "worktree", "remove", a.Directory).Code == 0) DeleteMergedBranch(repoPath, a.TicketId, mainline);
+            else note += $"; its worktree {a.Directory} kept (something there is uncommitted)";
+        }
         else note += $"; its work is in {a.Directory} (branch {Dispatcher.BranchFor(a.TicketId)})";
         return (closed, note);
     }
 
-    /// <summary>A ticket handed to a CLI's subagent: where it works, what it's told, and the model it runs on (M.ORCH-T563).</summary>
-    public sealed record Handout(QueueItem Item, string? Worktree, string? Prompt, ModelChoice.Choice? Model = null)
+    /// <summary>Deletes ticket <paramref name="ticketId"/>'s old <c>orch/</c> branch once every commit on it is on
+    /// origin/<paramref name="mainline"/> (M.ORCH-T1122: none is made now); one with work of its own is kept. Best effort.</summary>
+    internal static void DeleteMergedBranch(string repoPath, string ticketId, string mainline)
+    {
+        var branch = "refs/heads/" + Dispatcher.BranchFor(ticketId);
+        if (Dispatcher.Git(repoPath, "rev-parse", "--verify", "--quiet", branch).Code != 0) return;
+        if (Dispatcher.Git(repoPath, "merge-base", "--is-ancestor", branch, $"origin/{mainline}").Code != 0) return;
+        Dispatcher.Git(repoPath, "branch", "-D", Dispatcher.BranchFor(ticketId));
+    }
+
+    /// <summary>A ticket handed to a CLI's subagent: where it works (the repo's own checkout, M.ORCH-T1122), what it's told,
+    /// and the model it runs on (M.ORCH-T563).</summary>
+    public sealed record Handout(QueueItem Item, string? Directory, string? Prompt, ModelChoice.Choice? Model = null)
     {
         /// <summary>Not this CLI's: sent to another login, which opens a tab on it (M.ORCH-T666); null for this CLI's own.</summary>
         public LoginRoom? DelegatedTo { get; init; }
@@ -419,14 +433,14 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
           "Claimed, it's this CLI's to work: nothing else will."
         : $"Start all {claimed} now: one subagent per ticket above, all in one message, each with its own prompt and on the model it names " +
           "(the Agent tool's model: sonnet or opus). Don't hold one back " +
-          "because its files overlap another's: each works in its own worktree and rebases onto main as it lands. Claimed, they're " +
-          "this CLI's to work: nothing else will.";
+          "because its files overlap another's: they share the repo's checkout on main, each staging only its own files by path, " +
+          "and each pulls with --rebase --autostash as it lands. Claimed, they're this CLI's to work: nothing else will.";
 
     /// <summary>
     /// The next tickets a CLI running <c>/allocate</c> hands to its own subagents (M.ORCH-T164): workable ones (fixes and
     /// approved, already the only ones in the queue) of <paramref name="repos"/> ("*": all) that nobody has, in queue order,
     /// as many as the pace's subagent allowance has room for (or <paramref name="count"/>). With <paramref name="claim"/>
-    /// each gets its own worktree from the repo's main line and an assignment, so it isn't handed out twice; when nothing
+    /// each gets an assignment in the repo's own checkout on main (M.ORCH-T1122: no worktree), so it isn't handed out twice; when nothing
     /// is handed out, <c>Why</c> says why. For an <paramref name="unthrottled"/> CLI (/pacing off, M.ORCH-T195/T483) the pace's
     /// subagent allowance and room don't apply, as the pace gate skips its holds for it: it gets <paramref name="count"/>
     /// or <see cref="OrchestratorSettings.MaxConcurrentSessions"/> less the tickets already being worked or claimed (as unpaced), and the daemon's next measurement holds everyone else to make up
@@ -444,7 +458,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     /// </summary>
     public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
-        Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
+        Func<string, string>? mainlineOf = null, bool unthrottled = false,
         string? self = null, Func<Assignment, bool>? pilotRunning = null, Func<string, string, bool>? stillOpen = null,
         int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null,
         IReadOnlyDictionary<int, DateTime>? onSince = null, Func<int, string?>? loginOf = null,
@@ -453,7 +467,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     {
         // Org dispatch (M.ORCH-T753): an org's tickets go only to its own members' logins; with one org, nothing changes.
         orgs ??= OrgRouting.Load(store, settings);
-        var (handed, why) = NextHere(plan, settings, store, repos, count, claim, nowUtc, makeWorktree, mainlineOf, unthrottled, self,
+        var (handed, why) = NextHere(plan, settings, store, repos, count, claim, nowUtc, mainlineOf, unthrottled, self,
             pilotRunning, stillOpen, cli, pilots, cliRunning, onSince, loginOf, login, orgs);
         // Weekly-aware pacing (M.ORCH-T666): what this CLI's login can't fit goes to a login that can, else the fallback login, so
         // no ticket waits on a full account. Only for a claim (a dry run hands nothing out), and never for a /pacing off CLI,
@@ -527,7 +541,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
 
     private static (IReadOnlyList<Handout> Handed, string? Why) NextHere(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
-        Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree, Func<string, string>? mainlineOf, bool unthrottled,
+        Func<string, string>? mainlineOf, bool unthrottled,
         string? self, Func<Assignment, bool>? pilotRunning, Func<string, string, bool>? stillOpen,
         int? cli, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots, Func<int, bool>? cliRunning,
         IReadOnlyDictionary<int, DateTime>? onSince, Func<int, string?>? loginOf, string? login, OrgRouting orgs)
@@ -535,7 +549,6 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         cliRunning ??= ContextCycler.IsClaude;
         stillOpen ??= StillOpen;
         pilotRunning ??= a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
-        makeWorktree ??= Dispatcher.EnsureWorktree;
         mainlineOf ??= Dispatcher.Mainline;
         // A CLI on its way to another login (M.ORCH-T637) claims nothing until it lands: its own tickets are handed back then.
         if (cli is { } moving && new Sessions.MoveLocks(store).All().FirstOrDefault(m => m.Pid == moving || (self is not null && m.SessionId == self)) is { } move)
@@ -652,11 +665,11 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         }
 
         var handed = new List<Handout>();
-        // Past one it can't have (another CLI claimed it first, or its worktree failed) to the next, until `more` are handed out.
+        // Past one it can't have (another CLI claimed it first, or it closed since) to the next, until `more` are handed out.
         var claimedElsewhere = 0;
         var closedSince = 0;
         // A repo you capped (settings --repo-sessions) gets no more than that at once, counting what's already being worked
-        // there: worktrees keep agents apart, so only a cap you set applies (M.ORCH-T358).
+        // there: each agent touches only its own ticket's files, so only a cap you set applies (M.ORCH-T358).
         var inRepo = plan.Queue.Where(Busy).GroupBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
         var capped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         // When room is scarce (M.ORCH-T669: the 5-hour window's or the week's), it goes to the higher-priority tickets first: each
@@ -682,11 +695,10 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 continue;
             }
             // The plan's ticket list may be older than a `tickets ticket close` made a second ago: one closed since isn't
-            // handed out (or given a worktree) to be worked twice (M.ORCH-T489).
+            // handed out to be worked twice (M.ORCH-T489).
             if (!stillOpen(item.RepoPath, item.Id)) { closedSince++; continue; }
-            var branch = Dispatcher.BranchFor(item.Id);
-            var (ok, tree, _) = makeWorktree(item.RepoPath, Path.Combine(settings.WorktreeRoot, item.Repo, item.Id), branch);
-            if (!ok) continue;
+            // Worked in the repo's own checkout on main (M.ORCH-T1122): no worktree, no branch.
+            var tree = item.RepoPath;
             // The plan was read before the claim: another CLI's `next --claim` may have taken it since. The check and the
             // claim are one step under the assignments lock; only the (stale) assignment the plan saw may be replaced.
             var taken = false;
@@ -700,7 +712,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             // Who works it, for Tickets Desktop's link back (M.ORCH-T766): best effort, never holds up the claim.
             Tickets.TicketWorking.Set(Path.GetDirectoryName(item.RepoPath), item.Id, login, self);
             var carried = orphans.TryGetValue(item.Id, out var orphan) && orphan.State == OrphanRecord.HandedBack ? OrphanWatch.CarryForward(orphan) : "";
-            handed.Add(new Handout(item, tree, carried + PromptFor(item, tree, branch, mainlineOf(item.RepoPath), model), model));
+            handed.Add(new Handout(item, tree, carried + PromptFor(item, tree, mainlineOf(item.RepoPath), model), model));
             inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
             committed += item.Estimate?.Fresh ?? 0;
         }
@@ -708,7 +720,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             : capped.Count > 0 ? $"{string.Join(", ", capped)} {(capped.Count == 1 ? "is" : "are")} at the cap you set (settings --repo-sessions or --repo-cap); nothing else is ready"
             : claimedElsewhere > 0 ? "another CLI claimed them first; nothing else is ready"
             : closedSince > 0 ? "they were closed since the queue was read; nothing else is ready"
-            : "couldn't make a worktree for any of them (see orchestrator queue)");
+            : "nothing else fits what's left before the reset (see orchestrator queue)");
     }
 
     /// <summary>Every claim no subagent has shown up on yet, whether or not its CLI is known (a claim made where the CLI

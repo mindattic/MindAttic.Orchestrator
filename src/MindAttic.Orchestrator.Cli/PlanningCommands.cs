@@ -36,7 +36,8 @@ internal sealed class DryRunCommand : Command
     }
 }
 
-/// <summary>The next tickets a CLI running /allocate hands to its subagents: each with its worktree and full prompt when claimed.</summary>
+/// <summary>The next tickets a CLI running /allocate hands to its subagents: each with its repo checkout and full prompt when
+/// claimed (M.ORCH-T1122: worked on main there, never a worktree).</summary>
 internal sealed class NextCommand : Command<NextCommand.Settings>
 {
     public sealed class Settings : CommandSettings
@@ -53,7 +54,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         public int? Count { get; init; }
 
         [CommandOption("--claim")]
-        [Description("Claim them: make each its worktree, record it as assigned, and print the subagent's prompt.")]
+        [Description("Claim them: record each as assigned (worked in its repo's own checkout on main) and print the subagent's prompt.")]
         public bool Claim { get; init; }
     }
 
@@ -103,7 +104,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return $"couldn't prepare {email}'s login: {ex.Message}"; }
                 MindAttic.Orchestrator.Sessions.LoginPicker.Claim(account, DateTime.UtcNow);
             }
-            var r = Ctx.Dispatcher(store).Dispatch(item, MindAttic.Orchestrator.Providers.Claude, useWorktree: true, submit: true,
+            var r = Ctx.Dispatcher(store).Dispatch(item, MindAttic.Orchestrator.Providers.Claude, submit: true,
                 login: new Dispatcher.TabLogin(to.ConfigDir, to.Email));
             return r.Ok ? null : r.Message;
         }
@@ -121,7 +122,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
             Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}): {h.Item.Ticket.Summary}");
             // M.ORCH-T563: the model /allocate starts this ticket's subagent on (the Agent tool's model).
             if (h.Model is { } model) Console.WriteLine(ModelChoice.Line(model));
-            if (h.Worktree is not null) Console.WriteLine($"worktree: {h.Worktree}");
+            if (h.Directory is not null) Console.WriteLine($"checkout: {h.Directory} (on main, shared with this repo's other agents)");
             if (h.Prompt is not null) Console.WriteLine("prompt:\n" + h.Prompt + "\n");
         }
         if (why is not null) Console.WriteLine($"Nothing handed out: {why}.");
@@ -131,7 +132,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
     }
 }
 
-/// <summary>A Sonnet ticket's one Opus review of its diff before it lands (M.ORCH-T563), run from the ticket's worktree.</summary>
+/// <summary>A Sonnet ticket's one Opus review of its diff before it lands (M.ORCH-T563), run from the ticket's repo checkout.</summary>
 internal sealed class ReviewCommand : Command<ReviewCommand.Settings>
 {
     public sealed class Settings : CommandSettings

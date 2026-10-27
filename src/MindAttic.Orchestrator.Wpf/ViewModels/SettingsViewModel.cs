@@ -46,7 +46,7 @@ public sealed class SettingsViewModel : ObservableObject
     public string AgentAbortAfter { get => agentAbortAfter; set => Set(ref agentAbortAfter, value); }
     /// <summary>How many times an orphaned ticket is redispatched (M.ORCH-T748), 0 to 20; 0 only shows it as orphaned.</summary>
     public string OrphanRedispatches { get => orphanRedispatches; set => Set(ref orphanRedispatches, value); }
-    /// <summary>Minutes a dispatch's owner must be gone, nothing written in its worktree, before it's orphaned, 1 to 1440.</summary>
+    /// <summary>Minutes a dispatch's owner must be gone, nothing working its ticket, before it's orphaned, 1 to 1440.</summary>
     public string OrphanQuiet { get => orphanQuiet; set => Set(ref orphanQuiet, value); }
     /// <summary>A busy person tab's play arrow blinks once per this many tokens (M.ORCH-T757), 1 to 10,000,000.</summary>
     public string TabBlinkTokens { get => tabBlinkTokens; set => Set(ref tabBlinkTokens, value); }

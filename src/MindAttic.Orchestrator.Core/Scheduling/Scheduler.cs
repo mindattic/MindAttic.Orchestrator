@@ -53,9 +53,6 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// <summary>Whether it's assigned to a user (<see cref="Assignee"/>): see <see cref="TicketPins"/>.</summary>
     public bool IsPinned => Assignee is not null;
 
-    /// <summary>Whether starting it takes a worktree: its repo has a session, or it went stale in a worktree, where its
-    /// partial work is. Every way of starting it (the proposal, the dashboard's Start, orchestrator dispatch) asks this.</summary>
-    public bool NeedsWorktree => RepoBusy || (IsStale && Assignment!.Worktree);
 }
 
 /// <summary>An open ticket a live agent is working though no assignment says so (M.ORCH-T255): the session (and subagent,
@@ -63,8 +60,9 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
 /// this turn, the one hold the calling CLI itself is exempt from (M.ORCH-T328).</summary>
 public sealed record WorkedTicket(string TicketId, string SessionId, string? AgentId, string How, bool Filed = false);
 
-/// <summary>A ticket the scheduler thinks should start now, and how.</summary>
-public sealed record Proposal(QueueItem Item, bool UseWorktree, string Reason);
+/// <summary>A ticket the scheduler thinks should start now, and why. It starts in its repo's own checkout on main, never a
+/// worktree (M.ORCH-T1122).</summary>
+public sealed record Proposal(QueueItem Item, string Reason);
 
 /// <summary>What the scheduler concluded this round. <see cref="Slots"/> is the configured maximum;
 /// <see cref="Cap"/> is what pacing allows right now (the same when unpaced).</summary>
@@ -282,8 +280,6 @@ public static partial class Scheduler
             var why = reserved ? $"reserved {Formatting.Tokens(item.Reserved)}"
                 : item.RequiredBy.Count > 0 ? $"required by {string.Join(", ", item.RequiredBy)}"
                 : item.Priority != 0 ? $"priority {item.Priority:+#;-#}" : $"newest {item.Ticket.Type}";
-            // A stale ticket that had a worktree goes back to it: its partial work is there.
-            var worktree = item.NeedsWorktree;
             if (item.IsStale) why += $"; its last session went quiet {Formatting.Ago(item.StaleSinceUtc, snapshot.TakenUtc)}";
             if (item.Estimate is { } cost) why += $"; {cost}";
             var clash = (snapshot.LinkedRepos.GetValueOrDefault(item.Repo) ?? (IEnumerable<string>)[])
@@ -291,7 +287,8 @@ public static partial class Scheduler
                 .Order(StringComparer.OrdinalIgnoreCase).ToList();
             if (clash.Count > 0)
                 why += $"; shares duplicated code with {string.Join(", ", clash)}, which {(clash.Count == 1 ? "has" : "have")} a session: watch for conflicting edits";
-            proposals.Add(new Proposal(item, worktree, item.RepoBusy ? $"{why}; repo has a session, so it gets its own worktree" : why));
+            // In the repo's own checkout on main whatever else runs there (M.ORCH-T1122): agents there touch only their own files.
+            proposals.Add(new Proposal(item, item.RepoBusy ? $"{why}; repo has a session, so it shares the checkout (touching only its own files)" : why));
         }
 
         if (tooBig.Count > 0)
@@ -390,32 +387,32 @@ public static partial class Scheduler
     private static partial Regex BlockedByPhrase();
 
     /// <summary>
-    /// The last sign of life where an assignment was dispatched: a transcript written under its
-    /// directory, or (as "now") a Launcher tab still open there. Never earlier than the dispatch.
+    /// The last sign of life of an assignment: a transcript working it, or (as "now") a Launcher tab still running it. In the
+    /// repo's shared checkout (M.ORCH-T1122) that's judged by its ticket (a session or subagent started on it, a tab titled
+    /// for it), in an old worktree of its own by its folder (<see cref="TicketActivity"/>). Never earlier than the dispatch.
     /// </summary>
     internal static DateTime LastActivityUtc(Assignment a, Snapshot snapshot)
     {
         var last = a.StartedUtc;
+        var byFolder = TicketActivity.ByFolder(a, snapshot);
         foreach (var repo in snapshot.Repos)
         {
-            if (repo.Hosts.Any(h => IsUnder(h.WorkingDirectory, a.Directory))) return snapshot.TakenUtc;
+            if (repo.Hosts.Any(h => TicketActivity.Hosts(h, a, byFolder))) return snapshot.TakenUtc;
             foreach (var s in repo.Sessions)
-                if (s.LastWriteUtc > last && IsUnder(s.Cwd, a.Directory)) last = s.LastWriteUtc;
+            {
+                if (s.LastWriteUtc > last && TicketActivity.Works(s.Cwd, s.TicketId, a, byFolder)) last = s.LastWriteUtc;
+                if (byFolder) continue;
+                foreach (var t in s.TicketedSubagents)
+                    if (t.Events.Count > 0 && t.Events[^1].AtUtc > last && TicketActivity.Works(t.Cwd, t.TicketId, a, byFolder)) last = t.Events[^1].AtUtc;
+            }
         }
         return last;
     }
 
-    private static bool IsUnder(string? path, string directory)
-    {
-        if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(directory)) return false;
-        var p = Path.TrimEndingDirectorySeparator(path.Replace('/', '\\'));
-        var d = Path.TrimEndingDirectorySeparator(directory.Replace('/', '\\'));
-        return p.Equals(d, StringComparison.OrdinalIgnoreCase)
-            || p.StartsWith(d + "\\", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>The opening prompt for a ticket: what to do, and how to mark it done.</summary>
+    /// <summary>The opening prompt for a ticket: what to do, where (the repo's own checkout on main, M.ORCH-T1122), and how to mark it done.</summary>
     public static string PromptFor(QueueItem item) =>
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
+        $"Work in {item.Repo}'s own checkout on main, never a separate branch or worktree; other agents may share it, so touch only the files this ticket needs " +
+        "and leave every change you didn't make as it is. " +
         $"When it's done: run /commit (it commits only what you changed), then mark it finished with: tickets ticket close {item.Id} --repo {item.Repo} --ref \"<the test or commit that proves it>\"";
 }

@@ -19,7 +19,7 @@ public sealed class QueueRowViewModel : ObservableObject
     public QueueRowViewModel(QueueItem item, MainViewModel owner)
     {
         this.item = item;
-        StartCommand = new RelayCommand(() => owner.Shown.Dispatch(this.item, this.proposal?.UseWorktree ?? this.item.NeedsWorktree), () => !this.item.IsAssigned && this.item.MayWork && !owner.IsStarting(this.item.Id) && !IsMoving);
+        StartCommand = new RelayCommand(() => owner.Shown.Dispatch(this.item), () => !this.item.IsAssigned && this.item.MayWork && !owner.IsStarting(this.item.Id) && !IsMoving);
         ReleaseCommand = new RelayCommand(() => owner.Shown.Release(this.item.Id), () => this.item.IsAssigned && !IsMoving);
     }
 
@@ -42,14 +42,13 @@ public sealed class QueueRowViewModel : ObservableObject
     public double RowOpacity => IsAssigned ? 0.6 : 1;
     public bool IsNext => proposal is not null;
     public string Reason => proposal?.Reason ?? "";
-    public string Where => proposal?.UseWorktree == true || (proposal is null && item.NeedsWorktree) ? "in a worktree" : "in the repo";
 
     public string Status => IsMoving ? MovingText : item switch
     {
         { BlockedBy.Count: > 0 } => $"Waits for {string.Join(", ", item.BlockedBy)}",
         { IsStale: true } => $"Stale: quiet {Formatting.Ago(item.StaleSinceUtc, DateTime.UtcNow)}",
         { TooBig: true } => $"Too big for what's left ({item.Estimate}): split it or wait for the reset",
-        { Assignment: { } a } => $"{a.Provider} since {Formatting.Ago(a.StartedUtc, DateTime.UtcNow)}{(a.Worktree ? " · worktree" : "")}" +
+        { Assignment: { } a } => $"{a.Provider} since {Formatting.Ago(a.StartedUtc, DateTime.UtcNow)}{(OldWorktree(a) ? " · old worktree" : "")}" +
             // Weekly-aware pacing sent it to another login (M.ORCH-T666): redelegated, or fell back to the fallback login.
             (delegation is { Length: > 0 } d ? $" · {d}" : ""),
         _ => (IsNext ? "Next up" : item.RepoBusy ? "Repo busy" : item.Old ? "Old: groom it?" : "") +
@@ -62,6 +61,11 @@ public sealed class QueueRowViewModel : ObservableObject
     public ICommand StartCommand { get; }
     public ICommand ReleaseCommand { get; }
 
+    /// <summary>Whether <paramref name="a"/> has a worktree of its own: only one made before M.ORCH-T1122, in a folder named after its
+    /// ticket (&lt;root&gt;\&lt;repo&gt;\&lt;ticket&gt;); every ticket since is worked in its repo's own checkout on main.</summary>
+    internal static bool OldWorktree(Assignment a) =>
+        a.Worktree && System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(a.Directory)).Equals(a.TicketId, StringComparison.OrdinalIgnoreCase);
+
     public void Update(QueueItem next, int nextRank, Proposal? nextProposal, string? nextDelegation = null)
     {
         item = next;
@@ -72,18 +76,18 @@ public sealed class QueueRowViewModel : ObservableObject
     }
 }
 
-/// <summary>A ticket whose work is closed but whose assignment (and maybe worktree) is still around.</summary>
+/// <summary>A ticket whose work is closed but whose assignment (and maybe an old worktree, made before M.ORCH-T1122) is still around.</summary>
 public sealed class FinishedViewModel(Assignment assignment, MainViewModel owner) : ObservableObject
 {
     public string TicketId => assignment.TicketId;
     public string Text => assignment.TicketId + TextAfterId;
 
     /// <summary><see cref="Text"/> after the id, which the card shows as a link into Tickets Desktop (M.ORCH-T500).</summary>
-    public string TextAfterId => assignment.Worktree
+    public string TextAfterId => QueueRowViewModel.OldWorktree(assignment)
         ? $" in {assignment.Repo} is closed. Its worktree is still at {assignment.Directory}."
         : $" in {assignment.Repo} is closed.";
-    public string ActionLabel => assignment.Worktree ? "Remove worktree" : "Clear";
-    /// <summary>Off while a CLI moving to another login holds the ticket (M.ORCH-T637): its worktree is handed back to it.</summary>
+    public string ActionLabel => QueueRowViewModel.OldWorktree(assignment) ? "Remove worktree" : "Clear";
+    /// <summary>Off while a CLI moving to another login holds the ticket (M.ORCH-T637): its claim is handed back to it.</summary>
     public ICommand ActionCommand { get; } = new RelayCommand(() => owner.Shown.Finish(assignment), () => PendingMoves.ForTicket(assignment.TicketId) is null);
     public ICommand DetailsCommand { get; } = new RelayCommand(() => owner.Shown.ShowDetails(assignment));
 

@@ -518,7 +518,7 @@
                            Visibility="{Binding ShowsReminders, Converter={StaticResource Visible}}" />
                 <TextBlock Text="FINISHED WORK" Style="{StaticResource MaSectionLabel}"
                            Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}" />
-                <TextBlock Text="Closed tickets whose assignment or worktree is still around." Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceBS}"
+                <TextBlock Text="Closed tickets whose assignment (or old worktree) is still around." Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceBS}"
                            Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}" />
                 <ItemsControl x:Name="FinishedList" ItemsSource="{Binding Finished}" Style="{StaticResource MaRowList}" AutomationProperties.Name="Finished work"
                               Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}">
@@ -698,12 +698,12 @@
                                 <TextBlock Text="Redispatches" Margin="{StaticResource SpaceBXS}" />
                                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                                          Text="{Binding OrphanRedispatches, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Orphan redispatches" />
-                                <TextBlock Text="0 to 20 (3 by default). How many times a ticket whose CLI or tab exited mid-task is started again in its worktree before it's left for you. 0 only shows it as orphaned."
+                                <TextBlock Text="0 to 20 (3 by default). How many times a ticket whose CLI or tab exited mid-task is started again in its repo's checkout before it's left for you. 0 only shows it as orphaned."
                                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTXSBS}" />
                                 <TextBlock Text="Quiet minutes" Margin="{StaticResource SpaceBXS}" />
                                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                                          Text="{Binding OrphanQuiet, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Orphan quiet minutes" />
-                                <TextBlock Text="1 to 1440 (10 by default). How long a dispatch's CLI or tab must be gone, with nothing written in its worktree, before the ticket counts as orphaned."
+                                <TextBlock Text="1 to 1440 (10 by default). How long a dispatch's CLI or tab must be gone, with nothing working its ticket, before the ticket counts as orphaned."
                                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
                                 <TextBlock Text="DISPATCH" Style="{StaticResource MaSectionLabel}" />
                                 <TextBlock Text="Max concurrent sessions (working + waiting)" Margin="{StaticResource SpaceBXS}" />
@@ -714,7 +714,7 @@
                                          AutomationProperties.Name="Dispatch provider" />
                                 <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding Allocate}" Margin="{StaticResource SpaceTS}" HorizontalAlignment="Left"
                                               Content="Allocate" />
-                                <TextBlock Text="Type /allocate in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /allocate off ends it in that one."
+                                <TextBlock Text="Type /allocate in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, all in the repo's own checkout on main (each touching only its ticket's files), as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /allocate off ends it in that one."
                                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}" />
                             </StackPanel>
                         </ScrollViewer>

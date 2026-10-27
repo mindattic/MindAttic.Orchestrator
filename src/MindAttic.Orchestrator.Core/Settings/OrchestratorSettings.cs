@@ -172,8 +172,9 @@ public sealed record OrchestratorSettings
 
     public string DefaultProvider { get; init; } = "Claude";
 
-    /// <summary>Worktrees for concurrent tickets live here, outside the workspace root so they never
-    /// show up as repos of their own.</summary>
+    /// <summary>Where the tools' own clean worktrees of origin/main live (MainlineTests' main-tests, deploy, /test's verify-main),
+    /// outside the workspace root so they never show up as repos of their own. Tickets got a worktree each here before
+    /// M.ORCH-T1122; now every ticket is worked in its repo's own checkout on main, and the sweep only tidies those old ones.</summary>
     public string WorktreeRoot { get; init; } = @"D:\Projects\MindAttic.worktrees";
 
     /// <summary>Percent of the 5-hour limit one repo may spend in a block before it gets no new sessions
@@ -196,7 +197,7 @@ public sealed record OrchestratorSettings
     /// ticket database as 'requires' links (<c>tickets ticket block</c>).</summary>
     public Dictionary<string, List<string>> BlockedBy { get; init; } = [];
 
-    /// <summary>Sessions one repo may run at once (the repo itself plus worktrees), unless <see cref="RepoMaxSessions"/> says otherwise.</summary>
+    /// <summary>Sessions one repo may run at once (all in its own checkout, M.ORCH-T1122), unless <see cref="RepoMaxSessions"/> says otherwise.</summary>
     public int MaxSessionsPerRepo { get; init; } = 2;
 
     public Dictionary<string, int> RepoMaxSessions { get; init; } = [];
@@ -221,7 +222,7 @@ public sealed record OrchestratorSettings
     /// 0 only shows it as orphaned.</summary>
     public int OrphanRedispatches { get; init; } = 3;
 
-    /// <summary>Minutes a dispatch's owner must be gone with nothing written in its worktree before it counts as orphaned.</summary>
+    /// <summary>Minutes a dispatch's owner must be gone with nothing written for its ticket before it counts as orphaned.</summary>
     public int OrphanQuietMinutes { get; init; } = 10;
 
     /// <summary>The dashboard's person tabs (M.ORCH-T757): a busy login's green play arrow blinks once for every this many tokens
@@ -353,7 +354,10 @@ public sealed record OrchestratorSettings
     ];
 }
 
-/// <summary>A ticket the orchestrator has handed to a session.</summary>
+/// <summary>A ticket the orchestrator has handed to a session. <see cref="Worktree"/> (the stored name is kept) means it was
+/// dispatched for an agent: a CLI's claim or a tab the orchestrator opened. Since M.ORCH-T1122 every one works in the repo's own
+/// checkout on main (<see cref="Directory"/> is the repo); only one made before that has a worktree of its own
+/// (<see cref="InOwnWorktree"/>).</summary>
 public sealed record Assignment(string TicketId, string Repo, string Directory, string Provider, DateTime StartedUtc, bool Worktree)
 {
     /// <summary>The background agent <c>/allocate</c> started on it (its process id); null for a tab.</summary>
@@ -384,7 +388,21 @@ public sealed record Assignment(string TicketId, string Repo, string Directory, 
     /// with no email read yet, or an assignment made before this was recorded).</summary>
     public string? Account { get; init; }
 
-    /// <summary>A claim for a CLI's subagent: a worktree, no background agent on it.</summary>
+    /// <summary>A claim for a CLI's subagent (or a tab the orchestrator opened): dispatched, no background agent on it.</summary>
     [JsonIgnore]
     public bool IsClaim => Worktree && Pilot is null && Log is null;
+
+    /// <summary>Whether it works in a worktree of its own rather than the repo's checkout at <paramref name="repoPath"/>: only an
+    /// assignment made before M.ORCH-T1122, which is still landed and tidied as it was; nothing makes a new one.</summary>
+    public bool InOwnWorktree(string repoPath) => Worktree && !SamePath(Directory, repoPath);
+
+    private static bool SamePath(string a, string b)
+    {
+        try
+        {
+            return string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(a)), Path.TrimEndingDirectorySeparator(Path.GetFullPath(b)),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return string.Equals(a, b, StringComparison.OrdinalIgnoreCase); }
+    }
 }

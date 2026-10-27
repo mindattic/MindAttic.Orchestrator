@@ -286,20 +286,9 @@ public sealed class DashboardViewModelTests
     }
 
     [Test]
-    public void Where_follows_the_proposal_and_without_one_whether_the_repo_is_busy()
-    {
-        Assert.That(Row(Item()).Where, Is.EqualTo("in the repo"));
-        Assert.That(Row(Item(repoBusy: true)).Where, Is.EqualTo("in a worktree"));
-        var busy = Item(repoBusy: true);
-        Assert.That(Row(busy, new Proposal(busy, UseWorktree: false, "")).Where, Is.EqualTo("in the repo"), "the proposal wins");
-        var idle = Item();
-        Assert.That(Row(idle, new Proposal(idle, UseWorktree: true, "")).Where, Is.EqualTo("in a worktree"));
-    }
-
-    [Test]
     public void Status_says_blocked_before_stale_before_too_big_before_assigned()
     {
-        var assignment = new Assignment("A-T1", "A", @"D:\A", "Claude", Now.AddHours(-1), Worktree: true);
+        var assignment = new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now.AddHours(-1), Worktree: true); // an old worktree (before M.ORCH-T1122)
         var all = Item(assignment) with
         {
             BlockedBy = ["A-T0", "B-T2"], StaleSinceUtc = DateTime.UtcNow.AddHours(-3), TooBig = true,
@@ -310,8 +299,10 @@ public sealed class DashboardViewModelTests
         Assert.That(Row(all with { BlockedBy = [] }).Status, Does.StartWith("Stale: quiet 3h"));
         var notStale = all with { BlockedBy = [], StaleSinceUtc = null };
         Assert.That(Row(notStale).Status, Does.StartWith("Too big for what's left (").And.EndWith("): split it or wait for the reset"));
-        Assert.That(Row(notStale with { TooBig = false }).Status, Does.StartWith("Claude since ").And.EndWith(" · worktree"));
+        Assert.That(Row(notStale with { TooBig = false }).Status, Does.StartWith("Claude since ").And.EndWith(" · old worktree"));
         Assert.That(Row(notStale with { TooBig = false, Assignment = assignment with { Worktree = false } }).Status, Does.Not.Contain("worktree"));
+        Assert.That(Row(notStale with { TooBig = false, Assignment = assignment with { Directory = @"D:\W\A" } }).Status, Does.Not.Contain("worktree"),
+            "a claim in the repo's own checkout (M.ORCH-T1122) has none");
     }
 
     [Test]
@@ -319,7 +310,7 @@ public sealed class DashboardViewModelTests
     {
         var item = Item(repoBusy: true) with { Old = true, Reserved = 500_000, Estimate = new CostEstimate(1_200_000, 2, "fix") };
 
-        Assert.That(Row(item, new Proposal(item, true, "top")).Status, Is.EqualTo("Next up · 500k reserved · ~1.2M"));
+        Assert.That(Row(item, new Proposal(item, "top")).Status, Is.EqualTo("Next up · 500k reserved · ~1.2M"));
         Assert.That(Row(item).Status, Is.EqualTo("Repo busy · 500k reserved · ~1.2M"));
         Assert.That(Row(item with { RepoBusy = false }).Status, Is.EqualTo("Old: groom it? · 500k reserved · ~1.2M"));
         Assert.That(Row(Item()).Status, Is.Empty);

@@ -104,13 +104,13 @@ internal static class CliApp
             config.AddCommand<SendCommand>("send").WithDescription("Type text into a live Launcher-hosted session.");
             config.AddCommand<BudgetCommand>("budget").WithDescription("Token budget for the current 5-hour block and the week, and the pace; --block/--weekly/--warn/--pace/--target set them, --hits lists learned limits.");
             config.AddCommand<QueueCommand>("queue").WithDescription("Every open ticket across the workspace, in the order the scheduler would start them: explicit priority, then newest first, each ticket's open prerequisites just before it.");
-            config.AddCommand<DispatchCommand>("dispatch").WithDescription("Start a session on a ticket (a worktree when its repo is busy).");
-            config.AddCommand<ReleaseCommand>("release").WithDescription("Return a ticket to the queue; --remove-worktree also deletes its clean worktree.");
+            config.AddCommand<DispatchCommand>("dispatch").WithDescription("Start a session on a ticket, in its repo's own checkout on main.");
+            config.AddCommand<ReleaseCommand>("release").WithDescription("Return a ticket to the queue; --remove-worktree also deletes its old clean worktree (one made before tickets were worked on main).");
             config.AddCommand<DaemonCommand>("daemon").WithDescription("Keep the budget file, pace and hooks fresh without the dashboard open.");
             config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
             config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");
-            config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /allocate hands its subagents, each with its model (--claim: worktree, assignment and prompt).");
-            config.AddCommand<ReviewCommand>("review").WithDescription("From a Sonnet ticket's worktree: its one Opus review of the diff before it lands, when the diff is big or touches risky files (--dry-run only says).");
+            config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /allocate hands its subagents, each with its model (--claim: assignment and prompt, worked in the repo's own checkout on main).");
+            config.AddCommand<ReviewCommand>("review").WithDescription("From a Sonnet ticket's repo checkout: its one Opus review of the diff before it lands, when the diff is big or touches risky files (--dry-run only says).");
             config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /allocate would start right now, without starting anything.");
             config.AddCommand<ShowCommand>("show").WithDescription("The sessions the orchestrator ran on a ticket (the ticket itself, its history and commits: tickets ticket show).");
             config.AddCommand<UsageReportCommand>("report").WithDescription("The usage report: every member's 5-hour and weekly use and resets, points left to the weekly target, how old each reading is and whether it's accurate; --detail adds the CLIs' spend and the API key's; --since <date>, --csv, --json; --md/--html <file> write it to share.");

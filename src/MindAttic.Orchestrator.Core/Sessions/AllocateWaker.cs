@@ -135,7 +135,7 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     /// Claimed tickets left unstarted while the window is on course to end under its target (M.ORCH-T529): on 2026-10-20 the
     /// pace projected ~65% of a 98% target while an /allocate CLI held M.COMP-T9 and M.ORCH-T499 claimed and unstarted to
     /// avoid merge conflicts, until the user asked. Each tick, when <see cref="UnderTarget.Projected"/> is under target and
-    /// the subagent allowance has room, every ticket a CLI claimed (<c>orchestrator next --claim</c>: its worktree and
+    /// the subagent allowance has room, every ticket a CLI claimed (<c>orchestrator next --claim</c>: its
     /// assignment) with no subagent on it for <see cref="ClaimIdle"/> is put to the /allocate CLI that works its repo as a nudge
     /// its UserPromptSubmit hook adds to the next turn's context (<see cref="CliNudges"/>; never typed into its box, M.ORCH-T864):
     /// start them now, overlapping files are rebased, not a reason to wait. Busy or idle, but not one waiting on a window or
@@ -194,11 +194,11 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     }
 
     /// <summary>
-    /// The tickets claimed for a CLI's subagent (a worktree assignment no background agent holds, not gone stale) that nothing
+    /// The tickets claimed for a CLI's subagent (a dispatched assignment no background agent holds, not gone stale) that nothing
     /// has worked for <see cref="ClaimIdle"/>, each with the /allocate CLI it's put to. A claim has a subagent on it when the
-    /// plan sees a live session or subagent working it (<see cref="SchedulePlan.Worked"/>: a subagent's prompt or worktree
-    /// names it), or a transcript (a session's, or a ticketed subagent's) or a Launcher tab has its working directory in the
-    /// claim's worktree within <see cref="ClaimIdle"/>. The claim's CLI is the one that made it (M.ORCH-T532: with two
+    /// plan sees a live session or subagent working it (<see cref="SchedulePlan.Worked"/>: a subagent's prompt names it), or a
+    /// transcript or Launcher tab works it within <see cref="ClaimIdle"/>: by repo and ticket in the repo's shared checkout
+    /// (M.ORCH-T1122), by folder in an old worktree of its own (<see cref="Scheduling.TicketActivity"/>). The claim's CLI is the one that made it (M.ORCH-T532: with two
     /// /allocate CLIs on one repo, the repo's owner was prompted for the other's claims) while it's a live /allocate CLI;
     /// a claim whose CLI isn't known (made before claims recorded it) or has gone goes to the /allocate CLI whose repos name
     /// its repo: one naming it outright first, then one on a wildcard or every repo; a repo no /allocate CLI works is
@@ -215,26 +215,12 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
             // Its CLI is moving to another login (M.ORCH-T637): handed back to it once it lands, never put to another CLI meanwhile.
             if (q.Moving is not null) continue;
             if (nowUtc - a.StartedUtc < ClaimIdle) continue;
-            if (Active(a.Directory, snapshot, nowUtc)) continue;
+            // By repo and ticket in the shared checkout (M.ORCH-T1122), where the /allocate CLI's own session works too.
+            if (Scheduling.TicketActivity.Active(a, snapshot, at => nowUtc - at < ClaimIdle)) continue;
             var claimer = a.Cli is { } made && pilots.ContainsKey(made) ? made : OwnerOf(q.Repo, pilots);
             if (claimer is { } cli) idle.Add((cli, q));
         }
         return idle;
-    }
-
-    private static bool Active(string directory, Snapshot snapshot, DateTime nowUtc)
-    {
-        bool Recent(DateTime at) => nowUtc - at < ClaimIdle;
-        foreach (var repo in snapshot.Repos)
-        {
-            if (repo.Hosts.Any(h => IsUnder(h.WorkingDirectory, directory))) return true;
-            foreach (var s in repo.Sessions)
-            {
-                if (Recent(s.LastWriteUtc) && IsUnder(s.Cwd, directory)) return true;
-                if (s.TicketedSubagents.Any(t => t.Events.Count > 0 && Recent(t.Events[^1].AtUtc) && IsUnder(t.Cwd, directory))) return true;
-            }
-        }
-        return false;
     }
 
     private static int? OwnerOf(string repo, IReadOnlyDictionary<int, IReadOnlyList<string>> pilots)
@@ -245,23 +231,15 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
         return exact ?? named[0].Key;
     }
 
-    private static bool IsUnder(string? path, string directory)
-    {
-        if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(directory)) return false;
-        var p = Path.TrimEndingDirectorySeparator(path.Replace('/', '\\'));
-        var d = Path.TrimEndingDirectorySeparator(directory.Replace('/', '\\'));
-        return p.Equals(d, StringComparison.OrdinalIgnoreCase) || p.StartsWith(d + "\\", StringComparison.OrdinalIgnoreCase);
-    }
-
     /// <summary>What a CLI holding idle claims is told, as hook context (<see cref="CliNudges"/>).</summary>
     public static string ClaimsPrompt(IReadOnlyList<QueueItem> items, double projected, int targetPercent) =>
         $"This 5-hour window is on course to end near {projected:0}%, under its {targetPercent}% target, and the pace has room for more subagents, " +
         $"but {(items.Count == 1 ? "a ticket" : $"{items.Count} tickets")} this CLI claimed {(items.Count == 1 ? "has" : "have")} had no subagent on {(items.Count == 1 ? "it" : "them")} " +
         $"for {ClaimIdle.TotalMinutes:0}+ min: " + string.Join("; ", items.Select(i =>
-            $"{i.Id} (worktree {i.Assignment!.Directory}{(i.Assignment.Model is { } m ? $", model {m}" : "")})")) + ". " +
+            $"{i.Id} (in {i.Assignment!.Directory}{(i.Assignment.Model is { } m ? $", model {m}" : "")})")) + ". " +
         "Start a subagent on each now, all in one message, each on the model named and with the prompt orchestrator next printed for it when it was claimed " +
-        "(if that's gone: work the ticket only in that worktree, land it on main, then close it). Overlapping files are no reason to wait: " +
-        "each rebases onto main as it lands. Then carry on with orchestrator next --claim.";
+        "(if that's gone: work the ticket in the repo's own checkout on main, touching and staging by path only its own files, pull --rebase --autostash, " +
+        "push to main, then close it). Overlapping files are no reason to wait: each pulls with --rebase --autostash as it lands. Then carry on with orchestrator next --claim.";
 
     /// <summary>What an idle /allocate CLI is told, as hook context (<see cref="CliNudges"/>).</summary>
     public static string Prompt(IReadOnlyList<string> repos, IReadOnlyList<string> ids) =>
