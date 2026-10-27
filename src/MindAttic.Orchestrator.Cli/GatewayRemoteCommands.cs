@@ -79,7 +79,9 @@ internal sealed class GatewayRemoteAddCommand : Command<GatewayRemoteAddCommand.
     private static string? ReadToken(string? given)
     {
         if (given is { } t && t != "-") return t.Trim();
-        if (given == "-" || Console.IsInputRedirected) return Console.In.ReadLine()?.Trim();
+        // Only an explicit "--token -" reads stdin (M.ORCH-T1161): omitting --token always prompts, even when stdin
+        // happens to be redirected, so a forgotten flag never silently seals whatever's on stdin as the token.
+        if (given == "-") return Console.In.ReadLine()?.Trim();
         return AnsiConsole.Prompt(new TextPrompt<string>("Token:").Secret()).Trim();
     }
 }
