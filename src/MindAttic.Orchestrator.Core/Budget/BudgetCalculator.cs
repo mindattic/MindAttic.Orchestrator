@@ -73,6 +73,10 @@ public sealed record BudgetStatus(
     /// <summary>The account's weekly stop line (M.ORCH-T609): 100 minus the weekly reserve setting, 95 by default.</summary>
     public int WeeklyStopPercent { get; init; } = Settings.OrchestratorSettings.WeeklyStopFor(Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
 
+    /// <summary>The login's 5-hour cutoff (its <c>org limit --5h</c>, the pace target): written beside <see cref="WeeklyStopPercent"/>
+    /// so the hooks' own stop holds the login's line, not a fixed 99%, while the daemon is down (bughunt 2026-10-27).</summary>
+    public int FiveHourStopPercent { get; init; } = UsageCutoffs.DefaultFiveHourPercent;
+
     /// <summary>Whether Claude's reported week is at the stop line as of <paramref name="nowUtc"/> (its reset not passed).</summary>
     public bool WeeklyStopped(DateTime nowUtc) => WeeklyStop is { } w && w.ResetUtc > nowUtc;
 
@@ -305,6 +309,7 @@ public static class BudgetCalculator
             AtLimitKind = wall?.Kind,
             WeeklyStop = reportedWeek is not null && reportedWeek.Percent >= settings.WeeklyStopPercent ? reportedWeek : null,
             WeeklyStopPercent = settings.WeeklyStopPercent,
+            FiveHourStopPercent = Math.Clamp(settings.PaceTargetPercent, 1, 100),
             Calibration = learned,
             BlockLimitOutdated = blockRefuted,
             WeeklyLimitOutdated = weeklyRefuted,
@@ -428,6 +433,8 @@ public sealed class RateLimitStatusWriter(string? path = null)
         // The account's weekly stop line (M.ORCH-T609): the hooks read it live, so a changed weekly reserve applies at the next
         // write without reinstalling them.
         body["weekly_stop_percent"] = status.WeeklyStopPercent;
+        // And the login's 5-hour cutoff, which the hooks' own stop holds while the daemon is down (bughunt 2026-10-27).
+        body["five_hour_stop_percent"] = status.FiveHourStopPercent;
         // pace-gate.py refuses tool calls while this is set (after holding them its longest), so nothing passes the limit;
         // written paced or not, since the stop doesn't depend on pacing.
         if (pace is { Stop: true })

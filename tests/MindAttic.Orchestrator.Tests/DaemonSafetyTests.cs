@@ -481,6 +481,12 @@ public sealed class DaemonSafetyTests
         now = now.AddSeconds(15);
         Assert.That(refresher.TryRefresh(() => beside++), Is.True);
         Assert.That(beside, Is.EqualTo(2));
+
+        // A refresh that throws is timed too (bughunt 2026-10-27): not tried again every second for the rest of the tick.
+        now = now.AddSeconds(15);
+        Assert.That(() => refresher.TryRefresh(() => throw new IOException("held")), Throws.TypeOf<IOException>());
+        now = now.AddSeconds(1);
+        Assert.That(refresher.TryRefresh(() => beside++), Is.False, "the failed one's interval runs first");
     }
 
     [Test]

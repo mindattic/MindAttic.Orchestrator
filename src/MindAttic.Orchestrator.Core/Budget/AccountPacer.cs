@@ -71,6 +71,10 @@ public sealed class AccountPacer
         public List<UsageSample>? Samples;
         /// <summary>Who's signed in to the folder, as of this tick.</summary>
         public string? Account;
+        /// <summary>Claude's week at this login's stop line, held until its reset as the hooks latch it, and the account it was
+        /// seen for (bughunt 2026-10-27: the global login's hold, M.ORCH-T438, per login).</summary>
+        public ReportedWindow? WeekStop;
+        public string? WeekStopAccount;
     }
 
     private readonly Dictionary<string, State> states = new(StringComparer.OrdinalIgnoreCase);
@@ -139,6 +143,7 @@ public sealed class AccountPacer
         // The stop counts what's been spent since Claude's percent was first seen, not since a statusline last restamped it (M.ORCH-T1110).
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration, reported: reported, reportedLimit: limit,
             reportedSeenUtc: ReportedLimit.FirstSeen(samples, reported));
+        budget = HoldWeeklyStop(state, budget, now);
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = sessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
@@ -177,6 +182,22 @@ public sealed class AccountPacer
             if (settings.WeeklyAwarePacing) Plan(dir.Email, budget, week, now);
         }
         return new AccountPace(dir.Email, dir.Directory, state.Account, budget, pace, utilization, active);
+    }
+
+    /// <summary>
+    /// The login's weekly stop held until its reset (bughunt 2026-10-27), as <see cref="StatusAggregator.HoldWeeklyStop"/> holds the
+    /// global login's (M.ORCH-T438): an idle tab's statusline restamps an older, lower weekly percent, which would otherwise lift
+    /// the stop while the week is past its line. Lifted at the reset, below the line as it is now (a raised cutoff or an
+    /// allowance), or when another account signs in to the folder.
+    /// </summary>
+    private static BudgetStatus HoldWeeklyStop(State state, BudgetStatus budget, DateTime now)
+    {
+        if (state.WeekStop is { } held && (held.ResetUtc <= now || held.Percent < budget.WeeklyStopPercent || state.WeekStopAccount != state.Account))
+            state.WeekStop = null;
+        if (budget.WeeklyStopped(now) && budget.WeeklyStop is { } seen &&
+            (state.WeekStop is null || seen.ResetUtc != state.WeekStop.ResetUtc || seen.Percent >= state.WeekStop.Percent))
+            (state.WeekStop, state.WeekStopAccount) = (seen, state.Account);
+        return state.WeekStop is null ? budget : budget with { WeeklyStop = state.WeekStop };
     }
 
     /// <summary>The <c>state</c> row (this machine's, left out of the dump) holding each login's meter probe: when it last asked

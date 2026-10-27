@@ -374,13 +374,30 @@ public static class AgentGate
                     pass
             _week_stop.append(WEEK_STOP_DEFAULT if line is None else line)
             return _week_stop[0]
+        _five_stop = []
+        def five_hour_stop_percent():
+            # The login's own 5-hour cutoff (org limit --5h, 98% by default) as the daemon last wrote it into this login's
+            # status, read even when that status is stale, so a daemon that's down doesn't let the login run to STOP_PERCENT;
+            # STOP_PERCENT only when no status names one (bughunt 2026-10-27).
+            if _five_stop:
+                return _five_stop[0]
+            line = None
+            try:
+                v = rl_status().get("five_hour_stop_percent")
+                if isinstance(v, (int, float)) and not isinstance(v, bool) and 1 <= v <= 100:
+                    line = float(v)
+            except Exception:
+                pass
+            _five_stop.append(STOP_PERCENT if line is None else line)
+            return _five_stop[0]
         def claude_stop():
             # (percent, reset epoch, window) when Claude itself reports a window at the stop line, now or earlier in the same
             # window (an idle session's later, lower report doesn't lift it); None otherwise. The week counts as much as the
             # 5 hours: a daemon that's down mustn't let a week at its stop line run into a wall that locks you out for days.
-            # The 5 hours stop at STOP_PERCENT, the week at week_stop_percent() (the weekly reserve, M.ORCH-T609).
+            # The 5 hours stop at five_hour_stop_percent() (the login's cutoff), the week at week_stop_percent() (the weekly
+            # reserve, M.ORCH-T609).
             windows = (("five_hour", "claude", "5-hour"), ("seven_day", "claude-week", "weekly"))
-            line = lambda key: week_stop_percent() if key == "seven_day" else STOP_PERCENT
+            line = lambda key: week_stop_percent() if key == "seven_day" else five_hour_stop_percent()
             try:
                 usage = claude_usage()
                 limits = usage["rate_limits"] if owns(usage) and (usage.get("account") or not before_switch(usage.get("at"))) else {}
@@ -578,7 +595,8 @@ public static class AgentGate
                 return None
         """;
 
-    /// <summary>The percent of the 5-hour window at which every tool call is refused, whoever is counting. The week stops at
+    /// <summary>The percent of the 5-hour window at which every tool call is refused when no status names the login's own
+    /// cutoff (<c>five_hour_stop_percent</c>, bughunt 2026-10-27), whoever is counting. The week stops at
     /// its own line, <see cref="Settings.OrchestratorSettings.WeeklyStopPercent"/> (the weekly reserve, M.ORCH-T609), which the
     /// hooks read live.</summary>
     public const int StopPercent = 99;
@@ -2122,24 +2140,6 @@ public static class AgentGate
             gate_log("exempt", 0)
             raise SystemExit(0)
 
-        # Exempt commands (M.ORCH-T198): a turn typed as one of them (the context gate marks its session state) and a Skill
-        # call naming one skip every pacing gate below: no pace delay, no subagent hold, no stop refusal. Each is logged as
-        # "exempt" and the daemon is told to recount, so the spend still lands in the pace at once.
-        {{ExemptPython}}
-        def exempt_turn():
-            # The session's state as the context gate saved it: its session_states row or its exported file, whichever was
-            # written later (M.ORCH-T543: the file alone stayed exempt when a Stop's write of it failed).
-            return bool(session_state(data.get("session_id")).get("exempt"))
-        if exempt_turn() or (tool == "Skill" and exempt_skill((data.get("tool_input") or {}).get("skill"))):
-            gate_log("exempt", 0)
-            # Said on the daemon's inbox at once (M.ORCH-T872); the file stays for a daemon from before it.
-            publish_status("poke", {"source": "pace-gate", "why": "exempt"})
-            try:
-                (Path.home() / ".claude" / "session-context" / "refresh.now").write_text(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
-            except Exception:
-                pass
-            raise SystemExit(0)
-
         # A CLI billed to an API key, a gateway or a cloud provider spends none of the subscription's windows: no stop, latch,
         # pace hold or subagent allowance is its to obey.
         if session_auth(data.get("cwd")) != "{{Sessions.ContextCycler.SubscriptionAuth}}":
@@ -2191,6 +2191,25 @@ public static class AgentGate
                 gate_log("refused", time.monotonic() - start)
                 refuse(note)
         hold_at_stop()
+
+        # Exempt commands (M.ORCH-T198): a turn typed as one of them (the context gate marks its session state) and a Skill
+        # call naming one skip every pacing gate below: no pace delay, no subagent hold. Never the stop, held above first
+        # (bughunt 2026-10-27: an exempt /allocate turn, its subagents sharing the session, ran a ticket round past the stop).
+        # Each is logged as "exempt" and the daemon is told to recount, so the spend still lands in the pace at once.
+        {{ExemptPython}}
+        def exempt_turn():
+            # The session's state as the context gate saved it: its session_states row or its exported file, whichever was
+            # written later (M.ORCH-T543: the file alone stayed exempt when a Stop's write of it failed).
+            return bool(session_state(data.get("session_id")).get("exempt"))
+        if exempt_turn() or (tool == "Skill" and exempt_skill((data.get("tool_input") or {}).get("skill"))):
+            gate_log("exempt", 0)
+            # Said on the daemon's inbox at once (M.ORCH-T872); the file stays for a daemon from before it.
+            publish_status("poke", {"source": "pace-gate", "why": "exempt"})
+            try:
+                (Path.home() / ".claude" / "session-context" / "refresh.now").write_text(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
+            except Exception:
+                pass
+            raise SystemExit(0)
 
         # /pacing off exempts one CLI (its process, so subagents and /clear included) from holds until it closes or /pacing on (M.ORCH-T483).
         MARKS = Path.home() / ".claude" / "session-context"
@@ -3241,7 +3260,7 @@ public static class AgentGate
             down = daemon_down()
             if down is not None:
                 out["systemMessage"] = ((out["systemMessage"] + " ") if out.get("systemMessage") else "") + ("MindAttic.Orchestrator hasn't updated the pace for " + str(int(down // 60)) + " min: its daemon "
-                    "isn't running, so agents aren't being paced (only Claude's own " + str(STOP_PERCENT) + "% 5-hour and " + str(int(week_stop_percent())) + "% weekly stops still hold). "
+                    "isn't running, so agents aren't being paced (only Claude's own " + str(int(five_hour_stop_percent())) + "% 5-hour and " + str(int(week_stop_percent())) + "% weekly stops still hold). "
                     "Start it: C:\\Apps\\MindAttic.Orchestrator\\MindAttic.Orchestrator.Desktop.exe")
             if out:
                 print(json.dumps(out))

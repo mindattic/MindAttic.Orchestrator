@@ -356,6 +356,9 @@ public sealed class ClaudeMeterProbe
         {
             // A reader or the statusline had the file (or a write the database) at that moment: try again at the next due tick, not after a backoff.
             LastResult = $"couldn't write {Path.GetFileName(UsagePath)}: {ex.Message}";
+            // Tick set the next ask StaleAfter off before asking: lifted here, or the lost reading waited all of it (bughunt 2026-10-27).
+            lock (gate)
+                if (generation == asked) nextUtc = nowUtc;
         }
 
         string? Who()

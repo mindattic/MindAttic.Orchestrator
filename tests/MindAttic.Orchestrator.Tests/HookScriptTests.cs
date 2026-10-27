@@ -468,6 +468,23 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void The_hooks_own_5_hour_stop_is_the_logins_cutoff_from_its_status_not_a_fixed_99()
+    {
+        // bughunt 2026-10-27: with the daemon down or stale every login ran to 99%, whatever its own cutoff (98% by default).
+        File.WriteAllText(Path.Combine(Claude, "claude-usage.json"), JsonSerializer.Serialize(new
+        {
+            rate_limits = new { five_hour = new { used_percentage = 98.4, resets_at = new DateTimeOffset(DateTime.UtcNow.AddHours(2)).ToUnixTimeSeconds() } },
+            at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        }));
+        var read = new { tool_name = "Read", tool_input = new { file_path = "x" } };
+        Status(new { stop = false });
+        Assert.That(Gate(read).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "no line written: the 99% fallback");
+        Status(new { stop = false, five_hour_stop_percent = 98 }, DateTime.UtcNow.AddMinutes(-30));
+        Assert.That(GateHeld(read, maxHold: 2).Output, Does.Contain("\"deny\"").And.Contain("5-hour window used"),
+            "the login's 98% holds, from a status gone stale too");
+    }
+
+    [Test]
     public void A_login_allowed_past_its_weekly_target_runs_past_it_and_only_while_its_status_says_so()
     {
         // M.ORCH-T694: past the 90% target (a 10% reserve) the gate refuses; /org allow has the daemon write the wall (100) as
@@ -1825,11 +1842,14 @@ public sealed class HookScriptTests
     [Test]
     public void An_exempt_commands_turn_skips_every_pace_gate_until_it_stops_and_is_logged_as_exempt()
     {
-        // M.ORCH-T198: a turn typed as /deploy (a default exempt command) is let through at once: no delay, no subagent wait, no stop.
+        // M.ORCH-T198: a turn typed as /deploy (a default exempt command) is let through at once: no delay, no subagent wait.
         object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "e1", prompt, cwd = ws };
         object Call(string tool) => new { tool_name = tool, session_id = "e1", tool_input = new { prompt = "x", file_path = "x" }, cwd = ws };
         Status(new { stop = true, pace_delay_seconds = 60, subagent_allowance = 0, subagents_running = 3, reset_time = "9:50 PM" });
         Assert.That(Gate(Prompt("/deploy now"), AgentGate.ContextScriptName).Output, Does.Not.Contain("\"block\""), "typed at the stop, it still goes through");
+        // But never past the stop (bughunt 2026-10-27): an exempt /allocate turn, its subagents on the same session, ran a ticket round past it.
+        Assert.That(GateHeld(Call("Agent"), 2).Output, Does.Contain("\"deny\""), "the stop refuses even an exempt turn's calls");
+        Status(new { pace_delay_seconds = 60, subagent_allowance = 0, subagents_running = 3, reset_time = "9:50 PM" });
         foreach (var tool in new[] { "Read", "Agent", "Bash" })
         {
             var (output, took) = Gate(Call(tool));
@@ -1840,7 +1860,7 @@ public sealed class HookScriptTests
             "an exempt Agent call takes no slot");
 
         Gate(new { hook_event_name = "Stop", session_id = "e1", cwd = ws }, AgentGate.ContextScriptName);
-        Assert.That(GateHeld(Call("Read"), 2).Output, Does.Contain("\"deny\""), "the exemption ends when the turn stops");
+        Assert.That(GateHeld(Call("Read"), 2).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)), "the exemption ends when the turn stops");
 
         Status(new { pace_delay_seconds = 60 });
         Gate(Prompt("/deployment plan"), AgentGate.ContextScriptName);
@@ -1867,7 +1887,7 @@ public sealed class HookScriptTests
     {
         // M.ORCH-T543: the gate read only the exported .state.json, so a Stop whose file write failed (held open) left the
         // turn exempt in the file while its session_states row, written later, said it had ended.
-        Status(new { stop = true, pace_delay_seconds = 60 });
+        Status(new { pace_delay_seconds = 60 });
         var file = Path.Combine(Marks, "x9.state.json");
         Directory.CreateDirectory(Marks);
         File.WriteAllText(file, """{"exempt": "/deploy"}""");
@@ -1880,24 +1900,31 @@ public sealed class HookScriptTests
             command.ExecuteNonQuery();
         }
         var read = new { tool_name = "Read", session_id = "x9", tool_input = new { file_path = "x" }, cwd = ws };
-        Assert.That(GateHeld(read, 2).Output, Does.Contain("\"deny\""), "the row, written later, ended the exempt turn");
+        Assert.That(GateHeld(read, 2).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)), "the row, written later, ended the exempt turn");
     }
 
     [Test]
     public void A_skill_naming_an_exempt_command_is_let_through_anywhere_and_the_list_comes_from_settings()
     {
-        Status(new { stop = true, pace_delay_seconds = 60 });
+        Status(new { pace_delay_seconds = 60 });
         object Skill(string skill) => new { tool_name = "Skill", session_id = "k1", tool_input = new { skill }, cwd = ws };
-        Assert.That(Gate(Skill("run")).Output, Is.Empty, "outside any exempt turn, the Skill call itself goes through");
+        var exempt = Gate(Skill("run"));
+        Assert.That((exempt.Output, exempt.Took < TimeSpan.FromSeconds(10)), Is.EqualTo(("", true)), "outside any exempt turn, the Skill call itself goes through");
         Assert.That(GateLog().Single(), Does.Contain("\"decision\": \"exempt\"").And.Contain("\"tool\": \"Skill\""));
-        Assert.That(GateHeld(Skill("bughunt"), 2).Output, Does.Contain("\"deny\""), "a skill that isn't exempt is paced as ever");
+        Assert.That(GateHeld(Skill("bughunt"), 2).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)), "a skill that isn't exempt is paced as ever");
+        // Exempt from the pace, never from the stop (bughunt 2026-10-27).
+        Status(new { stop = true, pace_delay_seconds = 60 });
+        Assert.That(GateHeld(Skill("run"), 2).Output, Does.Contain("\"deny\""), "at the stop an exempt skill is refused too");
+        Status(new { pace_delay_seconds = 60 });
 
         var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
         // With a byte-order mark, as a hand edit in PowerShell 5.1 or Notepad saves it, read as the orchestrator reads it (M.ORCH-T411).
         File.WriteAllText(settings, """{ "ExemptCommands": ["bughunt"] }""", new System.Text.UTF8Encoding(true));
-        Assert.That(Gate(Skill("bughunt")).Output, Is.Empty, "the settings list is read live, with or without the slash");
-        Assert.That(GateHeld(Skill("run"), 2).Output, Does.Contain("\"deny\""), "and replaces the defaults");
+        var listed = Gate(Skill("bughunt"));
+        Assert.That((listed.Output, listed.Took < TimeSpan.FromSeconds(10)), Is.EqualTo(("", true)), "the settings list is read live, with or without the slash");
+        Assert.That(GateHeld(Skill("run"), 2).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)), "and replaces the defaults");
+        Status(new { stop = true, pace_delay_seconds = 60 });
         Assert.That(Gate(new { hook_event_name = "UserPromptSubmit", session_id = "k2", prompt = "/deploy", cwd = ws }, AgentGate.ContextScriptName).Output,
             Does.Contain("\"block\""), "/deploy is no longer exempt, so at the stop it's answered unsent");
     }

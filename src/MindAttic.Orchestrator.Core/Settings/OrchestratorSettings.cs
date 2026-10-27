@@ -122,8 +122,9 @@ public sealed record OrchestratorSettings
     public bool ThrottleAgents => false;
 
     /// <summary>The slash commands exempt from orchestration pacing (M.ORCH-T198): a turn whose prompt starts with one skips
-    /// every Orchestrator gate (no pace delay, no subagent hold, no stop refusal) until it ends, and a Skill call naming one
-    /// is let through anywhere. The pace gate reads this live from settings.json; its spend is still counted.</summary>
+    /// every pacing gate (no pace delay, no subagent hold) until it ends, and a Skill call naming one is let through anywhere;
+    /// the hard 5-hour and weekly stops still refuse its tool calls (bughunt 2026-10-27). The pace gate reads this live from
+    /// settings.json; its spend is still counted.</summary>
     // A saved list still naming the retired /throttle or /unthrottle reads as /pacing, which replaced them (M.ORCH-T483).
     public List<string> ExemptCommands { get => exemptCommands; init => exemptCommands = RenameRetired(value); }
     private readonly List<string> exemptCommands = [.. DefaultExemptCommands];

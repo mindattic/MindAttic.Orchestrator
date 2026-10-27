@@ -664,9 +664,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         {
             lock (gate)
             {
-                var result = refresh();
-                lastUtc = now();
-                return result;
+                // Timed from a refresh that throws too, so a failing one is tried again every interval, not every second
+                // (bughunt 2026-10-27: a full Build and an Error line each second for the rest of a long tick).
+                try { return refresh(); }
+                finally { lastUtc = now(); }
             }
         }
 

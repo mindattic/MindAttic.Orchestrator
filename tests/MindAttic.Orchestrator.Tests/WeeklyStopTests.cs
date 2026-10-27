@@ -142,6 +142,8 @@ public sealed class WeeklyStopTests
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
             Assert.That(doc.RootElement.GetProperty("weekly_stop_percent").GetInt32(), Is.EqualTo(97));
             Assert.That(Sessions.LoginPace.Read(path)?.WeeklyStopPercent, Is.EqualTo(97), "the Accounts view reads it back per login");
+            // And the login's 5-hour cutoff beside it, for the hooks' own stop while the daemon is down (bughunt 2026-10-27).
+            Assert.That(doc.RootElement.GetProperty("five_hour_stop_percent").GetInt32(), Is.EqualTo(three.PaceTargetPercent));
         }
         finally
         {
