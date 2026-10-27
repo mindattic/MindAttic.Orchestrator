@@ -270,9 +270,10 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
 
     private void SaveCache()
     {
-        dirty = false;
+        // savedUtc paces retries even on failure (M.ORCH-T1158); dirty only clears once the write actually lands,
+        // so a transient lock doesn't leave the on-disk cache stuck stale until unrelated activity sets dirty again.
         savedUtc = UtcNow();
-        if (cachePath is null) return;
+        if (cachePath is null) { dirty = false; return; }
         var cache = new Cache(CacheVersion, countingSinceUtc, [.. files.Select(kv => new CachedFile(
             kv.Key, kv.Value.Offset, kv.Value.Cwd, kv.Value.SessionId, kv.Value.Model, kv.Value.TicketId, kv.Value.TicketType, kv.Value.LastWriteUtc,
             [.. kv.Value.Events.Select(e => new[] { e.AtUtc.Ticks, e.Usage.Input, e.Usage.CacheCreation, e.Usage.CacheRead, e.Usage.Output })],
@@ -286,6 +287,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             Directory.CreateDirectory(Path.GetDirectoryName(cachePath)!);
             File.WriteAllBytes(temp, JsonSerializer.SerializeToUtf8Bytes(cache));
             File.Move(temp, cachePath, overwrite: true);
+            dirty = false;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
