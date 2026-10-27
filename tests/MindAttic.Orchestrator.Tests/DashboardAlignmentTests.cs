@@ -118,11 +118,12 @@ public sealed class DashboardAlignmentTests
             return parts.Length switch { 1 => [parts[0], parts[0]], 2 => [parts[0], parts[0]], _ => [parts[0], parts[2]] };
         }
 
-        // The fixed rows under the person tabs (M.ORCH-T861) own the gutter themselves; the header and toolbar scroll in the body,
-        // whose MaBodyScroll gutter (checked below) is the same, so they add none of their own.
-        foreach (var name in new[] { "TerminalsPanel", "TerminalFrame", "ToastRow" })
+        // The fixed rows under the person tabs (M.ORCH-T861) own the gutter themselves; the header, toolbar and the toast row
+        // (folded into the utilization card's header row by M.ORCH-T1167/M.ORCH-T1180) scroll in the body, whose MaBodyScroll
+        // gutter (checked below) is the same, so they add none of their own.
+        foreach (var name in new[] { "TerminalsPanel", "TerminalFrame" })
             Assert.That(Sides((string?)Named(name).Attribute("Margin")), Is.EqualTo(new[] { Side, Side }), name);
-        foreach (var name in new[] { "Header", "Toolbar" })
+        foreach (var name in new[] { "Header", "Toolbar", "ToastRow" })
         {
             Assert.That(Named(name).Ancestors().Contains(Named("AgentsBody")), Is.True, $"{name} scrolls with the body");
             Assert.That(Sides((string?)Named(name).Attribute("Margin")), Is.EqualTo(new[] { 0d, 0d }), $"{name}: the body owns the gutter");
