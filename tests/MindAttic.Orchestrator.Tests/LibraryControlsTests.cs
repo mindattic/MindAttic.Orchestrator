@@ -188,15 +188,24 @@ public sealed class LibraryControlsTests
     }
 
     [Test]
-    public void Toasts_are_an_McToastHost_with_the_view_models_commands()
+    public void Toast_dots_are_bound_to_the_view_models_toast_list_and_open_command()
     {
-        var row = Named(Window(), "ToastRow");
+        // The full-width McToastHost row (M.ORCH-T531) was deliberately replaced by small hoverable notification dots
+        // (M.ORCH-T1167, M.ORCH-T1180): a dot's own click now does what the old row's click and its separate dismiss both
+        // did, since OpenToastCommand removes the toast from Toasts itself (MainViewModel.cs), so there is no separate
+        // DismissCommand binding to check for any more.
+        var dots = Named(Window(), "ToastDots");
 
-        Assert.That(row.Name, Is.EqualTo(Mc + "MaToastHost"));
-        Assert.That((string?)row.Attribute("ItemsSource"), Is.EqualTo("{Binding Toasts}"));
-        Assert.That((string?)row.Attribute("OpenCommand"), Is.EqualTo("{Binding OpenToastCommand}"));
-        Assert.That((string?)row.Attribute("DismissCommand"), Is.EqualTo("{Binding DismissToastCommand}"));
-        Assert.That(row.Elements(), Is.Empty, "no item template of its own");
+        Assert.That((string?)dots.Attribute("ItemsSource"), Is.EqualTo("{Binding Toasts}"));
+
+        var button = dots.Descendants(P + "Button").Single();
+        Assert.That((string?)button.Attribute("Style"), Is.EqualTo("{StaticResource NotificationDot}"));
+        Assert.That((string?)button.Attribute("Command"),
+            Is.EqualTo("{Binding DataContext.OpenToastCommand, RelativeSource={RelativeSource AncestorType=Window}}"));
+
+        var viewModel = File.ReadAllText(Wpf(Path.Combine("ViewModels", "MainViewModel.cs")));
+        Assert.That(Regex.IsMatch(viewModel, @"OpenToastCommand\s*=\s*new RelayCommand\(async p =>\s*\{\s*if \(p is not ToastViewModel t\) return;\s*Toasts\.Remove\(t\);"),
+            Is.True, "opening a toast still removes it from Toasts, like the old McToastHost's dismiss did");
     }
 
     [Test]
