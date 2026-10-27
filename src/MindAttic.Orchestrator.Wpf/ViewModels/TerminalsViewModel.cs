@@ -107,7 +107,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// Launcher's own tab (M.ORCH-T1172) — a login's other CLI tabs already sit under that Launcher tab, so repeating the
     /// badge on each of them said nothing new.</summary>
     public string Badge => !Request.IsMenu ? "" : Request.Initials is { Length: > 0 } i ? $"{i}:" : Request.Alias is { Length: > 0 } a ? $"{a}:" : "";
-    public string Name => Request.IsMenu ? SessionControl.ShortName(Request.Name) : $"{SessionControl.ShortName(Request.Name)} [{Request.Provider}]";
+    public string Name => Request.IsMenu ? SessionControl.ShortName(Request.Name) : $"{SessionControl.ShortName(Request.Name)}{SessionControl.ProviderTag(Request.Provider)}";
     public string Tooltip => $"{Request.Title}\n{Request.Directory}\n{Request.Alias ?? Login ?? "global login"}";
     public Brush TabBrush { get; }
 

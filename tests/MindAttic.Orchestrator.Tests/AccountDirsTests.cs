@@ -195,7 +195,7 @@ public sealed class AccountDirsTests
         var control = new SessionControl(new OrchestratorOptions { LauncherExe = stub }) { Look = d => LoginLook.For(d ?? Path.Combine(dir, "global"), d is null ? "jordan@example.com" : "b@example.com") };
         var args = control.StartArguments("Repo A", dir, "Claude", "it's \"quoted\"; with a semicolon", b.Directory).ToList();
 
-        Assert.That(args[..5], Is.EqualTo(new[] { "-w", "b", "new-tab", "--title", "B: Repo A [Claude]" }), "its own window, badged");
+        Assert.That(args[..5], Is.EqualTo(new[] { "-w", "b", "new-tab", "--title", "B: Repo A" }), "its own window, badged");
         Assert.That(args[5], Is.EqualTo("--tabColor"));
         Assert.That(args[7..9], Is.EqualTo(new[] { "-d", dir }));
         Assert.That(args, Does.Contain("powershell.exe"));
@@ -215,7 +215,7 @@ public sealed class AccountDirsTests
         Assert.That(control.Start("Repo A", dir, "Codex", null, b.Directory), Does.Contain("Claude login"), "only Claude has a login to pick");
         var global = control.StartArguments("Repo A", dir, "Claude", null).ToList();
         Assert.That(global, Does.Contain("host").And.Not.Contain("powershell.exe"), "without one, the tab starts the Launcher directly");
-        Assert.That(global[..5], Is.EqualTo(new[] { "-w", "jordan", "new-tab", "--title", "JO: Repo A [Claude]" }), "the global login's own window");
+        Assert.That(global[..5], Is.EqualTo(new[] { "-w", "jordan", "new-tab", "--title", "JO: Repo A" }), "the global login's own window");
         Assert.That(control.StartArguments("Repo A", dir, "Codex", null).ToList()[..5], Is.EqualTo(new[] { "-w", "0", "new-tab", "--title", "Repo A [Codex]" }),
             "a provider with no login opens as it always did");
     }
@@ -223,16 +223,17 @@ public sealed class AccountDirsTests
     [Test]
     public void A_tabs_title_drops_the_repos_leading_prefix()
     {
-        // M.ORCH-T632: "JR: EZ [Claude]", not "[JR] GTFO.EZ [Claude]"; the provider tag stays. Generalized: no fixed
-        // "GTFO."/"MindAttic."/"Unity." list any more — a prefix drops once RepoNames says two or more repos share it,
-        // and REA. stays below on purpose to prove a prefix unique to one repo doesn't.
+        // M.ORCH-T632: "JR: EZ", not "[JR] GTFO.EZ"; a non-Claude provider's tag stays (M.ORCH-T1176 drops it for Claude,
+        // since every tab was one). Generalized: no fixed "GTFO."/"MindAttic."/"Unity." list any more — a prefix drops once
+        // RepoNames says two or more repos share it, and REA. stays below on purpose to prove a prefix unique to one repo
+        // doesn't.
         var control = new SessionControl(new OrchestratorOptions { LauncherExe = "L.exe" })
         {
             Look = _ => LoginLook.For(Path.Combine(dir, "global"), "jordan@example.com"),
             RepoNames = () => ["GTFO.EZ", "GTFO.Dust", "MindAttic.Tickets", "MindAttic.Launcher", "Unity.Eve", "Unity.Other", "REA.Bloodlines"],
         };
-        Assert.That(control.StartArguments("GTFO.EZ", dir, "Claude", null).ToList()[4], Is.EqualTo("JO: EZ [Claude]"));
-        Assert.That(control.StartArguments("MindAttic.Tickets", dir, "Claude", null).ToList()[4], Is.EqualTo("JO: Tickets [Claude]"));
+        Assert.That(control.StartArguments("GTFO.EZ", dir, "Claude", null).ToList()[4], Is.EqualTo("JO: EZ"));
+        Assert.That(control.StartArguments("MindAttic.Tickets", dir, "Claude", null).ToList()[4], Is.EqualTo("JO: Tickets"));
         Assert.That(control.StartArguments("Unity.Eve", dir, "Codex", null).ToList()[4], Is.EqualTo("Eve [Codex]"));
         Assert.That(control.StartArguments("UnityEve", dir, "Codex", null).ToList()[4], Is.EqualTo("UnityEve [Codex]"), "only the exact prefix, dot and all");
         Assert.That(control.StartArguments("REA.Bloodlines", dir, "Codex", null).ToList()[4], Is.EqualTo("REA.Bloodlines [Codex]"), "a prefix unique to one repo stays whole");

@@ -254,7 +254,7 @@ public sealed class LoginScopeTests
 
         var global = control.StartArguments("Repo", @"D:\W\Repo", "Claude", prompt: null, configDir: null, resumeSession: "sess-1").ToList();
         Assert.That(global.SkipWhile(a => a != "--").Skip(1), Is.EqualTo(new[] { @"C:\L\MindAttic.Launcher.exe", "host", "--path", @"D:\W\Repo",
-            "--title", "RD: Repo [Claude]", "--provider", "Claude", "--resume", "sess-1" }));
+            "--title", "RD: Repo", "--provider", "Claude", "--resume", "sess-1" }));
 
         var ignored = control.StartArguments("Repo", @"D:\W\Repo", "Claude", prompt: "do it", configDir: null, resumeSession: "sess-1").ToList();
         Assert.That(ignored.SkipWhile(a => a != "--").Skip(1), Does.Not.Contain("--prompt"), "resume wins over a prompt, as HostAgentCommand's own --resume already does");

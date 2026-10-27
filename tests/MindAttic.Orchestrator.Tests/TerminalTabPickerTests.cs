@@ -86,15 +86,17 @@ public sealed class TerminalTabPickerTests
     public void The_expected_title_is_the_hosts_title_else_its_folder_and_provider()
     {
         Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, "General [Claude]", @"D:\Projects\MindAttic")), Is.EqualTo("General [Claude]"));
-        Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\REA.Bloodlines\")), Is.EqualTo("REA.Bloodlines [Claude]"));
+        // No " [Claude]" on a generated title (M.ORCH-T1176): every tab was one until other providers are told apart some
+        // other way. An explicit --title (above) is kept verbatim either way.
+        Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\REA.Bloodlines\")), Is.EqualTo("REA.Bloodlines"));
         // ShortName only drops a dot-prefix once two or more known repos share it (M.ORCH-T632): with none known here,
         // "GTFO.EZ" is the only "GTFO." repo in scope, so it stays whole, same as a repo whose prefix nothing else shares would.
-        Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\GTFO.EZ")), Is.EqualTo("GTFO.EZ [Claude]"));
+        Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\GTFO.EZ")), Is.EqualTo("GTFO.EZ"));
         var was = SessionControl.KnownRepoNames;
         try
         {
             SessionControl.KnownRepoNames = ["GTFO.EZ", "GTFO.AbsurdWeapons"];
-            Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\GTFO.EZ")), Is.EqualTo("EZ [Claude]"),
+            Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\GTFO.EZ")), Is.EqualTo("EZ"),
                 "another known GTFO. repo: now it's worth dropping");
         }
         finally { SessionControl.KnownRepoNames = was; }

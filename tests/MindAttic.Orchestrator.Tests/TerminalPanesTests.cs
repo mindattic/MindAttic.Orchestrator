@@ -203,7 +203,7 @@ public sealed class TerminalPanesTests
         var menu = new TerminalPaneViewModel(new PaneRequest("RD: Launcher", temp.New()) { Repo = "Launcher", Provider = "Launcher", CommandLine = "cmd.exe", IsMenu = true, Initials = "RD" });
         Assert.That(menu.Name, Is.EqualTo("Launcher"));
         var cli = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe", Initials = "RD" });
-        Assert.That(cli.Name, Is.EqualTo("Repo [Claude]"));
+        Assert.That(cli.Name, Is.EqualTo("Repo"), "nor a Claude CLI tab its provider tag (M.ORCH-T1176): every tab was one");
         Assert.That(menu.Badge, Is.EqualTo("RD:"), "the Launcher tab still carries its login's badge (M.ORCH-T1172)");
         Assert.That(cli.Badge, Is.EqualTo(""), "a CLI tab no longer repeats it: it already sits under that Launcher tab (M.ORCH-T1172)");
     }
