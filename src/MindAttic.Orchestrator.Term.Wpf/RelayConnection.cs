@@ -291,6 +291,8 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
             {
                 if (closed) return new("closed", true, false);
                 link = p;
+                // A sequence the last link cut off mid-character mustn't prefix this one's replay with U+FFFD (bughunt 2026-10-27).
+                utf8.Reset();
                 // Queued under the gate that set the link, so the Hello is the first frame this link carries.
                 outbox.Writer.TryWrite((p, TermProtocol.Frame(TermFrameKind.Hello,
                     TermProtocol.Hello(protocol, (ushort)(cols > 0 ? cols : 120), (ushort)(rows > 0 ? rows : 30), interactive, viewerId ?? ViewerId))));
@@ -440,7 +442,8 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
     /// dropped and <see cref="InputDropped"/> raised (not once the connection is closed or has ended).</summary>
     public void WriteInput(string data)
     {
-        if (string.IsNullOrEmpty(data)) return;
+        // A watch-only viewer never sends input: a protocol 1 host's Hello has no flags, so it can't drop it there (bughunt 2026-10-27).
+        if (string.IsNullOrEmpty(data) || !interactive) return;
         if (!HasLink())
         {
             if (!closed && !ended) Post(() => { if (!closed && !ended) InputDropped?.Invoke(); });

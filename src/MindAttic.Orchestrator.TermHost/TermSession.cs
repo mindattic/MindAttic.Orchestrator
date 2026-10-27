@@ -33,6 +33,9 @@ internal sealed class TermSession
     // M.ORCH-T997: how long the exit waits for the output pump to reach EOF before Exit goes out.
     private const int PumpDrainMs = 5_000, PumpDrainMaxMs = 30_000, PumpQuietMs = 500;
 
+    // bughunt 2026-10-27: once one viewer has seen the exit, how long the rest get to write theirs before the pipes go.
+    private const int ExitFlushMaxMs = 5_000;
+
     // M.ORCH-T994: the most a Replay frame's data may take: half a viewer's backlog, leaving the rest for the live output that
     // queues behind it while it is written.
     private const int ReplayBudget = (int)(ViewerLink.MaxBacklog / 2);
@@ -156,10 +159,23 @@ internal sealed class TermSession
 
     private void StartCli(string commandLine)
     {
-        if (!CreatePipe(out var inRead, out var inWrite, IntPtr.Zero, 0) || !CreatePipe(out var outRead, out var outWrite, IntPtr.Zero, 0))
+        if (!CreatePipe(out var inRead, out var inWrite, IntPtr.Zero, 0))
             throw new Win32Exception(Marshal.GetLastWin32Error(), "CreatePipe");
+        // On a failure before the streams own them, the pipes' handles are closed (bughunt 2026-10-27).
+        if (!CreatePipe(out var outRead, out var outWrite, IntPtr.Zero, 0))
+        {
+            var error = Marshal.GetLastWin32Error();
+            CloseHandle(inRead);
+            CloseHandle(inWrite);
+            throw new Win32Exception(error, "CreatePipe");
+        }
         var hr = CreatePseudoConsole(new COORD { X = (short)cols, Y = (short)rows }, inRead, outWrite, 0, out hPC);
-        if (hr != 0) throw new Win32Exception(hr, $"CreatePseudoConsole 0x{hr:x}");
+        if (hr != 0)
+        {
+            hPC = IntPtr.Zero;
+            foreach (var h in new[] { inRead, inWrite, outRead, outWrite }) CloseHandle(h);
+            throw new Win32Exception(hr, $"CreatePseudoConsole 0x{hr:x}");
+        }
         ptyIn = new FileStream(new SafeFileHandle(inWrite, true), FileAccess.Write, 1, false);
         ptyOut = new FileStream(new SafeFileHandle(outRead, true), FileAccess.Read, 1, false);
 
@@ -299,6 +315,14 @@ internal sealed class TermSession
             if (exitSeen.Wait(options.Linger))
             {
                 log.Write("a viewer has seen the exit");
+                // Every other viewer gets to write its Exit too, bounded, so a slow one isn't cut off before the final output
+                // and the code (bughunt 2026-10-27).
+                var until = Environment.TickCount64 + ExitFlushMaxMs;
+                while (Environment.TickCount64 < until)
+                {
+                    lock (gate) { if (viewers.TrueForAll(v => v.IsClosed || v.ExitWritten)) break; }
+                    Thread.Sleep(50);
+                }
                 // Let its writer finish the last frames before the pipe goes.
                 Thread.Sleep(500);
             }
@@ -594,6 +618,8 @@ internal sealed class TermSession
     /// </summary>
     private void ApplySize(ushort c, ushort r, bool ownerChanged)
     {
+        // Capped, whatever the caller passed (the Hello's size reaches here unclamped) (bughunt 2026-10-27).
+        (c, r) = ViewerPolicy.Clamp(c, r);
         bool resize;
         lock (gate) resize = c > 0 && r > 0 && !exited && !ptyClosed && (c != cols || r != rows);
         if (resize) DrainOutput();

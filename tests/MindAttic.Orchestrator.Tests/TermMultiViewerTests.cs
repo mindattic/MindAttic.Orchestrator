@@ -61,6 +61,19 @@ public sealed class TermMultiViewerTests
     }
 
     [Test]
+    public void A_huge_size_is_capped_so_the_conpty_coord_never_wraps()
+    {
+        // bughunt 2026-10-27: 40000x40000 wrapped negative in the short COORD and asked the emulator for 1.6G cells.
+        var policy = new ViewerPolicy();
+        Assert.That(policy.Join(1, true, 40000, 40000), Is.True);
+        Assert.That(policy.OwnerSize, Is.EqualTo((ViewerPolicy.MaxCols, ViewerPolicy.MaxRows)));
+        Assert.That(policy.Resize(1, ushort.MaxValue, 50), Is.True);
+        Assert.That(policy.OwnerSize, Is.EqualTo((ViewerPolicy.MaxCols, (ushort)50)));
+        Assert.That(policy.Resize(1, 200, 60), Is.True);
+        Assert.That(policy.OwnerSize, Is.EqualTo(((ushort)200, (ushort)60)), "a sane size is kept as asked");
+    }
+
+    [Test]
     public void The_viewer_that_last_typed_owns_the_size()
     {
         var policy = new ViewerPolicy();

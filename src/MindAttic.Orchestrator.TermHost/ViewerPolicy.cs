@@ -28,6 +28,13 @@ internal sealed class ViewerPolicy
     private readonly Dictionary<long, Entry> viewers = [];
     private long clock;
 
+    /// <summary>The largest size a viewer may ask for (bughunt 2026-10-27): past it the ConPTY's short COORD wraps negative and
+    /// the emulator is asked for over a billion cells.</summary>
+    public const ushort MaxCols = 1000, MaxRows = 500;
+
+    /// <summary>A viewer's wanted size, capped at <see cref="MaxCols"/> x <see cref="MaxRows"/>; 0 stays 0 (no size).</summary>
+    public static (ushort Cols, ushort Rows) Clamp(ushort cols, ushort rows) => (Math.Min(cols, MaxCols), Math.Min(rows, MaxRows));
+
     /// <summary>The viewer whose size applies; null while no interactive viewer is attached.</summary>
     public long? Owner { get; private set; }
 
@@ -43,6 +50,7 @@ internal sealed class ViewerPolicy
     /// gateway's watcher, even at protocol 1) never takes it.</summary>
     public bool Join(long id, bool interactive, ushort cols, ushort rows)
     {
+        (cols, rows) = Clamp(cols, rows);
         viewers[id] = new Entry { Interactive = interactive, Cols = cols, Rows = rows, Active = ++clock };
         if (Owner is not null || !interactive || cols == 0 || rows == 0) return false;
         Owner = id;
@@ -92,8 +100,7 @@ internal sealed class ViewerPolicy
     public bool Resize(long id, ushort cols, ushort rows)
     {
         if (cols == 0 || rows == 0 || !viewers.TryGetValue(id, out var e) || !e.Interactive) return false;
-        e.Cols = cols;
-        e.Rows = rows;
+        (e.Cols, e.Rows) = Clamp(cols, rows);
         return Owner == id;
     }
 }

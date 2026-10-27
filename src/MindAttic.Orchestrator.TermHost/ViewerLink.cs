@@ -40,6 +40,10 @@ internal sealed class ViewerLink : IDisposable
     /// <summary>Raised once the viewer has been sent an Exit frame: it has seen the CLI exit.</summary>
     public event Action? ExitDelivered;
 
+    /// <summary>Whether its Exit frame has been written (bughunt 2026-10-27): the host lingers until every viewer's has.</summary>
+    public bool ExitWritten => Volatile.Read(ref exitWritten);
+    private bool exitWritten;
+
     public Task Writer { get; }
 
     public bool IsClosed => Volatile.Read(ref closed) != 0;
@@ -70,7 +74,11 @@ internal sealed class ViewerLink : IDisposable
                 await pipe.WriteAsync(frame).ConfigureAwait(false);
                 await pipe.FlushAsync().ConfigureAwait(false);
                 Interlocked.Add(ref backlog, -frame.Length);
-                if (frame[0] == (byte)TermFrameKind.Exit) ExitDelivered?.Invoke();
+                if (frame[0] == (byte)TermFrameKind.Exit)
+                {
+                    Volatile.Write(ref exitWritten, true);
+                    ExitDelivered?.Invoke();
+                }
             }
         }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException or OperationCanceledException) { }
