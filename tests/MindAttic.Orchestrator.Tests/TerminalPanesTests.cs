@@ -545,9 +545,11 @@ public sealed class TerminalPanesTests
         // While the renderer has Win32 focus WPF's Keyboard.FocusedElement is null; the key is routed to the renderer itself
         // (M.ORCH-T1109), so the chord's tab is the one that holds its original source.
         var pane = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe" }, hosted: true);
-        var e = new KeyEventArgs(Keyboard.PrimaryDevice, null!, 0, Key.V) { Source = pane.Relay!.Terminal };
+        // KeyEventArgs needs a real PresentationSource: a hidden message-only HwndSource is enough.
+        using var source = new System.Windows.Interop.HwndSource(new System.Windows.Interop.HwndSourceParameters("keys") { ParentWindow = new IntPtr(-3) });
+        var e = new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.V) { RoutedEvent = Keyboard.KeyDownEvent, Source = pane.Relay!.Terminal };
         Assert.That(TerminalPaste.Focused(e), Is.SameAs(pane));
-        var elsewhere = new KeyEventArgs(Keyboard.PrimaryDevice, null!, 0, Key.V) { Source = new System.Windows.Controls.TextBox() };
+        var elsewhere = new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.V) { RoutedEvent = Keyboard.KeyDownEvent, Source = new System.Windows.Controls.TextBox() };
         Assert.That(TerminalPaste.Focused(elsewhere), Is.Null, "a key aimed anywhere else is no terminal's");
     }
 

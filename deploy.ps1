@@ -461,8 +461,11 @@ if ($Launch -and $installed) { Start-Process -FilePath $installed }
 if (-not $env:MINDATTIC_DEPLOY_CHAIN) {
     # Beside the main checkout, not $repo: the -FromHere re-run's $repo is the clean deploy worktree under MindAttic.worktrees
     # (M.ORCH-T1067), which has no MindAttic.Tickets beside it (M.ORCH-T1100). Its git common dir is the main checkout's .git.
+    # A $repo that isn't a git checkout keeps itself: under 'Stop', Windows PowerShell turns git's stderr into a terminating
+    # error even with 2>$null, so it's caught here rather than failing the deploy (bughunt 2026-10-27).
     $siblingRoot = $repo
-    $common = (& git -C $repo rev-parse --path-format=absolute --git-common-dir 2>$null)
+    $common = $null
+    try { $common = (& git -C $repo rev-parse --path-format=absolute --git-common-dir 2>$null) } catch { $common = $null }
     if ($LASTEXITCODE -eq 0 -and $common) { $siblingRoot = Split-Path -Parent $common.Trim() }
     $ticketsDeploy = Join-Path $siblingRoot '..\MindAttic.Tickets\deploy.ps1'
     if (Test-Path $ticketsDeploy) {

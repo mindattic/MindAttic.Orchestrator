@@ -261,10 +261,11 @@ public sealed class TabStatusTests
         Assert.That(strip, Does.Contain("x:Name=\"LoginTabItem\"").And.Contain("Loaded=\"LoginTabItem_Loaded\""));
 
         var code = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));
-        Assert.That(code, Does.Contain("private const double PersonTabWidth = 230;")
+        Assert.That(code, Does.Not.Contain("PersonTabWidth = 230"), "content-sized since M.ORCH-T1096");
+        Assert.That(code, Does.Contain("private const double PersonTabSidePadding")
             .And.Contain("private void LoginTabItem_Loaded(")
-            .And.Contain("DataContext: MainViewModel { IsPersonTab: true } }")
-            .And.Contain("ItemsControl.ContainerFromElement(LoginTabStrip, content) is TabItem tab) tab.Width = PersonTabWidth;"));
+            .And.Contain("private void SizePersonTabs()")
+            .And.Contain("tabs.Max(NaturalWidth) + 2 * PersonTabSidePadding"));
     }
 
     /// <summary>M.ORCH-T790: the tab's red flag counts only CLIs blocked on you, and says so in words.</summary>

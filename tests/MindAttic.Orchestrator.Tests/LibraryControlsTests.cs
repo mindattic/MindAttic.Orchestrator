@@ -216,9 +216,8 @@ public sealed class LibraryControlsTests
     public void Progress_bars_text_areas_and_placeholders_are_the_librarys()
     {
         var window = Window();
-        var bar = Named(window, "BudgetBar");
-        Assert.That(bar.Name, Is.EqualTo(P + "ProgressBar"));
-        Assert.That((string?)bar.Attribute("Style"), Is.EqualTo("{StaticResource MaProgressBar}"));
+        // The 5-hour tile's BudgetBar went with the limit tiles (M.ORCH-T1094); any progress bar left is the library's.
+        Assert.That(window.Descendants(P + "ProgressBar").Select(b => (string?)b.Attribute("Style")), Has.All.EqualTo("{StaticResource MaProgressBar}"));
 
         // No placeholder drawn by hand over a box: every box's hint is the library's attached Placeholder.
         Assert.That(window.Descendants(P + "TextBlock").Where(t => (string?)t.Attribute("IsHitTestVisible") == "False"), Is.Empty);
