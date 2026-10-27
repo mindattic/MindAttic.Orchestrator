@@ -165,7 +165,7 @@
             <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status icon before the name
                  (M.ORCH-T757, in place of the status light): a pause icon while the login has no CLI open; a steady green play
                  arrow while any of its CLIs (hosted inside the Orchestrator's Terminals panel or outside it) is working; a
-                 flashing pause icon once every one of its open CLIs has stopped (M.ORCH-T890); a gray 'disabled' icon
+                 steady pause icon once every one of its open CLIs has stopped (M.ORCH-T890, never flashing since M.ORCH-T1116); a gray 'disabled' icon
                  past its 5-hour or weekly cutoff or signed out. The icons are the
                  library's icon font (Segoe Fluent Icons / MDL2, as MaIconButton draws) in theme tokens. The icon's word and the
                  status word are in the tooltip and the accessible name, so neither colour nor the picture is the only cue; the
@@ -200,16 +200,12 @@
                                        AutomationProperties.Name="{Binding TabActivityWord}"
                                        Visibility="{Binding IsTabBusy, Converter={StaticResource Visible}}" />
                             <!-- Every open CLI of this person has stopped (M.ORCH-T890: no turn, no subagent, no claim, no prompt,
-                                 as `orchestrator busy` judges it): the play arrow becomes a pause icon whose opacity pulses
-                                 (MainWindow.xaml.cs's Flash/TabStoppedIcon_*), steady when the system's client-area animation
-                                 is off. Built and animated from code, not a Storyboard: Storyboard.TargetName needs a NameScope
-                                 this DataTemplate can't give (M.ORCH-T775). Its words are in the tooltip and accessible name. -->
+                                 as `orchestrator busy` judges it): the play arrow becomes a steady pause icon (M.ORCH-T1116: it
+                                 never flashes). Its words are in the tooltip and accessible name. -->
                             <TextBlock x:Name="TabStoppedIcon" Text="&#xE769;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
                                        Foreground="{DynamicResource MaText}" VerticalAlignment="Center"
                                        AutomationProperties.Name="{Binding TabActivityWord}"
-                                       Visibility="{Binding IsTabAllStopped, Converter={StaticResource Visible}}"
-                                       IsVisibleChanged="TabStoppedIcon_IsVisibleChanged" Loaded="TabStoppedIcon_Loaded"
-                                       Unloaded="TabStoppedIcon_Unloaded" />
+                                       Visibility="{Binding IsTabAllStopped, Converter={StaticResource Visible}}" />
                             <TextBlock x:Name="TabDisabledIcon" Text="&#xE733;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
                                        Foreground="{DynamicResource MaMuted}" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />

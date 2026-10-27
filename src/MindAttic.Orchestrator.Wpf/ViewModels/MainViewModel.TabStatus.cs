@@ -176,7 +176,7 @@ public sealed partial class MainViewModel
     public bool IsTabBusy => IsPersonTab && TabActivity == TabActivity.Busy && !TabAllStopped;
     public bool IsTabDisabled => IsPersonTab && TabActivity == TabActivity.Disabled;
 
-    /// <summary>Every open CLI of this person has stopped (M.ORCH-T890): the green play arrow turns into a flashing pause icon,
+    /// <summary>Every open CLI of this person has stopped (M.ORCH-T890): the green play arrow turns into a steady pause icon (M.ORCH-T1116),
     /// so it shows at a glance that all of their CLIs are done. Never with no CLI open, and never while the login is disabled.</summary>
     public bool IsTabAllStopped => IsPersonTab && TabActivity != TabActivity.Disabled && TabAllStopped;
 

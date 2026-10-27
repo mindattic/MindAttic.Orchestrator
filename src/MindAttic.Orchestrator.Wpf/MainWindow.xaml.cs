@@ -514,42 +514,6 @@ public partial class MainWindow : Window
     private void LoginTabScrollRight_Click(object sender, RoutedEventArgs e) =>
         LoginTabScroller.ScrollToHorizontalOffset(LoginTabScroller.HorizontalOffset + TabScrollStep);
 
-    /// <summary>Pulses <paramref name="icon"/>'s opacity forever while <paramref name="on"/> and the system's client-area animation
-    /// is on (reduced motion off), else clears the animation so it rests fully opaque, never left mid-fade (M.ORCH-T890).</summary>
-    private static void Flash(TextBlock icon, bool on)
-    {
-        try
-        {
-            if (on && SystemParameters.ClientAreaAnimation)
-                icon.BeginAnimation(UIElement.OpacityProperty,
-                    new DoubleAnimation(1.0, 0.2, TimeSpan.FromSeconds(0.6)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever });
-            else
-            {
-                icon.BeginAnimation(UIElement.OpacityProperty, null);
-                icon.Opacity = 1.0;
-            }
-        }
-        catch (Exception) { } // a flash is decoration: never let it take the tab strip down
-    }
-
-    /// <summary>A person tab's pause icon flashes once every open CLI of theirs has stopped (M.ORCH-T890). Each instance of the
-    /// repeated <c>DataTemplate</c> drives only its own icon; it's visible exactly while its tab <c>IsTabAllStopped</c>, so showing
-    /// or hiding it is when the flash starts or stops.</summary>
-    private void TabStoppedIcon_Loaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is TextBlock icon) Flash(icon, icon.IsVisible);
-    }
-
-    private void TabStoppedIcon_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        if (sender is TextBlock icon) Flash(icon, icon.IsVisible);
-    }
-
-    private void TabStoppedIcon_Unloaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is TextBlock icon) Flash(icon, false);
-    }
-
     /// <summary>A CLI tab's right-click menu (M.ORCH-T883; Shift+F10 too): "Move to" each other signed-in login, read when it's
     /// opened, moving that CLI there. Not on the Launcher's own menu tab; disabled until the CLI's host is known.</summary>
     private async void OnTerminalTabContextMenu(object sender, ContextMenuEventArgs e)
