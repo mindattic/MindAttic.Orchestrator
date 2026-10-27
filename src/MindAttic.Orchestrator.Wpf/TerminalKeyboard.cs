@@ -37,7 +37,7 @@ internal static partial class TerminalKeyboard
     /// CLI tabs. Elsewhere the window's own KeyBindings run the same commands (a text box keeps its word jump).</summary>
     private static void OnTabSwitch(Window window, FrameworkElement terminals, KeyEventArgs e)
     {
-        if (e.Handled || TabStep(e.Key, Keyboard.Modifiers) is not (var step and not 0) || !HoldsFocus(terminals)) return;
+        if (e.Handled || TabStep(e.Key, Keyboard.Modifiers) is not (var step and not 0) || !HoldsFocus(terminals, e)) return;
         if (window.DataContext is not ViewModels.MainViewModel { Terminals: { } panes }) return;
         var command = step > 0 ? panes.NextCommand : panes.PreviousCommand;
         if (command.CanExecute(null)) command.Execute(null);
@@ -67,24 +67,28 @@ internal static partial class TerminalKeyboard
         foreach (var binding in window.InputBindings.OfType<KeyBinding>())
         {
             if (IsKeptChord(binding.Key, binding.Modifiers) || binding.Gesture is not KeyGesture gesture || gesture is GatedGesture) continue;
-            binding.Gesture = new GatedGesture(gesture, () => HoldsFocus(terminals));
+            binding.Gesture = new GatedGesture(gesture, e => HoldsFocus(terminals, e as KeyEventArgs));
         }
     }
 
-    /// <summary>A window key's gesture that stands aside (matches nothing) while <paramref name="standAside"/> says so: a
-    /// terminal holds focus (M.ORCH-T1108).</summary>
-    internal sealed class GatedGesture(KeyGesture inner, Func<bool> standAside)
+    /// <summary>A window key's gesture that stands aside (matches nothing) while <paramref name="standAside"/> says so for the
+    /// key: a terminal holds focus (M.ORCH-T1108).</summary>
+    internal sealed class GatedGesture(KeyGesture inner, Func<InputEventArgs, bool> standAside)
         : KeyGesture(inner.Key, inner.Modifiers, inner.DisplayString)
     {
         public override bool Matches(object targetElement, InputEventArgs inputEventArgs) =>
-            !standAside() && base.Matches(targetElement, inputEventArgs);
+            !standAside(inputEventArgs) && base.Matches(targetElement, inputEventArgs);
     }
 
     /// <summary>True while a terminal has the keyboard: the window's own key bindings (Esc) should stand aside. The focused
-    /// element is the renderer's HwndHost, inside a tab's RelayTerminal (M.ORCH-T926) or its in-process fallback.</summary>
-    public static bool HoldsFocus(FrameworkElement terminals) =>
-        terminals.IsVisible && terminals.IsKeyboardFocusWithin && Keyboard.FocusedElement is HwndHost host
-        && ViewModels.TerminalPaneViewModel.Of(host) is not null;
+    /// element is the renderer's HwndHost, inside a tab's RelayTerminal (M.ORCH-T926) or its in-process fallback. With a key,
+    /// its target decides too (M.ORCH-T1109): once Win32 focus is in the renderer's own window WPF deactivates its keyboard,
+    /// so <see cref="Keyboard.FocusedElement"/> is null while the key is still routed to the renderer's HwndHost.</summary>
+    public static bool HoldsFocus(FrameworkElement terminals, KeyEventArgs? key = null) =>
+        terminals.IsVisible
+        && ((key is not null && TerminalPaste.Focused(key) is not null)
+            || (terminals.IsKeyboardFocusWithin && Keyboard.FocusedElement is HwndHost host
+                && ViewModels.TerminalPaneViewModel.Of(host) is not null));
 
     /// <summary>Keys WPF would otherwise act on (scroll, move focus) before the CLI sees them.</summary>
     internal static bool IsForwarded(Key key, ModifierKeys modifiers) => RelayInput.IsForwarded(key, modifiers);
@@ -94,11 +98,11 @@ internal static partial class TerminalKeyboard
 
     private static void OnPreviewKeyDown(FrameworkElement terminals, KeyEventArgs e)
     {
-        if (e.Handled || !IsForwarded(e.Key, Keyboard.Modifiers) || !HoldsFocus(terminals)) return;
+        if (e.Handled || !IsForwarded(e.Key, Keyboard.Modifiers) || !HoldsFocus(terminals, e)) return;
         // A hosted tab (M.ORCH-T926, Phase 0 lesson 3): the key goes straight to the CLI through its relay connection, encoded
         // as the renderer encodes every other key. Posting WM_KEYDOWN to the renderer lost keys and reordered them against
         // typed text.
-        if (TerminalPaste.Focused(terminals) is { Relay.Connection: { } connection })
+        if ((TerminalPaste.Focused(e) ?? TerminalPaste.Focused(terminals)) is { Relay.Connection: { } connection })
         {
             var key = KeyInterop.VirtualKeyFromKey(e.Key);
             connection.WriteInput(Win32Key(key, MapVirtualKey((uint)key, 0), (Keyboard.Modifiers & ModifierKeys.Shift) != 0));

@@ -521,7 +521,7 @@ public sealed class TerminalPanesTests
     {
         // M.ORCH-T1108: a matching KeyBinding marks Esc handled even when its command can't run, so the gesture stands aside.
         var focused = true;
-        var gesture = new TerminalKeyboard.GatedGesture(new KeyGesture(Key.Escape), () => focused);
+        var gesture = new TerminalKeyboard.GatedGesture(new KeyGesture(Key.Escape), _ => focused);
         using var source = new System.Windows.Interop.HwndSource(new System.Windows.Interop.HwndSourceParameters("esc"));
         var esc = new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Escape) { RoutedEvent = Keyboard.KeyDownEvent };
         var target = new System.Windows.Controls.Grid();
