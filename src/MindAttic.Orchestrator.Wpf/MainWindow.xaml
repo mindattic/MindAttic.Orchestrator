@@ -78,6 +78,41 @@
                 </DockPanel>
             </Border>
         </DataTemplate>
+
+        <!-- A notification circle (M.ORCH-T1167): borderless and small on purpose (18px, not the library's 34px MaToolButton)
+             so the whole stack fits inside the 24px right-edge gutter every row already reserves (TerminalFrame's own right
+             margin, SpaceLXLRXLBS, and the comment on AgentsBody: "The body's MaBodyScroll owns the window's left/right
+             gutter"). That matters because the terminal (TerminalPanesHost) is a native HwndHost: WPF content never draws
+             over a hosted native window regardless of XAML z-order ("airspace"), so the stack only stays visible over a live
+             terminal by living entirely in that reserved gutter rather than on top of the HwndHost itself. The dot grows
+             slightly on hover/focus as its only feedback; its colour is the item's own Accent, set in the DataTemplate below. -->
+        <Style x:Key="NotificationDot" TargetType="Button">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Margin" Value="0,5,2,5" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                            <Ellipse x:Name="Dot" Width="12" Height="12" Fill="{TemplateBinding Tag}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Dot" Property="Width" Value="15" />
+                                <Setter TargetName="Dot" Property="Height" Value="15" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Dot" Property="Width" Value="15" />
+                                <Setter TargetName="Dot" Property="Height" Value="15" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid x:Name="Root">
@@ -321,13 +356,47 @@
             </Grid>
         </Grid>
 
-        <!-- Toasts: what just happened (a session finished its turn, the pace changed). Their own row, so they push the page
-             down instead of covering whatever has keyboard focus (WCAG 2.4.11). The library's MaToastHost: each ToastViewModel's
-             Title, Body and Accent on an MaToast, clicking it opens what it's about, its x dismisses it, and each new one is read
-             out politely. -->
-        <mc:MaToastHost x:Name="ToastRow" Grid.Row="3" ItemsSource="{Binding Toasts}" Margin="{StaticResource SpaceLXLRXLBS}"
-                        OpenCommand="{Binding OpenToastCommand}" DismissCommand="{Binding DismissToastCommand}"
-                        AutomationProperties.Name="Notifications" />
+        <!-- Notifications as a stack of hoverable circles (M.ORCH-T1167), replacing the old full-width toast row entirely
+             (the library's MaToastHost, which pushed the page down) rather than leaving both: what just happened (a session
+             finished its turn, the pace changed) now stacks as small dots along the window's right edge instead, newest on
+             top, since Toasts is already built that way (Insert(0, ...) in MainViewModel.cs's Apply/OpenTicketsApp). An overlay
+             across every row below the tab strip (the same Grid.RowSpan trick as OrgEmptyPanel/Loader further down), so it
+             stays in view regardless of which tab or scroll position is on screen; see NotificationDot above in
+             Window.Resources for why it's sized to fit the rows' existing right-edge gutter rather than the library's wider
+             MaToolButton. Hovering a dot's ToolTip shows that notification's Title and Body without navigating away or
+             requiring a click; clicking it does what the old toast's click always did (OpenToastCommand: open what it's
+             about, which also removes it from Toasts). Each dot's colour is the item's own Accent: MaWarn for "needs you"
+             (most of them, hence a mock showing them all orange), MaBad for a problem, MaLink/MaMuted for the rest; the
+             same per-item colour MaToastHost drew from AccentPath, not one hardcoded colour. Wrapped in a ScrollViewer so an
+             unusually tall stack scrolls rather than running past the window (PruneToasts already caps it at
+             MainViewModel.MaxToasts, so this is a fallback, not the main defence). -->
+        <ScrollViewer Grid.Row="1" Grid.RowSpan="4" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,2,6"
+                      Panel.ZIndex="5" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="ToastDots" ItemsSource="{Binding Toasts}" AutomationProperties.Name="Notifications">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Vertical" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:ToastViewModel}">
+                        <Button Style="{StaticResource NotificationDot}" Tag="{Binding Accent}"
+                                Command="{Binding DataContext.OpenToastCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding Title}">
+                            <Button.ToolTip>
+                                <ToolTip>
+                                    <StackPanel MaxWidth="320">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Body}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                                                   Visibility="{Binding Body, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                    </StackPanel>
+                                </ToolTip>
+                            </Button.ToolTip>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
 
         <!-- A roster account not signed in on this machine yet (M.ORCH-T615): its tab shows only its Sign in, then, once signed
              in, the whole page and Open Launcher at the next refresh. -->
