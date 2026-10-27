@@ -259,10 +259,10 @@ public sealed class TabStatusTests
     /// <summary>M.ORCH-T803: every person's tab is the same width, since WPF sizes a TabItem to its header's content by
     /// default and Amy/Erin/Honey/Jordan/Ryan's differing name lengths made the strip uneven. The library's MaTabItem has no
     /// Width of its own (M.ORCH-T667's ItemContainerStyle may only set MaTabItem's own properties, not plain
-    /// FrameworkElement's), so it's set directly on the generated container from code-behind once the header loads, the way
-    /// the busy icon's glow (M.ORCH-T775) sidesteps the same library-only XAML rule.</summary>
+    /// FrameworkElement's), so it's set directly on the generated container from code-behind once the header loads. Since
+    /// M.ORCH-T1096 that width is the widest tab's own content plus a little padding a side, not a fixed 230.</summary>
     [Test]
-    public void Every_person_tab_is_230_wide()
+    public void Every_person_tab_is_as_wide_as_the_widest_ones_content()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
