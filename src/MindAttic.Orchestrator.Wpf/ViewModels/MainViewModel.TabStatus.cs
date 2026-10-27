@@ -67,10 +67,11 @@ public sealed partial class MainViewModel
     };
 
     /// <summary>The text beside a person's name (M.ORCH-T793): their live 5-hour and weekly use, each against that person's own
-    /// live cutoff ("5hr: 29% | wk: 15%", M.ORCH-T968), the cutoffs moved to the tooltip. Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
+    /// live cutoff ("5hr: 29% | wk: 15%", M.ORCH-T968), the cutoffs moved to the tooltip, and its subagent-slot load
+    /// ("λ: 89%", M.ORCH-T1194) while it's paced. Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
     public string TabTrailing => !tab.SignedIn ? ""
         : tab.IsApiKey ? ApiTrailingOf(Spend)
-        : TabUsageOf(FiveHourUsed, WeekUsed, MeterReadUtc, NeedsSignInAgain, DateTime.UtcNow);
+        : TabUsageOf(FiveHourUsed, WeekUsed, MeterReadUtc, NeedsSignInAgain, DateTime.UtcNow, Lambda);
 
     /// <summary>When this login's meter was last read: the pushed reading's, else its <c>claude-usage.json</c>'s; null on the global
     /// login's tab, or never read (M.ORCH-T1119).</summary>
@@ -90,24 +91,24 @@ public sealed partial class MainViewModel
     /// <summary>
     /// The tab's usage text (M.ORCH-T1119): <see cref="TabUsagePairsOf"/> while the meter's reading is fresh; "sign in again" when
     /// only the person can get it read again; and once it's older than <c>org usage</c>'s <see cref="UsageReport.StaleAfter"/>,
-    /// "stale · read 11h ago" instead of its figures, never shown as current (the tab is a fixed 230 wide, so the old figures
-    /// go to the tooltip, <see cref="TabStaleLineOf"/>).
+    /// "stale · read 11h ago" instead of its figures, never shown as current (the tab sizes itself to its own content, M.ORCH-T1096,
+    /// so the old figures go to the tooltip, <see cref="TabStaleLineOf"/>).
     /// </summary>
-    internal static string TabUsageOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, bool signInAgain, DateTime nowUtc) =>
+    internal static string TabUsageOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, bool signInAgain, DateTime nowUtc, double? lambda) =>
         signInAgain ? "sign in again"
         : IsStale(readUtc, nowUtc) ? $"stale · read {Formatting.Ago(readUtc, nowUtc)}"
-        : TabUsagePairsOf(fiveHourUsed, weekUsed);
+        : TabUsagePairsOf(fiveHourUsed, weekUsed, lambda);
 
     private static bool IsStale(DateTime? readUtc, DateTime nowUtc) => readUtc is { } r && nowUtc - r > UsageReport.StaleAfter;
 
     /// <summary>For the tooltip, once the reading is stale (M.ORCH-T1119): " Claude's meter was last read 11h ago (5hr: 0% | wk: 91%),
     /// so these figures may be out of date."; empty while it's fresh or never read.</summary>
-    internal static string TabStaleLineOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, DateTime nowUtc) =>
+    internal static string TabStaleLineOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, DateTime nowUtc, double? lambda) =>
         IsStale(readUtc, nowUtc)
-            ? $" Claude's meter was last read {Formatting.Ago(readUtc, nowUtc)} ({TabUsagePairsOf(fiveHourUsed, weekUsed)}), so these figures may be out of date."
+            ? $" Claude's meter was last read {Formatting.Ago(readUtc, nowUtc)} ({TabUsagePairsOf(fiveHourUsed, weekUsed, lambda)}), so these figures may be out of date."
             : "";
 
-    internal string TabStaleLine => tab.SignedIn && !tab.IsApiKey ? TabStaleLineOf(FiveHourUsed, WeekUsed, MeterReadUtc, DateTime.UtcNow) : "";
+    internal string TabStaleLine => tab.SignedIn && !tab.IsApiKey ? TabStaleLineOf(FiveHourUsed, WeekUsed, MeterReadUtc, DateTime.UtcNow, Lambda) : "";
 
     /// <summary>The cutoffs the visible label leaves out (M.ORCH-T968), for the tooltip and accessible name: "cutoffs 5-hour 98%, weekly 90%".</summary>
     internal string TabCutoffsLine => tab.SignedIn && !tab.IsApiKey ? $" Cutoffs: 5-hour {FiveHourCutoff}%, weekly {WeeklyCutoff}%." : "";
@@ -116,12 +117,26 @@ public sealed partial class MainViewModel
     internal static string ApiTrailingOf(ApiSpend? spend) =>
         spend is null ? "" : spend.LeftUsd is { } left ? $"{ApiSpend.Usd(left)} left" : $"{ApiSpend.Usd(spend.TodayUsd)} today";
 
-    /// <summary>"5hr: 29% | wk: 15%" (M.ORCH-T968): each window's % used, rounded for display only ("—" never read).</summary>
-    internal static string TabUsagePairsOf(double? fiveHourUsed, double? weekUsed) =>
-        $"5hr: {UsedOf(fiveHourUsed)}% | wk: {UsedOf(weekUsed)}%";
+    /// <summary>"5hr: 29% | wk: 15%", with its subagent-slot load appended while it's paced, "5hr: 29% | wk: 15% | λ: 89%"
+    /// (M.ORCH-T968, M.ORCH-T1194): each window's % used, rounded for display only ("—" never read).</summary>
+    internal static string TabUsagePairsOf(double? fiveHourUsed, double? weekUsed, double? lambda) =>
+        $"5hr: {UsedOf(fiveHourUsed)}% | wk: {UsedOf(weekUsed)}%" + (lambda is { } l ? $" | λ: {UsedOf(l)}%" : "");
 
     private static string UsedOf(double? used) =>
         used is { } u ? Math.Max(0, u).ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "—";
+
+    /// <summary>λ (M.ORCH-T1194): this login's subagent-slot load right now, how many of it are running over how many may run
+    /// at once ("2 of 6" → 33%), both from its own <see cref="Pace"/> (already scoped per tab by <c>LoginScope.For</c>, no
+    /// further plumbing needed). Null (hidden, like an unread meter) while unpaced. A hard stop (no new one may start) reads
+    /// 100% regardless of how many still happen to be running, since there's no room left for another either way; otherwise
+    /// uncapped, so a running count above a since-lowered allowance correctly reads past 100%, as the 5-hour and weekly
+    /// figures already do past their own cutoff.</summary>
+    internal static double? LambdaOf(Pace? pace) =>
+        pace?.SubagentAllowance is not { } allowed ? null
+        : allowed == 0 ? 100
+        : 100.0 * pace.Subagents / allowed;
+
+    internal double? Lambda => LambdaOf(Pace);
 
     private (TabLight Light, string Word) TabStatus => tab.IsApiKey
         ? ApiStatusOf(tab.SignedIn, Spend)
@@ -218,6 +233,13 @@ public sealed partial class MainViewModel
     /// <summary>Every open CLI of this person has stopped (M.ORCH-T890): the green play arrow turns into a steady pause icon (M.ORCH-T1116),
     /// so it shows at a glance that all of their CLIs are done. Never with no CLI open, and never while the login is disabled.</summary>
     public bool IsTabAllStopped => IsPersonTab && TabActivity != TabActivity.Disabled && TabAllStopped;
+
+    /// <summary>The tab's gray "zzz" box (M.ORCH-T1173): idle, or every open CLI has stopped, and none of them is asking (the
+    /// orange box below takes that instead).</summary>
+    public bool ShowsIdleBadge => (IsTabIdle || IsTabAllStopped) && !TabNeedsYou;
+
+    /// <summary>The tab's green play-arrow box (M.ORCH-T1173): busy, and none of this person's CLIs is asking.</summary>
+    public bool ShowsBusyBadge => IsTabBusy && !TabNeedsYou;
 
     /// <summary>How many CLIs are open on this login when every one of them is idle; 0 when none is open or any is busy.</summary>
     private int StoppedCliCount
@@ -377,8 +399,8 @@ public sealed partial class MainViewModel
     private void RaiseTabStatus()
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip), nameof(TabHoverTip),
-                                     nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(IsTabAllStopped), nameof(TabActivityWord),
-                                     nameof(TabAskingCount), nameof(TabNeedsYou), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
+                                     nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge), nameof(TabActivityWord),
+                                     nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
                                      nameof(ApiBurnText), nameof(ShowsClaudeMeters) })
             Raise(name);
