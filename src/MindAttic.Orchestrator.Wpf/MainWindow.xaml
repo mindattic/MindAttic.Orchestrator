@@ -391,59 +391,6 @@
                             <TextBlock Text="{Binding ApiRunsOutCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="{StaticResource SpaceHLV0}" Height="74" Command="{Binding OrgLimitCommand}"
-                            Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}"
-                            ToolTip="{Binding BudgetTooltip}"
-                            AutomationProperties.Name="{Binding BudgetHeadline, StringFormat='5-hour window {0} used: change the cutoffs'}">
-                        <StackPanel>
-                            <TextBlock Text="5 Hour Limit" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Left" Text="{Binding BudgetHeadline}" Style="{StaticResource MaStatValue}"
-                                           Foreground="{Binding BudgetBrush}" />
-                                <TextBlock Text="{Binding BudgetCaption}" Style="{StaticResource MaTileSubtitle}" VerticalAlignment="Center"
-                                           Margin="{StaticResource SpaceLSTXS}" TextWrapping="Wrap" />
-                            </DockPanel>
-                            <ProgressBar x:Name="BudgetBar" Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceH0VXS}" Maximum="1"
-                                         Value="{Binding BudgetFill, Mode=OneWay}" Foreground="{Binding BudgetBrush}" Focusable="False"
-                                         AutomationProperties.Name="5-hour window used" />
-                            <!-- While pacing holds work back, that's the line that matters; the full detail stays in the tooltip. -->
-                            <TextBlock Text="{Binding BudgetDetail}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis"
-                                       Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToVisible}}" />
-                            <TextBlock Text="{Binding PaceText}" Style="{StaticResource MaTileSubtitle}" Foreground="{Binding PaceBrush}" TextTrimming="CharacterEllipsis"
-                                       Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                        </StackPanel>
-                    </Button>
-                    <!-- Weekly: the other half of /status's picture. The tab's login's own week (M.ORCH-T628): what's left, its reset's
-                         day, date and time, and its weekly stop line (M.ORCH-T609). -->
-                    <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="{StaticResource SpaceHLV0}" Height="74" Command="{Binding OrgLimitCommand}" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}"
-                            ToolTip="How much of this login's weekly limit is left (/status reports the used share), when it resets, and where its CLIs stop (the weekly reserve). Opens Org limit to change its cutoffs; the weekly reset is in Settings (the top-right cog)."
-                            AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: change the cutoffs'}">
-                        <StackPanel>
-                            <TextBlock Text="Weekly Limit" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
-                            <TextBlock Text="{Binding WeeklyHeadline}" Style="{StaticResource MaStatValue}" />
-                            <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Button>
-                    <!-- Cutoffs (M.ORCH-T707): where this login's 5-hour window and week are cut off; opens Org limit to change them. -->
-                    <Button Style="{StaticResource MaSmallStat}" Command="{Binding OrgLimitCommand}" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}"
-                            ToolTip="Where this login's access is cut off: its 5-hour cutoff, then its weekly cutoff (orchestrator org limit). Opens Org limit to change them."
-                            AutomationProperties.Name="{Binding CutoffsHeadline, StringFormat='Cutoffs {0}: change them'}">
-                        <StackPanel>
-                            <TextBlock Text="Cut Offs" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
-                            <TextBlock Text="{Binding CutoffsHeadline}" Style="{StaticResource MaStatValue}" />
-                            <TextBlock Text="{Binding CutoffsCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Button>
-                    <!-- Last updated: when Claude's meter for this login was read, its plan, and STALE once it's old (M.ORCH-T684). -->
-                    <Button Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}"
-                            ToolTip="When Claude's own meter for this login was last read, and its plan. Refreshes the dashboard (F5)."
-                            AutomationProperties.Name="{Binding LastUpdatedHeadline, StringFormat='Last updated {0}: refresh'}">
-                        <StackPanel>
-                            <TextBlock Text="Last Updated" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
-                            <TextBlock Text="{Binding LastUpdatedHeadline}" Style="{StaticResource MaStatValue}" />
-                            <TextBlock Text="{Binding LastUpdatedCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Button>
                 </mc:MaTileGrid>
                 <!-- No login-action buttons on a person's page any more: Rename, Org limit and Make default are the person's tab's
                      right-click menu (M.ORCH-T797, MainWindow.xaml.cs's OnLoginTabContextMenu); the login-wide Move CLIs is gone, each
