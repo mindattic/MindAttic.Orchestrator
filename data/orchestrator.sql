@@ -1,7 +1,7 @@
 -- MindAttic.Orchestrator database dump (written with every change; the .db file is the store).
 
 -- accounts
-INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1793155200, 91, 1793138400, 1793138369, 1792686357.102392);
+INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1793155200, 0, 1793743200, 1793138628, 1792686357.102392);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', 'ryandebraal@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1792609200, 100, 1792764000, 1792591343, 1792591305.195613);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', 'shampoo1232@mindattic.com', 'MindAttic', 'Team · Max 5x', 51, 1792600200, 96, 1792702800, 1792589089, 1792464053.5616076);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', 'pdftransferjr@mindattic.com', 'MindAttic', 'Team · Max 5x', 81, 1792688400, 93, 1792929600, 1792685787, 1792670412.137807);
@@ -9,16 +9,12 @@ INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, 
 -- members
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('honey@mindattic.com', 'Honey', 'admin', 'premium', 'active', 1792771886.8054008, 1792771886.8054008);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1793125332.2444525);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'owner', 'premium', 'active', 1792771887.249, 1793135136.028041);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1793138658.4282084);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1792840279.0027995);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1793125363.539995);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T22:00:17Z', 35, '2026-10-21T01:30:00Z', 5320531);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T22:05:30Z', 36, '2026-10-21T01:30:00Z', 5651670);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T22:06:07Z', 39, '2026-10-21T01:30:00Z', 5834179);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T22:06:31.6198936Z', 40, '2026-10-21T01:30:00Z', 5860287);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T22:11:10.8692303Z', 41, '2026-10-21T01:30:00Z', 5901804);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T22:11:10Z', 41, '2026-10-21T01:30:00Z', 5901804);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T22:14:30Z', 41, '2026-10-21T01:30:00Z', 6063553);
@@ -1711,6 +1707,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T21:50:50Z', 0, '2026-10-28T02:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T21:55:09Z', 0, '2026-10-28T02:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T21:59:29Z', 0, '2026-10-28T02:40:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T22:03:48Z', 0, '2026-10-28T02:40:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T22:07:54Z', 0, '2026-10-28T02:40:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -1969,14 +1967,11 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-19', 'ProcessLogger', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 105732);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-19', 'Prose', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 91497);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-19', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 689564);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 16670601);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-20T22:00:00Z', 15177387);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'GTFO.EZ', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-20T22:00:00Z', 4807881);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 31847988);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'GTFO.EZ', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4807881);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Launcher', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 186545);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Legion', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 128440);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Legion', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-20T22:00:00Z', 155909);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3995599);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-20T22:00:00Z', 19929280);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Legion', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 284349);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 23924879);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Tickets', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 741844);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Vault', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 26963);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'Unity.Cursory', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 18331);
@@ -2150,12 +2145,15 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-26', 'RogueTrader.Brevity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9799518);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-26', 'RogueTrader.Brevity', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1874639);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-26', 'Unity.Ricochet', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 288163);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1637552);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12536173);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Tickets', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1002401);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 30809637);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1070995);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5267074);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T22:00:00Z', 1637552);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 33040);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T22:00:00Z', 12552774);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Tickets', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T22:00:00Z', 1002401);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22423);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T22:00:00Z', 30834601);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T22:00:00Z', 1070995);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2613);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T22:00:00Z', 5267074);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -2866,11 +2864,13 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('41df9bb7-c213-4b78-b6a6-4eec9591facb/agent-af78a7e9b9809415e', 'UH-T6', 'feature', '(workspace root)', 123942, '2026-10-22T23:54:18.06Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('44c614df-9ad6-4700-80e8-041f58238120', 'SS-T87', 'chore', 'Prose', 676481, '2026-10-15T20:48:53.883Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('450b31e8-a4ee-4975-bbf9-b4d545f393a3', 'UNI-T20', 'fix', 'Unity.Chain', 59298, '2026-10-24T17:44:44.719Z', 1, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('45cf52c0-6fa6-40aa-8b74-97a3411645e5/agent-a08239b8772d7d4b1', 'RB-T219', 'fix', 'REA.Bloodlines', 29366, '2026-10-27T22:11:39.368Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('45cf52c0-6fa6-40aa-8b74-97a3411645e5/agent-a09e90110200930b4', 'RB-T224', 'fix', 'REA.Bloodlines', 101053, '2026-10-27T21:11:17.777Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('45cf52c0-6fa6-40aa-8b74-97a3411645e5/agent-a107e0ee309844b50', 'RB-T225', 'fix', 'REA.Bloodlines', 149558, '2026-10-27T21:05:01.373Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('45cf52c0-6fa6-40aa-8b74-97a3411645e5/agent-a1d3631586c3d9d1a', 'RB-T223', 'fix', 'REA.Bloodlines', 305365, '2026-10-27T21:31:50.445Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('45cf52c0-6fa6-40aa-8b74-97a3411645e5/agent-a2136babadaa1d50f', 'RB-T242', 'feature', 'REA.Bloodlines', 138640, '2026-10-27T19:59:19.61Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('45cf52c0-6fa6-40aa-8b74-97a3411645e5/agent-a256fa8caf80abdf9', 'RB-T219', 'fix', 'REA.Bloodlines', 90860, '2026-10-27T21:16:32.36Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('45cf52c0-6fa6-40aa-8b74-97a3411645e5/agent-a2a49d833cdfaada5', 'RB-T229', 'fix', 'REA.Bloodlines', 26904, '2026-10-27T22:11:40.392Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('45cf52c0-6fa6-40aa-8b74-97a3411645e5/agent-a2b10d43b35d8e7ea', 'RB-T241', 'fix', 'REA.Bloodlines', 378682, '2026-10-27T20:32:28.541Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('45cf52c0-6fa6-40aa-8b74-97a3411645e5/agent-a3403846596b8361c', 'RB-T239', 'fix', 'REA.Bloodlines', 146242, '2026-10-27T20:48:00.379Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('45cf52c0-6fa6-40aa-8b74-97a3411645e5/agent-a421ab9ea41313d94', 'RB-T222', 'fix', 'REA.Bloodlines', 128362, '2026-10-27T21:24:07.414Z', 0, 'sonnet');
@@ -6334,484 +6334,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
 INSERT INTO state (name, value) VALUES ('dashboard-repos', '{
   "Sort": "Open tickets"
 }');
-INSERT INTO state (name, value) VALUES ('limit-resumes', '{
-  "70664": {
-    "SessionId": "d63b8323-0214-4476-ab5a-1700c5edbd3d",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T18:22:14.8890877Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "72544": {
-    "SessionId": "1ca9bd00-13a3-4fd3-b0f4-44f58e675c76",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T18:29:54.5311142Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "39852": {
-    "SessionId": "98a40e2a-cc75-4838-86e0-d73a698227b1",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T19:38:23.8575044Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "71512": {
-    "SessionId": "64fe7bd3-2e58-4ed4-9a5e-37c2828926fd",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T19:16:07.1829938Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "67856": {
-    "SessionId": "51870e7d-1d97-4418-8b48-6097fb43ff7e",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T19:16:56.0173887Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "33880": {
-    "SessionId": "ad7fbc23-533a-485c-adef-befaa1d47626",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T19:17:09.4960854Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "55968": {
-    "SessionId": "004c0693-b78e-4101-8c5a-4d4bb6911a1b",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T19:17:22.4557253Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "41236": {
-    "SessionId": "81152999-dc47-438d-8eaa-4b0922c3ece2",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T19:29:24.2537584Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "48372": {
-    "SessionId": "fc6a58a5-b922-417b-8bb7-acf8d5519d89",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T19:47:31.516427Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "54244": {
-    "SessionId": "9efa0c81-4cd0-45d6-b932-5b3c3231811c",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:20:22.9919659Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "62444": {
-    "SessionId": "d9285b98-581c-48e0-a995-2068e04bece3",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:20:48.1393489Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "31024": {
-    "SessionId": "fb98ff00-8878-4a14-b8d8-56b5088f0d17",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:21:28.3804977Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "15476": {
-    "SessionId": "00cd01a1-e7b4-4a13-bc77-fe92abe508fa",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:22:00.9117276Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "53244": {
-    "SessionId": "e4584685-15bf-4183-a6a9-236732441d16",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:23:07.9516816Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "2716": {
-    "SessionId": "61d5cec2-4d9a-40fa-b33e-7db0ca79379e",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:23:36.3468787Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "77436": {
-    "SessionId": "c3db9249-ec7f-45e3-8b14-46ad9d50d82e",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:24:24.0066311Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "44460": {
-    "SessionId": "0e3d9912-af74-4f05-8c25-2603c82585c1",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:25:43.23526Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "5604": {
-    "SessionId": "0f8387ba-fa84-4f28-b8cb-da38cf0a879d",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:26:07.7228479Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "74348": {
-    "SessionId": "bf586b10-0d9f-4fb8-80a9-5d86be5699da",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:29:27.1874786Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "58872": {
-    "SessionId": "f360cb66-220f-4164-924e-914c343fb2df",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:31:00.4400602Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "66352": {
-    "SessionId": "e1115a1c-8787-44f6-9ae4-72c58c0d8c4a",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T20:42:37.7547455Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "16272": {
-    "SessionId": "fc6a58a5-b922-417b-8bb7-acf8d5519d89",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:05:38.6718672Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "39660": {
-    "SessionId": "ffb7b0e5-451a-4d53-beb9-5d3f0fec0530",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:14:11.4643048Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "47756": {
-    "SessionId": "25e72d46-fc7c-4e32-937d-19b9d0f97fb0",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:15:02.9924859Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "56260": {
-    "SessionId": "678ee873-9405-4739-8cd4-93adf229744f",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:17:32.4915793Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "32784": {
-    "SessionId": "73cba3d1-c191-4012-a599-d842e95c6850",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:18:04.4782121Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "76836": {
-    "SessionId": "abb70b4a-9c75-4b82-b7db-cf800c20851c",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:18:04.4782121Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "66672": {
-    "SessionId": "abf80f04-4fe0-4b04-877d-2ccb1ccb214d",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:22:33.4777865Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "55304": {
-    "SessionId": "b30482d7-48dc-4494-907b-78377c6448fe",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:22:33.4777865Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "49800": {
-    "SessionId": "105d8ebd-4b74-44e9-82b6-85b7812d35fc",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:28:33.4399158Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "31496": {
-    "SessionId": "55a5364c-f295-4141-9b0f-3e54ba479d68",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:43:18.9707673Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "25504": {
-    "SessionId": "66101f61-5f6c-4ef1-b084-e8150cfc70f9",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:50:06.919043Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "77724": {
-    "SessionId": "9ede4043-e9c3-4ac5-8b24-338347e2b74d",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:51:07.6499648Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "39260": {
-    "SessionId": "aa51e672-2cba-4722-a561-d57d0bc86968",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:52:36.3381721Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "68672": {
-    "SessionId": "1e6b9429-db7b-4a76-b10f-f9b9f02aa23c",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T22:54:57.9619245Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "43052": {
-    "SessionId": "fe936aaf-26ea-444e-ac86-dde15736393e",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T23:35:18.5804685Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "38564": {
-    "SessionId": "654a5400-904e-407f-8e50-e5a9693917d3",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-23T23:37:39.3771576Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "77184": {
-    "SessionId": "1ff4f2d8-4c46-4b29-9f92-07ba59f9f33c",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T00:04:23.6067993Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "73436": {
-    "SessionId": "ebfa0b7b-24aa-466f-a83a-3b4d3a262661",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T00:09:10.1831757Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "17544": {
-    "SessionId": "66e645fc-c38f-40ca-9503-c928e0392c42",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T00:10:01.2334894Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "72360": {
-    "SessionId": "89ca541c-cb35-4617-94be-5c87346cb247",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T00:10:01.2334894Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "59432": {
-    "SessionId": "114901c6-c933-45df-9236-c6705327bb43",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T00:19:23.3134735Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "71940": {
-    "SessionId": "2b906ad4-d851-4bc5-9655-1a1d3ebf3775",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T00:21:06.6533199Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "49512": {
-    "SessionId": "d7f7f252-a846-4864-9e8e-389c22c4fa38",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T00:24:53.1842115Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "55948": {
-    "SessionId": "ecc2aeed-abb0-4e6e-9860-28f3394e89eb",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T00:26:22.8416602Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "34812": {
-    "SessionId": "6a4d0ff5-3183-4d0a-a3c7-f261ff488501",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T00:39:12.1288324Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "50156": {
-    "SessionId": "3b88c9bd-7ae4-499d-8b9b-3dfa941c0372",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T00:57:24.1926317Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "72688": {
-    "SessionId": "d66e3f88-f0ae-4730-b248-9a638cdeb609",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:03:57.7441148Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "77172": {
-    "SessionId": "0b74d0f0-10bd-4fdc-a454-e28746779b99",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:53:14.4482022Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "64180": {
-    "SessionId": "66709a05-e525-42dc-831d-a3dfb9f23234",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:07:38.6415615Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "12252": {
-    "SessionId": "22ce4d90-c668-4388-aadf-585320eeff21",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:09:54.1979823Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "72540": {
-    "SessionId": "9cadf186-6367-4156-bc32-0c0fd9c58358",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:10:39.2999538Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "12352": {
-    "SessionId": "7e5f7210-b66f-4380-96e6-2d80b00f88b3",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:12:56.877964Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "40348": {
-    "SessionId": "f3d1629b-17ef-424e-9dcd-c5976cbbb30f",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:13:25.0883332Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "27984": {
-    "SessionId": "fa5f7470-6166-4c23-8566-2888d7039173",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:13:25.0883332Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "69848": {
-    "SessionId": "3f9e21d6-7980-4f2f-979e-dcd6cc46c3a7",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:17:25.6309043Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "66960": {
-    "SessionId": "1aef465b-8a47-4a66-99e7-ad07c29a8e1a",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:18:17.09504Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "34892": {
-    "SessionId": "3f18482e-ae5a-4b91-8dad-20355d6415c6",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:36:51.0262804Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "31292": {
-    "SessionId": "60a2c669-6d1e-4de2-b1d8-1660f771603e",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:43:18.3081145Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "58728": {
-    "SessionId": "04f0f32f-0901-4b8d-82ea-62f2325b88b7",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T01:54:37.4978798Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "65628": {
-    "SessionId": "0548d2be-05dd-4c9f-8857-f2e161a4fd28",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T02:04:16.6828883Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "74552": {
-    "SessionId": "c3ee7854-983c-441e-9dae-77260b23a6a6",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T02:06:53.8936099Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "46704": {
-    "SessionId": "920f73e2-defc-4a55-b788-dcf01eab5395",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T03:27:46.7086203Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "75040": {
-    "SessionId": "b88d48be-6334-4056-84cb-f601c2296e73",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T03:40:43.8305305Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "35616": {
-    "SessionId": "8c6394ee-f1b8-4b85-8d7a-50a4527056f9",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T03:41:37.350248Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "74396": {
-    "SessionId": "85d0f632-a7ee-466f-9566-4b788f68fc88",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T03:49:28.5951645Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "22844": {
-    "SessionId": "9976eacd-149e-4ad5-a16b-b31ecc8eb4cc",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T03:49:41.1815026Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  },
-  "11408": {
-    "SessionId": "3355791e-fb1c-436b-9d8e-7fb6aeda09fd",
-    "Window": "weekly",
-    "UntilUtc": "2026-10-27T22:00:00Z",
-    "StoppedUtc": "2026-10-24T03:52:03.18421Z",
-    "DueUtc": "2026-10-27T22:02:00Z"
-  }
-}');
+INSERT INTO state (name, value) VALUES ('limit-resumes', '{}');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
   "5300d88e-be3b-441a-976c-34fc3e25e676@2026-10-20T03:50:00Z": "2026-10-20T03:50:00Z",
   "71a98525-34a0-4732-97d8-8a771755e7fe@2026-10-20T03:50:00Z": "2026-10-20T03:50:00Z",
@@ -7120,7 +6643,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "a57a30142679f3ed216b7bb6a585534536b6391c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "5087e4d9a745ed19c8d9b253d6d8d6b232b39b66",
+    "Tested": "e3cd75d82783dc64b12c1c2d9265ace33bd7f55d",
     "Green": "eeacb8eebfb353a5893bf091cd9deac79004e9ea"
   },
   "MindAttic.Psst": {
@@ -7131,8 +6654,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "7332476b16161496300b69d2c8838a9cb55f38e7"
   },
   "MindAttic.Tickets": {
-    "Tested": "bc2c003a7f19e2dffaad461ad49e398a541f0e0c",
-    "Green": "bc2c003a7f19e2dffaad461ad49e398a541f0e0c"
+    "Tested": "f708dfed5e8be3a783dbcac9872df2bbb822e3ce",
+    "Green": "f708dfed5e8be3a783dbcac9872df2bbb822e3ce"
   },
   "MindAttic.Vault": {
     "Tested": "ac2e2fd848071f2cd0db1f8a77f0bb3dad28d3d8",
