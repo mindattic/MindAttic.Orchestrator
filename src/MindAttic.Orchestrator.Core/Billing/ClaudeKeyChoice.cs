@@ -119,8 +119,9 @@ public static class ClaudeKeyChoice
             {
                 var body = Encoding.UTF8.GetBytes(next);
                 File.WriteAllBytes(tmp, bom ? [.. Utf8Bom, .. body] : body);
-                if (!ReadBytes(configPath).AsSpan().SequenceEqual(raw)) continue; // Claude Code wrote it meanwhile: start over from its new text
+                // Backed up before the check, not after: a write landing while a large backup is written would be lost (M.ORCH-T1088).
                 File.WriteAllBytes(configPath + BackupSuffix, raw);
+                if (!ReadBytes(configPath).AsSpan().SequenceEqual(raw)) continue; // Claude Code wrote it meanwhile: start over from its new text
                 for (var i = 0; ; i++)
                 {
                     try { File.Move(tmp, configPath, overwrite: true); return true; }
