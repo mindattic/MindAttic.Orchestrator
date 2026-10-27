@@ -234,7 +234,11 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         "Do these steps in order: " +
         "1. When the work is done, build it to check it; do not run any tests (not even the ones your change touches), " +
         $"because once you land, the orchestrator runs {item.Repo}'s full suite on {mainline} itself and files a fix ticket for any test that fails, so don't wait for a full run. " +
-        $"2. Commit this ticket's work alone, as one commit: stage only the files you changed, each by its explicit path (git add <path> ...), then plain git commit " +
+        // M.ORCH-T1149: the checkout is shared, so its index may already hold another agent's staged files; a bare git commit
+        // took all of them (13df3ae7). Naming the paths after -- commits those paths and nothing else, whatever is staged.
+        $"2. Commit this ticket's work alone, as one commit, naming every file you changed: git add <path> ... for new files, then plain " +
+        "git commit -m \"<subject>\" -- <path> <path> ... (the -- and the paths are required: other agents share this checkout and " +
+        "may have files staged, and a commit without paths would take theirs too) " +
         $"(not /commit, whose gate runs the test suite), with {item.Id} at the end of the subject; no push yet, the steps below do that, so keep going. " +
         // M.ORCH-T563: a Sonnet ticket's big or risky diff gets one Opus review of the diff alone before it lands.
         (model is { IsSonnet: true } ? "3. " + ReviewStep(item.Id) : "") +
@@ -251,7 +255,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     internal static string ReviewStep(string id) =>
         $"Before landing, run orchestrator review {id} from the checkout: it decides whether this Sonnet ticket's diff needs its one Opus " +
         "review (a big diff, or one touching the gates, pacing or git landing) and, if so, runs it on the diff alone. Fix what the review " +
-        "finds that's really wrong, rebuild and commit that with plain git commit; don't run the review again. ";
+        "finds that's really wrong, rebuild and commit that with plain git commit -m \"<subject>\" -- <path> ... (only your paths); don't run the review again. ";
 
     /// <summary>
     /// Agents that exited. One in the repo's checkout (every one since M.ORCH-T1122) is done when its ticket is closed: it

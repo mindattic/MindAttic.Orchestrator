@@ -168,7 +168,8 @@ public sealed class MainlineTestsTests
         var prompt = Allocate.PromptFor(item, @"D:\W\A", "main");
 
         Assert.That(prompt, Does.Contain("build it to check it; do not run any tests"));
-        Assert.That(prompt, Does.Contain("then plain git commit (not /commit"));
+        Assert.That(prompt, Does.Contain("then plain git commit -m \"<subject>\" -- <path> <path> ...").And.Contain("(not /commit"));
+        Assert.That(prompt, Does.Contain("a commit without paths would take theirs too"), "the checkout is shared (M.ORCH-T1149)");
         Assert.That(prompt, Does.Contain("You are done only when the push has succeeded and the ticket is closed."));
         Assert.That(prompt, Does.Not.Contain("but don't push"));
         Assert.That(prompt, Does.Contain("the orchestrator runs A's full suite on main itself and files a fix ticket for any test that fails, so don't wait for a full run"));

@@ -241,7 +241,7 @@ public sealed class AllocateTests
         Assert.That(why, Is.Null);
         Assert.That(handed.Select(h => h.Directory), Is.EqualTo(new[] { @"D:\W\A", @"D:\W\A" }), "both in A's one checkout, newest first (M.ORCH-T863)");
         Assert.That(handed[1].Prompt, Does.Contain("Work on ticket A-T1").And.Contain(@"Work in A's own checkout (D:\W\A) on master").And.Contain("cd there first")
-            .And.Contain("never git add -A").And.Contain("each by its explicit path").And.Contain("git pull --rebase --autostash origin master")
+            .And.Contain("never git add -A").And.Contain("naming every file you changed").And.Contain("git commit -m \"<subject>\" -- <path>").And.Contain("git pull --rebase --autostash origin master")
             .And.Contain("HEAD:master").And.Contain("tickets ticket close A-T1").And.Not.Contain("orch/"));
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(new[] { "A-T1", "A-T2" }), "claimed, so not handed out twice");
         Assert.That(store.LoadAssignments().Select(a => (a.Directory, a.IsClaim, a.InOwnWorktree(@"D:\W\A"))), Has.All.EqualTo((@"D:\W\A", true, false)),
