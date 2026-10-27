@@ -312,13 +312,20 @@ public sealed class ClaudeMeterProbe
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or HttpRequestException or TaskCanceledException)
         {
-            Fail($"refreshing the Claude sign-in failed ({ex.GetType().Name}); sign in again if this keeps happening", NoMeterBackoff);
+            // Backoff, not NoMeterBackoff (M.ORCH-T813): this login's meter is real and was being read moments ago, so a
+            // locked credentials file or a network blip here is the same kind of recoverable miss Backoff already covers.
+            // 15 minutes unread while tokens keep spending is itself a blind window (the Oct 24 9:10 PM window: 16m unseen,
+            // 660.9k spent, peak 97%).
+            Fail($"refreshing the Claude sign-in failed ({ex.GetType().Name}); sign in again if this keeps happening");
             return;
         }
         if (refusedRefresh)
         {
             refusedRefresh = false;
-            Fail($"Claude refused to refresh the sign-in (revoked or expired): {SignInAgain(Label)}", NoMeterBackoff, signIn: true);
+            // Backoff here too (M.ORCH-T813): a refused refresh can be a momentary race with another CLI rotating the
+            // same token (the next ask just reads whatever it left behind), not only a revoked sign-in; NoMeterBackoff
+            // left a real meter unread for 15+ minutes while tokens were spent, same as the catch above.
+            Fail($"Claude refused to refresh the sign-in (revoked or expired): {SignInAgain(Label)}", signIn: true);
             return;
         }
         if (token is null)
