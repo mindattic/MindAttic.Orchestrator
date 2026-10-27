@@ -228,20 +228,21 @@ public sealed class TabStatusTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
 
         var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
-        // The library's MaTabItem draws the trailing text after the name (M.ORCH-T667); the status icon (M.ORCH-T757) replaced its
-        // status light: pause idle, a blinking green play arrow busy, gray disabled, each in the library's icon font and a theme token.
+        // The library's MaTabItem draws the trailing text after the name (M.ORCH-T667); the status icon (M.ORCH-T757), boxed into
+        // status badges (M.ORCH-T1173), replaced its status light: a gray "zzz" box idle (or every open CLI stopped), a green
+        // play-arrow box busy, an orange "?" box when a CLI is blocked on the person, and a plain gray glyph (unboxed) disabled.
         Assert.That(strip, Does.Contain("<mc:MaTabControl").And.Contain("TargetType=\"mc:MaTabItem\""));
         Assert.That(strip, Does.Not.Contain("Property=\"Status\" Value="), "the icon, not the status light");
-        Assert.That(strip, Does.Contain("x:Name=\"TabIdleIcon\" Text=\"&#xE769;\"").And.Contain("{Binding IsTabIdle")
-            .And.Contain("x:Name=\"TabBusyIcon\" Text=\"&#xE768;\"").And.Contain("Foreground=\"{DynamicResource MaGood}\"")
-            .And.Contain("{Binding IsTabBusy").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"&#xE733;\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")
+        Assert.That(strip, Does.Contain("x:Name=\"TabIdleBadge\"").And.Contain("Content=\"zzz\"").And.Contain("Background=\"{DynamicResource MaMuted}\"")
+            .And.Contain("{Binding ShowsIdleBadge").And.Contain("x:Name=\"TabBusyBadge\"").And.Contain("Content=\"&#xE768;\"")
+            .And.Contain("Background=\"{DynamicResource MaGood}\"").And.Contain("{Binding ShowsBusyBadge")
+            .And.Contain("x:Name=\"TabAskingBadge\"").And.Contain("Content=\"?\"").And.Contain("Background=\"{DynamicResource MaWarn}\"")
+            .And.Contain("{Binding TabNeedsYou,").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"&#xE733;\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")
             .And.Contain("{Binding IsTabDisabled").And.Contain("FontFamily=\"Segoe Fluent Icons, Segoe MDL2 Assets\""));
-        // M.ORCH-T890: the busy icon is a steady green play (no blink); once every open CLI of the login has stopped, a separate
-        // pause icon (TabStoppedIcon) shows, steady too: it never flashes (M.ORCH-T1116).
-        Assert.That(strip, Does.Contain("x:Name=\"TabStoppedIcon\" Text=\"&#xE769;\"").And.Contain("{Binding IsTabAllStopped")
-            .And.Contain("AutomationProperties.Name=\"{Binding TabActivityWord}\""));
-        Assert.That(strip, Does.Not.Contain("TabBusyIcon_Loaded"), "the busy icon no longer blinks (M.ORCH-T890)");
-        Assert.That(strip, Does.Not.Contain("TabStoppedIcon_"), "the pause icon never flashes (M.ORCH-T1116)");
+        // M.ORCH-T1173: "every open CLI stopped" is folded into the idle badge (ShowsIdleBadge covers IsTabAllStopped too), so
+        // there's no separate pause/stopped icon any more. M.ORCH-T890: the busy badge is a steady green play (no blink).
+        Assert.That(strip, Does.Not.Contain("TabStoppedIcon"), "folded into the idle badge now (M.ORCH-T1173)");
+        Assert.That(strip, Does.Not.Contain("TabBusyIcon_Loaded"), "the busy badge no longer blinks (M.ORCH-T890)");
         Assert.That(strip, Does.Not.Contain("Opacity=\"{Binding TabIconOpacity}\""), "replaced by the soothing pulse (M.ORCH-T770)");
         Assert.That(strip, Does.Not.Contain("<Storyboard"), "the pulse is driven from code-behind now (M.ORCH-T775), not a Storyboard element");
         Assert.That(strip, Does.Not.Contain("(UIElement.Effect)"), "self-targeting an Effect's sub-property throws at runtime; name it and target it directly");
