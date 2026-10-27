@@ -15,6 +15,22 @@ public sealed class TabStatusTests
     private static readonly DateTime Now = new(2026, 10, 22, 12, 0, 0, DateTimeKind.Utc);
 
     [Test]
+    public void The_tooltip_counts_down_to_the_5_hour_and_weekly_resets()
+    {
+        Assert.That(MainViewModel.Countdown(new TimeSpan(2, 3, 14, 59)), Is.EqualTo("2d 3hr 14m"));
+        Assert.That(MainViewModel.Countdown(new TimeSpan(0, 3, 14, 0)), Is.EqualTo("3hr 14m"));
+        Assert.That(MainViewModel.Countdown(TimeSpan.FromMinutes(14)), Is.EqualTo("14m"));
+        Assert.That(MainViewModel.Countdown(new TimeSpan(1, 0, 5, 0)), Is.EqualTo("1d 0hr 5m"));
+
+        var line = MainViewModel.ResetsLineOf(Now.AddHours(3).AddMinutes(14), Now.AddDays(2).AddHours(3).AddMinutes(14), Now);
+        Assert.That(line, Does.StartWith(" 5-hour resets "));
+        Assert.That(line, Does.Contain("(in 3hr 14m); week resets "));
+        Assert.That(line, Does.EndWith("(in 2d 3hr 14m)."));
+        Assert.That(MainViewModel.ResetsLineOf(null, Now.AddMinutes(14), Now), Does.StartWith(" Week resets ").And.EndWith("(in 14m)."));
+        Assert.That(MainViewModel.ResetsLineOf(null, Now.AddMinutes(-1), Now), Is.Empty, "nothing known or ahead: nothing said");
+    }
+
+    [Test]
     public void The_tab_shows_live_5_hour_and_weekly_use_against_the_persons_own_cutoffs()
     {
         // M.ORCH-T793: current/target pairs, the target the person's own cutoff as passed in, never a fixed number.
