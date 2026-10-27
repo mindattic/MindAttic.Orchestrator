@@ -449,9 +449,9 @@
                                  horizontally rather than wrapping or crowding the limit boxes out (PruneToasts already caps
                                  the count at MainViewModel.MaxToasts, so this is a fallback, not the main defence). -->
                             <StackPanel x:Name="UtilizationHeaderRow" Orientation="Horizontal" HorizontalAlignment="Right">
-                                <ScrollViewer x:Name="ToastRow" MaxWidth="260" VerticalAlignment="Center"
+                                <ScrollViewer x:Name="ToastRow" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0" MaxWidth="260" VerticalAlignment="Center"
                                               HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                                    <ItemsControl x:Name="ToastDots" ItemsSource="{Binding Toasts}" AutomationProperties.Name="Notifications">
+                                    <ItemsControl x:Name="ToastDots" Style="{StaticResource MaList}" ItemsSource="{Binding Toasts}" AutomationProperties.Name="Notifications">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <StackPanel Orientation="Horizontal" />
