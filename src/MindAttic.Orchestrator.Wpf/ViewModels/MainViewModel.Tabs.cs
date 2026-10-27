@@ -52,7 +52,34 @@ public sealed partial class MainViewModel
     /// login it is, and, with its red flag (M.ORCH-T790), how many of its CLIs are blocked waiting on your answer.</summary>
     public string TabTip =>
         $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + (TabTrailing.Length > 0 ? $", {TabTrailing}" : "") + $". {tab.ToolTip}." + TabCutoffsLine +
+        (tab.SignedIn && !tab.IsApiKey ? ResetsLineOf(FiveHourResetUtc, WeekReset, DateTime.UtcNow) : "") +
         NeedsYouLine(TabAskingCount);
+
+    /// <summary>When this login's 5-hour window resets: the pushed reading's while it's the one shown, else its budget's block, else the roster's.</summary>
+    private DateTime? FiveHourResetUtc => (LiveFiveHour is not null ? Live?.FiveHourResetUtc : null)
+        ?? Budget?.CurrentBlock?.EndUtc ?? OwnRow?.FiveHourResetAt(DateTime.UtcNow);
+
+    /// <summary>" 5-hour resets Mon 11/2 10:00 AM (in 2d 3hr 14m); week resets ... (in ...)." (M.ORCH-T1102); a time not known,
+    /// or already past, is left out, and with neither it's empty.</summary>
+    internal static string ResetsLineOf(DateTime? fiveHourUtc, DateTime? weekUtc, DateTime nowUtc)
+    {
+        string? Part(string what, DateTime? at) => at is { } t && t > nowUtc
+            ? $"{what} resets {t.ToLocalTime().ToString("ddd M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture)} (in {Countdown(t - nowUtc)})"
+            : null;
+        var parts = new[] { Part("5-hour", fiveHourUtc), Part("week", weekUtc) }.OfType<string>().ToList();
+        return parts.Count == 0 ? "" : " " + char.ToUpperInvariant(parts[0][0]) + string.Join("; ", parts)[1..] + ".";
+    }
+
+    /// <summary>"2d 3hr 14m", "3hr 14m", "14m": the time left, days and hours only when there are any, rounded down to the minute.</summary>
+    internal static string Countdown(TimeSpan left)
+    {
+        if (left < TimeSpan.Zero) left = TimeSpan.Zero;
+        var parts = new List<string>();
+        if (left.Days > 0) parts.Add($"{left.Days}d");
+        if (left.Days > 0 || left.Hours > 0) parts.Add($"{left.Hours}hr");
+        parts.Add($"{left.Minutes}m");
+        return string.Join(' ', parts);
+    }
 
     /// <summary>How many of this tab's CLIs are genuinely blocked on you (M.ORCH-T790): holding on a permission prompt or a question,
     /// or stopped for a /crossrepo or /allocate only you may type. Not the old idle count: a turn that simply ended isn't this.</summary>
