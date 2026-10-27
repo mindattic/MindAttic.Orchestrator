@@ -37,6 +37,28 @@ public sealed class ApiKeyPersonTests
     }
 
     [Test]
+    public void Signing_it_in_never_opens_a_claude_ai_sign_in_it_is_made_ready_from_the_vault_key()
+    {
+        var was = OwnLogins.PrepareApiKey;
+        var opened = false;
+        try
+        {
+            var dirs = new AccountDirs(dir);
+            OwnLogins.PrepareApiKey = _ => null;
+            var ready = OwnLogins.SignIn(dirs, ApiKeyPerson.Email, sso: false, opening: (_, _) => opened = true);
+            Assert.That(ready.Ok, Is.True);
+            Assert.That(ready.Outcome, Is.EqualTo(OwnLoginOutcome.AlreadySignedIn));
+
+            OwnLogins.PrepareApiKey = _ => "There's no Claude key in the MindAttic Vault keyring.";
+            var noKey = OwnLogins.SignIn(dirs, ApiKeyPerson.Email, sso: false, opening: (_, _) => opened = true);
+            Assert.That(noKey.Ok, Is.False);
+            Assert.That(noKey.Message, Does.Contain("Vault"));
+            Assert.That(opened, Is.False, "no browser sign-in, ever, for the API key (M.ORCH-T1101)");
+        }
+        finally { OwnLogins.PrepareApiKey = was; }
+    }
+
+    [Test]
     public void Its_look_marks_the_folder_to_bill_the_key_and_keeps_a_name_given_since()
     {
         File.WriteAllText(Path.Combine(dir, LoginLook.FileName), """{"alias":"Credits","other":1}""");

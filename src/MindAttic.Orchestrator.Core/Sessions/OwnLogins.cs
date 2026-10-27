@@ -40,6 +40,9 @@ public sealed record TokenMinting(LoginTokens Tokens, bool Renew = false, Func<s
 /// </summary>
 public static class OwnLogins
 {
+    /// <summary>Makes the API key's folder ready from the Vault's key: null when ready, else why not (seam).</summary>
+    internal static Func<AccountDirs, string?> PrepareApiKey { get; set; } = d => Billing.ApiKeyPerson.Prepare(d, new Billing.BillingSwitch());
+
     /// <summary>Prepares <paramref name="email"/>'s own folder and runs its login there; <paramref name="opening"/> hears of it
     /// just before the browser opens (with the command run), since the login waits on the user.</summary>
     /// <remarks>With <paramref name="minting"/> (M.ORCH-T696) a signed-in login also gets its long-lived token
@@ -49,6 +52,13 @@ public static class OwnLogins
         if (AccountDirs.Normalize(email) is null)
             return new OwnLoginResult(email, null, null, OwnLoginOutcome.Failed, $"\"{email}\" isn't an email address.", []);
         var dir = dirs.For(email);
+        // The API key is where the Team's usage credits are spent, not a person: it never signs in to claude.ai (M.ORCH-T1101).
+        // Its folder is made ready from the Vault's key instead, which every CLI it starts bills.
+        if (Billing.ApiKeyPerson.Is(email))
+            return PrepareApiKey(dirs) is { } notReady
+                ? new OwnLoginResult(dir.Email, dir.Email, dir.Directory, OwnLoginOutcome.Failed, notReady, [])
+                : new OwnLoginResult(dir.Email, dir.Email, dir.Directory, OwnLoginOutcome.AlreadySignedIn,
+                    $"{dir.Email} needs no sign-in: its CLIs bill the MindAttic Vault's Claude API key.", []);
         var notes = new List<string>(dirs.Prepare(dir));
         // Its own login screen (M.ORCH-T610): a private window of the account's own browser profile, not the default browser
         // already signed in to claude.ai as whoever, so the page asks for this person's email and code.
