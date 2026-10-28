@@ -12,7 +12,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
         contextPercent = "", orphanRedispatches = "", orphanQuiet = "", exemptCommands = "", weeklyTarget = "", tabBlinkTokens = "", agentAbortAfter = "";
-    private bool allocate, pacing, autoLogin, rebalanceLogins = true, agentAbort = true, symbolTabLabels = true;
+    private bool allocate, pacing, autoLogin, rebalanceLogins = true, agentAbort = true, symbolTabLabels = true, excludeLauncherFromTeamWall;
 
     public SettingsViewModel(JsonStore store, Action saved)
     {
@@ -53,6 +53,8 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>The tab trailing text's labels (M.ORCH-T1255): symbols, "Σ: 15% | λ: 29%" (on, the default), or words,
     /// "wk: 15% | 5h: 29%" (off).</summary>
     public bool SymbolTabLabels { get => symbolTabLabels; set => Set(ref symbolTabLabels, value); }
+    /// <summary>The Team Wall (M.ORCH-T936): excludes the Launcher's own menu pane when true; included by default (M.ORCH-T1256).</summary>
+    public bool ExcludeLauncherFromTeamWall { get => excludeLauncherFromTeamWall; set => Set(ref excludeLauncherFromTeamWall, value); }
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
     /// <summary>The commands exempt from pacing (M.ORCH-T198), comma-separated; blank exempts none.</summary>
     public string ExemptCommands { get => exemptCommands; set => Set(ref exemptCommands, value); }
@@ -95,6 +97,9 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>SymbolTabLabels as the panel read it (M.ORCH-T1255), the same "don't put back what Save didn't touch" guard.</summary>
     private bool loadedSymbolTabLabels = true;
 
+    /// <summary>ExcludeLauncherFromTeamWall as the panel read it (M.ORCH-T1256), the same guard.</summary>
+    private bool loadedExcludeLauncherFromTeamWall;
+
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
     private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, "", "", "", true, "");
@@ -129,6 +134,7 @@ public sealed class SettingsViewModel : ObservableObject
         OrphanQuiet = s.OrphanQuietMinutes.ToString(CultureInfo.InvariantCulture);
         TabBlinkTokens = s.TabBlinkTokens.ToString(CultureInfo.InvariantCulture);
         SymbolTabLabels = loadedSymbolTabLabels = s.SymbolTabLabels;
+        ExcludeLauncherFromTeamWall = loadedExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall;
         AgentAbort = s.AgentAbort;
         AgentAbortAfter = s.AgentAbortAfterMinutes.ToString(CultureInfo.InvariantCulture);
         loaded = Current();
@@ -140,7 +146,8 @@ public sealed class SettingsViewModel : ObservableObject
     /// here was edited, which is never thrown away under the typing.</summary>
     public void ReloadIfUnedited()
     {
-        if (Current() == loaded && Allocate == loadedAllocate && SymbolTabLabels == loadedSymbolTabLabels) Load();
+        if (Current() == loaded && Allocate == loadedAllocate && SymbolTabLabels == loadedSymbolTabLabels
+            && ExcludeLauncherFromTeamWall == loadedExcludeLauncherFromTeamWall) Load();
     }
 
     private void Save()
@@ -198,6 +205,7 @@ public sealed class SettingsViewModel : ObservableObject
                 OrphanQuietMinutes = OrphanQuiet == was.OrphanQuiet ? s.OrphanQuietMinutes : orphanQuiet,
                 TabBlinkTokens = TabBlinkTokens == was.Blink ? s.TabBlinkTokens : blink,
                 SymbolTabLabels = SymbolTabLabels == loadedSymbolTabLabels ? s.SymbolTabLabels : SymbolTabLabels,
+                ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall == loadedExcludeLauncherFromTeamWall ? s.ExcludeLauncherFromTeamWall : ExcludeLauncherFromTeamWall,
                 AgentAbort = AgentAbort == was.AgentAbort ? s.AgentAbort : AgentAbort,
                 AgentAbortAfterMinutes = AgentAbortAfter == was.AgentAbortAfter ? s.AgentAbortAfterMinutes : agentAbortAfter,
                 ExemptCommands = ExemptCommands == was.Exempt ? s.ExemptCommands : OrchestratorSettings.ParseCommands(ExemptCommands),

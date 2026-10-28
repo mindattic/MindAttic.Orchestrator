@@ -30,7 +30,7 @@ internal sealed class Registration
             Login = options.Login, Repo = options.Repo, Cwd = options.Cwd ?? Environment.CurrentDirectory,
             ConfigDir = Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR") is { Length: > 0 } dir ? dir : null,
             CommandLine = commandLine, Cols = cols, Rows = rows, State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow,
-            Protocol = TermProtocol.Version,
+            Protocol = TermProtocol.Version, IsMenu = options.IsMenu,
         };
     }
 

@@ -169,7 +169,8 @@ internal sealed class TeamWallWindow : Window
         try
         {
             var ct = lifetime.Token;
-            var remotes = await Task.Run(() => store.LoadSettings().Gateway.Remotes, ct).ConfigureAwait(true);
+            var settings = await Task.Run(store.LoadSettings, ct).ConfigureAwait(true);
+            var remotes = settings.Gateway.Remotes;
             SyncClients(remotes);
             var local = Task.Run(LocalSource, ct);
             var looks = clients.Values.Select(c => RemoteSourceAsync(c, ct)).ToList();
@@ -179,7 +180,7 @@ internal sealed class TeamWallWindow : Window
             // Settings order for the remotes, after this machine's own.
             var order = remotes.Select((r, i) => (r.Name, i)).ToDictionary(x => x.Name, x => x.i, StringComparer.OrdinalIgnoreCase);
             sources = [.. sources.OrderBy(s => s.Gateway == TeamWall.LocalGateway ? -1 : order.GetValueOrDefault(s.Gateway, int.MaxValue))];
-            var layout = TeamWall.Merge(all, sources);
+            var layout = TeamWall.Merge(all, sources, settings.ExcludeLauncherFromTeamWall);
             all = layout.Tiles;
             gateways = layout.Gateways;
             listed = new HashSet<string>(all.Select(t => t.Key), StringComparer.Ordinal);

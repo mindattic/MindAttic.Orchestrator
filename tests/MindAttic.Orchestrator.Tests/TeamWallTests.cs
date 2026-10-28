@@ -11,10 +11,10 @@ public sealed class TeamWallTests
 {
     private static readonly DateTime T0 = new(2026, 10, 26, 12, 0, 0, DateTimeKind.Utc);
 
-    private static WallSession Tile(string gateway, string id, int startedMinute = 0, string? title = null, int protocol = 2, bool interact = false) => new()
+    private static WallSession Tile(string gateway, string id, int startedMinute = 0, string? title = null, int protocol = 2, bool interact = false, bool isMenu = false) => new()
     {
         Key = TeamWall.KeyOf(gateway, id), Gateway = gateway, Person = gateway, Id = id, Title = title ?? id, Protocol = protocol,
-        StartedUtc = T0.AddMinutes(startedMinute), CanInteract = interact, Cols = 120, Rows = 30,
+        StartedUtc = T0.AddMinutes(startedMinute), CanInteract = interact, Cols = 120, Rows = 30, IsMenu = isMenu,
     };
 
     private static WallSource Online(string gateway, params WallSession[] sessions) => new(gateway, gateway, true, null, sessions);
@@ -62,6 +62,20 @@ public sealed class TeamWallTests
         var first = TeamWall.Merge([], [Online("jordan", Tile("jordan", "a"), Tile("jordan", "b"))]);
         var second = TeamWall.Merge(first.Tiles, [Online("jordan", Tile("jordan", "b"))]);
         Assert.That(Keys(second), Is.EqualTo(new[] { "jordan/b" }));
+    }
+
+    [Test]
+    public void The_launchers_menu_pane_is_included_by_default_and_left_out_when_excluded()
+    {
+        var sources = new[] { Online(TeamWall.LocalGateway, Tile(TeamWall.LocalGateway, "launcher", isMenu: true), Tile(TeamWall.LocalGateway, "cli")) };
+
+        var included = TeamWall.Merge([], sources);
+        Assert.That(Keys(included), Is.EquivalentTo(new[] { "(local)/launcher", "(local)/cli" }), "M.ORCH-T1256 default: included");
+        Assert.That(included.Gateways.Single().Sessions, Is.EqualTo(2));
+
+        var excluded = TeamWall.Merge([], sources, excludeLauncher: true);
+        Assert.That(Keys(excluded), Is.EqualTo(new[] { "(local)/cli" }));
+        Assert.That(excluded.Gateways.Single().Sessions, Is.EqualTo(1), "the header count reflects what's left too");
     }
 
     [Test]

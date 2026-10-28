@@ -59,7 +59,8 @@ internal sealed record GatewaySession(
     [property: JsonPropertyName("startedUtc")] DateTime StartedUtc,
     [property: JsonPropertyName("protocol")] int Protocol,
     [property: JsonPropertyName("access")] string Access,
-    [property: JsonPropertyName("paused")] bool Paused);
+    [property: JsonPropertyName("paused")] bool Paused,
+    [property: JsonPropertyName("isMenu")] bool IsMenu);
 
 internal sealed record TokenRequest(
     [property: JsonPropertyName("ownerKey")] string? OwnerKey,
@@ -167,7 +168,7 @@ internal static class GatewayApp
                     var access = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, s), who.Scope, null);
                     if (access == GatewayAccess.None) continue;
                     list.Add(new GatewaySession(s.Id, ListedTitle(g, s, broadcast), s.Login, s.Repo, s.Cols, s.Rows, s.State, s.ExitCode, s.StartedUtc, s.Protocol,
-                        access == GatewayAccess.Interact ? GatewayScopes.Interact : GatewayScopes.Watch, broadcast.IsPaused(s.Id)));
+                        access == GatewayAccess.Interact ? GatewayScopes.Interact : GatewayScopes.Watch, broadcast.IsPaused(s.Id), s.IsMenu));
                 }
                 // Titles kept for sessions that ended are let go.
                 if (g.ListedTitles.Count > sessions.Count)

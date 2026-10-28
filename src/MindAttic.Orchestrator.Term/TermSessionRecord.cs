@@ -69,6 +69,11 @@ public record TermSessionRecord
     /// <summary>The pipe protocol the host speaks (<see cref="TermProtocol.Version"/>): a viewer opens with this in its Hello.</summary>
     [JsonPropertyName("protocol")] public int Protocol { get; init; } = TermProtocol.Version;
 
+    /// <summary>This is the Launcher's own menu, not a CLI it opened (<c>--menu</c>, M.LNCH-T77, M.ORCH-T1256): the Team Wall
+    /// includes or excludes it per the ExcludeLauncherFromTeamWall setting. A field added since a reader may not have it yet,
+    /// so it's read case-insensitively and defaults false, same as every other optional field here.</summary>
+    [JsonPropertyName("isMenu")] public bool IsMenu { get; init; }
+
     [JsonIgnore] public bool Exited => State == TermSessionStates.Exited;
 }
 
@@ -101,6 +106,6 @@ public sealed record TermSessionEvent : TermSessionRecord
     {
         Id = Id, HostPid = HostPid, HostStartUtc = HostStartUtc, Pipe = Pipe, Title = Title, Login = Login, ConfigDir = ConfigDir,
         Repo = Repo, Cwd = Cwd, CommandLine = CommandLine, Cols = Cols, Rows = Rows, State = State, ExitCode = ExitCode,
-        StartedUtc = StartedUtc, Protocol = Protocol,
+        StartedUtc = StartedUtc, Protocol = Protocol, IsMenu = IsMenu,
     };
 }

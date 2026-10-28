@@ -262,6 +262,18 @@ public sealed class TermRegistryTests
         Assert.That(spec.CommandLine, Is.EqualTo(request.ProcessCommandLine("pane-pipe")));
         Assert.That((spec.Directory, spec.Title, spec.Repo, spec.Login), Is.EqualTo((@"D:\Projects\Repo", "RD: Repo [Claude]", "Repo", (string?)null)));
         Assert.That(spec.Environment, Is.Empty);
+        Assert.That(spec.IsMenu, Is.False, "not the Launcher's own menu");
+    }
+
+    [Test]
+    public void The_launchers_own_menu_pane_carries_IsMenu_through_the_spec_and_arguments()
+    {
+        var request = new PaneRequest("Launcher", @"D:\Projects\Repo") { Command = ["claude"], Repo = "Launcher", IsMenu = true };
+        var spec = TermLaunchSpec.From(request);
+        Assert.That(spec.IsMenu, Is.True);
+
+        var args = TermLauncher.Arguments(spec, "abc123");
+        Assert.That(args, Does.Contain("--menu"));
     }
 
     [Test]

@@ -225,6 +225,21 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void The_exclude_launcher_from_team_wall_setting_round_trips_through_the_panel()
+    {
+        var store = new JsonStore(dir);
+        var vm = new SettingsViewModel(store, () => { });
+        Assert.That(vm.ExcludeLauncherFromTeamWall, Is.False, "M.ORCH-T1256's default: included");
+
+        vm.ExcludeLauncherFromTeamWall = true;
+        vm.SaveCommand.Execute(null);
+        Assert.That((vm.Error, store.LoadSettings().ExcludeLauncherFromTeamWall), Is.EqualTo(("", true)));
+
+        vm.Load();
+        Assert.That(vm.ExcludeLauncherFromTeamWall, Is.True, "reloaded from what was saved");
+    }
+
+    [Test]
     public void The_alert_recipient_round_trips_through_the_panel_and_is_checked()
     {
         // M.ORCH-T742: Ryan texted to start with; editable here.

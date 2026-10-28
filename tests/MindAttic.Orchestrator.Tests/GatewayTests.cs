@@ -167,6 +167,7 @@ public sealed partial class GatewayTests
         Assert.That(body, Does.Contain("\"id\":\"s1\""));
         Assert.That(body, Does.Contain("\"access\":\"watch\""));
         Assert.That(body, Does.Not.Contain("secret-command-line"));
+        Assert.That(body, Does.Contain("\"isMenu\":false"), "M.ORCH-T1256: carried for the Team Wall to filter on, remote too");
         Assert.That(body, Does.Not.Contain(gateway.Session.Pipe));
     }
 

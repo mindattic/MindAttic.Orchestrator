@@ -235,6 +235,11 @@ public sealed record OrchestratorSettings
     /// words, "wk: 15% | 5h: 29%" -- same figures and the same omit-the-5-hour-part-while-it's-unknown rule either way.</summary>
     public bool SymbolTabLabels { get; init; } = true;
 
+    /// <summary>Whether the Team Wall (M.ORCH-T936) leaves out the Launcher's own menu pane (M.ORCH-T1256): off by default
+    /// (included, as it always was before this setting existed), since the Launcher is itself a live CLI someone may want to
+    /// watch like any other.</summary>
+    public bool ExcludeLauncherFromTeamWall { get; init; }
+
     /// <summary>One CLI per account (M.ORCH-T605): a Claude tab started without a login chosen for it (dashboard Start on
     /// Auto, <c>orchestrator start</c> without <c>--account</c>, Queue and allocate starts, <c>orchestrator accounts pick</c>)
     /// goes on a signed-in per-CLI login no live CLI runs on, the one with the most headroom first

@@ -27,6 +27,9 @@ public sealed record RemoteSessionInfo
 
     /// <summary><c>watch</c> or <c>interact</c>: the most this caller may do with it (the grant and the token's scope).</summary>
     [JsonPropertyName("access")] public string? Access { get; init; }
+
+    /// <summary>The remote's Launcher menu pane, not a CLI it opened (M.ORCH-T1256); false for an older gateway that doesn't send it.</summary>
+    [JsonPropertyName("isMenu")] public bool IsMenu { get; init; }
 }
 
 /// <summary>What one look at a gateway found: its sessions, or why it couldn't be read (offline, refused, no token).</summary>

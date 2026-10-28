@@ -28,6 +28,10 @@ public sealed record TermLaunchSpec
     /// <summary>The session id; a new one when null.</summary>
     public string? Id { get; init; }
 
+    /// <summary>This is the Launcher's own menu, not a CLI it opened (M.LNCH-T77, M.ORCH-T1256): the registry record says so
+    /// (<c>--menu</c>), so the Team Wall can leave it out per the ExcludeLauncherFromTeamWall setting.</summary>
+    public bool IsMenu { get; init; }
+
     /// <summary>Variables to set (a null value removes one) on top of the caller's environment, which the host and its CLI
     /// inherit. Set on the launching process's environment, never on any command line, so a token here is never visible in a
     /// process list.</summary>
@@ -51,6 +55,7 @@ public sealed record TermLaunchSpec
         Title = request.Title,
         Login = request.Login,
         Repo = request.Name,
+        IsMenu = request.IsMenu,
     };
 }
 
@@ -164,7 +169,7 @@ public static class TermLauncher
                 {
                     Id = launched.Id, HostPid = launched.Pid, HostStartUtc = hostStart.Value, Pipe = launched.Pipe, Title = spec.Title,
                     Login = spec.Login, Repo = spec.Repo, Cwd = spec.Directory, CommandLine = spec.CommandLine,
-                    State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow,
+                    State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow, IsMenu = spec.IsMenu,
                 };
             Thread.Sleep(50);
         }
@@ -179,6 +184,7 @@ public static class TermLauncher
         if (!string.IsNullOrWhiteSpace(spec.Login)) args.AddRange(["--login", spec.Login]);
         if (!string.IsNullOrWhiteSpace(spec.Repo)) args.AddRange(["--repo", spec.Repo]);
         if (spec.Linger is { } linger) args.AddRange(["--linger", ((int)Math.Max(0, linger.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+        if (spec.IsMenu) args.Add("--menu");
         // One argument: the host runs a single argument with a space in it as a whole command line.
         if (!string.IsNullOrWhiteSpace(spec.CommandLine)) args.AddRange(["--", spec.CommandLine]);
         return args;

@@ -807,6 +807,7 @@
                          login's tab's (MainWindow.xaml.cs sets OrgToolbar's DataContext), not the Settings above. -->
                     <mc:MaTabItem x:Name="SettingsLoginsTab" Header="Logins">
                         <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,4,16,12">
+                          <StackPanel>
                             <StackPanel x:Name="OrgToolbar" MaxWidth="760" HorizontalAlignment="Left">
                                 <TextBlock Text="ORGANIZATION LOGINS" Style="{StaticResource MaSectionLabel}" />
                                 <TextBlock Text="Sign in a per-CLI login for an email, sign in every roster account that has none yet, or write the usage report."
@@ -837,6 +838,19 @@
                                            AutomationProperties.LiveSetting="Polite"
                                            Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                             </StackPanel>
+                            <!-- Separate from OrgToolbar above (the global login's tab, not this dialog's SettingsViewModel), so these
+                                 two bind to the Settings this dialog actually edits. -->
+                            <StackPanel MaxWidth="760" HorizontalAlignment="Left" Margin="{StaticResource SpaceTL}">
+                                <TextBlock Text="TEAM WALL" Style="{StaticResource MaSectionLabel}" />
+                                <RadioButton x:Name="IncludeLauncherRadio" GroupName="LauncherInTeamWall" Content="Include Launcher in Team Wall"
+                                             IsChecked="{Binding ExcludeLauncherFromTeamWall, Converter={x:Static vm:Converters.Invert}}"
+                                             Margin="{StaticResource SpaceBXS}" />
+                                <RadioButton x:Name="ExcludeLauncherRadio" GroupName="LauncherInTeamWall" Content="Exclude Launcher in Team Wall"
+                                             IsChecked="{Binding ExcludeLauncherFromTeamWall}" />
+                                <TextBlock Text="Include (the default): the Launcher's own menu tab shows up as a tile on the Team Wall like any other CLI. Exclude: it's left out, only the CLIs it opened show. Also orchestrator settings --exclude-launcher-team-wall."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
+                            </StackPanel>
+                          </StackPanel>
                         </ScrollViewer>
                     </mc:MaTabItem>
 

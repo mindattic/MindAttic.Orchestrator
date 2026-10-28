@@ -94,6 +94,18 @@ public sealed class TermHostTests
         Assert.That(options.Linger, Is.EqualTo(TimeSpan.FromMinutes(10)));
     }
 
+    [Test]
+    public void The_menu_flag_is_parsed_and_carried_to_the_detached_host()
+    {
+        var options = HostOptions.Parse(["--menu", "--", "claude"], out var error);
+        Assert.That(error, Is.Null);
+        Assert.That(options!.IsMenu, Is.True);
+        Assert.That(options.DetachedArguments(), Does.Contain("--menu"));
+
+        Assert.That(HostOptions.Parse(["--", "claude"], out _)!.IsMenu, Is.False, "not the Launcher's menu by default");
+        Assert.That(HostOptions.Parse(["--", "claude"], out _)!.DetachedArguments(), Does.Not.Contain("--menu"));
+    }
+
     [TestCase("--bogus")]
     [TestCase("--id")]
     [TestCase("--env", "NOEQUALS")]

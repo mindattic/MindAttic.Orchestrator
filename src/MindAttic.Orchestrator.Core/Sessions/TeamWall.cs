@@ -36,6 +36,10 @@ public sealed record WallSession
     /// <summary>The host's pipe, for this machine's own sessions only.</summary>
     public string? Pipe { get; init; }
 
+    /// <summary>The Launcher's own menu, not a CLI it opened (M.ORCH-T1256): <see cref="Merge"/> leaves it out of the tiles
+    /// per the ExcludeLauncherFromTeamWall setting.</summary>
+    public bool IsMenu { get; init; }
+
     public bool IsLocal => Gateway == TeamWall.LocalGateway;
 
     /// <summary>A tile can stream it without disturbing anyone: its host serves several viewers (protocol 2, M.ORCH-T930). A
@@ -90,6 +94,7 @@ public static class TeamWall
         StartedUtc = r.StartedUtc,
         CanInteract = true,
         Pipe = r.Pipe,
+        IsMenu = r.IsMenu,
     };
 
     /// <summary>A session a remote gateway listed, as a tile.</summary>
@@ -109,6 +114,7 @@ public static class TeamWall
         Rows = s.Rows,
         StartedUtc = s.StartedUtc,
         CanInteract = string.Equals(s.Access, "interact", StringComparison.OrdinalIgnoreCase),
+        IsMenu = s.IsMenu,
     };
 
     /// <summary>
@@ -119,10 +125,12 @@ public static class TeamWall
     /// <item>within a source, a tile already on the wall keeps its place, so the grid doesn't reshuffle on every look, and a new
     /// one goes after them, oldest first; each tile takes the source's latest title, state and size;</item>
     /// <item>an offline source contributes no tiles (its streams can't run), only its header line with why; a source no longer
-    /// configured disappears; a session a source lists twice counts once.</item>
+    /// configured disappears; a session a source lists twice counts once;</item>
+    /// <item><paramref name="excludeLauncher"/> (the ExcludeLauncherFromTeamWall setting, M.ORCH-T1256) leaves out every
+    /// <see cref="WallSession.IsMenu"/> tile, local and remote alike; a gateway's header count still reflects what's left.</item>
     /// </list>
     /// </summary>
-    public static WallLayout Merge(IReadOnlyList<WallSession> previous, IReadOnlyList<WallSource> sources)
+    public static WallLayout Merge(IReadOnlyList<WallSession> previous, IReadOnlyList<WallSource> sources, bool excludeLauncher = false)
     {
         var place = new Dictionary<string, int>(StringComparer.Ordinal);
         for (var i = 0; i < previous.Count; i++) place.TryAdd(previous[i].Key, i);
@@ -140,6 +148,7 @@ public static class TeamWall
             var seen = new HashSet<string>(StringComparer.Ordinal);
             var mine = source.Sessions
                 .Where(s => !string.IsNullOrWhiteSpace(s.Id))
+                .Where(s => !excludeLauncher || !s.IsMenu)
                 .Select(s => s.Key == KeyOf(source.Gateway, s.Id) ? s : s with { Key = KeyOf(source.Gateway, s.Id), Gateway = source.Gateway })
                 .Where(s => seen.Add(s.Key))
                 .OrderBy(s => place.TryGetValue(s.Key, out var at) ? at : int.MaxValue)
