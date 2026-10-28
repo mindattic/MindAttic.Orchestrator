@@ -67,8 +67,8 @@ public sealed partial class MainViewModel
     };
 
     /// <summary>The text beside a person's name (M.ORCH-T793): their live 5-hour and weekly use, each against that person's own
-    /// live cutoff ("5hr: 29% | wk: 15%", M.ORCH-T968), the cutoffs moved to the tooltip, and its subagent-slot load
-    /// ("λ: 89%", M.ORCH-T1194) while it's paced. Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
+    /// live cutoff ("5hr: 29% | wk: 15%", M.ORCH-T968), the cutoffs moved to the tooltip, and the same 5-hour figure once
+    /// more as λ ("λ: 29%", M.ORCH-T1207, replacing the subagent-slot-load reading from M.ORCH-T1194). Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
     public string TabTrailing => !tab.SignedIn ? ""
         : tab.IsApiKey ? ApiTrailingOf(Spend)
         : TabUsageOf(FiveHourUsed, WeekUsed, MeterReadUtc, NeedsSignInAgain, DateTime.UtcNow, Lambda);
@@ -117,26 +117,17 @@ public sealed partial class MainViewModel
     internal static string ApiTrailingOf(ApiSpend? spend) =>
         spend is null ? "" : spend.LeftUsd is { } left ? $"{ApiSpend.Usd(left)} left" : $"{ApiSpend.Usd(spend.TodayUsd)} today";
 
-    /// <summary>"5hr: 29% | wk: 15%", with its subagent-slot load appended while it's paced, "5hr: 29% | wk: 15% | λ: 89%"
-    /// (M.ORCH-T968, M.ORCH-T1194): each window's % used, rounded for display only ("—" never read).</summary>
+    /// <summary>"5hr: 29% | wk: 15%", with the 5-hour figure repeated as λ, "5hr: 29% | wk: 15% | λ: 29%"
+    /// (M.ORCH-T968, M.ORCH-T1207): each window's % used, rounded for display only ("—" never read).</summary>
     internal static string TabUsagePairsOf(double? fiveHourUsed, double? weekUsed, double? lambda) =>
         $"5hr: {UsedOf(fiveHourUsed)}% | wk: {UsedOf(weekUsed)}%" + (lambda is { } l ? $" | λ: {UsedOf(l)}%" : "");
 
     private static string UsedOf(double? used) =>
         used is { } u ? Math.Max(0, u).ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "—";
 
-    /// <summary>λ (M.ORCH-T1194): this login's subagent-slot load right now, how many of it are running over how many may run
-    /// at once ("2 of 6" → 33%), both from its own <see cref="Pace"/> (already scoped per tab by <c>LoginScope.For</c>, no
-    /// further plumbing needed). Null (hidden, like an unread meter) while unpaced. A hard stop (no new one may start) reads
-    /// 100% regardless of how many still happen to be running, since there's no room left for another either way; otherwise
-    /// uncapped, so a running count above a since-lowered allowance correctly reads past 100%, as the 5-hour and weekly
-    /// figures already do past their own cutoff.</summary>
-    internal static double? LambdaOf(Pace? pace) =>
-        pace?.SubagentAllowance is not { } allowed ? null
-        : allowed == 0 ? 100
-        : 100.0 * pace.Subagents / allowed;
-
-    internal double? Lambda => LambdaOf(Pace);
+    /// <summary>λ (M.ORCH-T1207, replacing the subagent-slot-load reading from M.ORCH-T1194): the same 5-hour window % used
+    /// as <see cref="FiveHourUsed"/>, shown a second time next to "5hr" and "wk" so the pace figure reads at a glance.</summary>
+    internal double? Lambda => FiveHourUsed;
 
     private (TabLight Light, string Word) TabStatus => tab.IsApiKey
         ? ApiStatusOf(tab.SignedIn, Spend)

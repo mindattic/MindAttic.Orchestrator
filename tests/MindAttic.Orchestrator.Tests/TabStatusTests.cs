@@ -48,23 +48,9 @@ public sealed class TabStatusTests
         Assert.That(MainViewModel.TabUsagePairsOf(42.6, 3.2, null), Is.EqualTo("5hr: 43% | wk: 3%"));
         Assert.That(MainViewModel.TabUsagePairsOf(null, null, null), Is.EqualTo("5hr: —% | wk: —%"), "never read");
 
-        // M.ORCH-T1194: its subagent-slot load joins them, third, only while it's paced.
+        // M.ORCH-T1207: the 5-hour figure joins them again, third, as λ, whenever it's non-null.
         Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 89), Is.EqualTo("5hr: 10% | wk: 55% | λ: 89%"));
         Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 120), Is.EqualTo("5hr: 10% | wk: 55% | λ: 120%"), "uncapped, as the others read past their own cutoff");
-    }
-
-    private static Pace PaceOf(int subagents, int? allowance) =>
-        new(PaceMode.Open, 0, 0, 0, null, null, null, "") { Subagents = subagents, SubagentAllowance = allowance };
-
-    [Test]
-    public void Lambda_is_the_subagent_slot_load_against_the_logins_own_allowance_right_now()
-    {
-        // M.ORCH-T1194: "2 of 6" -> 33%, hidden while unpaced, 100% at a hard stop regardless of how many still run.
-        Assert.That(MainViewModel.LambdaOf(PaceOf(2, 6)), Is.EqualTo(100.0 / 3).Within(0.01));
-        Assert.That(MainViewModel.LambdaOf(PaceOf(6, 5)), Is.EqualTo(120));
-        Assert.That(MainViewModel.LambdaOf(PaceOf(3, 0)), Is.EqualTo(100), "a hard stop: no room left either way");
-        Assert.That(MainViewModel.LambdaOf(PaceOf(0, null)), Is.Null, "unpaced: hidden, not a false 0%");
-        Assert.That(MainViewModel.LambdaOf(null), Is.Null);
     }
 
     [Test]
