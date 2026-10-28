@@ -9,15 +9,12 @@ INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, 
 -- members
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('honey@mindattic.com', 'Honey', 'admin', 'premium', 'active', 1792771886.8054008, 1792771886.8054008);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'ohleo199', 'admin', 'premium', 'active', 1792771886.302, 1793211195.1187148);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1793200231.8703723);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'owner', 'premium', 'active', 1792771887.249, 1793211540.8759353);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1792840279.0027995);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'owner', 'premium', 'active', 1792771885.882, 1793211216.249807);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1793211670.333472);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T18:15:06Z', 95, '2026-10-21T18:40:00Z', 11507846);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T18:19:34Z', 95, '2026-10-21T18:40:00Z', 11514146);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T18:20:52Z', 95, '2026-10-21T18:40:00Z', 11522546);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T18:24:56Z', 96, '2026-10-21T18:40:00Z', 11547733);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T18:29:00Z', 96, '2026-10-21T18:40:00Z', 11556260);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T18:30:39Z', 96, '2026-10-21T18:40:00Z', 11561646);
@@ -1117,6 +1114,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T18:03:41Z', 65, '2026-10-28T19:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T18:07:55Z', 65, '2026-10-28T19:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T18:12:09Z', 65, '2026-10-28T19:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T18:16:17Z', 65, '2026-10-28T19:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T18:21:25Z', 65, '2026-10-28T19:00:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -1585,10 +1584,10 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'RogueTrader.Brevity', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 130150);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 335083);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Unity.Ricochet', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 58086);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 58445);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 256217);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 11756629);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'AutoGamePlay', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 24868);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 159537);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 591877);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'Prose', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6202157);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'REA.Bloodlines', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 8005910);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 747333);
@@ -3852,18 +3851,21 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ffd66af0-af61-4624-b5dd-1c85297d70e0', 'UQD-T23', 'fix', 'Unity.QuickDuel', 16361, '2026-10-23T10:45:13.123Z', 1, 'opus');
 
 -- settings
+INSERT INTO settings (name, value) VALUES ('AgentAbort', 'true');
+INSERT INTO settings (name, value) VALUES ('AgentAbortAfterMinutes', '3');
+INSERT INTO settings (name, value) VALUES ('Allocate', 'true');
+INSERT INTO settings (name, value) VALUES ('AllocateHandMinutes', '15');
+INSERT INTO settings (name, value) VALUES ('AllocateSkip', '[]');
 INSERT INTO settings (name, value) VALUES ('Assignees', '{}');
 INSERT INTO settings (name, value) VALUES ('AuditEveryHours', '24');
 INSERT INTO settings (name, value) VALUES ('AutoLogin', 'false');
-INSERT INTO settings (name, value) VALUES ('Autopilot', 'true');
-INSERT INTO settings (name, value) VALUES ('AutopilotHandMinutes', '15');
-INSERT INTO settings (name, value) VALUES ('AutopilotSkip', '[]');
 INSERT INTO settings (name, value) VALUES ('BlockedBy', '{}');
 INSERT INTO settings (name, value) VALUES ('ContextCyclePercent', '80');
 INSERT INTO settings (name, value) VALUES ('DefaultProvider', '"Claude"');
 INSERT INTO settings (name, value) VALUES ('DiskCriticalGb', '5');
 INSERT INTO settings (name, value) VALUES ('DiskWarnGb', '20');
 INSERT INTO settings (name, value) VALUES ('ExemptCommands', '["/pacing","/deploy","/run"]');
+INSERT INTO settings (name, value) VALUES ('Gateway', '{"Enabled":false,"Bind":"127.0.0.1","Port":7443,"DevCertNames":[],"TokenMinutes":15,"Remotes":[]}');
 INSERT INTO settings (name, value) VALUES ('GitHubIntake', 'false');
 INSERT INTO settings (name, value) VALUES ('GroomAfterDays', '30');
 INSERT INTO settings (name, value) VALUES ('KeepGoing', 'true');
@@ -3878,11 +3880,13 @@ INSERT INTO settings (name, value) VALUES ('PaceCurveK', '0.1');
 INSERT INTO settings (name, value) VALUES ('PaceTargetPercent', '98');
 INSERT INTO settings (name, value) VALUES ('Pacing', 'true');
 INSERT INTO settings (name, value) VALUES ('ProviderCapPercent', '90');
+INSERT INTO settings (name, value) VALUES ('PsstAlertTo', '"ryan"');
 INSERT INTO settings (name, value) VALUES ('QuietHours', '[]');
 INSERT INTO settings (name, value) VALUES ('RebalanceLogins', 'false');
 INSERT INTO settings (name, value) VALUES ('RepoBudgetPercent', '{}');
 INSERT INTO settings (name, value) VALUES ('RepoMaxSessions', '{}');
 INSERT INTO settings (name, value) VALUES ('RepoOrgs', '{}');
+INSERT INTO settings (name, value) VALUES ('ReportFreshMinutes', '2');
 INSERT INTO settings (name, value) VALUES ('Reservations', '{}');
 INSERT INTO settings (name, value) VALUES ('ResumeAfterReset', 'true');
 INSERT INTO settings (name, value) VALUES ('ReviewDiffLines', '300');
@@ -6248,7 +6252,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "498e087348d9f037acd829a85b8d108be1dcc497",
+    "Tested": "5a30ee2dd5782900c530ec3254e2971b0d84a025",
     "Green": "d482b9053b55c7dd5ac4ce184cfdb00aede8f0c3"
   },
   "MindAttic.Psst": {
@@ -6259,8 +6263,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "b325a6a8b8acd3183b2bbed6f972b124a620b217",
-    "Green": "b325a6a8b8acd3183b2bbed6f972b124a620b217"
+    "Tested": "1ff06c818b3cf5e8f51ac2eb9579d470ad4b0c71",
+    "Green": "1ff06c818b3cf5e8f51ac2eb9579d470ad4b0c71"
   },
   "MindAttic.Vault": {
     "Tested": "522e11b2ff08d6c2a11ff67fe97d040d6afa4713",
