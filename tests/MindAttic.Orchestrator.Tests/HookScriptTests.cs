@@ -2160,10 +2160,12 @@ public sealed class HookScriptTests
         var full = doc.RootElement.GetProperty("systemMessage").GetString()!;
         Assert.That(doc.RootElement.GetProperty("hookSpecificOutput").GetProperty("additionalContext").GetString(), Is.EqualTo(full));
         var lines = full.Split('\n');
-        Assert.That(lines, Has.Length.EqualTo(3), full);
-        Assert.That(lines[1], Is.EqualTo("[Orchestrator] Pacing is on."));
-        Assert.That(lines[2], Is.EqualTo("[Orchestrator] Allocation is off."));
-        return lines[0];
+        Assert.That(lines, Has.Length.EqualTo(5), full);
+        Assert.That(lines[0], Is.Empty, "a leading blank line so the billing line never shares a line with the hook's own label");
+        Assert.That(lines[2], Is.EqualTo("[Orchestrator] Pacing is on."));
+        Assert.That(lines[3], Is.EqualTo("[Orchestrator] Allocation is off."));
+        Assert.That(lines[4], Is.EqualTo("[Orchestrator] Crossrepo is off."));
+        return lines[1];
     }
 
     private static Dictionary<string, string> WithKey => new() { ["ANTHROPIC_API_KEY"] = EnvKey };
@@ -2181,15 +2183,15 @@ public sealed class HookScriptTests
     {
         SignedIn("{" + TeamLogin + "}");
         string FullMessage() => JsonDocument.Parse(Gate(Starting, AgentGate.ContextScriptName).Output).RootElement.GetProperty("systemMessage").GetString()!;
-        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is on.\n[Orchestrator] Allocation is off."), "a fresh CLI is paced, not allocating");
+        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is on.\n[Orchestrator] Allocation is off.\n[Orchestrator] Crossrepo is off."), "a fresh CLI is paced, not allocating, not crossrepo");
 
         Gate(Said("/pacing off"), AgentGate.ContextScriptName);
         Gate(Said("/allocate"), AgentGate.ContextScriptName);
-        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is off.\n[Orchestrator] Allocation is on."));
+        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is off.\n[Orchestrator] Allocation is on.\n[Orchestrator] Crossrepo is off."));
 
         Gate(Said("/pacing on"), AgentGate.ContextScriptName);
         Gate(Said("/allocate off"), AgentGate.ContextScriptName);
-        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is on.\n[Orchestrator] Allocation is off."), "back off/off once each is turned back");
+        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is on.\n[Orchestrator] Allocation is off.\n[Orchestrator] Crossrepo is off."), "back off/off once each is turned back");
     }
 
     [Test]
@@ -2315,7 +2317,7 @@ public sealed class HookScriptTests
             Assert.That(p.WaitForExit(30_000), Is.True);
             Assert.That(p.ExitCode, Is.EqualTo(0), config ?? "missing");
             if (output.Trim().Length > 0)
-                Assert.That(JsonDocument.Parse(output).RootElement.GetProperty("systemMessage").GetString(), Does.StartWith("[Billing]"));
+                Assert.That(JsonDocument.Parse(output).RootElement.GetProperty("systemMessage").GetString(), Does.StartWith("\n[Billing]"));
             if (config is not null) Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(config));
         }
         using var garbled = Run(AgentGate.ContextScriptName, "not an event");

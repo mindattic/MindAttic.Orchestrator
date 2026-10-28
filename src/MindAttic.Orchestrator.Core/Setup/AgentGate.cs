@@ -2597,6 +2597,7 @@ public static class AgentGate
             return [
                 "[Orchestrator] Pacing is " + ("off" if pacing_off(pid) else "on") + ".",
                 "[Orchestrator] Allocation is " + ("on" if allocate_repos(pid) else "off") + ".",
+                "[Orchestrator] Crossrepo is " + ("on" if cli_mark("crossrepo", pid) else "off") + ".",
             ]
 
         # A turn ending on one of these is asking for a go-ahead the orchestrator gives itself.
@@ -3010,9 +3011,9 @@ public static class AgentGate
             except Exception:
                 pass
             try:
-                full = "\n".join([line] + orchestrator_start_lines(my_pid()))
+                full = "\n" + "\n".join([line] + orchestrator_start_lines(my_pid()))
             except Exception:
-                full = line
+                full = "\n" + line
             print(json.dumps({"systemMessage": full, "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": full}}))
             sys.exit(0)
         # Recorded in the session's state, so the daemon leaves a CLI billed elsewhere out of the subscription's budget; and
