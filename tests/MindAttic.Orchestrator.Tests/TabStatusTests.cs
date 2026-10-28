@@ -44,17 +44,17 @@ public sealed class TabStatusTests
     public void The_tab_shows_live_5_hour_and_weekly_use_against_the_persons_own_cutoffs()
     {
         // M.ORCH-T793: current/target pairs, the target the person's own cutoff as passed in, never a fixed number.
-        // M.ORCH-T1251: no separate "5hr:" figure; it would only repeat λ, so it's left out.
-        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, null, true), Is.EqualTo("Σ: 55%"));
-        Assert.That(MainViewModel.TabUsagePairsOf(42.6, 3.2, null, true), Is.EqualTo("Σ: 3%"));
-        Assert.That(MainViewModel.TabUsagePairsOf(null, null, null, true), Is.EqualTo("Σ: —%"), "never read");
+        // M.ORCH-T1267: λ always shows, 0% with no 5-hour block started yet, so an idle login never looks unread.
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, null, true), Is.EqualTo("Σ: 55% | λ: 0%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(42.6, 3.2, null, true), Is.EqualTo("Σ: 3% | λ: 0%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(null, null, null, true), Is.EqualTo("Σ: —% | λ: 0%"), "never read");
 
-        // M.ORCH-T1207: the 5-hour figure joins it, as λ, whenever it's non-null.
+        // M.ORCH-T1207: the 5-hour figure joins it, as λ, whenever it's known.
         Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 89, true), Is.EqualTo("Σ: 55% | λ: 89%"));
         Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 120, true), Is.EqualTo("Σ: 55% | λ: 120%"), "uncapped, as the others read past their own cutoff");
 
         // M.ORCH-T1255: the SymbolTabLabels setting off switches to words, same figures and the same rules.
-        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, null, false), Is.EqualTo("wk: 55%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, null, false), Is.EqualTo("wk: 55% | 5h: 0%"));
         Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 89, false), Is.EqualTo("wk: 55% | 5h: 89%"));
     }
 
@@ -62,16 +62,16 @@ public sealed class TabStatusTests
     public void A_stale_reading_is_marked_stale_on_the_tab_and_one_needing_a_new_sign_in_says_so()
     {
         // M.ORCH-T1119: Ryan's tab showed "Σ: 0%" from an 11-hour-old reading as if current.
-        Assert.That(MainViewModel.TabUsageOf(10, 55, Now.AddMinutes(-3), false, Now, null, true), Is.EqualTo("Σ: 55%"), "fresh");
-        Assert.That(MainViewModel.TabUsageOf(10, 55, null, false, Now, null, true), Is.EqualTo("Σ: 55%"), "never read: nothing to call stale");
+        Assert.That(MainViewModel.TabUsageOf(10, 55, Now.AddMinutes(-3), false, Now, null, true), Is.EqualTo("Σ: 55% | λ: 0%"), "fresh");
+        Assert.That(MainViewModel.TabUsageOf(10, 55, null, false, Now, null, true), Is.EqualTo("Σ: 55% | λ: 0%"), "never read: nothing to call stale");
         Assert.That(MainViewModel.TabUsageOf(0, 91, Now.AddHours(-11), false, Now, null, true), Is.EqualTo("stale · read 11h ago"), "its old figures never shown as current");
         Assert.That(MainViewModel.TabUsageOf(0, 91, Now - UsageReport.StaleAfter - TimeSpan.FromMinutes(1), false, Now, null, true), Does.StartWith("stale"),
             "stale as org usage calls it");
         Assert.That(MainViewModel.TabUsageOf(0, 91, Now.AddHours(-11), true, Now, null, true), Is.EqualTo("sign in again"));
         Assert.That(MainViewModel.TabStaleLineOf(0, 91, Now.AddHours(-11), Now, null, true),
-            Is.EqualTo(" Claude's meter was last read 11h ago (Σ: 91%), so these figures may be out of date."), "the old figures, in the tooltip");
+            Is.EqualTo(" Claude's meter was last read 11h ago (Σ: 91% | λ: 0%), so these figures may be out of date."), "the old figures, in the tooltip");
         Assert.That(MainViewModel.TabStaleLineOf(0, 91, Now.AddMinutes(-3), Now, null, true), Is.Empty);
-        Assert.That(MainViewModel.TabUsageOf(10, 55, Now.AddMinutes(-3), false, Now, null, false), Is.EqualTo("wk: 55%"), "M.ORCH-T1255: word labels");
+        Assert.That(MainViewModel.TabUsageOf(10, 55, Now.AddMinutes(-3), false, Now, null, false), Is.EqualTo("wk: 55% | 5h: 0%"), "M.ORCH-T1255: word labels");
 
         var (light, word) = MainViewModel.StatusOf(true, false, null, 50, 95, 40, 98, ClaudeMeterProbe.SignInAgain("ryan@x.com"));
         Assert.That(light, Is.EqualTo(TabLight.Other));

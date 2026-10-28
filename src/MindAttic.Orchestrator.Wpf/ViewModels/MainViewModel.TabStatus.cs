@@ -120,12 +120,13 @@ public sealed partial class MainViewModel
 
     /// <summary>"Σ: 15% | λ: 29%", or "wk: 15% | 5h: 29%" with <paramref name="symbols"/> false (the SymbolTabLabels setting,
     /// M.ORCH-T1255): each window's % used, rounded for display only ("—" never read). λ/"5h" is exactly the 5-hour window's %
-    /// used (see <see cref="Lambda"/>), so a separate "5hr:" figure would only repeat it (M.ORCH-T968, M.ORCH-T1207, M.ORCH-T1251);
-    /// it's left out, and nothing stands in for it while it isn't known yet.</summary>
+    /// used (see <see cref="Lambda"/>), so a separate "5hr:" figure would only repeat it (M.ORCH-T968, M.ORCH-T1207, M.ORCH-T1251).
+    /// Always shown, 0% while no 5-hour block has started yet (M.ORCH-T1267): a missing λ read as "nothing running", when an idle
+    /// login at 0% looks the same as one whose window just hasn't been read.</summary>
     internal static string TabUsagePairsOf(double? fiveHourUsed, double? weekUsed, double? lambda, bool symbols) =>
         symbols
-            ? $"Σ: {UsedOf(weekUsed)}%" + (lambda is not null ? $" | λ: {UsedOf(lambda)}%" : "")
-            : $"wk: {UsedOf(weekUsed)}%" + (lambda is not null ? $" | 5h: {UsedOf(lambda)}%" : "");
+            ? $"Σ: {UsedOf(weekUsed)}% | λ: {UsedOf(lambda ?? 0)}%"
+            : $"wk: {UsedOf(weekUsed)}% | 5h: {UsedOf(lambda ?? 0)}%";
 
     private static string UsedOf(double? used) =>
         used is { } u ? Math.Max(0, u).ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "—";
