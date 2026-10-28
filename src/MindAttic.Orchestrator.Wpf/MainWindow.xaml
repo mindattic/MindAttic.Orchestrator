@@ -270,7 +270,7 @@
                         </mc:MaTabControl.ItemContainerStyle>
                         <mc:MaTabControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
-                                <StackPanel x:Name="TerminalTab" Orientation="Horizontal">
+                                <StackPanel x:Name="TerminalTab" Orientation="Horizontal" Loaded="TerminalTabItem_Loaded">
                                     <mc:MaBadge x:Name="TerminalBadge" Style="{StaticResource MaTag}" Content="{Binding Badge}" Background="{Binding TabBrush}"
                                                 Foreground="{Binding BadgeForeground}" Margin="{StaticResource SpaceRS}" VerticalAlignment="Center"
                                                 Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />

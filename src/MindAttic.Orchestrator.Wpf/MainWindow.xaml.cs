@@ -489,14 +489,15 @@ public partial class MainWindow : Window
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
     }
 
-    /// <summary>Room added on each side of the widest person tab's own content (M.ORCH-T1096).</summary>
-    private const double PersonTabSidePadding = 6;
+    /// <summary>Room added on each side of the widest tab's own content, for both the person tabs (M.ORCH-T1096) and the
+    /// CLI tabs (M.ORCH-T1250).</summary>
+    private const double TabSidePadding = 10;
 
     /// <summary>The tab parts already watched for size changes, so a header loading again doesn't subscribe twice.</summary>
     private readonly HashSet<FrameworkElement> watchedTabParts = [];
 
     /// <summary>A person tab's header content: every person's tab is the same width (M.ORCH-T803), that of the widest one's
-    /// own content plus <see cref="PersonTabSidePadding"/> a side (M.ORCH-T1096), so short names don't sit in a wide tab. The
+    /// own content plus <see cref="TabSidePadding"/> a side (M.ORCH-T1096), so short names don't sit in a wide tab. The
     /// library's MaTabItem has no Width of its own (it's plain FrameworkElement's), so the ItemContainerStyle (M.ORCH-T667) can't
     /// set it; it's set directly on each generated container, again whenever a tab's icon, name or trailing text changes size.</summary>
     private void LoginTabItem_Loaded(object sender, RoutedEventArgs e)
@@ -508,6 +509,19 @@ public partial class MainWindow : Window
             foreach (var part in row.Children.OfType<FrameworkElement>())
                 if (watchedTabParts.Add(part)) part.SizeChanged += (_, _) => SizePersonTabs();
         SizePersonTabs();
+    }
+
+    /// <summary>A CLI tab's header content: every CLI tab is the same width (M.ORCH-T1250), that of the widest one's own
+    /// content plus <see cref="TabSidePadding"/> a side, the CLI strip's own version of <see cref="LoginTabItem_Loaded"/>.</summary>
+    private void TerminalTabItem_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TerminalPaneViewModel } content) return;
+        if (ItemsControl.ContainerFromElement(TerminalTabs, content) is not TabItem tab) return;
+        tab.ApplyTemplate();
+        if (TabRow(tab) is { } row)
+            foreach (var part in row.Children.OfType<FrameworkElement>())
+                if (watchedTabParts.Add(part)) part.SizeChanged += (_, _) => SizeTerminalTabs();
+        SizeTerminalTabs();
     }
 
     /// <summary>The row an MaTabItem lays its status light, header and trailing text out in (its template's Bd border's child).</summary>
@@ -526,7 +540,22 @@ public partial class MainWindow : Window
             .Select(item => LoginTabStrip.ItemContainerGenerator.ContainerFromItem(item) as TabItem)
             .Where(t => t is { DataContext: MainViewModel { IsPersonTab: true } }).Cast<TabItem>().ToList();
         if (tabs.Count == 0) return;
-        var width = Math.Ceiling(tabs.Max(NaturalWidth) + 2 * PersonTabSidePadding);
+        var width = Math.Ceiling(tabs.Max(NaturalWidth) + 2 * TabSidePadding);
+        foreach (var t in tabs)
+            if (double.IsNaN(t.Width) || Math.Abs(t.Width - width) > 0.5) t.Width = width;
+    }
+
+    /// <summary>Every CLI tab the same width (M.ORCH-T1250), the CLI strip's own version of <see cref="SizePersonTabs"/>:
+    /// each no longer just sizes to its own content (as the no-wrap scroller comment on
+    /// <see cref="TerminalTabScroller_ScrollChanged"/> used to assume), but to the widest one's plus <see cref="TabSidePadding"/>
+    /// a side.</summary>
+    private void SizeTerminalTabs()
+    {
+        var tabs = TerminalTabs.Items.Cast<object>()
+            .Select(item => TerminalTabs.ItemContainerGenerator.ContainerFromItem(item) as TabItem)
+            .Where(t => t is not null).Cast<TabItem>().ToList();
+        if (tabs.Count == 0) return;
+        var width = Math.Ceiling(tabs.Max(NaturalWidth) + 2 * TabSidePadding);
         foreach (var t in tabs)
             if (double.IsNaN(t.Width) || Math.Abs(t.Width - width) > 0.5) t.Width = width;
     }
