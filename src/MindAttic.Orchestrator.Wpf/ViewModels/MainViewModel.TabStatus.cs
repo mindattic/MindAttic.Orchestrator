@@ -68,10 +68,11 @@ public sealed partial class MainViewModel
 
     /// <summary>The text beside a person's name (M.ORCH-T793): their live weekly use against their own live cutoff ("Σ: 15%",
     /// M.ORCH-T968), the cutoffs moved to the tooltip, and the 5-hour window's use as λ ("λ: 29%", M.ORCH-T1207, replacing the
-    /// subagent-slot-load reading from M.ORCH-T1194; a separate "5hr:" figure would only repeat it, M.ORCH-T1251). Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
+    /// subagent-slot-load reading from M.ORCH-T1194; a separate "5hr:" figure would only repeat it, M.ORCH-T1251), or the
+    /// same two figures as words, "wk: 15% | 5h: 29%", per the SymbolTabLabels setting (M.ORCH-T1255). Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
     public string TabTrailing => !tab.SignedIn ? ""
         : tab.IsApiKey ? ApiTrailingOf(Spend)
-        : TabUsageOf(FiveHourUsed, WeekUsed, MeterReadUtc, NeedsSignInAgain, DateTime.UtcNow, Lambda);
+        : TabUsageOf(FiveHourUsed, WeekUsed, MeterReadUtc, NeedsSignInAgain, DateTime.UtcNow, Lambda, Root.symbolTabLabels);
 
     /// <summary>When this login's meter was last read: the pushed reading's, else its <c>claude-usage.json</c>'s; null on the global
     /// login's tab, or never read (M.ORCH-T1119).</summary>
@@ -94,21 +95,21 @@ public sealed partial class MainViewModel
     /// "stale · read 11h ago" instead of its figures, never shown as current (the tab sizes itself to its own content, M.ORCH-T1096,
     /// so the old figures go to the tooltip, <see cref="TabStaleLineOf"/>).
     /// </summary>
-    internal static string TabUsageOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, bool signInAgain, DateTime nowUtc, double? lambda) =>
+    internal static string TabUsageOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, bool signInAgain, DateTime nowUtc, double? lambda, bool symbols) =>
         signInAgain ? "sign in again"
         : IsStale(readUtc, nowUtc) ? $"stale · read {Formatting.Ago(readUtc, nowUtc)}"
-        : TabUsagePairsOf(fiveHourUsed, weekUsed, lambda);
+        : TabUsagePairsOf(fiveHourUsed, weekUsed, lambda, symbols);
 
     private static bool IsStale(DateTime? readUtc, DateTime nowUtc) => readUtc is { } r && nowUtc - r > UsageReport.StaleAfter;
 
     /// <summary>For the tooltip, once the reading is stale (M.ORCH-T1119): " Claude's meter was last read 11h ago (Σ: 91% | λ: 0%),
     /// so these figures may be out of date."; empty while it's fresh or never read.</summary>
-    internal static string TabStaleLineOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, DateTime nowUtc, double? lambda) =>
+    internal static string TabStaleLineOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, DateTime nowUtc, double? lambda, bool symbols) =>
         IsStale(readUtc, nowUtc)
-            ? $" Claude's meter was last read {Formatting.Ago(readUtc, nowUtc)} ({TabUsagePairsOf(fiveHourUsed, weekUsed, lambda)}), so these figures may be out of date."
+            ? $" Claude's meter was last read {Formatting.Ago(readUtc, nowUtc)} ({TabUsagePairsOf(fiveHourUsed, weekUsed, lambda, symbols)}), so these figures may be out of date."
             : "";
 
-    internal string TabStaleLine => tab.SignedIn && !tab.IsApiKey ? TabStaleLineOf(FiveHourUsed, WeekUsed, MeterReadUtc, DateTime.UtcNow, Lambda) : "";
+    internal string TabStaleLine => tab.SignedIn && !tab.IsApiKey ? TabStaleLineOf(FiveHourUsed, WeekUsed, MeterReadUtc, DateTime.UtcNow, Lambda, Root.symbolTabLabels) : "";
 
     /// <summary>The cutoffs the visible label leaves out (M.ORCH-T968), for the tooltip and accessible name: "cutoffs 5-hour 98%, weekly 90%".</summary>
     internal string TabCutoffsLine => tab.SignedIn && !tab.IsApiKey ? $" Cutoffs: 5-hour {FiveHourCutoff}%, weekly {WeeklyCutoff}%." : "";
@@ -117,11 +118,14 @@ public sealed partial class MainViewModel
     internal static string ApiTrailingOf(ApiSpend? spend) =>
         spend is null ? "" : spend.LeftUsd is { } left ? $"{ApiSpend.Usd(left)} left" : $"{ApiSpend.Usd(spend.TodayUsd)} today";
 
-    /// <summary>"Σ: 15% | λ: 29%" (M.ORCH-T968, M.ORCH-T1207, M.ORCH-T1251): each window's % used, rounded for display only
-    /// ("—" never read). λ is exactly the 5-hour window's % used (see <see cref="Lambda"/>), so a separate "5hr:" figure
-    /// would only repeat it; it's left out, and nothing stands in for it while λ itself isn't known yet.</summary>
-    internal static string TabUsagePairsOf(double? fiveHourUsed, double? weekUsed, double? lambda) =>
-        $"Σ: {UsedOf(weekUsed)}%" + (lambda is { } l ? $" | λ: {UsedOf(l)}%" : "");
+    /// <summary>"Σ: 15% | λ: 29%", or "wk: 15% | 5h: 29%" with <paramref name="symbols"/> false (the SymbolTabLabels setting,
+    /// M.ORCH-T1255): each window's % used, rounded for display only ("—" never read). λ/"5h" is exactly the 5-hour window's %
+    /// used (see <see cref="Lambda"/>), so a separate "5hr:" figure would only repeat it (M.ORCH-T968, M.ORCH-T1207, M.ORCH-T1251);
+    /// it's left out, and nothing stands in for it while it isn't known yet.</summary>
+    internal static string TabUsagePairsOf(double? fiveHourUsed, double? weekUsed, double? lambda, bool symbols) =>
+        symbols
+            ? $"Σ: {UsedOf(weekUsed)}%" + (lambda is not null ? $" | λ: {UsedOf(lambda)}%" : "")
+            : $"wk: {UsedOf(weekUsed)}%" + (lambda is not null ? $" | 5h: {UsedOf(lambda)}%" : "");
 
     private static string UsedOf(double? used) =>
         used is { } u ? Math.Max(0, u).ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "—";
@@ -165,6 +169,10 @@ public sealed partial class MainViewModel
 
     /// <summary>A busy tab blinks once per this many tokens (the TabBlinkTokens setting), read with the settings each refresh.</summary>
     private int tabBlinkTokens = MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultTabBlinkTokens;
+
+    /// <summary>The SymbolTabLabels setting (M.ORCH-T1255), read with the settings each refresh: symbols ("Σ"/"λ") in
+    /// <see cref="TabUsagePairsOf"/> when true (the default), words ("wk"/"5h") when false.</summary>
+    private bool symbolTabLabels = true;
 
     private TabBlinker? blinker;
     private TabBlinker Blinker => blinker ??= new TabBlinker(tab.Key.Length == 0 ? "~global" : tab.Key);

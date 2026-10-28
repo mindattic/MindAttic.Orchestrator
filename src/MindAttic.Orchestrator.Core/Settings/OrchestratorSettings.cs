@@ -231,6 +231,10 @@ public sealed record OrchestratorSettings
 
     public const int DefaultTabBlinkTokens = 1000, MinTabBlinkTokens = 1, MaxTabBlinkTokens = 10_000_000;
 
+    /// <summary>The dashboard's tab trailing text (M.ORCH-T1255): symbols, "Σ: 15% | λ: 29%" (the default, M.ORCH-T1251), or
+    /// words, "wk: 15% | 5h: 29%" -- same figures and the same omit-the-5-hour-part-while-it's-unknown rule either way.</summary>
+    public bool SymbolTabLabels { get; init; } = true;
+
     /// <summary>One CLI per account (M.ORCH-T605): a Claude tab started without a login chosen for it (dashboard Start on
     /// Auto, <c>orchestrator start</c> without <c>--account</c>, Queue and allocate starts, <c>orchestrator accounts pick</c>)
     /// goes on a signed-in per-CLI login no live CLI runs on, the one with the most headroom first

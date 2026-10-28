@@ -210,6 +210,21 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void The_symbol_tab_labels_setting_round_trips_through_the_panel()
+    {
+        var store = new JsonStore(dir);
+        var vm = new SettingsViewModel(store, () => { });
+        Assert.That(vm.SymbolTabLabels, Is.True, "M.ORCH-T1255's default: symbols (Σ/λ)");
+
+        vm.SymbolTabLabels = false;
+        vm.SaveCommand.Execute(null);
+        Assert.That((vm.Error, store.LoadSettings().SymbolTabLabels), Is.EqualTo(("", false)));
+
+        vm.Load();
+        Assert.That(vm.SymbolTabLabels, Is.False, "reloaded from what was saved");
+    }
+
+    [Test]
     public void The_alert_recipient_round_trips_through_the_panel_and_is_checked()
     {
         // M.ORCH-T742: Ryan texted to start with; editable here.

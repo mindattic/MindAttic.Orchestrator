@@ -45,28 +45,33 @@ public sealed class TabStatusTests
     {
         // M.ORCH-T793: current/target pairs, the target the person's own cutoff as passed in, never a fixed number.
         // M.ORCH-T1251: no separate "5hr:" figure; it would only repeat λ, so it's left out.
-        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, null), Is.EqualTo("Σ: 55%"));
-        Assert.That(MainViewModel.TabUsagePairsOf(42.6, 3.2, null), Is.EqualTo("Σ: 3%"));
-        Assert.That(MainViewModel.TabUsagePairsOf(null, null, null), Is.EqualTo("Σ: —%"), "never read");
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, null, true), Is.EqualTo("Σ: 55%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(42.6, 3.2, null, true), Is.EqualTo("Σ: 3%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(null, null, null, true), Is.EqualTo("Σ: —%"), "never read");
 
         // M.ORCH-T1207: the 5-hour figure joins it, as λ, whenever it's non-null.
-        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 89), Is.EqualTo("Σ: 55% | λ: 89%"));
-        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 120), Is.EqualTo("Σ: 55% | λ: 120%"), "uncapped, as the others read past their own cutoff");
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 89, true), Is.EqualTo("Σ: 55% | λ: 89%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 120, true), Is.EqualTo("Σ: 55% | λ: 120%"), "uncapped, as the others read past their own cutoff");
+
+        // M.ORCH-T1255: the SymbolTabLabels setting off switches to words, same figures and the same rules.
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, null, false), Is.EqualTo("wk: 55%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 89, false), Is.EqualTo("wk: 55% | 5h: 89%"));
     }
 
     [Test]
     public void A_stale_reading_is_marked_stale_on_the_tab_and_one_needing_a_new_sign_in_says_so()
     {
         // M.ORCH-T1119: Ryan's tab showed "Σ: 0%" from an 11-hour-old reading as if current.
-        Assert.That(MainViewModel.TabUsageOf(10, 55, Now.AddMinutes(-3), false, Now, null), Is.EqualTo("Σ: 55%"), "fresh");
-        Assert.That(MainViewModel.TabUsageOf(10, 55, null, false, Now, null), Is.EqualTo("Σ: 55%"), "never read: nothing to call stale");
-        Assert.That(MainViewModel.TabUsageOf(0, 91, Now.AddHours(-11), false, Now, null), Is.EqualTo("stale · read 11h ago"), "its old figures never shown as current");
-        Assert.That(MainViewModel.TabUsageOf(0, 91, Now - UsageReport.StaleAfter - TimeSpan.FromMinutes(1), false, Now, null), Does.StartWith("stale"),
+        Assert.That(MainViewModel.TabUsageOf(10, 55, Now.AddMinutes(-3), false, Now, null, true), Is.EqualTo("Σ: 55%"), "fresh");
+        Assert.That(MainViewModel.TabUsageOf(10, 55, null, false, Now, null, true), Is.EqualTo("Σ: 55%"), "never read: nothing to call stale");
+        Assert.That(MainViewModel.TabUsageOf(0, 91, Now.AddHours(-11), false, Now, null, true), Is.EqualTo("stale · read 11h ago"), "its old figures never shown as current");
+        Assert.That(MainViewModel.TabUsageOf(0, 91, Now - UsageReport.StaleAfter - TimeSpan.FromMinutes(1), false, Now, null, true), Does.StartWith("stale"),
             "stale as org usage calls it");
-        Assert.That(MainViewModel.TabUsageOf(0, 91, Now.AddHours(-11), true, Now, null), Is.EqualTo("sign in again"));
-        Assert.That(MainViewModel.TabStaleLineOf(0, 91, Now.AddHours(-11), Now, null),
+        Assert.That(MainViewModel.TabUsageOf(0, 91, Now.AddHours(-11), true, Now, null, true), Is.EqualTo("sign in again"));
+        Assert.That(MainViewModel.TabStaleLineOf(0, 91, Now.AddHours(-11), Now, null, true),
             Is.EqualTo(" Claude's meter was last read 11h ago (Σ: 91%), so these figures may be out of date."), "the old figures, in the tooltip");
-        Assert.That(MainViewModel.TabStaleLineOf(0, 91, Now.AddMinutes(-3), Now, null), Is.Empty);
+        Assert.That(MainViewModel.TabStaleLineOf(0, 91, Now.AddMinutes(-3), Now, null, true), Is.Empty);
+        Assert.That(MainViewModel.TabUsageOf(10, 55, Now.AddMinutes(-3), false, Now, null, false), Is.EqualTo("wk: 55%"), "M.ORCH-T1255: word labels");
 
         var (light, word) = MainViewModel.StatusOf(true, false, null, 50, 95, 40, 98, ClaudeMeterProbe.SignInAgain("ryan@x.com"));
         Assert.That(light, Is.EqualTo(TabLight.Other));
@@ -278,10 +283,11 @@ public sealed class TabStatusTests
 
         var code = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));
         Assert.That(code, Does.Not.Contain("PersonTabWidth = 230"), "content-sized since M.ORCH-T1096");
-        Assert.That(code, Does.Contain("private const double PersonTabSidePadding")
+        // M.ORCH-T1250: the same padding constant also sizes the CLI tab strip, so it's no longer person-tab-specific.
+        Assert.That(code, Does.Contain("private const double TabSidePadding")
             .And.Contain("private void LoginTabItem_Loaded(")
             .And.Contain("private void SizePersonTabs()")
-            .And.Contain("tabs.Max(NaturalWidth) + 2 * PersonTabSidePadding"));
+            .And.Contain("tabs.Max(NaturalWidth) + 2 * TabSidePadding"));
     }
 
     /// <summary>M.ORCH-T790: the tab's red flag counts only CLIs blocked on you, and says so in words.</summary>

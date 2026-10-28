@@ -52,6 +52,7 @@ public sealed partial class MainViewModel
                 var settings = store.LoadSettings();
                 weeklyStopPercent = settings.WeeklyStopPercent; paceTargetPercent = settings.PaceTargetPercent;
                 tabBlinkTokens = settings.TabBlinkTokens;
+                symbolTabLabels = settings.SymbolTabLabels;
             }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
             // Each login's own cutoffs and who's allowed past the weekly one, for the tabs' disabled icon (M.ORCH-T757); kept as

@@ -342,6 +342,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The dashboard's person tabs: a busy login's green play arrow blinks once for every N tokens it spends, uncached (default 1000; 1 to 10000000).")]
         public int? TabBlinkTokens { get; init; }
 
+        [CommandOption("--symbol-tab-labels <ON>")]
+        [Description("The dashboard's tab trailing text: true (default), symbols, \"Σ: 15% | λ: 29%\"; false, words, \"wk: 15% | 5h: 29%\". Same figures either way.")]
+        public bool? SymbolTabLabels { get; init; }
+
         [CommandOption("--auto-login <ON>")]
         [Description("true (default): a Claude tab started without a login chosen (dashboard Auto, start without --account, Queue starts, accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login; false: always the global login.")]
         public bool? AutoLogin { get; init; }
@@ -521,6 +525,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { TabBlinkTokens = blink };
             changed = true;
         }
+        if (settings.SymbolTabLabels is { } symbolTabLabels)
+        {
+            s = s with { SymbolTabLabels = symbolTabLabels };
+            changed = true;
+        }
         if (settings.AutoLogin is { } autoLogin)
         {
             s = s with { AutoLogin = autoLogin };
@@ -667,7 +676,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.RebalanceLogins ? " · a CLI on a login that runs low moves to a free login with more headroom" : " · a CLI stays on its login when it runs low") +
             " · a CLI whose login runs out waits for its reset (API billing is only ever switched on by you)" +
             " · CLIs open in Windows Terminal, a window per person" +
-            $" · a busy person tab's play arrow blinks once per {s.TabBlinkTokens:N0} tokens");
+            $" · a busy person tab's play arrow blinks once per {s.TabBlinkTokens:N0} tokens" +
+            $" · tab trailing text: {(s.SymbolTabLabels ? "symbols (Σ/λ)" : "words (wk/5h)")}");
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%" +
             $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · no weekly-aware pacing, ever");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +

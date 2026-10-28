@@ -12,7 +12,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
         contextPercent = "", orphanRedispatches = "", orphanQuiet = "", exemptCommands = "", weeklyTarget = "", tabBlinkTokens = "", agentAbortAfter = "";
-    private bool allocate, pacing, autoLogin, rebalanceLogins = true, agentAbort = true;
+    private bool allocate, pacing, autoLogin, rebalanceLogins = true, agentAbort = true, symbolTabLabels = true;
 
     public SettingsViewModel(JsonStore store, Action saved)
     {
@@ -50,6 +50,9 @@ public sealed class SettingsViewModel : ObservableObject
     public string OrphanQuiet { get => orphanQuiet; set => Set(ref orphanQuiet, value); }
     /// <summary>A busy person tab's play arrow blinks once per this many tokens (M.ORCH-T757), 1 to 10,000,000.</summary>
     public string TabBlinkTokens { get => tabBlinkTokens; set => Set(ref tabBlinkTokens, value); }
+    /// <summary>The tab trailing text's labels (M.ORCH-T1255): symbols, "Σ: 15% | λ: 29%" (on, the default), or words,
+    /// "wk: 15% | 5h: 29%" (off).</summary>
+    public bool SymbolTabLabels { get => symbolTabLabels; set => Set(ref symbolTabLabels, value); }
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
     /// <summary>The commands exempt from pacing (M.ORCH-T198), comma-separated; blank exempts none.</summary>
     public string ExemptCommands { get => exemptCommands; set => Set(ref exemptCommands, value); }
@@ -89,6 +92,9 @@ public sealed class SettingsViewModel : ObservableObject
     /// didn't touch the toggle mustn't put back what it read.</summary>
     private bool loadedAllocate;
 
+    /// <summary>SymbolTabLabels as the panel read it (M.ORCH-T1255), the same "don't put back what Save didn't touch" guard.</summary>
+    private bool loadedSymbolTabLabels = true;
+
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
     private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, "", "", "", true, "");
@@ -122,6 +128,7 @@ public sealed class SettingsViewModel : ObservableObject
         OrphanRedispatches = s.OrphanRedispatches.ToString(CultureInfo.InvariantCulture);
         OrphanQuiet = s.OrphanQuietMinutes.ToString(CultureInfo.InvariantCulture);
         TabBlinkTokens = s.TabBlinkTokens.ToString(CultureInfo.InvariantCulture);
+        SymbolTabLabels = loadedSymbolTabLabels = s.SymbolTabLabels;
         AgentAbort = s.AgentAbort;
         AgentAbortAfter = s.AgentAbortAfterMinutes.ToString(CultureInfo.InvariantCulture);
         loaded = Current();
@@ -133,7 +140,7 @@ public sealed class SettingsViewModel : ObservableObject
     /// here was edited, which is never thrown away under the typing.</summary>
     public void ReloadIfUnedited()
     {
-        if (Current() == loaded && Allocate == loadedAllocate) Load();
+        if (Current() == loaded && Allocate == loadedAllocate && SymbolTabLabels == loadedSymbolTabLabels) Load();
     }
 
     private void Save()
@@ -190,6 +197,7 @@ public sealed class SettingsViewModel : ObservableObject
                 OrphanRedispatches = OrphanRedispatches == was.Orphans ? s.OrphanRedispatches : orphans,
                 OrphanQuietMinutes = OrphanQuiet == was.OrphanQuiet ? s.OrphanQuietMinutes : orphanQuiet,
                 TabBlinkTokens = TabBlinkTokens == was.Blink ? s.TabBlinkTokens : blink,
+                SymbolTabLabels = SymbolTabLabels == loadedSymbolTabLabels ? s.SymbolTabLabels : SymbolTabLabels,
                 AgentAbort = AgentAbort == was.AgentAbort ? s.AgentAbort : AgentAbort,
                 AgentAbortAfterMinutes = AgentAbortAfter == was.AgentAbortAfter ? s.AgentAbortAfterMinutes : agentAbortAfter,
                 ExemptCommands = ExemptCommands == was.Exempt ? s.ExemptCommands : OrchestratorSettings.ParseCommands(ExemptCommands),
