@@ -66,9 +66,9 @@ public sealed partial class MainViewModel
         _ => Palette.Other,
     };
 
-    /// <summary>The text beside a person's name (M.ORCH-T793): their live 5-hour and weekly use, each against that person's own
-    /// live cutoff ("5hr: 29% | wk: 15%", M.ORCH-T968), the cutoffs moved to the tooltip, and the same 5-hour figure once
-    /// more as λ ("λ: 29%", M.ORCH-T1207, replacing the subagent-slot-load reading from M.ORCH-T1194). Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
+    /// <summary>The text beside a person's name (M.ORCH-T793): their live weekly use against their own live cutoff ("Σ: 15%",
+    /// M.ORCH-T968), the cutoffs moved to the tooltip, and the 5-hour window's use as λ ("λ: 29%", M.ORCH-T1207, replacing the
+    /// subagent-slot-load reading from M.ORCH-T1194; a separate "5hr:" figure would only repeat it, M.ORCH-T1251). Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
     public string TabTrailing => !tab.SignedIn ? ""
         : tab.IsApiKey ? ApiTrailingOf(Spend)
         : TabUsageOf(FiveHourUsed, WeekUsed, MeterReadUtc, NeedsSignInAgain, DateTime.UtcNow, Lambda);
@@ -101,7 +101,7 @@ public sealed partial class MainViewModel
 
     private static bool IsStale(DateTime? readUtc, DateTime nowUtc) => readUtc is { } r && nowUtc - r > UsageReport.StaleAfter;
 
-    /// <summary>For the tooltip, once the reading is stale (M.ORCH-T1119): " Claude's meter was last read 11h ago (5hr: 0% | wk: 91%),
+    /// <summary>For the tooltip, once the reading is stale (M.ORCH-T1119): " Claude's meter was last read 11h ago (Σ: 91% | λ: 0%),
     /// so these figures may be out of date."; empty while it's fresh or never read.</summary>
     internal static string TabStaleLineOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, DateTime nowUtc, double? lambda) =>
         IsStale(readUtc, nowUtc)
@@ -117,10 +117,11 @@ public sealed partial class MainViewModel
     internal static string ApiTrailingOf(ApiSpend? spend) =>
         spend is null ? "" : spend.LeftUsd is { } left ? $"{ApiSpend.Usd(left)} left" : $"{ApiSpend.Usd(spend.TodayUsd)} today";
 
-    /// <summary>"5hr: 29% | wk: 15%", with the 5-hour figure repeated as λ, "5hr: 29% | wk: 15% | λ: 29%"
-    /// (M.ORCH-T968, M.ORCH-T1207): each window's % used, rounded for display only ("—" never read).</summary>
+    /// <summary>"Σ: 15% | λ: 29%" (M.ORCH-T968, M.ORCH-T1207, M.ORCH-T1251): each window's % used, rounded for display only
+    /// ("—" never read). λ is exactly the 5-hour window's % used (see <see cref="Lambda"/>), so a separate "5hr:" figure
+    /// would only repeat it; it's left out, and nothing stands in for it while λ itself isn't known yet.</summary>
     internal static string TabUsagePairsOf(double? fiveHourUsed, double? weekUsed, double? lambda) =>
-        $"5hr: {UsedOf(fiveHourUsed)}% | wk: {UsedOf(weekUsed)}%" + (lambda is { } l ? $" | λ: {UsedOf(l)}%" : "");
+        $"Σ: {UsedOf(weekUsed)}%" + (lambda is { } l ? $" | λ: {UsedOf(l)}%" : "");
 
     private static string UsedOf(double? used) =>
         used is { } u ? Math.Max(0, u).ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "—";

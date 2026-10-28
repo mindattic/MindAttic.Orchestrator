@@ -44,27 +44,28 @@ public sealed class TabStatusTests
     public void The_tab_shows_live_5_hour_and_weekly_use_against_the_persons_own_cutoffs()
     {
         // M.ORCH-T793: current/target pairs, the target the person's own cutoff as passed in, never a fixed number.
-        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, null), Is.EqualTo("5hr: 10% | wk: 55%"));
-        Assert.That(MainViewModel.TabUsagePairsOf(42.6, 3.2, null), Is.EqualTo("5hr: 43% | wk: 3%"));
-        Assert.That(MainViewModel.TabUsagePairsOf(null, null, null), Is.EqualTo("5hr: —% | wk: —%"), "never read");
+        // M.ORCH-T1251: no separate "5hr:" figure; it would only repeat λ, so it's left out.
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, null), Is.EqualTo("Σ: 55%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(42.6, 3.2, null), Is.EqualTo("Σ: 3%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(null, null, null), Is.EqualTo("Σ: —%"), "never read");
 
-        // M.ORCH-T1207: the 5-hour figure joins them again, third, as λ, whenever it's non-null.
-        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 89), Is.EqualTo("5hr: 10% | wk: 55% | λ: 89%"));
-        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 120), Is.EqualTo("5hr: 10% | wk: 55% | λ: 120%"), "uncapped, as the others read past their own cutoff");
+        // M.ORCH-T1207: the 5-hour figure joins it, as λ, whenever it's non-null.
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 89), Is.EqualTo("Σ: 55% | λ: 89%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55, 120), Is.EqualTo("Σ: 55% | λ: 120%"), "uncapped, as the others read past their own cutoff");
     }
 
     [Test]
     public void A_stale_reading_is_marked_stale_on_the_tab_and_one_needing_a_new_sign_in_says_so()
     {
-        // M.ORCH-T1119: Ryan's tab showed "5hr: 0% | wk: 0%" from an 11-hour-old reading as if current.
-        Assert.That(MainViewModel.TabUsageOf(10, 55, Now.AddMinutes(-3), false, Now, null), Is.EqualTo("5hr: 10% | wk: 55%"), "fresh");
-        Assert.That(MainViewModel.TabUsageOf(10, 55, null, false, Now, null), Is.EqualTo("5hr: 10% | wk: 55%"), "never read: nothing to call stale");
+        // M.ORCH-T1119: Ryan's tab showed "Σ: 0%" from an 11-hour-old reading as if current.
+        Assert.That(MainViewModel.TabUsageOf(10, 55, Now.AddMinutes(-3), false, Now, null), Is.EqualTo("Σ: 55%"), "fresh");
+        Assert.That(MainViewModel.TabUsageOf(10, 55, null, false, Now, null), Is.EqualTo("Σ: 55%"), "never read: nothing to call stale");
         Assert.That(MainViewModel.TabUsageOf(0, 91, Now.AddHours(-11), false, Now, null), Is.EqualTo("stale · read 11h ago"), "its old figures never shown as current");
         Assert.That(MainViewModel.TabUsageOf(0, 91, Now - UsageReport.StaleAfter - TimeSpan.FromMinutes(1), false, Now, null), Does.StartWith("stale"),
             "stale as org usage calls it");
         Assert.That(MainViewModel.TabUsageOf(0, 91, Now.AddHours(-11), true, Now, null), Is.EqualTo("sign in again"));
         Assert.That(MainViewModel.TabStaleLineOf(0, 91, Now.AddHours(-11), Now, null),
-            Is.EqualTo(" Claude's meter was last read 11h ago (5hr: 0% | wk: 91%), so these figures may be out of date."), "the old figures, in the tooltip");
+            Is.EqualTo(" Claude's meter was last read 11h ago (Σ: 91%), so these figures may be out of date."), "the old figures, in the tooltip");
         Assert.That(MainViewModel.TabStaleLineOf(0, 91, Now.AddMinutes(-3), Now, null), Is.Empty);
 
         var (light, word) = MainViewModel.StatusOf(true, false, null, 50, 95, 40, 98, ClaudeMeterProbe.SignInAgain("ryan@x.com"));
