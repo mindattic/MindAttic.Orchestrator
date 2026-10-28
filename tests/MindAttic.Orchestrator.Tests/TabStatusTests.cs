@@ -321,4 +321,24 @@ public sealed class TabStatusTests
         Assert.That(MainViewModel.AskingBadgeContentOf(2, showQuestion: true), Is.EqualTo("?"), "flashed to a question mark in its turn");
         Assert.That(MainViewModel.AskingBadgeContentOf(0, showQuestion: false), Is.EqualTo("0"));
     }
+
+    /// <summary>M.ORCH-T1264: a login with no configured 5-hour budget (peak-relative, the common case) still shows its real
+    /// λ figure from Claude's own report, the same block percent the 5-hour tile's fill bar already trusts unconditionally
+    /// (<c>BudgetFill</c>); only with no block running at all does it fall back to the roster's last reading.</summary>
+    [Test]
+    public void The_5_hour_figure_comes_from_a_peak_relative_block_too_not_only_a_real_limit()
+    {
+        var now = DateTime.UtcNow;
+        var block = new UsageBlock(now.AddHours(-2), now.AddHours(3), default, now);
+        var peaked = new BudgetStatus(block, 0, true, 42, default, default, null, null, 0, null, 90);
+        var real = new BudgetStatus(block, 10_000_000, false, 17, default, default, null, null, 0, null, 90);
+        var idle = new BudgetStatus(null, 0, true, 0, default, default, null, null, 0, null, 90);
+
+        Assert.That(MainViewModel.SnapshotFiveHourOf(peaked, rosterFiveHourUsed: 5), Is.EqualTo(42),
+            "Claude's own reported percent, even with no configured limit");
+        Assert.That(MainViewModel.SnapshotFiveHourOf(real, rosterFiveHourUsed: 5), Is.EqualTo(17), "a real limit still wins over the roster");
+        Assert.That(MainViewModel.SnapshotFiveHourOf(idle, rosterFiveHourUsed: 5), Is.EqualTo(5), "no block running: the roster's last reading");
+        Assert.That(MainViewModel.SnapshotFiveHourOf(null, rosterFiveHourUsed: 5), Is.EqualTo(5), "no budget at all: the roster's last reading");
+        Assert.That(MainViewModel.SnapshotFiveHourOf(null, rosterFiveHourUsed: null), Is.Null, "never read anywhere");
+    }
 }

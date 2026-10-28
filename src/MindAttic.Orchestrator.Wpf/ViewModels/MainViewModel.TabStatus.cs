@@ -379,9 +379,14 @@ public sealed partial class MainViewModel
     /// <summary>The 5-hour window's % used: the reading the status stream just pushed (M.ORCH-T854), else the snapshot's.</summary>
     private double? FiveHourUsed => LiveFiveHour ?? SnapshotFiveHour;
 
-    /// <summary>The snapshot's 5-hour % used: its own pace's against a real limit, else the roster's last reading.</summary>
-    private double? SnapshotFiveHour => Budget is { CurrentBlock: not null, BlockLimitIsPeak: false, BlockLimit: > 0 } b
-        ? b.BlockPercent : OwnRow?.FiveHourUsedAt(DateTime.UtcNow);
+    /// <summary>The snapshot's 5-hour % used: its own pace's block percent whenever one is running, real limit or peak-relative
+    /// alike (M.ORCH-T1264: Claude's own reported percent is what <see cref="BudgetStatus.BlockPercent"/> already holds even
+    /// with no configured limit, the same number <see cref="BudgetFill"/> already trusts unconditionally), else the roster's
+    /// last reading.</summary>
+    private double? SnapshotFiveHour => SnapshotFiveHourOf(Budget, OwnRow?.FiveHourUsedAt(DateTime.UtcNow));
+
+    internal static double? SnapshotFiveHourOf(BudgetStatus? budget, double? rosterFiveHourUsed) =>
+        budget is { CurrentBlock: not null } b ? b.BlockPercent : rosterFiveHourUsed;
 
     /// <summary>On a per-CLI login's tab, who its folder is signed in to when that's another account's email; else null.</summary>
     private string? SignedInAsOther => MismatchOf(ScopeEmail, snapshot?.Account, accountRows);
