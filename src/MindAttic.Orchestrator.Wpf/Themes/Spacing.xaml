@@ -25,7 +25,7 @@
     <Thickness x:Key="SpaceLM">12,0,0,0</Thickness>
     <Thickness x:Key="SpaceLS">8,0,0,0</Thickness>
     <Thickness x:Key="SpaceLSTXS">8,4,0,0</Thickness>
-    <Thickness x:Key="SpaceLXLRXLBS">24,0,24,8</Thickness>
+    <Thickness x:Key="SpaceLXLRXL">24,0,24,0</Thickness>
     <Thickness x:Key="SpaceLXLTLRXL">24,16,24,0</Thickness>
     <Thickness x:Key="SpaceLXLTSRXL">24,8,24,0</Thickness>
     <Thickness x:Key="SpaceLXS">4,0,0,0</Thickness>

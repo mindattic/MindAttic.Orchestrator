@@ -331,7 +331,9 @@
              it doesn't use, its own ScrollViewer reaching the rest. -->
         <Grid x:Name="TerminalFrameRow" Grid.Row="2" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <!-- No card and no border (M.ORCH-T1095): a plain Grid, the tab page's own width. -->
-            <Grid x:Name="TerminalFrame" MinHeight="160" Margin="{StaticResource SpaceLXLRXLBS}"
+            <!-- No bottom margin of its own (M.ORCH-T1209): the body's Header right below already opens with SpaceTS, its own
+                 top gutter; stacking a bottom one here too doubled the gap between the terminal and what follows it. -->
+            <Grid x:Name="TerminalFrame" MinHeight="160" Margin="{StaticResource SpaceLXLRXL}"
                   Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
                 <!-- WPF claims arrow keys (and Tab) for its own directional/tab focus navigation even when a hosted
                      native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never
