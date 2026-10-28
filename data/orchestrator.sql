@@ -8,15 +8,13 @@ INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, 
 
 -- members
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('honey@mindattic.com', 'Honey', 'admin', 'premium', 'active', 1792771886.8054008, 1792771886.8054008);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1793152886.633957);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1793152906.8465142);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1793153294.192398);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'owner', 'premium', 'active', 1792771887.249, 1793153294.192398);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1792840279.0027995);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1793152906.8465142);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'owner', 'premium', 'active', 1792771885.882, 1793153294.192398);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T02:02:21Z', 22, '2026-10-21T06:30:00Z', 3610218);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T02:06:35Z', 23, '2026-10-21T06:30:00Z', 3789743);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T02:07:09Z', 23, '2026-10-21T06:30:00Z', 3799596);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T02:11:15Z', 24, '2026-10-21T06:30:00Z', 3830316);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T02:14:26Z', 24, '2026-10-21T06:30:00Z', 4046751);
@@ -1543,6 +1541,7 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T01:51:20Z', 1, '2026-10-28T02:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T01:56:32Z', 1, '2026-10-28T02:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T02:01:47Z', 1, '2026-10-28T02:40:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T02:06:51Z', 1, '2026-10-28T02:40:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -1986,7 +1985,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1167590);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T22:00:00Z', 1637552);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Capture', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 494252);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2873234);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2874719);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T22:00:00Z', 12552774);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 167186);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Tickets', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T22:00:00Z', 1002401);
@@ -6444,16 +6443,16 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "bb3ab37c29d9c067c84a240c20c776b66896b86a"
   },
   "AutoWebNav": {
-    "Tested": "ff3f33c92ea4a51b509e9cdfdef3915cee91ff6c"
+    "Tested": "47b925dfd1ef9961133f91be6ee04ccf0b87c8b9"
   },
   "Cursory": {
     "Tested": "534d7658ff1d9d719ce00099c6af3c335da0a8f9"
   },
   "Formicarium": {
-    "Tested": "1c0cea2b656dd86b99baa2722c369a7945ce8c11"
+    "Tested": "09049c5f02e4b6c324682c958b16634120513d18"
   },
   "Gadfly": {
-    "Tested": "44f0949c5fe8b3e15ca1eaf2b0163c98d7ee93f4"
+    "Tested": "784f59a42e6f0f65b46c9fd981308488aedd53c8"
   },
   "IdiotProof": {
     "Tested": "1d4bcb821cbca4ea22fa68f2eb735f66d79dcfe1",
@@ -6464,10 +6463,10 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "0de745678731c6be125ef8674a81f3361f1cf757"
   },
   "MediaButler": {
-    "Tested": "518f409acec6f232e534db8589196d7ef42735dd"
+    "Tested": "6cf3629a72e92b39c94c79287f91d9470e0e8f17"
   },
   "MindAttic.Authentication": {
-    "Tested": "8f54822a67d6109568f734994a3c5992998a9882"
+    "Tested": "af97185203c7f0ecb06db1c6e71ca3fdbb43086b"
   },
   "MindAttic.Browser": {
     "Tested": "5820f43f48ce5f015cef8f645977b62825116729",
@@ -6478,55 +6477,56 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "19f2b660467e8fb19a2554e72e8d759b0d85cccd"
   },
   "MindAttic.Components": {
-    "Tested": "24ad1326c1384d7f5c4e6a09b855b96b2ef29be4",
+    "Tested": "4ae89a9b376aef691c9e0c3c04eb6acd59d27cb0",
     "Green": "7891321c38378d715590414173915f046db654b4"
   },
   "MindAttic.Deploy": {
-    "Tested": "69371ac626ebb16861055e557f410ffc15b92680"
+    "Tested": "c07f00eec0c979ab79a027934072f91083b536b1"
   },
   "MindAttic.Export": {
-    "Tested": "061cd3c9188d8940cea2613187da951d5c08191c"
+    "Tested": "a14329193c1e58de4551f95c8d0336a9972d8399"
   },
   "MindAttic.Helpers": {
-    "Tested": "4bd229f854178b6ed1f0dd1951e6fb3225a4ba9a"
+    "Tested": "35bd39760d729d8460b3af092a18a354a8ab7a5f"
   },
   "MindAttic.Ideas": {
-    "Tested": "984dfa29e5fa669236b247d26e332f919a00dcf7"
+    "Tested": "4db753174c1c791ee765e533f749f9a50722c771"
   },
   "MindAttic.Launcher": {
-    "Tested": "4abff0a2eacb65049da974f489e9fdf347bbbe66",
-    "Green": "4abff0a2eacb65049da974f489e9fdf347bbbe66"
+    "Tested": "b90f755e74c3c5f6f3daaafe641a372a449d599e",
+    "Green": "b90f755e74c3c5f6f3daaafe641a372a449d599e"
   },
   "MindAttic.Legion": {
-    "Tested": "0f63adaaae25e3a5fc8498c9973ab151ca31bd96"
+    "Tested": "cbc1109f9e901d2030c80586a5f5d6a28c7c50b5"
   },
   "MindAttic.Log": {
-    "Tested": "4358effc9d75fabf5c67ad4e742be0e490be265d"
+    "Tested": "758afa26362ba7e6b983567e215f15229d0050a4",
+    "Green": "758afa26362ba7e6b983567e215f15229d0050a4"
   },
   "MindAttic.Media": {
-    "Tested": "a57a30142679f3ed216b7bb6a585534536b6391c"
+    "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
     "Tested": "524bb231a253a125f740e4282298f47f3e8f91a2",
     "Green": "d482b9053b55c7dd5ac4ce184cfdb00aede8f0c3"
   },
   "MindAttic.Psst": {
-    "Tested": "4960f2f972aaa23db6f9d05960922f3caa9b2e13",
-    "Green": "4960f2f972aaa23db6f9d05960922f3caa9b2e13"
+    "Tested": "c737769fa2041f37d6292878e6987921516c9d90",
+    "Green": "c737769fa2041f37d6292878e6987921516c9d90"
   },
   "MindAttic.Telemetry": {
-    "Tested": "7332476b16161496300b69d2c8838a9cb55f38e7"
+    "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
     "Tested": "cec2ebd859f6e02072f0a2e34b7e0de4255adaed",
     "Green": "cec2ebd859f6e02072f0a2e34b7e0de4255adaed"
   },
   "MindAttic.Vault": {
-    "Tested": "ac2e2fd848071f2cd0db1f8a77f0bb3dad28d3d8",
-    "Green": "ac2e2fd848071f2cd0db1f8a77f0bb3dad28d3d8"
+    "Tested": "522e11b2ff08d6c2a11ff67fe97d040d6afa4713",
+    "Green": "522e11b2ff08d6c2a11ff67fe97d040d6afa4713"
   },
   "OpenCredentials": {
-    "Tested": "8b046123b94fb1dfcd75dedeff9575e6b8081a70"
+    "Tested": "e6fb57b5c6474ca4ed6a1ab13f2881be058ae98c"
   },
   "ProcessLogger": {
     "Tested": "2a62afce2755b24435d330b5e334ed2634b08528",
@@ -6553,7 +6553,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "96af385ce2ff0bf07187ddd13cb3998e32bc81a9"
   },
   "ChiMesh": {
-    "Tested": "e255217c5f32a7c2bef79ef86c14a2fb9a0de05f"
+    "Tested": "14a3cdbf2ad9a423803612d0fea14b6a76b33699"
   },
   "Claudia": {
     "Tested": "34d00bfb963e29dc9af2177625726035bf9aae2b"
@@ -6580,10 +6580,10 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ae4a067bfd885aac5206f041290b5272e55baf6"
   },
   "JellyFinPoster": {
-    "Tested": "0c9f87faa073daafd27522ee7693346fbe99245f"
+    "Tested": "a3d4595a69b3e3d8e5ccf7f263c8ef2cdd0724dc"
   },
   "JoyceFit": {
-    "Tested": "de64c3bca2f1e545dfaae8b72d3f974aa0fd4713"
+    "Tested": "d7b06abe41a06384dd097a9dc05fe36bdd2aa9a6"
   },
   "KdpPublish": {
     "Tested": "75724978180959fdbc9f470422b61cf46dde4daa"
@@ -6595,7 +6595,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "6436de35af93e61a48725be15dcf0e736a12b9c4"
   },
   "MindAttic.Scheduler": {
-    "Tested": "caaf68692f8a1feeffd0dc18a63086aaee33a532"
+    "Tested": "a463923d4c97ce4750fe3f2887f2eae078ca7146"
   },
   "MindAttic.Web": {
     "Tested": "db817ef9047d74799520f8b80d5bbf56841eb13c"
