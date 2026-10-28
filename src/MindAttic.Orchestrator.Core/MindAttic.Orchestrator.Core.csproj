@@ -14,7 +14,7 @@
     <PackageReference Include="MindAttic.Log" Version="3.0.0" />
     <PackageReference Include="MindAttic.Vault" Version="6.0.0" />
     <!-- 4.1.0: TicketsDb.Activity, the workspace's change feed the daemon turns into ticket events on the bus (M.ORCH-T879). -->
-    <PackageReference Include="MindAttic.Tickets" Version="5.0.0" />
+    <PackageReference Include="MindAttic.Tickets" Version="6.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.7" />
     <!-- SqlClient's own (9.0.x) has known vulnerabilities; the build treats NU1902/NU1903 as errors. -->
