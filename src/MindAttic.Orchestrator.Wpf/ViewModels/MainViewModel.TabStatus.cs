@@ -222,6 +222,11 @@ public sealed partial class MainViewModel
     public bool IsTabBusy => IsPersonTab && TabActivity == TabActivity.Busy && !TabAllStopped;
     public bool IsTabDisabled => IsPersonTab && TabActivity == TabActivity.Disabled;
 
+    /// <summary>The disabled icon's glyph (M.ORCH-T1254): a small lock while the login is signed in but past its own cutoff --
+    /// never removed from the strip, just held back from new work until it's lifted (<c>org allow</c>) or its window resets --
+    /// the old "blocked" glyph only while it's actually unusable (signed out, or the API key with no credit or no key).</summary>
+    public string TabDisabledGlyph => tab.SignedIn ? "" : "";
+
     /// <summary>Every open CLI of this person has stopped (M.ORCH-T890): the green play arrow turns into a steady pause icon (M.ORCH-T1116),
     /// so it shows at a glance that all of their CLIs are done. Never with no CLI open, and never while the login is disabled.</summary>
     public bool IsTabAllStopped => IsPersonTab && TabActivity != TabActivity.Disabled && TabAllStopped;
@@ -391,7 +396,7 @@ public sealed partial class MainViewModel
     private void RaiseTabStatus()
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip), nameof(TabHoverTip),
-                                     nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge), nameof(TabActivityWord),
+                                     nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge), nameof(TabActivityWord),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
                                      nameof(ApiBurnText), nameof(ShowsClaudeMeters) })

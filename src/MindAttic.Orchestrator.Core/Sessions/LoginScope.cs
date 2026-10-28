@@ -105,10 +105,15 @@ public static class LoginScope
     /// <para>The API key's person (M.ORCH-T906) has its tab after everyone's: <paramref name="apiKey"/> says whether the
     /// Vault holds a key for it (its "signed in"); null leaves it out.</para>
     public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<Member>? members = null, bool? apiKey = null) =>
-        Tabs(snapshot, email => LoginLook.For(dirs.For(email).Directory, email), LoginLook.For(dirs.ClaudeDir, snapshot.GlobalEmail), members, apiKey);
+        Tabs(snapshot, email => LoginLook.For(dirs.For(email).Directory, email), LoginLook.For(dirs.ClaudeDir, snapshot.GlobalEmail), members, apiKey,
+            dirs.All().Select(d => (d.Email, d.SignedIn)));
 
+    /// <summary><paramref name="knownLogins"/> (M.ORCH-T1254): every per-CLI login folder on this machine, signed in or not, so
+    /// one a tick's <paramref name="snapshot"/> happens to carry no live session, agent or host for (a cutoff just set, a
+    /// transient read, between CLIs) still keeps its tab rather than dropping out of the strip -- only a login this machine has
+    /// never heard of (no folder, no roster row) goes without one.</summary>
     internal static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, Func<string, LoginLook> ownLook, LoginLook globalLook, IEnumerable<Member>? members = null,
-        bool? apiKey = null)
+        bool? apiKey = null, IEnumerable<(string Email, bool SignedIn)>? knownLogins = null)
     {
         var byEmail = new Dictionary<string, Member>(StringComparer.Ordinal);
         foreach (var m in members ?? [])
@@ -130,16 +135,24 @@ public static class LoginScope
             .Select(AccountDirs.Normalize).OfType<string>()
             .Where(e => e != globalEmail && !Billing.ApiKeyPerson.Is(e))
             .ToHashSet(StringComparer.Ordinal);
-        var waiting = byEmail.Keys
+        var knownSignedIn = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var (email, signedIn) in knownLogins ?? [])
+            if (AccountDirs.Normalize(email) is { } k && k != globalEmail && !Billing.ApiKeyPerson.Is(k))
+                knownSignedIn[k] = knownSignedIn.TryGetValue(k, out var already) ? already || signedIn : signedIn;
+        var waiting = byEmail.Keys.Concat(knownSignedIn.Keys)
             .Where(e => !live.Contains(e) && e != globalEmail)
             .ToHashSet(StringComparer.Ordinal);
         var own = live.Concat(waiting).Order(StringComparer.Ordinal).Select(e =>
         {
             var look = ownLook(e);
             var title = Title(e, look.Alias);
-            return waiting.Contains(e)
-                ? new LoginTab(e, title, $"{e}: not signed in on this machine yet; sign in to see its dashboard", look.TabColor, SignedIn: false)
-                : new LoginTab(e, title, $"{e}: its own login (~/.claude-accounts)", look.TabColor);
+            // A known per-CLI login folder (M.ORCH-T1254) keeps its real sign-in state even while waiting: it's a login this
+            // machine already knows, just one the snapshot happens to carry nothing live for this tick, not one still to sign
+            // in to.
+            var signedIn = !waiting.Contains(e) || knownSignedIn.GetValueOrDefault(e, false);
+            return signedIn
+                ? new LoginTab(e, title, $"{e}: its own login (~/.claude-accounts)", look.TabColor)
+                : new LoginTab(e, title, $"{e}: not signed in on this machine yet; sign in to see its dashboard", look.TabColor, SignedIn: false);
         });
         // By the name each shows, case-insensitive (M.ORCH-T752): the global login's tab is just its member's, so it sorts
         // with the others; ties by email, the global one first. The API key's person goes after all of them (M.ORCH-T906).
