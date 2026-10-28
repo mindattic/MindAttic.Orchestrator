@@ -70,8 +70,10 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { }
 
         var local = DefaultAlias(email);
-        var name = alias ?? local ?? "claude";
         var badge = Clean(initials, 3) ?? Clean(Words(alias), 3) ?? Clean(alias, 2) ?? Clean(local, 2) ?? "CL";
+        // A user CLI's name (M.ORCH-T1257): the name it was given, else the email's part before the @, else, with neither
+        // known, its initials badge rather than the literal word "claude".
+        var name = alias ?? local ?? badge;
         var tab = color is { Length: 7 } c && c[0] == '#' && c[1..].All(Uri.IsHexDigit) ? c.ToUpperInvariant() : Palette[Hash(email ?? folder) % Palette.Length];
         return new LoginLook(WindowName(name), badge, tab) { Alias = name };
 
