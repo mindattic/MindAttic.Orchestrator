@@ -15,8 +15,6 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T02:18:35Z', 26, '2026-10-21T06:30:00Z', 4490448);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T02:21:35Z', 27, '2026-10-21T06:30:00Z', 4693513);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T02:26:13Z', 28, '2026-10-21T06:30:00Z', 4756750);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T02:30:20Z', 29, '2026-10-21T06:30:00Z', 4851437);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T02:30:42Z', 29, '2026-10-21T06:30:00Z', 4923628);
@@ -1539,6 +1537,7 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T02:06:51Z', 1, '2026-10-28T02:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T02:11:54Z', 1, '2026-10-28T02:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T02:16:57Z', 1, '2026-10-28T02:40:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T02:22:03Z', 1, '2026-10-28T02:40:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -6516,8 +6515,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "35daaeb3ddef7c4075f84b3e908f87aec1baaadb",
-    "Green": "35daaeb3ddef7c4075f84b3e908f87aec1baaadb"
+    "Tested": "058701612e0ea4962ed67fbd0e789c6cd795e138",
+    "Green": "058701612e0ea4962ed67fbd0e789c6cd795e138"
   },
   "MindAttic.Vault": {
     "Tested": "522e11b2ff08d6c2a11ff67fe97d040d6afa4713",
