@@ -143,18 +143,22 @@ public static partial class Scheduler
         // An epic (label 'epic', M.ORCH-T1146) is never work itself: it's started by approving it, and closes when its children are done.
         bool IsEpic(string id) => snapshot.Epics.Contains(id);
 
-        // A block set by hand is a 'requires' link in the ticket database (tickets ticket block, M.ORCH-T762). One on an epic
-        // waits only until the epic is approved (started), not until it closes (M.ORCH-T1146).
+        // A block set by hand is a 'requires' link in the ticket database (tickets ticket block, M.ORCH-T762), or a 'part-of'
+        // link to an epic (M.ORCH-T1210: nothing in an unapproved epic is picked up just because only 'part-of' names it, not
+        // 'requires' too). One on an epic waits only until the epic is approved (started), not until it closes (M.ORCH-T1146).
         IReadOnlyList<string> Blockers(Ticket t) =>
             [.. BlockedByPhrase().Matches(t.Summary).Select(m => m.Groups["id"].Value.ToUpperInvariant())
                 .Concat(snapshot.Requires.GetValueOrDefault(t.Id) ?? [])
+                .Concat(snapshot.PartOf.GetValueOrDefault(t.Id) ?? [])
                 .Where(id => id != t.Id && openIds.Contains(id) && !(IsEpic(id) && IsApproved(id)))
                 .Distinct(StringComparer.Ordinal)];
 
         var groomBefore = settings.GroomAfterDays > 0
             ? DateOnly.FromDateTime(snapshot.TakenUtc.ToLocalTime().AddDays(-Math.Min(settings.GroomAfterDays, Century)))
             : DateOnly.MinValue;
-        bool MayWork(Ticket t) => !IsEpic(t.Id) && (t.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || IsApproved(t.Id));
+        // The canonical rule lives on Snapshot itself (M.ORCH-T1210): fix or approved, never an epic, never part-of one that
+        // isn't approved yet — one place, so this and every other caller can never drift apart on what "may work" means.
+        bool MayWork(Ticket t) => snapshot.MayWork(t);
         // Clamped to what a queue item holds.
         int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.GetValueOrDefault(id), int.MinValue, int.MaxValue);
         // Who each ticket is assigned to (M.ORCH-T668), from the ticket database (M.ORCH-T762), whatever case its id was saved in.

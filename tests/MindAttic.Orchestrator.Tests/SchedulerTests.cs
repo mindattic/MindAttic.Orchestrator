@@ -63,6 +63,26 @@ public sealed class SchedulerTests
     }
 
     [Test]
+    public void A_ticket_only_part_of_an_epic_is_gated_the_same_as_one_that_also_requires_it()
+    {
+        // M.ORCH-T1210: A-T1 is the epic; A-T2 is only 'part-of' it (no 'requires' link was also written), and A-T2 is a fix.
+        var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1", "feature"), T("A-T2", "fix"))) with
+        {
+            Epics = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "a-t1" },
+            PartOf = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["A-T2"] = ["A-T1"] },
+        };
+
+        var unapproved = Scheduler.Plan(snap, new OrchestratorSettings(), []);
+        Assert.That(unapproved.Queue.Select(q => q.Id), Does.Not.Contain("A-T2"), "a fix is no exception: nothing in an unapproved epic has started");
+        Assert.That(unapproved.AwaitingApproval.Select(q => q.Id), Does.Contain("A-T2"), "waits alongside the epic, not silently dropped");
+        Assert.That(unapproved.Queue.Select(q => q.Id), Does.Not.Contain("A-T1"), "the epic itself is still never queued");
+
+        var started = Scheduler.Plan(snap with { Approved = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "A-T1" } }, new OrchestratorSettings(), []);
+        Assert.That(started.Queue.Select(q => q.Id), Does.Contain("A-T2"), "free once its epic is approved, same as an explicit 'requires' link");
+        Assert.That(started.AwaitingApproval.Select(q => q.Id), Does.Not.Contain("A-T2"));
+    }
+
+    [Test]
     public void Only_fixes_and_approved_tickets_are_work_and_the_rest_wait_for_your_yes()
     {
         var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1", "feature"), T("A-T2", "fix"), T("A-T3", "chore"), T("A-T4", "docs")));

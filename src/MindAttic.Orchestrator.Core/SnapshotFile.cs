@@ -99,6 +99,7 @@ public sealed class SnapshotFile(string path)
             LinkedRepos = s.LinkedRepos.ToDictionary(kv => kv.Key,
                 kv => (IReadOnlySet<string>)new HashSet<string>(kv.Value, StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase),
             Requires = s.Requires.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
+            PartOf = (s.PartOf ?? new Dictionary<string, IReadOnlyList<string>>()).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             Approved = new HashSet<string>(s.Approved, StringComparer.OrdinalIgnoreCase),
             Epics = new HashSet<string>(s.Epics ?? new HashSet<string>(), StringComparer.OrdinalIgnoreCase),
             Priorities = s.Priorities.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),

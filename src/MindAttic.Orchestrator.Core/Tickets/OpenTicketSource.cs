@@ -24,10 +24,16 @@ public sealed class OpenTicketSource
     private DateTime dbReadUtc;
 
     private (string Path, DateTime WriteUtc, ILookup<string, Ticket> Open, HashSet<string> Repos, IReadOnlyDictionary<string, IReadOnlyList<string>> Requires,
-        IReadOnlySet<string> Approved, IReadOnlySet<string> Epics, IReadOnlyDictionary<string, long> Priorities, WorkState Work)? fromDb;
+        IReadOnlySet<string> Approved, IReadOnlySet<string> Epics, IReadOnlyDictionary<string, long> Priorities, WorkState Work,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> PartOf)? fromDb;
 
     /// <summary>Ticket → the tickets it requires (prerequisite links in the database: <c>tickets ticket block</c> writes them).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires => fromDb?.Requires ?? new Dictionary<string, IReadOnlyList<string>>();
+
+    /// <summary>Ticket → the tickets it's <c>part-of</c> (<c>tickets ticket link X part-of Y</c>, M.ORCH-T1210): an epic among
+    /// them that isn't <see cref="Approved"/> blocks it exactly as an explicit 'requires' link would, so nothing in an
+    /// unapproved epic is picked up just because the epic link itself was never also written as 'requires'.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> PartOf => fromDb?.PartOf ?? new Dictionary<string, IReadOnlyList<string>>();
 
     /// <summary>Tickets approved for work in the database's queue (<c>tickets ticket approve</c>, the Tickets Desktop): the one
     /// store approval lives in (M.ORCH-T384).</summary>
@@ -110,7 +116,11 @@ public sealed class OpenTicketSource
             {
                 using var db = TicketsDb.OpenIfMigrated(root);
                 if (db is null) return null;
-                var requires = db.AllLinks().Where(l => l.Kind == "requires")
+                var links = db.AllLinks();
+                var requires = links.Where(l => l.Kind == "requires")
+                    .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
+                var partOf = links.Where(l => l.Kind == "part-of")
                     .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
                 var queue = db.QueueStates();
@@ -120,7 +130,7 @@ public sealed class OpenTicketSource
                     queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     db.AllLabels().Where(l => l.Value.Contains(EpicLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
-                    WorkState.Of(db));
+                    WorkState.Of(db), partOf);
                 dbReadUtc = DateTime.UtcNow;
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)
