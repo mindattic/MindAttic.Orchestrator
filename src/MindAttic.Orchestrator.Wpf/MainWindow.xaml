@@ -166,9 +166,10 @@
             <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status badge before the name
                  (M.ORCH-T757, boxed M.ORCH-T1173, in place of the status light): a gray box with a tiny "zzz" while the login has
                  no CLI open or every one of its open CLIs (hosted inside the Orchestrator's Terminals panel or outside it) has
-                 stopped (M.ORCH-T890); a green box with a tiny play arrow while any of them is working; an orange box with a tiny
-                 "?" when one of them is genuinely blocked on the person (what used to be a separate trailing flag, M.ORCH-T790),
-                 which wins over idle or busy when both are true; a gray 'disabled' icon (its own glyph, unboxed), a small lock
+                 stopped (M.ORCH-T890); a green box with its open CLI count while any of them is working (M.ORCH-T1261); an orange
+                 box flashing between that count and "?" when one of them is genuinely blocked on the person (what used to be a
+                 separate trailing flag, M.ORCH-T790, then a static "?", M.ORCH-T1261), which wins over idle or busy when both are
+                 true; a gray 'disabled' icon (its own glyph, unboxed), a small lock
                  past its 5-hour or weekly cutoff while still signed in (the tab stays put and clickable, only held back from
                  new work), or the old blocked glyph while it's actually unusable (signed out, M.ORCH-T1254). Every badge's word
                  is in the tooltip and the accessible name, so neither
@@ -202,16 +203,17 @@
                             <mc:MaBadge x:Name="TabIdleBadge" Style="{StaticResource MaTag}" Content="zzz" Background="{DynamicResource MaMuted}"
                                         Foreground="{DynamicResource MaOnAccent}" FontSize="7" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsIdleBadge, Converter={StaticResource Visible}}" />
-                            <!-- Busy: a green box, a play arrow (M.ORCH-T890: no flash; boxed M.ORCH-T1173). -->
-                            <mc:MaBadge x:Name="TabBusyBadge" Style="{StaticResource MaTag}" Content="&#xE768;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                        Background="{DynamicResource MaGood}" Foreground="{DynamicResource MaOnAccent}" FontSize="8" VerticalAlignment="Center"
+                            <!-- Busy: a green box holding how many of this login's CLIs are open (M.ORCH-T890: no flash; boxed
+                                 M.ORCH-T1173; a count rather than a play arrow, M.ORCH-T1261). -->
+                            <mc:MaBadge x:Name="TabBusyBadge" Style="{StaticResource MaTag}" Content="{Binding TabCliCount}"
+                                        Background="{DynamicResource MaGood}" Foreground="{DynamicResource MaOnAccent}" FontSize="9" FontWeight="Bold" VerticalAlignment="Center"
                                         AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsBusyBadge, Converter={StaticResource Visible}}" />
                             <!-- One of this person's CLIs is genuinely blocked on them (a permission prompt, a question, or a
-                                 /crossrepo or /allocate only they may type, M.ORCH-T790): an orange box, "?" (M.ORCH-T1173, in
-                                 place of the old trailing red flag), over the idle or busy box above while it's true. Not a
-                                 count: how many is in the tooltip and accessible name, so the picture is never the only cue. -->
-                            <mc:MaBadge x:Name="TabAskingBadge" Style="{StaticResource MaTag}" Content="?" Background="{DynamicResource MaWarn}"
+                                 /crossrepo or /allocate only they may type, M.ORCH-T790): an orange box, over the idle or busy box
+                                 above while it's true, flashing between the open CLI count and "?" (M.ORCH-T1261, in place of the
+                                 old static "?", M.ORCH-T1173) so the count isn't lost while one of them needs you. -->
+                            <mc:MaBadge x:Name="TabAskingBadge" Style="{StaticResource MaTag}" Content="{Binding TabAskingBadgeContent}" Background="{DynamicResource MaWarn}"
                                         Foreground="{DynamicResource MaOnAccent}" FontSize="9" FontWeight="Bold" VerticalAlignment="Center"
                                         ToolTip="{Binding TabNeedsYouTip}" AutomationProperties.Name="Blocked waiting on you"
                                         Visibility="{Binding TabNeedsYou, Converter={StaticResource Visible}}" />

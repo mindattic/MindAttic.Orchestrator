@@ -240,13 +240,14 @@ public sealed class TabStatusTests
         var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
         // The library's MaTabItem draws the trailing text after the name (M.ORCH-T667); the status icon (M.ORCH-T757), boxed into
         // status badges (M.ORCH-T1173), replaced its status light: a gray "zzz" box idle (or every open CLI stopped), a green
-        // play-arrow box busy, an orange "?" box when a CLI is blocked on the person, and a plain gray glyph (unboxed) disabled.
+        // box with its open CLI count busy (M.ORCH-T1261), an orange box flashing between that count and "?" when a CLI is
+        // blocked on the person, and a plain gray glyph (unboxed) disabled.
         Assert.That(strip, Does.Contain("<mc:MaTabControl").And.Contain("TargetType=\"mc:MaTabItem\""));
         Assert.That(strip, Does.Not.Contain("Property=\"Status\" Value="), "the icon, not the status light");
         Assert.That(strip, Does.Contain("x:Name=\"TabIdleBadge\"").And.Contain("Content=\"zzz\"").And.Contain("Background=\"{DynamicResource MaMuted}\"")
-            .And.Contain("{Binding ShowsIdleBadge").And.Contain("x:Name=\"TabBusyBadge\"").And.Contain("Content=\"&#xE768;\"")
+            .And.Contain("{Binding ShowsIdleBadge").And.Contain("x:Name=\"TabBusyBadge\"").And.Contain("Content=\"{Binding TabCliCount}\"")
             .And.Contain("Background=\"{DynamicResource MaGood}\"").And.Contain("{Binding ShowsBusyBadge")
-            .And.Contain("x:Name=\"TabAskingBadge\"").And.Contain("Content=\"?\"").And.Contain("Background=\"{DynamicResource MaWarn}\"")
+            .And.Contain("x:Name=\"TabAskingBadge\"").And.Contain("Content=\"{Binding TabAskingBadgeContent}\"").And.Contain("Background=\"{DynamicResource MaWarn}\"")
             .And.Contain("{Binding TabNeedsYou,").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"&#xE733;\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")
             .And.Contain("{Binding IsTabDisabled").And.Contain("FontFamily=\"Segoe Fluent Icons, Segoe MDL2 Assets\""));
         // M.ORCH-T1173: "every open CLI stopped" is folded into the idle badge (ShowsIdleBadge covers IsTabAllStopped too), so
@@ -303,5 +304,21 @@ public sealed class TabStatusTests
         Assert.That(MainViewModel.NeedsYouLine(0), Is.Empty);
         Assert.That(MainViewModel.NeedsYouLine(1), Is.EqualTo(" A CLI here is blocked waiting on your answer."));
         Assert.That(MainViewModel.NeedsYouLine(2), Is.EqualTo(" 2 CLIs here are blocked waiting on your answer."));
+    }
+
+    /// <summary>M.ORCH-T1261: the busy and asking badges share one CLI count, and the asking badge's count takes turns with "?"
+    /// rather than losing the count once a CLI needs you.</summary>
+    [Test]
+    public void The_busy_and_asking_badges_share_a_CLI_count_that_the_asking_badge_flashes_against_a_question_mark()
+    {
+        AgentBoardRow Row(string id) => new(id, "A", null, null, DateTime.UtcNow, DateTime.UtcNow, AgentState.Waiting, "Waiting for you", false, default, []);
+
+        Assert.That(MainViewModel.CliCountOf(null), Is.Zero, "no CLI open");
+        Assert.That(MainViewModel.CliCountOf([Row("a")]), Is.EqualTo(1));
+        Assert.That(MainViewModel.CliCountOf([Row("a"), Row("b")]), Is.EqualTo(2));
+
+        Assert.That(MainViewModel.AskingBadgeContentOf(2, showQuestion: false), Is.EqualTo("2"), "the count, not shown as a question");
+        Assert.That(MainViewModel.AskingBadgeContentOf(2, showQuestion: true), Is.EqualTo("?"), "flashed to a question mark in its turn");
+        Assert.That(MainViewModel.AskingBadgeContentOf(0, showQuestion: false), Is.EqualTo("0"));
     }
 }

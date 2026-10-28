@@ -1,8 +1,8 @@
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>What a person tab's status badge shows (M.ORCH-T757, boxed M.ORCH-T1173): idle (a gray "zzz" box), busy (a green
-/// play-arrow box that blinks once for every N tokens its login spends) or disabled (a gray icon: past its 5-hour or weekly
-/// cutoff, or signed out; on the 'API key' tab, API billing off).</summary>
+/// box holding its open CLI count, M.ORCH-T1261, that blinks once for every N tokens its login spends) or disabled (a gray icon:
+/// past its 5-hour or weekly cutoff, or signed out; on the 'API key' tab, API billing off).</summary>
 public enum TabActivity
 {
     Idle,
