@@ -204,8 +204,6 @@ public sealed class TerminalPanesTests
         Assert.That(menu.Name, Is.EqualTo("Launcher"));
         var cli = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe", Initials = "RD" });
         Assert.That(cli.Name, Is.EqualTo("Repo"), "nor a Claude CLI tab its provider tag (M.ORCH-T1176): every tab was one");
-        Assert.That(menu.Badge, Is.EqualTo("RD:"), "the Launcher tab still carries its login's badge (M.ORCH-T1172)");
-        Assert.That(cli.Badge, Is.EqualTo(""), "a CLI tab no longer repeats it: it already sits under that Launcher tab (M.ORCH-T1172)");
     }
 
     [Test]
@@ -491,12 +489,11 @@ public sealed class TerminalPanesTests
         Assert.That(pane!.IsHosted, Is.True);
         Assert.That(pane.TermId, Is.EqualTo("abc123"));
         Assert.That(pane.Login, Is.EqualTo("amy@example.com"));
-        Assert.That(pane.Badge, Is.EqualTo(""), "a CLI tab carries no badge: only the Launcher's own tab does (M.ORCH-T1172)");
         Assert.That(terminals.Reattach(session, request), Is.Null, "one tab per session");
 
         var named = terminals.Reattach(session with { Id = "def456", Pipe = "mindattic-term-nobody-def456" }, request with { Alias = "Amy" });
-        Assert.That(named!.Badge, Is.EqualTo(""), "still no badge on a CLI tab, named or not (M.ORCH-T1172)");
-        named.DisposeControl();
+        Assert.That(named, Is.Not.Null);
+        named!.DisposeControl();
 
         terminals.OnTermSession(new Term.TermSessionEvent(session, Term.TermSessionEvents.Ended));
         Assert.That(pane.Ended, Is.True);

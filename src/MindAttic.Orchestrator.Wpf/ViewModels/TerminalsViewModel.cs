@@ -39,7 +39,6 @@ public sealed class TerminalPaneViewModel : ObservableObject
         ByControl.AddOrUpdate(Control, this);
         System.Windows.Automation.AutomationProperties.SetName(Control, request.Title);
         TabBrush = request.TabColor is { } hex && TryBrush(hex) is { } brush ? brush : Brushes.Gray;
-        BadgeForeground = ReadableOn(TabBrush);
         Login = request.Login;
         if (hosted) UseRelay();
         else UseLocal();
@@ -103,16 +102,9 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     public string Title => Request.Title;
 
-    /// <summary>The tab's badge chip: the login's initials ("WA:"), its name when it has no initials, shown only on the
-    /// Launcher's own tab (M.ORCH-T1172) — a login's other CLI tabs already sit under that Launcher tab, so repeating the
-    /// badge on each of them said nothing new.</summary>
-    public string Badge => !Request.IsMenu ? "" : Request.Initials is { Length: > 0 } i ? $"{i}:" : Request.Alias is { Length: > 0 } a ? $"{a}:" : "";
     public string Name => Request.IsMenu ? SessionControl.ShortName(Request.Name) : $"{SessionControl.ShortName(Request.Name)}{SessionControl.ProviderTag(Request.Provider)}";
     public string Tooltip => $"{Request.Title}\n{Request.Directory}\n{Request.Alias ?? Login ?? "global login"}";
     public Brush TabBrush { get; }
-
-    /// <summary>The badge's text color: black or white, whichever reads on the chip of <see cref="TabBrush"/>.</summary>
-    public Brush BadgeForeground { get; }
 
     /// <summary>Black on a light <paramref name="background"/>, white on a dark one (by relative luminance).</summary>
     internal static Brush ReadableOn(Brush background)

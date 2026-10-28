@@ -273,9 +273,6 @@
                         <mc:MaTabControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
                                 <StackPanel x:Name="TerminalTab" Orientation="Horizontal" Loaded="TerminalTabItem_Loaded">
-                                    <mc:MaBadge x:Name="TerminalBadge" Style="{StaticResource MaTag}" Content="{Binding Badge}" Background="{Binding TabBrush}"
-                                                Foreground="{Binding BadgeForeground}" Margin="{StaticResource SpaceRS}" VerticalAlignment="Center"
-                                                Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                                     <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" />
                                     <!-- Shared with remote viewers (M.ORCH-T935), and an eye while someone watches it remotely. -->
