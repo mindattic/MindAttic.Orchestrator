@@ -192,8 +192,11 @@
                          (MainWindow.xaml.cs's LoginTabItem_Loaded), the same code-behind workaround as the busy icon's glow
                          below. The 'API key' and 'Miscellaneous' tabs are left to their own content. -->
                     <StackPanel x:Name="LoginTabItem" Orientation="Horizontal" Loaded="LoginTabItem_Loaded">
-                        <Grid x:Name="TabStatusIcon" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}">
-                            <!-- Idle, or every open CLI has stopped (M.ORCH-T890): a gray box, "zzz" (M.ORCH-T1173). -->
+                        <Grid x:Name="TabStatusIcon" Width="24" Height="14" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}">
+                            <!-- Idle, or every open CLI has stopped (M.ORCH-T890): a gray box, "zzz" (M.ORCH-T1173). A fixed Grid
+                                 size (M.ORCH-T1206) reserves one consistent footprint across tabs: each badge still renders at
+                                 its own natural size (FontSize tuned per symbol), left-anchored, so the tab strip doesn't jitter
+                                 width or height depending on which one a tab happens to be showing. -->
                             <mc:MaBadge x:Name="TabIdleBadge" Style="{StaticResource MaTag}" Content="zzz" Background="{DynamicResource MaMuted}"
                                         Foreground="{DynamicResource MaOnAccent}" FontSize="7" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsIdleBadge, Converter={StaticResource Visible}}" />
