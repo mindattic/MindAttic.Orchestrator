@@ -51,7 +51,7 @@ public partial class MainWindow : Window
         // login's tab's too (M.ORCH-T763), not the shown tab's Settings the rest of the dialog binds to.
         OrgToolbar.DataContext = model;
         // Settings fills 80% of the window both ways (M.ORCH-T804), following it as it resizes or zooms.
-        Root.SizeChanged += (_, _) => SizeSettings();
+        Root.SizeChanged += (_, _) => { SizeSettings(); SizeTerminalRow(); };
         TerminalFrame.IsVisibleChanged += (_, _) => SizeTerminalRow();
         // A person's current work (including, on the global login's tab, what fits on no person's page, M.ORCH-T825) is one
         // virtualized list (M.ORCH-T754): headings and notes, then the lists' items a row (or a line of cards) each, so a
@@ -460,21 +460,20 @@ public partial class MainWindow : Window
     /// being pinned to it as a fixed peek, so it isn't left showing only a sliver with a dead gap below the terminal above it.</summary>
     private const double AgentsBodyPeek = 215;
 
-    /// <summary>How tall the terminal row is let grow while a terminal shows (M.ORCH-T1166): comfortably more than a CLI
-    /// needs for its visible transcript, so scrollback and a tall prompt still have room, but not so much that a short
-    /// transcript (just the startup banner) leaves a dead stretch of unwritten terminal background under it, as it did while
-    /// the row's Height was a plain, uncapped star (M.ORCH-T1072). The same 480 that row shared 3:1 with the body before
-    /// M.ORCH-T1072 made it the star row outright.</summary>
-    private const double TerminalRowMaxHeight = 480;
+    /// <summary>The terminal row's floor while a terminal shows (M.ORCH-T1208): half the window's own height, so it defaults
+    /// to a generously-sized pane that scales with the window rather than a fixed pixel count, but never shorter than this
+    /// even in a short window, where half the window would otherwise pinch it thin.</summary>
+    private const double TerminalRowMinHeight = 500;
 
     /// <summary>The terminal and the scrolling body (stats, queue tabs, the 5-hour/weekly chart, tickets) share whatever room
     /// is left under the fixed rows above and below, both star rows, while the terminal shows (M.ORCH-T1072): the terminal's
-    /// capped at <see cref="TerminalRowMaxHeight"/>, past which it stops claiming room it has nothing to show in, and the body
-    /// picks up everything beyond that, floored at <see cref="AgentsBodyPeek"/> so it's never squeezed thinner than that even
-    /// in a short window (M.ORCH-T1020, M.ORCH-T1166) — never pinned to that floor as a fixed height the way it used to be,
-    /// which is what left a dead gap of unwritten terminal background above it whenever the transcript was short. Hidden (no
-    /// terminals open on this login), the terminal's row takes no room and the body reclaims the whole star share, filling the
-    /// window as it did before there was a terminal to share it with.</summary>
+    /// floored at half the window's height or <see cref="TerminalRowMinHeight"/>, whichever is taller (M.ORCH-T1208 — this
+    /// replaced an earlier hard ceiling, M.ORCH-T1166's 480, which a floor this tall would only ever have overridden anyway),
+    /// and the body picks up everything beyond that, floored at <see cref="AgentsBodyPeek"/> so it's never squeezed thinner
+    /// than that even in a short window (M.ORCH-T1020, M.ORCH-T1166). Hidden (no terminals open on this login), the terminal's
+    /// row takes no room and the body reclaims the whole star share, filling the window as it did before there was a terminal
+    /// to share it with. Recomputed on every resize (<see cref="Root"/>'s SizeChanged), not just when the terminal appears, so
+    /// the floor keeps tracking half the window's current height rather than whatever it was when the terminal first opened.</summary>
     private void SizeTerminalRow()
     {
         try
@@ -483,7 +482,7 @@ public partial class MainWindow : Window
             var bodyRow = Root.RowDefinitions[4];
             var shown = TerminalFrame.IsVisible;
             terminalRow.Height = shown ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
-            terminalRow.MaxHeight = shown ? TerminalRowMaxHeight : double.PositiveInfinity;
+            terminalRow.MinHeight = shown ? Math.Max(Root.ActualHeight * 0.5, TerminalRowMinHeight) : 0;
             bodyRow.Height = new GridLength(1, GridUnitType.Star);
             bodyRow.MinHeight = shown ? AgentsBodyPeek : 120;
         }
