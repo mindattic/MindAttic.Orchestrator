@@ -5,7 +5,7 @@ using MindAttic.Orchestrator.Sessions;
 namespace MindAttic.Orchestrator.Settings;
 
 /// <summary>
-/// A teammate's gateway the team wall watches (M.ORCH-T936), in <see cref="GatewaySettings.Remotes"/>: a name, whose CLIs they
+/// A teammate's gateway the Team Wall watches (M.ORCH-T936), in <see cref="GatewaySettings.Remotes"/>: a name, whose CLIs they
 /// are, the gateway's URL, its certificate pin and the token the teammate issued for this member
 /// (<c>orchestrator gateway token &lt;who&gt;</c> on their machine, M.ORCH-T934). The token is kept sealed with DPAPI for the
 /// current Windows user: the settings never hold it in the clear, and another user or machine can't open it.

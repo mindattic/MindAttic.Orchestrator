@@ -4,7 +4,7 @@
 own machines to one central Orchestrator, work their own tickets, and see and share each other's CLIs, while the
 single-machine setup keeps working exactly as it does now?
 
-**Short answer.** About half of it already exists. TermHost, the relay protocol, the Gateway and the team wall already
+**Short answer.** About half of it already exists. TermHost, the relay protocol, the Gateway and the Team Wall already
 let one machine watch another's CLIs, with grants, masking and audit. What is missing is a **centre**: one place that owns
 identity, the ticket queue and claims, the org's policy and the merged view. Machines also have to reach that centre
 without opening inbound ports. Read `2-plan.md` for the design and `3-implementation-plan.md` for the phases.
@@ -25,7 +25,7 @@ without opening inbound ports. Read `2-plan.md` for the design and `3-implementa
 | **Broadcast hygiene**: opt-in share, `SecretMasker`/`StreamMasker` (token shapes plus Vault values), pause, "being watched" | `Term/TermBroadcast.cs`, `Gateway/StreamMasker.cs`, `VaultSecrets.cs`, `Term/TermWatchers.cs` | Yes. Masking runs **before bytes leave the owner's machine** |
 | **Certificates**: thumbprint, PFX, or a self-signed dev certificate with SHA-256 pinning | `Gateway/GatewayCertificates.cs` | Yes. The pin is passed out of band |
 | **Audit**: attach, detach, refused, input counts; never content | `Gateway/GatewayAudit.cs` → `term_audit` (migration 16) | Stored on the owner's machine |
-| **Team wall**: merges the local registry with each remote gateway's `/sessions`; read-only tiles; TermViewer pop-out | `Wpf/TeamWallWindow.cs`, `TeamWallTile.cs`, `MainWindow.TeamWall.cs`; `Core/Sessions/TeamWall.cs`, `GatewayClient.cs`; `TermViewer/RemoteViewer.cs` | Yes, but as a **mesh**: each viewer adds each teammate's gateway by hand (`gateway remote add`) |
+| **Team Wall**: merges the local registry with each remote gateway's `/sessions`; read-only tiles; TermViewer pop-out | `Wpf/TeamWallWindow.cs`, `TeamWallTile.cs`, `MainWindow.TeamWall.cs`; `Core/Sessions/TeamWall.cs`, `GatewayClient.cs`; `TermViewer/RemoteViewer.cs` | Yes, but as a **mesh**: each viewer adds each teammate's gateway by hand (`gateway remote add`) |
 | **Daemon**: a 15 s tick that measures, paces, steers, dispatches, supervises the gateway, and git-syncs the DBs | `Core/Daemon.cs`, `Sessions/GatewaySupervisor.cs` | Machine-local. Its status bus and inbox are `CurrentUserOnly` named pipes (`Status/StatusStream.cs`, `StatusInbox.cs`) |
 | **Envelope convention**: `{kind, v, at, pid, payload}`; unknown kinds and newer versions are skipped | `Status/StatusEnvelope.cs`, `AppBus`, `StateBus` (members, orgs, settings) | Already transport-agnostic, so it can be reused on the wire |
 | **Pacing**: per-login budget, pace and allowance from that login's own `claude-usage.json`; hard cutoffs 98% (5 h) and 90% (week) | `Budget/AccountPacer.cs`, `Pacer.cs`, `UsageCutoff.cs`, `ClaudeMeterProbe.cs`; hooks read `<configDir>/rl-status.json` | Local. The hooks need an answer in milliseconds, so it must stay local |

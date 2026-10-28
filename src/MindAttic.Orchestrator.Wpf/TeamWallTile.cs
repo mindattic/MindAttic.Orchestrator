@@ -9,7 +9,7 @@ using MindAttic.Orchestrator.Term;
 namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
-/// One CLI on the team wall (M.ORCH-T936): a header with whose it is, its title and its state, over a small read-only
+/// One CLI on the Team Wall (M.ORCH-T936): a header with whose it is, its title and its state, over a small read-only
 /// <see cref="RelayTerminal"/> rendering the real TUI. The renderer is an HWND, which WPF can't scale, so the tile shrinks the
 /// font until the session's whole grid fits (the tile is a watcher, so it letterboxes to the session's size and never sets it).
 /// Clicking the header, or the terminal, opens the CLI larger in a watch-only TermViewer window; Interact shows only where the

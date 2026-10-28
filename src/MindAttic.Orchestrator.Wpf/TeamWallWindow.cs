@@ -11,7 +11,7 @@ using MindAttic.Orchestrator.Term;
 namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
-/// The team wall (M.ORCH-T936, Phase 3 of docs/spikes/cli-host-viewer.md): every live CLI of this machine and of every
+/// The Team Wall (M.ORCH-T936, Phase 3 of docs/spikes/cli-host-viewer.md): every live CLI of this machine and of every
 /// teammate's gateway (<c>orchestrator gateway remote add</c>) as a grid of small read-only terminals rendering the real TUI.
 /// <list type="bullet">
 /// <item>Every <see cref="TeamWall.RefreshEvery"/> it looks at this machine's registry and each gateway's <c>GET /sessions</c>,
@@ -58,12 +58,12 @@ internal sealed class TeamWallWindow : Window
 
     private TeamWallWindow()
     {
-        Title = "Team wall";
+        Title = "Team Wall";
         Width = 1500;
         Height = 920;
         Background = new SolidColorBrush(Color.FromRgb(0x14, 0x14, 0x14));
         try { Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/logo.ico")); }
-        catch (Exception ex) { log.Warning(ex, "The team wall's icon couldn't be loaded"); }
+        catch (Exception ex) { log.Warning(ex, "The Team Wall's icon couldn't be loaded"); }
 
         previous = Bar("‹", "Previous page");
         previous.Click += (_, _) => { page--; Render(); };
@@ -78,7 +78,7 @@ internal sealed class TeamWallWindow : Window
         right.Children.Add(next);
         right.Children.Add(refresh);
         right.Children.Add(focusPark);
-        var heading = new TextBlock { Text = "Team wall", Foreground = Brushes.White, FontSize = 16, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 16, 0) };
+        var heading = new TextBlock { Text = "Team Wall", Foreground = Brushes.White, FontSize = 16, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 16, 0) };
         var bar = new DockPanel { Background = new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x1F)), LastChildFill = true, MinHeight = 40 };
         DockPanel.SetDock(heading, Dock.Left);
         DockPanel.SetDock(right, Dock.Right);
@@ -119,7 +119,7 @@ internal sealed class TeamWallWindow : Window
             wall.Closed += (_, _) => { if (ReferenceEquals(shown, wall)) shown = null; };
             wall.Show();
         }
-        catch (Exception ex) { log.Error(ex, "Opening the team wall failed; contained"); }
+        catch (Exception ex) { log.Error(ex, "Opening the Team Wall failed; contained"); }
     }
 
     private static Button Bar(string text, string tip) =>
@@ -186,7 +186,7 @@ internal sealed class TeamWallWindow : Window
             Render();
         }
         catch (OperationCanceledException) { }
-        catch (Exception ex) { log.Error(ex, "Refreshing the team wall failed; contained"); }
+        catch (Exception ex) { log.Error(ex, "Refreshing the Team Wall failed; contained"); }
         finally { refreshing = false; }
     }
 
@@ -295,7 +295,7 @@ internal sealed class TeamWallWindow : Window
                 : "No live CLIs on any gateway right now.";
             ShowChips();
         }
-        catch (Exception ex) { log.Error(ex, "Laying out the team wall failed; contained"); }
+        catch (Exception ex) { log.Error(ex, "Laying out the Team Wall failed; contained"); }
     }
 
     private static void Resize<T>(IList<T> definitions, int count, Func<T> make)

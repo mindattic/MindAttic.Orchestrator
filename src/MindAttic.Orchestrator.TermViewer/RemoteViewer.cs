@@ -12,7 +12,7 @@ using MindAttic.Orchestrator.Term.Wpf;
 namespace MindAttic.Orchestrator.TermViewer;
 
 /// <summary>
-/// <c>MindAttic.Orchestrator.TermViewer --remote &lt;name&gt; --session &lt;id&gt; [--interact]</c> (M.ORCH-T936): the team wall's
+/// <c>MindAttic.Orchestrator.TermViewer --remote &lt;name&gt; --session &lt;id&gt; [--interact]</c> (M.ORCH-T936): the Team Wall's
 /// pop-out for a teammate's CLI, through their gateway. The remote (URL, pin, sealed token) is read from the settings by name,
 /// so the token never appears on a command line. Watch only unless <c>--interact</c> is given and the gateway says the grant
 /// allows it (<c>access: interact</c>).
@@ -38,7 +38,7 @@ internal static class RemoteViewer
         if (GatewayRemotes.Find(new JsonStore().LoadSettings().Gateway, remoteName) is not { } remote)
         {
             log.Warning("No teammate's gateway is called {Name:l}", remoteName);
-            MessageBox.Show($"No teammate's gateway is called {remoteName}.\n\norchestrator gateway remote list shows them.", "Team wall",
+            MessageBox.Show($"No teammate's gateway is called {remoteName}.\n\norchestrator gateway remote list shows them.", "Team Wall",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return 0;
         }
@@ -50,7 +50,7 @@ internal static class RemoteViewer
         {
             var why = listing.Online ? "it no longer lists that CLI" : listing.Problem;
             log.Information("Gateway {Name:l} can't show {Id:l}: {Why:l}", remote.Name, id, why ?? "");
-            MessageBox.Show($"{remote.Who}'s gateway can't show that CLI: {why}.", "Team wall", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"{remote.Who}'s gateway can't show that CLI: {why}.", "Team Wall", MessageBoxButton.OK, MessageBoxImage.Information);
             return 0;
         }
         var interactive = interact && string.Equals(info.Access, "interact", StringComparison.OrdinalIgnoreCase);

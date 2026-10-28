@@ -119,7 +119,7 @@ internal static class CliApp
             config.AddCommand<ReportCommand>("tokens").WithDescription("Uncached tokens by week, repo, provider and ticket type, and cost per completed ticket by model; --csv writes it out (was report before M.ORCH-T685).");
             config.AddBranch("gateway", gw =>
             {
-                gw.SetDescription("The team gateway (M.ORCH-T933), off by default: on|off, and where it listens (--bind, --port) and its certificate (--cert-path, --cert-thumbprint, --dev-cert-names); shows whether it runs and its certificate pin. Who may watch or interact: grant, revoke, grants; who did: audit; a member's token: token (M.ORCH-T934). Teammates' gateways the team wall watches: remote add|remove|list (M.ORCH-T936).");
+                gw.SetDescription("The team gateway (M.ORCH-T933), off by default: on|off, and where it listens (--bind, --port) and its certificate (--cert-path, --cert-thumbprint, --dev-cert-names); shows whether it runs and its certificate pin. Who may watch or interact: grant, revoke, grants; who did: audit; a member's token: token (M.ORCH-T934). Teammates' gateways the Team Wall watches: remote add|remove|list (M.ORCH-T936).");
                 gw.SetDefaultCommand<GatewayCommand>();
                 gw.AddCommand<GatewayCommand>("on").WithDescription("Turn the gateway on (with any of the gateway options).");
                 gw.AddCommand<GatewayCommand>("off").WithDescription("Turn the gateway off.");
@@ -130,7 +130,7 @@ internal static class CliApp
                 gw.AddCommand<GatewayTokenCommand>("token").WithDescription("A bearer token for a member, to hand them: token <who> [[--scope watch|interact]] [[--minutes N]].");
                 gw.AddBranch("remote", r =>
                 {
-                    r.SetDescription("Teammates' gateways the dashboard's team wall watches (M.ORCH-T936): add, remove, list.");
+                    r.SetDescription("Teammates' gateways the dashboard's Team Wall watches (M.ORCH-T936): add, remove, list.");
                     r.SetDefaultCommand<GatewayRemoteListCommand>();
                     r.AddCommand<GatewayRemoteAddCommand>("add").WithDescription("Add or replace a teammate's gateway: add <name> <url> --pin <sha256> [[--person <who>]] [[--token <token>]] (asked for when left out; the token they issued you with orchestrator gateway token <you>, kept DPAPI-sealed).");
                     r.AddCommand<GatewayRemoteRemoveCommand>("remove").WithDescription("Remove a teammate's gateway: remove <name>.");

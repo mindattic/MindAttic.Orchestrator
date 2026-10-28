@@ -118,7 +118,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
         Connect();
     }
 
-    /// <summary>The renderer's font size in points (12 by default). A team wall tile sets it small so a whole session's grid
+    /// <summary>The renderer's font size in points (12 by default). A Team Wall tile sets it small so a whole session's grid
     /// fits (M.ORCH-T936); a renderer that exists already is re-themed at once. Never throws.</summary>
     public short FontPoints
     {

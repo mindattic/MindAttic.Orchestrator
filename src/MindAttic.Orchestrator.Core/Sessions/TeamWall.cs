@@ -5,7 +5,7 @@ using MindAttic.Orchestrator.Term;
 
 namespace MindAttic.Orchestrator.Sessions;
 
-/// <summary>One live CLI on the team wall (M.ORCH-T936): this machine's own (<see cref="TeamWall.LocalGateway"/>) or one a
+/// <summary>One live CLI on the Team Wall (M.ORCH-T936): this machine's own (<see cref="TeamWall.LocalGateway"/>) or one a
 /// teammate's gateway lists.</summary>
 public sealed record WallSession
 {
@@ -53,7 +53,7 @@ public sealed record WallGateway(string Gateway, string Person, bool Online, str
 public sealed record WallLayout(IReadOnlyList<WallSession> Tiles, IReadOnlyList<WallGateway> Gateways);
 
 /// <summary>
-/// The team wall's pure logic (M.ORCH-T936): merging each look at the sources into a stable list of tiles, paging them to what
+/// The Team Wall's pure logic (M.ORCH-T936): merging each look at the sources into a stable list of tiles, paging them to what
 /// fits on screen, and choosing which tiles stream. The dashboard's TeamWallWindow does the I/O and the drawing.
 /// </summary>
 public static class TeamWall

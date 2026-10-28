@@ -1,7 +1,7 @@
 # Spike: a structured activity feed beside the real terminals (M.ORCH-T937)
 
 Phase 4 of the CLI-host spike ([cli-host-viewer.md](cli-host-viewer.md), M.ORCH-T922, sections 6 and 8). The terminal
-mirror (TermHost and the team gateway) shows pixels. The team wall (M.ORCH-T936) and phones also want a compact,
+mirror (TermHost and the team gateway) shows pixels. The Team Wall (M.ORCH-T936) and phones also want a compact,
 structured "what is each CLI doing right now" feed. This evaluates three sources for it.
 
 ## Recommendation (read this first)
@@ -91,7 +91,7 @@ right answer to "let me answer a permission prompt from my phone", and the wrong
 
 ## 4. Privacy and redaction
 
-The feed goes to the team wall (other people) and phones (a network hop through the Phase 3 gateway). Rules:
+The feed goes to the Team Wall (other people) and phones (a network hop through the Phase 3 gateway). Rules:
 
 1. **Never publish raw `tool_input`.** The extractor emits a short `target` of at most 80 characters and a fixed
    per-tool shape: file tools send the base name (as `ToolCallText` already does), Grep and Glob send a pattern,
@@ -152,7 +152,7 @@ subscriber skips the kind if it doesn't read it, so older apps are unaffected.
   and section 5 added to `docs/app-bus.md`.
 - M.ORCH-T963: Masking for activity targets, shared with the T935 masker, and the `ToolCallText` Bash fix.
 - M.ORCH-T964: Codex and Gemini coverage: wire the missing hook events and map their payloads.
-- M.ORCH-T965: Dashboard consumer: a compact per-CLI activity strip for the team wall (T936) and a phone-width view.
+- M.ORCH-T965: Dashboard consumer: a compact per-CLI activity strip for the Team Wall (T936) and a phone-width view.
 
 ## 7. Risks
 

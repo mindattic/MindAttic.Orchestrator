@@ -7,7 +7,7 @@ using Spectre.Console.Cli;
 
 /// <summary>
 /// <c>orchestrator gateway remote add &lt;name&gt; &lt;url&gt; --pin &lt;sha256&gt; [--person &lt;who&gt;] [--token &lt;token&gt;]</c>
-/// (M.ORCH-T936): adds a teammate's gateway to the team wall, or replaces the one of that name. The token is the one the teammate
+/// (M.ORCH-T936): adds a teammate's gateway to the Team Wall, or replaces the one of that name. The token is the one the teammate
 /// issued for this member (<c>orchestrator gateway token &lt;who&gt;</c> on their machine, M.ORCH-T934); it is asked for, hidden,
 /// when <c>--token</c> is left out (<c>--token -</c> reads it from standard input), and kept DPAPI-sealed for this Windows user.
 /// It is never printed or logged.
@@ -72,7 +72,7 @@ internal sealed class GatewayRemoteAddCommand : Command<GatewayRemoteAddCommand.
         store.SaveSettings(s with { Gateway = s.Gateway with { Remotes = remotes } });
         AnsiConsole.MarkupLine($"[green]{(replaced ? "Replaced" : "Added")}[/] {Markup.Escape(name)} ({Markup.Escape(remote.Who)}) at {Markup.Escape(url)}" +
                                (pin is null ? ", trusting Windows' certificate checks." : ", pinned."));
-        AnsiConsole.MarkupLine("[grey]The dashboard's team wall picks it up on its next look.[/]");
+        AnsiConsole.MarkupLine("[grey]The dashboard's Team Wall picks it up on its next look.[/]");
         return 0;
     }
 

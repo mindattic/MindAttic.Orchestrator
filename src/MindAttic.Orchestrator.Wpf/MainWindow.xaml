@@ -118,11 +118,11 @@
         <Button x:Name="TicketsButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
                 Content="&#xE8EC;" Command="{Binding OpenTicketsAppCommand}" ToolTip="Open Tickets"
                 AutomationProperties.Name="Open Tickets" />
-        <!-- Team wall (M.ORCH-T936): Segoe's People glyph (E716) opens a grid of every live CLI, this machine's and every
+        <!-- Team Wall (M.ORCH-T936): Segoe's People glyph (E716) opens a grid of every live CLI, this machine's and every
              teammate's gateway's (orchestrator gateway remote add), each a small read-only terminal (TeamWallWindow.cs). -->
         <Button x:Name="TeamWallButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
-                Content="&#xE716;" Click="TeamWallButton_Click" ToolTip="Team wall: everyone's live CLIs"
-                AutomationProperties.Name="Team wall" />
+                Content="&#xE716;" Click="TeamWallButton_Click" ToolTip="Team Wall: everyone's live CLIs"
+                AutomationProperties.Name="Team Wall" />
         <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
              with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
              tab (MainWindow.xaml.cs), which holds every org, like the person strip under it. -->

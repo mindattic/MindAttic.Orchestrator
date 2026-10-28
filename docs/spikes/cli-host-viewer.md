@@ -400,7 +400,7 @@ TermHost x N ─pipe─ Gateway (ASP.NET Core, Kestrel) ─wss/TLS─ Dashboard 
 | **Headless** `claude -p --output-format stream-json --input-format stream-json`, or the Agent SDK | Machine-readable events (messages, tool calls, results); trivial to broadcast and to render as cards; tiny bandwidth; easy to redact | Not the real CLI. No slash-command UI, permission prompts look different, and our hooks and statusline behave differently. Codex and other providers need their own adapters. Only useful for a **summary view** ("what is everyone doing") beside the real terminal |
 
 **Verdict.** Mirror the real TUI, which is what the user asked for and works for every provider. Optionally add a
-structured activity feed later for the team wall and for phones. The daemon already sees each CLI's state through its
+structured activity feed later for the Team Wall and for phones. The daemon already sees each CLI's state through its
 hooks, which is a cheap source for that feed.
 
 ## 7. Failure modes
@@ -430,7 +430,7 @@ simplest, most rarely changed one. It also ends the T873 tension: a dashboard de
 | **0. Prove it** | A scratch WPF window with a bare `TerminalControl` and a `RelayConnection` to a stub host that owns a ConPTY running `claude`; kill and restart the viewer; check win32-input-mode, Ctrl+C, paste, resize, replay after the reset | 1 to 2 days | Unknowns about the renderer |
 | **1. Survive the dashboard** | TermHost per session, registry, relay viewer, ring replay with mode tracking, deploy decoupling | ~2 weeks | **"A dashboard crash kills every CLI"** |
 | **2. Fidelity and many viewers** | Headless emulator snapshot, size ownership, pop-out viewers, versioned host install | 2 to 3 weeks | Garbled late attach; one viewer per CLI |
-| **3. Team screen-share** | TLS WebSocket gateway, auth, ACL, audit, masking, a team wall | 3 to 5 weeks | "Can't see what everyone is doing" |
+| **3. Team screen-share** | TLS WebSocket gateway, auth, ACL, audit, masking, a Team Wall | 3 to 5 weeks | "Can't see what everyone is doing" |
 | **4. Optional** | A structured activity feed for phones and the wall | 1 week | — |
 
 **Follow-up tickets** (filed unapproved, each a follow-up of M.ORCH-T922):
@@ -456,7 +456,7 @@ Phase 3
 - M.ORCH-T933: Team gateway: an ASP.NET Core TLS WebSocket service that bridges local TermHost pipes to authenticated remote viewers.
 - M.ORCH-T934: Viewing ACL and audit: watch and interact grants from members and org_members, read-only by default, every attach and remote input logged.
 - M.ORCH-T935: Broadcast secret hygiene: an opt-in masker for token-shaped strings on remote streams, a "being watched" banner and pause broadcast.
-- M.ORCH-T936: Team wall: a dashboard grid of every member's live CLIs through the gateway.
+- M.ORCH-T936: Team Wall: a dashboard grid of every member's live CLIs through the gateway.
 
 Phase 4
 - M.ORCH-T937: Structured activity feed: evaluate stream-json, hooks and Remote Control as a low-bandwidth "what is everyone doing" view beside the real terminals.
@@ -948,9 +948,9 @@ Size frames with their owner byte, and Typing frames, go down to the viewer unch
 
 **TermViewer (T960).** A fallback viewer stays attached beside the dashboard's tab on a protocol 2 host instead of being replaced. So it folds back on the dashboard's `app-present` and its 2-second check, not on losing its link. It is given no liveness probe, so it never reconnects, and can't take a protocol 1 session back from the dashboard.
 
-## Team wall (M.ORCH-T936, 2026-10-26)
+## Team Wall (M.ORCH-T936, 2026-10-26)
 
-The People button beside Tickets opens the **team wall**: one window with a grid of every live CLI, this machine's and every
+The People button beside Tickets opens the **Team Wall**: one window with a grid of every live CLI, this machine's and every
 teammate's gateway's. Each tile is a small read-only `RelayTerminal` rendering the real TUI, with whose CLI it is, its title
 and its state.
 
@@ -1027,7 +1027,7 @@ so sharing, masking and pausing take effect without a restart (a restart would d
 
 When a session isn't shared, `/sessions` leaves it out and its stream answers 404 (audited as refused, "not shared").
 When the owner stops sharing a session that someone is watching, the gateway closes that stream with "the owner stopped
-sharing this session". So a teammate's team wall (T936) shows only the sessions the owner shares, and a wall tile shows
+sharing this session". So a teammate's Team Wall (T936) shows only the sessions the owner shares, and a wall tile shows
 the Paused frame as a "broadcast paused by owner" line.
 
 ### The masker

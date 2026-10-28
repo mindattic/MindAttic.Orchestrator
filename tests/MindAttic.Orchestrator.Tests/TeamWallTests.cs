@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>The team wall (M.ORCH-T936): merging every source's session list into stable tiles, the page and streaming cap,
+/// <summary>The Team Wall (M.ORCH-T936): merging every source's session list into stable tiles, the page and streaming cap,
 /// and the remote gateways' URLs, pins and pop-out arguments.</summary>
 public sealed class TeamWallTests
 {
