@@ -1676,6 +1676,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-28T05:30:00Z', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-28T00:30:00Z', 'Under', 'ended at 7%', 7, 7, 1383060, 68, 0, NULL, NULL, 0, 0, 0, 0, 1, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-28T06:00:00Z', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-28T01:00:00Z', 'Under', 'ended at 92%', 92, 92, 13178951, 88, 0, NULL, NULL, 11, 12.4, 10, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-28T06:10:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-28T01:10:00Z', 'Under', 'ended at 1%', 1, 1, 0, 59, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-28T06:40:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-28T01:40:00Z', 'Under', 'ended at 12%', 12, 12, 0, 68, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -1995,7 +1996,8 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'RogueTrader.Brevity', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 130150);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 335083);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Unity.Ricochet', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 58086);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'Prose', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4508845);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'Prose', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4539733);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 347395);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -3319,6 +3321,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('904dc1ee-6cdb-474c-a991-ea9fcbdac6a1', 'U.VAN-T19', 'chore', 'Unity.ProjectVania', 220603, '2026-10-25T01:55:15.617Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('9066c252-4e61-4adc-8e1b-61120f513162', 'SS-T56', 'chore', 'Prose', 309300, '2026-10-15T13:05:39.825Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('9173831a-1a8b-45e5-ab65-3105b64e8e81', 'GG-T28', 'chore', 'GridGameGaiden', 96220, '2026-10-15T11:11:55.835Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('9195166d-2df1-407f-a3d0-eb0ced7bb910', 'AGP-T3', 'docs', 'AutoGamePlay', 24868, '2026-10-28T06:41:26.38Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a1dcdb938a4ee3a7e', 'UNI-T50', 'feature', '(workspace root)', 246921, '2026-10-24T03:59:53.952Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a1ff714e93f35487a', 'U.INC-T21', 'chore', '(workspace root)', 220020, '2026-10-24T10:41:57.145Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a22dc7b8cca4c5148', 'UNI-T38', 'chore', '(workspace root)', 396864, '2026-10-24T04:13:34.64Z', 0, 'sonnet');
@@ -3767,10 +3770,14 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bbaff692-95da-4fb8-a66a-886e74765235', 'GG-T29', 'chore', 'GridGameGaiden', 74311, '2026-10-16T01:35:40.176Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc14e394-4b47-47c2-98ae-8dca25d0335b', 'UQD-T51', 'chore', 'Unity.QuickDuel', 23292, '2026-10-26T04:35:03.837Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc5df24e-48f0-44b2-a625-73ccd22895f3', 'SS-T64', 'chore', 'Prose', 57700, '2026-10-15T16:42:12.843Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1', 'AGP-T4', 'feature', 'REA.Bloodlines', 565890, '2026-10-28T04:14:40.958Z', 1, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1', 'AGP-T4', 'feature', 'REA.Bloodlines', 635325, '2026-10-28T06:42:29.614Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1/agent-a09f05b80eb2686d5', 'RB-T246', 'feature', 'REA.Bloodlines', 169389, '2026-10-28T04:08:55.158Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1/agent-a114b2dbfbe939c9b', 'RB-T234', 'feature', 'REA.Bloodlines', 166576, '2026-10-28T06:44:23.15Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1/agent-a1228a35ac0c2cb03', 'RB-T246', 'feature', 'REA.Bloodlines', 110774, '2026-10-28T06:42:08.9Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1/agent-a4c8f0fd2b8fec2b1', 'RB-T264', 'feature', 'REA.Bloodlines', 176661, '2026-10-28T04:08:13.131Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1/agent-a7b3c25bf37a7c5a9', 'RB-T264', 'feature', 'REA.Bloodlines', 157332, '2026-10-28T06:43:36.094Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1/agent-a803bdd2807cec72e', 'AGP-T2', 'docs', 'REA.Bloodlines', 100174, '2026-10-28T04:06:24.214Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1/agent-ad6a8f0acf676bb88', 'AGP-T3', 'docs', 'REA.Bloodlines', 79119, '2026-10-28T06:42:11.389Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1/agent-afd8f71b6b14f5077', 'RB-T234', 'feature', 'REA.Bloodlines', 190337, '2026-10-28T03:01:16.458Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd617946-ff52-4e58-97ae-2a6cf5699b0b', 'SS-T93', 'chore', 'Prose', 460014, '2026-10-15T20:39:39.816Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd8c4d39-d4df-435b-867b-23ae59638fa7', 'FOR-T2', 'chore', 'Formicarium', 93531, '2026-10-16T00:57:34.742Z', 0, 'sonnet');
@@ -4225,8 +4232,7 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (36, 'GG-T53', 'Unity.GridGame', 'D:\Projects\MindAttic.worktrees\Unity.GridGame\GG-T53', 'Claude', '2026-10-24T04:13:53.251735Z', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (37, 'MAT-T49', 'MindAttic.Agency', 'D:\Projects\MindAttic.worktrees\MindAttic.Agency\MAT-T49', 'Claude', '2026-10-24T06:38:31.351098Z', 1, NULL, NULL, NULL, 11408, '3355791e-fb1c-436b-9d8e-7fb6aeda09fd', 'sonnet', NULL, 'honey@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (38, 'PRS-T133', 'Prose', 'D:\Projects\MindAttic.worktrees\Prose\PRS-T133', 'Claude', '2026-10-27T06:24:43.327922Z', 1, NULL, NULL, NULL, 30760, '52d32bc1-0939-4dbe-8425-35585a84452a', 'sonnet', '2026-10-27T16:56:14.1241394Z', 'pdftransferjr@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (39, 'RB-T234', 'REA.Bloodlines', 'D:\Projects\MindAttic\REA.Bloodlines', 'Claude', '2026-10-28T04:00:29.9122209Z', 1, NULL, NULL, NULL, 45460, 'a5fb6ccb-d3f6-438f-a6b5-01f0b3b57e11', 'opus', NULL, 'honey@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (40, 'AGP-T4', 'AutoGamePlay', 'D:\Projects\MindAttic\AutoGamePlay', 'Claude', '2026-10-28T04:09:21.5294792Z', 1, NULL, NULL, NULL, 40800, 'bc754ee7-b2e2-4870-b745-42c627ec13c1', 'opus', NULL, 'waffle@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (39, 'RB-T246', 'REA.Bloodlines', 'D:\Projects\MindAttic\REA.Bloodlines', 'Claude', '2026-10-28T06:38:17.5832078Z', 1, NULL, NULL, NULL, 40800, 'bc754ee7-b2e2-4870-b745-42c627ec13c1', 'opus', NULL, 'waffle@mindattic.com');
 
 -- organizations
 
@@ -6537,7 +6543,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "13a7e133b1d99191b275a10d93030e7e4ddda3ad",
+    "Tested": "74b6aabf89c4093699dc7e0966adb1ee19f7aca3",
     "Green": "d482b9053b55c7dd5ac4ce184cfdb00aede8f0c3"
   },
   "MindAttic.Psst": {
@@ -6844,21 +6850,6 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "Ahead": 0,
     "Uncommitted": [],
     "Open": true
-  },
-  {
-    "TicketId": "RB-T234",
-    "Repo": "REA.Bloodlines",
-    "Directory": "D:\\Projects\\MindAttic\\REA.Bloodlines",
-    "FirstSeenUtc": "2026-10-28T04:11:58.321126Z",
-    "State": "orphaned",
-    "Deaths": 1,
-    "Redispatches": 0,
-    "DeadStartedUtc": "2026-10-28T04:00:29.9122209Z",
-    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
-    "Cli": 45460,
-    "Ahead": 0,
-    "Uncommitted": [],
-    "Open": true
   }
 ]');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
@@ -6987,10 +6978,10 @@ INSERT INTO state (name, value) VALUES ('requeued', '{
   "U.HARE-T67": "2026-10-28T02:59:21.0939733Z",
   "U.RICO-T52": "2026-10-28T02:59:21.0939733Z",
   "GG-T179": "2026-10-28T03:00:01.4664704Z",
-  "RB-T234": "2026-10-28T03:00:57.1326283Z",
+  "RB-T234": "2026-10-28T06:44:22.8709845Z",
   "U.RICO-T104": "2026-10-28T03:19:12.6881293Z",
   "U.HARE-T68": "2026-10-28T04:07:48.8481250Z",
-  "RB-T264": "2026-10-28T04:07:48.8481250Z",
+  "RB-T264": "2026-10-28T06:44:22.8709845Z",
   "U.HARE-T24": "2026-10-28T04:07:48.8481250Z",
   "U.RICO-T53": "2026-10-28T04:07:48.8481250Z",
   "RB-T246": "2026-10-28T04:08:32.1315251Z"
