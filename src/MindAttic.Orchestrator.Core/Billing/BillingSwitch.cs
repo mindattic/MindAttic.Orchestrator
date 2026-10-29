@@ -428,7 +428,7 @@ public sealed class BillingSwitch
         var (login, choice) = ClaudeKeyChoice.Read(ConfigPath, tail);
         lock (gate)
         {
-            if (tail is not null || config is null) config = (ConfigPath, stamp, tail, login, choice);
+            config = (ConfigPath, stamp, tail, login, choice);
         }
         return (login, choice);
     }
