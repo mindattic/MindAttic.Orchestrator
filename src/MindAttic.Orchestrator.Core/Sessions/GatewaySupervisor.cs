@@ -26,11 +26,13 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
     /// <summary>Starts it and returns its pid; a test's records instead.</summary>
     internal Func<string, IReadOnlyList<string>, int?> StartProcess { get; init; } = DefaultStart;
 
-    /// <summary>Stops the process with this pid; a test's records instead.</summary>
-    internal Action<int> StopProcess { get; init; } = DefaultStop;
+    /// <summary>Stops the process with this pid, only when it still started at this UTC time (not a reused pid); a test's
+    /// records instead.</summary>
+    internal Action<int, DateTime> StopProcess { get; init; } = DefaultStop;
 
-    /// <summary>The exe the process with this pid runs from, or null; a test's stands in.</summary>
-    internal Func<int, string?> RunningExe { get; init; } = DefaultRunningExe;
+    /// <summary>The exe the process with this pid runs from, or null when it isn't the gateway any more (its pid was reused,
+    /// told apart by the UTC time it's expected to have started at); a test's stands in.</summary>
+    internal Func<int, DateTime, string?> RunningExe { get; init; } = DefaultRunningExe;
 
     private DateTime lastStartUtc = DateTime.MinValue;
     private int failures;
@@ -43,7 +45,7 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
         {
             if (running is { Managed: true })
             {
-                StopProcess(running.Pid);
+                StopProcess(running.Pid, running.ProcessStartUtc);
                 Say(LogEventLevel.Information, $"stopped the team gateway (pid {running.Pid}): it's turned off");
             }
             failures = 0;
@@ -63,7 +65,7 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
             }
             // A redeploy (M.ORCH-T1028): an old gateway (say, one whose masker leaks) must not keep serving remote viewers, and
             // its version folder can only be cleaned up once it exits. Remote viewers reconnect to the new one.
-            StopProcess(running.Pid);
+            StopProcess(running.Pid, running.ProcessStartUtc);
             Say(LogEventLevel.Information, newer is null
                 ? $"stopped the team gateway (pid {running.Pid}) to restart it with its new settings"
                 : $"stopped the team gateway (pid {running.Pid}, {Describe(running)}) to restart it on the newer install {newer}");
@@ -94,7 +96,7 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
     internal string? NewerInstall(TermGatewayStatus running)
     {
         if (FindExe() is not { } newest) return null;
-        var current = !string.IsNullOrWhiteSpace(running.Exe) ? running.Exe : RunningExe(running.Pid);
+        var current = !string.IsNullOrWhiteSpace(running.Exe) ? running.Exe : RunningExe(running.Pid, running.ProcessStartUtc);
         if (!string.IsNullOrWhiteSpace(current))
             return string.Equals(Normalize(current), Normalize(newest), StringComparison.OrdinalIgnoreCase) ? null : newest;
         var folder = Path.GetFileName(Path.GetDirectoryName(newest) ?? "");
@@ -158,13 +160,22 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or InvalidOperationException) { return null; }
     }
 
-    /// <summary>The gateway's main-module path; null when the pid isn't the gateway any more or it can't be read.</summary>
-    private static string? DefaultRunningExe(int pid)
+    // Process.StartTime only has millisecond precision, same tolerance as TermSessions.StartTolerance.
+    private static readonly TimeSpan StartTolerance = TimeSpan.FromMilliseconds(2);
+
+    /// <summary>Whether <paramref name="p"/> is still the gateway recorded as having started at <paramref name="expectedStartUtc"/>,
+    /// not some unrelated process the OS has since given the same pid (a reused pid, M.ORCH-T1028-adjacent).</summary>
+    private static bool IsStillIt(Process p, DateTime expectedStartUtc) =>
+        string.Equals(p.ProcessName, ProcessName, StringComparison.OrdinalIgnoreCase)
+        && (p.StartTime.ToUniversalTime() - expectedStartUtc).Duration() <= StartTolerance;
+
+    /// <summary>The gateway's main-module path; null when the pid isn't the gateway any more (exited, or reused) or it can't be read.</summary>
+    private static string? DefaultRunningExe(int pid, DateTime expectedStartUtc)
     {
         try
         {
             using var p = Process.GetProcessById(pid);
-            return string.Equals(p.ProcessName, ProcessName, StringComparison.OrdinalIgnoreCase) ? p.MainModule?.FileName : null;
+            return IsStillIt(p, expectedStartUtc) ? p.MainModule?.FileName : null;
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
         {
@@ -172,13 +183,14 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
         }
     }
 
-    /// <summary>Kills the gateway only: the pid must still be a process of the gateway's name.</summary>
-    private static void DefaultStop(int pid)
+    /// <summary>Kills the gateway only: the pid must still be the gateway process that started at <paramref name="expectedStartUtc"/>,
+    /// not a reused pid.</summary>
+    private static void DefaultStop(int pid, DateTime expectedStartUtc)
     {
         try
         {
             using var p = Process.GetProcessById(pid);
-            if (!string.Equals(p.ProcessName, ProcessName, StringComparison.OrdinalIgnoreCase)) return;
+            if (!IsStillIt(p, expectedStartUtc)) return;
             p.Kill();
             // So a restart right after finds its single-instance mutex free.
             p.WaitForExit(5000);

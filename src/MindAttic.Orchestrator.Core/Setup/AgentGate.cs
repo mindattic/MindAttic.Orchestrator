@@ -3478,13 +3478,13 @@ public static class AgentGate
         var broken = $"command = '{command}'";
         if (command.Contains('\'') && existing.Contains(broken, StringComparison.Ordinal))
         {
-            File.WriteAllText(path, existing.Replace(broken, "command = " + value, StringComparison.Ordinal));
+            WriteReplacing(path, existing.Replace(broken, "command = " + value, StringComparison.Ordinal));
             return true;
         }
         if (existing.Contains(command, StringComparison.Ordinal) || existing.Contains(value, StringComparison.Ordinal)) return false;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var block = $"[[hooks]]\nevent = \"PreToolUse\"\ncommand = {value}\ntimeout = {timeoutSeconds}\n";
-        File.WriteAllText(path, (existing.Length > 0 ? existing.TrimEnd('\r', '\n') + "\n\n" : "") + block);
+        WriteReplacing(path, (existing.Length > 0 ? existing.TrimEnd('\r', '\n') + "\n\n" : "") + block);
         return true;
     }
 

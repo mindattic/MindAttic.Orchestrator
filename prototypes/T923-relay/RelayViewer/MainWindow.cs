@@ -92,7 +92,10 @@ internal sealed class MainWindow : Window
             // renderer's window lost keys and reordered them against the typed text.
             var vk = KeyInterop.VirtualKeyFromKey(e.Key);
             var sc = MapVirtualKey((uint)vk, 0);
-            nav.WriteInput($"\u001b[{vk};{sc};0;1;256;1_\u001b[{vk};{sc};0;0;256;1_");
+            // ENHANCED_KEY (0x100) always; SHIFT_PRESSED (0x10) too when held, so Shift+Left/Right/Home/End/Page reaches the
+            // CLI as shift-extend instead of silently losing the modifier.
+            var cs = 256 | (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 16 : 0);
+            nav.WriteInput($"\u001b[{vk};{sc};0;1;{cs};1_\u001b[{vk};{sc};0;0;{cs};1_");
             e.Handled = true;
             return;
         }

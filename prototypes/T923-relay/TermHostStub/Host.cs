@@ -145,10 +145,22 @@ internal sealed class Host
     {
         while (true)
         {
-            var server = new NamedPipeServerStream(pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
-                PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-            try { await server.WaitForConnectionAsync().ConfigureAwait(false); }
-            catch (Exception ex) { Log("accept failed: " + ex.Message); server.Dispose(); await Task.Delay(500); continue; }
+            NamedPipeServerStream? server = null;
+            try
+            {
+                server = new NamedPipeServerStream(pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
+                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                await server.WaitForConnectionAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // A transient failure making or connecting the pipe must never silently end this loop: with no viewer able
+                // to attach again, the host would run on unattended forever with nothing logging why.
+                Log("accept failed: " + ex.Message);
+                server?.Dispose();
+                await Task.Delay(500).ConfigureAwait(false);
+                continue;
+            }
             _ = Task.Run(() => ServeAsync(server));
         }
     }
@@ -225,8 +237,13 @@ internal sealed class Host
 
     private void WriteInput(byte[] bytes)
     {
-        try { ptyIn!.Write(bytes); ptyIn.Flush(); }
-        catch (IOException) { }
+        // Under gate: a new viewer's ServeAsync loop can start writing before the old one's blocked read has unblocked and
+        // torn it down, and FileStream isn't safe for concurrent writers.
+        lock (gate)
+        {
+            try { ptyIn!.Write(bytes); ptyIn.Flush(); }
+            catch (IOException) { }
+        }
     }
 
     private void DropViewer(Viewer v)

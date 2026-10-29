@@ -17,7 +17,16 @@ internal sealed class Ring(int capacity)
     /// <summary>Appends <paramref name="chunk"/>; true when it held a full reset (the ring now starts at it).</summary>
     public bool Append(ReadOnlySpan<byte> chunk)
     {
-        if (chunk.Length >= capacity) { chunk[^capacity..].CopyTo(buf); len = capacity; return false; }
+        if (chunk.Length >= capacity)
+        {
+            chunk[^capacity..].CopyTo(buf);
+            len = capacity;
+            var whole = buf.AsSpan(0, len);
+            var resetAt = Math.Max(whole.LastIndexOf(FullReset), whole.LastIndexOf(ClearAll));
+            if (resetAt < 0) return false;
+            if (resetAt > 0) { Buffer.BlockCopy(buf, resetAt, buf, 0, len - resetAt); len -= resetAt; }
+            return true;
+        }
         if (len + chunk.Length > capacity)
         {
             // Drop an eighth extra so the shifting is amortized.

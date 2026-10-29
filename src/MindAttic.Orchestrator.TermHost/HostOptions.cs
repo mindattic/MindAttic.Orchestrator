@@ -139,8 +139,8 @@ internal sealed record HostOptions
     public static string? FindOnPath(string name)
     {
         var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        foreach (var ext in new[] { ".exe", ".com", ".cmd", ".bat" })
-            foreach (var dir in dirs)
+        foreach (var dir in dirs)
+            foreach (var ext in new[] { ".exe", ".com", ".cmd", ".bat" })
             {
                 try { if (File.Exists(Path.Combine(dir, name + ext))) return ext; }
                 catch (ArgumentException) { }

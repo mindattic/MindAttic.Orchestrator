@@ -419,7 +419,10 @@ public sealed class StatusStreamServer : IDisposable
                 try { await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false); } catch (OperationCanceledException) { return; }
                 continue;
             }
-            _ = Task.Run(() => FeedAsync(pipe, ct), ct);
+            // Not Task.Run(..., ct): if ct is already canceled (shutdown racing a just-accepted connection), that cancellation
+            // token on Task.Run itself would cancel the task without ever running FeedAsync, leaking the connected pipe since
+            // its `await using` would never run. FeedAsync takes ct itself and tears the pipe down as soon as it observes it.
+            _ = Task.Run(() => FeedAsync(pipe, ct));
         }
     }
 

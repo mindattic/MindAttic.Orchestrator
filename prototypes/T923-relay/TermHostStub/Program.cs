@@ -44,8 +44,8 @@ static string ResolveCommandLine(List<string> command)
     var line = string.Join(' ', command.Select(Native.Quote));
     if (first.IndexOfAny(['\\', '/', ':']) >= 0 || Path.HasExtension(first)) return line;
     var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries);
-    foreach (var ext in new[] { ".exe", ".com", ".cmd", ".bat" })
-        foreach (var dir in dirs)
+    foreach (var dir in dirs)
+        foreach (var ext in new[] { ".exe", ".com", ".cmd", ".bat" })
             if (File.Exists(Path.Combine(dir, first + ext)))
                 return ext is ".cmd" or ".bat" ? "cmd.exe /d /c " + line : line;
     return line;

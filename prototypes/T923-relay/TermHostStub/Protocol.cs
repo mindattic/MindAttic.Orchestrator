@@ -21,7 +21,12 @@ internal static class Protocol
     public static string PipeName(string id) =>
         "mindattic-termproto-" + Sanitize(Environment.UserName) + "-" + Sanitize(id);
 
-    public static string Sanitize(string s) => new(s.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+    // A readable prefix plus a hash of the whole string: mapping every non-alphanumeric character to the same '-' would
+    // otherwise collide two different ids ("foo.bar" and "foo-bar" both becoming "foo-bar"), handing a viewer connecting to
+    // one id the other id's host, and colliding their log files too.
+    public static string Sanitize(string s) =>
+        new string(s.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray()) + "-" +
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(s)))[..8].ToLowerInvariant();
 
     public static byte[] Frame(byte kind, ReadOnlySpan<byte> payload)
     {

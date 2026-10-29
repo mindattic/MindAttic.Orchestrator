@@ -565,7 +565,7 @@ internal static class Format
     public static string Sessions(RepoStatus r)
     {
         var parts = new List<string>();
-        if (r.Hosts.Count > 0) parts.Add(string.Join(", ", r.Hosts.GroupBy(h => h.Provider).Select(g => $"{g.Count()} {g.Key} tab")));
+        if (r.Hosts.Count > 0) parts.Add(string.Join(", ", r.Hosts.GroupBy(h => h.Provider).Select(g => $"{g.Count()} {g.Key} tab{(g.Count() == 1 ? "" : "s")}")));
         var recent = r.Sessions.Count(s => s.LastWriteUtc >= DateTime.UtcNow.AddMinutes(-30));
         if (recent > 0) parts.Add($"{recent} recent");
         return string.Join(" · ", parts);

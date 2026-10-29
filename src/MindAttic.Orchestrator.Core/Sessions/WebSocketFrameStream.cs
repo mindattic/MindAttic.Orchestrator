@@ -181,6 +181,7 @@ public sealed class WebSocketFrameStream : Stream
             broken = true;
             outbox.Writer.TryComplete();
             try { stop.Cancel(); } catch (ObjectDisposedException) { }
+            stop.Dispose();
             // Abort, not a close handshake: a pending receive ends at once, and the gateway sees the viewer go.
             try { socket.Abort(); } catch (Exception) { }
             try { socket.Dispose(); } catch (Exception) { }

@@ -51,8 +51,9 @@ public static class TermGrants
         if (lv == Interact && expiresUtc is null) throw new ArgumentException("An interact grant needs an expiry.", nameof(expiresUtc));
         if (expiresUtc is { } e && (e <= nowUtc || e - nowUtc > MaxFor + TimeSpan.FromMinutes(1)))
             throw new ArgumentException($"A grant lasts from a minute to {MaxFor.TotalDays:0} days.", nameof(expiresUtc));
-        // Session ids are matched case-insensitively everywhere (the gateway, broadcast.json), so they're stored in lower case.
-        var grant = new TermGrant(owner.Trim(), who, session?.Trim().ToLowerInvariant() ?? "", lv, expiresUtc is { } x ? Utc(x) : null, createdBy, Utc(nowUtc));
+        // Session ids and the owner are matched case-insensitively everywhere (the gateway, broadcast.json, Revoke's SQL), so
+        // they're stored in lower case: SQLite's TEXT compares are case-sensitive without it.
+        var grant = new TermGrant(owner.Trim().ToLowerInvariant(), who, session?.Trim().ToLowerInvariant() ?? "", lv, expiresUtc is { } x ? Utc(x) : null, createdBy, Utc(nowUtc));
         db.WriteData((connection, tx) => Sql.Upsert(connection, tx, "term_grants", ["owner", "viewer", "session"],
             ("owner", grant.Owner), ("viewer", grant.Viewer), ("session", grant.Session), ("level", grant.Level),
             ("expires_utc", grant.ExpiresUtc is { } ex ? Iso(ex) : null), ("created_by", grant.CreatedBy), ("created_utc", Iso(grant.CreatedUtc))));
@@ -64,14 +65,15 @@ public static class TermGrants
     public static int Revoke(OrchestratorDb db, string owner, string viewer, string? session)
     {
         var who = AccountDirs.Normalize(viewer) ?? viewer.Trim().ToLowerInvariant();
+        var ownerKey = owner.Trim().ToLowerInvariant();
         var removed = 0;
         db.WriteDataIf((connection, tx) =>
         {
             removed = session is null
-                ? Sql.Run(connection, tx, "DELETE FROM term_grants WHERE owner = @o AND viewer = @v;", ("@o", owner.Trim()), ("@v", who))
+                ? Sql.Run(connection, tx, "DELETE FROM term_grants WHERE LOWER(owner) = @o AND viewer = @v;", ("@o", ownerKey), ("@v", who))
                 // In any case, as the gateway matches it (and grants stored before ids were lower-cased).
-                : Sql.Run(connection, tx, "DELETE FROM term_grants WHERE owner = @o AND viewer = @v AND LOWER(session) = @s;",
-                    ("@o", owner.Trim()), ("@v", who), ("@s", session.Trim().ToLowerInvariant()));
+                : Sql.Run(connection, tx, "DELETE FROM term_grants WHERE LOWER(owner) = @o AND viewer = @v AND LOWER(session) = @s;",
+                    ("@o", ownerKey), ("@v", who), ("@s", session.Trim().ToLowerInvariant()));
             return removed > 0;
         });
         return removed;

@@ -444,8 +444,8 @@ public sealed partial class GatewayTests
             StatusDirectory = dir,
             FindExe = findExe ?? (() => FakeExe),
             StartProcess = (_, args) => { started.Add(args); return 4242; },
-            StopProcess = stopped.Add,
-            RunningExe = _ => null,
+            StopProcess = (pid, _) => stopped.Add(pid),
+            RunningExe = (_, _) => null,
         };
 
     private const string FakeExe = @"C:\fake\" + TermGateway.ExeName;
