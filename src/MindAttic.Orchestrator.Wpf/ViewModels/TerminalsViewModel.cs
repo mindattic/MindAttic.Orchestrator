@@ -8,6 +8,7 @@ using EasyWindowsTerminalControl;
 using EasyWindowsTerminalControl.Internals;
 using Microsoft.Terminal.Wpf;
 using MindAttic.Components.Wpf.Mvvm;
+using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Term;
 
@@ -160,6 +161,33 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public bool InputNotSent { get => inputNotSent; private set { if (Set(ref inputNotSent, value)) Raise(nameof(StateText)); } }
 
     public string StateText => Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
+
+    private bool paneKnown, paneBusy, paneAsking;
+
+    /// <summary>This one CLI's own status badge (M.ORCH-T1272), the CLI tab's own version of the login tab's aggregate one
+    /// (M.ORCH-T1270): a spinner while its agent is working or has subagents/claims running, a plain "?" while it's genuinely
+    /// blocked on the person, "zzz" once it's idle. None of the three while its agent isn't known yet (a Launcher menu pane,
+    /// or before its session is learned, <see cref="TerminalsViewModel.Update"/>).</summary>
+    public bool ShowsPaneBusyBadge => paneKnown && paneBusy && !paneAsking;
+
+    public bool ShowsPaneAskingBadge => paneKnown && paneAsking;
+
+    public bool ShowsPaneIdleBadge => paneKnown && !paneBusy && !paneAsking;
+
+    /// <summary>The icon in words, so it's never only a picture.</summary>
+    public string PaneActivityWord => !paneKnown ? "" : paneAsking ? "Blocked waiting on you" : paneBusy ? "Busy" : "Idle";
+
+    /// <summary>Sets this pane's own status from its matched <see cref="AgentBoardRow"/> (by <see cref="SessionId"/>,
+    /// <see cref="TerminalsViewModel.Update"/>); null while it isn't known yet.</summary>
+    internal void ApplyAgentStatus(AgentBoardRow? row)
+    {
+        var known = row is not null;
+        var busy = row is { State: AgentState.Working or AgentState.HeldByPace } || row is { Subagents.Count: > 0 } || row is { Claims.Count: > 0 };
+        var asking = row?.Asking == true;
+        if (known == paneKnown && busy == paneBusy && asking == paneAsking) return;
+        paneKnown = known; paneBusy = busy; paneAsking = asking;
+        Raise(nameof(ShowsPaneBusyBadge)); Raise(nameof(ShowsPaneAskingBadge)); Raise(nameof(ShowsPaneIdleBadge)); Raise(nameof(PaneActivityWord));
+    }
 
     /// <summary>Shows "not sent, reconnecting" for a few seconds (M.ORCH-T979): the input is dropped, never replayed later.</summary>
     private void ShowInputNotSent()
@@ -924,6 +952,8 @@ public sealed class TerminalsViewModel : ObservableObject
                 pane.SessionId = session;
                 learned = true;
             }
+            // This one CLI's own status badge (M.ORCH-T1272), from the same agent row its session matches.
+            pane.ApplyAgentStatus(session is { Length: > 0 } ? snapshot.Agents.FirstOrDefault(a => a.SessionId == session) : null);
             if (pane.HostPid is not { } || session is not { Length: > 0 }) continue;
             // Its person is the login its CLI is on now: moved to another, it moves to that one's page.
             var login = LoginScope.LoginOf(snapshot, session);

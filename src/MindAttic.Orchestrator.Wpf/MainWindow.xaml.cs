@@ -493,6 +493,10 @@ public partial class MainWindow : Window
     /// CLI tabs (M.ORCH-T1250).</summary>
     private const double TabSidePadding = 10;
 
+    /// <summary>Extra width on top of <see cref="TabSidePadding"/> for the CLI tabs only (M.ORCH-T1269), so the CLI tab
+    /// bar's row lines up with the login tab bar above it.</summary>
+    private const double CliTabWidthBoost = 10;
+
     /// <summary>The tab parts already watched for size changes, so a header loading again doesn't subscribe twice.</summary>
     private readonly HashSet<FrameworkElement> watchedTabParts = [];
 
@@ -548,14 +552,14 @@ public partial class MainWindow : Window
     /// <summary>Every CLI tab the same width (M.ORCH-T1250), the CLI strip's own version of <see cref="SizePersonTabs"/>:
     /// each no longer just sizes to its own content (as the no-wrap scroller comment on
     /// <see cref="TerminalTabScroller_ScrollChanged"/> used to assume), but to the widest one's plus <see cref="TabSidePadding"/>
-    /// a side.</summary>
+    /// a side, plus <see cref="CliTabWidthBoost"/> so the row lines up with the login tab bar above it.</summary>
     private void SizeTerminalTabs()
     {
         var tabs = TerminalTabs.Items.Cast<object>()
             .Select(item => TerminalTabs.ItemContainerGenerator.ContainerFromItem(item) as TabItem)
             .Where(t => t is not null).Cast<TabItem>().ToList();
         if (tabs.Count == 0) return;
-        var width = Math.Ceiling(tabs.Max(NaturalWidth) + 2 * TabSidePadding);
+        var width = Math.Ceiling(tabs.Max(NaturalWidth) + 2 * TabSidePadding + CliTabWidthBoost);
         foreach (var t in tabs)
             if (double.IsNaN(t.Width) || Math.Abs(t.Width - width) > 0.5) t.Width = width;
     }

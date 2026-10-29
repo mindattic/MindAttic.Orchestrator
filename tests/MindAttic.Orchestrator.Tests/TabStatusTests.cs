@@ -240,16 +240,19 @@ public sealed class TabStatusTests
         var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
         // The library's MaTabItem draws the trailing text after the name (M.ORCH-T667); the status icon (M.ORCH-T757), boxed into
         // status badges (M.ORCH-T1173), replaced its status light: a gray "zzz" box idle (or every open CLI stopped), a green
-        // box with its open CLI count busy (M.ORCH-T1261), an orange box flashing between that count and "?" when a CLI is
-        // blocked on the person, and a plain gray glyph (unboxed) disabled.
+        // box with a spinning glyph busy (M.ORCH-T1270, in place of the M.ORCH-T1261 CLI-count digit), a plain static "?" when a
+        // CLI is blocked on the person (M.ORCH-T1270, in place of the M.ORCH-T1261 count/? flash), and a plain gray glyph
+        // (unboxed) disabled.
         Assert.That(strip, Does.Contain("<mc:MaTabControl").And.Contain("TargetType=\"mc:MaTabItem\""));
         Assert.That(strip, Does.Not.Contain("Property=\"Status\" Value="), "the icon, not the status light");
         Assert.That(strip, Does.Contain("x:Name=\"TabIdleBadge\"").And.Contain("Content=\"zzz\"").And.Contain("Background=\"{DynamicResource MaMuted}\"")
-            .And.Contain("{Binding ShowsIdleBadge").And.Contain("x:Name=\"TabBusyBadge\"").And.Contain("Content=\"{Binding TabCliCount}\"")
+            .And.Contain("{Binding ShowsIdleBadge").And.Contain("x:Name=\"TabBusyBadge\"").And.Contain("Style=\"{StaticResource MaSpinnerGlyph}\"")
             .And.Contain("Background=\"{DynamicResource MaGood}\"").And.Contain("{Binding ShowsBusyBadge")
-            .And.Contain("x:Name=\"TabAskingBadge\"").And.Contain("Content=\"{Binding TabAskingBadgeContent}\"").And.Contain("Background=\"{DynamicResource MaWarn}\"")
-            .And.Contain("{Binding TabNeedsYou,").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"&#xE733;\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")
+            .And.Contain("x:Name=\"TabAskingBadge\"").And.Contain("Content=\"?\"").And.Contain("Background=\"{DynamicResource MaWarn}\"")
+            .And.Contain("{Binding TabNeedsYou,").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"{Binding TabDisabledGlyph}\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")
             .And.Contain("{Binding IsTabDisabled").And.Contain("FontFamily=\"Segoe Fluent Icons, Segoe MDL2 Assets\""));
+        Assert.That(strip, Does.Not.Contain("TabAskingBadgeContent"), "a plain static ? now (M.ORCH-T1270), not a flash");
+        Assert.That(strip, Does.Contain("x:Name=\"TabStatusIcon\" Width=\"20\" Height=\"20\""), "20x20 (M.ORCH-T1272)");
         // M.ORCH-T1173: "every open CLI stopped" is folded into the idle badge (ShowsIdleBadge covers IsTabAllStopped too), so
         // there's no separate pause/stopped icon any more. M.ORCH-T890: the busy badge is a steady green play (no blink).
         Assert.That(strip, Does.Not.Contain("TabStoppedIcon"), "folded into the idle badge now (M.ORCH-T1173)");
@@ -306,20 +309,16 @@ public sealed class TabStatusTests
         Assert.That(MainViewModel.NeedsYouLine(2), Is.EqualTo(" 2 CLIs here are blocked waiting on your answer."));
     }
 
-    /// <summary>M.ORCH-T1261: the busy and asking badges share one CLI count, and the asking badge's count takes turns with "?"
-    /// rather than losing the count once a CLI needs you.</summary>
+    /// <summary>M.ORCH-T1270: the login tab's busy badge is a spinner and its asking badge a plain "?", not a CLI-count digit
+    /// or a count/? flash (M.ORCH-T1261's design); the count itself still exists for the tooltip (<see cref="MainViewModel.TabCliCount"/>).</summary>
     [Test]
-    public void The_busy_and_asking_badges_share_a_CLI_count_that_the_asking_badge_flashes_against_a_question_mark()
+    public void The_busy_and_asking_badges_no_longer_show_a_CLI_count()
     {
         AgentBoardRow Row(string id) => new(id, "A", null, null, DateTime.UtcNow, DateTime.UtcNow, AgentState.Waiting, "Waiting for you", false, default, []);
 
         Assert.That(MainViewModel.CliCountOf(null), Is.Zero, "no CLI open");
         Assert.That(MainViewModel.CliCountOf([Row("a")]), Is.EqualTo(1));
         Assert.That(MainViewModel.CliCountOf([Row("a"), Row("b")]), Is.EqualTo(2));
-
-        Assert.That(MainViewModel.AskingBadgeContentOf(2, showQuestion: false), Is.EqualTo("2"), "the count, not shown as a question");
-        Assert.That(MainViewModel.AskingBadgeContentOf(2, showQuestion: true), Is.EqualTo("?"), "flashed to a question mark in its turn");
-        Assert.That(MainViewModel.AskingBadgeContentOf(0, showQuestion: false), Is.EqualTo("0"));
     }
 
     /// <summary>M.ORCH-T1264: a login with no configured 5-hour budget (peak-relative, the common case) still shows its real

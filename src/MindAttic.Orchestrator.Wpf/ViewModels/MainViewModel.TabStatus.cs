@@ -181,17 +181,6 @@ public sealed partial class MainViewModel
     /// <summary>The one timer every tab's blinks run on, on the global login's tab; running only while a blink is queued.</summary>
     private DispatcherTimer? blinkTimer;
 
-    /// <summary>How long the asking badge shows its CLI count before swapping to "?" and back (M.ORCH-T1261): so a tab that
-    /// needs you doesn't just read as a fixed "?", losing how many CLIs are open underneath it.</summary>
-    public static readonly TimeSpan AskFlashInterval = TimeSpan.FromMilliseconds(700);
-
-    /// <summary>The one timer every tab's asking badge flashes on, on the global login's tab; running only while a tab needs you.</summary>
-    private DispatcherTimer? askFlashTimer;
-
-    /// <summary>Whether every tab's asking badge is showing "?" right now rather than its CLI count (ticks on the global
-    /// login's tab, read by every other tab through <see cref="Root"/>).</summary>
-    private bool askFlashShowsQuestion;
-
     /// <summary>This login's email for its cutoffs: its roster row's, else the tab's own.</summary>
     private string? CutoffEmail => OwnRow?.Email ?? ScopeEmail;
 
@@ -258,18 +247,12 @@ public sealed partial class MainViewModel
     /// <summary>The tab's green box (M.ORCH-T1173, its count M.ORCH-T1261): busy, and none of this person's CLIs is asking.</summary>
     public bool ShowsBusyBadge => IsTabBusy && !TabNeedsYou;
 
-    /// <summary>How many of this login's CLIs are open right now (M.ORCH-T1261): the busy and asking badges' number, the same
-    /// source <see cref="StoppedCliCount"/> counts from, so it reads the same whether they're all idle, one busy or one asking.</summary>
+    /// <summary>How many of this login's CLIs are open right now: kept for <see cref="TabActivityWord"/>'s tooltip/accessible
+    /// text ("Busy: 3 CLIs open"), the same source <see cref="StoppedCliCount"/> counts from; the busy badge itself is a
+    /// spinner, not this number (M.ORCH-T1270).</summary>
     public int TabCliCount => IsPersonTab ? CliCountOf(snapshot?.Agents) : 0;
 
     internal static int CliCountOf(IEnumerable<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents) => agents?.Count() ?? 0;
-
-    /// <summary>The asking badge's content (M.ORCH-T1261): its CLI count and "?" taking turns every <see cref="AskFlashInterval"/>,
-    /// so it still says how many CLIs are open while one of them needs you, rather than losing the count to a fixed "?".</summary>
-    public string TabAskingBadgeContent => AskingBadgeContentOf(TabCliCount, Root.askFlashShowsQuestion);
-
-    internal static string AskingBadgeContentOf(int cliCount, bool showQuestion) =>
-        showQuestion ? "?" : cliCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>How many CLIs are open on this login when every one of them is idle; 0 when none is open or any is busy.</summary>
     private int StoppedCliCount
@@ -347,34 +330,6 @@ public sealed partial class MainViewModel
             active |= b.IsActive;
         }
         if (!active) blinkTimer?.Stop();
-    }
-
-    /// <summary>Starts the asking badges flashing (M.ORCH-T1261), if they aren't already: harmless to call every refresh, since
-    /// starting an already-running timer is a no-op.</summary>
-    private void StartAskFlashing()
-    {
-        if (askFlashTimer is null)
-        {
-            askFlashTimer = new DispatcherTimer(DispatcherPriority.Normal) { Interval = AskFlashInterval };
-            askFlashTimer.Tick += (_, _) => TickAskFlash();
-        }
-        askFlashTimer.Start();
-    }
-
-    /// <summary>Flips every tab's asking badge between its CLI count and "?"; the timer stops once no tab needs you any more.</summary>
-    private void TickAskFlash()
-    {
-        askFlashShowsQuestion = !askFlashShowsQuestion;
-        var any = false;
-        foreach (var t in loginTabs)
-        {
-            if (!t.TabNeedsYou) continue;
-            any = true;
-            t.Raise(nameof(TabAskingBadgeContent));
-        }
-        if (any) return;
-        askFlashTimer?.Stop();
-        askFlashShowsQuestion = false;
     }
 
     /// <summary>The 5-hour window's % used: the reading the status stream just pushed (M.ORCH-T854), else the snapshot's.</summary>
@@ -464,12 +419,11 @@ public sealed partial class MainViewModel
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip), nameof(TabHoverTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge), nameof(TabActivityWord),
-                                     nameof(TabCliCount), nameof(TabAskingBadgeContent),
+                                     nameof(TabCliCount),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
                                      nameof(ApiBurnText), nameof(ShowsClaudeMeters) })
             Raise(name);
-        if (TabNeedsYou) Root.StartAskFlashing();
     }
 
     /// <summary>Marks <paramref name="email"/>'s sign-in as in progress (null: none) and relights every tab.</summary>

@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using System.Xml.Linq;
+using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Wpf;
 using MindAttic.Orchestrator.Wpf.ViewModels;
@@ -630,6 +631,37 @@ public sealed class TerminalPanesTests
         Assert.That(TerminalPaste.Focused(e), Is.SameAs(pane));
         var elsewhere = new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.V) { RoutedEvent = Keyboard.KeyDownEvent, Source = new System.Windows.Controls.TextBox() };
         Assert.That(TerminalPaste.Focused(elsewhere), Is.Null, "a key aimed anywhere else is no terminal's");
+    }
+
+    /// <summary>M.ORCH-T1272: the CLI tab's own status badge (spinner/?/zzz) from its matched AgentBoardRow, the CLI tab's
+    /// own version of the login tab's aggregate one (M.ORCH-T1270); none of the three until its agent is known.</summary>
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_CLI_tab_s_own_status_badge_follows_its_matched_agent_row()
+    {
+        var pane = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe" }, hosted: true);
+        Assert.That(pane.ShowsPaneBusyBadge, Is.False);
+        Assert.That(pane.ShowsPaneAskingBadge, Is.False);
+        Assert.That(pane.ShowsPaneIdleBadge, Is.False, "no agent matched yet: none of the three badges");
+
+        AgentBoardRow Row(AgentState state, bool asking) => new("s", "Repo", null, null, DateTime.UtcNow, DateTime.UtcNow, state, "", false, default, []) { Asking = asking };
+
+        pane.ApplyAgentStatus(Row(AgentState.Working, asking: false));
+        Assert.That(pane.ShowsPaneBusyBadge, Is.True);
+        Assert.That(pane.ShowsPaneAskingBadge, Is.False);
+        Assert.That(pane.ShowsPaneIdleBadge, Is.False);
+
+        pane.ApplyAgentStatus(Row(AgentState.Waiting, asking: true));
+        Assert.That(pane.ShowsPaneBusyBadge, Is.False);
+        Assert.That(pane.ShowsPaneAskingBadge, Is.True, "asking wins over idle");
+        Assert.That(pane.ShowsPaneIdleBadge, Is.False);
+
+        pane.ApplyAgentStatus(Row(AgentState.Waiting, asking: false));
+        Assert.That(pane.ShowsPaneBusyBadge, Is.False);
+        Assert.That(pane.ShowsPaneAskingBadge, Is.False);
+        Assert.That(pane.ShowsPaneIdleBadge, Is.True);
+
+        pane.ApplyAgentStatus(null);
+        Assert.That(pane.ShowsPaneIdleBadge, Is.False, "unmatched again: back to none of the three");
     }
 
     [Test, Apartment(ApartmentState.STA)]
