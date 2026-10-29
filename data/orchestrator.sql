@@ -15,12 +15,6 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:48:35Z', 38, '2026-10-22T21:20:00Z', 6015187);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:49:34Z', 39, '2026-10-22T21:20:00Z', 6089442);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:50:41Z', 40, '2026-10-22T21:20:00Z', 6155997);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:52:32Z', 41, '2026-10-22T21:20:00Z', 6531339);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:52:33Z', 42, '2026-10-22T21:20:00Z', 6531339);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:55:10Z', 42, '2026-10-22T21:20:00Z', 6570911);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:59:13Z', 42, '2026-10-22T21:20:00Z', 6572232);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T18:03:09Z', 44, '2026-10-22T21:20:00Z', 6926548);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T18:07:12Z', 45, '2026-10-22T21:20:00Z', 6964194);
@@ -448,6 +442,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T17:37:13Z', 1, '2026-10-29T19:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T17:42:24Z', 1, '2026-10-29T19:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T17:47:43Z', 1, '2026-10-29T19:40:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T17:52:59Z', 1, '2026-10-29T19:40:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T17:58:07Z', 1, '2026-10-29T19:40:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -5632,8 +5628,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "6702257b0b60ba8ff9cad40790b9fd601c024d9a",
-    "Green": "6702257b0b60ba8ff9cad40790b9fd601c024d9a"
+    "Tested": "f2d71bb5e6b33f5dd9809c7defa4a1c3cab053b4",
+    "Green": "f2d71bb5e6b33f5dd9809c7defa4a1c3cab053b4"
   },
   "MindAttic.Psst": {
     "Tested": "c737769fa2041f37d6292878e6987921516c9d90",
@@ -5643,8 +5639,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "e8286e5fc2a633fd0399235d5c46aeb2cfac3525",
-    "Green": "e8286e5fc2a633fd0399235d5c46aeb2cfac3525"
+    "Tested": "4ccc7b40ee59cd37bb2d8d97596d5388b93b9b03",
+    "Green": "4ccc7b40ee59cd37bb2d8d97596d5388b93b9b03"
   },
   "MindAttic.Vault": {
     "Tested": "522e11b2ff08d6c2a11ff67fe97d040d6afa4713",
