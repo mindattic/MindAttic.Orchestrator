@@ -132,7 +132,7 @@ public sealed record OrchestratorSettings
     public static IReadOnlyList<string> DefaultExemptCommands { get; } = ["/pacing", "/deploy", "/run", "/allocate", "/commit", "/quicksave", "/quickload"];
 
     private static List<string> RenameRetired(List<string>? commands) =>
-        commands is null ? [] : [.. commands.Select(c => c?.Trim().TrimStart('/').ToLowerInvariant() is "throttle" or "unthrottle" ? "/pacing" : c!).Distinct()];
+        commands is null ? [] : [.. commands.Where(c => c is not null).Select(c => c!.Trim().TrimStart('/').ToLowerInvariant() is "throttle" or "unthrottle" ? "/pacing" : c!).Distinct()];
 
     /// <summary>Normalizes typed command names ("deploy, /Run") to "/deploy", "/run"; blanks and repeats dropped.</summary>
     public static List<string> ParseCommands(string text) =>

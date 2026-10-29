@@ -50,8 +50,12 @@ public static class ExportedState
         catch (System.Data.Common.DbException) { } // held past the busy timeout: the file alone, which reads newer
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var tmp = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
-        File.WriteAllText(tmp, json, new UTF8Encoding(false));
-        File.Move(tmp, path, overwrite: true);
+        try
+        {
+            File.WriteAllText(tmp, json, new UTF8Encoding(false));
+            File.Move(tmp, path, overwrite: true);
+        }
+        finally { if (File.Exists(tmp)) File.Delete(tmp); }
     }
 
     private static string ReadShared(string path)
