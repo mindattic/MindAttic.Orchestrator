@@ -205,4 +205,28 @@ public sealed class AccountRebalancerTests
         Assert.That(AccountRebalancer.Since(store, Now.AddMinutes(-1)).Select(m => m.Text), Is.EqualTo(new[] { "first", "second" }));
     }
 
+    /// <summary>A pending failover booked for the global login (FromEmail null, so its approval lives at the billing switch's
+    /// own ConfigPath, never an AccountDir's) is cancelled the same as any other's: the key's approval must be reverted there
+    /// too, not only when an AccountDir (a per-CLI login) is involved (bughunt 2026-10-28).</summary>
+    [Test]
+    public void A_pending_failover_booked_for_the_global_login_still_reverts_the_keys_approval_when_cancelled()
+    {
+        var jsonStore = new JsonStore(Path.Combine(temps.New(), "store"));
+        store = jsonStore;
+        jsonStore.Save(AccountRebalancer.FailoversName, new List<ApiFailover>
+        {
+            new("sess-1", 4242, null, null, FromEmail: null, ConfigDir: "", "Global login", "its 5-hour pace is at the limit", Now)
+            {
+                Pending = true, SeenUtc = Now,
+            },
+        });
+
+        // FailoverToApiKey is hard-coded off (M.ORCH-T706): MoveBack runs "locked", so any failover still only booked (never
+        // seen billing the key) is cancelled at once, whatever login it was for.
+        Rebalancer().Tick(null, [], [], settings, Now);
+
+        Assert.That(keyChoices, Is.EqualTo(new[] { (ClaudeKeyChoice.DefaultConfigPath, false) }));
+        Assert.That(AccountRebalancer.LoadFailovers(jsonStore), Is.Empty);
+    }
+
 }

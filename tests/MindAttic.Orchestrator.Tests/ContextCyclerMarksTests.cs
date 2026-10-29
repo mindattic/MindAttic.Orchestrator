@@ -335,4 +335,20 @@ public sealed class ContextCyclerMarksTests
         File.SetLastWriteTimeUtc(Path.Combine(folder, "agent-twentyone.jsonl"), now);
         Assert.That(cycler.AliveSubagentIds(now).Order(), Is.EqualTo(new[] { "nineteen", "twentyone" }), "it counts again the moment it writes");
     }
+
+    [Test]
+    public void A_subagent_mark_held_open_for_writing_still_counts_as_alive()
+    {
+        // bughunt 2026-10-28: SubagentAlive read the mark with a plain File.ReadAllText (FileShare.Read only), so a hook
+        // holding it open with FileAccess.ReadWrite made the read fail with a sharing violation; the broad catch then
+        // reported a live subagent as dead, exactly the race ReadShared exists elsewhere in this file to avoid.
+        var cycler = new ContextCycler(dir) { ProjectsDir = Path.Combine(dir, "projects") };
+        Directory.CreateDirectory(cycler.SubagentDirectory);
+        var mark = Path.Combine(cycler.SubagentDirectory, "agent-1");
+        File.WriteAllText(mark, "");
+        using var writer = new FileStream(mark, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+
+        Assert.That(cycler.AliveSubagentIds(DateTime.UtcNow), Is.EqualTo(new[] { "agent-1" }),
+            "a mark mid-write by its hook is still read, not mistaken for a dead subagent");
+    }
 }

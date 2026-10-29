@@ -200,8 +200,9 @@ public sealed class ContextCycler(string? directory = null)
             if (idle && Activity.SubagentTranscripts.Find(ProjectsDir, Path.GetFileName(mark)) is { } transcript &&
                 nowUtc - File.GetLastWriteTimeUtc(transcript) > SubagentIdleLife)
                 return false;
-            // No process id (the gate couldn't find its CLI): trust the age alone.
-            return !int.TryParse(File.ReadAllText(mark).Trim(), out var pid) || IsClaude(pid);
+            // No process id (the gate couldn't find its CLI): trust the age alone. Read shared: a hook may be mid-write
+            // (bughunt 2026-10-28), and a sharing violation must not read as "the subagent is dead".
+            return !int.TryParse(ReadShared(mark).Trim(), out var pid) || IsClaude(pid);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
     }

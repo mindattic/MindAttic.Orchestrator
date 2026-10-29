@@ -408,7 +408,9 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { sent = false; }
         if (!sent)
         {
-            if (fromDir is not null) SetKeyChoice(configPath, false);
+            // Reverted whether this CLI is on its own login (fromDir) or the global one (configPath already covers both,
+            // M.ORCH-T681): the key was approved above either way, so it's un-approved either way (bughunt 2026-10-28).
+            SetKeyChoice(configPath, false);
             return new(false, $"rebalance: the CLI in {cli.Where} (pid {cli.Pid}) couldn't fail over to the API key ({reason}): its Launcher tab has no control pipe to ask.");
         }
         var back = untilUtc is { } u ? $" at {u.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)}" : "";
@@ -458,7 +460,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             {
                 book.Remove(f);
                 changed = true;
-                if (home is not null) SetKeyChoice(home.ConfigPath, false);
+                // home is null for the global login (bughunt 2026-10-28): its approval lives at mover.Billing.ConfigPath instead.
+                SetKeyChoice(home?.ConfigPath ?? mover.Billing.ConfigPath, false);
                 results.Add(new(false, $"rebalance: cancelled the move to the API key asked for {f.Name}: API billing is only ever switched on by you.") { NeedsYou = true });
                 continue;
             }
@@ -476,7 +479,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
                 {
                     book.Remove(f);
                     changed = true;
-                    if (home is not null) SetKeyChoice(home.ConfigPath, false);
+                    // home is null for the global login (bughunt 2026-10-28): its approval lives at mover.Billing.ConfigPath instead.
+                    SetKeyChoice(home?.ConfigPath ?? mover.Billing.ConfigPath, false);
                     // Asked again once BackRetry passes, not after the whole cool-down.
                     tried[cli?.SessionId ?? f.SessionId] = nowUtc - CoolDown + BackRetry;
                     var where = cli?.Where ?? LimitWaker.Where(f.Cwd);
@@ -518,7 +522,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
                 book[book.IndexOf(f)] = f with { SessionId = cli.SessionId, Pid = cli.Pid, SeenUtc = nowUtc, BackAskedUtc = null };
                 changed = true;
                 onKey.Add(cli.SessionId);
-                if (home is not null) SetKeyChoice(home.ConfigPath, true);
+                // home is null for the global login (bughunt 2026-10-28): its approval lives at mover.Billing.ConfigPath instead.
+                SetKeyChoice(home?.ConfigPath ?? mover.Billing.ConfigPath, true);
                 backTried[cli.SessionId] = nowUtc;
                 results.Add(new(false, $"rebalance: the CLI in {cli.Where} didn't move back to {f.Name} off the API key: its Launcher tab took the request but " +
                                        $"{(cli.Pid != f.AskedPid ? "restarted it still on the key" : "never restarted it")} (a tab opened before M.LNCH-T67 drops it). " +
@@ -551,7 +556,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             }
             // Counted once it bills its login again (M.ORCH-T681); until then it stays booked, and on the key.
             book[book.IndexOf(seen)] = seen with { BackAskedUtc = nowUtc, AskedPid = cli.Pid };
-            if (home is not null) SetKeyChoice(home.ConfigPath, false);
+            // home is null for the global login (bughunt 2026-10-28): its approval lives at mover.Billing.ConfigPath instead.
+            SetKeyChoice(home?.ConfigPath ?? mover.Billing.ConfigPath, false);
             results.Add(new(false, $"rebalance: {seen.Name} has reset: asked the Launcher tab running the CLI in {cli.Where} (pid {cli.Pid}) to move it back " +
                                    "off the API key at its next idle point; it's counted once the CLI shows it billing its login.") { Asked = true });
         }
