@@ -914,11 +914,8 @@
                                  two bind to the Settings this dialog actually edits. -->
                             <StackPanel MaxWidth="760" HorizontalAlignment="Left" Margin="{StaticResource SpaceTL}">
                                 <TextBlock Text="TEAM WALL" Style="{StaticResource MaSectionLabel}" />
-                                <RadioButton x:Name="IncludeLauncherRadio" GroupName="LauncherInTeamWall" Content="Include Launcher in Team Wall"
-                                             IsChecked="{Binding ExcludeLauncherFromTeamWall, Converter={x:Static vm:Converters.Invert}}"
-                                             Margin="{StaticResource SpaceBXS}" />
-                                <RadioButton x:Name="ExcludeLauncherRadio" GroupName="LauncherInTeamWall" Content="Exclude Launcher in Team Wall"
-                                             IsChecked="{Binding ExcludeLauncherFromTeamWall}" />
+                                <ToggleButton x:Name="ExcludeLauncherToggle" Style="{StaticResource MaPillToggle}" IsChecked="{Binding ExcludeLauncherFromTeamWall}"
+                                              HorizontalAlignment="Left" Margin="{StaticResource SpaceBXS}" Content="Exclude Launcher from Team Wall" />
                                 <TextBlock Text="Include (the default): the Launcher's own menu tab shows up as a tile on the Team Wall like any other CLI. Exclude: it's left out, only the CLIs it opened show. Also orchestrator settings --exclude-launcher-team-wall."
                                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
                             </StackPanel>
