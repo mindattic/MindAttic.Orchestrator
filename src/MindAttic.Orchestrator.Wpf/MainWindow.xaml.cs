@@ -447,33 +447,25 @@ public partial class MainWindow : Window
             : new DoubleAnimation(exitOpacity, TimeSpan.FromSeconds(exitSeconds)));
 
     /// <summary>The least <see cref="AgentsBody"/> (and the sign-in prompt sharing its row) is ever given while the terminal
-    /// shows: enough of the 5-hour/weekly chart card's own header and its 130px chart to clear the status bar below, so the
-    /// chart's own bottom axis labels (its target and projection, M.ORCH-T191) never clip against it (M.ORCH-T1072, M.ORCH-T1095,
-    /// M.ORCH-T1169, M.ORCH-T1180). The card's own top padding and border (11), its now-two-line header — a combined row of the
-    /// notification dots and the 5hr/weekly limit boxes (M.ORCH-T1180, moved out of sharing a row with the title), then the
-    /// title (MaSectionLabel) on its own line with its SpaceTS top margin — and the chart's own top margin (8) and height (130)
-    /// come to an estimated ~215 before the caption below it, which the floor leaves to the body's own ScrollViewer
-    /// (MaBodyScroll) rather than guaranteeing too. This is a reasoned estimate (the exact MaSectionLabel/MaCard metrics live in
-    /// a referenced library with no local source to measure against), the same way M.ORCH-T1095 and M.ORCH-T1169 nudged this
-    /// same constant after watching it run; if the chart's bottom labels clip again, nudge this up a little further rather than
-    /// reworking the approach. Above this floor the body shares the leftover room with the terminal (M.ORCH-T1166) rather than
-    /// being pinned to it as a fixed peek, so it isn't left showing only a sliver with a dead gap below the terminal above it.</summary>
-    private const double AgentsBodyPeek = 215;
+    /// shows (M.ORCH-T1268): just enough for its own ScrollViewer (MaBodyScroll) to be a real, wheel-scrollable viewport, not a
+    /// visible peek of the chart or tickets underneath it. The terminal and the pinned 5-hour/weekly bars (<c>PinnedLimitBars</c>,
+    /// MainWindow.xaml's Grid.Row="3") are meant to fill the window's first screen on their own; the chart and tickets below
+    /// are reached by scrolling, not by reserving them a guaranteed sliver the way <c>AgentsBodyPeek</c> used to (M.ORCH-T1072,
+    /// M.ORCH-T1166, M.ORCH-T1209 all wrestled with sizing that sliver instead of just removing it).</summary>
+    private const double AgentsBodyScrollHandle = 24;
 
-    /// <summary>The terminal row's floor while a terminal shows (M.ORCH-T1208): half the window's own height, so it defaults
-    /// to a generously-sized pane that scales with the window rather than a fixed pixel count, but never shorter than this
-    /// even in a short window, where half the window would otherwise pinch it thin.</summary>
-    private const double TerminalRowMinHeight = 500;
+    /// <summary>The terminal row's floor while a terminal shows: never shorter than this even in a short window, where the
+    /// 1000:1 star split in <see cref="SizeTerminalRow"/> would otherwise pinch it thin alongside the fixed rows above and
+    /// below it.</summary>
+    private const double TerminalRowMinHeight = 160;
 
     /// <summary>The terminal and the scrolling body (stats, queue tabs, the 5-hour/weekly chart, tickets) share whatever room
-    /// is left under the fixed rows above and below, both star rows, while the terminal shows (M.ORCH-T1072): the terminal's
-    /// floored at half the window's height or <see cref="TerminalRowMinHeight"/>, whichever is taller (M.ORCH-T1208 — this
-    /// replaced an earlier hard ceiling, M.ORCH-T1166's 480, which a floor this tall would only ever have overridden anyway),
-    /// and the body picks up everything beyond that, floored at <see cref="AgentsBodyPeek"/> so it's never squeezed thinner
-    /// than that even in a short window (M.ORCH-T1020, M.ORCH-T1166). Hidden (no terminals open on this login), the terminal's
-    /// row takes no room and the body reclaims the whole star share, filling the window as it did before there was a terminal
-    /// to share it with. Recomputed on every resize (<see cref="Root"/>'s SizeChanged), not just when the terminal appears, so
-    /// the floor keeps tracking half the window's current height rather than whatever it was when the terminal first opened.</summary>
+    /// is left under the fixed rows above and below, both star rows, while the terminal shows: a lopsided 1000:1 split hands
+    /// the terminal essentially all of it (M.ORCH-T1268 — the user wants the terminal, not the chart, to fill the window's
+    /// first screen), floored at <see cref="TerminalRowMinHeight"/> so it never pinches thin; the body keeps only
+    /// <see cref="AgentsBodyScrollHandle"/>, just enough to still be a working scroll target for the chart and tickets below
+    /// it. Hidden (no terminals open on this login), the terminal's row takes no room and the body reclaims the whole star
+    /// share, filling the window as it did before there was a terminal to share it with.</summary>
     private void SizeTerminalRow()
     {
         try
@@ -481,13 +473,19 @@ public partial class MainWindow : Window
             var terminalRow = Root.RowDefinitions[2];
             var bodyRow = Root.RowDefinitions[4];
             var shown = TerminalFrame.IsVisible;
-            terminalRow.Height = shown ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
-            terminalRow.MinHeight = shown ? Math.Max(Root.ActualHeight * 0.5, TerminalRowMinHeight) : 0;
+            terminalRow.Height = shown ? new GridLength(1000, GridUnitType.Star) : GridLength.Auto;
+            terminalRow.MinHeight = shown ? TerminalRowMinHeight : 0;
             bodyRow.Height = new GridLength(1, GridUnitType.Star);
-            bodyRow.MinHeight = shown ? AgentsBodyPeek : 120;
+            bodyRow.MinHeight = shown ? AgentsBodyScrollHandle : 120;
         }
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
     }
+
+    /// <summary>The pinned 5-hour/weekly (or, on the API key's tab, money) bars jump to the full chart further down
+    /// (M.ORCH-T1268): a plain <see cref="FrameworkElement.BringIntoView()"/>, which scrolls its ancestor ScrollViewer
+    /// (<see cref="AgentsBody"/>) there on its own, rather than hand-computed offsets.</summary>
+    private void PinnedLimitBar_Click(object sender, RoutedEventArgs e) =>
+        (sender is FrameworkElement { DataContext: MainViewModel { IsApiKeyTab: true } } ? (FrameworkElement)ApiBurnChart : UtilizationCard).BringIntoView();
 
     /// <summary>Room added on each side of the widest tab's own content, for both the person tabs (M.ORCH-T1096) and the
     /// CLI tabs (M.ORCH-T1250).</summary>

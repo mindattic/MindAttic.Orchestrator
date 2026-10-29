@@ -264,7 +264,7 @@ public sealed class TabStatusTests
         Assert.That(strip, Does.Contain("<mc:MaTabControl").And.Contain("TargetType=\"mc:MaTabItem\""));
         Assert.That(strip, Does.Not.Contain("Property=\"Status\" Value="), "the icon, not the status light");
         Assert.That(strip, Does.Contain("x:Name=\"TabIdleBadge\"").And.Contain("Content=\"zzz\"").And.Contain("Background=\"{DynamicResource MaMuted}\"")
-            .And.Contain("{Binding ShowsIdleBadge").And.Contain("x:Name=\"TabBusyBadge\"").And.Contain("Style=\"{StaticResource MaSpinnerGlyph}\"")
+            .And.Contain("{Binding ShowsIdleBadge").And.Contain("x:Name=\"TabBusyBadge\"").And.Contain("<mc:MaSpinner")
             .And.Contain("Background=\"{DynamicResource MaGood}\"").And.Contain("{Binding ShowsBusyBadge")
             .And.Contain("x:Name=\"TabAskingBadge\"").And.Contain("Content=\"?\"").And.Contain("Background=\"{DynamicResource MaWarn}\"")
             .And.Contain("{Binding TabNeedsYou,").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"{Binding TabDisabledGlyph}\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")

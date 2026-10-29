@@ -36,28 +36,6 @@
             <Setter Property="ToolTip" Value="Open it in Tickets Desktop to view, approve, prioritize, assign, block or close it" />
         </Style>
 
-        <!-- A busy badge's spinning glyph (M.ORCH-T1270), shared by the login tab strip and the CLI tab strip: a clockwise
-             arrow rotated continuously once it loads, forever, rather than once per blink (replaces the open-CLI-count digit). -->
-        <Style x:Key="MaSpinnerGlyph" TargetType="TextBlock">
-            <Setter Property="Text" Value="&#x21BB;" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
-            <Setter Property="RenderTransform">
-                <Setter.Value>
-                    <RotateTransform />
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                    <BeginStoryboard>
-                        <Storyboard RepeatBehavior="Forever">
-                            <DoubleAnimation Storyboard.TargetProperty="(TextBlock.RenderTransform).(RotateTransform.Angle)"
-                                             From="0" To="360" Duration="0:0:1" />
-                        </Storyboard>
-                    </BeginStoryboard>
-                </EventTrigger>
-            </Style.Triggers>
-        </Style>
 
         <!-- A ticket on a person's Tickets view (M.ORCH-T668): who it's assigned to, with their status light; while its user is out
              of room it says why it waits. Assigning, reassigning and "Redelegate now" are Tickets Desktop's (M.ORCH-T762): the
@@ -226,13 +204,13 @@
                             <mc:MaBadge x:Name="TabIdleBadge" Style="{StaticResource MaTag}" Content="zzz" Background="{DynamicResource MaMuted}"
                                         Foreground="{DynamicResource MaOnAccent}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsIdleBadge, Converter={StaticResource Visible}}" />
-                            <!-- Busy: a green box with a spinning glyph (M.ORCH-T1270, in place of the open CLI count badge from
-                                 M.ORCH-T890/M.ORCH-T1261); the count stays in the tooltip/accessible name (TabActivityWord). -->
+                            <!-- Busy: a green box with the library's own spinner (M.ORCH-T1270, in place of the open CLI count
+                                 badge from M.ORCH-T890/M.ORCH-T1261); the count stays in the tooltip/accessible name (TabActivityWord). -->
                             <mc:MaBadge x:Name="TabBusyBadge" Style="{StaticResource MaTag}" Background="{DynamicResource MaGood}"
                                         Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                         AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsBusyBadge, Converter={StaticResource Visible}}">
-                                <TextBlock Style="{StaticResource MaSpinnerGlyph}" FontSize="10" />
+                                <mc:MaSpinner Kind="Glyph" Width="12" Height="12" Stroke="{DynamicResource MaOnAccent}" />
                             </mc:MaBadge>
                             <!-- One of this person's CLIs is genuinely blocked on them (a permission prompt, a question, or a
                                  /crossrepo or /allocate only they may type, M.ORCH-T790): an orange box, over the idle or busy box
@@ -310,7 +288,7 @@
                                                     Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     AutomationProperties.Name="{Binding PaneActivityWord}"
                                                     Visibility="{Binding ShowsPaneBusyBadge, Converter={StaticResource Visible}}">
-                                            <TextBlock Style="{StaticResource MaSpinnerGlyph}" FontSize="10" />
+                                            <mc:MaSpinner Kind="Glyph" Width="12" Height="12" Stroke="{DynamicResource MaOnAccent}" />
                                         </mc:MaBadge>
                                         <mc:MaBadge x:Name="TerminalTabAskingBadge" Style="{StaticResource MaTag}" Content="?" Background="{DynamicResource MaWarn}"
                                                     Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -385,6 +363,58 @@
                 <Grid x:Name="TerminalPanesHost" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
             </Grid>
         </Grid>
+
+        <!-- The 5-hour/weekly (or, on the API key's tab, its money) readout, pinned in its own fixed row right under the
+             terminal (M.ORCH-T1268): the terminal and this row are meant to fill the window's first screen between them, the
+             full chart and tickets reached by scrolling AgentsBody below. Not an overlay on the terminal itself: TerminalFrame
+             hosts a native window (an HwndHost, M.ORCH-T833's comment above), which always paints over any WPF sibling drawn
+             on top of it regardless of z-order: an overlay here would just be invisible under the live terminal. Clicking
+             either pill scrolls the body down to the full chart (PinnedLimitBar_Click, MainWindow.xaml.cs). -->
+        <StackPanel x:Name="PinnedLimitBars" Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Left"
+                    Margin="{StaticResource SpaceLXLTSRXL}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
+                <Button x:Name="PinnedFiveHourBar" Style="{StaticResource MaToolButton}" Padding="0" Click="PinnedLimitBar_Click"
+                        ToolTip="Jump to the full 5-hour utilization chart" AutomationProperties.Name="{Binding FiveHourLimitText}">
+                    <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
+                        <StackPanel>
+                            <TextBlock Text="{Binding FiveHourLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding FiveHourLimitBrush}" />
+                            <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
+                                         Value="{Binding FiveHourLimitPercent, Mode=OneWay}" Foreground="{Binding FiveHourLimitBrush}" />
+                        </StackPanel>
+                    </Border>
+                </Button>
+                <Button x:Name="PinnedWeeklyBar" Style="{StaticResource MaToolButton}" Padding="0" Margin="{StaticResource SpaceLS}" Click="PinnedLimitBar_Click"
+                        ToolTip="Jump to the full 5-hour utilization chart" AutomationProperties.Name="{Binding WeeklyLimitText}">
+                    <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
+                        <StackPanel>
+                            <TextBlock Text="{Binding WeeklyLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding WeeklyLimitBrush}" />
+                            <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
+                                         Value="{Binding WeeklyLimitPercent, Mode=OneWay}" Foreground="{Binding WeeklyLimitBrush}" />
+                        </StackPanel>
+                    </Border>
+                </Button>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
+                <Button x:Name="PinnedApiLeftBar" Style="{StaticResource MaToolButton}" Padding="0" Click="PinnedLimitBar_Click"
+                        ToolTip="Jump to its money, further down" AutomationProperties.Name="{Binding ApiLeftHeadline}">
+                    <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
+                        <StackPanel>
+                            <TextBlock Text="Credit left" Style="{StaticResource MaMutedText}" FontSize="11" />
+                            <TextBlock Text="{Binding ApiLeftHeadline}" FontSize="13" FontWeight="SemiBold" Margin="{StaticResource SpaceTS}" />
+                        </StackPanel>
+                    </Border>
+                </Button>
+                <Button x:Name="PinnedApiSpentBar" Style="{StaticResource MaToolButton}" Padding="0" Margin="{StaticResource SpaceLS}" Click="PinnedLimitBar_Click"
+                        ToolTip="Jump to its money, further down" AutomationProperties.Name="{Binding ApiSpentHeadline}">
+                    <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
+                        <StackPanel>
+                            <TextBlock Text="Spent today" Style="{StaticResource MaMutedText}" FontSize="11" />
+                            <TextBlock Text="{Binding ApiSpentHeadline}" FontSize="13" FontWeight="SemiBold" Margin="{StaticResource SpaceTS}" />
+                        </StackPanel>
+                    </Border>
+                </Button>
+            </StackPanel>
+        </StackPanel>
 
         <!-- A roster account not signed in on this machine yet (M.ORCH-T615): its tab shows only its Sign in, then, once signed
              in, the whole page and Open Launcher at the next refresh. -->
