@@ -313,6 +313,11 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>The renderer's selected text, clearing it (copy and cut, T866/T867).</summary>
     internal string? ReadSelection() => (Relay?.Terminal ?? Local?.Terminal)?.GetSelectedText();
 
+    /// <summary>Set by <see cref="TerminalCopy"/> after a copy or cut on this pane, so the auto-repeats of the held chord don't
+    /// go on to interrupt its CLI; per pane, so holding the chord here and shifting focus to another pane mid-repeat can't
+    /// swallow that other pane's own Ctrl+C/X (M.ORCH-T1278).</summary>
+    internal bool SwallowCopyRepeats { get; set; }
+
     private void UseRelay()
     {
         var relay = new RelayTerminal(Campbell);

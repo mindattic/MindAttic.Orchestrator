@@ -147,7 +147,7 @@ public sealed class SettingsViewModel : ObservableObject
     public void ReloadIfUnedited()
     {
         if (Current() == loaded && Allocate == loadedAllocate && SymbolTabLabels == loadedSymbolTabLabels
-            && ExcludeLauncherFromTeamWall == loadedExcludeLauncherFromTeamWall) Load();
+            && ExcludeLauncherFromTeamWall == loadedExcludeLauncherFromTeamWall && AlertTo == loadedAlertTo) Load();
     }
 
     private void Save()

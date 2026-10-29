@@ -19,13 +19,24 @@ internal static class TerminalPaste
 {
     private const string BracketOn = "\u001b[?2004h", BracketOff = "\u001b[?2004l";
 
+    /// <summary>How long <see cref="Track"/> keeps polling for the ConPTY before giving up (M.ORCH-T1281): past this, the process
+    /// failed to launch or the tab closed first, so there's nothing left to wait for.</summary>
+    private static readonly TimeSpan TrackTimeout = TimeSpan.FromSeconds(30);
+
     /// <summary>Follows an in-process tab's CLI turning bracketed paste on and off, once its console has started.</summary>
     public static void Track(TerminalPaneViewModel pane, EasyTerminalControl control)
     {
         var timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(250) };
+        var deadline = DateTime.UtcNow + TrackTimeout;
         timer.Tick += (_, _) =>
         {
-            if (control.ConPTYTerm is not { } term) return;
+            if (control.ConPTYTerm is not { } term)
+            {
+                // The ConPTY never started (the process failed to launch) or the tab closed before it did: stop polling
+                // rather than leak the timer (and its reference to control/pane) forever (M.ORCH-T1281).
+                if (pane.Ended || DateTime.UtcNow >= deadline) timer.Stop();
+                return;
+            }
             timer.Stop();
             var previous = term.InterceptOutputToUITerminal;
             term.InterceptOutputToUITerminal = (ref Span<char> text) =>

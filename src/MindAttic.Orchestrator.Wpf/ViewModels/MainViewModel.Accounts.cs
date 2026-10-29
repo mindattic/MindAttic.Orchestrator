@@ -45,8 +45,11 @@ public sealed partial class MainViewModel
         }
         else
         {
+            // Kept as it was when the roster can't be read now (M.ORCH-T1280): the settings/cutoffs/allowances/currentAccount
+            // loads below are independent of it and must still run, and RaiseOwnNumbers() must still fire, so a transient
+            // failure here doesn't also stall every other tile this method keeps current.
             try { accountRows = AccountRoster.Load(aggregator.Db, next.Account); }
-            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return; }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
             try
             {
                 var settings = store.LoadSettings();

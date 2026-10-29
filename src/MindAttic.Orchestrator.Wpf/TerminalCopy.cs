@@ -17,9 +17,6 @@ internal static class TerminalCopy
     /// <summary>What a chord asks of the terminal's selection.</summary>
     internal enum Chord { None, Copy, Cut }
 
-    /// <summary>Set after a copy or cut, so the auto-repeats of the held chord don't go on to interrupt the CLI.</summary>
-    private static bool swallowRepeats;
-
     internal static Chord ChordOf(Key key, ModifierKeys modifiers) =>
         modifiers != ModifierKeys.Control ? Chord.None : key switch { Key.C => Chord.Copy, Key.X => Chord.Cut, _ => Chord.None };
 
@@ -43,15 +40,16 @@ internal static class TerminalCopy
         try
         {
             if (e.Handled) return;
-            var chord = ChordOf(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers);
-            if (chord == Chord.None) { swallowRepeats = false; return; }
             // The tab the key went to, not the one Keyboard.FocusedElement names (null while the renderer has Win32 focus, M.ORCH-T1109).
-            if (TerminalPaste.Focused(e) is not { } pane) return;
-            if (e.IsRepeat && swallowRepeats) { e.Handled = true; return; }
-            swallowRepeats = false;
+            var pane = TerminalPaste.Focused(e);
+            var chord = ChordOf(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers);
+            if (chord == Chord.None) { if (pane is not null) pane.SwallowCopyRepeats = false; return; }
+            if (pane is not { } p) return;
+            if (e.IsRepeat && p.SwallowCopyRepeats) { e.Handled = true; return; }
+            p.SwallowCopyRepeats = false;
             // The selection is local to the renderer, hosted tab (M.ORCH-T926) or in-process alike.
-            if (!TryTake(pane.ReadSelection, SetClipboard)) return;
-            swallowRepeats = true;
+            if (!TryTake(p.ReadSelection, SetClipboard)) return;
+            p.SwallowCopyRepeats = true;
             e.Handled = true;
         }
         catch (Exception)

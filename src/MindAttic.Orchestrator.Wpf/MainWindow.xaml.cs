@@ -78,6 +78,11 @@ public partial class MainWindow : Window
             }
         };
         model.PropertyChanged += OnShownChanged;
+        // Compensates for the root tab's own DataContext assignment above (line 43) happening before DataContextChanged is
+        // wired (M.ORCH-T1282): without this, the root tab's terminal strip would only start auto-scrolling once the user
+        // switched login tabs and back, the same reason model.PropertyChanged is compensated for here too.
+        model.Terminals.SelectionChanged += BringSelectedTerminalTabIntoView;
+        model.Terminals.Panes.CollectionChanged += OnTerminalPanesChanged;
         // Scales the window's content and binds Ctrl+Plus / Ctrl+Minus / Ctrl+0 on the window, wherever focus is.
         model.Zoom.Attach(Root, this);
         // The upper-right sun/moon switch (M.ORCH-T678) changes the theme live; each switch is saved, so it holds at the next start.

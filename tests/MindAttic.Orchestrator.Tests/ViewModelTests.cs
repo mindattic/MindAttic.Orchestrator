@@ -269,6 +269,31 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void ReloadIfUnedited_never_throws_away_a_typed_but_unsaved_alert_recipient()
+    {
+        // M.ORCH-T1279: AlertTo/loadedAlertTo were tracked but left out of ReloadIfUnedited's "anything edited" guard, so an
+        // unrelated settings-changed push (e.g. the CLI running `settings --warn-percent`) silently overwrote whatever the
+        // person had typed into "Text to" but not yet saved.
+        var store = new JsonStore(dir);
+        var vm = new SettingsViewModel(store, () => { });
+        vm.Load();
+        Assert.That((vm.AlertTo, vm.WarnPercent), Is.EqualTo(("ryan", "80")));
+
+        vm.AlertTo = "ops@example.com"; // typed in the panel, never saved
+        // Something else changes a different setting on disk meanwhile; nothing else in the panel was touched.
+        store.SaveSettings(store.LoadSettings() with { WarnPercent = 91 });
+        vm.ReloadIfUnedited();
+
+        Assert.That(vm.AlertTo, Is.EqualTo("ops@example.com"), "an unsaved Text-to edit must survive an unrelated settings push");
+        Assert.That(vm.WarnPercent, Is.EqualTo("80"), "the whole reload is skipped while any field, including AlertTo, is edited");
+
+        // With nothing edited at all, the push is still picked up (the guard isn't broken the other way).
+        vm.AlertTo = "ryan";
+        vm.ReloadIfUnedited();
+        Assert.That((vm.AlertTo, vm.WarnPercent), Is.EqualTo(("ryan", "91")), "unedited, the panel does pick up what changed elsewhere");
+    }
+
+    [Test]
     public void The_weekly_pacing_fields_round_trip_through_the_panel_and_are_validated()
     {
         // M.ORCH-T680: the weekly target (saved as the reserve).

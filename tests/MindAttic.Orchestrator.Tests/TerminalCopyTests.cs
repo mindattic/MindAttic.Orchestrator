@@ -1,5 +1,8 @@
+using System.IO;
 using System.Windows.Input;
+using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Wpf;
+using MindAttic.Orchestrator.Wpf.ViewModels;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -51,4 +54,27 @@ public sealed class TerminalCopyTests
     [Test]
     public void ABusyClipboardIsContainedAndStillTakesTheKey() =>
         Assert.That(TerminalCopy.TryTake(() => "x", _ => throw new System.Runtime.InteropServices.COMException()), Is.True);
+
+    /// <summary>M.ORCH-T1278: swallowRepeats used to be a single static field shared by every pane, so holding Ctrl+C in one
+    /// pane with a selection and shifting focus to another mid-repeat could swallow that other pane's real Ctrl+C. It is now
+    /// per-pane state on TerminalPaneViewModel, so setting it on one pane must never be visible on another.</summary>
+    [Test, Apartment(System.Threading.ApartmentState.STA)]
+    public void SwallowCopyRepeatsIsPerPaneNotSharedAcrossTheWholeApp()
+    {
+        TerminalPaneViewModel Pane(string title) => new(new PaneRequest(title, Path.GetTempPath()) { CommandLine = "cmd.exe" });
+        var (a, b) = (Pane("A"), Pane("B"));
+
+        Assert.That(a.SwallowCopyRepeats, Is.False);
+        Assert.That(b.SwallowCopyRepeats, Is.False);
+
+        // Pane A just copied (as OnPreviewKeyDown does after a successful TryTake): its own repeats should be swallowed...
+        a.SwallowCopyRepeats = true;
+        Assert.That(a.SwallowCopyRepeats, Is.True);
+        // ...but pane B, which never copied anything, must still let its own Ctrl+C reach its CLI as an interrupt.
+        Assert.That(b.SwallowCopyRepeats, Is.False, "one pane's swallow state must not leak onto another pane");
+
+        b.SwallowCopyRepeats = true;
+        a.SwallowCopyRepeats = false;
+        Assert.That(b.SwallowCopyRepeats, Is.True, "each pane's flag is independent in both directions");
+    }
 }
