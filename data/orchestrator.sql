@@ -15,13 +15,6 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:27:14Z', 29, '2026-10-22T21:20:00Z', 4450083);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:27:24Z', 29, '2026-10-22T21:20:00Z', 4453268);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:29:11Z', 30, '2026-10-22T21:20:00Z', 4550465);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:30:35Z', 31, '2026-10-22T21:20:00Z', 4735192);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:31:54Z', 32, '2026-10-22T21:20:00Z', 4841181);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:32:32Z', 33, '2026-10-22T21:20:00Z', 5176341);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:36:21Z', 34, '2026-10-22T21:20:00Z', 5220961);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:40:33Z', 35, '2026-10-22T21:20:00Z', 5279570);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:41:35Z', 35, '2026-10-22T21:20:00Z', 5315118);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T17:42:32Z', 36, '2026-10-22T21:20:00Z', 5658513);
@@ -456,6 +449,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T17:16:36Z', 1, '2026-10-29T19:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T17:21:40Z', 1, '2026-10-29T19:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T17:26:57Z', 1, '2026-10-29T19:40:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T17:32:12Z', 1, '2026-10-29T19:40:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T17:37:13Z', 1, '2026-10-29T19:40:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -948,10 +943,11 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'Unity.Hare', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 79733);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'Unity.Ricochet', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 43883);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 122417);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 262923);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5081558);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2052200);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'Unity.Ricochet', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 74523);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 65949);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 294032);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5589256);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2365161);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'Unity.Ricochet', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 85742);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -5625,8 +5621,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "4db753174c1c791ee765e533f749f9a50722c771"
   },
   "MindAttic.Launcher": {
-    "Tested": "cc1aacff5873ff9ae63c1f31806e2abef515db91",
-    "Green": "cc1aacff5873ff9ae63c1f31806e2abef515db91"
+    "Tested": "c404a7b84d3183aba22fada2d412a04920ea8a88",
+    "Green": "c404a7b84d3183aba22fada2d412a04920ea8a88"
   },
   "MindAttic.Legion": {
     "Tested": "cbc1109f9e901d2030c80586a5f5d6a28c7c50b5"
@@ -5639,8 +5635,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "769c7212408349a92126145d5e52e611b63b09de",
-    "Green": "769c7212408349a92126145d5e52e611b63b09de"
+    "Tested": "58c4dce02a2486e6453847b80cab629cac5063ec",
+    "Green": "58c4dce02a2486e6453847b80cab629cac5063ec"
   },
   "MindAttic.Psst": {
     "Tested": "c737769fa2041f37d6292878e6987921516c9d90",
@@ -5650,8 +5646,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "bb70302908bc49df4e98416db2622220e2b1c9d5",
-    "Green": "bb70302908bc49df4e98416db2622220e2b1c9d5"
+    "Tested": "f09d8fcb22ea549ef71be348307c7b28e552d0fe",
+    "Green": "f09d8fcb22ea549ef71be348307c7b28e552d0fe"
   },
   "MindAttic.Vault": {
     "Tested": "522e11b2ff08d6c2a11ff67fe97d040d6afa4713",
