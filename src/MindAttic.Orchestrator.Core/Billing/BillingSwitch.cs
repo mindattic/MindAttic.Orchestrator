@@ -139,6 +139,12 @@ public sealed class BillingSwitch
     private readonly Dictionary<string, DateTime> asked = new(StringComparer.Ordinal);
     private readonly HashSet<string> told = new(StringComparer.Ordinal);
 
+    /// <summary>Guards <see cref="asked"/>, <see cref="told"/>, <see cref="noted"/>, <see cref="enforcedUtc"/> and
+    /// <see cref="config"/>: the dashboard's billing toggle and a refresh can call into the same instance from different
+    /// threads at once (bughunt 2026-10-28). Held only around the field reads/writes themselves, never across a file,
+    /// network or <c>Task.WaitAll</c> wait, so it can't hold up or deadlock against that work.</summary>
+    private readonly object gate = new();
+
     /// <summary>The mode in force: the one written, else the one Claude Code's config amounts to (the Vault key approved is
     /// the API key, anything else Claude Team).</summary>
     public string Mode(out BillingState? state)
@@ -179,7 +185,7 @@ public sealed class BillingSwitch
         var key = SafeKey();
         if (to == BillingModes.Api && key is null)
             return new(Status(hosts, nowUtc), [], $"There's no {VaultProvider} key in the MindAttic Vault keyring, so nothing can bill the API key; billing is left as it was.");
-        noted = null;
+        lock (gate) noted = null;
         var lines = new List<string>();
         var (login, _) = Config(null);
         var approvedNow = false;
@@ -231,20 +237,26 @@ public sealed class BillingSwitch
         // (the fallback for CLIs with no account), and only an explicit switch (orchestrator login <account>, the dashboard's
         // toggle, orchestrator billing team) moves billing back to Claude Team (M.ORCH-T676).
         List<string> seen = [];
-        if (Config(null).Login?.Identity == state.Login) noted = null;
-        if (state.Mode == BillingModes.Api && Config(null).Login is { } login && login.Identity != state.Login && noted != login.Identity)
+        if (Config(null).Login?.Identity == state.Login) lock (gate) noted = null;
+        if (state.Mode == BillingModes.Api && Config(null).Login is { } login && login.Identity != state.Login)
         {
-            noted = login.Identity;
-            seen.Add($"a /login to {login.Describe()} was seen on the global login; API-key billing stays on until you switch it back (orchestrator login <account>, or the dashboard's toggle)");
+            // Checked and set as one step: two threads seeing the warning not said yet must never both say it.
+            var sayIt = false;
+            lock (gate)
+                if (noted != login.Identity) { noted = login.Identity; sayIt = true; }
+            if (sayIt)
+                seen.Add($"a /login to {login.Describe()} was seen on the global login; API-key billing stays on until you switch it back (orchestrator login <account>, or the dashboard's toggle)");
         }
         // Claude Code's choice of the Vault key follows the mode: a "yes" or "no" answered in a CLI's prompt since, or a mode
         // the context gate switched on its own (a /login it saw first), is put back in line.
         // A CLI failed over to the key on the global login needs it approved there, whatever the mode (M.ORCH-T664).
         var globalFailover = state.Mode == BillingModes.Team && SafeFailedOver().Any(f => f.ConfigDir.Length == 0);
-        if (!globalFailover && File.Exists(ConfigPath) && SafeKey() is { } key && (enforcedUtc is not { } at || nowUtc - at >= RetryAfter) &&
+        DateTime? lastEnforced;
+        lock (gate) lastEnforced = enforcedUtc;
+        if (!globalFailover && File.Exists(ConfigPath) && SafeKey() is { } key && (lastEnforced is not { } at || nowUtc - at >= RetryAfter) &&
             Config(ClaudeKeyChoice.Tail(key)).Choice != (state.Mode == BillingModes.Api ? KeyChoice.Approved : KeyChoice.Rejected))
         {
-            enforcedUtc = nowUtc;
+            lock (gate) enforcedUtc = nowUtc;
             var result = Switch(state.Mode, state.By, hosts, nowUtc);
             return [.. seen, .. (result.Error is { } error ? [error] : result.Lines.Skip(1))];
         }
@@ -276,24 +288,29 @@ public sealed class BillingSwitch
         {
             if (c.Host is null)
             {
-                if (told.Add(c.SessionId + "@" + stamp))
+                bool first;
+                lock (gate) first = told.Add(c.SessionId + "@" + stamp);
+                if (first)
                     lines.Add($"the CLI in {c.Where} (pid {c.Pid}) bills {BillingModes.Name(c.Bills!)} and isn't in a Launcher tab: close it and reopen it " +
                               $"(claude --resume {c.SessionId}) to bill {name}" + (state.Mode == BillingModes.Api ? " with ANTHROPIC_API_KEY set to the Vault key" : ""));
                 continue;
             }
             if (state.Requested.Contains(c.SessionId)) continue;
-            if (asked.TryGetValue(c.SessionId + "@" + stamp, out var at) && nowUtc - at < RetryAfter) continue;
+            bool recentlyAsked;
+            lock (gate) recentlyAsked = asked.TryGetValue(c.SessionId + "@" + stamp, out var at) && nowUtc - at < RetryAfter;
+            if (recentlyAsked) continue;
             due.Add(c);
         }
         if (due.Count == 0) return lines;
         var sends = due.Select(c => (Cli: c, Sent: SafeSend(c.Host!, RestartResumeMessage(c, state.Mode, nowUtc)))).ToList();
+        // Not held across this wait (it can take seconds of network/pipe I/O): the lock only ever guards the field access itself.
         Task.WaitAll([.. sends.Select(s => s.Sent)]);
         var requested = new List<string>();
         var refused = state.Refused.ToList();
         var newlyRefused = new List<string>();
         foreach (var (c, sent) in sends)
         {
-            asked[c.SessionId + "@" + stamp] = nowUtc;
+            lock (gate) asked[c.SessionId + "@" + stamp] = nowUtc;
             if (sent.Result)
             {
                 requested.Add(c.SessionId);
@@ -397,13 +414,22 @@ public sealed class BillingSwitch
 
     private (string Path, DateTime Stamp, string? Tail, ClaudeLogin? Login, KeyChoice Choice)? config;
 
-    /// <summary>The config's login and key choice, read again only when the file changed (it's large and rewritten often).</summary>
+    /// <summary>The config's login and key choice, read again only when the file changed (it's large and rewritten often).
+    /// The file read happens outside <see cref="gate"/> (two callers racing just redo it); only the cache's own read and
+    /// write are guarded, so a reader on another thread can never see a torn (half-updated) tuple.</summary>
     private (ClaudeLogin? Login, KeyChoice Choice) Config(string? tail)
     {
         var stamp = File.Exists(ConfigPath) ? File.GetLastWriteTimeUtc(ConfigPath) : default;
-        if (config is { } c && c.Path == ConfigPath && c.Stamp == stamp && (tail is null || c.Tail == tail)) return (c.Login, tail is null ? KeyChoice.None : c.Choice);
+        lock (gate)
+        {
+            if (config is { } c && c.Path == ConfigPath && c.Stamp == stamp && (tail is null || c.Tail == tail))
+                return (c.Login, tail is null ? KeyChoice.None : c.Choice);
+        }
         var (login, choice) = ClaudeKeyChoice.Read(ConfigPath, tail);
-        if (tail is not null || config is null) config = (ConfigPath, stamp, tail, login, choice);
+        lock (gate)
+        {
+            if (tail is not null || config is null) config = (ConfigPath, stamp, tail, login, choice);
+        }
         return (login, choice);
     }
 }
