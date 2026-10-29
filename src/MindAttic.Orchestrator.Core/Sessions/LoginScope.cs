@@ -128,7 +128,7 @@ public static class LoginScope
                 : new LoginTab(null, Title(globalEmail ?? g, globalLook.Alias), $"{g}: the global login (~/.claude), this member's own seat", globalLook.TabColor)
             : onKey
                 ? new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet", globalLook.TabColor)
-                : new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet", globalLook.TabColor);
+                : new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet, this member's own seat", globalLook.TabColor);
         var live = snapshot.Accounts.Select(a => a.Email)
             .Concat(snapshot.Agents.Select(a => a.OwnLogin))
             .Concat(snapshot.Repos.SelectMany(r => r.Hosts).Select(h => h.OwnLogin))
