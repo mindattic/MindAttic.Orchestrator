@@ -882,9 +882,9 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'Unity.GridGame', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 16473);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 320835);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1957331);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 449375);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 569300);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5884768);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2891527);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3224878);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -3245,10 +3245,10 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 -- state
 INSERT INTO state (name, value) VALUES ('api-failovers', '[]');
 INSERT INTO state (name, value) VALUES ('audit', '{
-  "RanUtc": "2026-10-28T22:22:44.7771652Z",
-  "Took": "00:01:16.6012675",
-  "ReposScanned": 71,
-  "FilesScanned": 7976,
+  "RanUtc": "2026-10-29T22:24:00.539353Z",
+  "Took": "00:00:54.9437911",
+  "ReposScanned": 72,
+  "FilesScanned": 7984,
   "Drift": [
     {
       "File": "AGENTS.md",
@@ -3263,8 +3263,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "Unity.Incognito",
-      "Path": "D:\\Projects\\MindAttic\\Unity.Incognito\\AGENTS.md",
+      "Repo": "Unity.Rea.Incognito",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Incognito\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 41,
       "Total": 71,
@@ -3285,8 +3285,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "Unity.Overworld",
-      "Path": "D:\\Projects\\MindAttic\\Unity.Overworld\\AGENTS.md",
+      "Repo": "Unity.Rea.Overworld",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 41,
       "Total": 71,
@@ -3296,8 +3296,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "Unity.ProjectVania",
-      "Path": "D:\\Projects\\MindAttic\\Unity.ProjectVania\\AGENTS.md",
+      "Repo": "Unity.Rea.ProjectVania",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 41,
       "Total": 71,
@@ -3318,8 +3318,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "Unity.Hare",
-      "Path": "D:\\Projects\\MindAttic\\Unity.Hare\\AGENTS.md",
+      "Repo": "Unity.Rea.Hare",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Hare\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 41,
       "Total": 71,
@@ -3428,8 +3428,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "Unity.Chain",
-      "Path": "D:\\Projects\\MindAttic\\Unity.Chain\\AGENTS.md",
+      "Repo": "Unity.Rea.Chain",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 41,
       "Total": 71,
@@ -3439,8 +3439,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "Unity.QuickDuel",
-      "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\AGENTS.md",
+      "Repo": "Unity.Rea.QuickDuel",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 41,
       "Total": 71,
@@ -3461,8 +3461,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "Unity.Ricochet",
-      "Path": "D:\\Projects\\MindAttic\\Unity.Ricochet\\AGENTS.md",
+      "Repo": "Unity.Rea.Ricochet",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 41,
       "Total": 71,
@@ -3582,8 +3582,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "Unity.QuickDuel",
-      "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\CLAUDE.md",
+      "Repo": "Unity.Rea.QuickDuel",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 33,
       "Total": 46,
@@ -3659,8 +3659,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "Unity.Chain",
-      "Path": "D:\\Projects\\MindAttic\\Unity.Chain\\CLAUDE.md",
+      "Repo": "Unity.Rea.Chain",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 33,
       "Total": 46,
@@ -3714,8 +3714,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "Unity.Incognito",
-      "Path": "D:\\Projects\\MindAttic\\Unity.Incognito\\CLAUDE.md",
+      "Repo": "Unity.Rea.Incognito",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Incognito\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 33,
       "Total": 46,
@@ -3725,8 +3725,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "Unity.Overworld",
-      "Path": "D:\\Projects\\MindAttic\\Unity.Overworld\\CLAUDE.md",
+      "Repo": "Unity.Rea.Overworld",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 33,
       "Total": 46,
@@ -3736,8 +3736,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "Unity.ProjectVania",
-      "Path": "D:\\Projects\\MindAttic\\Unity.ProjectVania\\CLAUDE.md",
+      "Repo": "Unity.Rea.ProjectVania",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 33,
       "Total": 46,
@@ -3840,18 +3840,18 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.Overworld",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Overworld\\Assets\\Unity.Overworld\\Core\\Content\\Json.cs",
+          "Repo": "Unity.Rea.Overworld",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\Assets\\Unity.Rea.Overworld\\Core\\Content\\Json.cs",
           "Lines": 206
         },
         {
-          "Repo": "Unity.ProjectVania",
-          "Path": "D:\\Projects\\MindAttic\\Unity.ProjectVania\\Assets\\Unity.ProjectVania\\Core\\Settings\\Json.cs",
+          "Repo": "Unity.Rea.ProjectVania",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\Assets\\Unity.Rea.ProjectVania\\Core\\Settings\\Json.cs",
           "Lines": 206
         },
         {
-          "Repo": "Unity.Ricochet",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Ricochet\\Assets\\Ricochet\\Core\\Data\\Json.cs",
+          "Repo": "Unity.Rea.Ricochet",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\Assets\\Rea.Ricochet\\Core\\Data\\Json.cs",
           "Lines": 206
         }
       ],
@@ -4082,18 +4082,18 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.Chain",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Chain\\Assets\\Unity.Chain\\Core\\Settings\\Json.cs",
+          "Repo": "Unity.Rea.Chain",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\Assets\\Unity.Rea.Chain\\Core\\Settings\\Json.cs",
           "Lines": 269
         },
         {
-          "Repo": "Unity.Overworld",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Overworld\\Assets\\Unity.Overworld\\Core\\Content\\Json.cs",
+          "Repo": "Unity.Rea.Overworld",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\Assets\\Unity.Rea.Overworld\\Core\\Content\\Json.cs",
           "Lines": 206
         },
         {
-          "Repo": "Unity.QuickDuel",
-          "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\Assets\\Unity.QuickDuel\\Core\\Settings\\Json.cs",
+          "Repo": "Unity.Rea.QuickDuel",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\Assets\\Unity.Rea.QuickDuel\\Core\\Settings\\Json.cs",
           "Lines": 206
         }
       ],
@@ -4228,23 +4228,23 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.Chain",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Chain\\Assets\\Unity.Chain\\Core\\Settings\\ISettingsSource.cs",
+          "Repo": "Unity.Rea.Chain",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\Assets\\Unity.Rea.Chain\\Core\\Settings\\ISettingsSource.cs",
           "Lines": 34
         },
         {
-          "Repo": "Unity.ProjectVania",
-          "Path": "D:\\Projects\\MindAttic\\Unity.ProjectVania\\Assets\\Unity.ProjectVania\\Core\\Settings\\ISettingsSource.cs",
+          "Repo": "Unity.Rea.ProjectVania",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\Assets\\Unity.Rea.ProjectVania\\Core\\Settings\\ISettingsSource.cs",
           "Lines": 34
         },
         {
-          "Repo": "Unity.QuickDuel",
-          "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\Assets\\Unity.QuickDuel\\Core\\Settings\\ISettingsSource.cs",
+          "Repo": "Unity.Rea.QuickDuel",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\Assets\\Unity.Rea.QuickDuel\\Core\\Settings\\ISettingsSource.cs",
           "Lines": 34
         },
         {
-          "Repo": "Unity.Ricochet",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Ricochet\\Assets\\Ricochet\\Core\\Data\\ISettingsSource.cs",
+          "Repo": "Unity.Rea.Ricochet",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\Assets\\Rea.Ricochet\\Core\\Data\\ISettingsSource.cs",
           "Lines": 34
         }
       ],
@@ -4673,13 +4673,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.Hare",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Hare\\tools\\gml-json.ps1",
+          "Repo": "Unity.Rea.Hare",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Hare\\tools\\gml-json.ps1",
           "Lines": 27
         },
         {
-          "Repo": "Unity.Ricochet",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Ricochet\\Tools\\gml-json.ps1",
+          "Repo": "Unity.Rea.Ricochet",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\Tools\\gml-json.ps1",
           "Lines": 27
         }
       ],
@@ -4998,8 +4998,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 37
         },
         {
-          "Repo": "Unity.QuickDuel",
-          "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\Assets\\Unity.QuickDuel\\Tests\\PlayMode\\SessionAudioTests.cs",
+          "Repo": "Unity.Rea.QuickDuel",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\Assets\\Unity.Rea.QuickDuel\\Tests\\PlayMode\\SessionAudioTests.cs",
           "Lines": 43
         }
       ],
@@ -5012,13 +5012,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.Chain",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Chain\\Assets\\Unity.Chain\\Editor\\RenderPipelineBuilder.cs",
+          "Repo": "Unity.Rea.Chain",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\Assets\\Unity.Rea.Chain\\Editor\\RenderPipelineBuilder.cs",
           "Lines": 65
         },
         {
-          "Repo": "Unity.ProjectVania",
-          "Path": "D:\\Projects\\MindAttic\\Unity.ProjectVania\\Assets\\Unity.ProjectVania\\Editor\\RenderPipelineBuilder.cs",
+          "Repo": "Unity.Rea.ProjectVania",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\Assets\\Unity.Rea.ProjectVania\\Editor\\RenderPipelineBuilder.cs",
           "Lines": 40
         }
       ],
@@ -5041,8 +5041,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 33
         },
         {
-          "Repo": "Unity.Hare",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Hare\\tools\\unity.ps1",
+          "Repo": "Unity.Rea.Hare",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Hare\\tools\\unity.ps1",
           "Lines": 32
         },
         {
@@ -5122,8 +5122,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 25
         },
         {
-          "Repo": "Unity.Ricochet",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Ricochet\\Assets\\Ricochet\\Tests\\EditMode\\GameSetupTests.cs",
+          "Repo": "Unity.Rea.Ricochet",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\Assets\\Rea.Ricochet\\Tests\\EditMode\\GameSetupTests.cs",
           "Lines": 26
         }
       ],
@@ -5570,8 +5570,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "1c8fcb532df436d01de978464a4004348b2bf1b6",
-    "Green": "1c8fcb532df436d01de978464a4004348b2bf1b6"
+    "Tested": "cd21ab775e6f907d1e6951902bafa449efcf3866",
+    "Green": "cd21ab775e6f907d1e6951902bafa449efcf3866"
   },
   "MindAttic.Psst": {
     "Tested": "c737769fa2041f37d6292878e6987921516c9d90",
@@ -5581,8 +5581,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "45cf0ace3405775d73ad3a849c895bf649957461",
-    "Green": "45cf0ace3405775d73ad3a849c895bf649957461"
+    "Tested": "fedccb2828687c8b843e40aa62ab588abf6fa698",
+    "Green": "fedccb2828687c8b843e40aa62ab588abf6fa698"
   },
   "MindAttic.Vault": {
     "Tested": "522e11b2ff08d6c2a11ff67fe97d040d6afa4713",
