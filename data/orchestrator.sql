@@ -371,6 +371,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T23:23:07Z', 0, '2026-10-30T04:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T23:27:22Z', 0, '2026-10-30T04:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T23:31:42Z', 0, '2026-10-30T04:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T23:35:54Z', 0, '2026-10-30T04:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T23:41:04Z', 0, '2026-10-30T04:00:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -5222,7 +5224,6 @@ INSERT INTO state (name, value) VALUES ('dashboard-repos', '{
 }');
 INSERT INTO state (name, value) VALUES ('limit-resumes', '{}');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
-  "2a2ff560-06bf-4989-8ce4-23189afbaada@2026-10-21T23:40:00Z": "2026-10-21T23:40:00Z",
   "176d3352-9d94-465c-8b51-9651d77a43ed@2026-10-22T04:40:00Z": "2026-10-22T04:40:00Z",
   "2a2ff560-06bf-4989-8ce4-23189afbaada@2026-10-22T04:40:00Z": "2026-10-22T04:40:00Z",
   "56bfedfc-f1f6-4eaf-92cf-a93bd8fa5a5c@2026-10-22T04:40:00Z": "2026-10-22T04:40:00Z",
@@ -5523,8 +5524,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "4fec04d556db9206dad7bc46fd718fe61e18bc30",
-    "Green": "4fec04d556db9206dad7bc46fd718fe61e18bc30"
+    "Tested": "121cff2b5f796e80476c716ce91ae7e1ad6d7c54",
+    "Green": "121cff2b5f796e80476c716ce91ae7e1ad6d7c54"
   },
   "MindAttic.Psst": {
     "Tested": "c737769fa2041f37d6292878e6987921516c9d90",
