@@ -234,7 +234,7 @@ internal sealed class GatewayTokenCommand : Command<GatewayTokenCommand.Settings
         var gateway = Ctx.Store().LoadSettings().Gateway;
         var now = DateTime.UtcNow;
         var scope = settings.Scope?.ToLowerInvariant()
-            ?? (TermGrants.List(GatewayAcl.Db(), now, TermGrants.OwnerOf(gateway)).Any(g => g.Viewer == email && g.Level == TermGrants.Interact)
+            ?? (TermGrants.List(GatewayAcl.Db(), now, TermGrants.OwnerOf(gateway)).Any(g => string.Equals(g.Viewer, email, StringComparison.OrdinalIgnoreCase) && g.Level == TermGrants.Interact)
                 ? TermGrants.Interact : TermGrants.Watch);
         var key = TermGatewayTokens.LoadOrCreateKey(TermGateway.DefaultDirectory, TermGatewayTokens.SigningKeyFile);
         var lifetime = settings.Minutes is { } minutes ? TimeSpan.FromMinutes(minutes) : TimeSpan.FromDays(TermGatewayTokens.MemberDays);
