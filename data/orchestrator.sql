@@ -1,7 +1,7 @@
 -- MindAttic.Orchestrator database dump (written with every change; the .db file is the store).
 
 -- accounts
-INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 65, 1793214000, 11, 1793743200, 1793209638, 1792686357.102392);
+INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1793302800, 11, 1793743200, 1793285445, 1792686357.102392);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', 'ryandebraal@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1792609200, 100, 1792764000, 1792591343, 1792591305.195613);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', 'shampoo1232@mindattic.com', 'MindAttic', 'Team · Max 5x', 51, 1792600200, 96, 1792702800, 1792589089, 1792464053.5616076);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', 'pdftransferjr@mindattic.com', 'MindAttic', 'Team · Max 5x', 81, 1792688400, 93, 1792929600, 1792685787, 1792670412.137807);
@@ -11,633 +11,10 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1793242969.5030136);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1793242988.7065628);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1792840279.0027995);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1793242988.7065628);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'owner', 'premium', 'active', 1792771885.882, 1793285265.35693);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T18:59:39Z', 9, '2026-10-21T23:40:00Z', 1002197);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:01:32Z', 10, '2026-10-21T23:40:00Z', 1109702);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:04:04Z', 11, '2026-10-21T23:40:00Z', 1208258);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:04:08Z', 11, '2026-10-21T23:40:00Z', 1211201);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:06:04Z', 12, '2026-10-21T23:40:00Z', 1296545);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:08:40Z', 13, '2026-10-21T23:40:00Z', 1402706);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:09:39Z', 14, '2026-10-21T23:40:00Z', 1477456);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:10:40Z', 15, '2026-10-21T23:40:00Z', 1642596);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:12:40Z', 16, '2026-10-21T23:40:00Z', 1720581);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:12:41Z', 17, '2026-10-21T23:40:00Z', 1720581);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:14:04Z', 17, '2026-10-21T23:40:00Z', 1749621);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:16:19Z', 18, '2026-10-21T23:40:00Z', 1823010);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:19:39Z', 19, '2026-10-21T23:40:00Z', 1889498);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:20:58Z', 20, '2026-10-21T23:40:00Z', 2062962);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:22:34Z', 21, '2026-10-21T23:40:00Z', 2184180);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:24:40Z', 22, '2026-10-21T23:40:00Z', 2262659);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:24:51Z', 22, '2026-10-21T23:40:00Z', 2269994);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:27:04Z', 23, '2026-10-21T23:40:00Z', 2315344);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:31:10Z', 24, '2026-10-21T23:40:00Z', 2437065);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:33:24Z', 25, '2026-10-21T23:40:00Z', 2590876);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:34:40Z', 26, '2026-10-21T23:40:00Z', 2688548);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:37:40Z', 27, '2026-10-21T23:40:00Z', 2855156);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:39:40Z', 28, '2026-10-21T23:40:00Z', 2998151);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:43:40Z', 29, '2026-10-21T23:40:00Z', 3109511);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:43:47Z', 29, '2026-10-21T23:40:00Z', 3114014);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:45:40Z', 30, '2026-10-21T23:40:00Z', 3347720);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:48:04Z', 31, '2026-10-21T23:40:00Z', 3425481);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:50:21Z', 32, '2026-10-21T23:40:00Z', 3491291);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:53:40Z', 33, '2026-10-21T23:40:00Z', 3550347);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:55:44Z', 34, '2026-10-21T23:40:00Z', 3681795);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T19:59:57Z', 35, '2026-10-21T23:40:00Z', 3740363);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:01:24Z', 35, '2026-10-21T23:40:00Z', 3975940);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:05:40Z', 36, '2026-10-21T23:40:00Z', 4033442);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:06:40Z', 36, '2026-10-21T23:40:00Z', 4041843);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:10:40Z', 37, '2026-10-21T23:40:00Z', 4186011);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:13:12Z', 38, '2026-10-21T23:40:00Z', 4300693);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:16:25Z', 39, '2026-10-21T23:40:00Z', 4446918);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:19:04Z', 40, '2026-10-21T23:40:00Z', 4603258);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:21:40Z', 41, '2026-10-21T23:40:00Z', 4790531);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:21:43Z', 42, '2026-10-21T23:40:00Z', 4795146);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:24:06Z', 42, '2026-10-21T23:40:00Z', 4866173);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:28:01Z', 43, '2026-10-21T23:40:00Z', 4944266);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:30:06Z', 44, '2026-10-21T23:40:00Z', 5174925);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:32:06Z', 45, '2026-10-21T23:40:00Z', 5304113);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:33:06Z', 46, '2026-10-21T23:40:00Z', 5474990);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:34:04Z', 47, '2026-10-21T23:40:00Z', 5842336);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:34:10Z', 48, '2026-10-21T23:40:00Z', 5852997);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:35:04Z', 48, '2026-10-21T23:40:00Z', 5890093);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:36:04Z', 49, '2026-10-21T23:40:00Z', 5980453);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:38:07Z', 50, '2026-10-21T23:40:00Z', 6055182);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:41:38Z', 51, '2026-10-21T23:40:00Z', 6147319);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:44:15Z', 52, '2026-10-21T23:40:00Z', 6302687);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:46:07Z', 53, '2026-10-21T23:40:00Z', 6432258);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:46:21Z', 54, '2026-10-21T23:40:00Z', 6755061);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:47:04Z', 54, '2026-10-21T23:40:00Z', 6761171);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:49:06Z', 55, '2026-10-21T23:40:00Z', 6814469);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:53:15Z', 56, '2026-10-21T23:40:00Z', 6856818);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:54:06Z', 56, '2026-10-21T23:40:00Z', 6867526);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:57:02Z', 57, '2026-10-21T23:40:00Z', 6925708);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T20:58:40Z', 58, '2026-10-21T23:40:00Z', 7097754);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:00:40Z', 59, '2026-10-21T23:40:00Z', 7164171);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:00:42Z', 59, '2026-10-21T23:40:00Z', 7164513);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:03:06Z', 60, '2026-10-21T23:40:00Z', 7213111);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:05:40Z', 61, '2026-10-21T23:40:00Z', 7278348);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:08:06Z', 62, '2026-10-21T23:40:00Z', 7315909);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:11:06Z', 63, '2026-10-21T23:40:00Z', 7371325);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:15:24Z', 64, '2026-10-21T23:40:00Z', 7451090);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:19:32Z', 64, '2026-10-21T23:40:00Z', 7494347);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:23:43Z', 65, '2026-10-21T23:40:00Z', 7559526);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:25:06Z', 65, '2026-10-21T23:40:00Z', 7584098);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:29:08Z', 66, '2026-10-21T23:40:00Z', 7639238);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:30:06Z', 66, '2026-10-21T23:40:00Z', 7867168);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:31:06Z', 67, '2026-10-21T23:40:00Z', 7924451);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:34:06Z', 68, '2026-10-21T23:40:00Z', 8026926);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:37:06Z', 69, '2026-10-21T23:40:00Z', 8146041);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:40:06Z', 70, '2026-10-21T23:40:00Z', 8203753);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:43:06Z', 71, '2026-10-21T23:40:00Z', 8334998);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:43:09Z', 72, '2026-10-21T23:40:00Z', 8336269);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:45:06Z', 72, '2026-10-21T23:40:00Z', 8400418);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:47:06Z', 73, '2026-10-21T23:40:00Z', 8456052);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:50:08Z', 74, '2026-10-21T23:40:00Z', 8530185);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:54:06Z', 75, '2026-10-21T23:40:00Z', 8632705);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:57:06Z', 76, '2026-10-21T23:40:00Z', 8675787);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:00:06Z', 77, '2026-10-21T23:40:00Z', 8765251);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:00:16Z', 77, '2026-10-21T23:40:00Z', 8766695);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:04:21Z', 78, '2026-10-21T23:40:00Z', 8784015);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:11:40Z', 78, '2026-10-21T23:40:00Z', 8785551);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:14:06Z', 78, '2026-10-21T23:40:00Z', 8894581);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:18:17Z', 79, '2026-10-21T23:40:00Z', 8966934);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:20:06Z', 79, '2026-10-21T23:40:00Z', 8997124);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:24:13Z', 80, '2026-10-21T23:40:00Z', 9058677);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:28:06Z', 80, '2026-10-21T23:40:00Z', 9123169);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:32:07Z', 81, '2026-10-21T23:40:00Z', 9168424);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:34:06Z', 81, '2026-10-21T23:40:00Z', 9201477);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:38:18Z', 82, '2026-10-21T23:40:00Z', 9238001);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:41:06Z', 82, '2026-10-21T23:40:00Z', 9311017);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:45:06Z', 83, '2026-10-21T23:40:00Z', 9371820);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:45:07Z', 83, '2026-10-21T23:40:00Z', 9371820);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:49:06Z', 84, '2026-10-21T23:40:00Z', 9433584);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:53:14Z', 85, '2026-10-21T23:40:00Z', 9495793);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:54:06Z', 85, '2026-10-21T23:40:00Z', 9509661);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T22:58:18Z', 86, '2026-10-21T23:40:00Z', 9534662);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:32:59Z', 86, '2026-10-21T23:40:00Z', 9537020);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:33:20Z', 86, '2026-10-21T23:40:00Z', 9540650);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:37:24Z', 87, '2026-10-21T23:40:00Z', 9713944);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:41:10Z', 0, '2026-10-22T04:40:00Z', 435);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:41:51.2008585Z', 0, '2026-10-22T04:40:00Z', 1158);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:42:06Z', 0, '2026-10-22T04:40:00Z', 1158);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:42:43Z', 1, '2026-10-22T04:40:00Z', 292461);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:43:21Z', 2, '2026-10-22T04:40:00Z', 358606);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:44:06Z', 2, '2026-10-22T04:40:00Z', 449818);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:44:54Z', 3, '2026-10-22T04:40:00Z', 477306);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:45:06Z', 3, '2026-10-22T04:40:00Z', 487980);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:46:06Z', 3, '2026-10-22T04:40:00Z', 508376);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:46:38Z', 3, '2026-10-22T04:40:00Z', 542005);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:46:43Z', 3, '2026-10-22T04:40:00Z', 547539);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:47:15Z', 4, '2026-10-22T04:40:00Z', 608342);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:47:45Z', 4, '2026-10-22T04:40:00Z', 721133);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:48:17Z', 5, '2026-10-22T04:40:00Z', 800037);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:48:55Z', 5, '2026-10-22T04:40:00Z', 998333);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:49:00Z', 6, '2026-10-22T04:40:00Z', 1285971);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:49:35Z', 7, '2026-10-22T04:40:00Z', 1430921);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:50:00Z', 8, '2026-10-22T04:40:00Z', 1588769);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:50:55Z', 9, '2026-10-22T04:40:00Z', 1719762);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:50:58Z', 9, '2026-10-22T04:40:00Z', 1720103);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:52:06Z', 10, '2026-10-22T04:40:00Z', 1829443);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:53:31Z', 11, '2026-10-22T04:40:00Z', 1913966);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:54:51Z', 12, '2026-10-22T04:40:00Z', 1995511);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:56:07Z', 13, '2026-10-22T04:40:00Z', 2111498);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:58:07Z', 14, '2026-10-22T04:40:00Z', 2207590);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:59:31Z', 15, '2026-10-22T04:40:00Z', 2271708);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T23:59:38Z', 15, '2026-10-22T04:40:00Z', 2279510);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:00:06Z', 16, '2026-10-22T04:40:00Z', 2398228);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:01:04Z', 17, '2026-10-22T04:40:00Z', 2509755);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:02:35Z', 18, '2026-10-22T04:40:00Z', 2620909);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:04:35Z', 19, '2026-10-22T04:40:00Z', 2693493);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:06:06Z', 20, '2026-10-22T04:40:00Z', 2923223);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:07:04Z', 21, '2026-10-22T04:40:00Z', 2967014);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:07:11Z', 21, '2026-10-22T04:40:00Z', 2972383);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:10:03Z', 22, '2026-10-22T04:40:00Z', 3131767);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:11:06Z', 23, '2026-10-22T04:40:00Z', 3323053);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:13:06Z', 24, '2026-10-22T04:40:00Z', 3378613);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:13:35Z', 25, '2026-10-22T04:40:00Z', 3574613);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:15:06Z', 26, '2026-10-22T04:40:00Z', 3617829);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:17:06Z', 27, '2026-10-22T04:40:00Z', 3668728);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:17:15Z', 27, '2026-10-22T04:40:00Z', 3670626);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:19:06Z', 28, '2026-10-22T04:40:00Z', 3856281);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:20:48Z', 29, '2026-10-22T04:40:00Z', 3972641);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:22:06Z', 30, '2026-10-22T04:40:00Z', 4235331);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:23:43Z', 31, '2026-10-22T04:40:00Z', 4291980);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:26:42Z', 32, '2026-10-22T04:40:00Z', 4352921);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:28:29Z', 33, '2026-10-22T04:40:00Z', 4392672);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:28:37Z', 33, '2026-10-22T04:40:00Z', 4394532);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:32:36Z', 34, '2026-10-22T04:40:00Z', 4614797);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:33:36Z', 35, '2026-10-22T04:40:00Z', 4899720);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:34:36Z', 36, '2026-10-22T04:40:00Z', 5125977);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:36:36Z', 37, '2026-10-22T04:40:00Z', 5285125);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:39:05Z', 38, '2026-10-22T04:40:00Z', 5422427);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:41:04Z', 39, '2026-10-22T04:40:00Z', 5724505);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:41:16Z', 39, '2026-10-22T04:40:00Z', 5724505);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:44:35Z', 40, '2026-10-22T04:40:00Z', 5832557);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:48:44Z', 41, '2026-10-22T04:40:00Z', 5944434);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:49:04Z', 41, '2026-10-22T04:40:00Z', 5944434);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:53:21Z', 42, '2026-10-22T04:40:00Z', 6034997);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:54:04Z', 42, '2026-10-22T04:40:00Z', 6042107);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:58:13Z', 43, '2026-10-22T04:40:00Z', 6148305);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T00:59:04Z', 43, '2026-10-22T04:40:00Z', 6171641);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:03:10Z', 44, '2026-10-22T04:40:00Z', 6304789);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:04:04Z', 44, '2026-10-22T04:40:00Z', 6356893);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:08:08Z', 45, '2026-10-22T04:40:00Z', 6485516);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:09:04Z', 45, '2026-10-22T04:40:00Z', 6514675);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:12:33Z', 46, '2026-10-22T04:40:00Z', 6712355);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:14:04Z', 47, '2026-10-22T04:40:00Z', 7015164);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:16:04Z', 48, '2026-10-22T04:40:00Z', 7230373);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:19:04Z', 49, '2026-10-22T04:40:00Z', 7424886);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:23:04Z', 50, '2026-10-22T04:40:00Z', 7561859);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:26:04Z', 51, '2026-10-22T04:40:00Z', 7795014);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:26:14Z', 51, '2026-10-22T04:40:00Z', 7796409);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:28:04Z', 52, '2026-10-22T04:40:00Z', 7908366);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:32:17Z', 53, '2026-10-22T04:40:00Z', 8007337);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:33:04Z', 53, '2026-10-22T04:40:00Z', 8045678);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:35:26Z', 54, '2026-10-22T04:40:00Z', 8350538);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:39:19Z', 55, '2026-10-22T04:40:00Z', 8759869);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:41:44Z', 56, '2026-10-22T04:40:00Z', 9064917);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:44:50Z', 57, '2026-10-22T04:40:00Z', 9071521);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:49:04Z', 58, '2026-10-22T04:40:00Z', 9150855);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:51:51Z', 58, '2026-10-22T04:40:00Z', 9199327);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:54:41Z', 59, '2026-10-22T04:40:00Z', 9317871);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:58:55Z', 60, '2026-10-22T04:40:00Z', 9413384);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T01:59:54Z', 60, '2026-10-22T04:40:00Z', 9511556);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:03:04Z', 61, '2026-10-22T04:40:00Z', 9666179);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:06:39Z', 62, '2026-10-22T04:40:00Z', 9736549);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:10:36Z', 63, '2026-10-22T04:40:00Z', 9943500);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:12:36Z', 64, '2026-10-22T04:40:00Z', 10178761);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:12:43Z', 64, '2026-10-22T04:40:00Z', 10182617);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:14:04Z', 65, '2026-10-22T04:40:00Z', 10341849);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:16:04Z', 66, '2026-10-22T04:40:00Z', 10463212);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:20:08Z', 67, '2026-10-22T04:40:00Z', 10534044);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:22:07Z', 67, '2026-10-22T04:40:00Z', 10554864);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:26:08Z', 68, '2026-10-22T04:40:00Z', 10625974);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:27:36Z', 68, '2026-10-22T04:40:00Z', 10662075);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:30:04Z', 69, '2026-10-22T04:40:00Z', 10802588);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:34:08Z', 70, '2026-10-22T04:40:00Z', 10874887);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:35:07Z', 70, '2026-10-22T04:40:00Z', 10895797);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:39:15Z', 71, '2026-10-22T04:40:00Z', 11011493);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:39:42Z', 71, '2026-10-22T04:40:00Z', 11066615);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:41:39Z', 72, '2026-10-22T04:40:00Z', 11209444);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:43:53Z', 73, '2026-10-22T04:40:00Z', 11304353);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:46:43Z', 74, '2026-10-22T04:40:00Z', 11390609);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:49:29Z', 75, '2026-10-22T04:40:00Z', 11554259);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:51:29Z', 76, '2026-10-22T04:40:00Z', 11645049);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:51:31Z', 76, '2026-10-22T04:40:00Z', 11645049);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:55:04Z', 77, '2026-10-22T04:40:00Z', 11709363);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T02:57:36Z', 78, '2026-10-22T04:40:00Z', 11803980);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:00:53Z', 79, '2026-10-22T04:40:00Z', 11875800);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:03:44Z', 80, '2026-10-22T04:40:00Z', 11955003);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:07:10Z', 81, '2026-10-22T04:40:00Z', 12019970);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:11:07Z', 82, '2026-10-22T04:40:00Z', 12068547);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:11:23Z', 82, '2026-10-22T04:40:00Z', 12071778);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:15:07Z', 83, '2026-10-22T04:40:00Z', 12156365);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:18:50Z', 84, '2026-10-22T04:40:00Z', 12265619);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:23:15Z', 85, '2026-10-22T04:40:00Z', 12368204);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:27:21Z', 86, '2026-10-22T04:40:00Z', 12460480);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:29:03Z', 86, '2026-10-22T04:40:00Z', 12477655);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:33:07Z', 87, '2026-10-22T04:40:00Z', 12555383);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:34:29Z', 87, '2026-10-22T04:40:00Z', 12602133);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:38:46Z', 88, '2026-10-22T04:40:00Z', 12683034);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:42:49Z', 89, '2026-10-22T04:40:00Z', 12721685);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:45:11Z', 89, '2026-10-22T04:40:00Z', 12773425);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:49:07Z', 90, '2026-10-22T04:40:00Z', 12845458);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:53:23Z', 91, '2026-10-22T04:40:00Z', 12922407);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:54:25Z', 91, '2026-10-22T04:40:00Z', 12936816);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T03:58:31Z', 92, '2026-10-22T04:40:00Z', 12982408);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:00:20Z', 92, '2026-10-22T04:40:00Z', 12996639);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:02:05Z', 93, '2026-10-22T04:40:00Z', 13020296);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:06:22Z', 94, '2026-10-22T04:40:00Z', 13467346);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:07:15Z', 94, '2026-10-22T04:40:00Z', 13467346);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:15:42Z', 94, '2026-10-22T04:40:00Z', 13482843);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:19:53Z', 95, '2026-10-22T04:40:00Z', 13525557);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:22:29Z', 95, '2026-10-22T04:40:00Z', 13540571);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:26:34Z', 96, '2026-10-22T04:40:00Z', 13569333);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:31:02Z', 96, '2026-10-22T04:40:00Z', 13591390);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:35:14Z', 96, '2026-10-22T04:40:00Z', 13615372);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:39:16Z', 98, '2026-10-22T04:40:00Z', 14002227);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:41:17Z', 0, '2026-10-22T09:40:00Z', 1484);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:41:39Z', 2, '2026-10-22T09:40:00Z', 652869);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:41:42Z', 2, '2026-10-22T09:40:00Z', 652869);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:42:25Z', 2, '2026-10-22T09:40:00Z', 655180);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:42:32Z', 2, '2026-10-22T09:40:00Z', 673380);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:42:52Z', 3, '2026-10-22T09:40:00Z', 745153);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:46:45Z', 4, '2026-10-22T09:40:00Z', 928577);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:48:28Z', 5, '2026-10-22T09:40:00Z', 1141092);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:50:07Z', 6, '2026-10-22T09:40:00Z', 1338299);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:51:20Z', 7, '2026-10-22T09:40:00Z', 1488192);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:52:28Z', 8, '2026-10-22T09:40:00Z', 1660415);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:53:28Z', 9, '2026-10-22T09:40:00Z', 1843082);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:53:38Z', 9, '2026-10-22T09:40:00Z', 1875189);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:54:23Z', 10, '2026-10-22T09:40:00Z', 1988907);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:55:41Z', 11, '2026-10-22T09:40:00Z', 2122776);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:57:06Z', 12, '2026-10-22T09:40:00Z', 2260796);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:58:28Z', 13, '2026-10-22T09:40:00Z', 2391907);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T04:59:45Z', 14, '2026-10-22T09:40:00Z', 2522548);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:01:06Z', 15, '2026-10-22T09:40:00Z', 2648768);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:01:19Z', 15, '2026-10-22T09:40:00Z', 2692345);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:02:28Z', 16, '2026-10-22T09:40:00Z', 2802247);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:04:07Z', 17, '2026-10-22T09:40:00Z', 2950317);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:05:28Z', 18, '2026-10-22T09:40:00Z', 3073761);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:06:44Z', 19, '2026-10-22T09:40:00Z', 3185542);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:08:23Z', 20, '2026-10-22T09:40:00Z', 3324231);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:09:28Z', 21, '2026-10-22T09:40:00Z', 3387719);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:09:43Z', 21, '2026-10-22T09:40:00Z', 3404361);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:10:50Z', 22, '2026-10-22T09:40:00Z', 3506070);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:12:32Z', 23, '2026-10-22T09:40:00Z', 3616882);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:13:38Z', 24, '2026-10-22T09:40:00Z', 3815588);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:15:01Z', 25, '2026-10-22T09:40:00Z', 3894384);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:16:29Z', 26, '2026-10-22T09:40:00Z', 3977475);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:18:28Z', 27, '2026-10-22T09:40:00Z', 4089656);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:19:45Z', 28, '2026-10-22T09:40:00Z', 4144352);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:21:07Z', 29, '2026-10-22T09:40:00Z', 4258817);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:22:28Z', 30, '2026-10-22T09:40:00Z', 4360971);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:24:07Z', 31, '2026-10-22T09:40:00Z', 4551408);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:25:07Z', 32, '2026-10-22T09:40:00Z', 4598812);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:26:28Z', 33, '2026-10-22T09:40:00Z', 4680811);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:26:29Z', 33, '2026-10-22T09:40:00Z', 4683203);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:28:27Z', 34, '2026-10-22T09:40:00Z', 4776837);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:30:28Z', 35, '2026-10-22T09:40:00Z', 4858877);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:33:07Z', 36, '2026-10-22T09:40:00Z', 4949662);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:34:29Z', 37, '2026-10-22T09:40:00Z', 4994784);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:36:37Z', 38, '2026-10-22T09:40:00Z', 5257337);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:38:11Z', 39, '2026-10-22T09:40:00Z', 5318404);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:38:16Z', 39, '2026-10-22T09:40:00Z', 5325776);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:41:29Z', 40, '2026-10-22T09:40:00Z', 5393492);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:44:28Z', 41, '2026-10-22T09:40:00Z', 5463760);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:46:29Z', 42, '2026-10-22T09:40:00Z', 5547122);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:48:45Z', 43, '2026-10-22T09:40:00Z', 5611312);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:50:48Z', 44, '2026-10-22T09:40:00Z', 5667564);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:53:22Z', 45, '2026-10-22T09:40:00Z', 5737340);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:53:30Z', 45, '2026-10-22T09:40:00Z', 5737340);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:56:07Z', 46, '2026-10-22T09:40:00Z', 5816949);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:58:29Z', 47, '2026-10-22T09:40:00Z', 5860763);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T05:59:07Z', 48, '2026-10-22T09:40:00Z', 6049114);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:03:19Z', 49, '2026-10-22T09:40:00Z', 6090951);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:03:45Z', 49, '2026-10-22T09:40:00Z', 6097754);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:07:00Z', 50, '2026-10-22T09:40:00Z', 6140211);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:11:07Z', 51, '2026-10-22T09:40:00Z', 6222674);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:13:07Z', 52, '2026-10-22T09:40:00Z', 6530564);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:16:07Z', 53, '2026-10-22T09:40:00Z', 6551165);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:20:09Z', 54, '2026-10-22T09:40:00Z', 6801423);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:22:51Z', 55, '2026-10-22T09:40:00Z', 6807793);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:27:04Z', 56, '2026-10-22T09:40:00Z', 6825507);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:30:07Z', 56, '2026-10-22T09:40:00Z', 6842957);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:31:37Z', 57, '2026-10-22T09:40:00Z', 6901874);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:31:44Z', 57, '2026-10-22T09:40:00Z', 6909856);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:34:28Z', 58, '2026-10-22T09:40:00Z', 6952343);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:37:55Z', 59, '2026-10-22T09:40:00Z', 6998720);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:41:07Z', 60, '2026-10-22T09:40:00Z', 7033926);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:43:35Z', 61, '2026-10-22T09:40:00Z', 7117099);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:45:45Z', 62, '2026-10-22T09:40:00Z', 7234164);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:49:28Z', 63, '2026-10-22T09:40:00Z', 7406763);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:49:33Z', 63, '2026-10-22T09:40:00Z', 7406763);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:53:49Z', 64, '2026-10-22T09:40:00Z', 7527871);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:54:07Z', 64, '2026-10-22T09:40:00Z', 7537552);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:58:26Z', 65, '2026-10-22T09:40:00Z', 7646014);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T06:59:45Z', 65, '2026-10-22T09:40:00Z', 7693355);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:04:01Z', 66, '2026-10-22T09:40:00Z', 7810282);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:05:45Z', 66, '2026-10-22T09:40:00Z', 7870386);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:10:03Z', 67, '2026-10-22T09:40:00Z', 7964969);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:12:23Z', 67, '2026-10-22T09:40:00Z', 7984678);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:12:45Z', 68, '2026-10-22T09:40:00Z', 8015672);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:16:57Z', 69, '2026-10-22T09:40:00Z', 8437158);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:20:28Z', 69, '2026-10-22T09:40:00Z', 8483741);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:24:30Z', 70, '2026-10-22T09:40:00Z', 8564680);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:25:28Z', 70, '2026-10-22T09:40:00Z', 8620282);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:29:35Z', 71, '2026-10-22T09:40:00Z', 8718559);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:32:28Z', 71, '2026-10-22T09:40:00Z', 8766347);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:36:38Z', 72, '2026-10-22T09:40:00Z', 8879373);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:37:36Z', 72, '2026-10-22T09:40:00Z', 8922949);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:41:44Z', 73, '2026-10-22T09:40:00Z', 9028062);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:42:36Z', 73, '2026-10-22T09:40:00Z', 9028062);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:46:07Z', 74, '2026-10-22T09:40:00Z', 9157198);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:50:42Z', 75, '2026-10-22T09:40:00Z', 9273115);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:54:51Z', 76, '2026-10-22T09:40:00Z', 9353605);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:56:42Z', 76, '2026-10-22T09:40:00Z', 9430986);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T07:59:27Z', 77, '2026-10-22T09:40:00Z', 9507233);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:00:00Z', 78, '2026-10-22T09:40:00Z', 9535855);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:04:11Z', 79, '2026-10-22T09:40:00Z', 9842221);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:08:17Z', 79, '2026-10-22T09:40:00Z', 9876865);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:09:42Z', 79, '2026-10-22T09:40:00Z', 9908081);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:13:42Z', 80, '2026-10-22T09:40:00Z', 10015883);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:17:46Z', 81, '2026-10-22T09:40:00Z', 10094645);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:19:29Z', 81, '2026-10-22T09:40:00Z', 10111611);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:23:31Z', 82, '2026-10-22T09:40:00Z', 10179472);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:24:29Z', 82, '2026-10-22T09:40:00Z', 10214152);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:27:29Z', 83, '2026-10-22T09:40:00Z', 10289673);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:31:36Z', 84, '2026-10-22T09:40:00Z', 10368932);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:32:29Z', 84, '2026-10-22T09:40:00Z', 10396392);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:34:39Z', 85, '2026-10-22T09:40:00Z', 10472617);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:38:39Z', 86, '2026-10-22T09:40:00Z', 10728918);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:40:39Z', 86, '2026-10-22T09:40:00Z', 10842101);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:44:44Z', 87, '2026-10-22T09:40:00Z', 10870193);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:47:45Z', 87, '2026-10-22T09:40:00Z', 10897051);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:52:02Z', 88, '2026-10-22T09:40:00Z', 10954608);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:52:39Z', 88, '2026-10-22T09:40:00Z', 10958194);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T08:56:28Z', 89, '2026-10-22T09:40:00Z', 11021165);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:00:33Z', 89, '2026-10-22T09:40:00Z', 11044168);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:02:29Z', 90, '2026-10-22T09:40:00Z', 11183361);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:06:44Z', 90, '2026-10-22T09:40:00Z', 11206592);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:10:51Z', 91, '2026-10-22T09:40:00Z', 11216117);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:13:29Z', 91, '2026-10-22T09:40:00Z', 11252097);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:17:40Z', 92, '2026-10-22T09:40:00Z', 11404243);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:18:39Z', 92, '2026-10-22T09:40:00Z', 11411544);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:22:29Z', 93, '2026-10-22T09:40:00Z', 11659524);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:22:30Z', 94, '2026-10-22T09:40:00Z', 11659962);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:26:41Z', 94, '2026-10-22T09:40:00Z', 11670576);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:28:29Z', 94, '2026-10-22T09:40:00Z', 11863641);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:32:34Z', 95, '2026-10-22T09:40:00Z', 11874521);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:34:39Z', 96, '2026-10-22T09:40:00Z', 12282615);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:41:19Z', 0, '2026-10-22T14:40:00Z', 0);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:41:41Z', 0, '2026-10-22T14:40:00Z', 8298);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:42:17Z', 0, '2026-10-22T14:40:00Z', 49170);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:42:42Z', 0, '2026-10-22T14:40:00Z', 91214);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:43:28Z', 0, '2026-10-22T14:40:00Z', 285803);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:43:42Z', 0, '2026-10-22T14:40:00Z', 296132);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:44:15Z', 1, '2026-10-22T14:40:00Z', 343142);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:44:32Z', 2, '2026-10-22T14:40:00Z', 355012);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:44:41Z', 2, '2026-10-22T14:40:00Z', 398628);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:45:07Z', 2, '2026-10-22T14:40:00Z', 410795);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:45:42Z', 2, '2026-10-22T14:40:00Z', 435560);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:46:07Z', 2, '2026-10-22T14:40:00Z', 453431);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:46:42Z', 2, '2026-10-22T14:40:00Z', 468855);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:47:42Z', 2, '2026-10-22T14:40:00Z', 500993);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:48:55Z', 3, '2026-10-22T14:40:00Z', 518669);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:49:06Z', 3, '2026-10-22T14:40:00Z', 522442);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:49:11Z', 3, '2026-10-22T14:40:00Z', 525860);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:49:42Z', 3, '2026-10-22T14:40:00Z', 540703);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:50:11Z', 3, '2026-10-22T14:40:00Z', 736537);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:50:42Z', 4, '2026-10-22T14:40:00Z', 754032);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:51:14Z', 4, '2026-10-22T14:40:00Z', 764614);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:51:42Z', 4, '2026-10-22T14:40:00Z', 775619);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:52:07Z', 4, '2026-10-22T14:40:00Z', 778540);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:52:42Z', 4, '2026-10-22T14:40:00Z', 788691);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:53:13Z', 6, '2026-10-22T14:40:00Z', 1387126);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:53:42Z', 6, '2026-10-22T14:40:00Z', 1391257);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:54:42Z', 6, '2026-10-22T14:40:00Z', 1402669);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:55:14.8398283Z', 7, '2026-10-22T14:40:00Z', 1410872);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:55:14Z', 7, '2026-10-22T14:40:00Z', 1410872);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:58:07Z', 7, '2026-10-22T14:40:00Z', 1434139);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T09:59:26.8355129Z', 7, '2026-10-22T14:40:00Z', 1455338);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:02:29Z', 8, '2026-10-22T14:40:00Z', 1566558);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:03:50Z', 9, '2026-10-22T14:40:00Z', 1743342);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:04:17Z', 10, '2026-10-22T14:40:00Z', 1974138);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:04:42Z', 11, '2026-10-22T14:40:00Z', 2203338);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:05:08Z', 12, '2026-10-22T14:40:00Z', 2356601);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:05:42Z', 13, '2026-10-22T14:40:00Z', 2511198);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:06:30Z', 14, '2026-10-22T14:40:00Z', 2710002);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:06:42Z', 14, '2026-10-22T14:40:00Z', 2728670);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:07:08Z', 15, '2026-10-22T14:40:00Z', 2778462);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:07:42Z', 15, '2026-10-22T14:40:00Z', 2852403);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:08:42Z', 17, '2026-10-22T14:40:00Z', 2956236);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:08:58.6113281Z', 17, '2026-10-22T14:40:00Z', 3012651);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:09:30Z', 17, '2026-10-22T14:40:00Z', 3036385);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:09:40Z', 17, '2026-10-22T14:40:00Z', 3044896);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:10:07Z', 18, '2026-10-22T14:40:00Z', 3083005);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:10:42Z', 18, '2026-10-22T14:40:00Z', 3109694);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:11:13Z', 19, '2026-10-22T14:40:00Z', 3150392);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:11:42Z', 19, '2026-10-22T14:40:00Z', 3190013);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:12:45Z', 20, '2026-10-22T14:40:00Z', 3232115);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:13:30Z', 20, '2026-10-22T14:40:00Z', 3256023);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:13:42Z', 20, '2026-10-22T14:40:00Z', 3262797);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:14:30Z', 20, '2026-10-22T14:40:00Z', 3281511);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:14:46Z', 21, '2026-10-22T14:40:00Z', 3306435);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:15:30Z', 21, '2026-10-22T14:40:00Z', 3336396);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:15:42Z', 21, '2026-10-22T14:40:00Z', 3344837);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:16:05Z', 21, '2026-10-22T14:40:00Z', 3357584);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:16:17Z', 22, '2026-10-22T14:40:00Z', 3373140);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:16:27.6811938Z', 23, '2026-10-22T14:40:00Z', 3505280);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:17:21Z', 23, '2026-10-22T14:40:00Z', 3621263);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:17:42Z', 23, '2026-10-22T14:40:00Z', 3648255);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:18:42Z', 24, '2026-10-22T14:40:00Z', 3771700);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:20:08Z', 25, '2026-10-22T14:40:00Z', 3921746);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:20:42Z', 26, '2026-10-22T14:40:00Z', 3980234);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:21:08Z', 26, '2026-10-22T14:40:00Z', 3995385);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:21:42Z', 26, '2026-10-22T14:40:00Z', 4011706);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:22:45Z', 27, '2026-10-22T14:40:00Z', 4055232);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:23:42Z', 27, '2026-10-22T14:40:00Z', 4077999);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:24:05Z', 27, '2026-10-22T14:40:00Z', 4081989);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:26:08Z', 28, '2026-10-22T14:40:00Z', 4124277);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:26:10.2158713Z', 29, '2026-10-22T14:40:00Z', 4243584);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:26:40Z', 29, '2026-10-22T14:40:00Z', 4251852);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:27:42Z', 30, '2026-10-22T14:40:00Z', 4503852);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:28:30Z', 30, '2026-10-22T14:40:00Z', 4525867);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:28:42Z', 30, '2026-10-22T14:40:00Z', 4530249);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:29:42Z', 30, '2026-10-22T14:40:00Z', 4565158);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:30:42Z', 31, '2026-10-22T14:40:00Z', 4737139);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:31:23Z', 32, '2026-10-22T14:40:00Z', 5040192);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:31:42Z', 32, '2026-10-22T14:40:00Z', 5042628);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:32:30Z', 32, '2026-10-22T14:40:00Z', 5056722);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:32:42Z', 33, '2026-10-22T14:40:00Z', 5057101);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:33:19Z', 33, '2026-10-22T14:40:00Z', 5067828);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:33:42Z', 33, '2026-10-22T14:40:00Z', 5077354);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:34:11Z', 33, '2026-10-22T14:40:00Z', 5090089);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:34:42Z', 33, '2026-10-22T14:40:00Z', 5095946);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:35:07Z', 33, '2026-10-22T14:40:00Z', 5108497);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:35:22Z', 33, '2026-10-22T14:40:00Z', 5111248);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:35:42Z', 33, '2026-10-22T14:40:00Z', 5119720);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:36:30Z', 34, '2026-10-22T14:40:00Z', 5127221);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:36:33.3713398Z', 34, '2026-10-22T14:40:00Z', 5127221);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:36:42Z', 34, '2026-10-22T14:40:00Z', 5130291);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:37:42Z', 34, '2026-10-22T14:40:00Z', 5137139);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:38:30Z', 34, '2026-10-22T14:40:00Z', 5145869);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:38:42Z', 34, '2026-10-22T14:40:00Z', 5146335);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:39:13Z', 34, '2026-10-22T14:40:00Z', 5162684);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:39:42Z', 34, '2026-10-22T14:40:00Z', 5164255);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:40:42Z', 35, '2026-10-22T14:40:00Z', 5177801);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:41:42Z', 35, '2026-10-22T14:40:00Z', 5477036);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:42:42Z', 36, '2026-10-22T14:40:00Z', 5493616);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:43:42Z', 36, '2026-10-22T14:40:00Z', 5507028);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:44:42Z', 36, '2026-10-22T14:40:00Z', 5522257);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:45:45Z', 37, '2026-10-22T14:40:00Z', 5536160);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:46:07Z', 37, '2026-10-22T14:40:00Z', 5538201);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:46:45Z', 37, '2026-10-22T14:40:00Z', 5547895);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:47:45Z', 37, '2026-10-22T14:40:00Z', 5575590);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:48:45Z', 37, '2026-10-22T14:40:00Z', 5607383);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:49:08Z', 38, '2026-10-22T14:40:00Z', 5617720);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:49:45Z', 38, '2026-10-22T14:40:00Z', 5624645);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:50:14Z', 38, '2026-10-22T14:40:00Z', 5629651);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:50:45Z', 38, '2026-10-22T14:40:00Z', 5630568);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:51:41Z', 38, '2026-10-22T14:40:00Z', 5632663);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:52:07Z', 38, '2026-10-22T14:40:00Z', 5753449);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:52:39Z', 39, '2026-10-22T14:40:00Z', 5813568);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:52:42Z', 39, '2026-10-22T14:40:00Z', 5846017);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:53:42Z', 39, '2026-10-22T14:40:00Z', 5891977);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:54:42Z', 40, '2026-10-22T14:40:00Z', 5916573);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:54:45.6046836Z', 40, '2026-10-22T14:40:00Z', 5919237);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:54:45Z', 40, '2026-10-22T14:40:00Z', 5919237);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:55:42Z', 40, '2026-10-22T14:40:00Z', 5956138);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:56:42Z', 41, '2026-10-22T14:40:00Z', 6280167);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:57:42Z', 41, '2026-10-22T14:40:00Z', 6303550);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:58:42Z', 42, '2026-10-22T14:40:00Z', 6323057);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T10:59:42Z', 42, '2026-10-22T14:40:00Z', 6340003);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:00:42Z', 42, '2026-10-22T14:40:00Z', 6340545);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:01:42Z', 42, '2026-10-22T14:40:00Z', 6351415);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:02:42Z', 42, '2026-10-22T14:40:00Z', 6360937);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:03:42Z', 42, '2026-10-22T14:40:00Z', 6369033);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:04:42Z', 42, '2026-10-22T14:40:00Z', 6384192);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:05:16Z', 42, '2026-10-22T14:40:00Z', 6547729);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:05:42Z', 43, '2026-10-22T14:40:00Z', 6549248);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:06:41Z', 43, '2026-10-22T14:40:00Z', 6550005);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:07:45Z', 44, '2026-10-22T14:40:00Z', 6980330);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:08:07Z', 44, '2026-10-22T14:40:00Z', 7009085);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:08:45Z', 44, '2026-10-22T14:40:00Z', 7056458);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:09:07Z', 44, '2026-10-22T14:40:00Z', 7087139);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:09:45Z', 45, '2026-10-22T14:40:00Z', 7162442);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:10:45Z', 45, '2026-10-22T14:40:00Z', 7222700);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:11:45Z', 46, '2026-10-22T14:40:00Z', 7420115);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:11:47.4643468Z', 47, '2026-10-22T14:40:00Z', 7420115);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:14:45Z', 47, '2026-10-22T14:40:00Z', 7457145);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:15:45Z', 47, '2026-10-22T14:40:00Z', 7470882);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:16:07.6079064Z', 47, '2026-10-22T14:40:00Z', 7472267);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:16:45Z', 47, '2026-10-22T14:40:00Z', 7479940);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:17:07Z', 47, '2026-10-22T14:40:00Z', 7480992);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:17:45Z', 47, '2026-10-22T14:40:00Z', 7485934);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:18:45Z', 47, '2026-10-22T14:40:00Z', 7655272);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:19:45Z', 47, '2026-10-22T14:40:00Z', 7661138);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:20:22.8896684Z', 48, '2026-10-22T14:40:00Z', 7691131);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:21:45Z', 49, '2026-10-22T14:40:00Z', 7788425);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:22:14Z', 49, '2026-10-22T14:40:00Z', 7856307);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:22:45Z', 49, '2026-10-22T14:40:00Z', 7893600);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:23:45Z', 49, '2026-10-22T14:40:00Z', 7918714);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:25:07Z', 52, '2026-10-22T14:40:00Z', 8617381);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:25:18Z', 53, '2026-10-22T14:40:00Z', 8619853);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:26:52Z', 53, '2026-10-22T14:40:00Z', 8773900);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:30:55Z', 54, '2026-10-22T14:40:00Z', 8833366);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:34:18Z', 54, '2026-10-22T14:40:00Z', 8873210);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:37:08Z', 55, '2026-10-22T14:40:00Z', 8999772);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:39:25Z', 56, '2026-10-22T14:40:00Z', 9089815);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:43:28Z', 57, '2026-10-22T14:40:00Z', 9125798);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:46:52Z', 57, '2026-10-22T14:40:00Z', 9169328);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:51:04Z', 59, '2026-10-22T14:40:00Z', 9407703);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:52:34Z', 59, '2026-10-22T14:40:00Z', 9460733);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T11:55:34Z', 60, '2026-10-22T14:40:00Z', 9516842);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:00:58Z', 0, '2026-10-22T17:00:00Z', 0);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:15:18Z', 0, '2026-10-22T17:00:00Z', 111006);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:16:20Z', 1, '2026-10-22T17:00:00Z', 146543);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:26:45Z', 1, '2026-10-22T17:00:00Z', 149833);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:30:05Z', 2, '2026-10-22T17:00:00Z', 333201);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:34:16Z', 3, '2026-10-22T17:00:00Z', 425249);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:35:05Z', 3, '2026-10-22T17:00:00Z', 443747);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:39:11Z', 4, '2026-10-22T17:00:00Z', 495333);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:40:05Z', 4, '2026-10-22T17:00:00Z', 511976);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:44:05Z', 5, '2026-10-22T17:00:00Z', 573871);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:48:06Z', 6, '2026-10-22T17:00:00Z', 612666);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:50:05Z', 6, '2026-10-22T17:00:00Z', 645175);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:53:05Z', 7, '2026-10-22T17:00:00Z', 683691);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T12:57:17Z', 7, '2026-10-22T17:00:00Z', 689462);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:15:11Z', 7, '2026-10-22T17:00:00Z', 692805);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:19:26Z', 8, '2026-10-22T17:00:00Z', 818126);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:21:12Z', 8, '2026-10-22T17:00:00Z', 855524);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:23:58Z', 9, '2026-10-22T17:00:00Z', 1127135);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:24:22Z', 10, '2026-10-22T17:00:00Z', 1266611);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:25:14Z', 11, '2026-10-22T17:00:00Z', 1474467);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:26:50Z', 12, '2026-10-22T17:00:00Z', 1681787);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:27:40Z', 13, '2026-10-22T17:00:00Z', 1786289);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:28:30Z', 14, '2026-10-22T17:00:00Z', 1919437);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:28:41Z', 15, '2026-10-22T17:00:00Z', 2002367);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:28:54Z', 15, '2026-10-22T17:00:00Z', 2145189);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:29:21Z', 16, '2026-10-22T17:00:00Z', 2266415);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:30:14Z', 18, '2026-10-22T17:00:00Z', 2466413);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:31:08Z', 19, '2026-10-22T17:00:00Z', 2605045);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:31:32Z', 20, '2026-10-22T17:00:00Z', 2673531);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:32:13Z', 21, '2026-10-22T17:00:00Z', 2777269);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:33:14Z', 22, '2026-10-22T17:00:00Z', 2917138);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:33:51Z', 23, '2026-10-22T17:00:00Z', 2998893);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:34:47Z', 24, '2026-10-22T17:00:00Z', 3077696);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:35:29Z', 25, '2026-10-22T17:00:00Z', 3146992);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:36:20Z', 26, '2026-10-22T17:00:00Z', 3220097);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:36:24Z', 26, '2026-10-22T17:00:00Z', 3232201);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:37:14Z', 27, '2026-10-22T17:00:00Z', 3276085);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:38:08Z', 28, '2026-10-22T17:00:00Z', 3353914);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:39:14Z', 29, '2026-10-22T17:00:00Z', 3463395);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:40:14Z', 30, '2026-10-22T17:00:00Z', 3531573);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:41:14Z', 31, '2026-10-22T17:00:00Z', 3580620);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:42:14Z', 32, '2026-10-22T17:00:00Z', 3669503);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:42:29Z', 32, '2026-10-22T17:00:00Z', 3685588);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:43:43Z', 33, '2026-10-22T17:00:00Z', 3714081);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:45:14Z', 34, '2026-10-22T17:00:00Z', 3796703);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:46:04Z', 35, '2026-10-22T17:00:00Z', 3842263);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:48:14Z', 36, '2026-10-22T17:00:00Z', 3940420);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:48:28Z', 37, '2026-10-22T17:00:00Z', 4196366);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:50:14Z', 39, '2026-10-22T17:00:00Z', 4294929);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:50:27Z', 39, '2026-10-22T17:00:00Z', 4298249);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:52:14Z', 40, '2026-10-22T17:00:00Z', 4385539);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:52:46Z', 41, '2026-10-22T17:00:00Z', 4414306);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:55:30Z', 42, '2026-10-22T17:00:00Z', 4484140);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:58:30Z', 43, '2026-10-22T17:00:00Z', 4530380);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T13:59:30Z', 44, '2026-10-22T17:00:00Z', 4626256);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:01:30Z', 45, '2026-10-22T17:00:00Z', 5016524);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:01:37Z', 46, '2026-10-22T17:00:00Z', 5018623);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:02:30Z', 46, '2026-10-22T17:00:00Z', 5029651);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:04:30Z', 47, '2026-10-22T17:00:00Z', 5104211);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:05:30Z', 48, '2026-10-22T17:00:00Z', 5153428);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:06:12Z', 49, '2026-10-22T17:00:00Z', 5202044);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:07:30Z', 50, '2026-10-22T17:00:00Z', 5255877);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:09:30Z', 51, '2026-10-22T17:00:00Z', 5317546);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:09:41Z', 51, '2026-10-22T17:00:00Z', 5321365);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:10:55Z', 52, '2026-10-22T17:00:00Z', 5350215);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:11:30Z', 53, '2026-10-22T17:00:00Z', 5720592);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:11:58Z', 54, '2026-10-22T17:00:00Z', 5729790);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:14:30Z', 55, '2026-10-22T17:00:00Z', 5796843);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:16:24Z', 56, '2026-10-22T17:00:00Z', 5838935);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:18:25Z', 57, '2026-10-22T17:00:00Z', 5889723);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:18:26Z', 57, '2026-10-22T17:00:00Z', 5889723);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:20:30Z', 58, '2026-10-22T17:00:00Z', 5918937);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:23:30Z', 59, '2026-10-22T17:00:00Z', 5962923);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:25:30Z', 60, '2026-10-22T17:00:00Z', 5996071);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:29:40Z', 61, '2026-10-22T17:00:00Z', 6016639);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:30:30Z', 61, '2026-10-22T17:00:00Z', 6022856);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:33:41Z', 62, '2026-10-22T17:00:00Z', 6082569);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:37:43Z', 63, '2026-10-22T17:00:00Z', 6169710);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:39:30Z', 64, '2026-10-22T17:00:00Z', 6838560);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:43:30Z', 65, '2026-10-22T17:00:00Z', 6846986);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:47:32Z', 65, '2026-10-22T17:00:00Z', 6890944);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:50:30Z', 66, '2026-10-22T17:00:00Z', 6925192);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:52:30Z', 67, '2026-10-22T17:00:00Z', 6981204);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:55:30Z', 68, '2026-10-22T17:00:00Z', 7032651);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T14:59:45Z', 69, '2026-10-22T17:00:00Z', 7097787);
@@ -1107,6 +484,7 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T18:47:12Z', 65, '2026-10-28T19:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T18:52:22Z', 65, '2026-10-28T19:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-28T18:57:36Z', 65, '2026-10-28T19:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T14:50:45Z', 0, '2026-10-29T19:40:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -1598,8 +976,10 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'Unity.GridGame', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 16473);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'Unity.Hare', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 79733);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'Unity.Ricochet', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 43883);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 570711);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 837643);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 25807);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2187411);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 898217);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'Unity.Ricochet', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 23167);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -6287,7 +5667,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "8d2f03e492b607b8c28db776312f8ceaab4018e2",
+    "Tested": "72a14e3adcf7a3ff0d2f19c3058ecf5b44681205",
     "Green": "d482b9053b55c7dd5ac4ce184cfdb00aede8f0c3"
   },
   "MindAttic.Psst": {
@@ -6298,8 +5678,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "170d56cd948aa0e99d4a854ec909ee1500142976",
-    "Green": "170d56cd948aa0e99d4a854ec909ee1500142976"
+    "Tested": "79e5f221cd298eca7eeae8fcd8964c408887ef2f",
+    "Green": "79e5f221cd298eca7eeae8fcd8964c408887ef2f"
   },
   "MindAttic.Vault": {
     "Tested": "522e11b2ff08d6c2a11ff67fe97d040d6afa4713",
@@ -6755,21 +6135,15 @@ INSERT INTO state (name, value) VALUES ('usage-cutoff-alerts', '{
 INSERT INTO state (name, value) VALUES ('usage-cutoffs', '{
   "Cutoffs": [
     {
-      "Email": "honey@mindattic.com",
-      "Name": "Honey",
-      "WeeklyPercent": 95,
-      "FiveHourPercent": 98
-    },
-    {
       "Email": "pdftransferjr@mindattic.com",
       "Name": "Jordan",
       "WeeklyPercent": 95,
       "FiveHourPercent": 98
     },
     {
-      "Email": "ryandebraal@mindattic.com",
-      "Name": "Ryan",
-      "WeeklyPercent": 95,
+      "Email": "ohleo199@mindattic.com",
+      "Name": "Erin",
+      "WeeklyPercent": 75,
       "FiveHourPercent": 98
     },
     {
@@ -6779,9 +6153,21 @@ INSERT INTO state (name, value) VALUES ('usage-cutoffs', '{
       "FiveHourPercent": 98
     },
     {
-      "Email": "ohleo199@mindattic.com",
-      "Name": "Erin",
-      "WeeklyPercent": 75,
+      "Email": "honey@mindattic.com",
+      "Name": "Honey",
+      "WeeklyPercent": 98,
+      "FiveHourPercent": 98
+    },
+    {
+      "Email": "ryandebraal@mindattic.com",
+      "Name": "Ryan",
+      "WeeklyPercent": 98,
+      "FiveHourPercent": 98
+    },
+    {
+      "Email": "waffle@mindattic.com",
+      "Name": "Waffle",
+      "WeeklyPercent": 98,
       "FiveHourPercent": 98
     }
   ]
