@@ -96,7 +96,8 @@ public sealed record UsageReport
     public static UsageReport Build(IReadOnlyList<Member> members, IReadOnlyList<AccountRow> roster, IReadOnlyList<LoginReading> logins,
         IReadOnlyList<DayUsage> history, IReadOnlyDictionary<string, BudgetStatus> estimates, int weeklyTargetPercent, DateTime nowUtc,
         DateOnly? since = null, string? globalAccount = null, Func<string, string?>? staleReason = null,
-        IReadOnlyList<WeeklyAllowance>? allowances = null, IReadOnlyList<UsageCutoff>? cutoffs = null)
+        IReadOnlyList<WeeklyAllowance>? allowances = null, IReadOnlyList<UsageCutoff>? cutoffs = null,
+        int paceTargetPercent = UsageCutoffs.DefaultFiveHourPercent)
     {
         var people = members.Select(m => (m.Email, m.Name, IsMember: true)).ToList();
         var known = people.Select(p => p.Email).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -165,7 +166,7 @@ public sealed record UsageReport
                 FiveHourResetUtc = fiveReset,
                 WeekUsed = week,
                 WeeklyCutoff = UsageCutoffs.Custom(cutoffs, email) is null ? weeklyTargetPercent : UsageCutoffs.WeeklyFor(cutoffs, email),
-                FiveHourCutoff = UsageCutoffs.FiveHourFor(cutoffs, email),
+                FiveHourCutoff = UsageCutoffs.FiveHourFor(cutoffs, email, paceTargetPercent),
                 LeftToTarget = week is { } used ? (UsageCutoffs.Custom(cutoffs, email) is null ? weeklyTargetPercent : UsageCutoffs.WeeklyFor(cutoffs, email)) - used : null,
                 WeekResetUtc = weekReset,
                 ReadUtc = read,
@@ -241,7 +242,7 @@ public sealed record UsageReport
         foreach (var a in snapshot.Accounts)
             if (a.Account is { } k) estimates[k] = a.Budget;
         return Build(members, roster, logins, snapshot.History, estimates, settings.WeeklyStopPercent, nowUtc, since, current,
-                email => reasons.GetValueOrDefault(email), allowances, cutoffs);
+                email => reasons.GetValueOrDefault(email), allowances, cutoffs, settings.PaceTargetPercent);
     }
 
     /// <summary>Each login's meter probe trouble from its <see cref="AccountPacer.ProbeStateName"/> row: why it isn't asking, or

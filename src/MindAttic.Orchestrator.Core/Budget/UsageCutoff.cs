@@ -43,19 +43,26 @@ public static class UsageCutoffs
         email is not { Length: > 0 } ? null
         : cutoffs?.FirstOrDefault(c => string.Equals(c.Email, email, StringComparison.OrdinalIgnoreCase));
 
-    public static int WeeklyFor(IEnumerable<UsageCutoff>? cutoffs, string? email) =>
-        Custom(cutoffs, email) is { } c ? Math.Clamp(c.WeeklyPercent, MinWeeklyPercent, 100) : DefaultWeeklyPercent;
+    /// <summary>Without a member override, this is <see cref="DefaultWeeklyPercent"/>; a caller with the live global weekly
+    /// target in hand (<see cref="OrchestratorSettings.WeeklyStopPercent"/>) should pass it as <paramref name="fallback"/>
+    /// instead, so a login with no override of its own tracks that global dial rather than a number frozen at startup.</summary>
+    public static int WeeklyFor(IEnumerable<UsageCutoff>? cutoffs, string? email, int fallback = DefaultWeeklyPercent) =>
+        Custom(cutoffs, email) is { } c ? Math.Clamp(c.WeeklyPercent, MinWeeklyPercent, 100) : fallback;
 
-    public static int FiveHourFor(IEnumerable<UsageCutoff>? cutoffs, string? email) =>
-        Custom(cutoffs, email) is { } c ? Math.Clamp(c.FiveHourPercent, MinFiveHourPercent, 100) : DefaultFiveHourPercent;
+    /// <summary>Without a member override, this is <see cref="DefaultFiveHourPercent"/>; a caller with the live global pace
+    /// target in hand (<see cref="OrchestratorSettings.PaceTargetPercent"/>) should pass it as <paramref name="fallback"/>
+    /// instead, so a login with no override of its own tracks that global dial rather than a number frozen at startup.</summary>
+    public static int FiveHourFor(IEnumerable<UsageCutoff>? cutoffs, string? email, int fallback = DefaultFiveHourPercent) =>
+        Custom(cutoffs, email) is { } c ? Math.Clamp(c.FiveHourPercent, MinFiveHourPercent, 100) : fallback;
 
-    /// <summary><paramref name="settings"/> for <paramref name="email"/>'s login with its cutoffs in force: its week stops at
-    /// its weekly cutoff and its 5-hour window at its 5-hour cutoff.</summary>
+    /// <summary><paramref name="settings"/> for <paramref name="email"/>'s login with its cutoffs in force: a member override
+    /// wins outright; without one, <paramref name="settings"/>'s own global weekly/pace target stands, so changing that global
+    /// dial actually takes effect for everyone who hasn't set a cutoff of their own.</summary>
     public static OrchestratorSettings Apply(IEnumerable<UsageCutoff>? cutoffs, string? email, OrchestratorSettings settings) =>
         settings with
         {
-            WeeklyReservePercent = 100 - WeeklyFor(cutoffs, email),
-            PaceTargetPercent = FiveHourFor(cutoffs, email),
+            WeeklyReservePercent = 100 - WeeklyFor(cutoffs, email, settings.WeeklyStopPercent),
+            PaceTargetPercent = FiveHourFor(cutoffs, email, settings.PaceTargetPercent),
         };
 
     /// <summary>Sets <paramref name="email"/>'s cutoffs (null keeps the one it has); the new values, or null when they're the

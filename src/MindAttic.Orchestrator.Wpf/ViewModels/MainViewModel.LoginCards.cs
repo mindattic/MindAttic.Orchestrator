@@ -85,8 +85,8 @@ public sealed partial class MainViewModel
         limiting = CutoffEmail is { Length: > 0 } email ? email : null;
         if (limiting is { } who)
         {
-            LimitWeekly = UsageCutoffs.WeeklyFor(Root.cutoffs, who).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            LimitFiveHour = UsageCutoffs.FiveHourFor(Root.cutoffs, who).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            LimitWeekly = UsageCutoffs.WeeklyFor(Root.cutoffs, who, Root.weeklyStopPercent).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            LimitFiveHour = UsageCutoffs.FiveHourFor(Root.cutoffs, who, (int)Root.paceTargetPercent).ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
         LimitError = "";
         if (renaming is null && limiting is null) return;

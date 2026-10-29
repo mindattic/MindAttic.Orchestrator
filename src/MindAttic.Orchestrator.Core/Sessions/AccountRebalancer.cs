@@ -255,8 +255,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         var globalEmail = SafeGlobalEmail();
         int StopOf(string? email) => WeeklyAllowances.StopFor(allowed, email ?? globalEmail, UsageCutoffs.Apply(cutoffs, email ?? globalEmail, settings), nowUtc);
         bool AllowedFor(string? email) => WeeklyAllowances.For(allowed, email ?? globalEmail, nowUtc) is not null;
-        // Each login's own 5-hour cutoff (org limit --5h), the default for one with none set (M.ORCH-T742).
-        int TargetOf(string? email) => UsageCutoffs.FiveHourFor(cutoffs, email ?? globalEmail);
+        // Each login's own 5-hour cutoff (org limit --5h), the global pace target for one with none set (M.ORCH-T742).
+        int TargetOf(string? email) => UsageCutoffs.FiveHourFor(cutoffs, email ?? globalEmail, settings.PaceTargetPercent);
         var own = mover.OnOwnLogin();
         string? LoginOf(CliBilling cli) => own.TryGetValue(cli.SessionId, out var dir) ? mover.Dirs.Of(dir)?.Email : null;
         var live = mover.Live(hosts, nowUtc);
@@ -273,7 +273,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         AccountDir? DirOf(string? email) => email is null ? null : signedIn.FirstOrDefault(a => string.Equals(a.Email, email, StringComparison.OrdinalIgnoreCase));
 
         var results = new List<Rebalanced>();
-        CheckCutoffs(signedIn, DirOf, UsageOf, globalUsage, globalEmail, cutoffs, allowed, nowUtc, results);
+        CheckCutoffs(signedIn, DirOf, UsageOf, globalUsage, globalEmail, cutoffs, allowed, settings, nowUtc, results);
         var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, TargetOf, StopOf, AllowedFor, nowUtc, results, locked: !settings.FailoverToApiKey);
         // Rebalancing is off, and failover to the API key is hard-coded off: nothing more to move.
         if (!settings.RebalanceLogins && !settings.FailoverToApiKey) return results;
@@ -374,7 +374,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     /// </summary>
     private void CheckCutoffs(IReadOnlyList<AccountDir> signedIn, Func<string?, AccountDir?> dirOf, Func<AccountDir, ReportedUsage?> usageOf,
         Lazy<ReportedUsage?> globalUsage, string? globalEmail, IReadOnlyList<UsageCutoff> cutoffs, IReadOnlyList<WeeklyAllowance> allowed,
-        DateTime nowUtc, List<Rebalanced> results)
+        OrchestratorSettings settings, DateTime nowUtc, List<Rebalanced> results)
     {
         cutoffAlerts ??= new CutoffAlerts(Store);
         var logins = signedIn.Select(a => (a.Email, Name: mover.NameFor(a.Directory, a.Email), Usage: (Func<ReportedUsage?>)(() => usageOf(a)))).ToList();
@@ -382,7 +382,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             logins.Add((g, mover.NameFor("", g), () => globalUsage.Value));
         foreach (var (email, name, usage) in logins)
         {
-            var crossed = cutoffAlerts.Check(email, name, usage(), UsageCutoffs.WeeklyFor(cutoffs, email), UsageCutoffs.FiveHourFor(cutoffs, email),
+            var crossed = cutoffAlerts.Check(email, name, usage(), UsageCutoffs.WeeklyFor(cutoffs, email, settings.WeeklyStopPercent),
+                UsageCutoffs.FiveHourFor(cutoffs, email, settings.PaceTargetPercent),
                 WeeklyAllowances.For(allowed, email, nowUtc) is not null, nowUtc);
             foreach (var c in crossed)
                 results.Add(new(false, $"rebalance: {c.Text}") { Cutoff = c });

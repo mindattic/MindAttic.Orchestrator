@@ -186,10 +186,10 @@ public sealed partial class MainViewModel
 
     /// <summary>Where this login's week is cut off: its own weekly cutoff, or the wall (100) while it's allowed past it.</summary>
     private int WeeklyCutoff => WeeklyAllowances.For(Root.allowances, CutoffEmail, DateTime.UtcNow) is not null
-        ? 100 : UsageCutoffs.WeeklyFor(Root.cutoffs, CutoffEmail);
+        ? 100 : UsageCutoffs.WeeklyFor(Root.cutoffs, CutoffEmail, Root.weeklyStopPercent);
 
     /// <summary>Where this login's 5-hour window is cut off: its own 5-hour cutoff.</summary>
-    private int FiveHourCutoff => UsageCutoffs.FiveHourFor(Root.cutoffs, CutoffEmail);
+    private int FiveHourCutoff => UsageCutoffs.FiveHourFor(Root.cutoffs, CutoffEmail, (int)Root.paceTargetPercent);
 
     // ── The person page's stats (M.ORCH-T763) ───────────────────────────────
 

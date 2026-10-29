@@ -320,7 +320,8 @@ internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
             {
                 var custom = UsageCutoffs.Custom(cutoffs, p.Email) is not null;
                 AnsiConsole.MarkupLine($"  {Markup.Escape(OrgDisallowCommand.NameOf(p))} ({Markup.Escape(p.Email)}): " +
-                    Markup.Escape(UsageCutoffs.Text(UsageCutoffs.WeeklyFor(cutoffs, p.Email), UsageCutoffs.FiveHourFor(cutoffs, p.Email))) + (custom ? " (set)" : " (default)"));
+                    Markup.Escape(UsageCutoffs.Text(UsageCutoffs.WeeklyFor(cutoffs, p.Email, Ctx.Settings.WeeklyStopPercent),
+                        UsageCutoffs.FiveHourFor(cutoffs, p.Email, Ctx.Settings.PaceTargetPercent))) + (custom ? " (set)" : " (default)"));
             }
             AnsiConsole.MarkupLine("[grey]Below a cutoff nothing throttles; at it, access is cut off and you are asked. org limit <who> --weekly <pct> --5h <pct> changes one; --reset puts back 90 and 98.[/]");
             return 0;

@@ -102,7 +102,7 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
         try { cutoffs = Cutoffs?.Invoke(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
         int StopOf(string? email) => WeeklyAllowances.For(allowed, email, nowUtc) is not null ? Settings.OrchestratorSettings.WeeklyStopFor(0)
-            : cutoffs is null ? stop : UsageCutoffs.WeeklyFor(cutoffs, email);
+            : cutoffs is null ? stop : UsageCutoffs.WeeklyFor(cutoffs, email, stop);
         var chosen = Choose(signedIn, busy, a => ReportedUsage.Load(nowUtc, a.UsagePath), nowUtc, stop, StopOf);
         if (chosen is null)
             return new(null, signedIn.All(a => busy.Contains(a.Email))
