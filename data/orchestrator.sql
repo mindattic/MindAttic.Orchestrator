@@ -15,9 +15,6 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T15:58:11Z', 77, '2026-10-22T17:00:00Z', 8378038);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T15:58:30Z', 77, '2026-10-22T17:00:00Z', 8378038);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T16:02:35Z', 78, '2026-10-22T17:00:00Z', 8626757);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T16:04:47Z', 78, '2026-10-22T17:00:00Z', 8696535);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T16:05:27Z', 78, '2026-10-22T17:00:00Z', 8710336);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T16:09:39Z', 79, '2026-10-22T17:00:00Z', 8784985);
@@ -481,6 +478,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T15:43:43Z', 1, '2026-10-29T19:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T15:48:54Z', 1, '2026-10-29T19:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T15:54:10Z', 1, '2026-10-29T19:40:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T15:59:20Z', 1, '2026-10-29T19:40:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-29T16:04:33Z', 1, '2026-10-29T19:40:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -974,7 +973,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', 'Unity.Ricochet', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 43883);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 122417);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3053634);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 956095);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1661828);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'Unity.Ricochet', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 23167);
 
 -- ticket_costs
@@ -5663,7 +5662,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "646c98b031502e9b457e5f6a73b0b505aad0f942",
+    "Tested": "36c1ec6fc7dfe32153e4323abb46116e2b8de5c7",
     "Green": "d482b9053b55c7dd5ac4ce184cfdb00aede8f0c3"
   },
   "MindAttic.Psst": {
