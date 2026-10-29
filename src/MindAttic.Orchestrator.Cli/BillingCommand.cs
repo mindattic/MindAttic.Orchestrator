@@ -41,6 +41,13 @@ internal sealed class BillingCommand : Command<BillingCommand.Settings>
             AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(settings.Mode)}\" isn't a billing mode: use team (Claude Team) or api (the Vault's API key).[/]");
             return 1;
         }
+        // An amount is only meaningful with credit (M.ORCH-T906): caught here rather than silently discarded, as when a
+        // "billing credit 50" is mistyped "billing team 50" and the 50 would otherwise vanish with no sign it was ignored.
+        if (settings.Amount is not null)
+        {
+            AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(settings.Amount)}\" isn't expected here: an amount is only for billing credit <usd>.[/]");
+            return 1;
+        }
         var result = billing.Switch(mode, "cli", hosts, now);
         if (result.Error is { } error)
         {

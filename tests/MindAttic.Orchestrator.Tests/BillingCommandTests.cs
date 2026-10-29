@@ -87,4 +87,20 @@ public sealed class BillingCommandTests
         Assert.That(output.ToString(), Does.Contain("no Claude key in the MindAttic Vault"));
         Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(before));
     }
+
+    [Test]
+    public void An_amount_typed_with_team_or_api_is_refused_instead_of_silently_dropped()
+    {
+        // The USD argument is only for "billing credit <usd>"; typing one with team or api (e.g. a mistyped "credit") used
+        // to be accepted and thrown away with no sign anything was wrong.
+        var before = File.ReadAllText(ConfigPath);
+        Assert.That(Run("billing", "team", "50"), Is.EqualTo(1));
+        Assert.That(output.ToString(), Does.Contain("isn't expected here").And.Contain("billing credit"));
+        Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(before), "nothing switched");
+
+        output.GetStringBuilder().Clear();
+        Assert.That(Run("billing", "api", "50"), Is.EqualTo(1));
+        Assert.That(output.ToString(), Does.Contain("isn't expected here").And.Contain("billing credit"));
+        Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(before), "nothing switched");
+    }
 }

@@ -470,6 +470,39 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void The_retired_weekly_options_are_refused_before_anything_is_staged_even_with_a_bad_value_or_a_valid_option_alongside()
+    {
+        // Previously --weekly-reserve (and the other three retired options) were validated and staged into the settings
+        // record, and only rejected by a second, unconditional check right before the save: an out-of-range value, or one
+        // inconsistent with --weekly-target, got that stage's specific message instead of "retired", and a valid option
+        // typed alongside (e.g. --max-sessions) was silently discarded along with it. Now LockedRule refuses them first,
+        // like the other M.ORCH-T706 options, so the message is always the retired one and nothing else is even loaded.
+        const string retired = "The weekly line is each member's own cutoff now";
+
+        // An out-of-range value never reaches the old "--weekly-reserve is 0 to 50" range check.
+        Assert.That(Run("settings", "--weekly-reserve", "999"), Is.EqualTo(1));
+        Assert.That(output.ToString(), Does.Contain(retired).And.Not.Contain("0 to 50"));
+        Assert.That(Store.Has(JsonStore.SettingsName), Is.False);
+
+        // A --weekly-target/--weekly-reserve combination inconsistent with each other never reaches the old "100 minus" check.
+        output.GetStringBuilder().Clear();
+        Assert.That(Run("settings", "--weekly-target", "10", "--weekly-reserve", "95"), Is.EqualTo(1));
+        Assert.That(output.ToString(), Does.Contain(retired).And.Not.Contain("100 minus"));
+        Assert.That(Store.Has(JsonStore.SettingsName), Is.False);
+
+        // A retired option bundled with an otherwise-valid one still refuses the whole command and saves nothing (same as
+        // every other invalid option in this command), rather than silently dropping just the retired one.
+        output.GetStringBuilder().Clear();
+        Assert.That(Run("settings", "--max-sessions", "7", "--weekly-reserve", "5"), Is.EqualTo(1));
+        Assert.That(output.ToString(), Does.Contain(retired));
+        Assert.That(Store.Has(JsonStore.SettingsName), Is.False);
+
+        // The same valid option alone (no retired option in the way) still saves normally.
+        Assert.That(Run("settings", "--max-sessions", "7"), Is.Zero);
+        Assert.That(Store.LoadSettings().MaxConcurrentSessions, Is.EqualTo(7));
+    }
+
+    [Test]
     public void Settings_stores_a_known_provider_in_its_own_casing()
     {
         Assert.That(Run("settings", "--provider", "codex"), Is.Zero);

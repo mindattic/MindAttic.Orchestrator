@@ -439,6 +439,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         : settings.Failover is not null ? "--failover is locked off: API billing is for emergencies and only the owner switches it on (M.ORCH-T706)."
         : settings.ThrottleAgents is not null ? "--throttle-agents is locked off: hard cutoffs only, agents are never held (M.ORCH-T706)."
         : settings.PaceProfile is not null || settings.PaceCurveK is not null ? "Pace profiles are gone: hard cutoffs only, no front-loaded or throttled curve (M.ORCH-T706)."
+        // The weekly and 5-hour cutoffs are per user, and org limit is the only way to change one (M.ORCH-T707): rejected
+        // here, before anything is staged, so these can never half-apply or swallow other options given alongside them.
+        : settings.WeeklyTarget is not null || settings.WeeklyReserve is not null || settings.WeeklyLine is not null || settings.WeeklyWindDown is not null
+            ? "The weekly line is each member's own cutoff now (90% of the week, 98% of the 5-hour window by default): orchestrator org limit <who> --weekly <pct> --5h <pct>."
         : null;
 
     public override int Execute(CommandContext context, Settings settings)
@@ -560,17 +564,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { AgentAbortAfterMinutes = agentAbortAfter };
             changed = true;
         }
-        if (settings.WeeklyReserve is { } weeklyReserve)
-        {
-            if (weeklyReserve is < 0 or > OrchestratorSettings.MaxWeeklyReservePercent) { AnsiConsole.MarkupLine($"[red]--weekly-reserve is 0 to {OrchestratorSettings.MaxWeeklyReservePercent}.[/]"); return 1; }
-            s = s with { WeeklyReservePercent = weeklyReserve };
-            changed = true;
-        }
-        if (settings.WeeklyTarget is not null && settings.WeeklyReserve is not null && settings.WeeklyTarget != 100 - settings.WeeklyReserve)
-        {
-            AnsiConsole.MarkupLine("[red]--weekly-target is 100 minus --weekly-reserve; give one of them.[/]");
-            return 1;
-        }
         if (settings.AlertTo is { } alertTo)
         {
             var off = alertTo.Trim().Length == 0 || alertTo.Trim().Equals("none", StringComparison.OrdinalIgnoreCase);
@@ -581,12 +574,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             }
             s = s with { PsstAlertTo = off ? "" : alertTo.Trim() };
             changed = true;
-        }
-        if (settings.WeeklyTarget is not null || settings.WeeklyReserve is not null || settings.WeeklyLine is not null || settings.WeeklyWindDown is not null)
-        {
-            // The weekly and 5-hour cutoffs are per user, and org limit is the only way to change one (M.ORCH-T707).
-            AnsiConsole.MarkupLine("[red]The weekly line is each member's own cutoff now (90% of the week, 98% of the 5-hour window by default): orchestrator org limit <who> --weekly <pct> --5h <pct>.[/]");
-            return 1;
         }
         if (settings.AllocateSkip is { } skip)
         {
