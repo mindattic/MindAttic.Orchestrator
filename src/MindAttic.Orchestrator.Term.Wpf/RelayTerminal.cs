@@ -49,6 +49,20 @@ public sealed class RelayTerminal : UserControl, IDisposable
             try { Connection?.TakeSize(); }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Taking the size failed; contained"); }
         };
+        // A reattached pane (the host, and its session, outlive a closed tab or a redeployed dashboard, M.ORCH-T926) can come
+        // back without ever owning the size: a viewer that joined while the old one hadn't been cleaned up yet letterboxes
+        // (FollowSize below) and, without a click into it, GotFocus above never fires to reclaim it. Left that way, the row
+        // growing (M.ORCH-T1208 floored it at half the window) only grows the dead margin around the still-letterboxed
+        // renderer, not the renderer itself (M.ORCH-T1266). So the hosting row actually changing size is treated as this
+        // viewer being used too: TakeSize() is a no-op once it already owns the size or isn't interactive, and this pane's own
+        // visibility is checked since every pane in TerminalPanesHost's overlay is measured and arranged (SizeChanged fires)
+        // even while another tab is the one shown.
+        Terminal.SizeChanged += (_, _) =>
+        {
+            if (!IsVisible) return;
+            try { Connection?.TakeSize(); }
+            catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Taking the size on resize failed; contained"); }
+        };
         Terminal.Loaded += (_, _) =>
         {
             try

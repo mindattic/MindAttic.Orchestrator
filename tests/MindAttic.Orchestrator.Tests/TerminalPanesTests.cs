@@ -333,6 +333,58 @@ public sealed class TerminalPanesTests
     }
 
     [Test, Apartment(ApartmentState.STA)]
+    public void A_letterboxed_viewer_reclaims_the_size_when_its_own_row_grows()
+    {
+        // M.ORCH-T1266: a viewer that loses the size to another one (M.ORCH-T930 — a second window on the same session, a
+        // redeploy's dashboard racing a still-live one to reattach, M.ORCH-T926) letterboxes. Before this fix, only focus
+        // (Terminal.GotFocus, M.ORCH-T930 spike section 3) reclaimed it; a pane nobody clicked into stayed letterboxed
+        // forever even as MainWindow.SizeTerminalRow grew its row (M.ORCH-T1208's taller floor made the dead gap around it
+        // obvious). It must reclaim the size on its own once its own hosting row actually grows, with no click into it.
+        // Two viewers are used, rather than asserting who wins attaching first (this machine's own live Orchestrator
+        // watches every TermHost session's registry too, M.ORCH-T971, and can race this test for it): B's own TakeSize()
+        // deterministically takes the size away from A, so this test only ever depends on A reclaiming it back by resizing.
+        if (TermLauncher.FindHost() is null) Assert.Ignore("No TermHost built or installed here.");
+        var terminalsA = new TerminalsViewModel();
+        var hostA = new System.Windows.Controls.Grid();
+        terminalsA.Panes.CollectionChanged += (_, e) => { foreach (var p in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) hostA.Children.Add(p.Control); };
+        var windowA = OffScreenWindow.Show(600, 300, hostA);
+        try
+        {
+            Assert.That(terminalsA.Open(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", Command = ["cmd.exe", "/k", "echo pane"] }), Is.Null);
+            var paneA = terminalsA.Panes.Single();
+            paneA.IsSelected = true;
+            Assert.That(Pump(() => paneA.Session is not null, TimeSpan.FromSeconds(20)), Is.True, "its TermHost registered");
+            Assert.That(Pump(() => paneA.Relay?.Connection is not null, TimeSpan.FromSeconds(10)), Is.True, "the first viewer attached");
+            var session = paneA.Session!;
+
+            var terminalsB = new TerminalsViewModel();
+            var hostB = new System.Windows.Controls.Grid();
+            terminalsB.Panes.CollectionChanged += (_, e) => { foreach (var p in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) hostB.Children.Add(p.Control); };
+            var windowB = OffScreenWindow.Show(200, 120, hostB);
+            try
+            {
+                var paneB = terminalsB.Reattach(session, paneA.Request);
+                Assert.That(paneB, Is.Not.Null, "a second viewer can attach to the same host");
+                Assert.That(Pump(() => paneB!.Relay?.Connection is not null, TimeSpan.FromSeconds(10)), Is.True, "the second viewer attached");
+
+                paneB!.Relay!.Connection!.TakeSize();
+                Assert.That(Pump(() => paneA.Relay!.Connection!.OwnsSize == false, TimeSpan.FromSeconds(10)), Is.True, "A letterboxes once B takes the size");
+                Assert.That(Pump(() => paneA.Relay!.Terminal.AutoResize == false, TimeSpan.FromSeconds(10)), Is.True, "AutoResize off while letterboxed");
+
+                // The hosting row growing, never a click into the pane: no focus call anywhere in this test.
+                windowA.Width = 1400;
+                windowA.Height = 1000;
+                Assert.That(Pump(() => paneA.Relay!.Connection!.OwnsSize, TimeSpan.FromSeconds(10)), Is.True, "growing its row reclaims the size on its own");
+                Assert.That(Pump(() => paneA.Relay!.Terminal.AutoResize, TimeSpan.FromSeconds(10)), Is.True, "autosizing resumes, closing the gap");
+            }
+            finally { windowB.Close(); }
+
+            terminalsA.Close(paneA);
+        }
+        finally { windowA.Close(); }
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
     public void A_host_that_can_t_start_leaves_the_tab_running_its_CLI_in_process()
     {
         var terminals = new TerminalsViewModel { HostAvailable = () => true, Launch = _ => throw new InvalidOperationException("no host") };
