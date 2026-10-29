@@ -59,6 +59,24 @@ public sealed class TabStatusTests
     }
 
     [Test]
+    public void The_global_tab_applies_first_whatever_order_the_strip_shows_it_in()
+    {
+        // M.ORCH-T1273: ApplyTabs sits the global login's tab among the others by name (M.ORCH-T752), but it alone rereads
+        // the settings store (symbolTabLabels among them) -- every other tab's trailing text either copies what it read or
+        // reads it live through Root. Applying a tab before the global one's turn would show it the settings as they stood
+        // before the refresh, with nothing left to notice it changed until some unrelated later refresh happened to run:
+        // after a Settings Save toggled SymbolTabLabels, a tab sorted ahead of the global one's name would keep showing the
+        // old "Σ/λ" or "wk/5h" labels. Root always applies first, regardless of where it sits for display.
+        var root = "The global login";
+        var alice = "Alice"; // sorts before "The global login" by name
+        var zack = "Zack"; // sorts after it
+
+        Assert.That(MainViewModel.ApplyOrderOf(new[] { alice, root, zack }, root), Is.EqualTo(new[] { root, alice, zack }));
+        Assert.That(MainViewModel.ApplyOrderOf(new[] { root, alice, zack }, root), Is.EqualTo(new[] { root, alice, zack }));
+        Assert.That(MainViewModel.ApplyOrderOf(new[] { alice, zack, root }, root), Is.EqualTo(new[] { root, alice, zack }));
+    }
+
+    [Test]
     public void A_stale_reading_is_marked_stale_on_the_tab_and_one_needing_a_new_sign_in_says_so()
     {
         // M.ORCH-T1119: Ryan's tab showed "Σ: 0%" from an 11-hour-old reading as if current.

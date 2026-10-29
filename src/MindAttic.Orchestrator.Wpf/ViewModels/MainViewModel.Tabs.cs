@@ -182,6 +182,13 @@ public sealed partial class MainViewModel
     /// view of <paramref name="all"/>, this one first: the others reuse the roster it reads. Each tab's view is cut from its
     /// org's (M.ORCH-T655: <see cref="OrgScope"/>), and the strip lists the shown org's tabs.
     /// </summary>
+    /// <summary>The order to apply each tab's share of a refresh in (M.ORCH-T1273): <paramref name="root"/> first, whatever
+    /// position <paramref name="tabs"/> itself sits it at for display (<see cref="ApplyTabs"/>, M.ORCH-T752 sorts the strip by
+    /// name). The global login's tab is the only one whose <c>ApplyAccounts</c> rereads the settings store; every other tab
+    /// either copies what it just read or reads it live through <c>Root</c>, so applying one of them first would show it the
+    /// settings as they stood before this refresh until some later, unrelated push or poll happened to run another pass.</summary>
+    internal static IEnumerable<T> ApplyOrderOf<T>(IEnumerable<T> tabs, T root) => tabs.OrderBy(t => ReferenceEquals(t, root) ? 0 : 1);
+
     private void ApplyTabs(Snapshot all, IReadOnlyList<LoginTab> tabs, OrgDirectory nextOrgs)
     {
         workspace = all;
@@ -209,7 +216,12 @@ public sealed partial class MainViewModel
         // One view per org, cut once and shared by its tabs.
         var byOrg = new Dictionary<string, Snapshot>(StringComparer.Ordinal);
         var now = DateTime.UtcNow;
-        foreach (var t in loginTabs.ToList())
+        // The global login's tab applied first (M.ORCH-T1273): ApplyAccounts's settings read (symbolTabLabels, the pace and
+        // weekly-stop percents, the blink tokens, the cutoffs and allowances) lands on it alone, and every other tab either
+        // copies it or reads it live through Root -- stale until the global tab's own turn otherwise, which a changed Save
+        // could leave showing the old figures until some unrelated push or poll happened to run another pass. Its place in
+        // this loop is no longer tied to loginTabs' own order, which sits the tab by name since M.ORCH-T752.
+        foreach (var t in ApplyOrderOf(loginTabs.ToList(), this))
         {
             var org = t.OrgId;
             if (!byOrg.TryGetValue(org, out var orgAll)) byOrg[org] = orgAll = OrgScope.For(all, orgs, org, options.WorkingWindow, options.WaitingWindow);
