@@ -273,7 +273,7 @@ public sealed class AccountDirsTests
         File.WriteAllText(Path.Combine(ClaudeDir, LoginLook.FileName), """{ "alias": "Jordan", "initials": "JR" }""");
         var look = LoginLook.For(ClaudeDir, "ohleo199@example.com");
         Assert.That((look.Alias, look.Initials), Is.EqualTo(("ohleo199", "OH")), "a file with no email isn't trusted in the global folder");
-        Assert.That(LoginLook.For(ClaudeDir, null).Alias, Is.EqualTo("claude"), "nor when nobody's known to be signed in");
+        Assert.That(LoginLook.For(ClaudeDir, null).Alias, Is.EqualTo("CL"), "nor when nobody's known to be signed in: its initials badge, never the literal word \"claude\" (M.ORCH-T1257)");
 
         File.WriteAllText(Path.Combine(ClaudeDir, LoginLook.FileName), """{ "email": "PDF@example.com", "alias": "Jordan", "initials": "JR" }""");
         Assert.That(LoginLook.For(ClaudeDir, "pdf@example.com").Alias, Is.EqualTo("Jordan"), "the email it was given for");
