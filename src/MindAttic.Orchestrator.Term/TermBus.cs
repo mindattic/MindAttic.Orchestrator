@@ -68,7 +68,15 @@ public static class TermBus
     public static readonly IReadOnlyList<TimeSpan> RetryBackoff =
         [TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(600), TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(3)];
 
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> sends = new(StringComparer.Ordinal);
+    // Generation per key, paired with when it was last touched, so a stale retry can tell a newer line under the same key
+    // already went out. Never removed by that check alone (bughunt 2026-10-28): see Sweep.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (long Generation, long TouchedTicks)> sends = new(StringComparer.Ordinal);
+
+    // How long a key is kept idle before Sweep evicts it: comfortably past RetryBackoff's total (~5.3s), the longest any retry
+    // loop for a generation can still be running, so an evicted key can never belong to work still in flight (bughunt 2026-10-28:
+    // without this, every distinct key ever sent under - one per hosted session - stayed in `sends` for the daemon's whole life).
+    private static readonly TimeSpan SendIdleEvict = TimeSpan.FromSeconds(30);
+    private static long lastSweepTicks;
 
     /// <summary><see cref="TrySendLine"/>, and when that misses, the same line again after each of <see cref="RetryBackoff"/>'s
     /// waits, on the thread pool, so the caller is never held up. A retry stops once a newer line under the same
@@ -76,20 +84,36 @@ public static class TermBus
     /// whether the first try got there. Never throws.</summary>
     public static bool TrySendLineRetrying(string envelope, string key, string? pipeName = null, int timeoutMs = ConnectTimeoutMs)
     {
-        var mine = sends.AddOrUpdate(key, 1, (_, n) => n + 1);
+        var now = Environment.TickCount64;
+        var mine = sends.AddOrUpdate(key, (1, now), (_, prev) => (prev.Generation + 1, now)).Generation;
+        Sweep(now);
         if (TrySendLine(envelope, pipeName, timeoutMs)) return true;
         var retry = Task.Run(async () =>
         {
             foreach (var wait in RetryBackoff)
             {
                 await Task.Delay(wait).ConfigureAwait(false);
-                if (sends.TryGetValue(key, out var newest) && newest != mine) return;
+                if (sends.TryGetValue(key, out var newest) && newest.Generation != mine) return;
                 if (TrySendLine(envelope, pipeName, timeoutMs)) return;
             }
         });
         lock (retries) retries.Add(retry);
         _ = retry.ContinueWith(t => { lock (retries) retries.Remove(t); }, TaskScheduler.Default);
         return false;
+    }
+
+    /// <summary>Evicts keys idle for <see cref="SendIdleEvict"/> or more (throttled to run at most about that often): a plain
+    /// time-based sweep rather than reference-counting each key's in-flight retries, since any retry loop for a generation
+    /// finishes on its own well inside that window. The removal is conditional on the value being unchanged since the scan, so a
+    /// key that was touched again in the meantime is left alone.</summary>
+    private static void Sweep(long now)
+    {
+        var last = Interlocked.Read(ref lastSweepTicks);
+        if (now - last < SendIdleEvict.TotalMilliseconds) return;
+        if (Interlocked.CompareExchange(ref lastSweepTicks, now, last) != last) return;
+        foreach (var kvp in sends)
+            if (now - kvp.Value.TouchedTicks >= SendIdleEvict.TotalMilliseconds)
+                sends.TryRemove(kvp);
     }
 
     private static readonly HashSet<Task> retries = [];

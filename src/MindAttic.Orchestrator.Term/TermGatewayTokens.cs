@@ -76,6 +76,18 @@ public static class TermGatewayTokens
         try
         {
             File.Move(temp, path, overwrite: replace);
+            if (replace)
+            {
+                // Overwriting a corrupt file never throws just because it's there, so (unlike the !replace case below) the move
+                // itself can't tell us a concurrent repair won: re-read what's on disk now and adopt it if it isn't ours, so two
+                // processes racing the same corrupt file don't end up signing with two different keys (bughunt 2026-10-28).
+                try
+                {
+                    if (FromBase64Url(File.ReadAllText(path).Trim()) is { Length: >= 32 } onDisk && !onDisk.AsSpan().SequenceEqual(key))
+                        return onDisk;
+                }
+                catch (Exception) { }
+            }
             return key;
         }
         catch (IOException) when (!replace && File.Exists(path))

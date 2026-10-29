@@ -143,6 +143,12 @@ internal sealed class TermSession
             var why = code == 2 || code == 3 ? $"command not found: {commandLine}" : ex.Message;
             log.Write($"the CLI couldn't start ({why}, error {code}): {ex}");
             try { ClosePty(); } catch (Exception) { }
+            // CreatePseudoConsole can succeed and hand out ptyIn/ptyOut before CreateProcessW then fails; ClosePty only frees
+            // hPC, so these two are disposed here too (bughunt 2026-10-28).
+            try { ptyIn?.Dispose(); } catch (Exception) { }
+            try { ptyOut?.Dispose(); } catch (Exception) { }
+            ptyIn = null;
+            ptyOut = null;
             lock (gate)
             {
                 exited = true;
@@ -255,6 +261,9 @@ internal sealed class TermSession
         {
             WaitForSingleObject(hProcess, INFINITE);
             if (GetExitCodeProcess(hProcess, out var raw)) code = (int)raw;
+            // Never needed again after this: closed here like pi.hThread is, right after its last use (StartCli).
+            CloseHandle(hProcess);
+            hProcess = IntPtr.Zero;
             log.Write($"cli exited code={code}");
             // Closing the pseudoconsole flushes its last output; the pump keeps reading meanwhile and ends at EOF.
             ClosePty();

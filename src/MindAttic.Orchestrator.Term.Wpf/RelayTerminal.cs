@@ -165,7 +165,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
         connection.Detached += why => { ReconnectingChanged?.Invoke(false); Detached?.Invoke(why); };
         connection.Reconnecting += _ => ReconnectingChanged?.Invoke(true);
         connection.Attached += () => ReconnectingChanged?.Invoke(false);
-        connection.SizeChanged += (c, r, owned) => FollowSize(connection, c, r, owned);
+        connection.SizeChanged += (c, r, owned) => _ = FollowSizeAsync(connection, c, r, owned);
         connection.OtherTyping += () => OtherTyping?.Invoke();
         connection.InputDropped += () => InputDropped?.Invoke();
         // Each live chunk to whoever reads the screen (M.ORCH-T1118), on the reader's thread.
@@ -183,7 +183,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
     /// Owning it again, the renderer takes the size the host just applied for it (the last one it reported) and sizes itself to
     /// the control from then on. On the UI thread; never throws.
     /// </summary>
-    private void FollowSize(RelayConnection connection, ushort cols, ushort rows, bool owned)
+    private async Task FollowSizeAsync(RelayConnection connection, ushort cols, ushort rows, bool owned)
     {
         try
         {
@@ -196,10 +196,11 @@ public sealed class RelayTerminal : UserControl, IDisposable
                 try
                 {
                     Terminal.AutoResize = false;
-                    _ = Terminal.ResizeAsync(rows, cols, CancellationToken.None).ContinueWith(
-                        t => OrchestratorLog.For("Terminals").Error(t.Exception!, "Following the session's size failed; contained"),
-                        CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                    // Awaited (bughunt 2026-10-28): resetting SuppressResize right after firing this off, instead of once it
+                    // actually finished, made the suppression window effectively zero, letting this resize echo back to the host.
+                    await Terminal.ResizeAsync(rows, cols, CancellationToken.None);
                 }
+                catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Following the session's size failed; contained"); }
                 finally { connection.SuppressResize = false; }
             }
             Terminal.AutoResize = owned;

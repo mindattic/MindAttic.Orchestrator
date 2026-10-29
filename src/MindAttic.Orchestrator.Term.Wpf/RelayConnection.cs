@@ -418,14 +418,17 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         if (text.Contains("\u001bc", StringComparison.Ordinal)) Raise(Win32InputMode);
     }
 
-    /// <summary>Queues a frame for the current link (M.ORCH-T975): the writer task writes it, never the caller (the UI thread).</summary>
-    private void Send(TermFrameKind kind, ReadOnlySpan<byte> payload)
+    /// <summary>Queues a frame for the current link (M.ORCH-T975): the writer task writes it, never the caller (the UI thread).
+    /// Returns false, queueing nothing, when there is no live link to queue it for (checked and enqueued under one lock
+    /// acquisition, so a link dropping in between can't produce a frame silently queued for a link that's already gone).</summary>
+    private bool Send(TermFrameKind kind, ReadOnlySpan<byte> payload)
     {
         var frame = TermProtocol.Frame(kind, payload);
         lock (gate)
         {
-            if (closed || link is not { } p || p is NamedPipeClientStream { IsConnected: false }) return;
+            if (closed || link is not { } p || p is NamedPipeClientStream { IsConnected: false }) return false;
             outbox.Writer.TryWrite((p, frame));
+            return true;
         }
     }
 
@@ -433,29 +436,25 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
     /// was dropped, never queued, since stale keystrokes replayed into a CLI later could do anything.</summary>
     public event Action? InputDropped;
 
-    private bool HasLink()
-    {
-        lock (gate) return !closed && link is { } p && p is not NamedPipeClientStream { IsConnected: false };
-    }
-
     /// <summary>Sends text to the CLI: the renderer's key sequences, or a paste payload (chunked, in order). With no link it is
-    /// dropped and <see cref="InputDropped"/> raised (not once the connection is closed or has ended).</summary>
+    /// dropped and <see cref="InputDropped"/> raised (not once the connection is closed or has ended). Whether there is a link
+    /// is decided by <see cref="Send"/> itself, atomically with queueing (bughunt 2026-10-28): a link dropping between a
+    /// separate check and the send used to let a keystroke vanish with no drop raised at all.</summary>
     public void WriteInput(string data)
     {
         // A watch-only viewer never sends input: a protocol 1 host's Hello has no flags, so it can't drop it there (bughunt 2026-10-27).
         if (string.IsNullOrEmpty(data) || !interactive) return;
-        if (!HasLink())
-        {
-            if (!closed && !ended) Post(() => { if (!closed && !ended) InputDropped?.Invoke(); });
-            return;
-        }
         var at = 0;
         while (at < data.Length)
         {
             var length = Math.Min(InputChunkChars, data.Length - at);
             // Never split a surrogate pair across two frames.
             if (at + length < data.Length && char.IsHighSurrogate(data[at + length - 1])) length--;
-            Send(TermFrameKind.Input, Encoding.UTF8.GetBytes(data, at, length));
+            if (!Send(TermFrameKind.Input, Encoding.UTF8.GetBytes(data, at, length)))
+            {
+                if (!closed && !ended) Post(() => { if (!closed && !ended) InputDropped?.Invoke(); });
+                return;
+            }
             at += length;
         }
     }
@@ -487,6 +486,10 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         closed = true;
         try { sending.Cancel(); }
         catch (ObjectDisposedException) { }
+        // The writer's already-broad catches (OperationCanceledException, ObjectDisposedException, ...) cover whatever this
+        // disposal races with in WriteLoopAsync, so it's safe right after the cancel (bughunt 2026-10-28: previously never disposed).
+        try { sending.Dispose(); }
+        catch (Exception) { }
         outbox.Writer.TryComplete();
         TaskCompletionSource? room;
         lock (pendingGate) (room, roomForOutput) = (roomForOutput, null);

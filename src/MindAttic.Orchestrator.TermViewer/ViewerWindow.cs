@@ -103,7 +103,9 @@ internal sealed class ViewerWindow : Window
         Loaded += (_, _) => Attach();
         Activated += (_, _) => relay?.Terminal.Focus();
         Closing += (_, _) => Detach();
-        Closed += (_, _) => { stop.Cancel(); watch.Stop(); };
+        // Cancel() runs every registration tied to the token synchronously before it returns, so disposing right after is safe
+        // even though ListenForDashboard's background task is still holding the token (bughunt 2026-10-28: never disposed before).
+        Closed += (_, _) => { stop.Cancel(); stop.Dispose(); watch.Stop(); };
         watch.Tick += (_, _) => Look();
         watch.Start();
         ListenForDashboard();

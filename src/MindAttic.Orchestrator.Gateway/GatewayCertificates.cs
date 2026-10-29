@@ -43,8 +43,15 @@ internal static class GatewayCertificates
             using var store = new X509Store(StoreName.My, location);
             store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
             var found = store.Certificates.Find(X509FindType.FindByThumbprint, thumbprint, validOnly: false);
+            // Every candidate not kept is disposed, including ones after the match (bughunt 2026-10-28): a duplicate thumbprint
+            // with no private key used to leak its native cert/key handle on every call.
+            X509Certificate2? match = null;
             foreach (var cert in found)
-                if (cert.HasPrivateKey) return cert;
+            {
+                if (match is null && cert.HasPrivateKey) match = cert;
+                else cert.Dispose();
+            }
+            if (match is not null) return match;
         }
         throw new InvalidOperationException($"No certificate with thumbprint {thumbprint} and its private key in CurrentUser\\My or LocalMachine\\My.");
     }

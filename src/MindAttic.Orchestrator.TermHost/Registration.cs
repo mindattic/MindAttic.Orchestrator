@@ -72,9 +72,12 @@ internal sealed class Registration
             record = current;
         }
         wake.Set();
-        // A write in flight finishes first, so it can't put the file back after the delete.
-        try { worker?.Join(TimeSpan.FromSeconds(2)); } catch (ThreadStateException) { }
-        if (!TermSessions.Delete(record.Id)) log.Write("couldn't delete the registry file");
+        // A write in flight finishes first, so it can't put the file back after the delete. If it doesn't finish in time, that
+        // write can still land after we delete and recreate the file, so the delete is skipped rather than raced (bughunt 2026-10-28).
+        var joined = true;
+        try { joined = worker is null || worker.Join(TimeSpan.FromSeconds(2)); } catch (ThreadStateException) { }
+        if (!joined) log.Write("the registry worker didn't finish within 2s; leaving the registry file in place rather than risk it being recreated after a delete");
+        else if (!TermSessions.Delete(record.Id)) log.Write("couldn't delete the registry file");
         Announce(record, TermSessionEvents.Ended);
     }
 

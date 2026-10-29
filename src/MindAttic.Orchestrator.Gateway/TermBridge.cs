@@ -113,7 +113,9 @@ internal static class TermBridge
         TryDispose(pipe);
         await Quietly(up).ConfigureAwait(false);
         await Quietly(down).ConfigureAwait(false);
-        if (socket.State is not (WebSocketState.Closed or WebSocketState.Aborted)) socket.Abort();
+        // Never let this throw past here (bughunt 2026-10-28): the caller's own teardown (stopWatch.CancelAsync, the detach
+        // audit write) runs after RunAsync returns, so an unguarded Abort throwing here used to skip it.
+        TryAbort(socket);
         return new BridgeResult(endedBy, Interlocked.Read(ref counts.FramesUp), Interlocked.Read(ref counts.FramesDown),
             Interlocked.Read(ref counts.BytesDown), Interlocked.Read(ref counts.Dropped), Interlocked.Read(ref counts.Withheld));
     }
@@ -386,5 +388,11 @@ internal static class TermBridge
     private static void TryDispose(Stream stream)
     {
         try { stream.Dispose(); } catch (Exception) { }
+    }
+
+    private static void TryAbort(WebSocket socket)
+    {
+        try { if (socket.State is not (WebSocketState.Closed or WebSocketState.Aborted)) socket.Abort(); }
+        catch (Exception) { }
     }
 }

@@ -25,6 +25,10 @@ internal sealed class BroadcastFile : IBroadcastControl, IDisposable
 
     private readonly string? directory;
     private readonly Timer timer;
+    // Timer doesn't serialize its own callbacks: a poll slower than Interval (slow disk, AV, contention with the file being
+    // rewritten) could overlap the next one, so 'seen' (read and written only here) is protected rather than left to race
+    // (bughunt 2026-10-28). 'current' stays volatile; it's only ever replaced wholesale, never read-modify-written.
+    private readonly object pollGate = new();
     private (DateTime Written, long Length) seen;
     private volatile TermBroadcastSettings current;
 
@@ -48,20 +52,23 @@ internal sealed class BroadcastFile : IBroadcastControl, IDisposable
             var info = new FileInfo(TermBroadcast.PathIn(directory));
             return info.Exists ? (info.LastWriteTimeUtc, info.Length) : (DateTime.MinValue, -1);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return seen; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { lock (pollGate) return seen; }
     }
 
     private void Poll()
     {
         try
         {
-            var stamp = Stamp();
-            if (stamp == seen) return;
-            // Not readable just now (a sharing violation as a writer replaces it): the last good settings stay, and the stamp
-            // isn't taken, so the next poll reads it again rather than waiting for the file to change (M.ORCH-T986).
-            if (!TermBroadcast.TryRead(directory, out var settings)) return;
-            seen = stamp;
-            current = settings;
+            lock (pollGate)
+            {
+                var stamp = Stamp();
+                if (stamp == seen) return;
+                // Not readable just now (a sharing violation as a writer replaces it): the last good settings stay, and the stamp
+                // isn't taken, so the next poll reads it again rather than waiting for the file to change (M.ORCH-T986).
+                if (!TermBroadcast.TryRead(directory, out var settings)) return;
+                seen = stamp;
+                current = settings;
+            }
         }
         catch (Exception) { }
     }
