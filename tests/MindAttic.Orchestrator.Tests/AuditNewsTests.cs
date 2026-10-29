@@ -29,6 +29,20 @@ public sealed class AuditNewsTests
     }
 
     [Test]
+    public void A_file_once_only_custom_is_news_once_it_becomes_genuine_drift()
+    {
+        // Was under 30% alike (a different file, not a stale copy) in the old report, so it carried no weight there;
+        // now it's a genuine stale copy of the canonical file. A past "custom" sighting of the same (Repo, File) must
+        // never permanently poison it against ever being reported as new drift.
+        var before = Report([Drift("A", "weird.md", 0.1)], []);
+        var after = Report([Drift("A", "weird.md", 0.5)], []);
+
+        var news = AuditNews.Between(before, after);
+
+        Assert.That(news.Drift.Select(d => d.Repo), Is.EqualTo(new[] { "A" }));
+    }
+
+    [Test]
     public void With_no_previous_report_nothing_is_news_however_much_the_audit_found()
     {
         var after = Report([Drift("A", "hook.ps1"), Drift("B", "hook.ps1")], [Dup("A", "B")]);

@@ -15,7 +15,9 @@ public sealed record AuditNews(IReadOnlyList<DriftFinding> Drift, IReadOnlyList<
     public static AuditNews Between(AuditReport? before, AuditReport after)
     {
         if (before is null) return new([], []);
-        var oldDrift = before.Drift.Select(d => (d.Repo, d.File)).ToHashSet();
+        // Filtered the same way the after-side is (!IsCustom): a (Repo, File) that was only ever seen as a custom, unrelated
+        // file in the old report mustn't permanently suppress it once it becomes genuine drift.
+        var oldDrift = before.Drift.Where(d => !d.IsCustom).Select(d => (d.Repo, d.File)).ToHashSet();
         var oldGroups = before.Duplicates.Select(Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         return new([.. after.Drift.Where(d => !d.IsCustom && !oldDrift.Contains((d.Repo, d.File)))],
                    [.. after.Duplicates.Where(g => !oldGroups.Contains(Key(g)))]);
