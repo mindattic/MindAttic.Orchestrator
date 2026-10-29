@@ -468,7 +468,9 @@ internal sealed class StreamMasker
             var from = Math.Max(0, runStart - 48);
             try
             {
-                var m = AssignedTail.Match(joined, from, runEnd - from);
+                // Regex.Match(string, beginning, length) still anchors \z to the end of the whole string, not
+                // beginning+length, so it can never match when runEnd < joined.Length; match a real substring instead.
+                var m = AssignedTail.Match(joined.Substring(from, runEnd - from));
                 if (m.Success && m.Groups["v"] is { Length: > 0 } v
                               && v.Value.Any(ch => char.IsAsciiDigit(ch) || char.IsAsciiLetterUpper(ch)))
                 {
@@ -477,7 +479,7 @@ internal sealed class StreamMasker
                     var password = m.Groups["name"] is { Success: true, Length: > 0 } name && name.Value[0] is 'p' or 'P';
                     var strong = password || (value.Length >= StrongAssignedPart && value.Any(char.IsAsciiDigit) && value.Any(char.IsAsciiLetter));
                     if (password || (value.Length >= MinAssignedPart && !value.All(char.IsAsciiDigit)))
-                        Consider(new Candidate(v.Index, v.Index, runEnd), strong);
+                        Consider(new Candidate(from + v.Index, from + v.Index, runEnd), strong);
                 }
             }
             catch (System.Text.RegularExpressions.RegexMatchTimeoutException) { }
