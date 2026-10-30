@@ -81,8 +81,12 @@ public sealed class TabSwitchTests
         // sit straight in it, made one list in code.
         var doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         var view = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == body);
-        var content = view.Elements().Single();
+        // AgentsBody's own direct content is an outer, never-virtualized wrapper (M.ORCH-T1302): the chosen terminal (a
+        // native HwndHost) is a plain sibling there, never realize/derealized by the virtualizing panel just because it
+        // scrolled out of view. AgentsBodyList, nested one level in, is what's actually flattened into the list's items.
+        var content = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == $"{body}List");
         Assert.That(content.Name.LocalName, Is.EqualTo("StackPanel"), "a vertical panel whose children become the list's items");
+        Assert.That(content.Ancestors().Contains(view), Is.True, $"{body}List scrolls inside {body}");
         // ToastDots (M.ORCH-T1167, merged into the limit-box header row by M.ORCH-T1180) is exempt: it's capped at
         // MainViewModel.MaxToasts, so unlike Tickets/Queue/Reminders/Finished/Warnings it never scales with org size, and it
         // was never one of VirtualizedBody's managed rows even before T1180 moved it inside this body (it lived outside the
@@ -92,7 +96,7 @@ public sealed class TabSwitchTests
         Assert.That(lists, Is.Not.Empty);
         Assert.That(lists.Select(l => l.Parent), Is.All.EqualTo(content), "a list nested in a panel of its own would build every row");
         Assert.That(File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs")),
-            Does.Contain($"VirtualizedList.ApplyBody({body})"));
+            Does.Contain($"VirtualizedList.ApplyBody({body}, {body}List)"));
     }
 
     [Test]
@@ -158,6 +162,46 @@ public sealed class TabSwitchTests
         Layout();
         Assert.That(Built().Any(t => t.StartsWith("row ")), Is.False);
     }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_nested_virtualized_body_never_realizes_or_derealizes_what_comes_before_it()
+    {
+        // M.ORCH-T1302: AgentsBody wraps the chosen terminal (a native HwndHost that must never be torn down just because
+        // it scrolled out of view) ahead of AgentsBodyList. ApplyBody(body, content) must virtualize content's rows alone,
+        // leaving the plain sibling ahead of it in body's own StackPanel exactly as untouched as any ordinary WPF layout
+        // scrolled out of a ScrollViewer's viewport: still a real element, never removed from the visual tree.
+        _ = System.IO.Packaging.PackUriHelper.UriSchemePack; // registers pack:// outside an Application
+        var theme = (ResourceDictionary)Application.LoadComponent(new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
+        var pinned = new TextBlock { Text = "pinned" };
+        var rows = new ItemsControl { Style = (Style)theme["MaRowList"], ItemsSource = Enumerable.Range(0, 600).Select(i => $"row {i}").ToList() };
+        var nested = new StackPanel { Children = { rows } };
+        var body = new ScrollViewer { Content = new StackPanel { Children = { pinned, nested } } };
+        body.Resources.MergedDictionaries.Add(theme);
+        VirtualizedBody? made = MindAttic.Orchestrator.Wpf.VirtualizedList.ApplyBody(body, nested);
+        Assert.That(made, Is.Not.Null);
+
+        void Layout()
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                body.Measure(new Size(800, 600));
+                body.Arrange(new Rect(0, 0, 800, 600));
+                body.UpdateLayout();
+                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background); // the body's scheduled rebuild
+            }
+        }
+        Layout();
+        Assert.That(Descendants(body).Contains(pinned), Is.True, "pinned realized up front");
+        Assert.That(Built(body).Any(t => t.StartsWith("row ")), Is.True, "the rows nearest the top are built too");
+
+        // Scroll the rows far down, well past where a flat virtualized body would derealize an item this far from the top.
+        body.ScrollToVerticalOffset(20000);
+        Layout();
+        Assert.That(Descendants(body).Contains(pinned), Is.True, "still never torn down, only scrolled out of the viewport");
+        Assert.That(Built(body).Any(t => t.StartsWith("row ")), Is.True, "rows now on screen are built");
+    }
+
+    private static List<string> Built(DependencyObject root) => [.. Descendants(root).OfType<TextBlock>().Select(t => t.Text)];
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {

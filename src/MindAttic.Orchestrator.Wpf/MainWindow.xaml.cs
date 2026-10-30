@@ -53,15 +53,18 @@ public partial class MainWindow : Window
         // Settings fills 80% of the window both ways (M.ORCH-T804), following it as it resizes or zooms.
         Root.SizeChanged += (_, _) => { SizeSettings(); SizeTerminalRow(); };
         TerminalFrame.IsVisibleChanged += (_, _) => SizeTerminalRow();
+        // AgentsBody's own height can change without Root's (e.g. TerminalsPanel's tab strip showing or hiding above it),
+        // and TerminalFrame's size is now a share of AgentsBody's viewport, not Root's (M.ORCH-T1302).
+        AgentsBody.SizeChanged += (_, _) => SizeTerminalRow();
         // A person's current work (including, on the global login's tab, what fits on no person's page, M.ORCH-T825) is one
         // virtualized list (M.ORCH-T754): headings and notes, then the lists' items a row (or a line of cards) each, so a
-        // switch of tab or org builds only what's on screen.
-        VirtualizedList.ApplyBody(AgentsBody);
+        // switch of tab or org builds only what's on screen. AgentsBodyList, not AgentsBody's own direct content, is what's
+        // flattened (M.ORCH-T1302): TerminalFrame, ahead of it in AgentsBody's content, stays a plain, always-realized sibling
+        // so a native terminal window is never torn down by the virtualizing panel's own realize/derealize cycle.
+        VirtualizedList.ApplyBody(AgentsBody, AgentsBodyList);
         // One scroll gesture works anywhere over the window (M.ORCH-T1299), not only once the cursor already sits over
         // AgentsBody's own viewport: the login tabs and CLI tabs are horizontal ScrollViewers that mark a wheel tick handled
-        // on their own even with vertical scrolling disabled (swallowing it before it would ever bubble up), and the pinned
-        // limit-bar pills and terminal frame sit in fixed rows outside AgentsBody entirely, so a tick over any of them used
-        // to just do nothing.
+        // on their own even with vertical scrolling disabled (swallowing it before it would ever bubble up).
         PreviewMouseWheel += MainWindow_PreviewMouseWheel;
         model.SelectedTabChanged += (_, _) => DataContext = model.SelectedTab;
         // The scrolled login strip follows the selected tab (M.ORCH-T1025): Ctrl+Tab, Show who's working or an org switch
@@ -100,9 +103,9 @@ public partial class MainWindow : Window
             (_, e) => e.CanExecute = !TerminalKeyboard.HoldsFocus(TerminalPanesHost)));
 
         // Each terminal lives in the Terminals panel's host grid from its opening to its closing (M.ORCH-T810): a template would
-        // build a new terminal (and a new CLI) every time its tab was shown. Native windows, they sit in a fixed row under the
-        // person's terminal tabs, outside the scrolling body (M.ORCH-T861), so they can't scroll over the tabs (TerminalClip only
-        // clips them should they ever sit in a scroll view again), and are hidden while a dialog or the loader covers the window,
+        // build a new terminal (and a new CLI) every time its tab was shown. Native windows, they sit inside AgentsBody's scroll
+        // view (M.ORCH-T1302, under the fixed CLI tab bar), so TerminalClip (below) keeps them clipped to its viewport as it
+        // scrolls rather than painting over the tabs above, and they're hidden while a dialog or the loader covers the window,
         // which they'd otherwise draw over.
         model.AllTerminals.Panes.CollectionChanged += (_, e) =>
         {
@@ -457,37 +460,28 @@ public partial class MainWindow : Window
             ? new DoubleAnimation(0.25, 0.95, TimeSpan.FromSeconds(1.3)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever }
             : new DoubleAnimation(exitOpacity, TimeSpan.FromSeconds(exitSeconds)));
 
-    /// <summary>The least <see cref="AgentsBody"/> (and the sign-in prompt sharing its row) is ever given while the terminal
-    /// shows (M.ORCH-T1268): just enough for its own ScrollViewer (MaBodyScroll) to be a real, wheel-scrollable viewport, not a
-    /// visible peek of the chart or tickets underneath it. The terminal and the pinned 5-hour/weekly bars (<c>PinnedLimitBars</c>,
-    /// MainWindow.xaml's Grid.Row="3") are meant to fill the window's first screen on their own; the chart and tickets below
-    /// are reached by scrolling, not by reserving them a guaranteed sliver the way <c>AgentsBodyPeek</c> used to (M.ORCH-T1072,
-    /// M.ORCH-T1166, M.ORCH-T1209 all wrestled with sizing that sliver instead of just removing it).</summary>
+    /// <summary>How much of <see cref="AgentsBody"/>'s own viewport <see cref="SizeTerminalRow"/> leaves below
+    /// <see cref="TerminalFrame"/>, so it reads as a real, wheel-scrollable viewport rather than a terminal that exactly fills
+    /// the window with nothing suggesting there's more underneath (M.ORCH-T1268, M.ORCH-T1072, M.ORCH-T1166, M.ORCH-T1209 all
+    /// wrestled with sizing that sliver before M.ORCH-T1302 moved the terminal back into the scrolling body itself).</summary>
     private const double AgentsBodyScrollHandle = 24;
 
-    /// <summary>The terminal row's floor while a terminal shows: never shorter than this even in a short window, where the
-    /// 1000:1 star split in <see cref="SizeTerminalRow"/> would otherwise pinch it thin alongside the fixed rows above and
-    /// below it.</summary>
+    /// <summary>The terminal's floor while it shows: never shorter than this even in a short window.</summary>
     private const double TerminalRowMinHeight = 160;
 
-    /// <summary>The terminal and the scrolling body (stats, queue tabs, the 5-hour/weekly chart, tickets) share whatever room
-    /// is left under the fixed rows above and below, both star rows, while the terminal shows: a lopsided 1000:1 split hands
-    /// the terminal essentially all of it (M.ORCH-T1268 — the user wants the terminal, not the chart, to fill the window's
-    /// first screen), floored at <see cref="TerminalRowMinHeight"/> so it never pinches thin; the body keeps only
-    /// <see cref="AgentsBodyScrollHandle"/>, just enough to still be a working scroll target for the chart and tickets below
-    /// it. Hidden (no terminals open on this login), the terminal's row takes no room and the body reclaims the whole star
-    /// share, filling the window as it did before there was a terminal to share it with.</summary>
+    /// <summary>Sizes <see cref="TerminalFrame"/>, now a plain part of <see cref="AgentsBody"/>'s scrolling content
+    /// (M.ORCH-T1302, the fixed rows being just the login tabs and the CLI tab bar above it), to about AgentsBody's own
+    /// viewport height so it still fills the window's first screen the way M.ORCH-T1268 wanted, leaving
+    /// <see cref="AgentsBodyScrollHandle"/> showing below it to invite a scroll down to the pinned limit pills, the chart and
+    /// Tickets; floored at <see cref="TerminalRowMinHeight"/> so it never pinches thin in a short window. Hidden (no terminals
+    /// open on this login), its height is left alone (Auto, via its own Visibility binding) and it takes no room.</summary>
     private void SizeTerminalRow()
     {
         try
         {
-            var terminalRow = Root.RowDefinitions[2];
-            var bodyRow = Root.RowDefinitions[4];
-            var shown = TerminalFrame.IsVisible;
-            terminalRow.Height = shown ? new GridLength(1000, GridUnitType.Star) : GridLength.Auto;
-            terminalRow.MinHeight = shown ? TerminalRowMinHeight : 0;
-            bodyRow.Height = shown ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
-            bodyRow.MinHeight = shown ? 0 : 120;
+            if (!TerminalFrame.IsVisible) return;
+            var viewport = AgentsBody.ActualHeight;
+            if (viewport > 0) TerminalFrame.Height = Math.Max(TerminalRowMinHeight, viewport - AgentsBodyScrollHandle);
         }
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
     }

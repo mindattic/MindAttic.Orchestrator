@@ -83,9 +83,11 @@
     </Window.Resources>
 
     <Grid x:Name="Root">
+        <!-- The login tabs (row 0) and the CLI tab bar (row 1, TerminalsPanel) are the only fixed rows (M.ORCH-T1302): you
+             always see who's selected and which CLI is shown. Everything else - the chosen terminal, the pinned limit pills,
+             the stats, the 5-hour chart and Tickets - lives in AgentsBody (row 2), one scrolling panel, so scrolling down past
+             the terminal reaches the rest. The status bar (row 3) stays its own fixed footer, as it always was. -->
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" MinHeight="120" />
@@ -236,15 +238,16 @@
         </StackPanel>
         </DockPanel>
 
-        <!-- A person's CLIs (M.ORCH-T810), fixed under their person tab (M.ORCH-T861): the person tabs above, then that person's
-             terminal tabs right beneath them, then the chosen terminal, none of which scroll; everything under them (the stats, the
-             toolbar, the 5-hour chart and Tickets) scrolls in the body (AgentsBody). One tab per CLI of theirs running
+        <!-- A person's CLI tab bar (M.ORCH-T810), fixed under their person tab (M.ORCH-T1302, which pulled the chosen terminal
+             itself back into the scrolling body below): the person tabs above, then that person's terminal tabs right beneath
+             them, is all that stays fixed, so who's selected and which CLI is shown are always visible; the terminal, the
+             stats, the 5-hour chart and Tickets all scroll together in the body (AgentsBody). One tab per CLI of theirs running
              inside the dashboard (sent by the Launcher when it runs inside the Orchestrator, M.LNCH-T77), each a live ConPTY
              terminal with the Windows Terminal renderer, underlined in its login's colour and led by its badge (an MaTag in that
-             colour). The terminals are native windows (HwndHosts), which WPF never clips to a scroll view, so the frame sits outside
-             the body rather than in it: it can never scroll up over the tabs, nor be virtualized out of the body's list. They all
-             live in the one host grid below (MainWindow.xaml.cs adds and removes them, since a template would start a new CLI each
-             time it was shown) and only the shown person's chosen one is visible; the window hides them under a dialog or the loader. -->
+             colour). The terminals are native windows (HwndHosts); they live in the one host grid below (MainWindow.xaml.cs adds
+             and removes them, since a template would start a new CLI each time it was shown) and only the shown person's chosen
+             one is visible; TerminalClip.cs keeps it clipped to AgentsBody's viewport as it scrolls, and the window hides them
+             under a dialog or the loader. -->
         <StackPanel x:Name="TerminalsPanel" Grid.Row="1" Margin="{StaticResource SpaceLXLTSRXL}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <TextBlock x:Name="TerminalsEmptyHint" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceBS}"
                        Text="No terminals open on this login. When the Launcher runs inside the Orchestrator, each CLI it opens arrives here as a tab of its own: a live terminal you can type in."
@@ -344,81 +347,9 @@
                 </DockPanel>
             </Border>
         </StackPanel>
-        <!-- The chosen terminal, in its own fixed row right under the terminal tabs (M.ORCH-T861), outside the scrolling body:
-             shown on a signed-in person's page that has a terminal, like the tabs above. Shares whatever's left of the window
-             below the tab strip and the terminal tabs with the body below it (M.ORCH-T1072, MainWindow.xaml.cs
-             SizeTerminalRow): the body (the stats, the 5-hour/weekly chart and the tickets) used to be pinned to a fixed peek
-             while the terminal took every leftover pixel, which left a dead stretch of unwritten terminal background under a
-             short transcript (M.ORCH-T1166); now the terminal's capped at a comfortable height and the body picks up whatever
-             it doesn't use, its own ScrollViewer reaching the rest. -->
-        <Grid x:Name="TerminalFrameRow" Grid.Row="2" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
-            <!-- No card and no border (M.ORCH-T1095): a plain Grid, the tab page's own width. -->
-            <!-- No bottom margin of its own (M.ORCH-T1209): the body's Header right below already opens with SpaceTS, its own
-                 top gutter; stacking a bottom one here too doubled the gap between the terminal and what follows it. -->
-            <Grid x:Name="TerminalFrame" MinHeight="160" Margin="{StaticResource SpaceLXLRXL}"
-                  Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
-                <!-- WPF claims arrow keys (and Tab) for its own directional/tab focus navigation even when a hosted
-                     native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never
-                     sees them (M.ORCH-T833): switched off here so they pass straight through to the terminal. -->
-                <Grid x:Name="TerminalPanesHost" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
-            </Grid>
-        </Grid>
-
-        <!-- The 5-hour/weekly (or, on the API key's tab, its money) readout, pinned in its own fixed row right under the
-             terminal (M.ORCH-T1268): the terminal and this row are meant to fill the window's first screen between them, the
-             full chart and tickets reached by scrolling AgentsBody below. Not an overlay on the terminal itself: TerminalFrame
-             hosts a native window (an HwndHost, M.ORCH-T833's comment above), which always paints over any WPF sibling drawn
-             on top of it regardless of z-order: an overlay here would just be invisible under the live terminal. Clicking
-             either pill scrolls the body down to the full chart (PinnedLimitBar_Click, MainWindow.xaml.cs). -->
-        <StackPanel x:Name="PinnedLimitBars" Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Left"
-                    Margin="{StaticResource SpaceLXLTSRXL}" Visibility="Collapsed">
-            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
-                <Button x:Name="PinnedFiveHourBar" Style="{StaticResource MaToolButton}" Padding="0" Click="PinnedLimitBar_Click"
-                        ToolTip="Jump to the full 5-hour utilization chart" AutomationProperties.Name="{Binding FiveHourLimitText}">
-                    <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
-                        <StackPanel>
-                            <TextBlock Text="{Binding FiveHourLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding FiveHourLimitBrush}" />
-                            <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
-                                         Value="{Binding FiveHourLimitPercent, Mode=OneWay}" Foreground="{Binding FiveHourLimitBrush}" />
-                        </StackPanel>
-                    </Border>
-                </Button>
-                <Button x:Name="PinnedWeeklyBar" Style="{StaticResource MaToolButton}" Padding="0" Margin="{StaticResource SpaceLS}" Click="PinnedLimitBar_Click"
-                        ToolTip="Jump to the full 5-hour utilization chart" AutomationProperties.Name="{Binding WeeklyLimitText}">
-                    <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
-                        <StackPanel>
-                            <TextBlock Text="{Binding WeeklyLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding WeeklyLimitBrush}" />
-                            <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
-                                         Value="{Binding WeeklyLimitPercent, Mode=OneWay}" Foreground="{Binding WeeklyLimitBrush}" />
-                        </StackPanel>
-                    </Border>
-                </Button>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
-                <Button x:Name="PinnedApiLeftBar" Style="{StaticResource MaToolButton}" Padding="0" Click="PinnedLimitBar_Click"
-                        ToolTip="Jump to its money, further down" AutomationProperties.Name="{Binding ApiLeftHeadline}">
-                    <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
-                        <StackPanel>
-                            <TextBlock Text="Credit left" Style="{StaticResource MaMutedText}" FontSize="11" />
-                            <TextBlock Text="{Binding ApiLeftHeadline}" FontSize="13" FontWeight="SemiBold" Margin="{StaticResource SpaceTS}" />
-                        </StackPanel>
-                    </Border>
-                </Button>
-                <Button x:Name="PinnedApiSpentBar" Style="{StaticResource MaToolButton}" Padding="0" Margin="{StaticResource SpaceLS}" Click="PinnedLimitBar_Click"
-                        ToolTip="Jump to its money, further down" AutomationProperties.Name="{Binding ApiSpentHeadline}">
-                    <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
-                        <StackPanel>
-                            <TextBlock Text="Spent today" Style="{StaticResource MaMutedText}" FontSize="11" />
-                            <TextBlock Text="{Binding ApiSpentHeadline}" FontSize="13" FontWeight="SemiBold" Margin="{StaticResource SpaceTS}" />
-                        </StackPanel>
-                    </Border>
-                </Button>
-            </StackPanel>
-        </StackPanel>
-
         <!-- A roster account not signed in on this machine yet (M.ORCH-T615): its tab shows only its Sign in, then, once signed
              in, the whole page and Open Launcher at the next refresh. -->
-        <StackPanel Grid.Row="4" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520" Margin="{StaticResource SpaceXL}"
+        <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520" Margin="{StaticResource SpaceXL}"
                     Visibility="{Binding ShowsSignIn, Converter={StaticResource Visible}}">
             <TextBlock Text="{Binding SignInPrompt}" TextWrapping="Wrap" TextAlignment="Center" Margin="{StaticResource SpaceBL}" />
             <Button Style="{StaticResource MaPrimaryButton}" Command="{Binding SignInTabCommand}" Content="Sign in" Padding="{StaticResource SpaceHLVS}"
@@ -426,22 +357,89 @@
             <TextBlock Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" TextAlignment="Center" Margin="{StaticResource SpaceTM}"
                        Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" AutomationProperties.LiveSetting="Polite" />
         </StackPanel>
-                <!-- Same row (M.ORCH-T958): swapped in for the 5-hour card, so Tickets stays right after it. -->
 
         <!-- The old 'API key' billing tab's own body (M.ORCH-T630) is gone (M.ORCH-T906): the API key is a person, whose page is
              the same as everyone's below, its money in place of Claude's 5-hour and weekly meters. -->
 
-        <!-- The person's scrolling body, under their fixed terminal: their stats, the toolbar, the 5-hour chart and the tickets
-             assigned to them (the Current work agent card board is gone, M.ORCH-T837). One virtualized list (M.ORCH-T754,
-             MainWindow.xaml.cs): only what's on screen is built. -->
-        <ScrollViewer x:Name="AgentsBody" Grid.Row="4" Style="{StaticResource MaBodyScroll}"
-                      Visibility="Collapsed">
+        <!-- The person's scrolling body, under their fixed login tabs and CLI tab bar (M.ORCH-T1302): the chosen terminal, the
+             pinned 5-hour/weekly (or money) pills, their stats, the toolbar, the 5-hour chart and the tickets assigned to them
+             (the Current work agent card board is gone, M.ORCH-T837), all reached by one scroll. One virtualized list
+             (M.ORCH-T754, MainWindow.xaml.cs): only what's on screen is built; the terminal's own Grid is a plain, non-list part
+             of it (as it was before M.ORCH-T861 pinned it, with the same TerminalClip.cs clipping it to this scroll view). -->
+        <ScrollViewer x:Name="AgentsBody" Grid.Row="2" Style="{StaticResource MaBodyScroll}"
+                      Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <StackPanel>
-                <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom under their fixed person tab,
-                     terminal tabs and terminal (M.ORCH-T861): their stats (the 5-hour window, the week, their cutoffs and when
-                     Claude's meter was last read), then the toolbar, the 5-hour chart and Tickets, all in this
-                     one scrolling body. The body's MaBodyScroll owns the window's left/right gutter; nothing inside it adds its own,
-                     so the tiles share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
+                <!-- The chosen terminal (M.ORCH-T810), first in the scrolling body (M.ORCH-T1302: pulled back in from its own
+                     fixed row, M.ORCH-T861, so scrolling down past it reaches the chart and Tickets): MainWindow.xaml.cs's
+                     SizeTerminalRow sizes it to about AgentsBody's own viewport height, less AgentsBodyScrollHandle, so it fills
+                     the window's first screen the way M.ORCH-T1268 wanted without reserving the chart and tickets a fixed row of
+                     their own. A plain sibling of AgentsBodyList below, never one of its virtualized rows (VirtualizedList.
+                     ApplyBody(AgentsBody, AgentsBodyList) in MainWindow.xaml.cs flattens AgentsBodyList alone): the native
+                     terminal window must never be torn down by a realize/derealize cycle just because it scrolled out of view. -->
+                <Grid x:Name="TerminalFrame" MinHeight="160" Margin="{StaticResource SpaceTS}"
+                      Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
+                    <!-- WPF claims arrow keys (and Tab) for its own directional/tab focus navigation even when a hosted
+                         native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never
+                         sees them (M.ORCH-T833): switched off here so they pass straight through to the terminal. -->
+                    <Grid x:Name="TerminalPanesHost" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
+                </Grid>
+
+                <StackPanel x:Name="AgentsBodyList">
+                <!-- The 5-hour/weekly (or, on the API key's tab, its money) readout, right under the terminal: a quick glance
+                     without scrolling all the way to the full chart. Clicking either pill scrolls down to it
+                     (PinnedLimitBar_Click, MainWindow.xaml.cs). -->
+                <StackPanel x:Name="PinnedLimitBars" Orientation="Horizontal" HorizontalAlignment="Left"
+                            Margin="{StaticResource SpaceTS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+                    <StackPanel Orientation="Horizontal" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
+                        <Button x:Name="PinnedFiveHourBar" Style="{StaticResource MaToolButton}" Padding="0" Click="PinnedLimitBar_Click"
+                                ToolTip="Jump to the full 5-hour utilization chart" AutomationProperties.Name="{Binding FiveHourLimitText}">
+                            <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding FiveHourLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding FiveHourLimitBrush}" />
+                                    <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
+                                                 Value="{Binding FiveHourLimitPercent, Mode=OneWay}" Foreground="{Binding FiveHourLimitBrush}" />
+                                </StackPanel>
+                            </Border>
+                        </Button>
+                        <Button x:Name="PinnedWeeklyBar" Style="{StaticResource MaToolButton}" Padding="0" Margin="{StaticResource SpaceLS}" Click="PinnedLimitBar_Click"
+                                ToolTip="Jump to the full 5-hour utilization chart" AutomationProperties.Name="{Binding WeeklyLimitText}">
+                            <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding WeeklyLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding WeeklyLimitBrush}" />
+                                    <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
+                                                 Value="{Binding WeeklyLimitPercent, Mode=OneWay}" Foreground="{Binding WeeklyLimitBrush}" />
+                                </StackPanel>
+                            </Border>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
+                        <Button x:Name="PinnedApiLeftBar" Style="{StaticResource MaToolButton}" Padding="0" Click="PinnedLimitBar_Click"
+                                ToolTip="Jump to its money, further down" AutomationProperties.Name="{Binding ApiLeftHeadline}">
+                            <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
+                                <StackPanel>
+                                    <TextBlock Text="Credit left" Style="{StaticResource MaMutedText}" FontSize="11" />
+                                    <TextBlock Text="{Binding ApiLeftHeadline}" FontSize="13" FontWeight="SemiBold" Margin="{StaticResource SpaceTS}" />
+                                </StackPanel>
+                            </Border>
+                        </Button>
+                        <Button x:Name="PinnedApiSpentBar" Style="{StaticResource MaToolButton}" Padding="0" Margin="{StaticResource SpaceLS}" Click="PinnedLimitBar_Click"
+                                ToolTip="Jump to its money, further down" AutomationProperties.Name="{Binding ApiSpentHeadline}">
+                            <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
+                                <StackPanel>
+                                    <TextBlock Text="Spent today" Style="{StaticResource MaMutedText}" FontSize="11" />
+                                    <TextBlock Text="{Binding ApiSpentHeadline}" FontSize="13" FontWeight="SemiBold" Margin="{StaticResource SpaceTS}" />
+                                </StackPanel>
+                            </Border>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom under their fixed person tab and
+                     terminal tabs (M.ORCH-T1302): the terminal and the pinned limit pills above, then their stats (the 5-hour
+                     window, the week, their cutoffs and when Claude's meter was last read), the toolbar, the 5-hour chart and
+                     Tickets, all in this one scrolling body. The body's MaBodyScroll owns the window's left/right gutter; nothing
+                     inside it adds its own, so the tiles share both edges (M.ORCH-T192). The tiles are equal cells that together
+                     span the row at any width. -->
                 <StackPanel x:Name="Header" Margin="{StaticResource SpaceTS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
 
                 <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="200" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
@@ -705,18 +703,19 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
+            </StackPanel>
         </ScrollViewer>
 
         <!-- An org with no Claude login yet (M.ORCH-T655): said over the body rather than showing another org's person. On the
              global login's tab (MainWindow.xaml.cs), which knows the orgs. -->
-        <Border x:Name="OrgEmptyPanel" Grid.Row="1" Grid.RowSpan="4" Style="{StaticResource MaCover}"
+        <Border x:Name="OrgEmptyPanel" Grid.Row="1" Grid.RowSpan="2" Style="{StaticResource MaCover}"
                 Visibility="{Binding IsOrgEmpty, Converter={StaticResource Visible}}">
             <TextBlock Text="{Binding OrgEmptyText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" TextAlignment="Center"
                        HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560" Margin="{StaticResource SpaceXL}" AutomationProperties.LiveSetting="Polite" />
         </Border>
 
-        <!-- Status bar -->
-        <Border x:Name="StatusBar" Grid.Row="5" Style="{StaticResource MaStatusBar}" Visibility="Collapsed">
+        <!-- Status bar: its own fixed footer (M.ORCH-T1302, restored from T1301's hide), not part of AgentsBody's scroll. -->
+        <Border x:Name="StatusBar" Grid.Row="3" Style="{StaticResource MaStatusBar}">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaMutedText}"
                            Text="F5 refresh · Ctrl+Tab next login · Ctrl +/− zoom · Esc close" />
@@ -734,7 +733,7 @@
         </Border>
 
         <!-- Covers every row until the first refresh lands (M.ORCH-T184). -->
-        <Border x:Name="Loader" Grid.RowSpan="6" Style="{StaticResource MaCover}"
+        <Border x:Name="Loader" Grid.RowSpan="4" Style="{StaticResource MaCover}"
                 Visibility="{Binding IsLoading, Converter={StaticResource Visible}}"
                 AutomationProperties.Name="Loading the dashboard" AutomationProperties.LiveSetting="Polite">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -755,7 +754,7 @@
              Tabbed, not one long list (M.ORCH-T804): Budget, Pacing, Scheduler, Logins and Person tabs, each scrolling on its
              own, in a dialog sized to 80% of the window both ways (MainWindow.xaml.cs's SizeSettings sets DialogWidth and
              SettingsBody's Height as the window resizes). The error line stays under the tabs, whichever is showing. -->
-        <mc:MaModal x:Name="SettingsModal" Grid.RowSpan="6" Title="Settings" AutomationProperties.Name="Settings"
+        <mc:MaModal x:Name="SettingsModal" Grid.RowSpan="4" Title="Settings" AutomationProperties.Name="Settings"
                     IsOpen="{Binding IsSettingsOpen}" CloseCommand="{Binding ToggleSettingsCommand}">
             <Grid x:Name="SettingsBody" DataContext="{Binding Settings}">
                 <Grid.RowDefinitions>
@@ -959,7 +958,7 @@
              right-click menu: the account's email (its ID, never edited); its Name (its tab's title; the member's name too) and
              Prefix (the badge its terminal titles start with, M.ORCH-T633); and its own 5-hour and weekly cutoffs (M.ORCH-T707), as
              orchestrator org limit sets them. Defaults fills in the default cutoffs; one Save keeps everything. -->
-        <mc:MaModal x:Name="UserSettingsModal" Grid.RowSpan="6" Title="User Settings" AutomationProperties.Name="User Settings" DialogWidth="460"
+        <mc:MaModal x:Name="UserSettingsModal" Grid.RowSpan="4" Title="User Settings" AutomationProperties.Name="User Settings" DialogWidth="460"
                     IsOpen="{Binding IsUserSettingsOpen}" CloseCommand="{Binding CancelUserSettingsCommand}">
             <StackPanel>
                 <TextBlock Text="Email" Margin="{StaticResource SpaceBXS}" />

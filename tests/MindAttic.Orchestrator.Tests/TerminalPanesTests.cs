@@ -244,25 +244,27 @@ public sealed class TerminalPanesTests
         var xaml = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
         XElement Named(string name) => xaml.Descendants().Single(e => (string?)e.Attribute(x + "Name") == name);
-        // M.ORCH-T861: the person's terminal tabs, then their chosen terminal, are fixed rows right under the person tabs
-        // (Root's rows 1 and 2), outside the scrolling body, so a native terminal window can never scroll over the tabs.
+        // M.ORCH-T1302: only the person's CLI tab bar is a fixed row right under the person tabs (Root's row 1); the chosen
+        // terminal scrolls with everything else in AgentsBody (row 2), a plain sibling of AgentsBodyList rather than one of
+        // its virtualized rows, so a native terminal window is never torn down just because it scrolled out of view
+        // (TerminalClip.cs keeps it clipped to AgentsBody's own viewport instead).
         var rootGrid = Named("Root");
         Assert.That(Named("TerminalsPanel").Parent, Is.SameAs(rootGrid));
         Assert.That((string?)Named("TerminalsPanel").Attribute("Grid.Row"), Is.EqualTo("1"));
         // Wrapped in a scroller row (M.ORCH-T1171, mirroring the login tabs' M.ORCH-T822), so its direct parent is that
         // row's ScrollViewer rather than TerminalsPanel itself; it must still live inside TerminalsPanel.
         Assert.That(Named("TerminalTabs").Ancestors().Contains(Named("TerminalsPanel")), Is.True);
-        Assert.That(Named("TerminalFrameRow").Parent, Is.SameAs(rootGrid));
-        Assert.That((string?)Named("TerminalFrameRow").Attribute("Grid.Row"), Is.EqualTo("2"));
-        Assert.That(Named("TerminalFrame").Parent, Is.SameAs(Named("TerminalFrameRow")));
         var rows = rootGrid.Elements().Single(e => e.Name.LocalName == "Grid.RowDefinitions").Elements().Select(r => (string?)r.Attribute("Height")).ToList();
         Assert.That(rows[1], Is.EqualTo("Auto"));
-        Assert.That(rows[2], Is.EqualTo("Auto"));
-        Assert.That((string?)Named("AgentsBody").Attribute("Grid.Row"), Is.EqualTo(rows.IndexOf("*").ToString()), "everything under them scrolls");
-        foreach (var name in new[] { "TerminalsPanel", "TerminalTabs", "TerminalFrame" })
-            Assert.That(Named(name).Ancestors().Contains(Named("AgentsBody")), Is.False, name);
-        // In the body: the stats, the toolbar, then the 5-hour chart and Tickets (M.ORCH-T826; no Current work board, M.ORCH-T837).
-        var body = Named("AgentsBody").Elements().Single().Elements().Select(e => (string?)e.Attribute(x + "Name")).ToList();
+        Assert.That((string?)Named("AgentsBody").Attribute("Grid.Row"), Is.EqualTo(rows.IndexOf("*").ToString()), "everything under the CLI tab bar scrolls");
+        foreach (var name in new[] { "TerminalsPanel", "TerminalTabs" })
+            Assert.That(Named(name).Ancestors().Contains(Named("AgentsBody")), Is.False, $"{name} stays fixed");
+        Assert.That(Named("TerminalFrame").Ancestors().Contains(Named("AgentsBody")), Is.True, "the chosen terminal scrolls with the body");
+        Assert.That(Named("TerminalFrame").Ancestors().Contains(Named("AgentsBodyList")), Is.False, "never one of AgentsBodyList's virtualized rows");
+        // In AgentsBodyList: the pinned limit pills, the stats, the toolbar, then the 5-hour chart and Tickets (M.ORCH-T826;
+        // no Current work board, M.ORCH-T837).
+        var body = Named("AgentsBodyList").Elements().Select(e => (string?)e.Attribute(x + "Name")).ToList();
+        Assert.That(body.IndexOf("Header"), Is.EqualTo(body.IndexOf("PinnedLimitBars") + 1));
         Assert.That(body.IndexOf("Toolbar"), Is.EqualTo(body.IndexOf("Header") + 1));
         Assert.That(body.IndexOf("UtilizationSection"), Is.EqualTo(body.IndexOf("Toolbar") + 1));
         Assert.That(body.IndexOf("UserTickets"), Is.EqualTo(body.IndexOf("UtilizationSection") + 1));

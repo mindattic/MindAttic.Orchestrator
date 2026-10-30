@@ -51,7 +51,14 @@ public static class VirtualizedList
     }
 
     /// <summary>Virtualizes a whole body view (M.ORCH-T754): see <see cref="VirtualizedBody"/>.</summary>
-    public static VirtualizedBody ApplyBody(ScrollViewer body) => new(body);
+    public static VirtualizedBody ApplyBody(ScrollViewer body) =>
+        new(body, body.Content as Panel ?? throw new InvalidOperationException($"{body.Name}'s content is not a panel"));
+
+    /// <summary>Virtualizes <paramref name="content"/>, a panel nested inside <paramref name="body"/> rather than its direct
+    /// content (M.ORCH-T1302): what comes before it in <paramref name="body"/>'s own content (e.g. the live terminal, a native
+    /// HwndHost) stays a plain, always-realized sibling, immune to the virtualizing panel's own realize/derealize cycle, while
+    /// still scrolling with everything else in the same view.</summary>
+    public static VirtualizedBody ApplyBody(ScrollViewer body, Panel content) => new(body, content);
 }
 
 /// <summary>
@@ -77,12 +84,12 @@ public sealed class VirtualizedBody
     private double width = double.NaN;
     private bool pending;
 
-    internal VirtualizedBody(ScrollViewer body)
+    internal VirtualizedBody(ScrollViewer body, Panel content)
     {
-        var content = body.Content as Panel ?? throw new InvalidOperationException($"{body.Name}'s content is not a panel");
+        var isBodysOwnContent = ReferenceEquals(content, body.Content);
         var children = content.Children.Cast<UIElement>().ToList();
         content.Children.Clear();
-        body.Content = null;
+        if (isBodysOwnContent) body.Content = null;
         foreach (var child in children)
         {
             if (child is ItemsControl list && list.GetType() == typeof(ItemsControl)) parts.Add(Watch(new Section(list)));
@@ -97,7 +104,15 @@ public sealed class VirtualizedBody
         host.Margin = content.Margin;
         AutomationProperties.SetName(host, AutomationProperties.GetName(body));
         Bodies.Add(host, this);
-        body.Content = host;
+        if (isBodysOwnContent) body.Content = host;
+        else
+        {
+            // content (now emptied) sits inside some outer, never-virtualized wrapper (M.ORCH-T1302): host takes its place there.
+            var outer = (Panel)content.Parent!;
+            var index = outer.Children.IndexOf(content);
+            outer.Children.RemoveAt(index);
+            outer.Children.Insert(index, host);
+        }
         Schedule();
     }
 
