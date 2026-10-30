@@ -3300,10 +3300,10 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 -- state
 INSERT INTO state (name, value) VALUES ('api-failovers', '[]');
 INSERT INTO state (name, value) VALUES ('audit', '{
-  "RanUtc": "2026-10-29T22:24:00.539353Z",
-  "Took": "00:00:54.9437911",
+  "RanUtc": "2026-10-30T22:25:00.5967207Z",
+  "Took": "00:00:56.2162419",
   "ReposScanned": 72,
-  "FilesScanned": 7984,
+  "FilesScanned": 8075,
   "Drift": [
     {
       "File": "AGENTS.md",
@@ -5609,7 +5609,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "d241be173e50c27b0514aa1d1739ee85f1cb8a56",
+    "Tested": "dabc9325d40e893ac03438497e0993bb4ccd7d23",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
