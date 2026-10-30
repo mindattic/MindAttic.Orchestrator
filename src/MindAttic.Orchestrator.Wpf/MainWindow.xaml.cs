@@ -57,6 +57,12 @@ public partial class MainWindow : Window
         // virtualized list (M.ORCH-T754): headings and notes, then the lists' items a row (or a line of cards) each, so a
         // switch of tab or org builds only what's on screen.
         VirtualizedList.ApplyBody(AgentsBody);
+        // One scroll gesture works anywhere over the window (M.ORCH-T1299), not only once the cursor already sits over
+        // AgentsBody's own viewport: the login tabs and CLI tabs are horizontal ScrollViewers that mark a wheel tick handled
+        // on their own even with vertical scrolling disabled (swallowing it before it would ever bubble up), and the pinned
+        // limit-bar pills and terminal frame sit in fixed rows outside AgentsBody entirely, so a tick over any of them used
+        // to just do nothing.
+        PreviewMouseWheel += MainWindow_PreviewMouseWheel;
         model.SelectedTabChanged += (_, _) => DataContext = model.SelectedTab;
         // The scrolled login strip follows the selected tab (M.ORCH-T1025): Ctrl+Tab, Show who's working or an org switch
         // can select one off screen.
@@ -491,6 +497,28 @@ public partial class MainWindow : Window
     /// (<see cref="AgentsBody"/>) there on its own, rather than hand-computed offsets.</summary>
     private void PinnedLimitBar_Click(object sender, RoutedEventArgs e) =>
         (sender is FrameworkElement { DataContext: MainViewModel { IsApiKeyTab: true } } ? (FrameworkElement)ApiBurnChart : UtilizationCard).BringIntoView();
+
+    /// <summary>Redirects a wheel tick anywhere over the window into <see cref="AgentsBody"/>'s own scroll (M.ORCH-T1299),
+    /// except one already inside it (left alone so its native scrolling runs unchanged) or one while
+    /// <see cref="SettingsModal"/> is open (its own tabs each scroll themselves). PreviewMouseWheel tunnels from the window
+    /// down to the actual element before MouseWheel bubbles back up, so this fires ahead of any inner ScrollViewer along the
+    /// way and can mark the tick handled before one swallows it.</summary>
+    private void MainWindow_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Handled || !AgentsBody.IsVisible || SettingsModal.IsOpen) return;
+        if (e.OriginalSource is DependencyObject source && IsWithin(source, AgentsBody)) return;
+        AgentsBody.ScrollToVerticalOffset(AgentsBody.VerticalOffset - e.Delta);
+        e.Handled = true;
+    }
+
+    private static bool IsWithin(DependencyObject? source, DependencyObject ancestor)
+    {
+        for (var node = source; node != null; node = node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node))
+        {
+            if (ReferenceEquals(node, ancestor)) return true;
+        }
+        return false;
+    }
 
     /// <summary>Room added on each side of the widest tab's own content, for both the person tabs (M.ORCH-T1096) and the
     /// CLI tabs (M.ORCH-T1250).</summary>
