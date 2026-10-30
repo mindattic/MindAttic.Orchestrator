@@ -458,25 +458,25 @@ public partial class MainWindow : Window
             : new DoubleAnimation(exitOpacity, TimeSpan.FromSeconds(exitSeconds)));
 
     /// <summary>The least <see cref="AgentsBody"/> (and the sign-in prompt sharing its row) is ever given while the terminal
-    /// shows (M.ORCH-T1268): just enough for its own ScrollViewer (MaBodyScroll) to be a real, wheel-scrollable viewport, not a
-    /// visible peek of the chart or tickets underneath it. The terminal and the pinned 5-hour/weekly bars (<c>PinnedLimitBars</c>,
-    /// MainWindow.xaml's Grid.Row="3") are meant to fill the window's first screen on their own; the chart and tickets below
-    /// are reached by scrolling, not by reserving them a guaranteed sliver the way <c>AgentsBodyPeek</c> used to (M.ORCH-T1072,
-    /// M.ORCH-T1166, M.ORCH-T1209 all wrestled with sizing that sliver instead of just removing it).</summary>
-    private const double AgentsBodyScrollHandle = 24;
+    /// shows (M.ORCH-T1299, replacing M.ORCH-T1268's 24px handle): a real viewport you can see is scrollable at a glance —
+    /// enough of the stat tiles to show there's more below — not a sliver so thin the fix in M.ORCH-T1299's wheel redirect
+    /// (so a tick anywhere scrolls it) had nothing to actually scroll into. M.ORCH-T1268's reasoning (the terminal, not the
+    /// chart, should fill the window's first screen) still holds some weight, so the terminal keeps the larger share of any
+    /// room beyond both floors; it just no longer gets effectively all of it.</summary>
+    private const double AgentsBodyMinHeight = 220;
 
     /// <summary>The terminal row's floor while a terminal shows: never shorter than this even in a short window, where the
-    /// 1000:1 star split in <see cref="SizeTerminalRow"/> would otherwise pinch it thin alongside the fixed rows above and
+    /// star split in <see cref="SizeTerminalRow"/> would otherwise pinch it thin alongside the fixed rows above and
     /// below it.</summary>
     private const double TerminalRowMinHeight = 160;
 
     /// <summary>The terminal and the scrolling body (stats, queue tabs, the 5-hour/weekly chart, tickets) share whatever room
-    /// is left under the fixed rows above and below, both star rows, while the terminal shows: a lopsided 1000:1 split hands
-    /// the terminal essentially all of it (M.ORCH-T1268 — the user wants the terminal, not the chart, to fill the window's
-    /// first screen), floored at <see cref="TerminalRowMinHeight"/> so it never pinches thin; the body keeps only
-    /// <see cref="AgentsBodyScrollHandle"/>, just enough to still be a working scroll target for the chart and tickets below
-    /// it. Hidden (no terminals open on this login), the terminal's row takes no room and the body reclaims the whole star
-    /// share, filling the window as it did before there was a terminal to share it with.</summary>
+    /// is left under the fixed rows above and below, both star rows, while the terminal shows: a 2:1 split still gives the
+    /// terminal the larger share (M.ORCH-T1268), floored at <see cref="TerminalRowMinHeight"/> so it never pinches thin; the
+    /// body keeps at least <see cref="AgentsBodyMinHeight"/>, enough to be a real, visibly scrollable viewport onto the chart
+    /// and tickets below it (M.ORCH-T1299 — a 24px handle technically scrolled but showed nothing worth scrolling to). Hidden
+    /// (no terminals open on this login), the terminal's row takes no room and the body reclaims the whole star share,
+    /// filling the window as it did before there was a terminal to share it with.</summary>
     private void SizeTerminalRow()
     {
         try
@@ -484,10 +484,10 @@ public partial class MainWindow : Window
             var terminalRow = Root.RowDefinitions[2];
             var bodyRow = Root.RowDefinitions[4];
             var shown = TerminalFrame.IsVisible;
-            terminalRow.Height = shown ? new GridLength(1000, GridUnitType.Star) : GridLength.Auto;
+            terminalRow.Height = shown ? new GridLength(2, GridUnitType.Star) : GridLength.Auto;
             terminalRow.MinHeight = shown ? TerminalRowMinHeight : 0;
             bodyRow.Height = new GridLength(1, GridUnitType.Star);
-            bodyRow.MinHeight = shown ? AgentsBodyScrollHandle : 120;
+            bodyRow.MinHeight = shown ? AgentsBodyMinHeight : 120;
         }
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
     }
