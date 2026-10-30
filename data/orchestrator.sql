@@ -11,7 +11,7 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1793370770.16842);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1793392446.759756);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1792840279.0027995);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'owner', 'premium', 'active', 1792771885.882, 1793396861.6925194);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1793399665.9067848);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
@@ -5609,7 +5609,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "dabc9325d40e893ac03438497e0993bb4ccd7d23",
+    "Tested": "80957bfe7b82fd69e344516125c7672bd257c33c",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
