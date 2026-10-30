@@ -5586,8 +5586,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "65c4e335081d0a8a47d7566bf577e1b04f132dbf",
-    "Green": "65c4e335081d0a8a47d7566bf577e1b04f132dbf"
+    "Tested": "926f1a81a3501895856813e5250e977c79f5d142",
+    "Green": "926f1a81a3501895856813e5250e977c79f5d142"
   },
   "MindAttic.Psst": {
     "Tested": "c737769fa2041f37d6292878e6987921516c9d90",
@@ -5597,8 +5597,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "738fbe601b86bb8d97f98a438ef69384f5c1739a",
-    "Green": "738fbe601b86bb8d97f98a438ef69384f5c1739a"
+    "Tested": "eee2d5e189a60d3f85dac57524d1da71bd735da3",
+    "Green": "eee2d5e189a60d3f85dac57524d1da71bd735da3"
   },
   "MindAttic.Vault": {
     "Tested": "522e11b2ff08d6c2a11ff67fe97d040d6afa4713",
