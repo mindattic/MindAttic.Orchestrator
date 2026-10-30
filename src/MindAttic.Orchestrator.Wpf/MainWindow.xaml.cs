@@ -486,8 +486,8 @@ public partial class MainWindow : Window
             var shown = TerminalFrame.IsVisible;
             terminalRow.Height = shown ? new GridLength(1000, GridUnitType.Star) : GridLength.Auto;
             terminalRow.MinHeight = shown ? TerminalRowMinHeight : 0;
-            bodyRow.Height = new GridLength(1, GridUnitType.Star);
-            bodyRow.MinHeight = shown ? AgentsBodyScrollHandle : 120;
+            bodyRow.Height = shown ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
+            bodyRow.MinHeight = shown ? 0 : 120;
         }
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
     }

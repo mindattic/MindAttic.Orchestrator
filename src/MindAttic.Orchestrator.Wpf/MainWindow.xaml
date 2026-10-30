@@ -371,7 +371,7 @@
              on top of it regardless of z-order: an overlay here would just be invisible under the live terminal. Clicking
              either pill scrolls the body down to the full chart (PinnedLimitBar_Click, MainWindow.xaml.cs). -->
         <StackPanel x:Name="PinnedLimitBars" Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Left"
-                    Margin="{StaticResource SpaceLXLTSRXL}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+                    Margin="{StaticResource SpaceLXLTSRXL}" Visibility="Collapsed">
             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
                 <Button x:Name="PinnedFiveHourBar" Style="{StaticResource MaToolButton}" Padding="0" Click="PinnedLimitBar_Click"
                         ToolTip="Jump to the full 5-hour utilization chart" AutomationProperties.Name="{Binding FiveHourLimitText}">
@@ -435,7 +435,7 @@
              assigned to them (the Current work agent card board is gone, M.ORCH-T837). One virtualized list (M.ORCH-T754,
              MainWindow.xaml.cs): only what's on screen is built. -->
         <ScrollViewer x:Name="AgentsBody" Grid.Row="4" Style="{StaticResource MaBodyScroll}"
-                      Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+                      Visibility="Collapsed">
             <StackPanel>
                 <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom under their fixed person tab,
                      terminal tabs and terminal (M.ORCH-T861): their stats (the 5-hour window, the week, their cutoffs and when
@@ -716,7 +716,7 @@
         </Border>
 
         <!-- Status bar -->
-        <Border x:Name="StatusBar" Grid.Row="5" Style="{StaticResource MaStatusBar}">
+        <Border x:Name="StatusBar" Grid.Row="5" Style="{StaticResource MaStatusBar}" Visibility="Collapsed">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaMutedText}"
                            Text="F5 refresh · Ctrl+Tab next login · Ctrl +/− zoom · Esc close" />
