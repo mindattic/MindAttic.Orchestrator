@@ -902,7 +902,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-29', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3530441);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 486);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'MindAttic.Orchestrator', 'Claude', 'billed:api-key', NULL, 1072241);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'Prose', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5340520);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'Prose', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5859793);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'Unity.Rea.Hare', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1299260);
 
 -- ticket_costs
@@ -5587,8 +5587,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "eaa14bcfbef329794cd01946df6bc64be5ca119a",
-    "Green": "eaa14bcfbef329794cd01946df6bc64be5ca119a"
+    "Tested": "bc73172ae9d6facb2ba6bf14c59f20a8a793761f",
+    "Green": "bc73172ae9d6facb2ba6bf14c59f20a8a793761f"
   },
   "MindAttic.Psst": {
     "Tested": "c737769fa2041f37d6292878e6987921516c9d90",
@@ -5598,8 +5598,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "f1b5733b29d2abb07f227c3f55fcbb990abe71d2",
-    "Green": "f1b5733b29d2abb07f227c3f55fcbb990abe71d2"
+    "Tested": "ae01463b888c2c7aedacebf781f9412605e8c70b",
+    "Green": "ae01463b888c2c7aedacebf781f9412605e8c70b"
   },
   "MindAttic.Vault": {
     "Tested": "522e11b2ff08d6c2a11ff67fe97d040d6afa4713",
