@@ -17,5 +17,3 @@ data/*.db-journal
 data/*.db-wal
 data/*.db-shm
 data/*.sql.tmp
-
-__pycache__/
