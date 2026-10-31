@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
-    <PackageReference Include="MindAttic.Vault" Version="6.0.0" />
+    <PackageReference Include="MindAttic.Vault" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>

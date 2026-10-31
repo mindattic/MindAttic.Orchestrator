@@ -531,6 +531,18 @@ if ($step -eq 'newer') {
     Write-Host 'MindAttic.Orchestrator is up to date.' -ForegroundColor DarkGray
 }
 
+# ── MindAttic Vault settings (LAMP, M.ORCH-T1308) ─────────────────────────
+# Imports today's settings from the orchestrator's database into %LOCALAPPDATA%\MindAttic\Orchestrator\settings.json (once)
+# and writes settings.manifest.json beside it, so MindAttic.Vault.Desktop shows the Orchestrator tab. The installed CLI
+# does it (the daemon also does on its start); a CLI from before LAMP doesn't know the switch, which only says so.
+if (-not $failed -and (Test-Path $cliExe)) {
+    Write-Host 'Writing the MindAttic Vault settings manifest...' -ForegroundColor Cyan
+    & $cliExe --write-settings-manifest
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  (--write-settings-manifest exited $LASTEXITCODE; the daemon imports the settings on its next start)" -ForegroundColor DarkYellow
+    }
+}
+
 if ($Launch -and $installed) { Start-Process -FilePath $installed }
 
 if ($failed) { Write-Host 'Deploy FAILED.' -ForegroundColor Red; exit 1 }

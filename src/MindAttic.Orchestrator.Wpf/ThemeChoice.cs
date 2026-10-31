@@ -28,6 +28,15 @@ public static class ThemeChoice
         return theme;
     }
 
+    /// <summary>Switches <paramref name="resources"/> to the saved theme when it isn't showing it already (the settings changed
+    /// elsewhere: MindAttic.Vault.Desktop's Orchestrator tab, LAMP M.ORCH-T1308), and returns the saved theme.</summary>
+    public static MaThemeMode Follow(ResourceDictionary? resources, JsonStore store)
+    {
+        var theme = Saved(store);
+        if (resources is not null && MaTheme.Get(resources) != theme) MaTheme.Set(resources, theme);
+        return theme;
+    }
+
     /// <summary>Saves <paramref name="theme"/> as the choice; false (nothing changed) when the settings can't be written, the
     /// switch itself staying in force for this run.</summary>
     public static bool Save(JsonStore store, MaThemeMode theme)

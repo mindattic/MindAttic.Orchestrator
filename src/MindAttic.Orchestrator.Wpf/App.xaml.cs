@@ -35,6 +35,14 @@ public partial class App : Application
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
+        // LAMP (M.ORCH-T1308): import today's settings into MindAttic Vault and write its manifest, then exit; no install, no
+        // daemon, no window.
+        if (OrchestratorSettingsManifest.TryRun(e.Args, Console.Out, out var manifestExit))
+        {
+            Shutdown(manifestExit);
+            return;
+        }
+
         // Started by the old name (Scheduler's logon job, the Launcher, Tickets Desktop's links): handed to the new-named exe
         // beside it before anything else, so this copy takes no mutex or pipe and writes no hooks (M.ORCH-T999).
         if (Environment.ProcessPath is { } started && Installer.ForwardTarget(started) is { } forward)

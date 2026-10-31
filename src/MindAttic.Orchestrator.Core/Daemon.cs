@@ -20,6 +20,23 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     private string? notifyUrl;
     private DateTime intakeUtc;
 
+    /// <summary>Brings the settings row and the MindAttic Vault file into agreement (<see cref="JsonStore.SyncVaultSettings"/>);
+    /// a failure is said and tried again next tick, never thrown into the loop.</summary>
+    private bool SyncVaultSettings()
+    {
+        try
+        {
+            if (!store.SyncVaultSettings()) return false;
+            Say(LogEventLevel.Information, "settings: a MindAttic Vault change is now in the settings row and on every dashboard");
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
+        {
+            Say(LogEventLevel.Warning, $"settings: couldn't sync the MindAttic Vault settings (retrying next tick): {ex.Message}");
+            return false;
+        }
+    }
+
     public void Run(TimeSpan interval, CancellationToken cancel)
     {
         var options = OrchestratorOptions.Load(store);
@@ -60,6 +77,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             Status.StateBus.Enable(background: false);
             Status.StateBus.PublishAll(store);
         }
+        // LAMP (M.ORCH-T1308): the app-level settings live in MindAttic Vault. A Save in Vault.Desktop is copied into the settings
+        // row the hooks read, and pushed to every dashboard, as it lands (and by every tick, should the watcher miss one).
+        SyncVaultSettings();
+        using var vaultWatch = store.WatchVault(() => { if (SyncVaultSettings()) waiter.Poke(); });
         // The fallback viewers (M.ORCH-T960): while the dashboard is down, every hosted CLI gets its own TermViewer window. On its own
         // thread, once a second, contained: nothing it does can end this loop.
         if (ShowFallbackViewers) StartFallbackViewers(cancel);
@@ -127,6 +148,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 var snapshot = refresher.Run(RefreshNow);
                 refresher.Ticking = true;
                 tick.Lap("refresh");
+                SyncVaultSettings();
                 // Only from settings that could be read: defaults would run allocate, keep-going and the subagent cap on
                 // nothing anyone set and rewrite the hooks with them, every tick a bad row stays (M.ORCH-T720).
                 if (!store.TryLoadSettings(out var s)) throw new SettingsUnreadableException(store.Describe(JsonStore.SettingsName));

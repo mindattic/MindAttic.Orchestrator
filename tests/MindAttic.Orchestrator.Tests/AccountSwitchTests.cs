@@ -254,7 +254,8 @@ public sealed class AccountSwitchTests
 
         // No 'Make default' any more (M.ORCH-T1097); the billing detail line stays beside the org-wide actions.
         Assert.That(code, Does.Not.Contain("MakeDefault"));
-        Assert.That(xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"SettingsPersonTabsTab\"", StringComparison.Ordinal)],
+        // In the Logins dialog since LAMP moved the settings to MindAttic Vault (M.ORCH-T1308).
+        Assert.That(xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"UserSettingsModal\"", StringComparison.Ordinal)],
             Does.Contain("x:Name=\"BillingDetailLine\""));
         // M.ORCH-T906: no API-key switch in the dashboard any more; the API key is a person with its own tab, and
         // orchestrator billing stays the command-line tool.

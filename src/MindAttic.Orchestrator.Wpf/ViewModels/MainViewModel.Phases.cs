@@ -36,7 +36,7 @@ public sealed partial class MainViewModel
     private sealed class Seen { public DateTime LastSeenUtc { get; init; } }
     /// <summary>The newest rebalance move toasted; moves made before the window opened aren't.</summary>
     private DateTime rebalanceSeenUtc = DateTime.UtcNow;
-    private bool isSettingsOpen;
+    private bool isLoginsOpen;
     private string queueMessage = "";
 
     private void InitPhases()
@@ -48,20 +48,45 @@ public sealed partial class MainViewModel
         // the logon daemon holds it, the daemon feeds the /allocate CLIs and keeps rl-status.json fresh, and
         // this window only shows.
         allocate = root?.allocate ?? new Allocate(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), lease) { WaitingPath = Allocate.DefaultWaitingPath };
-        Settings = root?.Settings ?? new SettingsViewModel(store, () =>
-        {
-            foreach (var t in LoginTabs) t.IsSettingsOpen = false;
-            _ = RefreshAsync();
-        });
-
-        ToggleSettingsCommand = new RelayCommand(() => { Settings.Load(); IsSettingsOpen = !IsSettingsOpen; });
+        ToggleLoginsCommand = new RelayCommand(() => IsLoginsOpen = !IsLoginsOpen);
+        OpenSettingsCommand = new RelayCommand(OpenSettings);
     }
 
-    // ── Settings ────────────────────────────────────────────────────────────
+    // ── Settings (LAMP, M.ORCH-T1308) ───────────────────────────────────────
 
-    public SettingsViewModel Settings { get; private set; } = null!;
-    public bool IsSettingsOpen { get => isSettingsOpen; set => Set(ref isSettingsOpen, value); }
-    public ICommand ToggleSettingsCommand { get; private set; } = null!;
+    /// <summary>The cog: the orchestrator's app-level settings are edited in MindAttic.Vault.Desktop, at its Orchestrator tab
+    /// (<see cref="OrchestratorVaultSettings.OpenInVault"/>); a Save there applies here live. Says so when Vault.Desktop isn't
+    /// installed.</summary>
+    public ICommand OpenSettingsCommand { get; private set; } = null!;
+
+    /// <summary>What opens the Vault (a seam for tests): true when Vault.Desktop took the request.</summary>
+    internal Func<bool> OpenVault { get; set; } = () => OrchestratorVaultSettings.OpenInVault();
+
+    private void OpenSettings()
+    {
+        if (OpenSettingsWith(OpenVault) is { } toast) Toasts.Insert(0, toast);
+    }
+
+    /// <summary>What the cog does: <paramref name="openVault"/> (MindAttic.Vault.Desktop at the Orchestrator tab), and the toast
+    /// to show when it didn't open, else null.</summary>
+    internal static ToastViewModel? OpenSettingsWith(Func<bool> openVault)
+    {
+        bool opened;
+        try { opened = openVault(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Dashboard").Warning(ex, "Opening MindAttic Vault's settings failed");
+            opened = false;
+        }
+        return opened ? null : new ToastViewModel("Settings live in MindAttic Vault",
+            "MindAttic.Vault.Desktop isn't installed or didn't start. Install it (MindAttic.Vault's run.ps1) to change the orchestrator's settings; orchestrator settings still changes them from the command line.",
+            Palette.Over, null);
+    }
+
+    /// <summary>The Logins dialog (the org-wide login actions: Add login, Sign in all, Report), which Settings held before its
+    /// settings moved to MindAttic Vault.</summary>
+    public bool IsLoginsOpen { get => isLoginsOpen; set => Set(ref isLoginsOpen, value); }
+    public ICommand ToggleLoginsCommand { get; private set; } = null!;
 
     // ── Budget ──────────────────────────────────────────────────────────────
 

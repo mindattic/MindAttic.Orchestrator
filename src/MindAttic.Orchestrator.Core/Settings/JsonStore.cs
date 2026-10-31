@@ -2,6 +2,7 @@ using System.Data.Common;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using MindAttic.Vault.Settings;
 
 namespace MindAttic.Orchestrator.Settings;
 
@@ -14,6 +15,10 @@ namespace MindAttic.Orchestrator.Settings;
 /// transaction, so the daemon, a dashboard and the CLI changing the same thing at once queue on SQLite's lock instead of a
 /// <c>.lock</c> file, and none saves over what another added. A JSON file still in <see cref="Directory"/> is read in the first
 /// time its name is used (unless the database already holds it) and kept beside it as <c>.bak</c>.
+/// <para>LAMP (M.ORCH-T1308): the app-level settings live in MindAttic Vault (<see cref="OrchestratorVaultSettings"/>, edited in
+/// MindAttic.Vault.Desktop). For the live store, reading the settings overlays the Vault's values on the row, and writing them
+/// writes the Vault's share back to the Vault file as well as the row, which the hooks keep reading;
+/// <see cref="SyncVaultSettings"/> copies an edit made in Vault.Desktop into the row.</para>
 /// </summary>
 public sealed class JsonStore
 {
@@ -32,10 +37,34 @@ public sealed class JsonStore
     public static string LiveDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MindAttic", "MindAttic.Orchestrator");
 
-    public JsonStore(string? directory = null, OrchestratorDb? db = null)
+    /// <summary>The state row holding the Vault values as the database and the Vault last agreed on them (LAMP, M.ORCH-T1308):
+    /// the common ancestor <see cref="OrchestratorVaultSettings.Merge"/> tells a row change from a Vault change by.</summary>
+    public const string VaultSyncedName = "vault-settings";
+
+    /// <param name="directory">The store's folder; null is <see cref="LiveDirectory"/>.</param>
+    /// <param name="db">The database; null finds it from <paramref name="directory"/>.</param>
+    /// <param name="vault">The MindAttic Vault settings file the app-level settings are overlaid from. Null picks the user's real
+    /// one (<c>%LOCALAPPDATA%\MindAttic\Orchestrator\settings.json</c>) for the live store alone; a scratch store (tests, a
+    /// folder of its own) has none unless one is given, so it reads and writes its database row exactly as before.</param>
+    public JsonStore(string? directory = null, OrchestratorDb? db = null, JsonSettingsStore<OrchestratorVaultSettings>? vault = null)
     {
         Directory = directory ?? LiveDirectory;
         Db = db ?? new OrchestratorDb(OrchestratorDb.StatePath(Directory));
+        Vault = vault ?? (IsLiveStore() ? JsonSettingsStore<OrchestratorVaultSettings>.ForSettingsApp() : null);
+    }
+
+    /// <summary>The MindAttic Vault settings file the orchestrator's app-level settings live in (LAMP, M.ORCH-T1308), overlaid on
+    /// the database's settings row; null for a scratch store.</summary>
+    public JsonSettingsStore<OrchestratorVaultSettings>? Vault { get; }
+
+    private bool IsLiveStore()
+    {
+        try
+        {
+            return Db.IsLive && string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(Directory)),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(LiveDirectory)), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return false; }
     }
 
     /// <summary>The folder the old JSON files are read in from (and the logs, prompts and leases kept beside them).</summary>
@@ -67,9 +96,17 @@ public sealed class JsonStore
         try
         {
             var imported = Import(name);
-            using var connection = Connect(name);
-            if (Read(connection, null, name) is { } node) value = node.Deserialize<T>(Options) ?? new T();
-            else if (!imported) return false;
+            JsonObject? importedVault = null;
+            using (var connection = Connect(name))
+            {
+                if (Read(connection, null, name) is { } node) value = node.Deserialize<T>(Options) ?? new T();
+                else if (!imported) return false;
+                // LAMP: the Vault's values over the row's (M.ORCH-T1308).
+                if (name == SettingsName && Vault is not null && value is OrchestratorSettings row)
+                    value = (T)(object)Overlay(row, ReadSynced(connection, null), out importedVault);
+            }
+            // Imported just now: the row and the Vault agree, which is what a later three-way merge starts from.
+            if (importedVault is not null) TryRecordSynced(importedVault);
             return true;
         }
         catch (Exception ex) when (ex is JsonException or DbException or IOException or UnauthorizedAccessException or NotSupportedException)
@@ -113,7 +150,11 @@ public sealed class JsonStore
         Guard(() =>
         {
             Import(name);
-            WriteTo(name, (connection, tx) => Write(connection, tx, name, node));
+            WriteTo(name, (connection, tx) =>
+            {
+                Write(connection, tx, name, node);
+                if (name == SettingsName && value is OrchestratorSettings s) WriteVault(connection, tx, s);
+            });
             Retire(name);
         });
         // Committed: the status bus pushes it to every dashboard (M.ORCH-T891).
@@ -136,8 +177,12 @@ public sealed class JsonStore
                 T value;
                 try { value = Read(connection, tx, name) is { } node ? node.Deserialize<T>(Options) ?? new T() : new T(); }
                 catch (JsonException ex) { throw new InvalidDataException($"{Describe(name)} isn't readable JSON; left as it is rather than saved over", ex); }
+                // LAMP (M.ORCH-T1308): the change is made to the settings as they read, the Vault's values over the row's.
+                if (name == SettingsName && Vault is not null && value is OrchestratorSettings row)
+                    value = (T)(object)Overlay(row, ReadSynced(connection, tx), out _);
                 change(value);
                 Write(connection, tx, name, JsonSerializer.SerializeToNode(value, Options));
+                if (name == SettingsName && value is OrchestratorSettings changed) WriteVault(connection, tx, changed);
             });
         });
         // Committed: the status bus pushes it to every dashboard (M.ORCH-T891).
@@ -192,7 +237,188 @@ public sealed class JsonStore
     private void WriteTo(string name, Action<DbConnection, DbTransaction> change)
     {
         if (IsVolatile(name)) Db.Write((connection, tx) => change(connection, tx), dump: false);
+        // The settings' write also records the Vault values they were synced at (LAMP), copied for the hooks alike.
+        else if (name == SettingsName && Vault is not null) Db.WriteData(change, true, SettingsName, "state:" + VaultSyncedName);
         else Db.WriteData(change, true, name is SettingsName or AssignmentsName ? name : "state:" + name);
+    }
+
+    // ---- LAMP: the app-level settings live in MindAttic Vault (M.ORCH-T1308) ----
+
+    private (string? Text, JsonObject? Values) vaultCache;
+    private bool manifestWritten;
+    private readonly System.Threading.Lock vaultGate = new();
+
+    private enum VaultFile { Missing, Unreadable, Read }
+
+    /// <summary>The Vault file's values (normalized through <see cref="OrchestratorVaultSettings"/>): the small file is read every
+    /// time (a timestamp can miss two writes in one clock tick) and parsed again only when its text changed.</summary>
+    private VaultFile ReadVault(out JsonObject? values)
+    {
+        values = null;
+        var path = Vault!.FilePath;
+        try
+        {
+            if (!File.Exists(path)) return VaultFile.Missing;
+            var text = File.ReadAllText(path);
+            if (string.IsNullOrWhiteSpace(text)) return VaultFile.Unreadable;
+            lock (vaultGate)
+                if (vaultCache.Values is { } cached && vaultCache.Text == text)
+                {
+                    values = (JsonObject)cached.DeepClone();
+                    return VaultFile.Read;
+                }
+            var parsed = OrchestratorVaultSettings.FromJson(JsonNode.Parse(text) ?? throw new JsonException("empty")).ToJson();
+            lock (vaultGate) vaultCache = (text, parsed);
+            values = (JsonObject)parsed.DeepClone();
+            return VaultFile.Read;
+        }
+        catch (FileNotFoundException) { return VaultFile.Missing; }
+        catch (DirectoryNotFoundException) { return VaultFile.Missing; }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or NotSupportedException or InvalidOperationException)
+        {
+            return VaultFile.Unreadable;
+        }
+    }
+
+    /// <summary>The Vault values the row and the Vault last agreed on, or null before they ever have.</summary>
+    private static JsonObject? ReadSynced(DbConnection connection, DbTransaction? tx)
+    {
+        try { return Read(connection, tx, VaultSyncedName) is JsonObject o ? OrchestratorVaultSettings.FromJson(o).ToJson() : null; }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException) { return null; }
+    }
+
+    /// <summary>
+    /// <paramref name="row"/> with the Vault's values over its own: merged three ways (<see cref="OrchestratorVaultSettings.Merge"/>)
+    /// against what they were last synced at. With no Vault file yet, today's row is imported into it once (the row itself is
+    /// left as it is, the rollback) and <paramref name="imported"/> says what was imported. A Vault file that can't be read (a
+    /// hand edit's typo, held right now) leaves the row's values in force rather than putting every setting back to its default.
+    /// </summary>
+    private OrchestratorSettings Overlay(OrchestratorSettings row, JsonObject? synced, out JsonObject? imported)
+    {
+        imported = null;
+        var rowValues = OrchestratorVaultSettings.From(row).ToJson();
+        switch (ReadVault(out var vault))
+        {
+            case VaultFile.Missing:
+                try
+                {
+                    Vault!.Save(OrchestratorVaultSettings.FromJson(rowValues));
+                    EnsureManifest();
+                    imported = rowValues;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                return row;
+            case VaultFile.Unreadable:
+                return row;
+        }
+        EnsureManifest();
+        var merged = OrchestratorVaultSettings.Merge(synced, rowValues, vault!);
+        return OrchestratorVaultSettings.FromJson(merged).ApplyTo(row);
+    }
+
+    /// <summary>Inside a settings write: records <paramref name="s"/>'s Vault values as synced and writes them to the Vault file
+    /// when they differ from it. An IO failure throws, rolling the database write back, so the two never part.</summary>
+    private void WriteVault(DbConnection connection, DbTransaction tx, OrchestratorSettings s)
+    {
+        if (Vault is null) return;
+        var values = OrchestratorVaultSettings.From(s);
+        var json = values.ToJson();
+        Write(connection, tx, VaultSyncedName, json);
+        if (ReadVault(out var onDisk) == VaultFile.Read && JsonNode.DeepEquals(onDisk, json)) return;
+        Vault.Save(values);
+        EnsureManifest();
+    }
+
+    /// <summary>Writes <c>settings.manifest.json</c> beside the Vault file (once a process, and only when it changed), so
+    /// Vault.Desktop shows the Orchestrator tab.</summary>
+    private void EnsureManifest()
+    {
+        if (manifestWritten || Vault is null) return;
+        try
+        {
+            MindAttic.Vault.Settings.Manifest.SettingsManifestFile.WriteIfChanged(Vault.Directory,
+                MindAttic.Vault.Settings.Manifest.SettingsManifestBuilder.Build<OrchestratorVaultSettings>());
+            manifestWritten = true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Records what was just imported as synced; best effort (a later settings write records it anyway).</summary>
+    private void TryRecordSynced(JsonObject values)
+    {
+        try { Guard(() => WriteTo(VaultSyncedName, (connection, tx) => Write(connection, tx, VaultSyncedName, values))); }
+        catch (IOException) { }
+    }
+
+    /// <summary>
+    /// Brings the database's settings row (what the hooks read) and the Vault file into agreement (LAMP, M.ORCH-T1308): after an
+    /// edit in MindAttic.Vault.Desktop, or a write that reached only the row, the merged settings are written to both, and the
+    /// status bus pushes them to every dashboard. Nothing is written when they already agree, or when the row can't be read.
+    /// Returns whether anything was written. The daemon runs it every tick, and on every change to the Vault file.
+    /// </summary>
+    public bool SyncVaultSettings()
+    {
+        if (Vault is null) return false;
+        if (!InSync(out var inSync) || inSync) return false;
+        Update<OrchestratorSettings>(SettingsName, _ => { });
+        return true;
+    }
+
+    /// <summary>Calls <paramref name="changed"/> (on a worker thread, 300 ms after the last of a burst) whenever the Vault file
+    /// is written, e.g. a Save in MindAttic.Vault.Desktop; null for a store with no Vault. Dispose to stop.</summary>
+    public IDisposable? WatchVault(Action changed)
+    {
+        if (Vault is null) return null;
+        System.IO.Directory.CreateDirectory(Vault.Directory);
+        var debounce = new Timer(_ =>
+        {
+            try { changed(); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Settings").Warning(ex, "Applying a MindAttic Vault settings change failed"); }
+        });
+        var watcher = new FileSystemWatcher(Vault.Directory, Vault.FileName)
+        {
+            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.CreationTime | NotifyFilters.Size,
+        };
+        FileSystemEventHandler handler = (_, _) => debounce.Change(300, Timeout.Infinite);
+        watcher.Changed += handler;
+        watcher.Created += handler;
+        watcher.Renamed += (s, e) => handler(s, e);
+        watcher.EnableRaisingEvents = true;
+        return new VaultWatch(watcher, debounce);
+    }
+
+    private sealed class VaultWatch(FileSystemWatcher watcher, Timer debounce) : IDisposable
+    {
+        public void Dispose()
+        {
+            watcher.Dispose();
+            debounce.Dispose();
+        }
+    }
+
+    /// <summary>Whether the row, the synced record and the Vault file all hold the same Vault values; false (unknown) when the
+    /// row or the Vault file can't be read now.</summary>
+    private bool InSync(out bool inSync)
+    {
+        inSync = false;
+        try
+        {
+            if (!Import(SettingsName)) return false;
+            using var connection = Connect(SettingsName);
+            var row = Read(connection, null, SettingsName) is { } node ? node.Deserialize<OrchestratorSettings>(Options) ?? new() : new();
+            var rowValues = OrchestratorVaultSettings.From(row).ToJson();
+            var synced = ReadSynced(connection, null);
+            var file = ReadVault(out var vault);
+            if (file == VaultFile.Unreadable) return false;
+            if (file == VaultFile.Missing) return true; // written by the next write
+            var merged = OrchestratorVaultSettings.Merge(synced, rowValues, vault!);
+            inSync = JsonNode.DeepEquals(merged, rowValues) && JsonNode.DeepEquals(merged, synced) && JsonNode.DeepEquals(merged, vault);
+            return true;
+        }
+        catch (Exception ex) when (ex is JsonException or DbException or IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return false;
+        }
     }
 
     private static void Guard(Action write)

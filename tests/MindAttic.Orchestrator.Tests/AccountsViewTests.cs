@@ -107,13 +107,14 @@ public sealed class AccountsViewTests
         Assert.That(xaml, Does.Not.Contain("x:Name=\"AccountsBody\"").And.Not.Contain("IsAccountsView"));
 
         // M.ORCH-T804: the org-wide toolbar (the email box, Add login, Sign in all, Report) moved off the dashboard into
-        // Settings' Logins tab, still on the global login's tab.
-        var org = xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"SettingsPersonTabsTab\"", StringComparison.Ordinal)];
+        // Settings' Logins tab, still on the global login's tab; LAMP (M.ORCH-T1308) moved the settings to MindAttic Vault, so
+        // the toolbar is the Logins dialog's whole body now.
+        var org = xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"UserSettingsModal\"", StringComparison.Ordinal)];
         Assert.That(org, Does.Contain("{Binding AddAccountCommand}").And.Contain("x:Name=\"SignInAllButton\"").And.Contain("{Binding UsageReportCommand}")
             .And.Contain("x:Name=\"NewAccountBox\"").And.Contain("name@company.com"));
-        var settings = xaml.IndexOf("x:Name=\"SettingsModal\"", StringComparison.Ordinal);
-        Assert.That(xaml.IndexOf("x:Name=\"SettingsLoginsTab\"", StringComparison.Ordinal), Is.GreaterThan(settings), "in the Settings dialog");
-        Assert.That(xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal), Is.GreaterThan(xaml.IndexOf("x:Name=\"SettingsLoginsTab\"", StringComparison.Ordinal)), "on its Logins tab");
+        var logins = xaml.IndexOf("x:Name=\"LoginsModal\"", StringComparison.Ordinal);
+        Assert.That(logins, Is.GreaterThan(0));
+        Assert.That(xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal), Is.GreaterThan(logins), "in the Logins dialog");
         var top = xaml[xaml.IndexOf("x:Name=\"TopRow\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
         Assert.That(top, Does.Not.Contain("{Binding AddAccountCommand}").And.Not.Contain("{Binding SignInAllCommand}").And.Not.Contain("{Binding UsageReportCommand}"),
             "off the main dashboard");

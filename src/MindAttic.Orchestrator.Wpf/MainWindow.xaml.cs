@@ -47,11 +47,10 @@ public partial class MainWindow : Window
         // The org switcher above it, and what an org with no Claude login says, are the global login's tab's too (M.ORCH-T655).
         OrgStrip.DataContext = model;
         OrgEmptyPanel.DataContext = model;
-        // The org-wide login actions (Add login, Sign in all, Report), on Settings' Logins tab since M.ORCH-T804, are the global
-        // login's tab's too (M.ORCH-T763), not the shown tab's Settings the rest of the dialog binds to.
+        // The org-wide login actions (Add login, Sign in all, Report), in the Logins dialog since LAMP moved the settings to
+        // MindAttic Vault (M.ORCH-T1308), are the global login's tab's too (M.ORCH-T763), not the shown tab's.
         OrgToolbar.DataContext = model;
-        // Settings fills 80% of the window both ways (M.ORCH-T804), following it as it resizes or zooms.
-        Root.SizeChanged += (_, _) => { SizeSettings(); SizeTerminalRow(); };
+        Root.SizeChanged += (_, _) => SizeTerminalRow();
         TerminalFrame.IsVisibleChanged += (_, _) => SizeTerminalRow();
         // AgentsBody's own height can change without Root's (e.g. TerminalsPanel's tab strip showing or hiding above it),
         // and TerminalFrame's size is now a share of AgentsBody's viewport, not Root's (M.ORCH-T1302).
@@ -340,6 +339,8 @@ public partial class MainWindow : Window
     {
         try
         {
+            // LAMP (M.ORCH-T1308): the theme chosen in MindAttic.Vault.Desktop applies live, as the sun/moon switch's does.
+            if (payload is Status.SettingsPayload) ThemeChoice.Follow(Application.Current?.Resources, model.Store);
             if (!model.ApplyPushedState(payload)) return;
             var read = await model.ReapplyStateAsync(Hidden || !IsLoaded);
             if (read && IsLoaded && !Hidden) await model.RefreshAsync();
@@ -390,18 +391,18 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The terminals are native windows WPF can't draw over: hidden (never collapsed, so each keeps its size) while
-    /// Settings or User Settings is open, the loader covers the window or an org with no login covers the page.</summary>
+    /// Logins or User Settings is open, the loader covers the window or an org with no login covers the page.</summary>
     private void UpdateTerminalsCover()
     {
         var shown = Shown;
-        var covered = shown.IsSettingsOpen || shown.IsUserSettingsOpen || model.IsLoading || model.IsOrgEmpty;
+        var covered = shown.IsLoginsOpen || shown.IsUserSettingsOpen || model.IsLoading || model.IsOrgEmpty;
         TerminalPanesHost.Visibility = covered ? Visibility.Hidden : Visibility.Visible;
     }
 
     /// <summary>
     /// Hands the keyboard back to the shown CLI's terminal (M.ORCH-T846), queued past the click, layout or refresh that
     /// prompted it (a terminal shown again only gets its native window back on the layout pass). It stays put while the window
-    /// isn't active, a dialog is open, the terminals are covered, or focus is somewhere the user chose to be: a text box (Settings,
+    /// isn't active, a dialog is open, the terminals are covered, or focus is somewhere the user chose to be: a text box (Logins,
     /// User Settings), an open menu or dropdown, another window. With <paramref name="onlyIfLost"/> (a refresh) it only takes focus
     /// back that went nowhere, as when a rebuilt list dropped the focused row, so tabbing round the page still works.
     /// </summary>
@@ -409,7 +410,7 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() =>
         {
             var shown = Shown;
-            if (!IsActive || shown.IsSettingsOpen || shown.IsUserSettingsOpen
+            if (!IsActive || shown.IsLoginsOpen || shown.IsUserSettingsOpen
                 || TerminalPanesHost.Visibility != Visibility.Visible) return;
             if (model.AllTerminals.SelectedPane?.Control is not { IsVisible: true } terminal) return;
             var focused = Keyboard.FocusedElement as DependencyObject;
@@ -437,7 +438,7 @@ public partial class MainWindow : Window
     private void OnShownChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (sender != Shown) return;
-        if (e.PropertyName is nameof(MainViewModel.IsSettingsOpen) or nameof(MainViewModel.IsUserSettingsOpen))
+        if (e.PropertyName is nameof(MainViewModel.IsLoginsOpen) or nameof(MainViewModel.IsUserSettingsOpen))
         {
             UpdateTerminalsCover();
             PinTerminalFocus(); // a dialog closing hands the keyboard back to the CLI
@@ -494,12 +495,12 @@ public partial class MainWindow : Window
 
     /// <summary>Redirects a wheel tick anywhere over the window into <see cref="AgentsBody"/>'s own scroll (M.ORCH-T1299),
     /// except one already inside it (left alone so its native scrolling runs unchanged) or one while
-    /// <see cref="SettingsModal"/> is open (its own tabs each scroll themselves). PreviewMouseWheel tunnels from the window
+    /// <see cref="LoginsModal"/> is open (it scrolls itself). PreviewMouseWheel tunnels from the window
     /// down to the actual element before MouseWheel bubbles back up, so this fires ahead of any inner ScrollViewer along the
     /// way and can mark the tick handled before one swallows it.</summary>
     private void MainWindow_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (e.Handled || !AgentsBody.IsVisible || SettingsModal.IsOpen) return;
+        if (e.Handled || !AgentsBody.IsVisible || LoginsModal.IsOpen) return;
         if (e.OriginalSource is DependencyObject source && IsWithin(source, AgentsBody)) return;
         AgentsBody.ScrollToVerticalOffset(AgentsBody.VerticalOffset - e.Delta);
         e.Handled = true;
@@ -855,32 +856,10 @@ public partial class MainWindow : Window
         if (shown && IsLoaded) await model.RefreshAsync();
     }
 
-    /// <summary>The share of the window the Settings dialog fills, across and down (M.ORCH-T804).</summary>
-    internal const double SettingsShare = 0.8;
-
-    /// <summary>MaModal's own chrome around its content: the title row, the content padding, the footer and the card's border,
-    /// taken off the 80% so the whole card, not just its body, is 80% of the window tall.</summary>
-    private const double SettingsChrome = 132;
-
-    /// <summary>Settings at 80% of its container (M.ORCH-T804), not a tall fixed-width modal: MaModal has a width
-    /// (DialogWidth) but no height of its own, so the body's Height sets the card's. Root's size is before the zoom's scale,
-    /// the same space the modal lays out in.</summary>
-    private void SizeSettings()
-    {
-        var (width, height) = SettingsSize(Root.ActualWidth, Root.ActualHeight);
-        SettingsModal.DialogWidth = width;
-        SettingsBody.Height = height;
-    }
-
-    /// <summary>The Settings card's width and its body's height for a container of <paramref name="width"/> by
-    /// <paramref name="height"/>: 80% across, and 80% down less MaModal's chrome, never under a usable minimum.</summary>
-    internal static (double Width, double BodyHeight) SettingsSize(double width, double height) =>
-        (Math.Max(360, width * SettingsShare), Math.Max(220, height * SettingsShare - SettingsChrome));
-
     private void OnEscape()
     {
         var shown = Shown;
-        if (shown.IsSettingsOpen) shown.IsSettingsOpen = false;
+        if (shown.IsLoginsOpen) shown.IsLoginsOpen = false;
         else if (shown.IsUserSettingsOpen) shown.IsUserSettingsOpen = false;
     }
 

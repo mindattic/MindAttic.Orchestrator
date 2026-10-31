@@ -44,8 +44,7 @@ public sealed partial class MainViewModel
                     if (!ReferenceEquals(t, this)) t.ApplyReminders(now);
                 return false;
             case SettingsPayload:
-                foreach (var t in LoginTabs)
-                    if (t.IsSettingsOpen) t.Settings.ReloadIfUnedited();
+                // Settings are edited in MindAttic.Vault.Desktop now (LAMP, M.ORCH-T1308); what reads them is applied again.
                 return true;
             default:
                 return false;

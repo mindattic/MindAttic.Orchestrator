@@ -93,8 +93,9 @@ public sealed class BillingSwitch
     /// <summary>Where the context gate records when it set a key aside, so a CLI started on it still reads as billing it.</summary>
     internal string SetAsidePath => Path.Combine(SessionContextDir, Setup.AgentGate.ApiKeySetAsideName);
 
-    /// <summary>The Claude key in the MindAttic Vault keyring (seam).</summary>
-    internal Func<string?> VaultKey { get; init; } = () => LlmCredentialStore.Default.GetKey(VaultProvider);
+    /// <summary>The Claude key in the MindAttic Vault (seam): the Orchestrator's assigned shared named key, else the keyring's
+    /// Claude key as before (LAMP, M.ORCH-T1308, <see cref="OrchestratorKeys"/>).</summary>
+    internal Func<string?> VaultKey { get; init; } = () => OrchestratorKeys.ForCurrentUser().ClaudeKey();
 
     /// <summary>Whether a CLI process is still running (seam).</summary>
     internal Func<int, bool> IsAlive { get; init; } = ContextCycler.IsClaude;

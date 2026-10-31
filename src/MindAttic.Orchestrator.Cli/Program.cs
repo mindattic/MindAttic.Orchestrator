@@ -10,6 +10,8 @@ using Spectre.Console.Cli;
 // Thrown when there's no real console attached (M.ORCH-T1160): stdout/stdin redirected to pipes or NUL, as when
 // pace-gate.py shells out with capture_output and stdin=DEVNULL. Falling back to the default encoding is fine there.
 try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch (IOException) { }
+// LAMP (M.ORCH-T1308): run.ps1's install step imports today's settings into MindAttic Vault and writes its manifest, then exits.
+if (OrchestratorSettingsManifest.TryRun(args, Console.Out, out var manifestExit)) return manifestExit;
 OrchestratorLog.Start(args.FirstOrDefault() == "daemon" ? "Daemon" : "Cli");
 // A change this command makes to the members, orgs, settings, pause or reminders is pushed to every dashboard through the
 // daemon's inbox as it commits (M.ORCH-T891), so none has to poll for it. Sent before the command returns: the process exits next.
