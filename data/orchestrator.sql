@@ -5555,8 +5555,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "784f59a42e6f0f65b46c9fd981308488aedd53c8"
   },
   "IdiotProof": {
-    "Tested": "6420bcc016765c7746ff18c87ba144c3364f0118",
-    "Green": "6420bcc016765c7746ff18c87ba144c3364f0118"
+    "Tested": "8b4a354398577c9dbf2af855995af5cbb8c74dc8",
+    "Green": "8b4a354398577c9dbf2af855995af5cbb8c74dc8"
   },
   "JobHunt": {
     "Tested": "0de745678731c6be125ef8674a81f3361f1cf757",
@@ -5607,7 +5607,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "04f7b62b927310de27291ced79671b164b9d477a",
+    "Tested": "60af0da9243d37e2f5e9ff20c0e5b6f070bf5403",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
