@@ -5610,7 +5610,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "72df898b9d6304236f3a6a535560d44377f79f7a",
+    "Tested": "d100eb06b3ce211b8a296af8c44c71e1991770d5",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
