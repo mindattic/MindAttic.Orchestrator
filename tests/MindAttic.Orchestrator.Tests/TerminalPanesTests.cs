@@ -269,11 +269,9 @@ public sealed class TerminalPanesTests
         Assert.That(body.IndexOf("Header"), Is.EqualTo(body.IndexOf("UtilizationSection") + 1));
         Assert.That(body.IndexOf("Toolbar"), Is.EqualTo(body.IndexOf("Header") + 1));
         Assert.That(body.IndexOf("UserTickets"), Is.EqualTo(body.IndexOf("Toolbar") + 1));
-        // The CLI runs out through the body's left gutter to the window's edge (M.ORCH-T1319), but never into the right one,
-        // where the page's scroll bar sits: a native terminal window would paint over it (M.ORCH-T1320).
-        var margin = ((string?)Named("TerminalFrame").Attribute("Margin"))!.Split(',').Select(double.Parse).ToArray();
-        Assert.That(margin[0], Is.EqualTo(-24), "out to the window's left edge");
-        Assert.That(margin[2], Is.GreaterThanOrEqualTo(0), "never over the scroll bar in the right gutter");
+        // The CLI keeps the body's own gutters: no negative margin pushing it off the page or over the scroll bar in the
+        // right gutter (M.ORCH-T1321 reverted M.ORCH-T1319's width change).
+        Assert.That((string?)Named("TerminalFrame").Attribute("Margin"), Is.EqualTo("{StaticResource SpaceTS}"));
         Assert.That((string?)Named("TerminalTabs").Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.Panes}"));
         Assert.That(Named("TerminalPanesHost").Parent, Is.SameAs(Named("TerminalFrame")));
     }
