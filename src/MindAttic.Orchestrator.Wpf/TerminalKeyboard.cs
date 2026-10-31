@@ -144,8 +144,9 @@ internal static partial class TerminalKeyboard
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool IsChild(IntPtr parent, IntPtr window);
 
-    [LibraryImport("user32.dll")]
-    private static partial uint MapVirtualKey(uint code, uint mapType);
+    // user32 exports only MapVirtualKeyA/W, and LibraryImport never adds the suffix (M.ORCH-T1315).
+    [LibraryImport("user32.dll", EntryPoint = "MapVirtualKeyW")]
+    internal static partial uint MapVirtualKey(uint code, uint mapType);
 
     [LibraryImport("user32.dll", EntryPoint = "PostMessageW")]
     [return: MarshalAs(UnmanagedType.Bool)]

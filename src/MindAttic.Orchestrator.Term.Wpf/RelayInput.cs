@@ -44,8 +44,9 @@ public static partial class RelayInput
         return bracketed ? "\u001b[200~" + text + "\u001b[201~" : text;
     }
 
-    [LibraryImport("user32.dll")]
-    private static partial uint MapVirtualKey(uint code, uint mapType);
+    // user32 exports only MapVirtualKeyA/W, and LibraryImport never adds the suffix (M.ORCH-T1315).
+    [LibraryImport("user32.dll", EntryPoint = "MapVirtualKeyW")]
+    internal static partial uint MapVirtualKey(uint code, uint mapType);
 }
 
 /// <summary>The renderer's colour schemes.</summary>
