@@ -5336,11 +5336,7 @@ INSERT INTO state (name, value) VALUES ('dashboard-repos', '{
 }');
 INSERT INTO state (name, value) VALUES ('limit-resumes', '{}');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
-  "df7997fa-d41b-461b-a88b-098887d5ffaf@2026-10-31T06:40:00Z": "2026-10-31T06:40:00Z",
-  "4ef11499-eaa9-4435-bc12-c068b0d0ba06@2026-10-23T10:20:00Z": "2026-10-23T10:20:00Z",
-  "69dd2e90-8537-4f86-be6d-004afc057e14@2026-10-23T10:20:00Z": "2026-10-23T10:20:00Z",
-  "8a8e89ea-45f7-4548-95f2-ba1c125840d7@2026-10-23T10:20:00Z": "2026-10-23T10:20:00Z",
-  "c57d7bd3-fe9a-4798-b92d-5eb892c5c7f2@2026-10-23T10:20:00Z": "2026-10-23T10:20:00Z"
+  "df7997fa-d41b-461b-a88b-098887d5ffaf@2026-10-31T06:40:00Z": "2026-10-31T06:40:00Z"
 }');
 INSERT INTO state (name, value) VALUES ('limits', '[
   {
@@ -5610,7 +5606,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "e37928922eea1712793ce04d18db72a1e8e0e2f5",
+    "Tested": "a31d72add5d9b373e519ef0c0e4751eae2e8d2cb",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
