@@ -201,6 +201,65 @@ public sealed class TabSwitchTests
         Assert.That(Built(body).Any(t => t.StartsWith("row ")), Is.True, "rows now on screen are built");
     }
 
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_nested_virtualized_body_keeps_the_body_scrolling_with_its_gutters_and_scroll_bar()
+    {
+        // M.ORCH-T1326: a person's page (AgentsBody) holds the terminal ahead of the virtualized list. Disabling the body's own
+        // scrolling there left the page unable to scroll past the terminal to the 5-hour chart, with no scroll bar or gutter.
+        _ = System.IO.Packaging.PackUriHelper.UriSchemePack;
+        var theme = (ResourceDictionary)Application.LoadComponent(new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
+        var pinned = new Border { Height = 500 }; // the terminal's stand-in: most of the first screen
+        var rows = new ItemsControl { Style = (Style)theme["MaRowList"], ItemsSource = Enumerable.Range(0, 40).Select(i => $"row {i}").ToList() };
+        var nested = new StackPanel { Children = { rows } };
+        var body = new ScrollViewer { Style = (Style)theme["MaBodyScroll"], Content = new StackPanel { Children = { pinned, nested } } };
+        body.Resources.MergedDictionaries.Add(theme);
+        MindAttic.Orchestrator.Wpf.VirtualizedList.ApplyBody(body, nested);
+
+        Assert.That(body.VerticalScrollBarVisibility, Is.Not.EqualTo(ScrollBarVisibility.Disabled), "the body still scrolls");
+        Assert.That(MindAttic.Components.Wpf.Controls.MaScrollArea.GetGutter(body).Left, Is.EqualTo(24), "and keeps its gutters");
+
+        for (var i = 0; i < 3; i++)
+        {
+            body.Measure(new Size(800, 600));
+            body.Arrange(new Rect(0, 0, 800, 600));
+            body.UpdateLayout();
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background);
+        }
+        Assert.That(body.ScrollableHeight, Is.GreaterThan(0), "terminal plus rows overflow the viewport, so the body can scroll");
+        Assert.That(body.ComputedVerticalScrollBarVisibility, Is.EqualTo(Visibility.Visible), "with a scroll bar showing");
+        body.ScrollToVerticalOffset(400);
+        body.UpdateLayout();
+        Assert.That(body.VerticalOffset, Is.GreaterThan(0), "scrolling moves past the terminal");
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_whole_virtualized_body_still_hands_its_scrolling_to_the_list()
+    {
+        // The flat case (the list is the body's whole content) is unchanged: the list scrolls and pads itself.
+        _ = System.IO.Packaging.PackUriHelper.UriSchemePack;
+        var theme = (ResourceDictionary)Application.LoadComponent(new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
+        var rows = new ItemsControl { Style = (Style)theme["MaRowList"], ItemsSource = new[] { "a", "b" } };
+        var body = new ScrollViewer { Content = new StackPanel { Children = { rows } } };
+        body.Resources.MergedDictionaries.Add(theme);
+        MindAttic.Orchestrator.Wpf.VirtualizedList.ApplyBody(body);
+        Assert.That(body.VerticalScrollBarVisibility, Is.EqualTo(ScrollBarVisibility.Disabled));
+        Assert.That(MindAttic.Components.Wpf.Controls.MaScrollArea.GetGutter(body), Is.EqualTo(new Thickness(0)));
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void The_terminals_own_scroll_bar_is_collapsed_so_the_CLI_runs_flush_with_the_tab_bar()
+    {
+        // M.ORCH-T1325: the terminal control's empty "scrollbar" column left the CLI 10px short of the tab bar on the right.
+        var bar = new System.Windows.Controls.Primitives.ScrollBar { Name = "scrollbar", Orientation = Orientation.Vertical };
+        var other = new System.Windows.Controls.Primitives.ScrollBar { Name = "other", Orientation = Orientation.Vertical };
+        var terminal = new Grid { Children = { new Border(), bar, other } };
+        terminal.Measure(new Size(400, 300));
+        terminal.Arrange(new Rect(0, 0, 400, 300));
+        Assert.That(MindAttic.Orchestrator.Wpf.TerminalScrollbar.Collapse(terminal), Is.True);
+        Assert.That(bar.Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(other.Visibility, Is.EqualTo(Visibility.Visible), "only the terminal's own bar");
+    }
+
     private static List<string> Built(DependencyObject root) => [.. Descendants(root).OfType<TextBlock>().Select(t => t.Text)];
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)

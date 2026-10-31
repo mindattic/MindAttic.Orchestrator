@@ -27,10 +27,18 @@ public static class VirtualizedList
     public static void Apply(ItemsControl list, double maxWidth) =>
         Apply(list, maxWidth, HorizontalAlignment.Left, typeof(VirtualizingStackPanel), VirtualizationMode.Recycling);
 
-    internal static void Apply(ItemsControl list, double maxWidth, HorizontalAlignment alignment, Type panelType, VirtualizationMode mode)
+    internal static void Apply(ItemsControl list, double maxWidth, HorizontalAlignment alignment, Type panelType, VirtualizationMode mode,
+        bool ownScroll = true)
     {
         var scroll = new FrameworkElementFactory(typeof(ScrollViewer));
         scroll.SetResourceReference(FrameworkElement.StyleProperty, "MaBodyScroll");
+        if (!ownScroll)
+        {
+            // Nested in a body that scrolls itself (M.ORCH-T1326): no scroll bar or gutter of its own, or the page would get two
+            // scroll bars and double gutters; the body around it scrolls and pads everything together.
+            scroll.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled);
+            scroll.SetValue(MaScrollArea.GutterProperty, new Thickness(0));
+        }
         scroll.SetValue(ScrollViewer.CanContentScrollProperty, true);
         scroll.SetValue(UIElement.FocusableProperty, false);
         scroll.AppendChild(new FrameworkElementFactory(typeof(ItemsPresenter)));
@@ -96,10 +104,17 @@ public sealed class VirtualizedBody
             else parts.Add(child);
         }
 
-        // The body no longer scrolls, nor pads: the list inside it does both, with the same MaBodyScroll.
-        body.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-        MaScrollArea.SetGutter(body, new Thickness(0));
-        VirtualizedList.Apply(host, content.MaxWidth, content.HorizontalAlignment, typeof(BodyPanel), VirtualizationMode.Standard);
+        // When the list is the body's whole content, the body no longer scrolls nor pads: the list inside it does both, with the
+        // same MaBodyScroll. When it's nested beside something the body also holds (the live terminal, M.ORCH-T1302), the body keeps
+        // scrolling and padding everything together, as ApplyBody(body, content) promises; turning it off there left a person's page
+        // unable to scroll past the terminal to the 5-hour chart, with no scroll bar and no gutter (M.ORCH-T1326).
+        if (isBodysOwnContent)
+        {
+            body.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            MaScrollArea.SetGutter(body, new Thickness(0));
+        }
+        VirtualizedList.Apply(host, content.MaxWidth, content.HorizontalAlignment, typeof(BodyPanel), VirtualizationMode.Standard,
+            ownScroll: isBodysOwnContent);
         host.ItemTemplate = RowTemplate;
         host.Margin = content.Margin;
         AutomationProperties.SetName(host, AutomationProperties.GetName(body));

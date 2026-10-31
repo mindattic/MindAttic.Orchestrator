@@ -109,7 +109,11 @@ public partial class MainWindow : Window
         model.AllTerminals.Panes.CollectionChanged += (_, e) =>
         {
             foreach (var gone in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Remove(gone.Control);
-            foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Add(added.Control);
+            foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? [])
+            {
+                TerminalPanesHost.Children.Add(added.Control);
+                if (added.Control is FrameworkElement terminal) TerminalScrollbar.Hide(terminal);
+            }
         };
         TerminalClip.Attach(TerminalPanesHost);
         TerminalKeyboard.Attach(this, TerminalPanesHost);

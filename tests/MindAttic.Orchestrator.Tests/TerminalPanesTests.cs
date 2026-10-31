@@ -269,11 +269,9 @@ public sealed class TerminalPanesTests
         Assert.That(body.IndexOf("Header"), Is.EqualTo(body.IndexOf("UtilizationSection") + 1));
         Assert.That(body.IndexOf("Toolbar"), Is.EqualTo(body.IndexOf("Header") + 1));
         Assert.That(body.IndexOf("UserTickets"), Is.EqualTo(body.IndexOf("Toolbar") + 1));
-        // The CLI sits 24px in on both sides, in line with the CLI tab bar above it (M.ORCH-T1322): never flush against the
-        // window's edge, never pushed off the page or over the scroll bar (M.ORCH-T1321).
-        var margin = ((string?)Named("TerminalFrame").Attribute("Margin"))!.Split(',').Select(double.Parse).ToArray();
-        Assert.That(margin[0], Is.EqualTo(24), "24px in from the left, like the tab bar");
-        Assert.That(margin[2], Is.EqualTo(24), "24px in from the right, clear of the scroll bar");
+        // No side margin of its own: the page body's 24px gutters place the CLI in line with the CLI tab bar (M.ORCH-T1326 keeps
+        // those gutters on a person's page); a margin here would double them or push it off the page (M.ORCH-T1321).
+        Assert.That((string?)Named("TerminalFrame").Attribute("Margin"), Is.EqualTo("{StaticResource SpaceTS}"));
         Assert.That((string?)Named("TerminalTabs").Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.Panes}"));
         Assert.That(Named("TerminalPanesHost").Parent, Is.SameAs(Named("TerminalFrame")));
     }
