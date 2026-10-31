@@ -473,8 +473,8 @@ public partial class MainWindow : Window
     /// <summary>Sizes <see cref="TerminalFrame"/>, now a plain part of <see cref="AgentsBody"/>'s scrolling content
     /// (M.ORCH-T1302, the fixed rows being just the login tabs and the CLI tab bar above it), to about AgentsBody's own
     /// viewport height so it still fills the window's first screen the way M.ORCH-T1268 wanted, leaving
-    /// <see cref="AgentsBodyScrollHandle"/> showing below it to invite a scroll down to the pinned limit pills, the chart and
-    /// Tickets; floored at <see cref="TerminalRowMinHeight"/> so it never pinches thin in a short window. Hidden (no terminals
+    /// <see cref="AgentsBodyScrollHandle"/> showing below it to invite a scroll down to the 5-hour chart, right after it
+    /// (M.ORCH-T1319), and Tickets; floored at <see cref="TerminalRowMinHeight"/> so it never pinches thin in a short window. Hidden (no terminals
     /// open on this login), its height is left alone (Auto, via its own Visibility binding) and it takes no room.</summary>
     private void SizeTerminalRow()
     {
@@ -486,12 +486,6 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
     }
-
-    /// <summary>The pinned 5-hour/weekly (or, on the API key's tab, money) bars jump to the full chart further down
-    /// (M.ORCH-T1268): a plain <see cref="FrameworkElement.BringIntoView()"/>, which scrolls its ancestor ScrollViewer
-    /// (<see cref="AgentsBody"/>) there on its own, rather than hand-computed offsets.</summary>
-    private void PinnedLimitBar_Click(object sender, RoutedEventArgs e) =>
-        (sender is FrameworkElement { DataContext: MainViewModel { IsApiKeyTab: true } } ? (FrameworkElement)ApiBurnChart : UtilizationCard).BringIntoView();
 
     /// <summary>Redirects a wheel tick anywhere over the window into <see cref="AgentsBody"/>'s own scroll (M.ORCH-T1299),
     /// except one already inside it (left alone so its native scrolling runs unchanged) or one while

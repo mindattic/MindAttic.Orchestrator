@@ -261,13 +261,16 @@ public sealed class TerminalPanesTests
             Assert.That(Named(name).Ancestors().Contains(Named("AgentsBody")), Is.False, $"{name} stays fixed");
         Assert.That(Named("TerminalFrame").Ancestors().Contains(Named("AgentsBody")), Is.True, "the chosen terminal scrolls with the body");
         Assert.That(Named("TerminalFrame").Ancestors().Contains(Named("AgentsBodyList")), Is.False, "never one of AgentsBodyList's virtualized rows");
-        // In AgentsBodyList: the pinned limit pills, the stats, the toolbar, then the 5-hour chart and Tickets (M.ORCH-T826;
-        // no Current work board, M.ORCH-T837).
+        // In AgentsBodyList: the 5-hour chart first, right after the terminal (M.ORCH-T1319), then the stats, the toolbar
+        // and Tickets. The pinned limit pills are gone (they rendered as blank boxes, M.ORCH-T1318).
         var body = Named("AgentsBodyList").Elements().Select(e => (string?)e.Attribute(x + "Name")).ToList();
-        Assert.That(body.IndexOf("Header"), Is.EqualTo(body.IndexOf("PinnedLimitBars") + 1));
+        Assert.That(body.IndexOf("UtilizationSection"), Is.Zero, "the 5-hour chart comes right after the CLI terminal");
+        Assert.That(body, Has.No.Member("PinnedLimitBars"));
+        Assert.That(body.IndexOf("Header"), Is.EqualTo(body.IndexOf("UtilizationSection") + 1));
         Assert.That(body.IndexOf("Toolbar"), Is.EqualTo(body.IndexOf("Header") + 1));
-        Assert.That(body.IndexOf("UtilizationSection"), Is.EqualTo(body.IndexOf("Toolbar") + 1));
-        Assert.That(body.IndexOf("UserTickets"), Is.EqualTo(body.IndexOf("UtilizationSection") + 1));
+        Assert.That(body.IndexOf("UserTickets"), Is.EqualTo(body.IndexOf("Toolbar") + 1));
+        // The CLI spans the app's full width: out through the body's 24px side gutters (M.ORCH-T1319).
+        Assert.That((string?)Named("TerminalFrame").Attribute("Margin"), Does.StartWith("-24,").And.Contains(",-24,"));
         Assert.That((string?)Named("TerminalTabs").Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.Panes}"));
         Assert.That(Named("TerminalPanesHost").Parent, Is.SameAs(Named("TerminalFrame")));
     }

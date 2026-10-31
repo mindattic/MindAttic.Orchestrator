@@ -84,7 +84,7 @@
 
     <Grid x:Name="Root">
         <!-- The login tabs (row 0) and the CLI tab bar (row 1, TerminalsPanel) are the only fixed rows (M.ORCH-T1302): you
-             always see who's selected and which CLI is shown. Everything else - the chosen terminal, the pinned limit pills,
+             always see who's selected and which CLI is shown. Everything else - the chosen terminal, the 5-hour chart right after it,
              the stats, the 5-hour chart and Tickets - lives in AgentsBody (row 2), one scrolling panel, so scrolling down past
              the terminal reaches the rest. The status bar (row 3) stays its own fixed footer, as it always was. -->
         <Grid.RowDefinitions>
@@ -368,7 +368,7 @@
              the same as everyone's below, its money in place of Claude's 5-hour and weekly meters. -->
 
         <!-- The person's scrolling body, under their fixed login tabs and CLI tab bar (M.ORCH-T1302): the chosen terminal, the
-             pinned 5-hour/weekly (or money) pills, their stats, the toolbar, the 5-hour chart and the tickets assigned to them
+             5-hour chart right after it (M.ORCH-T1319), their stats, the toolbar and the tickets assigned to them
              (the Current work agent card board is gone, M.ORCH-T837), all reached by one scroll. One virtualized list
              (M.ORCH-T754, MainWindow.xaml.cs): only what's on screen is built; the terminal's own Grid is a plain, non-list part
              of it (as it was before M.ORCH-T861 pinned it, with the same TerminalClip.cs clipping it to this scroll view). -->
@@ -382,7 +382,7 @@
                      their own. A plain sibling of AgentsBodyList below, never one of its virtualized rows (VirtualizedList.
                      ApplyBody(AgentsBody, AgentsBodyList) in MainWindow.xaml.cs flattens AgentsBodyList alone): the native
                      terminal window must never be torn down by a realize/derealize cycle just because it scrolled out of view. -->
-                <Grid x:Name="TerminalFrame" MinHeight="160" Margin="{StaticResource SpaceTS}"
+                <Grid x:Name="TerminalFrame" MinHeight="160" Margin="-24,6,-24,0"
                       Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
                     <!-- WPF claims arrow keys (and Tab) for its own directional/tab focus navigation even when a hosted
                          native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never
@@ -391,123 +391,7 @@
                 </Grid>
 
                 <StackPanel x:Name="AgentsBodyList">
-                <!-- The 5-hour/weekly (or, on the API key's tab, its money) readout, right under the terminal: a quick glance
-                     without scrolling all the way to the full chart. Clicking either pill scrolls down to it
-                     (PinnedLimitBar_Click, MainWindow.xaml.cs). -->
-                <StackPanel x:Name="PinnedLimitBars" Orientation="Horizontal" HorizontalAlignment="Left"
-                            Margin="{StaticResource SpaceTS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
-                    <StackPanel Orientation="Horizontal" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
-                        <Button x:Name="PinnedFiveHourBar" Style="{StaticResource MaToolButton}" Padding="0" Click="PinnedLimitBar_Click"
-                                ToolTip="Jump to the full 5-hour utilization chart" AutomationProperties.Name="{Binding FiveHourLimitText}">
-                            <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding FiveHourLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding FiveHourLimitBrush}" />
-                                    <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
-                                                 Value="{Binding FiveHourLimitPercent, Mode=OneWay}" Foreground="{Binding FiveHourLimitBrush}" />
-                                </StackPanel>
-                            </Border>
-                        </Button>
-                        <Button x:Name="PinnedWeeklyBar" Style="{StaticResource MaToolButton}" Padding="0" Margin="{StaticResource SpaceLS}" Click="PinnedLimitBar_Click"
-                                ToolTip="Jump to the full 5-hour utilization chart" AutomationProperties.Name="{Binding WeeklyLimitText}">
-                            <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding WeeklyLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding WeeklyLimitBrush}" />
-                                    <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
-                                                 Value="{Binding WeeklyLimitPercent, Mode=OneWay}" Foreground="{Binding WeeklyLimitBrush}" />
-                                </StackPanel>
-                            </Border>
-                        </Button>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
-                        <Button x:Name="PinnedApiLeftBar" Style="{StaticResource MaToolButton}" Padding="0" Click="PinnedLimitBar_Click"
-                                ToolTip="Jump to its money, further down" AutomationProperties.Name="{Binding ApiLeftHeadline}">
-                            <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
-                                <StackPanel>
-                                    <TextBlock Text="Credit left" Style="{StaticResource MaMutedText}" FontSize="11" />
-                                    <TextBlock Text="{Binding ApiLeftHeadline}" FontSize="13" FontWeight="SemiBold" Margin="{StaticResource SpaceTS}" />
-                                </StackPanel>
-                            </Border>
-                        </Button>
-                        <Button x:Name="PinnedApiSpentBar" Style="{StaticResource MaToolButton}" Padding="0" Margin="{StaticResource SpaceLS}" Click="PinnedLimitBar_Click"
-                                ToolTip="Jump to its money, further down" AutomationProperties.Name="{Binding ApiSpentHeadline}">
-                            <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" MinWidth="104">
-                                <StackPanel>
-                                    <TextBlock Text="Spent today" Style="{StaticResource MaMutedText}" FontSize="11" />
-                                    <TextBlock Text="{Binding ApiSpentHeadline}" FontSize="13" FontWeight="SemiBold" Margin="{StaticResource SpaceTS}" />
-                                </StackPanel>
-                            </Border>
-                        </Button>
-                    </StackPanel>
-                </StackPanel>
-
-                <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom under their fixed person tab and
-                     terminal tabs (M.ORCH-T1302): the terminal and the pinned limit pills above, then their stats (the 5-hour
-                     window, the week, their cutoffs and when Claude's meter was last read), the toolbar, the 5-hour chart and
-                     Tickets, all in this one scrolling body. The body's MaBodyScroll owns the window's left/right gutter; nothing
-                     inside it adds its own, so the tiles share both edges (M.ORCH-T192). The tiles are equal cells that together
-                     span the row at any width. -->
-                <StackPanel x:Name="Header" Margin="{StaticResource SpaceTS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
-
-                <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="200" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
-                                   AutomationProperties.Name="Summary">
-                    <!-- The API key's person (M.ORCH-T906) has no 5-hour or weekly window: money instead. What's left of its
-                         starting credit, what it has spent (today and lately), and when it runs out at the recent rate. -->
-                    <Button x:Name="ApiLeftTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
-                            ToolTip="What's left of the API key's starting credit (orchestrator billing credit &lt;usd&gt; sets it): an estimate from the transcripts' tokens at Anthropic's list prices."
-                            AutomationProperties.Name="{Binding ApiLeftHeadline, StringFormat='API credit left: {0}'}">
-                        <StackPanel>
-                            <TextBlock Text="Credit Left" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
-                            <TextBlock Text="{Binding ApiLeftHeadline}" Style="{StaticResource MaStatValue}" />
-                            <TextBlock Text="{Binding ApiLeftCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="ApiSpentTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
-                            ToolTip="What the API key's CLIs have spent since its starting credit was set, today, and the rate over the last 24 hours."
-                            AutomationProperties.Name="{Binding ApiSpentHeadline, StringFormat='API spend: {0}'}">
-                        <StackPanel>
-                            <TextBlock Text="Spent" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
-                            <TextBlock Text="{Binding ApiSpentHeadline}" Style="{StaticResource MaStatValue}" />
-                            <TextBlock Text="{Binding ApiSpentCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="ApiRunsOutTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
-                            ToolTip="When the starting credit runs out at the last 24 hours' rate."
-                            AutomationProperties.Name="{Binding ApiRunsOutHeadline, StringFormat='API credit runs out: {0}'}">
-                        <StackPanel>
-                            <TextBlock Text="Runs Out" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
-                            <TextBlock Text="{Binding ApiRunsOutHeadline}" Style="{StaticResource MaStatValue}" />
-                            <TextBlock Text="{Binding ApiRunsOutCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Button>
-                </mc:MaTileGrid>
-                <!-- No login-action buttons on a person's page any more: User Settings (M.ORCH-T1098) is the person's tab's
-                     right-click menu (M.ORCH-T797, MainWindow.xaml.cs's OnLoginTabContextMenu); the login-wide Move CLIs is gone, each
-                     CLI moving by its own agent card's Move to; and there's no Sign in (M.ORCH-T796): a login that gets disconnected
-                     opens its own sign-in by itself. What the last of those did still shows here. -->
-                <TextBlock x:Name="PersonMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTM}"
-                           AutomationProperties.LiveSetting="Polite"
-                           Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                </StackPanel>
-
-                <!-- Toolbar: what the person's last action did on the left, the zoom on the right (M.ORCH-T667, M.ORCH-T493). The
-                     clock, refresh info, Refresh and Open Launcher are gone (M.ORCH-T855), and so are the Current work heading and
-                     its agent card board (M.ORCH-T837): each CLI is its own terminal tab, fixed above. There are no view pills any
-                     more (M.ORCH-T763): the Orchestrator shows only what's running, and Tickets Desktop the Repos, the Queue and
-                     the audit. -->
-                <Grid x:Name="Toolbar" Margin="{StaticResource SpaceH0VS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource MaFocus}"
-                               Visibility="{Binding StatusMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceTS}">
-                        <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}"
-                                   ToolTip="Ctrl+0 resets the zoom" />
-                    </StackPanel>
-                </Grid>
-
-                <!-- This 5-hour window's utilization (M.ORCH-T191), moved below Terminals (M.ORCH-T826):
+                <!-- This 5-hour window's utilization (M.ORCH-T191), right after the CLI terminal (M.ORCH-T1319):
                      its own full-width row, tall enough that the pace line straight to the target at the reset, the window's
                      own line (red while over that pace, green under) and where the recent rate ends up are easy to read. The
                      caption says it in words. -->
@@ -605,6 +489,73 @@
                     </Border>
                 </StackPanel>
                 </StackPanel>
+
+                <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom under their fixed person tab and
+                     terminal tabs (M.ORCH-T1302): the terminal and the 5-hour chart above, then their stats (the 5-hour
+                     window, the week, their cutoffs and when Claude's meter was last read), the toolbar, the 5-hour chart and
+                     Tickets, all in this one scrolling body. The body's MaBodyScroll owns the window's left/right gutter; nothing
+                     inside it adds its own, so the tiles share both edges (M.ORCH-T192). The tiles are equal cells that together
+                     span the row at any width. -->
+                <StackPanel x:Name="Header" Margin="{StaticResource SpaceTS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+
+                <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="200" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
+                                   AutomationProperties.Name="Summary">
+                    <!-- The API key's person (M.ORCH-T906) has no 5-hour or weekly window: money instead. What's left of its
+                         starting credit, what it has spent (today and lately), and when it runs out at the recent rate. -->
+                    <Button x:Name="ApiLeftTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
+                            ToolTip="What's left of the API key's starting credit (orchestrator billing credit &lt;usd&gt; sets it): an estimate from the transcripts' tokens at Anthropic's list prices."
+                            AutomationProperties.Name="{Binding ApiLeftHeadline, StringFormat='API credit left: {0}'}">
+                        <StackPanel>
+                            <TextBlock Text="Credit Left" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
+                            <TextBlock Text="{Binding ApiLeftHeadline}" Style="{StaticResource MaStatValue}" />
+                            <TextBlock Text="{Binding ApiLeftCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ApiSpentTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
+                            ToolTip="What the API key's CLIs have spent since its starting credit was set, today, and the rate over the last 24 hours."
+                            AutomationProperties.Name="{Binding ApiSpentHeadline, StringFormat='API spend: {0}'}">
+                        <StackPanel>
+                            <TextBlock Text="Spent" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
+                            <TextBlock Text="{Binding ApiSpentHeadline}" Style="{StaticResource MaStatValue}" />
+                            <TextBlock Text="{Binding ApiSpentCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ApiRunsOutTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
+                            ToolTip="When the starting credit runs out at the last 24 hours' rate."
+                            AutomationProperties.Name="{Binding ApiRunsOutHeadline, StringFormat='API credit runs out: {0}'}">
+                        <StackPanel>
+                            <TextBlock Text="Runs Out" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
+                            <TextBlock Text="{Binding ApiRunsOutHeadline}" Style="{StaticResource MaStatValue}" />
+                            <TextBlock Text="{Binding ApiRunsOutCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                </mc:MaTileGrid>
+                <!-- No login-action buttons on a person's page any more: User Settings (M.ORCH-T1098) is the person's tab's
+                     right-click menu (M.ORCH-T797, MainWindow.xaml.cs's OnLoginTabContextMenu); the login-wide Move CLIs is gone, each
+                     CLI moving by its own agent card's Move to; and there's no Sign in (M.ORCH-T796): a login that gets disconnected
+                     opens its own sign-in by itself. What the last of those did still shows here. -->
+                <TextBlock x:Name="PersonMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTM}"
+                           AutomationProperties.LiveSetting="Polite"
+                           Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                </StackPanel>
+
+                <!-- Toolbar: what the person's last action did on the left, the zoom on the right (M.ORCH-T667, M.ORCH-T493). The
+                     clock, refresh info, Refresh and Open Launcher are gone (M.ORCH-T855), and so are the Current work heading and
+                     its agent card board (M.ORCH-T837): each CLI is its own terminal tab, fixed above. There are no view pills any
+                     more (M.ORCH-T763): the Orchestrator shows only what's running, and Tickets Desktop the Repos, the Queue and
+                     the audit. -->
+                <Grid x:Name="Toolbar" Margin="{StaticResource SpaceH0VS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource MaFocus}"
+                               Visibility="{Binding StatusMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceTS}">
+                        <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}"
+                                   ToolTip="Ctrl+0 resets the zoom" />
+                    </StackPanel>
+                </Grid>
 
                 <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, each with who
                      it's assigned to. A person's page shows only their own queue; the unassigned queue shows on the global
