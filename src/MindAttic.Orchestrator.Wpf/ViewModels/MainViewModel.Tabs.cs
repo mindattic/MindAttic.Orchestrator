@@ -311,8 +311,11 @@ public sealed partial class MainViewModel
         AllTerminals.Panes.CollectionChanged += (_, e) =>
         {
             foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? [])
-                added.PropertyChanged += (s, p) => { if (p.PropertyName == nameof(TerminalPaneViewModel.Ended) && s is TerminalPaneViewModel { Ended: true } ended) OnTabGone(ended); };
-            foreach (var gone in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) OnTabGone(gone);
+                added.PropertyChanged += (s, p) => { if (p.PropertyName == nameof(TerminalPaneViewModel.Ended) && s is TerminalPaneViewModel { Ended: true } ended) AfterChange.Post(() => OnTabGone(ended)); };
+            // Not inside the change: the replacement Launcher closes and adds panes, which an ObservableCollection refuses during
+            // its own CollectionChanged ("Cannot change ObservableCollection during a CollectionChanged event"), so closing a
+            // person's last tab never opened their new Launcher (M.ORCH-T1317).
+            foreach (var gone in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) AfterChange.Post(() => OnTabGone(gone));
         };
     }
 
