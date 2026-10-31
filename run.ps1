@@ -44,6 +44,11 @@
     Rebuild and reinstall even if nothing looks changed, without -Force's bin/obj clean or downgrade: what the launcher's
     "1) Deploy & Run" passes, so it never just says "up to date" (MAT-T67).
 
+.PARAMETER UiOnly
+Deploy only the dashboard (MindAttic.Orchestrator.Desktop): the CLI, TermHost, Gateway and TermViewer are neither built
+nor installed, so their installed copies stay exactly as they are (M.ORCH-T1323). The busy-CLI check still runs, since
+installing the dashboard restarts it.
+
 .PARAMETER LauncherOnly
     Only (re)write the shortcuts' launcher, C:\Apps\MindAttic.Orchestrator\run.bat, and exit: nothing is fetched, built,
     stopped or installed. The launcher is also rewritten on every other run, so this is just the safe way to refresh it.
@@ -75,7 +80,8 @@ param(
     [int]$BusyPollSeconds = 30,
     [switch]$FromHere,
     [switch]$Republish,
-    [switch]$LauncherOnly
+    [switch]$LauncherOnly,
+    [switch]$UiOnly
 )
 
 Set-StrictMode -Version Latest
@@ -394,7 +400,8 @@ if (Test-Stale $artifact @($wpfDir, $coreDir, $termWpfDir, $termDir)) {
 # /allocate, review) holds its DLLs and must neither fail the deploy nor leave Cli\ half-installed (M.ORCH-T765).
 $cliStage = Join-Path $appDir 'Cli.staging'
 $cliStaged = $false
-if (Test-Stale $cliExe @($cliDir, $coreDir, $termDir)) {
+if ($UiOnly) { Write-Host '-UiOnly: the CLI is left as installed.' -ForegroundColor DarkGray }
+elseif (Test-Stale $cliExe @($cliDir, $coreDir, $termDir)) {
     if (Test-Path $cliStage) { Remove-Item -Recurse -Force $cliStage }
     Write-Host "Publishing the CLI -> $cliStage" -ForegroundColor Cyan
     # Sibling repos (MindAttic.Helpers) resolve against the workspace, not this deploy worktree (M.ORCH-T1313).
@@ -487,9 +494,12 @@ function Publish-SideBySide([string]$Name, [string]$ProjectDir, [string]$ExeName
     Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
 }
 
-Publish-SideBySide 'TermHost' $termHostDir 'MindAttic.Orchestrator.TermHost.exe' @($termHostDir, $termDir)
-Publish-SideBySide 'Gateway' $gatewayDir 'MindAttic.Orchestrator.Gateway.exe' @($gatewayDir, $termDir)
-Publish-SideBySide 'TermViewer' $termViewerDir 'MindAttic.Orchestrator.TermViewer.exe' @($termViewerDir, $termWpfDir, $termDir, $coreDir)
+if ($UiOnly) { Write-Host '-UiOnly: TermHost, Gateway and TermViewer are left as installed.' -ForegroundColor DarkGray }
+else {
+    Publish-SideBySide 'TermHost' $termHostDir 'MindAttic.Orchestrator.TermHost.exe' @($termHostDir, $termDir)
+    Publish-SideBySide 'Gateway' $gatewayDir 'MindAttic.Orchestrator.Gateway.exe' @($gatewayDir, $termDir)
+    Publish-SideBySide 'TermViewer' $termViewerDir 'MindAttic.Orchestrator.TermViewer.exe' @($termViewerDir, $termWpfDir, $termDir, $coreDir)
+}
 
 # ── Install, as a double-click would ────────────────────────────────────────
 if ($step -eq 'newer') {
