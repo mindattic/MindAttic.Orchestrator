@@ -45,18 +45,30 @@ internal static class OrchestratorMockups
     ];
 
     /// <summary>
-    /// The Settings modal (MainWindow.xaml's SettingsModal): its own tab strip — Budget, Pacing, Scheduler, Logins,
-    /// Person tabs — over one tab's body, with any save error below it.
+    /// Settings since LAMP (M.ORCH-T1308, M.ORCH-T1311): the cog opens MindAttic.Vault.Desktop at its "MindAttic Orchestrator"
+    /// tab — the app list on the left, the tab's settings grouped one full-width row per setting (Budget, Pacing, Scheduler,
+    /// Logins, Reviews, Alerts, Dashboard, Folders, Gateway), the Claude key assignment, and Save.
     /// </summary>
     private static readonly MockupPanel[] Settings =
     [
-        new(0, 0, 14, 3, "Budget"),
-        new(14, 0, 14, 3, "Pacing"),
-        new(28, 0, 14, 3, "Scheduler"),
-        new(42, 0, 14, 3, "Logins"),
-        new(56, 0, 14, 3, "Person tabs"),
-        new(0, 3, 70, 10, "Settings body"),
-        new(0, 13, 70, 3, "Error"),
+        new(0, 0, 18, 16, "Apps (Vault tabs)"),
+        new(18, 0, 52, 3, "MindAttic Orchestrator"),
+        new(18, 3, 52, 8, "Grouped settings (one row each)"),
+        new(18, 11, 52, 3, "Keys: Claude assignment"),
+        new(18, 14, 52, 2, "Save"),
+    ];
+
+    /// <summary>
+    /// The Logins modal (MainWindow.xaml's LoginsModal, button beside the cog): the org-wide login actions that sat on the old
+    /// Settings dialog's Logins tab — Add login (email + button), Sign in all and Report — with their result lines below.
+    /// </summary>
+    private static readonly MockupPanel[] Logins =
+    [
+        new(0, 0, 50, 3, "Email"),
+        new(50, 0, 20, 3, "Add login"),
+        new(0, 3, 35, 3, "Sign in all"),
+        new(35, 3, 35, 3, "Report"),
+        new(0, 6, 70, 4, "Result + billing detail"),
     ];
 
     /// <summary>Every named mockup this command knows, in the order <c>mockup</c> with no argument lists them.</summary>
@@ -64,7 +76,8 @@ internal static class OrchestratorMockups
     [
         ("dashboard", "Orchestrator — Dashboard (MainWindow.xaml)", 80, 26, Dashboard),
         ("queue", "Orchestrator — Queue (a person's tab)", 70, 19, Queue),
-        ("settings", "Orchestrator — Settings", 70, 16, Settings),
+        ("settings", "Orchestrator — Settings (MindAttic Vault tab)", 70, 16, Settings),
+        ("logins", "Orchestrator — Logins (button beside the cog)", 70, 10, Logins),
     ];
 
     /// <summary>The rendered wireframe for <paramref name="name"/> (any casing), or <see langword="null"/> when there's no mockup by that name.</summary>

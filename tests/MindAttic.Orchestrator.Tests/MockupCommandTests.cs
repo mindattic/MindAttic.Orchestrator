@@ -33,6 +33,7 @@ public sealed class MockupCommandTests
     [TestCase("dashboard", 80)]
     [TestCase("queue", 70)]
     [TestCase("settings", 70)]
+    [TestCase("logins", 70)]
     public void Every_named_mockup_renders_without_throwing_at_its_fixed_width(string name, int width)
     {
         // Any casing (M.ORCH-T1309's command reads it case-insensitively).
@@ -53,7 +54,16 @@ public sealed class MockupCommandTests
     {
         Assert.That(Run("mockup"), Is.Zero);
         var said = output.ToString();
-        Assert.That(said, Does.Contain("dashboard").And.Contain("queue").And.Contain("settings"));
+        Assert.That(said, Does.Contain("dashboard").And.Contain("queue").And.Contain("settings").And.Contain("logins"));
+    }
+
+    [Test]
+    public void Settings_mockup_shows_the_Vault_tab_not_the_removed_dialog()
+    {
+        Assert.That(Run("mockup", "settings"), Is.Zero);
+        var said = output.ToString();
+        Assert.That(said, Does.Contain("Vault"));
+        Assert.That(said, Does.Not.Contain("Person tabs"), "the old Settings dialog's tab strip is gone (M.ORCH-T1311)");
     }
 
     [Test]
