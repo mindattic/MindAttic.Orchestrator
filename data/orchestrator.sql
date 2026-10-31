@@ -596,6 +596,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-30T19:10:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-30T14:10:00Z', 'Under', 'ended at 2%', 2, 2, 367643, 59, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-31T00:10:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-30T19:10:00Z', 'Under', 'ended at 19%', 19, 19, 1641613, 69, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-31T00:10:00Z', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-30T19:10:00Z', 'Under', 'ended at 10%', 10, 10, 1130380, 81, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-31T00:20:00Z', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-30T19:20:00Z', 'Under', 'ended at 0%', 0, 0, 0, 55, 0, NULL, NULL, 0, 0, 0, 1, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -5326,9 +5327,6 @@ INSERT INTO state (name, value) VALUES ('dashboard-repos', '{
 }');
 INSERT INTO state (name, value) VALUES ('limit-resumes', '{}');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
-  "41df9bb7-c213-4b78-b6a6-4eec9591facb@2026-10-23T00:20:00Z": "2026-10-23T00:20:00Z",
-  "703a0095-0c8e-4b3f-8af9-9c845b243c86@2026-10-23T00:20:00Z": "2026-10-23T00:20:00Z",
-  "d3469031-4b42-40c5-a2e3-58a88fb2b06e@2026-10-23T00:20:00Z": "2026-10-23T00:20:00Z",
   "4ef11499-eaa9-4435-bc12-c068b0d0ba06@2026-10-23T05:20:00Z": "2026-10-23T05:20:00Z",
   "555266d3-de95-4a86-beb2-152b31adedd1@2026-10-23T05:20:00Z": "2026-10-23T05:20:00Z",
   "69dd2e90-8537-4f86-be6d-004afc057e14@2026-10-23T05:20:00Z": "2026-10-23T05:20:00Z",
@@ -5611,7 +5609,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "7497c412b05be59e00ed3cbd105986fafecadade",
+    "Tested": "662af7b1389dfbd87a046aaeac152f87d7e2a84d",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
