@@ -397,7 +397,9 @@ $cliStaged = $false
 if (Test-Stale $cliExe @($cliDir, $coreDir, $termDir)) {
     if (Test-Path $cliStage) { Remove-Item -Recurse -Force $cliStage }
     Write-Host "Publishing the CLI -> $cliStage" -ForegroundColor Cyan
-    dotnet publish (Join-Path $cliDir 'MindAttic.Orchestrator.Cli.csproj') --configuration Release --output $cliStage | Out-Host
+    # Sibling repos (MindAttic.Helpers) resolve against the workspace, not this deploy worktree (M.ORCH-T1313).
+    $workspace = Split-Path -Parent (Get-MainCheckout)
+    dotnet publish (Join-Path $cliDir 'MindAttic.Orchestrator.Cli.csproj') --configuration Release --output $cliStage "-p:MindAtticRoot=$workspace" | Out-Host
     if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $cliStage 'orchestrator.exe'))) { $cliStaged = $true }
     else {
         Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue

@@ -7,6 +7,10 @@
     <AssemblyName>orchestrator</AssemblyName>
     <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
     <Version>1.0.0</Version>
+    <!-- The workspace holding the sibling repos. run.ps1 passes the main checkout's parent, because its deploy worktree
+         under MindAttic.worktrees has no siblings at ..\..\.. (M.ORCH-T1313). -->
+    <MindAtticRoot Condition="'$(MindAtticRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\</MindAtticRoot>
+    <MindAtticDir>$([MSBuild]::EnsureTrailingSlash('$(MindAtticRoot)'))</MindAtticDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,7 +22,7 @@
     <ProjectReference Include="..\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
     <!-- MindAttic.Helpers.Ascii.AsciiMockup (M.HELP-T20): the CLI's own mockup command draws Orchestrator's screens as
          Braille-dot wireframes with it (M.ORCH-T1309). Only the Cli project wants it so far. -->
-    <ProjectReference Include="..\..\..\MindAttic.Helpers\MindAttic.Helpers\MindAttic.Helpers.csproj" />
+    <ProjectReference Include="$(MindAtticDir)MindAttic.Helpers\MindAttic.Helpers\MindAttic.Helpers.csproj" />
   </ItemGroup>
 
   <ItemGroup>
