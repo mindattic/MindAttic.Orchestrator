@@ -2,7 +2,7 @@
 
 -- accounts
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1793332800, 11, 1793743200, 1793315177, 1792686357.102392);
-INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', 'ryandebraal@mindattic.com', 'MindAttic', 'Team · Max 5x', 7, 1793473800, 12, 1793743200, 1793467353, 1793453926.3653111);
+INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', 'ryandebraal@mindattic.com', 'MindAttic', 'Team · Max 5x', 8, 1793473800, 12, 1793743200, 1793469125, 1793453926.3653111);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', 'shampoo1232@mindattic.com', 'MindAttic', 'Team · Max 5x', 51, 1792600200, 96, 1792702800, 1792589089, 1792464053.5616076);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', 'pdftransferjr@mindattic.com', 'MindAttic', 'Team · Max 5x', 81, 1792688400, 93, 1792929600, 1792685787, 1792670412.137807);
 
@@ -11,7 +11,7 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1793370770.16842);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1793461010.6046224);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1793468918.273517);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'owner', 'premium', 'active', 1792771885.882, 1793466190.7392797);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1793469440.8546717);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
@@ -414,6 +414,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-31
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-31T17:39:20Z', 7, '2026-10-31T19:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-31T17:43:46Z', 7, '2026-10-31T19:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-31T17:47:51Z', 7, '2026-10-31T19:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-31T17:52:05Z', 8, '2026-10-31T19:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-31T17:56:18Z', 8, '2026-10-31T19:10:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -916,7 +918,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'RogueTrader.Overwatch', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 349807);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 720091);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'Unity.Rea.Hare', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1299260);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5595881);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6237039);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 72235);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'IdiotProof', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3203048);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 565513);
@@ -5606,7 +5608,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "f9cecf422be9d158f078468466c35de9b1684e76",
+    "Tested": "46258bc22d80b7604b2280ceb9bc7906e3f3f056",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -6114,4 +6116,81 @@ INSERT INTO state (name, value) VALUES ('usage-cutoffs', '{
       "FiveHourPercent": 98
     }
   ]
+}');
+INSERT INTO state (name, value) VALUES ('vault-settings', '{
+  "blockBudget": null,
+  "weeklyBudget": null,
+  "weeklyReset": null,
+  "warnPercent": 80,
+  "weeklyReservePercent": 10,
+  "pacing": true,
+  "paceTargetPercent": 98,
+  "exemptCommands": [
+    "/pacing",
+    "/deploy",
+    "/run"
+  ],
+  "reportFreshMinutes": 2,
+  "providerCapPercent": 90,
+  "weeklyAwareLinePercent": 75,
+  "paceCurveK": 0.1,
+  "maxAgentDelaySeconds": 300,
+  "agentAbort": true,
+  "agentAbortAfterMinutes": 3,
+  "allocate": true,
+  "maxConcurrentSessions": 6,
+  "maxSessionsPerRepo": 2,
+  "maxSubagents": 16,
+  "defaultProvider": "Claude",
+  "keepGoing": true,
+  "resumeAfterReset": true,
+  "quietHours": [],
+  "allocateSkip": [],
+  "allocateHandMinutes": 15,
+  "staleAfterHours": 12,
+  "contextCyclePercent": 80,
+  "orphanRedispatches": 0,
+  "orphanQuietMinutes": 10,
+  "autoLogin": false,
+  "rebalanceLogins": false,
+  "reviewDiffLines": 300,
+  "riskyFiles": [
+    "*AgentGate*.cs",
+    "*pace-gate*",
+    "*context-gate*",
+    "*commit-msg*",
+    "*/hooks/*",
+    "*/Budget/Pacer.cs",
+    "*/Budget/BudgetCalculator.cs",
+    "*/Budget/PaceLedger*.cs",
+    "*/Scheduling/SubagentShare.cs",
+    "*RateLimitStatus*",
+    "*/Scheduling/Dispatcher.cs",
+    "*/Scheduling/Autopilot.cs",
+    "*land*.ps1",
+    "*deploy.ps1"
+  ],
+  "psstAlertTo": "ryan",
+  "notifyUrl": null,
+  "diskWarnGb": 20,
+  "diskCriticalGb": 5,
+  "auditEveryHours": 24,
+  "groomAfterDays": 30,
+  "gitHubIntake": false,
+  "theme": "Dark",
+  "symbolTabLabels": true,
+  "tabBlinkTokens": 1000,
+  "excludeLauncherFromTeamWall": false,
+  "workspaceRoot": null,
+  "worktreeRoot": "D:\\Projects\\MindAttic.worktrees",
+  "gateway": {
+    "enabled": false,
+    "bind": "127.0.0.1",
+    "port": 7443,
+    "certPath": null,
+    "certThumbprint": null,
+    "devCertNames": [],
+    "owner": null,
+    "tokenMinutes": 15
+  }
 }');
