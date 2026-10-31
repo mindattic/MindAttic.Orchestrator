@@ -16,6 +16,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
+    <!-- MindAttic.Helpers.Ascii.AsciiMockup (M.HELP-T20): the CLI's own mockup command draws Orchestrator's screens as
+         Braille-dot wireframes with it (M.ORCH-T1309). Only the Cli project wants it so far. -->
+    <ProjectReference Include="..\..\..\MindAttic.Helpers\MindAttic.Helpers\MindAttic.Helpers.csproj" />
   </ItemGroup>
 
   <ItemGroup>

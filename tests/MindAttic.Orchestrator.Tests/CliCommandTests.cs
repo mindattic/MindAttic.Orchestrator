@@ -84,7 +84,7 @@ public sealed class CliCommandTests
         string[] commands =
         [
             "status", "start", "send", "budget", "queue", "dispatch", "release", "daemon", "settings", "audit",
-            "next", "dryrun", "show", "report", "billing", "clis",
+            "next", "dryrun", "show", "mockup", "report", "billing", "clis",
             "ledger", "remind", "orgs", "orgs add", "orgs member", "members", "members add", "members set", "members remove", "workspace", "workspace export", "workspace install-apps", "workspace build",
         ];
         foreach (var command in commands)
