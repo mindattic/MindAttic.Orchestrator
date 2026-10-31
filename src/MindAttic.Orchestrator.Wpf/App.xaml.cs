@@ -35,6 +35,10 @@ public partial class App : Application
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
+        // Whoever started us (the installer, a scheduled job), run with the PATH a fresh logon gives: the daemon needs tickets, and
+        // every TermHost, Launcher and CLI started from here inherits it (M.ORCH-T1314).
+        ProcessPath.Refresh();
+
         // LAMP (M.ORCH-T1308): import today's settings into MindAttic Vault and write its manifest, then exit; no install, no
         // daemon, no window.
         if (OrchestratorSettingsManifest.TryRun(e.Args, Console.Out, out var manifestExit))
