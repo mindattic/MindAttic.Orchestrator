@@ -1024,9 +1024,9 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'RogueTrader.Overwatch', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 349807);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 720091);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'Unity.Rea.Hare', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1299260);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 599732);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 634002);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13869693);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1684007);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1781927);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 72235);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'AutoWebNav', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 146672);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'IdiotProof', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 333611);
@@ -1034,7 +1034,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 565513);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 188428);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'MindAttic.Tickets', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1156598);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 164285);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 192728);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 506178);
 
 -- ticket_costs
@@ -3417,7 +3417,6 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (34, 'GG-T53', 'Unity.GridGame', 'D:\Projects\MindAttic.worktrees\Unity.GridGame\GG-T53', 'Claude', '2026-10-24T04:13:53.251735Z', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (35, 'MAT-T49', 'MindAttic.Agency', 'D:\Projects\MindAttic.worktrees\MindAttic.Agency\MAT-T49', 'Claude', '2026-10-24T06:38:31.351098Z', 1, NULL, NULL, NULL, 11408, '3355791e-fb1c-436b-9d8e-7fb6aeda09fd', 'sonnet', NULL, 'honey@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (36, 'AGP-T14', 'AutoGamePlay', 'D:\Projects\MindAttic\AutoGamePlay', 'Claude', '2026-10-28T17:12:44.6781502Z', 1, NULL, NULL, NULL, 57412, '9a09255a-43ca-4cfa-84d8-258b4a81afb4', 'opus', NULL, 'ohleo199@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (37, 'U.OVW-T26', 'Unity.Rea.Overworld', 'D:\Projects\MindAttic\Unity.Rea.Overworld', 'Claude', '2026-10-30T15:49:09.6247648Z', 1, NULL, NULL, NULL, 3764, '12fd3110-ee17-448d-84de-55fa5e99f3f9', 'opus', NULL, 'shampoo1232@mindattic.com');
 
 -- organizations
 
@@ -5641,43 +5640,44 @@ INSERT INTO state (name, value) VALUES ('limits', '[
 ]');
 INSERT INTO state (name, value) VALUES ('mainline-tests', '{
   "Automata": {
-    "Tested": "fab8d57a2dcff23fe6b7ed42708c1fc0d6e65c4b",
-    "Green": "fab8d57a2dcff23fe6b7ed42708c1fc0d6e65c4b"
+    "Tested": "0ca3445e1cc7b6b683649884d478b21208cd808e",
+    "Green": "0ca3445e1cc7b6b683649884d478b21208cd808e"
   },
   "AutoWebNav": {
-    "Tested": "47b925dfd1ef9961133f91be6ee04ccf0b87c8b9"
+    "Tested": "69e89d90001c84debd5facb5363f297152b4778a",
+    "Green": "69e89d90001c84debd5facb5363f297152b4778a"
   },
   "Cursory": {
     "Tested": "626695d6a9fa2ea914b9c1509d302a5c2aee8036",
     "Green": "626695d6a9fa2ea914b9c1509d302a5c2aee8036"
   },
   "Formicarium": {
-    "Tested": "979ab1626ba6adec8fe24e22841d2a4fc0b53043",
-    "Green": "979ab1626ba6adec8fe24e22841d2a4fc0b53043"
+    "Tested": "94105c53dc82dd51d3c5229fd1e16d7bc8a781f0",
+    "Green": "94105c53dc82dd51d3c5229fd1e16d7bc8a781f0"
   },
   "Gadfly": {
-    "Tested": "2e3748b7b0893edfe24e272c6190be2245333fae",
-    "Green": "2e3748b7b0893edfe24e272c6190be2245333fae"
+    "Tested": "bb6777ca60a18e2b7296241229cc9071133280df",
+    "Green": "bb6777ca60a18e2b7296241229cc9071133280df"
   },
   "IdiotProof": {
     "Tested": "eb3976c0f76459a1bd4179174eaf6cb1c8465977",
     "Green": "eb3976c0f76459a1bd4179174eaf6cb1c8465977"
   },
   "JobHunt": {
-    "Tested": "b6ef5740b3dd33cf705d1886b1a3d046ba83a106",
-    "Green": "b6ef5740b3dd33cf705d1886b1a3d046ba83a106"
+    "Tested": "b2bc41f25ab1df4c54a25ef953be85d1f556e8ab",
+    "Green": "b2bc41f25ab1df4c54a25ef953be85d1f556e8ab"
   },
   "MediaButler": {
-    "Tested": "ea6d56a95a6b1622c943fe02d5dff5d185f9dc74",
-    "Green": "ea6d56a95a6b1622c943fe02d5dff5d185f9dc74"
+    "Tested": "0a33f24eb06b030ba3d37ea7b649087287ae4cd5",
+    "Green": "0a33f24eb06b030ba3d37ea7b649087287ae4cd5"
   },
   "MindAttic.Authentication": {
-    "Tested": "8faf1549af9ada0f8b2ba3915cecd7d65ba5e8b9",
-    "Green": "8faf1549af9ada0f8b2ba3915cecd7d65ba5e8b9"
+    "Tested": "783efea0886dffa32963463381f5f88fee1cd6bf",
+    "Green": "783efea0886dffa32963463381f5f88fee1cd6bf"
   },
   "MindAttic.Browser": {
-    "Tested": "bd3b631dc80d74cec514fb1d51c59678aa7e00d4",
-    "Green": "bd3b631dc80d74cec514fb1d51c59678aa7e00d4"
+    "Tested": "a26c00bfb087832c4439b2a593a6c8e58185f147",
+    "Green": "a26c00bfb087832c4439b2a593a6c8e58185f147"
   },
   "MindAttic.Capture": {
     "Tested": "7027e570ce8cdc17c580b488c07b35541734cfd1",
@@ -5716,7 +5716,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "cd097798f42490cd6d9f98300fb65829c3cc0ecb",
+    "Tested": "df29bc630cf3cd01c54c96ac64ce7fdb8e2d4f77",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -5727,8 +5727,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "a64e1f6bb4bd3bded61db0fa218def0bfc55b733",
-    "Green": "a64e1f6bb4bd3bded61db0fa218def0bfc55b733"
+    "Tested": "ba57296cfbe227c9ca5b5c904dac53cdd3fba10d",
+    "Green": "ba57296cfbe227c9ca5b5c904dac53cdd3fba10d"
   },
   "MindAttic.Vault": {
     "Tested": "7f864707561508fc4364b3adf8e0b7f1c9d4b9b2",
@@ -5900,8 +5900,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "f9a577c3ae7a5b8ab137c454b7eff9065626f460"
   },
   "AutoGamePlay": {
-    "Tested": "9d637c9b649b4038a742b0fedf7431d67aaa3726",
-    "Green": "9d637c9b649b4038a742b0fedf7431d67aaa3726"
+    "Tested": "60067619d4e9a7e2812bce5689cfd4455b7f504a",
+    "Green": "60067619d4e9a7e2812bce5689cfd4455b7f504a"
   },
   "Unity.Rea.Chain": {
     "Tested": "9a2624c4cb0ae3f289dbebd17eccd89010101832"
@@ -6032,21 +6032,6 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "DeadStartedUtc": "2026-10-28T17:12:44.6781502Z",
     "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
     "Cli": 57412,
-    "Ahead": 0,
-    "Uncommitted": [],
-    "Open": true
-  },
-  {
-    "TicketId": "U.OVW-T26",
-    "Repo": "Unity.Rea.Overworld",
-    "Directory": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld",
-    "FirstSeenUtc": "2026-10-31T02:50:02.5429643Z",
-    "State": "orphaned",
-    "Deaths": 1,
-    "Redispatches": 0,
-    "DeadStartedUtc": "2026-10-30T15:49:09.6247648Z",
-    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
-    "Cli": 3764,
     "Ahead": 0,
     "Uncommitted": [],
     "Open": true
