@@ -96,13 +96,15 @@ public sealed class SettingsModalTests
     }
 
     [Test]
-    public void The_app_merges_the_components_theme_and_references_24_0_0()
+    public void The_app_merges_the_components_theme_and_references_at_least_24_0_0()
     {
         var root = RepoRoot();
         var app = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "App.xaml"));
         Assert.That(app, Does.Contain("pack://application:,,,/MindAttic.Components.Wpf;component/Theme.xaml"), "MaModal's look lives in Theme.xaml");
         var csproj = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MindAttic.Orchestrator.Wpf.csproj"));
         var reference = csproj.Descendants("PackageReference").Single(r => (string?)r.Attribute("Include") == "MindAttic.Components.Wpf");
-        Assert.That((string?)reference.Attribute("Version"), Is.EqualTo("24.0.0"), "M.COMP-T147: MaSpinner's Glyph design");
+        // A floor, not an exact pin: later bumps (26.0.0, M.ORCH-T1327) keep the Glyph spinner (M.ORCH-T1331).
+        Assert.That(Version.Parse((string?)reference.Attribute("Version") ?? "0.0.0"), Is.GreaterThanOrEqualTo(new Version(24, 0, 0)),
+            "M.COMP-T147: MaSpinner's Glyph design arrived in 24.0.0");
     }
 }
