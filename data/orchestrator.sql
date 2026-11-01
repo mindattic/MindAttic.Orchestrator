@@ -525,6 +525,7 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-01
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-01T04:44:00Z', 4, '2026-11-01T07:00:00Z', 42382);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-01T04:48:08Z', 4, '2026-11-01T07:00:00Z', 42382);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-01T04:52:14Z', 4, '2026-11-01T07:00:00Z', 42382);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-01T04:56:31Z', 4, '2026-11-01T07:00:00Z', 42382);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -5725,7 +5726,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "4e6e49046d4e55e626d2e1acbe7d7cf2db5b8003",
+    "Tested": "bc816768cb8981326603f72089e1530849583e82",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -5736,8 +5737,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "dc1855d07aa8ac2ab640b5479825e0ce774a2b80",
-    "Green": "dc1855d07aa8ac2ab640b5479825e0ce774a2b80"
+    "Tested": "ba9eff5edc0ae79ec27273db88571b089dcf7302",
+    "Green": "ba9eff5edc0ae79ec27273db88571b089dcf7302"
   },
   "MindAttic.Vault": {
     "Tested": "8111a0ea2faf68b1576f27ab083f1a30991d8b62",
