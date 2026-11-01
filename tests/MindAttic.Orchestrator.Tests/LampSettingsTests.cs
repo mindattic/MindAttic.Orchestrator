@@ -186,7 +186,7 @@ public sealed class LampSettingsTests
     public void The_manifest_builds_with_every_field_labeled_grouped_and_no_secrets()
     {
         var manifest = SettingsManifestBuilder.Build<OrchestratorVaultSettings>();
-        Assert.That((manifest.AppId, manifest.DisplayName, manifest.Scope), Is.EqualTo(("Orchestrator", "MindAttic Orchestrator", SettingsManifest.LocalScope)),
+        Assert.That((manifest.AppId, manifest.DisplayName, manifest.Scope), Is.EqualTo(("Orchestrator", "MindAttic.Orchestrator", SettingsManifest.LocalScope)),
             "per machine: the daemon, its folders, ports and database are this machine's");
         Assert.That(manifest.ConfigurationPrefix, Is.EqualTo("MindAttic:Settings:Orchestrator"));
         foreach (var field in manifest.AllFields())

@@ -19,7 +19,7 @@ namespace MindAttic.Orchestrator.Settings;
 /// <c>orgs repo</c>) and the gateway's teammate list (whose tokens are sealed secrets). None is a secret here: the only key the
 /// orchestrator uses is Claude's, from the shared named keys (<see cref="Billing.OrchestratorKeys"/>).</para>
 /// </summary>
-[SettingsApp(AppId, "MindAttic Orchestrator", Local = true, Icon = "dashboard",
+[SettingsApp(AppId, "MindAttic.Orchestrator", Local = true, Icon = "dashboard",
     Description = "Paces, schedules and hosts the workspace's Claude CLIs: budgets, pacing, allocate, logins, alerts and the team gateway.")]
 [UsesCredential("claude", Purpose = "The API billing mode and the API key person: the Claude key CLIs bill when they run on API credits")]
 public sealed class OrchestratorVaultSettings

@@ -45,14 +45,14 @@ internal static class OrchestratorMockups
     ];
 
     /// <summary>
-    /// Settings since LAMP (M.ORCH-T1308, M.ORCH-T1311): the cog opens MindAttic.Vault.Desktop at its "MindAttic Orchestrator"
+    /// Settings since LAMP (M.ORCH-T1308, M.ORCH-T1311): the cog opens MindAttic.Vault.Desktop at its "MindAttic.Orchestrator"
     /// tab — the app list on the left, the tab's settings grouped one full-width row per setting (Budget, Pacing, Scheduler,
     /// Logins, Reviews, Alerts, Dashboard, Folders, Gateway), the Claude key assignment, and Save.
     /// </summary>
     private static readonly MockupPanel[] Settings =
     [
         new(0, 0, 18, 16, "Apps (Vault tabs)"),
-        new(18, 0, 52, 3, "MindAttic Orchestrator"),
+        new(18, 0, 52, 3, "MindAttic.Orchestrator"),
         new(18, 3, 52, 8, "Grouped settings (one row each)"),
         new(18, 11, 52, 3, "Keys: Claude assignment"),
         new(18, 14, 52, 2, "Save"),
