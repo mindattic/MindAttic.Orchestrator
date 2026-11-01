@@ -5683,8 +5683,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "a26c00bfb087832c4439b2a593a6c8e58185f147"
   },
   "MindAttic.Capture": {
-    "Tested": "5b74f40060065c895f03974382c2b8e37e7070c9",
-    "Green": "5b74f40060065c895f03974382c2b8e37e7070c9"
+    "Tested": "cc81ec349633a9ac0b731573e28f2f9779a763c2",
+    "Green": "cc81ec349633a9ac0b731573e28f2f9779a763c2"
   },
   "MindAttic.Components": {
     "Tested": "a5dd128f3e233a51911a0f180b9a38ffa6ffd33d",
@@ -5719,7 +5719,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "9dbe8df6dab63d1e8fa47937da960d5f303c7836",
+    "Tested": "a168df7e91ecd1f18dc6d07f5fb4c4a8a03e7235",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -5730,8 +5730,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "484f82a349e70710f5e217287ec5451261e7f9b1",
-    "Green": "484f82a349e70710f5e217287ec5451261e7f9b1"
+    "Tested": "95ddf5e51ee01367941503c9827a1aec74e5e53e",
+    "Green": "95ddf5e51ee01367941503c9827a1aec74e5e53e"
   },
   "MindAttic.Vault": {
     "Tested": "8111a0ea2faf68b1576f27ab083f1a30991d8b62",
@@ -5926,8 +5926,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "4cbc27044b84359bb39913b96ddbce310f5b691c"
   },
   "Unity.Rea.Ricochet": {
-    "Tested": "343c7a9c4b2da58a4d221e362e3ea6d4501da3d1",
-    "Green": "5de943983baa66831106387c94a6759988751c71"
+    "Tested": "bcb82c035b9fbbdab18fcaa7bbe391a5eaa06c62",
+    "Green": "bcb82c035b9fbbdab18fcaa7bbe391a5eaa06c62"
   }
 }');
 INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
