@@ -995,7 +995,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'RogueTrader.Overwatch', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 720091);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-30', 'Unity.Rea.Hare', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1299260);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 518508);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12518236);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12652001);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 72235);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'AutoWebNav', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 146672);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'IdiotProof', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3203048);
@@ -5641,12 +5641,12 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "8faf1549af9ada0f8b2ba3915cecd7d65ba5e8b9"
   },
   "MindAttic.Browser": {
-    "Tested": "e3a54cb09f634fb382bef50bb1b62f491835f0ba",
-    "Green": "e3a54cb09f634fb382bef50bb1b62f491835f0ba"
+    "Tested": "bd3b631dc80d74cec514fb1d51c59678aa7e00d4",
+    "Green": "bd3b631dc80d74cec514fb1d51c59678aa7e00d4"
   },
   "MindAttic.Capture": {
-    "Tested": "39f54f9aa5ec2b3102c870861dfeb6df293722b6",
-    "Green": "39f54f9aa5ec2b3102c870861dfeb6df293722b6"
+    "Tested": "7027e570ce8cdc17c580b488c07b35541734cfd1",
+    "Green": "7027e570ce8cdc17c580b488c07b35541734cfd1"
   },
   "MindAttic.Components": {
     "Tested": "eb30116ef28d84528379762f13a04fa08afd6379",
@@ -5666,8 +5666,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "1ebed0bc2f85ccc0040f9150b16ee163c70f711a"
   },
   "MindAttic.Launcher": {
-    "Tested": "288c4dba5bbbdc49710760676b967006e4dab5c8",
-    "Green": "288c4dba5bbbdc49710760676b967006e4dab5c8"
+    "Tested": "5f2d009a00f9681b2684b539b96dfc4a38375f1c",
+    "Green": "5f2d009a00f9681b2684b539b96dfc4a38375f1c"
   },
   "MindAttic.Legion": {
     "Tested": "e91814720bb666f1e78b418cc70d03b0404f7f30",
@@ -5681,7 +5681,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "60df62ea5e05d9f8ac57d3bb5426df21cca4d814",
+    "Tested": "503358418c604648c9f91eb435c427ddaed8f875",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -5692,8 +5692,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "b936690630f15204098ae568fccaf9af4dd6e7d9",
-    "Green": "b936690630f15204098ae568fccaf9af4dd6e7d9"
+    "Tested": "92240ad325cae0a36ec62d0dd8d9e092c328fbf0",
+    "Green": "92240ad325cae0a36ec62d0dd8d9e092c328fbf0"
   },
   "MindAttic.Vault": {
     "Tested": "7fc1517de78d17433efb1fe5623b12012a01a924",
@@ -5704,8 +5704,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "40e0a5ba6c267b248e5ed091bb38cd50f7217926"
   },
   "ProcessLogger": {
-    "Tested": "6c8698dc9e6422bc0e21ec19f2fd46ef007df064",
-    "Green": "6c8698dc9e6422bc0e21ec19f2fd46ef007df064"
+    "Tested": "decd9a4231141ee8e9430ec27c32b7255e43f207",
+    "Green": "decd9a4231141ee8e9430ec27c32b7255e43f207"
   },
   "TaxRateCollector": {
     "Tested": "0beefef155e07b3e2d637854689ca3f352e1f36b",
