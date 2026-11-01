@@ -418,7 +418,8 @@ public partial class App : Application
         if (build && !BuildWorkspaceWindow.Run(dialog.FolderName, log)) return false;
         // Not LoadSettings: a settings.json that can't be read would be saved over with defaults, every budget, priority,
         // approval and reservation lost; and a save that fails is said, not a crash at startup (M.ORCH-T337).
-        try { store.SaveSettings(store.LoadSettingsToChange() with { WorkspaceRoot = dialog.FolderName }); }
+        // Saved as the orchestrator's own override of Vault Global's workspace root (M.ORCH-T1328).
+        try { store.SaveSettings(OrchestratorVaultSettings.WithWorkspaceRoot(store.LoadSettingsToChange(), dialog.FolderName, store.LoadGlobal())); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             log.Error(ex, "Couldn't save the workspace folder");

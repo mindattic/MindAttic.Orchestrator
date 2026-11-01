@@ -6,9 +6,15 @@ namespace MindAttic.Orchestrator.Settings;
 /// <summary>What you tell the orchestrator. Everything has a working default.</summary>
 public sealed record OrchestratorSettings
 {
-    /// <summary>The folder holding every repo. Null uses MindAttic.Tickets's default; the first run
-    /// asks for one when that doesn't exist on this machine.</summary>
+    /// <summary>The folder holding every repo, resolved (M.ORCH-T1328): the orchestrator's own override in Vault, else Vault
+    /// Global's workspace root. Null uses MindAttic.Tickets's default; the first run asks for one when that doesn't exist on this
+    /// machine. The hooks read it from the database row, so the row always holds the resolved folder.</summary>
     public string? WorkspaceRoot { get; init; }
+
+    /// <summary>The orchestrator's own workspace root in Vault, as set there (M.ORCH-T1328): blank follows Vault Global. Null
+    /// (a row from before, or a value set straight on <see cref="WorkspaceRoot"/>) means <see cref="WorkspaceRoot"/> is the
+    /// override itself. Set by <see cref="OrchestratorVaultSettings.ApplyTo"/>; see <see cref="OrchestratorVaultSettings.WithWorkspaceRoot"/>.</summary>
+    public string? WorkspaceRootOverride { get; init; }
 
     /// <summary>Uncached tokens (input + cache write + output) allowed per 5-hour usage block.
     /// Null measures blocks against your own peak block in the last 7 days instead.</summary>
@@ -263,8 +269,15 @@ public sealed record OrchestratorSettings
 
     /// <summary>Who an urgent owner alert (a login reaching its own cutoff, M.ORCH-T742) is texted to through Psst: a Psst
     /// contact ("ryan") or a US number; blank texts nobody (blank, not null: a null isn't written, so it would read back as
-    /// the default).</summary>
+    /// the default).
+    /// <para>Resolved (M.ORCH-T1328): the orchestrator's own override in Vault, else Vault Global's alert recipient, else
+    /// <see cref="DefaultPsstAlertTo"/>; the override <c>none</c> texts nobody. The database row holds the resolved value.</para></summary>
     public string? PsstAlertTo { get; init; } = DefaultPsstAlertTo;
+
+    /// <summary>The orchestrator's own alert recipient in Vault, as set there (M.ORCH-T1328): blank follows Vault Global,
+    /// <c>none</c> texts nobody. Null (a row from before, or a value set straight on <see cref="PsstAlertTo"/>) means
+    /// <see cref="PsstAlertTo"/> stands for the override itself; see <see cref="OrchestratorVaultSettings.WithPsstAlertTo"/>.</summary>
+    public string? PsstAlertToOverride { get; init; }
 
     public const string DefaultPsstAlertTo = "ryan";
 

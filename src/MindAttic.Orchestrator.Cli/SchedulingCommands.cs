@@ -382,7 +382,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Weekly-aware pacing's wind-down margin, 0 to 20 (default 3): this many points under the weekly target, while there's no plan for the week, only what can finish starts.")]
         public int? WeeklyWindDown { get; init; }
         [CommandOption("--alert-to <CONTACT>")]
-        [Description("Who an urgent owner alert (a login reaching its own cutoff) is texted to through Psst: a Psst contact or a US number (default ryan); \"none\" stops it.")]
+        [Description("Who an urgent owner alert (a login reaching its own cutoff) is texted to through Psst: a Psst contact or a US number, overriding Vault Global's alert recipient; \"global\" follows Global again (default; ryan when Global names nobody); \"none\" stops it.")]
         public string? AlertTo { get; init; }
 
         [CommandOption("--hand-minutes <N>")]
@@ -566,13 +566,15 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         }
         if (settings.AlertTo is { } alertTo)
         {
-            var off = alertTo.Trim().Length == 0 || alertTo.Trim().Equals("none", StringComparison.OrdinalIgnoreCase);
-            if (!off && !MindAttic.Orchestrator.Reminders.PsstClient.Addressable(alertTo, RemindCommand.ContactsPath))
+            var off = alertTo.Trim().Equals(OrchestratorVaultSettings.NoAlerts, StringComparison.OrdinalIgnoreCase);
+            // Blank or "global": no override, so Vault Global's alert recipient is followed (M.ORCH-T1328).
+            var followGlobal = alertTo.Trim().Length == 0 || alertTo.Trim().Equals("global", StringComparison.OrdinalIgnoreCase);
+            if (!off && !followGlobal && !MindAttic.Orchestrator.Reminders.PsstClient.Addressable(alertTo, RemindCommand.ContactsPath))
             {
                 AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(alertTo)}\" isn't a Psst contact or a US number, so Psst would refuse it. Add it with: psst contacts add <name> <phone>[/]");
                 return 1;
             }
-            s = s with { PsstAlertTo = off ? "" : alertTo.Trim() };
+            s = OrchestratorVaultSettings.WithPsstAlertTo(s, off ? OrchestratorVaultSettings.NoAlerts : followGlobal ? "" : alertTo.Trim(), store.LoadGlobal());
             changed = true;
         }
         if (settings.AllocateSkip is { } skip)
@@ -682,8 +684,15 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             $" · subagents: as many as the pace allows, at most {s.MaxSubagents}" +
             (s.AgentAbort ? $" · cool-off abort [green]on[/]: {s.AgentAbortAfterMinutes} min past the line before aborting subagents to bend it back under"
                 : " · cool-off abort off: the new-start cool-off only slows new subagents"));
+        // Global default, app override (M.ORCH-T1328): say which one each resolved value came from.
+        var global = store.LoadGlobal();
+        var alertOverride = OrchestratorVaultSettings.AlertOverrideOf(s);
         AnsiConsole.MarkupLine("  cutoff alerts " +
-            (!string.IsNullOrWhiteSpace(s.PsstAlertTo) ? $"text {Markup.Escape(s.PsstAlertTo!)} through Psst (--alert-to)" : "text nobody (--alert-to)"));
+            (!string.IsNullOrWhiteSpace(s.PsstAlertTo) ? $"text {Markup.Escape(s.PsstAlertTo!)} through Psst" : "text nobody") +
+            $" (alert recipient from {Markup.Escape(OrchestratorVaultSettings.SourceOf(alertOverride, global?.AlertRecipient))}; --alert-to)");
+        var workspaceOverride = OrchestratorVaultSettings.WorkspaceOverrideOf(s);
+        AnsiConsole.MarkupLine($"  workspace root {Markup.Escape(s.WorkspaceRoot is { Length: > 0 } root ? root : MindAttic.Tickets.Workspace.DefaultRoot)}" +
+            $" (from {Markup.Escape(OrchestratorVaultSettings.SourceOf(workspaceOverride, global?.WorkspaceRoot))})");
         AnsiConsole.MarkupLine("  exempt from pacing (their turns skip every gate, spend still counted): " +
             (s.ExemptCommands.Count > 0 ? Markup.Escape(string.Join(", ", s.ExemptCommands)) : "none"));
         AnsiConsole.MarkupLine($"  tickets worked in each repo's own checkout on main; tool worktrees under {Markup.Escape(s.WorktreeRoot)} · " +

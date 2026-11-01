@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using MindAttic.Vault.Launch;
+using MindAttic.Vault.Settings;
 using MindAttic.Vault.Settings.Manifest;
 
 namespace MindAttic.Orchestrator.Settings;
@@ -183,8 +184,8 @@ public sealed class OrchestratorVaultSettings
     // ── Alerts ─────────────────────────────────────────────────────────────
 
     [Setting("Text cutoff alerts to", Group = "Alerts", Order = 1,
-        Help = "Who's texted through Psst when a login reaches its own cutoff: a Psst contact (ryan) or a US number. Empty texts nobody.")]
-    public string PsstAlertTo { get; set; } = OrchestratorSettings.DefaultPsstAlertTo;
+        Help = "Who's texted through Psst when a login reaches its own cutoff: a Psst contact (ryan) or a US number. Empty follows Global's alert recipient; none texts nobody.")]
+    public string PsstAlertTo { get; set; } = "";
 
     [Setting("Push alerts to", Group = "Alerts", Order = 2, Help = "A URL that takes a plain-text POST, like an ntfy.sh topic, for phone pushes. Empty sends nothing.")]
     [UrlSetting]
@@ -232,7 +233,7 @@ public sealed class OrchestratorVaultSettings
     // ── Folders ────────────────────────────────────────────────────────────
 
     [Setting("Workspace root", Group = "Folders", Order = 1,
-        Help = "The folder holding every repo. Empty uses MindAttic.Tickets's default.")]
+        Help = "The folder holding every repo. Empty follows Global's workspace root, else MindAttic.Tickets's default.")]
     [PathPicker(PathKind.Folder)]
     public string? WorkspaceRoot { get; set; }
 
@@ -285,8 +286,8 @@ public sealed class OrchestratorVaultSettings
         RebalanceLogins = s.RebalanceLogins,
         ReviewDiffLines = s.ReviewDiffLines,
         RiskyFiles = [.. s.RiskyFiles],
-        // A null in the row (never written) reads as the default recipient; blank is "nobody".
-        PsstAlertTo = s.PsstAlertTo ?? OrchestratorSettings.DefaultPsstAlertTo,
+        // The orchestrator's own overrides of Vault Global's values (M.ORCH-T1328), never the resolved ones.
+        PsstAlertTo = AlertOverrideOf(s),
         NotifyUrl = s.NotifyUrl,
         DiskWarnGb = s.DiskWarnGb,
         DiskCriticalGb = s.DiskCriticalGb,
@@ -297,14 +298,19 @@ public sealed class OrchestratorVaultSettings
         SymbolTabLabels = s.SymbolTabLabels,
         TabBlinkTokens = s.TabBlinkTokens,
         ExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall,
-        WorkspaceRoot = s.WorkspaceRoot,
+        WorkspaceRoot = WorkspaceOverrideOf(s),
         WorktreeRoot = s.WorktreeRoot,
         Gateway = OrchestratorGatewayVaultSettings.From(s.Gateway ?? new GatewaySettings()),
     };
 
     /// <summary><paramref name="s"/> with these values in place of its own; everything the Vault doesn't own (the legacy maps, the
-    /// per-repo maps, the API credit, the gateway's teammates) is kept as it is.</summary>
-    public OrchestratorSettings ApplyTo(OrchestratorSettings s) => s with
+    /// per-repo maps, the API credit, the gateway's teammates) is kept as it is. The alert recipient and the workspace root are
+    /// resolved against <paramref name="global"/> (M.ORCH-T1328): blank follows Vault Global, set overrides it; a null
+    /// <paramref name="global"/> is a Global with nothing set.</summary>
+    public OrchestratorSettings ApplyTo(OrchestratorSettings s, MindAtticGlobalSettings? global = null) =>
+        WithWorkspaceRoot(WithPsstAlertTo(ApplyOwn(s), PsstAlertTo, global), WorkspaceRoot, global);
+
+    private OrchestratorSettings ApplyOwn(OrchestratorSettings s) => s with
     {
         BlockBudget = BlockBudget,
         WeeklyBudget = WeeklyBudget,
@@ -339,8 +345,6 @@ public sealed class OrchestratorVaultSettings
         RebalanceLogins = RebalanceLogins,
         ReviewDiffLines = ReviewDiffLines,
         RiskyFiles = [.. RiskyFiles ?? []],
-        // Cleared in Vault (null) means nobody, as a blank always did.
-        PsstAlertTo = PsstAlertTo ?? "",
         NotifyUrl = string.IsNullOrWhiteSpace(NotifyUrl) ? null : NotifyUrl,
         DiskWarnGb = DiskWarnGb,
         DiskCriticalGb = DiskCriticalGb,
@@ -351,10 +355,63 @@ public sealed class OrchestratorVaultSettings
         SymbolTabLabels = SymbolTabLabels,
         TabBlinkTokens = TabBlinkTokens,
         ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall,
-        WorkspaceRoot = string.IsNullOrWhiteSpace(WorkspaceRoot) ? null : WorkspaceRoot,
         WorktreeRoot = string.IsNullOrWhiteSpace(WorktreeRoot) ? s.WorktreeRoot : WorktreeRoot,
         Gateway = (Gateway ?? new()).ApplyTo(s.Gateway ?? new GatewaySettings()),
     };
+
+    // ── Global default, app override (M.VALT-T77, M.ORCH-T1328) ───────────
+
+    /// <summary>The alert-recipient override that texts nobody (blank follows Vault Global instead).</summary>
+    public const string NoAlerts = "none";
+
+    /// <summary><paramref name="s"/> with its alert recipient overridden by <paramref name="vaultValue"/> as Vault.Desktop would set
+    /// it: blank follows <paramref name="global"/>'s alert recipient (else <see cref="OrchestratorSettings.DefaultPsstAlertTo"/>),
+    /// <see cref="NoAlerts"/> (or "off") texts nobody, anything else is the recipient. <see cref="OrchestratorSettings.PsstAlertTo"/>
+    /// gets the resolved recipient (what the daemon and the hooks' row use) and the override is kept beside it.</summary>
+    public static OrchestratorSettings WithPsstAlertTo(OrchestratorSettings s, string? vaultValue, MindAtticGlobalSettings? global)
+    {
+        var value = vaultValue ?? "";
+        var resolved = IsNoAlerts(value) ? ""
+            : MindAtticGlobalSettings.Resolve(value, global, g => g.AlertRecipient) ?? OrchestratorSettings.DefaultPsstAlertTo;
+        // Kept only when the resolved value alone wouldn't say it (e.g. blank while Global names someone else), so a value set
+        // straight on PsstAlertTo, and every row from before, still reads as its own override.
+        return s with { PsstAlertTo = resolved, PsstAlertToOverride = AlertOverrideFromResolved(resolved) == value ? null : value };
+    }
+
+    /// <summary><paramref name="s"/> with its workspace root overridden by <paramref name="vaultValue"/>: blank follows
+    /// <paramref name="global"/>'s workspace root (else null, MindAttic.Tickets's default). <see cref="OrchestratorSettings.WorkspaceRoot"/>
+    /// gets the resolved folder and the override is kept beside it.</summary>
+    public static OrchestratorSettings WithWorkspaceRoot(OrchestratorSettings s, string? vaultValue, MindAtticGlobalSettings? global)
+    {
+        var value = string.IsNullOrWhiteSpace(vaultValue) ? null : vaultValue;
+        var resolved = MindAtticGlobalSettings.Resolve(value, global, g => g.WorkspaceRoot);
+        return s with { WorkspaceRoot = resolved, WorkspaceRootOverride = WorkspaceOverrideFromResolved(resolved) == value ? null : value ?? "" };
+    }
+
+    /// <summary>The orchestrator's own alert-recipient override in <paramref name="s"/>: blank follows Vault Global.</summary>
+    public static string AlertOverrideOf(OrchestratorSettings s) => s.PsstAlertToOverride ?? AlertOverrideFromResolved(s.PsstAlertTo);
+
+    /// <summary>The orchestrator's own workspace-root override in <paramref name="s"/>: null follows Vault Global.</summary>
+    public static string? WorkspaceOverrideOf(OrchestratorSettings s) =>
+        s.WorkspaceRootOverride is { } o ? (string.IsNullOrWhiteSpace(o) ? null : o) : WorkspaceOverrideFromResolved(s.WorkspaceRoot);
+
+    /// <summary>Where a resolved value came from, for the CLI: the orchestrator's own override, Vault Global, or the default.</summary>
+    public static string SourceOf(string? appOverride, string? globalValue) =>
+        !string.IsNullOrWhiteSpace(appOverride) ? "the Orchestrator's own override in Vault"
+        : !string.IsNullOrWhiteSpace(globalValue) ? "Vault Global" : "the default";
+
+    private static bool IsNoAlerts(string value) =>
+        value.Trim().Equals(NoAlerts, StringComparison.OrdinalIgnoreCase) || value.Trim().Equals("off", StringComparison.OrdinalIgnoreCase);
+
+    // A resolved value read as an override (a row from before, a value set straight on the setting): nobody is "none", the
+    // default recipient is "follow Global" (whose own fallback is that default), anything else overrides.
+    private static string AlertOverrideFromResolved(string? to) =>
+        to is null ? ""
+        : string.IsNullOrWhiteSpace(to) ? NoAlerts
+        : to.Trim().Equals(OrchestratorSettings.DefaultPsstAlertTo, StringComparison.OrdinalIgnoreCase) ? ""
+        : to;
+
+    private static string? WorkspaceOverrideFromResolved(string? root) => string.IsNullOrWhiteSpace(root) ? null : root;
 
     /// <summary>JSON exactly as the Vault store writes it (indented, camelCase): what's compared and merged.</summary>
     public static readonly JsonSerializerOptions JsonOptions = new()

@@ -46,12 +46,30 @@ public sealed class JsonStore
     /// <param name="vault">The MindAttic Vault settings file the app-level settings are overlaid from. Null picks the user's real
     /// one (<c>%LOCALAPPDATA%\MindAttic\Orchestrator\settings.json</c>) for the live store alone; a scratch store (tests, a
     /// folder of its own) has none unless one is given, so it reads and writes its database row exactly as before.</param>
-    public JsonStore(string? directory = null, OrchestratorDb? db = null, JsonSettingsStore<OrchestratorVaultSettings>? vault = null)
+    /// <param name="global">Reads Vault Global (M.ORCH-T1328), whose alert recipient and workspace root the orchestrator's own
+    /// blank ones follow. Null reads the user's <c>%APPDATA%\MindAttic\Global\settings.json</c> for a store with a Vault, and
+    /// nothing for a scratch store.</param>
+    public JsonStore(string? directory = null, OrchestratorDb? db = null, JsonSettingsStore<OrchestratorVaultSettings>? vault = null,
+        Func<MindAtticGlobalSettings?>? global = null)
     {
         Directory = directory ?? LiveDirectory;
         Db = db ?? new OrchestratorDb(OrchestratorDb.StatePath(Directory));
         Vault = vault ?? (IsLiveStore() ? JsonSettingsStore<OrchestratorVaultSettings>.ForSettingsApp() : null);
+        this.global = global ?? (Vault is null ? () => null : ReadGlobal);
     }
+
+    private readonly Func<MindAtticGlobalSettings?> global;
+
+    /// <summary>Vault Global as it reads now (M.ORCH-T1328): what the orchestrator's blank alert recipient and workspace root
+    /// follow. Null for a scratch store, or when it can't be read.</summary>
+    public MindAtticGlobalSettings? LoadGlobal()
+    {
+        try { return global(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException) { return null; }
+    }
+
+    // The user's Global file, read each time (it's tiny), so an edit in Vault.Desktop is followed at once.
+    private static MindAtticGlobalSettings? ReadGlobal() => MindAtticGlobalSettings.Store().Load();
 
     /// <summary>The MindAttic Vault settings file the orchestrator's app-level settings live in (LAMP, M.ORCH-T1308), overlaid on
     /// the database's settings row; null for a scratch store.</summary>
@@ -313,7 +331,8 @@ public sealed class JsonStore
         }
         EnsureManifest();
         var merged = OrchestratorVaultSettings.Merge(synced, rowValues, vault!);
-        return OrchestratorVaultSettings.FromJson(merged).ApplyTo(row);
+        // The Vault holds the overrides; the settings (and the hooks' row) get them resolved against Vault Global.
+        return OrchestratorVaultSettings.FromJson(merged).ApplyTo(row, LoadGlobal());
     }
 
     /// <summary>Inside a settings write: records <paramref name="s"/>'s Vault values as synced and writes them to the Vault file
@@ -412,7 +431,8 @@ public sealed class JsonStore
             if (file == VaultFile.Unreadable) return false;
             if (file == VaultFile.Missing) return true; // written by the next write
             var merged = OrchestratorVaultSettings.Merge(synced, rowValues, vault!);
-            inSync = JsonNode.DeepEquals(merged, rowValues) && JsonNode.DeepEquals(merged, synced) && JsonNode.DeepEquals(merged, vault);
+            inSync = JsonNode.DeepEquals(merged, rowValues) && JsonNode.DeepEquals(merged, synced) && JsonNode.DeepEquals(merged, vault)
+                && ResolvedAlike(row, OrchestratorVaultSettings.FromJson(merged).ApplyTo(row, LoadGlobal()));
             return true;
         }
         catch (Exception ex) when (ex is JsonException or DbException or IOException or UnauthorizedAccessException or NotSupportedException)
@@ -420,6 +440,12 @@ public sealed class JsonStore
             return false;
         }
     }
+
+    /// <summary>Whether the row already holds the values resolved against Vault Global now (M.ORCH-T1328): an edit of Global
+    /// changes no Vault value of the orchestrator's, yet the hooks' row must follow it.</summary>
+    private static bool ResolvedAlike(OrchestratorSettings row, OrchestratorSettings resolved) =>
+        row.PsstAlertTo == resolved.PsstAlertTo && row.PsstAlertToOverride == resolved.PsstAlertToOverride
+        && row.WorkspaceRoot == resolved.WorkspaceRoot && row.WorkspaceRootOverride == resolved.WorkspaceRootOverride;
 
     private static void Guard(Action write)
     {
