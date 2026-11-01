@@ -123,7 +123,14 @@ public sealed class AccountsViewTests
         // M.ORCH-T797: no login-action buttons on a person's page: User Settings (M.ORCH-T1098) is the person's tab's right-click
         // menu, the library's dark dropdown (no Make default since M.ORCH-T1097); Move CLIs is
         // gone (each agent card's Move to). M.ORCH-T796: no per-person Sign in; a disconnected login opens its sign-in by itself.
-        var page = xaml[xaml.IndexOf("x:Name=\"StatTiles\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"UtilizationCard\"", StringComparison.Ordinal)];
+        // The page is the person's whole scrolling body (AgentsBody, up to the next top-level part, OrgEmptyPanel): since
+        // M.ORCH-T1319 the 5-hour chart sits above the stat tiles, so slicing StatTiles..UtilizationCard ran backwards (M.ORCH-T1330).
+        var pageStart = xaml.IndexOf("x:Name=\"AgentsBody\"", StringComparison.Ordinal);
+        var pageEnd = xaml.IndexOf("x:Name=\"OrgEmptyPanel\"", StringComparison.Ordinal);
+        Assert.That(pageStart, Is.GreaterThan(0));
+        Assert.That(pageEnd, Is.GreaterThan(pageStart));
+        var page = xaml[pageStart..pageEnd];
+        Assert.That(page, Does.Contain("x:Name=\"StatTiles\"").And.Contain("x:Name=\"UtilizationCard\""), "the slice is the person's page");
         Assert.That(page, Does.Not.Contain("SignInPerson").And.Not.Contain("{Binding UserSettingsCommand}")
             .And.Not.Contain("{Binding MakeDefaultCommand}").And.Not.Contain("x:Name=\"PersonActions\""));
         Assert.That(page, Does.Contain("x:Name=\"PersonMessage\""), "what the last action did still shows on the page");
