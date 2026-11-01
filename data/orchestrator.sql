@@ -10,8 +10,8 @@ INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, 
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('honey@mindattic.com', 'Honey', 'admin', 'premium', 'active', 1792771886.8054008, 1792771886.8054008);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1793370770.16842);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'owner', 'premium', 'active', 1792771887.249, 1793570547.2574978);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'owner', 'premium', 'active', 1792771885.463, 1793571180.884335);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1793570132.3771088);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1793571931.888563);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'owner', 'premium', 'active', 1792771885.882, 1793571974.8925312);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
@@ -1067,15 +1067,15 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-31', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 578614);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 358848);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 45201);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1186483);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1343853);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 232575);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2664810);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 881706);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 47848);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'MindAttic.Orchestrator', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 532495);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.Cyberpunk2077.ShootDodge', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2608761);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.Cyberpunk2077.WebSlinger', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 408451);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.GTFO.EZ', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 500633);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.Cyberpunk2077.ShootDodge', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2926234);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.Cyberpunk2077.WebSlinger', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 911404);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.GTFO.EZ', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 570541);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2751938);
 
 -- ticket_costs
@@ -2238,9 +2238,11 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a0177bcfc999e0414', 'C2SD-T13', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 55115, '2026-11-01T21:00:13.739Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a1944b01923dc02bb', 'C2SD-T24', 'fix', 'Mods.Cyberpunk2077.ShootDodge', 27700, '2026-11-01T21:48:33.612Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a196b31d267b90216', 'C2SD-T6', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 65003, '2026-11-01T20:52:56.827Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a218cf5e7ce742514', 'C2SD-T32', 'fix', 'Mods.Cyberpunk2077.ShootDodge', 23204, '2026-11-01T22:29:28.648Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a23945aff5369c84c', 'C2SD-T12', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 120870, '2026-11-01T21:24:43.211Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a2a1d82b075dcc6d1', 'C2SD-T18', 'fix', 'Mods.Cyberpunk2077.ShootDodge', 35884, '2026-11-01T21:56:05.595Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a32758124fc2f40e1', 'C2SD-T27', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 246240, '2026-11-01T22:10:46.854Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a3f2ff431fe08d699', 'C2SD-T31', 'fix', 'Mods.Cyberpunk2077.ShootDodge', 25851, '2026-11-01T22:29:40.505Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a5070e139b269b60f', 'C2SD-T14', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 94754, '2026-11-01T21:31:44.518Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a5179672da65ccf07', 'C2SD-T20', 'fix', 'Mods.Cyberpunk2077.ShootDodge', 51543, '2026-11-01T21:45:09.124Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-a83d4cc69fe436f2c', 'C2SD-T4', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 52174, '2026-11-01T20:45:21.21Z', 0, 'opus');
@@ -2253,6 +2255,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-aa19fd460ca66568b', 'C2SD-T7', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 71494, '2026-11-01T20:55:46.806Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-ab7dee54a65be4992', 'C2SD-T19', 'fix', 'Mods.Cyberpunk2077.ShootDodge', 28881, '2026-11-01T21:45:26.308Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-abb07db2eaf2c4e5a', 'C2SD-T16', 'fix', 'Mods.Cyberpunk2077.ShootDodge', 46355, '2026-11-01T21:12:42.636Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-aca0b00a9b520d6fe', 'C2SD-T30', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 190455, '2026-11-01T22:34:18.726Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-acf28102eca3fab5b', 'C2SD-T4', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 135058, '2026-11-01T21:39:33.658Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-ad016f6786d428541', 'C2SD-T23', 'fix', 'Mods.Cyberpunk2077.ShootDodge', 28885, '2026-11-01T21:53:59.872Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-ad62f31072136a093', 'C2SD-T28', 'docs', 'Mods.Cyberpunk2077.ShootDodge', 34743, '2026-11-01T22:02:46.661Z', 0, 'sonnet');
@@ -2261,6 +2264,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-af1072196ecb3e07e', 'C2SD-T27', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 144071, '2026-11-01T21:51:57.003Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-af36bc868e9a62bbb', 'C2SD-T26', 'fix', 'Mods.Cyberpunk2077.ShootDodge', 32572, '2026-11-01T21:47:03.849Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-af541e68a5d7dfe34', 'C2SD-T11', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 92058, '2026-11-01T21:22:36.36Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-af626d52997c7c27f', 'C2SD-T33', 'fix', 'Mods.Cyberpunk2077.ShootDodge', 45546, '2026-11-01T22:29:19.804Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-af822994a7c55685e', 'C2SD-T17', 'docs', 'Mods.Cyberpunk2077.ShootDodge', 30385, '2026-11-01T21:53:09.818Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6e82fb1a-2202-410b-93b9-327c9f6ad258/agent-afb810cc6ed41dcee', 'C2SD-T15', 'feature', 'Mods.Cyberpunk2077.ShootDodge', 117025, '2026-11-01T21:10:40.249Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('703a0095-0c8e-4b3f-8af9-9c845b243c86', 'RB-T135', 'fix', 'REA.Bloodlines', 5314123, '2026-10-23T02:42:27.997Z', 1, 'sonnet');
@@ -2432,9 +2436,14 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('80266bf8-e700-42a4-8046-431131f55d29/agent-ae6d9a1d956019880', 'RB-T131', 'fix', 'REA.Bloodlines', 243985, '2026-10-24T11:29:47.814Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('80266bf8-e700-42a4-8046-431131f55d29/agent-ae9085919bd173e85', 'RB-T173', 'fix', 'REA.Bloodlines', 777630, '2026-10-24T12:35:58.42Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('80266bf8-e700-42a4-8046-431131f55d29/agent-afd1b3622748847d4', 'RB-T116', 'feature', 'REA.Bloodlines', 630540, '2026-10-24T15:54:19.862Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a068163fa1929e32e', 'C2WS-T8', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 101643, '2026-11-01T22:31:57.335Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a2c41ca54197483cf', 'C2WS-T17', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 77418, '2026-11-01T22:30:57.704Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a5034a5dd48681170', 'C2WS-T9', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 98104, '2026-11-01T22:34:13.109Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a5e0420cb049d87bf', 'C2WS-T4', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 39457, '2026-11-01T20:54:05.097Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a600ce68753881fbd', 'C2WS-T16', 'chore', 'Mods.Cyberpunk2077.WebSlinger', 192404, '2026-11-01T22:35:18.147Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-ad2017cd243e0026a', 'C2WS-T6', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 92486, '2026-11-01T21:01:07.614Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-ad2bb9915feb2c899', 'C2WS-T7', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 55956, '2026-11-01T21:49:22.666Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-ad37fc0b4ecbc7d00', 'C2WS-T15', 'chore', 'Mods.Cyberpunk2077.WebSlinger', 136631, '2026-11-01T22:33:48.071Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-af478d58b9f2e8bc4', 'C2WS-T5', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 33996, '2026-11-01T20:55:34.504Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('81152999-dc47-438d-8eaa-4b0922c3ece2', 'M.ORCH-T698', 'fix', 'MindAttic.Orchestrator', 17222, '2026-10-23T19:29:29.15Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('81477b29-986f-4f88-8bc7-ac56739357e8', 'SS-T89', 'chore', 'Prose', 404902, '2026-10-15T20:48:50.114Z', 0, 'sonnet');
@@ -3490,6 +3499,7 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (33, 'GG-T53', 'Unity.GridGame', 'D:\Projects\MindAttic.worktrees\Unity.GridGame\GG-T53', 'Claude', '2026-10-24T04:13:53.251735Z', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (34, 'MAT-T49', 'MindAttic.Agency', 'D:\Projects\MindAttic.worktrees\MindAttic.Agency\MAT-T49', 'Claude', '2026-10-24T06:38:31.351098Z', 1, NULL, NULL, NULL, 11408, '3355791e-fb1c-436b-9d8e-7fb6aeda09fd', 'sonnet', NULL, 'honey@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (35, 'AGP-T14', 'AutoGamePlay', 'D:\Projects\MindAttic\AutoGamePlay', 'Claude', '2026-10-28T17:12:44.6781502Z', 1, NULL, NULL, NULL, 57412, '9a09255a-43ca-4cfa-84d8-258b4a81afb4', 'opus', NULL, 'ohleo199@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (36, 'C2WS-T8', 'Mods.Cyberpunk2077.WebSlinger', 'D:\Projects\MindAttic\Mods.Cyberpunk2077.WebSlinger', 'Claude', '2026-11-01T22:27:38.6823975Z', 1, NULL, NULL, NULL, 50496, '808ce091-f94c-467d-a7d1-b6562cc81444', 'opus', NULL, 'ryandebraal@mindattic.com');
 
 -- organizations
 
@@ -3500,18 +3510,18 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 -- state
 INSERT INTO state (name, value) VALUES ('api-failovers', '[]');
 INSERT INTO state (name, value) VALUES ('audit', '{
-  "RanUtc": "2026-10-31T22:26:08.7148775Z",
-  "Took": "00:00:59.3189860",
-  "ReposScanned": 72,
-  "FilesScanned": 8683,
+  "RanUtc": "2026-11-01T22:27:30.213445Z",
+  "Took": "00:01:10.5378801",
+  "ReposScanned": 74,
+  "FilesScanned": 8724,
   "Drift": [
     {
       "File": "AGENTS.md",
       "Repo": "MindAttic.Agency",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.014925373134328358,
       "IsCustom": true
@@ -3521,8 +3531,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Incognito",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Incognito\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.023255813953488372,
       "IsCustom": true
@@ -3532,8 +3542,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "SyntheticExchangeTheory",
       "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.031746031746031744,
       "IsCustom": true
@@ -3543,8 +3553,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Overworld",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.04081632653061224,
       "IsCustom": true
@@ -3554,8 +3564,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.ProjectVania",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.04081632653061224,
       "IsCustom": true
@@ -3565,8 +3575,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "TownWalker",
       "Path": "D:\\Projects\\MindAttic\\TownWalker\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.044444444444444446,
       "IsCustom": true
@@ -3576,8 +3586,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Hare",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Hare\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.05128205128205128,
       "IsCustom": true
@@ -3587,8 +3597,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.GridGame",
       "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.05405405405405406,
       "IsCustom": true
@@ -3598,8 +3608,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Eve",
       "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.07272727272727272,
       "IsCustom": true
@@ -3609,8 +3619,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "UnityRonin",
       "Path": "D:\\Projects\\MindAttic\\UnityRonin\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.07547169811320754,
       "IsCustom": true
@@ -3620,8 +3630,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Export",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.10526315789473684,
       "IsCustom": true
@@ -3631,8 +3641,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Prose",
       "Path": "D:\\Projects\\MindAttic\\Prose\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.11764705882352941,
       "IsCustom": true
@@ -3642,8 +3652,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "RusNet",
       "Path": "D:\\Projects\\MindAttic\\RusNet\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.14814814814814814,
       "IsCustom": true
@@ -3653,8 +3663,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "AutoGamePlay",
       "Path": "D:\\Projects\\MindAttic\\AutoGamePlay\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.17647058823529413,
       "IsCustom": true
@@ -3664,8 +3674,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "AutoWebNav",
       "Path": "D:\\Projects\\MindAttic\\AutoWebNav\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
@@ -3675,8 +3685,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "KdpPublish",
       "Path": "D:\\Projects\\MindAttic\\KdpPublish\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
@@ -3686,8 +3696,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Chain",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
@@ -3697,8 +3707,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.QuickDuel",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.18867924528301888,
       "IsCustom": true
@@ -3708,8 +3718,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Web",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.21052631578947367,
       "IsCustom": true
@@ -3719,8 +3729,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Ricochet",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.2222222222222222,
       "IsCustom": true
@@ -3730,19 +3740,19 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "JobHunt",
       "Path": "D:\\Projects\\MindAttic\\JobHunt\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.2857142857142857,
       "IsCustom": true
     },
     {
       "File": "AGENTS.md",
-      "Repo": "RogueTrader.Overwatch",
-      "Path": "D:\\Projects\\MindAttic\\RogueTrader.Overwatch\\AGENTS.md",
+      "Repo": "Mods.RogueTrader.Overwatch",
+      "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Overwatch\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.3333333333333333,
       "IsCustom": false
@@ -3763,8 +3773,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "IdiotProof",
       "Path": "D:\\Projects\\MindAttic\\IdiotProof\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.4,
       "IsCustom": false
@@ -3774,8 +3784,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "REA.Bloodlines",
       "Path": "D:\\Projects\\MindAttic\\REA.Bloodlines\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.4,
       "IsCustom": false
@@ -3793,11 +3803,11 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "RogueTrader.Shared",
-      "Path": "D:\\Projects\\MindAttic\\RogueTrader.Shared\\AGENTS.md",
+      "Repo": "Mods.RogueTrader.Shared",
+      "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Shared\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.45454545454545453,
       "IsCustom": false
@@ -3815,11 +3825,11 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "RogueTrader.Brevity",
-      "Path": "D:\\Projects\\MindAttic\\RogueTrader.Brevity\\AGENTS.md",
+      "Repo": "Mods.RogueTrader.Brevity",
+      "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Brevity\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.5,
       "IsCustom": false
@@ -3873,41 +3883,41 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Automata",
       "Path": "D:\\Projects\\MindAttic\\Automata\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.5555555555555556,
       "IsCustom": false
     },
     {
       "File": "AGENTS.md",
-      "Repo": "GTFO.EZ.AbsurdItems",
-      "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdItems\\AGENTS.md",
+      "Repo": "Mods.GTFO.EZ.AbsurdItems",
+      "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdItems\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
     {
       "File": "AGENTS.md",
-      "Repo": "GTFO.EZ.AbsurdMoves",
-      "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\AGENTS.md",
+      "Repo": "Mods.GTFO.EZ.AbsurdMoves",
+      "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdMoves\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
     {
       "File": "AGENTS.md",
-      "Repo": "GTFO.EZ.AbsurdWeapons",
-      "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\AGENTS.md",
+      "Repo": "Mods.GTFO.EZ.AbsurdWeapons",
+      "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdWeapons\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
@@ -4016,8 +4026,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 40,
-      "Total": 71,
+      "CanonicalCount": 42,
+      "Total": 73,
       "Variants": 32,
       "Similarity": 0.8333333333333334,
       "IsCustom": false
@@ -4041,13 +4051,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "File": "CLAUDE.md",
       "Repo": "Formicarium",
-      "HaveIt": 32,
-      "Eligible": 43,
-      "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
-    },
-    {
-      "File": "CLAUDE.md",
-      "Repo": "GTFO.EZ",
       "HaveIt": 32,
       "Eligible": 43,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
@@ -4089,14 +4092,21 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "REA.Bloodlines",
+      "Repo": "Mods.GTFO.EZ",
       "HaveIt": 32,
       "Eligible": 43,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "RogueTrader.Brevity",
+      "Repo": "Mods.RogueTrader.Brevity",
+      "HaveIt": 32,
+      "Eligible": 43,
+      "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
+    },
+    {
+      "File": "CLAUDE.md",
+      "Repo": "REA.Bloodlines",
       "HaveIt": 32,
       "Eligible": 43,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
@@ -4130,28 +4140,28 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "GTFO.EZ",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ\\external\\GTFO.EZ.Shared\\KitLoot.cs",
+          "Repo": "Mods.GTFO.EZ",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ\\external\\GTFO.EZ.Shared\\KitLoot.cs",
           "Lines": 121
         },
         {
-          "Repo": "GTFO.EZ.AbsurdItems",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\KitLoot.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdItems",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\KitLoot.cs",
           "Lines": 121
         },
         {
-          "Repo": "GTFO.EZ.AbsurdMoves",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\KitLoot.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdMoves",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\KitLoot.cs",
           "Lines": 121
         },
         {
-          "Repo": "GTFO.EZ.AbsurdWeapons",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\KitLoot.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdWeapons",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\KitLoot.cs",
           "Lines": 121
         },
         {
-          "Repo": "GTFO.EZ.Shared",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.Shared\\KitLoot.cs",
+          "Repo": "Mods.GTFO.EZ.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.Shared\\KitLoot.cs",
           "Lines": 121
         }
       ],
@@ -4164,28 +4174,28 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "GTFO.EZ",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
+          "Repo": "Mods.GTFO.EZ",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
           "Lines": 75
         },
         {
-          "Repo": "GTFO.EZ.AbsurdItems",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdItems",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
           "Lines": 75
         },
         {
-          "Repo": "GTFO.EZ.AbsurdMoves",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdMoves",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
           "Lines": 75
         },
         {
-          "Repo": "GTFO.EZ.AbsurdWeapons",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdWeapons",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
           "Lines": 75
         },
         {
-          "Repo": "GTFO.EZ.Shared",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.Shared\\InfiniteToggles.cs",
+          "Repo": "Mods.GTFO.EZ.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.Shared\\InfiniteToggles.cs",
           "Lines": 75
         }
       ],
@@ -4198,28 +4208,28 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "GTFO.EZ",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ\\external\\GTFO.EZ.Shared\\MessageHelper.cs",
+          "Repo": "Mods.GTFO.EZ",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ\\external\\GTFO.EZ.Shared\\MessageHelper.cs",
           "Lines": 68
         },
         {
-          "Repo": "GTFO.EZ.AbsurdItems",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\MessageHelper.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdItems",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\MessageHelper.cs",
           "Lines": 68
         },
         {
-          "Repo": "GTFO.EZ.AbsurdMoves",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\MessageHelper.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdMoves",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\MessageHelper.cs",
           "Lines": 68
         },
         {
-          "Repo": "GTFO.EZ.AbsurdWeapons",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\MessageHelper.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdWeapons",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\MessageHelper.cs",
           "Lines": 68
         },
         {
-          "Repo": "GTFO.EZ.Shared",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.Shared\\MessageHelper.cs",
+          "Repo": "Mods.GTFO.EZ.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.Shared\\MessageHelper.cs",
           "Lines": 68
         }
       ],
@@ -4237,8 +4247,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 90
         },
         {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Blazor\\Components\\Layout\\ReconnectModal.razor.css",
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\Components\\Layout\\ReconnectModal.razor.css",
           "Lines": 90
         },
         {
@@ -4314,28 +4324,28 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "GTFO.EZ",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
+          "Repo": "Mods.GTFO.EZ",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
           "Lines": 44
         },
         {
-          "Repo": "GTFO.EZ.AbsurdItems",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdItems",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
           "Lines": 44
         },
         {
-          "Repo": "GTFO.EZ.AbsurdMoves",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdMoves",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
           "Lines": 44
         },
         {
-          "Repo": "GTFO.EZ.AbsurdWeapons",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdWeapons",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
           "Lines": 44
         },
         {
-          "Repo": "GTFO.EZ.Shared",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.Shared\\SharedOwner.cs",
+          "Repo": "Mods.GTFO.EZ.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.Shared\\SharedOwner.cs",
           "Lines": 44
         }
       ],
@@ -4401,6 +4411,11 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 13
         },
         {
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\tools\\build-readme.ps1",
+          "Lines": 13
+        },
+        {
           "Repo": "MediaButler",
           "Path": "D:\\Projects\\MindAttic\\MediaButler\\tools\\build-readme.ps1",
           "Lines": 13
@@ -4418,11 +4433,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Helpers",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Helpers\\tools\\build-readme.ps1",
-          "Lines": 13
-        },
-        {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\tools\\build-readme.ps1",
           "Lines": 13
         },
         {
@@ -4544,12 +4554,12 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "JobHunt",
           "Path": "D:\\Projects\\MindAttic\\JobHunt\\run.ps1",
-          "Lines": 177
+          "Lines": 180
         }
       ],
       "Identical": false,
-      "Similarity": 0.6569767441860465,
-      "SharedLines": 118,
+      "Similarity": 0.64,
+      "SharedLines": 117,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
       "RepoCount": 2
     },
@@ -4580,8 +4590,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 37
         },
         {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Blazor\\Components\\Layout\\ReconnectModal.razor.js",
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\Components\\Layout\\ReconnectModal.razor.js",
           "Lines": 37
         },
         {
@@ -4633,9 +4643,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Components",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserTimeout\\user-timeout.css",
-          "Lines": 28
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\wwwroot\\app.css",
+          "Lines": 310
         },
         {
           "Repo": "MindAttic.Components",
@@ -4648,9 +4658,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 43
         },
         {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Blazor\\wwwroot\\app.css",
-          "Lines": 310
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserTimeout\\user-timeout.css",
+          "Lines": 28
         },
         {
           "Repo": "Tutor",
@@ -4686,13 +4696,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Components",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserTimeout\\UserTimeout.razor",
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\Components\\UiUx\\UserTimeout.razor",
           "Lines": 28
         },
         {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Blazor\\Components\\UiUx\\UserTimeout.razor",
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserTimeout\\UserTimeout.razor",
           "Lines": 28
         },
         {
@@ -4734,8 +4744,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Blazor\\wwwroot\\js\\user-timeout.js",
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\wwwroot\\js\\user-timeout.js",
           "Lines": 39
         },
         {
@@ -4791,13 +4801,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Components",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserCircle\\user-circle.js",
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\wwwroot\\js\\user-circle.js",
           "Lines": 24
         },
         {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Blazor\\wwwroot\\js\\user-circle.js",
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserCircle\\user-circle.js",
           "Lines": 24
         },
         {
@@ -4901,8 +4911,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 30
         },
         {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Blazor\\Components\\Layout\\ReconnectModal.razor",
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\Components\\Layout\\ReconnectModal.razor",
           "Lines": 30
         }
       ],
@@ -4958,8 +4968,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 26
         },
         {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Blazor\\Components\\Pages\\Error.razor",
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\Components\\Pages\\Error.razor",
           "Lines": 26
         }
       ],
@@ -5010,8 +5020,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Tests\\UsersAdminContractTests.cs",
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Tests\\UsersAdminContractTests.cs",
           "Lines": 22
         },
         {
@@ -5178,14 +5188,14 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\wwwroot\\js\\user-timeout.js",
+          "Lines": 39
+        },
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserTimeout\\user-timeout.js",
           "Lines": 40
-        },
-        {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Blazor\\wwwroot\\js\\user-timeout.js",
-          "Lines": 39
         }
       ],
       "Identical": false,
@@ -5421,8 +5431,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Ideas",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\src\\MindAttic.Ideas.Blazor\\Components\\Layout\\MainLayout.razor.css",
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\Components\\Layout\\MainLayout.razor.css",
           "Lines": 15
         },
         {
@@ -5488,13 +5498,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "GTFO.EZ.AbsurdMoves",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\src\\GTFO.EZ.AbsurdMoves\\ConfigMigrations.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdMoves",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdMoves\\src\\GTFO.EZ.AbsurdMoves\\ConfigMigrations.cs",
           "Lines": 18
         },
         {
-          "Repo": "GTFO.EZ.AbsurdWeapons",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\src\\GTFO.EZ.AbsurdWeapons\\ConfigMigrations.cs",
+          "Repo": "Mods.GTFO.EZ.AbsurdWeapons",
+          "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdWeapons\\src\\GTFO.EZ.AbsurdWeapons\\ConfigMigrations.cs",
           "Lines": 43
         }
       ],
@@ -5792,7 +5802,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "943e6991da6334d9adb65ceeb2475ce5ad61ac2e",
+    "Tested": "b34cd1012e72d86eef3f8e6adb2d45cbd90f793f",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -5803,8 +5813,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "e6919520c0b037d695b8f34efaf05c8cd442e52c",
-    "Green": "e6919520c0b037d695b8f34efaf05c8cd442e52c"
+    "Tested": "3a7f1e8e3e45bb1f9a27d5a73eb9808b44a397de",
+    "Green": "3a7f1e8e3e45bb1f9a27d5a73eb9808b44a397de"
   },
   "MindAttic.Vault": {
     "Tested": "8111a0ea2faf68b1576f27ab083f1a30991d8b62",
@@ -6015,7 +6025,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "5fa438626e39fe6d5823e3b6dd881bd6065f9af7"
   },
   "IdeaCms": {
-    "Tested": "514837e84df0c15a28f9164b3d5ea0b1d8137c42"
+    "Tested": "721e1c49c8fe410548f8fd29f9de277e8c0bae99",
+    "Green": "721e1c49c8fe410548f8fd29f9de277e8c0bae99"
   },
   "Mods.GTFO.EZ.AbsurdItems": {
     "Tested": "9656a663e6275dca6b99609dee2fd7b8ce1330fb"
@@ -6271,7 +6282,11 @@ INSERT INTO state (name, value) VALUES ('relocate-moves', '[]');
 INSERT INTO state (name, value) VALUES ('requeued', '{
   "C2SD-T4": "2026-11-01T20:46:37.0017721Z",
   "C2SD-T27": "2026-11-01T21:51:39.5077709Z",
-  "C2SD-T17": "2026-11-01T21:52:54.7966566Z"
+  "C2SD-T17": "2026-11-01T21:52:54.7966566Z",
+  "C2SD-T30": "2026-11-01T22:34:02.0204272Z",
+  "C2WS-T15": "2026-11-01T22:34:02.0204272Z",
+  "C2WS-T9": "2026-11-01T22:34:02.0204272Z",
+  "C2WS-T16": "2026-11-01T22:35:30.3320623Z"
 }');
 INSERT INTO state (name, value) VALUES ('usage-cutoff-alerts', '{
   "Alerted": {
