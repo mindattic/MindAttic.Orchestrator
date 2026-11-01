@@ -524,6 +524,7 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-01
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-01T04:39:58Z', 3, '2026-11-01T07:00:00Z', 42382);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-01T04:44:00Z', 4, '2026-11-01T07:00:00Z', 42382);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-01T04:48:08Z', 4, '2026-11-01T07:00:00Z', 42382);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-01T04:52:14Z', 4, '2026-11-01T07:00:00Z', 42382);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -5652,8 +5653,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "0ca3445e1cc7b6b683649884d478b21208cd808e"
   },
   "AutoWebNav": {
-    "Tested": "69e89d90001c84debd5facb5363f297152b4778a",
-    "Green": "69e89d90001c84debd5facb5363f297152b4778a"
+    "Tested": "9cd3497bc7d15ef1ffa45706f06230db9f9b2dd4",
+    "Green": "9cd3497bc7d15ef1ffa45706f06230db9f9b2dd4"
   },
   "Cursory": {
     "Tested": "99edfd8e07fff43500f695beff316e15660980cb",
@@ -5724,7 +5725,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "c89d138889a3c6f6211934bb0adc267c3e1874e0",
+    "Tested": "6eae0178d310700d9056c009a21adba0d2ccce57",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -5735,8 +5736,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "6e89d729c534f2b5d379d26e1dbb8c67333a8f14",
-    "Green": "6e89d729c534f2b5d379d26e1dbb8c67333a8f14"
+    "Tested": "4acbd9528482e8bfd288229d8fa6db951a1504b1",
+    "Green": "4acbd9528482e8bfd288229d8fa6db951a1504b1"
   },
   "MindAttic.Vault": {
     "Tested": "8111a0ea2faf68b1576f27ab083f1a30991d8b62",
