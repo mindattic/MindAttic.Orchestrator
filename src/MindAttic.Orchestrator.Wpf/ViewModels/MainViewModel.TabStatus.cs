@@ -212,8 +212,8 @@ public sealed partial class MainViewModel
 
     /// <summary>The tab's icon: pause idle, a blinking green play arrow busy, gray disabled.</summary>
     public TabActivity TabActivity => tab.IsApiKey
-        ? ActivityOf(usable: tab.SignedIn, pastCutoff: Spend is { OutOfCredit: true }, WorkingCount > 0 || HostCount > 0, Blinker.Grew || Blinker.Pending > 0)
-        : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0 || HostCount > 0,
+        ? ActivityOf(usable: tab.SignedIn, pastCutoff: Spend is { OutOfCredit: true }, WorkingCount > 0 || HostCount > 0 || AnyAgentWorking, Blinker.Grew || Blinker.Pending > 0)
+        : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0 || HostCount > 0 || AnyAgentWorking,
             Blinker.Grew || Blinker.Pending > 0);
 
     /// <summary>Disabled when the login can't take work (signed out, or the 'API key' tab with API billing off) or is past its
@@ -221,6 +221,22 @@ public sealed partial class MainViewModel
     /// whether it's hosted inside the Orchestrator's own Terminals panel or runs outside it (M.LNCH-T77); else idle.</summary>
     internal static TabActivity ActivityOf(bool usable, bool pastCutoff, bool working, bool spending) =>
         !usable || pastCutoff ? TabActivity.Disabled : working || spending ? TabActivity.Busy : TabActivity.Idle;
+
+    /// <summary>Whether one of this login's live CLIs is genuinely busy right now -- its own turn mid-run or held by the pace
+    /// gate while working, or it has a subagent running or an /allocate claim open (M.ORCH-T1393): the same live per-session
+    /// signal <see cref="AllStoppedOf"/> and the Terminals panel's own pane badge (<c>TerminalPaneViewModel.ApplyAgentStatus</c>)
+    /// already trust (<c>AgentBoard</c>, built from the context gate's <c>.state.json</c> files), not
+    /// <see cref="MindAttic.Orchestrator.RepoState.Working"/>'s transcript-age window. A headless <c>/allocate</c> agent has no
+    /// <see cref="HostSession"/> to count toward <see cref="HostCount"/>, and can run a long tool call (or sit over a running
+    /// subagent) without writing its own transcript long enough to stay inside the working window, so
+    /// <see cref="WorkingCount"/> alone missed it too -- most tabs showed the gray "zzz" idle badge though their CLI was
+    /// actively working. Blended with, not replacing, <see cref="WorkingCount"/>/<see cref="HostCount"/>: those still catch a
+    /// CLI the context gate has no live read on (another provider's host, or one running outside the gate).</summary>
+    private bool AnyAgentWorking => AnyAgentWorkingOf(snapshot?.Agents);
+
+    internal static bool AnyAgentWorkingOf(IEnumerable<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents) =>
+        agents?.Any(a => a.State is MindAttic.Orchestrator.Activity.AgentState.Working or MindAttic.Orchestrator.Activity.AgentState.HeldByPace
+            || a.Subagents.Count > 0 || a.Claims.Count > 0) == true;
 
     /// <summary>Whether a login is at or past its weekly or its 5-hour cutoff (M.ORCH-T707/T742); never read is not past.</summary>
     internal static bool PastCutoffOf(double? weekUsed, int weeklyCutoff, double? fiveHourUsed, int fiveHourCutoff) =>

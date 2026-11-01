@@ -327,6 +327,80 @@ public sealed class TabStatusTests
         Assert.That(MainViewModel.NeedsYouLine(2), Is.EqualTo(" 2 CLIs here are blocked waiting on your answer."));
     }
 
+    /// <summary>M.ORCH-T1393: a CLI counts as working for <see cref="MainViewModel.AnyAgentWorkingOf"/> while its own turn runs
+    /// or the pace gate holds it mid-turn, or while it has a subagent running or an /allocate claim open (the same "not
+    /// stopped" signal <see cref="MainViewModel.AllStoppedOf"/> and the Terminals panel's own pane badge already use) --
+    /// never from merely being asked a question (that's "needs you", not "working").</summary>
+    [Test]
+    public void Any_agent_working_reads_the_live_agent_board_not_a_transcripts_age()
+    {
+        AgentBoardRow Row(AgentState state, int subagents = 0, int claims = 0, bool asking = false) =>
+            new("a", "A", null, null, DateTime.UtcNow, DateTime.UtcNow, state, "", false, default,
+                [.. Enumerable.Range(0, subagents).Select(i => new SubagentActivity($"s{i}", "a", "general", DateTime.UtcNow, DateTime.UtcNow, default))])
+            { Claims = [.. Enumerable.Range(0, claims).Select(i => $"T{i}")], Asking = asking };
+
+        Assert.That(MainViewModel.AnyAgentWorkingOf(null), Is.False, "no agent board at all");
+        Assert.That(MainViewModel.AnyAgentWorkingOf([]), Is.False, "no CLI open");
+        Assert.That(MainViewModel.AnyAgentWorkingOf([Row(AgentState.Waiting)]), Is.False, "genuinely idle at a prompt");
+        Assert.That(MainViewModel.AnyAgentWorkingOf([Row(AgentState.Waiting, asking: true)]), Is.False, "asking isn't working, it's needing you");
+        Assert.That(MainViewModel.AnyAgentWorkingOf([Row(AgentState.Working)]), Is.True, "its own turn is running");
+        Assert.That(MainViewModel.AnyAgentWorkingOf([Row(AgentState.HeldByPace)]), Is.True, "working, just held back by the pace gate");
+        Assert.That(MainViewModel.AnyAgentWorkingOf([Row(AgentState.Waiting, subagents: 1)]), Is.True, "a subagent is running under it");
+        Assert.That(MainViewModel.AnyAgentWorkingOf([Row(AgentState.Waiting, claims: 1)]), Is.True, "it holds an /allocate claim");
+        Assert.That(MainViewModel.AnyAgentWorkingOf([Row(AgentState.Waiting), Row(AgentState.Working)]), Is.True, "any one of several CLIs busy is enough");
+    }
+
+    /// <summary>
+    /// M.ORCH-T1393: "Every User tab is supposed to have a spinner when a CLI tab belonging to that user is operating, but it
+    /// doesn't -- most stay gray 'zzz'." Root cause: <c>TabActivity</c>'s "working" input came only from
+    /// <see cref="RepoState.Working"/> (a transcript-age window) and <see cref="MainViewModel.HostCount"/> (open Launcher
+    /// tabs); a headless <c>/allocate</c> agent has no host pipe to count and can go quiet past the working window mid-tool-call
+    /// while still genuinely running, so most of a busy login's tabs read idle. The fix blends in
+    /// <see cref="MainViewModel.AnyAgentWorkingOf"/>, the same live per-session board the stopped/idle badge
+    /// (<see cref="MainViewModel.AllStoppedOf"/>) and the needs-you flag (<see cref="MainViewModel.AskingOf"/>) already trust.
+    /// This test composes those three exactly as <c>MainViewModel.TabStatus.cs</c>/<c>MainViewModel.Tabs.cs</c> do, to pin the
+    /// four contracted outcomes without standing up a full view model.
+    /// </summary>
+    [Test]
+    public void A_tabs_busy_idle_and_needs_you_badges_follow_the_live_agent_board()
+    {
+        AgentBoardRow Row(string id, AgentState state, HostSession? host = null, bool asking = false) =>
+            new(id, "A", null, null, DateTime.UtcNow, DateTime.UtcNow, state, "", false, default, []) { Host = host, Asking = asking };
+
+        // What MainViewModel.TabStatus.cs/MainViewModel.Tabs.cs compose from the raw signals (M.ORCH-T1393's blend).
+        static (bool Busy, bool Idle, bool NeedsYou) BadgesOf(IReadOnlyList<AgentBoardRow> agents, IReadOnlyList<HostSession> hosts,
+            bool workingCountPositive, bool hostCountPositive)
+        {
+            var activity = MainViewModel.ActivityOf(usable: true, pastCutoff: false,
+                working: workingCountPositive || hostCountPositive || MainViewModel.AnyAgentWorkingOf(agents), spending: false);
+            var allStopped = MainViewModel.AllStoppedOf(agents, hosts) > 0;
+            var needsYou = MainViewModel.AskingOf(agents) > 0;
+            var isBusy = activity == TabActivity.Busy && !allStopped;
+            var isIdle = (activity == TabActivity.Idle && !allStopped) || allStopped;
+            return (isBusy && !needsYou, isIdle && !needsYou, needsYou);
+        }
+
+        // A headless /allocate agent mid-turn: no Launcher host, and its transcript write is stale enough that the repo-level
+        // age window (WorkingCount) already reads Dormant/Waiting -- this is the bug's exact shape.
+        var headlessBusy = BadgesOf([Row("h1", AgentState.Working)], [], workingCountPositive: false, hostCountPositive: false);
+        Assert.That(headlessBusy, Is.EqualTo((true, false, false)), "a live-busy headless CLI shows busy though its transcript looks old and it has no host");
+
+        // A hosted CLI genuinely idle at a prompt, whose transcript write still falls inside the working window (a stale
+        // WorkingCount=true) and whose Launcher tab is open (HostCount=true): the live board says it's truly stopped, so the
+        // stale/host signals must not win the tug-of-war into a false busy badge.
+        var host = new HostSession("Claude", 1, "p1", @"D:\W\A");
+        var staleIdle = BadgesOf([Row("h2", AgentState.Waiting, host)], [host], workingCountPositive: true, hostCountPositive: true);
+        Assert.That(staleIdle, Is.EqualTo((false, true, false)), "a recent transcript write alone never fakes a busy badge over a genuinely idle live CLI");
+
+        // Every open CLI on the login has genuinely stopped.
+        var allStopped = BadgesOf([Row("h3", AgentState.Waiting, host), Row("h4", AgentState.Waiting)], [host], workingCountPositive: false, hostCountPositive: true);
+        Assert.That(allStopped, Is.EqualTo((false, true, false)), "every open CLI idle: the stopped/idle badge, not busy");
+
+        // A CLI blocked on the person: needs-you wins over busy or idle either way.
+        var asking = BadgesOf([Row("h5", AgentState.Working, asking: true)], [], workingCountPositive: false, hostCountPositive: false);
+        Assert.That(asking, Is.EqualTo((false, false, true)), "asking shows needs-you regardless of how busy-looking the rest of the signal is");
+    }
+
     /// <summary>M.ORCH-T1270: the login tab's busy badge is a spinner and its asking badge a plain "?", not a CLI-count digit
     /// or a count/? flash (M.ORCH-T1261's design); the count itself still exists for the tooltip (<see cref="MainViewModel.TabCliCount"/>).</summary>
     [Test]
