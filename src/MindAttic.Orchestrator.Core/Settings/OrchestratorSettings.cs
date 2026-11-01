@@ -36,6 +36,16 @@ public sealed record OrchestratorSettings
     /// <summary>Percent of a budget at which the dashboard warns. Without pacing, the scheduler also stops proposing here.</summary>
     public int WarnPercent { get; init; } = 80;
 
+    /// <summary>Where the week actually warns for a given login (M.ORCH-T707 follow-up, bughunt 2026-11-01): <see cref="WarnPercent"/>
+    /// by default, but <see cref="Budget.UsageCutoffs.Apply"/> moves it with that member's own weekly cutoff, the same number of
+    /// points short of it that the org-wide default keeps short of <see cref="WeeklyStopPercent"/>'s own default. Without this, a
+    /// member who raised their cutoff well past <see cref="WarnPercent"/> (<c>org limit --weekly</c>) still warned, and was held
+    /// while unpaced, at the org-wide line as if they hadn't.</summary>
+    public int WeeklyWarnPercent { get; init; } = 80;
+
+    /// <summary>The same, for the 5-hour window and <see cref="PaceTargetPercent"/>.</summary>
+    public int FiveHourWarnPercent { get; init; } = 80;
+
     /// <summary>On: with a limit to pace against (set or learned), the scheduler caps sessions so
     /// spend lands on <see cref="PaceTargetPercent"/> at the reset instead of holding at the warn line.</summary>
     public bool Pacing { get; init; } = true;

@@ -225,7 +225,7 @@ public static partial class Scheduler
             _ => snapshot.Budget switch
             {
                 { Level: BudgetLevel.Over } b => $"Holding: budget at {b.WorstPercent:0}%.",
-                { Level: BudgetLevel.Warn } b => $"Holding: budget at {b.WorstPercent:0}% (warns at {b.WarnPercent}%).",
+                { Level: BudgetLevel.Warn } b => $"Holding: budget at {b.WorstPercent:0}% (warns at {b.ActiveWarnPercent}%).",
                 _ => null,
             },
         };

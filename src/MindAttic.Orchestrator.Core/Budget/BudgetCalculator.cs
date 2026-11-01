@@ -39,10 +39,21 @@ public sealed record BudgetStatus(
 
     private double RawWorstPercent => Math.Max(BlockLimitIsPeak ? 0 : BlockPercent, WeeklyPercent ?? 0);
 
+    /// <summary>Where the week warns for this login (bughunt 2026-11-01, <see cref="Settings.OrchestratorSettings.WeeklyWarnPercent"/>):
+    /// <see cref="WarnPercent"/> unless <see cref="UsageCutoffs.Apply"/> moved it with this login's own weekly cutoff.</summary>
+    public int WeeklyWarnPercent { get; init; } = WarnPercent;
+
+    /// <summary>The same, for the 5-hour window.</summary>
+    public int FiveHourWarnPercent { get; init; } = WarnPercent;
+
     public BudgetLevel Level =>
         WorstPercent >= 100 ? BudgetLevel.Over
-        : WorstPercent >= WarnPercent ? BudgetLevel.Warn
+        : (!BlockLimitIsPeak && BlockPercent >= FiveHourWarnPercent) || (WeeklyPercent ?? 0) >= WeeklyWarnPercent ? BudgetLevel.Warn
         : BudgetLevel.Ok;
+
+    /// <summary>Whichever of <see cref="WeeklyWarnPercent"/>/<see cref="FiveHourWarnPercent"/> a "warns at N%" message should
+    /// quote: the week's own line once the week is the one at or past it, else the 5-hour window's.</summary>
+    public int ActiveWarnPercent => (WeeklyPercent ?? 0) >= WeeklyWarnPercent ? WeeklyWarnPercent : FiveHourWarnPercent;
 
     public LimitSource BlockLimitSource { get; init; } = LimitSource.Peak;
     public LimitSource? WeeklyLimitSource { get; init; }
@@ -310,6 +321,8 @@ public static class BudgetCalculator
             WeeklyStop = reportedWeek is not null && reportedWeek.Percent >= settings.WeeklyStopPercent ? reportedWeek : null,
             WeeklyStopPercent = settings.WeeklyStopPercent,
             FiveHourStopPercent = Math.Clamp(settings.PaceTargetPercent, 1, 100),
+            WeeklyWarnPercent = Math.Clamp(settings.WeeklyWarnPercent, 1, 100),
+            FiveHourWarnPercent = Math.Clamp(settings.FiveHourWarnPercent, 1, 100),
             Calibration = learned,
             BlockLimitOutdated = blockRefuted,
             WeeklyLimitOutdated = weeklyRefuted,

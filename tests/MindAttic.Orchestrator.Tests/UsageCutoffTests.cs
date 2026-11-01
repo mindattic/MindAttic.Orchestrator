@@ -29,12 +29,32 @@ public sealed class UsageCutoffTests
         var other = UsageCutoffs.Apply(cutoffs, "honey@mindattic.com", settings);
         Assert.That((erin.WeeklyStopPercent, erin.PaceTargetPercent), Is.EqualTo((80, 98)));
         Assert.That((other.WeeklyStopPercent, other.PaceTargetPercent), Is.EqualTo((90, 98)));
+        // The warn line keeps the same 10-point gap to Erin's own (lowered) weekly cutoff that the org-wide default
+        // keeps to its own (90 - 80 = 10); her untouched 5-hour cutoff keeps the org-wide 80 (bughunt 2026-11-01).
+        Assert.That((erin.WeeklyWarnPercent, erin.FiveHourWarnPercent), Is.EqualTo((70, 80)));
+        Assert.That((other.WeeklyWarnPercent, other.FiveHourWarnPercent), Is.EqualTo((80, 80)));
 
         UsageCutoffs.Set(store, Erin, "Erin", null, 70);
         Assert.That(UsageCutoffs.Load(store).Single(), Has.Property("WeeklyPercent").EqualTo(80).And.Property("FiveHourPercent").EqualTo(70));
 
         UsageCutoffs.Reset(store, Erin, "Erin");
         Assert.That(UsageCutoffs.Load(store), Is.Empty);
+    }
+
+    [Test]
+    public void Raising_a_cutoff_past_the_org_wide_warn_line_raises_its_own_warn_line_too()
+    {
+        // bughunt 2026-11-01: a member who raised their weekly cutoff to 98 (org limit --weekly 98) so they'd keep
+        // working close to it still warned, and while unpaced was held, at the org-wide 80% line as if they hadn't.
+        const string waffle = "waffle@mindattic.com";
+        var settings = new OrchestratorSettings();
+        var store = new JsonStore(temps.New());
+        UsageCutoffs.Set(store, waffle, "Waffle", 98, null);
+        var applied = UsageCutoffs.Apply(UsageCutoffs.Load(store), waffle, settings);
+        Assert.That((applied.WeeklyStopPercent, applied.WeeklyWarnPercent), Is.EqualTo((98, 88)));
+
+        var budget = BudgetCalculator.Compute([], applied, DateTime.UtcNow, DateTime.UtcNow) with { WeeklyPercent = 93 };
+        Assert.That(budget.Level, Is.EqualTo(BudgetLevel.Ok), "93% used of a 98% cutoff is still plenty of room");
     }
 
     [Test, NonParallelizable] // Ctx.StoreDirectory, AnsiConsole.Console and the org overrides are process-wide

@@ -57,13 +57,23 @@ public static class UsageCutoffs
 
     /// <summary><paramref name="settings"/> for <paramref name="email"/>'s login with its cutoffs in force: a member override
     /// wins outright; without one, <paramref name="settings"/>'s own global weekly/pace target stands, so changing that global
-    /// dial actually takes effect for everyone who hasn't set a cutoff of their own.</summary>
-    public static OrchestratorSettings Apply(IEnumerable<UsageCutoff>? cutoffs, string? email, OrchestratorSettings settings) =>
-        settings with
+    /// dial actually takes effect for everyone who hasn't set a cutoff of their own. The dashboard's warn lines move with the
+    /// cutoffs too (bughunt 2026-11-01): a member who moved their weekly or 5-hour cutoff away from the default previously still
+    /// warned (and, unpaced, was held) at the org-wide <see cref="OrchestratorSettings.WarnPercent"/>, which could sit well past
+    /// a lowered cutoff or well short of a raised one, so the local override didn't actually override anything past the stop line
+    /// itself. Each warn line now keeps the same gap to its own cutoff that the org-wide default keeps to its own.</summary>
+    public static OrchestratorSettings Apply(IEnumerable<UsageCutoff>? cutoffs, string? email, OrchestratorSettings settings)
+    {
+        var weekly = WeeklyFor(cutoffs, email, settings.WeeklyStopPercent);
+        var fiveHour = FiveHourFor(cutoffs, email, settings.PaceTargetPercent);
+        return settings with
         {
-            WeeklyReservePercent = 100 - WeeklyFor(cutoffs, email, settings.WeeklyStopPercent),
-            PaceTargetPercent = FiveHourFor(cutoffs, email, settings.PaceTargetPercent),
+            WeeklyReservePercent = 100 - weekly,
+            PaceTargetPercent = fiveHour,
+            WeeklyWarnPercent = Math.Clamp(weekly - (settings.WeeklyStopPercent - settings.WarnPercent), 1, 100),
+            FiveHourWarnPercent = Math.Clamp(fiveHour - (settings.PaceTargetPercent - settings.WarnPercent), 1, 100),
         };
+    }
 
     /// <summary>Sets <paramref name="email"/>'s cutoffs (null keeps the one it has); the new values, or null when they're the
     /// defaults (then nothing is kept for it).</summary>
