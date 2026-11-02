@@ -606,8 +606,11 @@ public sealed class TerminalPanesTests
     public void A_gated_window_key_matches_nothing_while_a_terminal_holds_focus()
     {
         // M.ORCH-T1108: a matching KeyBinding marks Esc handled even when its command can't run, so the gesture stands aside.
+        // KeyGesture.Matches checks its Modifiers against the real, ambient Keyboard.Modifiers (Win32 GetKeyState), not a
+        // fake: on a box where a modifier is actually held when this runs, a gesture built with ModifierKeys.None would never
+        // match, failing the "still acts" assertion below for a reason that has nothing to do with the gate (M.ORCH-T1307).
         var focused = true;
-        var gesture = new TerminalKeyboard.GatedGesture(new KeyGesture(Key.Escape), _ => focused);
+        var gesture = new TerminalKeyboard.GatedGesture(new KeyGesture(Key.Escape, Keyboard.Modifiers), _ => focused);
         using var source = new System.Windows.Interop.HwndSource(new System.Windows.Interop.HwndSourceParameters("esc"));
         var esc = new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Escape) { RoutedEvent = Keyboard.KeyDownEvent };
         var target = new System.Windows.Controls.Grid();
