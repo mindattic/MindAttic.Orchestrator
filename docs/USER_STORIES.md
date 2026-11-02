@@ -1434,3 +1434,4 @@ _Nothing recorded yet._
 | M.ORCH-T1406 | 2026-11-02 | fix | closed | Audit and fix: every person-tab and CLI-tab icon/badge (status light, activity icon, disabled glyph, blink) reflects live state correctly across every signed-in CLI | — |
 | M.ORCH-T1407 | 2026-11-02 | fix | closed | CLI tab's status badge blanks to unknown on a transient SessionOf miss instead of keeping the pane's already-known session | — |
 | M.ORCH-T1408 | 2026-11-02 | fix | closed | Remove the orphaned per-token blink animation and glow-pulse code-behind: both had zero live consumers after the boxed-badge redesign (M.ORCH-T1173/T1270), one still running a needless 40ms DispatcherTimer | — |
+| M.ORCH-T1409 | 2026-11-02 | chore | closed | Deploy the Orchestrator with today's fixes (M.ORCH-T1403/T1404/T1405/T1407/T1408) | — |
