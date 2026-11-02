@@ -233,12 +233,15 @@
                                         Foreground="{DynamicResource MaOnAccent}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsIdleBadge, Converter={StaticResource Visible}}" />
                             <!-- Busy: a green box with the library's own spinner (M.ORCH-T1270, in place of the open CLI count
-                                 badge from M.ORCH-T890/M.ORCH-T1261); the count stays in the tooltip/accessible name (TabActivityWord). -->
+                                 badge from M.ORCH-T890/M.ORCH-T1261); the count stays in the tooltip/accessible name (TabActivityWord).
+                                 The original ring, sized to three arcs (M.ORCH-T1414): its dash is 6 on, 4 off in stroke widths, so a
+                                 14px ring needs a 1.327px stroke for its circumference, pi x (14 - 1.327), to hold exactly three. -->
+
                             <mc:MaBadge x:Name="TabBusyBadge" Style="{StaticResource TabStatusSquare}" Background="{DynamicResource MaGood}"
                                         Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                         AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsBusyBadge, Converter={StaticResource Visible}}">
-                                <mc:MaSpinner Kind="Glyph" Width="12" Height="12" Stroke="{DynamicResource MaOnAccent}" />
+                                <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
                             </mc:MaBadge>
                             <!-- One of this person's CLIs is genuinely blocked on them (a permission prompt, a question, or a
                                  /crossrepo or /allocate only they may type, M.ORCH-T790): an orange box, over the idle or busy box
@@ -317,7 +320,7 @@
                                                     Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     AutomationProperties.Name="{Binding PaneActivityWord}"
                                                     Visibility="{Binding ShowsPaneBusyBadge, Converter={StaticResource Visible}}">
-                                            <mc:MaSpinner Kind="Glyph" Width="12" Height="12" Stroke="{DynamicResource MaOnAccent}" />
+                                            <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
                                         </mc:MaBadge>
                                         <mc:MaBadge x:Name="TerminalTabAskingBadge" Style="{StaticResource TabStatusSquare}" Content="?" Background="{DynamicResource MaWarn}"
                                                     Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
