@@ -457,7 +457,11 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
             }
             at += length;
         }
+        InputTap?.Invoke(data);
     }
+
+    /// <summary>Handed each piece of input once it is sent (M.ORCH-T1413), on the caller's thread; it must be cheap.</summary>
+    public Action<string>? InputTap { get; set; }
 
     /// <summary>Takes the session's size for this viewer (M.ORCH-T930): a no-op when it owns it already, is read-only, or the
     /// host is protocol 1 (one viewer, which always owns it).</summary>

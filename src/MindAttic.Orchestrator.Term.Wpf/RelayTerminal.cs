@@ -152,6 +152,9 @@ public sealed class RelayTerminal : UserControl, IDisposable
     /// <see cref="RelayConnection.OutputTap"/>); it must be cheap.</summary>
     public Action<string>? OutputTap { get; set; }
 
+    /// <summary>Handed each piece of input this viewer sent (M.ORCH-T1413, <see cref="RelayConnection.InputTap"/>).</summary>
+    public Action<string>? InputTap { get; set; }
+
     /// <summary>The session's size (cols, rows) as the host last said it (protocol 2 hosts).</summary>
     public event Action<ushort, ushort>? SessionSizeChanged;
 
@@ -170,6 +173,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
         connection.InputDropped += () => InputDropped?.Invoke();
         // Each live chunk to whoever reads the screen (M.ORCH-T1118), on the reader's thread.
         connection.OutputTap = text => OutputTap?.Invoke(text);
+        connection.InputTap = data => InputTap?.Invoke(data);
         Connection = connection;
         // Resets the renderer (ESC c), then Start()s the connection; the host's replay follows.
         Terminal.Connection = connection;

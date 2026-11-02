@@ -91,7 +91,7 @@ public sealed partial class MainViewModel
 
     /// <summary>How many of this tab's CLIs are genuinely blocked on you (M.ORCH-T790): holding on a permission prompt or a question,
     /// or stopped for a /crossrepo or /allocate only you may type. Not the old idle count: a turn that simply ended isn't this.</summary>
-    public int TabAskingCount => IsPersonTab ? AskingOf(snapshot?.Agents) : 0;
+    public int TabAskingCount => IsPersonTab ? AskingOf(snapshot?.Agents?.Where(a => !PresumedSessions.Contains(a.SessionId))) : 0;
 
     /// <summary>The red flag at the end of a person's tab line (M.ORCH-T790): shown only while one of its CLIs is blocked on you,
     /// gone as soon as they're all running again. A flag, not a count; the count is in the tooltip.</summary>

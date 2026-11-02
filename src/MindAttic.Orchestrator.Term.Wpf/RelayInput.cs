@@ -44,6 +44,21 @@ public static partial class RelayInput
         return bracketed ? "\u001b[200~" + text + "\u001b[201~" : text;
     }
 
+    /// <summary>Whether typed <paramref name="data"/> is a plain Enter (M.ORCH-T1413): a bare CR, or a win32-input-mode Enter
+    /// key-down (Vk 13, Kd 1) with no Shift, Ctrl or Alt held. Never a paste, whose CRs are line breaks, not a submit.</summary>
+    public static bool IsSubmit(string data)
+    {
+        if (data == "\r") return true;
+        if (data.StartsWith("\u001b[200~", StringComparison.Ordinal)) return false;
+        foreach (System.Text.RegularExpressions.Match m in Win32Record().Matches(data))
+            if (m.Groups[1].Value == "13" && m.Groups[2].Value == "1" && (int.Parse(m.Groups[3].Value) & (16 | 8 | 4 | 2 | 1)) == 0)
+                return true;
+        return false;
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\u001b\[(\d+);\d+;\d+;(\d+);(\d+);\d+_")]
+    private static partial System.Text.RegularExpressions.Regex Win32Record();
+
     // user32 exports only MapVirtualKeyA/W, and LibraryImport never adds the suffix (M.ORCH-T1315).
     [LibraryImport("user32.dll", EntryPoint = "MapVirtualKeyW")]
     internal static partial uint MapVirtualKey(uint code, uint mapType);

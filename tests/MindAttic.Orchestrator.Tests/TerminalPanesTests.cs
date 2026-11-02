@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using System.Xml.Linq;
 using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Sessions;
+using MindAttic.Orchestrator.Term.Wpf;
 using MindAttic.Orchestrator.Wpf;
 using MindAttic.Orchestrator.Wpf.ViewModels;
 using NUnit.Framework;
@@ -654,23 +655,64 @@ public sealed class TerminalPanesTests
 
         AgentBoardRow Row(AgentState state, bool asking) => new("s", "Repo", null, null, DateTime.UtcNow, DateTime.UtcNow, state, "", false, default, []) { Asking = asking };
 
-        pane.ApplyAgentStatus(Row(AgentState.Working, asking: false));
+        pane.ApplyAgentStatus(Row(AgentState.Working, asking: false), DateTime.UtcNow);
         Assert.That(pane.ShowsPaneBusyBadge, Is.True);
         Assert.That(pane.ShowsPaneAskingBadge, Is.False);
         Assert.That(pane.ShowsPaneIdleBadge, Is.False);
 
-        pane.ApplyAgentStatus(Row(AgentState.Waiting, asking: true));
+        pane.ApplyAgentStatus(Row(AgentState.Waiting, asking: true), DateTime.UtcNow);
         Assert.That(pane.ShowsPaneBusyBadge, Is.False);
         Assert.That(pane.ShowsPaneAskingBadge, Is.True, "asking wins over idle");
         Assert.That(pane.ShowsPaneIdleBadge, Is.False);
 
-        pane.ApplyAgentStatus(Row(AgentState.Waiting, asking: false));
+        pane.ApplyAgentStatus(Row(AgentState.Waiting, asking: false), DateTime.UtcNow);
         Assert.That(pane.ShowsPaneBusyBadge, Is.False);
         Assert.That(pane.ShowsPaneAskingBadge, Is.False);
         Assert.That(pane.ShowsPaneIdleBadge, Is.True);
 
-        pane.ApplyAgentStatus(null);
+        pane.ApplyAgentStatus(null, DateTime.UtcNow);
         Assert.That(pane.ShowsPaneIdleBadge, Is.False, "unmatched again: back to none of the three");
+    }
+
+    /// <summary>M.ORCH-T1413: Enter lights the CLI tab busy at once; a status read taken before the Enter, or too soon after it,
+    /// can't take that back; a later one still reading idle does; one reading busy hands over to the real signal.</summary>
+    [Test, Apartment(ApartmentState.STA)]
+    public void Enter_presumes_a_CLI_tab_busy_until_a_later_status_read_says_otherwise()
+    {
+        var pane = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe" }, hosted: true);
+        AgentBoardRow Row(AgentState state, bool asking = false) => new("s", "Repo", null, null, DateTime.UtcNow, DateTime.UtcNow, state, "", false, default, []) { Asking = asking };
+        var t0 = new DateTime(2026, 11, 2, 18, 0, 0, DateTimeKind.Utc);
+        pane.ApplyAgentStatus(Row(AgentState.Waiting, asking: true), t0.AddSeconds(-30));
+
+        pane.Presume(t0);
+        Assert.That(pane.ShowsPaneBusyBadge, Is.True, "lit the moment Enter was typed");
+        Assert.That(pane.ShowsPaneAskingBadge, Is.False, "the Enter answered the question");
+        Assert.That(pane.ShowsPaneIdleBadge, Is.False);
+
+        pane.ApplyAgentStatus(Row(AgentState.Waiting), t0.AddSeconds(-1));
+        Assert.That(pane.IsPresumedBusy, Is.True, "a read taken before the Enter can't end it");
+        pane.ApplyAgentStatus(Row(AgentState.Waiting), t0 + TerminalPaneViewModel.PresumeConfirmAfter - TimeSpan.FromSeconds(1));
+        Assert.That(pane.IsPresumedBusy, Is.True, "nor one taken before the gate could mark it busy");
+        pane.ApplyAgentStatus(Row(AgentState.Waiting), t0 + TerminalPaneViewModel.PresumeConfirmAfter);
+        Assert.That(pane.IsPresumedBusy, Is.False);
+        Assert.That(pane.ShowsPaneIdleBadge, Is.True, "a later read still idle: nothing started");
+
+        pane.Presume(t0.AddMinutes(1));
+        pane.ApplyAgentStatus(Row(AgentState.Working), t0.AddMinutes(1).AddSeconds(1));
+        Assert.That(pane.IsPresumedBusy, Is.False, "the real signal took over");
+        Assert.That(pane.ShowsPaneBusyBadge, Is.True);
+    }
+
+    [Test]
+    public void Only_a_plain_Enter_counts_as_a_submit()
+    {
+        Assert.That(RelayInput.IsSubmit("\r"), Is.True);
+        Assert.That(RelayInput.IsSubmit("\u001b[13;28;13;1;0;1_"), Is.True, "win32-input-mode Enter down");
+        Assert.That(RelayInput.IsSubmit("\u001b[13;28;13;0;0;1_"), Is.False, "key up");
+        Assert.That(RelayInput.IsSubmit("\u001b[13;28;13;1;16;1_"), Is.False, "Shift+Enter is a new line");
+        Assert.That(RelayInput.IsSubmit("\u001b[65;30;97;1;0;1_"), Is.False, "a letter");
+        Assert.That(RelayInput.IsSubmit("\u001b[200~a\rb\u001b[201~"), Is.False, "a paste's line breaks");
+        Assert.That(RelayInput.IsSubmit("a"), Is.False);
     }
 
     /// <summary>M.ORCH-T1407 (bughunt 2026-11-02): a tick where SessionOf misses (a transient process-tree read failure, or the

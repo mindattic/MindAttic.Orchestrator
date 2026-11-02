@@ -168,25 +168,91 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// (M.ORCH-T1270): a spinner while its agent is working or has subagents/claims running, a plain "?" while it's genuinely
     /// blocked on the person, "zzz" once it's idle. None of the three while its agent isn't known yet (a Launcher menu pane,
     /// or before its session is learned, <see cref="TerminalsViewModel.Update"/>).</summary>
-    public bool ShowsPaneBusyBadge => paneKnown && paneBusy && !paneAsking;
+    public bool ShowsPaneBusyBadge => IsPresumedBusy || (paneKnown && paneBusy && !paneAsking);
 
-    public bool ShowsPaneAskingBadge => paneKnown && paneAsking;
+    public bool ShowsPaneAskingBadge => !IsPresumedBusy && paneKnown && paneAsking;
 
-    public bool ShowsPaneIdleBadge => paneKnown && !paneBusy && !paneAsking;
+    public bool ShowsPaneIdleBadge => !IsPresumedBusy && paneKnown && !paneBusy && !paneAsking;
 
     /// <summary>The icon in words, so it's never only a picture.</summary>
-    public string PaneActivityWord => !paneKnown ? "" : paneAsking ? "Blocked waiting on you" : paneBusy ? "Busy" : "Idle";
+    public string PaneActivityWord => IsPresumedBusy ? "Busy" : !paneKnown ? "" : paneAsking ? "Blocked waiting on you" : paneBusy ? "Busy" : "Idle";
+
+    // ── Presumed busy (M.ORCH-T1413) ────────────────────────────────────────
+    // Status is read every ~18 s, so an Enter typed here lights the badges at once, presuming its CLI started work, until a
+    // status read confirms it (the CLI reads busy: the real signal takes over) or a read taken well after the Enter still says
+    // idle (nothing started: an empty prompt, a menu move), or, with no read at all, PresumeLife passes.
+
+    private DateTime? presumedSinceUtc;
+    private System.Windows.Threading.DispatcherTimer? presumeTimer;
+
+    /// <summary>How long after an Enter a status read must be taken before its "idle" ends the presumption: the context gate
+    /// marks a submitted prompt busy within a hook's first moments, so a read this much later that still says idle is real.</summary>
+    internal static readonly TimeSpan PresumeConfirmAfter = TimeSpan.FromSeconds(8);
+
+    /// <summary>The longest a presumption lasts with no status read at all.</summary>
+    internal static readonly TimeSpan PresumeLife = TimeSpan.FromSeconds(60);
+
+    /// <summary>An Enter was just typed into this CLI and no status read has spoken since.</summary>
+    public bool IsPresumedBusy => presumedSinceUtc is not null;
+
+    /// <summary>Raised when any pane starts or stops presuming busy, so its person's tab relights at once.</summary>
+    internal static event Action? PresumptionChanged;
+
+    private void OnInputSent(string data)
+    {
+        if (!Term.Wpf.RelayInput.IsSubmit(data)) return;
+        Control.Dispatcher.BeginInvoke(() => Presume(DateTime.UtcNow));
+    }
+
+    /// <summary>Presumes its CLI busy from <paramref name="nowUtc"/>, the moment Enter was typed: not a Launcher menu pane (no CLI
+    /// of its own to light), nor an ended one. On the UI thread.</summary>
+    internal void Presume(DateTime nowUtc)
+    {
+        if (Request.IsMenu || Ended) return;
+        presumeTimer ??= NewPresumeTimer();
+        presumeTimer.Stop();
+        presumeTimer.Start();
+        SetPresumed(nowUtc);
+    }
+
+    private System.Windows.Threading.DispatcherTimer NewPresumeTimer()
+    {
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = PresumeLife };
+        timer.Tick += (_, _) => { timer.Stop(); SetPresumed(null); };
+        return timer;
+    }
+
+    private void SetPresumed(DateTime? sinceUtc)
+    {
+        if (presumedSinceUtc == sinceUtc) return;
+        var changed = (presumedSinceUtc is null) != (sinceUtc is null);
+        presumedSinceUtc = sinceUtc;
+        if (sinceUtc is null) presumeTimer?.Stop();
+        if (!changed) return;
+        RaiseBadges();
+        PresumptionChanged?.Invoke();
+    }
+
+    /// <summary>Whether a status read ends a presumption made at <paramref name="sinceUtc"/>: it reads the CLI busy (the real
+    /// signal takes over), or it was taken <see cref="PresumeConfirmAfter"/> or more after the Enter and still reads it idle.</summary>
+    internal static bool EndsPresumption(DateTime sinceUtc, bool busy, DateTime takenUtc) => busy || takenUtc - sinceUtc >= PresumeConfirmAfter;
+
+    private void RaiseBadges()
+    {
+        Raise(nameof(ShowsPaneBusyBadge)); Raise(nameof(ShowsPaneAskingBadge)); Raise(nameof(ShowsPaneIdleBadge)); Raise(nameof(PaneActivityWord));
+    }
 
     /// <summary>Sets this pane's own status from its matched <see cref="AgentBoardRow"/> (by <see cref="SessionId"/>,
-    /// <see cref="TerminalsViewModel.Update"/>); null while it isn't known yet.</summary>
-    internal void ApplyAgentStatus(AgentBoardRow? row)
+    /// <see cref="TerminalsViewModel.Update"/>) in the status read taken at <paramref name="takenUtc"/>; null while it isn't known yet.</summary>
+    internal void ApplyAgentStatus(AgentBoardRow? row, DateTime takenUtc)
     {
         var known = row is not null;
         var busy = row is { State: AgentState.Working or AgentState.HeldByPace } || row is { Subagents.Count: > 0 } || row is { Claims.Count: > 0 };
         var asking = row?.Asking == true;
+        if (presumedSinceUtc is { } since && known && EndsPresumption(since, busy, takenUtc)) SetPresumed(null);
         if (known == paneKnown && busy == paneBusy && asking == paneAsking) return;
         paneKnown = known; paneBusy = busy; paneAsking = asking;
-        Raise(nameof(ShowsPaneBusyBadge)); Raise(nameof(ShowsPaneAskingBadge)); Raise(nameof(ShowsPaneIdleBadge)); Raise(nameof(PaneActivityWord));
+        RaiseBadges();
     }
 
     /// <summary>Shows "not sent, reconnecting" for a few seconds (M.ORCH-T979): the input is dropped, never replayed later.</summary>
@@ -338,6 +404,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         };
         // Claude's usage figures read off its screen (M.ORCH-T1118): fed on the relay's reader thread, parsed on the pool.
         if (Request.Provider == "Claude") relay.OutputTap = (screen ??= new Budget.ScreenUsageScanner(OnScreenUsage)).Feed;
+        relay.InputTap = OnInputSent;
         Relay = relay;
         ((TerminalView)Control).Child = relay;
     }
@@ -962,7 +1029,7 @@ public sealed class TerminalsViewModel : ObservableObject
             // gate's agent rows not caught up yet), the pane's own already-known one (bughunt 2026-11-02, M.ORCH-T1407) -- so a
             // momentary miss doesn't blank an already-known CLI's badge back to "unknown" every time SessionOf has a bad tick.
             var badgeSession = BadgeSessionOf(session, pane.SessionId);
-            pane.ApplyAgentStatus(badgeSession is { Length: > 0 } ? snapshot.Agents.FirstOrDefault(a => a.SessionId == badgeSession) : null);
+            pane.ApplyAgentStatus(badgeSession is { Length: > 0 } ? snapshot.Agents.FirstOrDefault(a => a.SessionId == badgeSession) : null, snapshot.TakenUtc);
             if (pane.HostPid is not { } || session is not { Length: > 0 }) continue;
             // Its person is the login its CLI is on now: moved to another, it moves to that one's page.
             var login = LoginScope.LoginOf(snapshot, session);

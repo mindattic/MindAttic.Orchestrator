@@ -211,9 +211,16 @@ public sealed partial class MainViewModel
     /// <summary>The tab's icon: a gray "zzz" box idle, a green box with a spinning glyph busy (M.ORCH-T1173/T1270), a plain
     /// gray glyph disabled.</summary>
     public TabActivity TabActivity => tab.IsApiKey
-        ? ActivityOf(usable: tab.SignedIn, pastCutoff: Spend is { OutOfCredit: true }, WorkingCount > 0 || HostCount > 0 || AnyAgentWorking, Blinker.Grew || Blinker.Pending > 0)
-        : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0 || HostCount > 0 || AnyAgentWorking,
+        ? ActivityOf(usable: tab.SignedIn, pastCutoff: Spend is { OutOfCredit: true }, WorkingCount > 0 || HostCount > 0 || AnyAgentWorking || AnyPanePresumedBusy, Blinker.Grew || Blinker.Pending > 0)
+        : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0 || HostCount > 0 || AnyAgentWorking || AnyPanePresumedBusy,
             Blinker.Grew || Blinker.Pending > 0);
+
+    /// <summary>One of this person's CLI tabs just had Enter typed into it and no status read has spoken since (M.ORCH-T1413).</summary>
+    private bool AnyPanePresumedBusy => Terminals?.Panes.Any(p => p.IsPresumedBusy) == true;
+
+    /// <summary>The sessions of this person's CLI tabs presumed busy: their "blocked on you" no longer counts, the Enter answered it.</summary>
+    private HashSet<string> PresumedSessions => Terminals is null ? [] :
+        [.. Terminals.Panes.Where(p => p.IsPresumedBusy && p.SessionId is not null).Select(p => p.SessionId!)];
 
     /// <summary>Disabled when the login can't take work (signed out, or the 'API key' tab with API billing off) or is past its
     /// cutoff; busy while one of its CLIs is alive (mid-turn, idle at a prompt, or just spent tokens) -- a live CLI counts
@@ -280,7 +287,7 @@ public sealed partial class MainViewModel
         }
     }
 
-    private bool TabAllStopped => StoppedCliCount > 0;
+    private bool TabAllStopped => StoppedCliCount > 0 && !AnyPanePresumedBusy;
 
     /// <summary>
     /// The number of open CLIs when all of them are idle, else 0, judged per CLI as <c>orchestrator busy</c> does (M.ORCH-T873):
