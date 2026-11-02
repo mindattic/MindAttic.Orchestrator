@@ -98,9 +98,17 @@ public sealed class SubagentActivityReader(string projectsDir)
     public static IReadOnlyList<SubagentActivity> Running(ContextCycler cycler, string projectsDir, DateTime nowUtc) =>
         new SubagentActivityReader(projectsDir).Poll(cycler, nowUtc);
 
-    public IReadOnlyList<SubagentActivity> Poll(ContextCycler cycler, DateTime nowUtc)
+    public IReadOnlyList<SubagentActivity> Poll(ContextCycler cycler, DateTime nowUtc) => Poll([cycler], nowUtc);
+
+    /// <summary>A CLI on its own login has the context gate mark its subagents in that login's folder, not the global one
+    /// (M.ORCH-T1410), so every login's marks are read, or its CLI's subagents never show and its tabs read idle.</summary>
+    public IReadOnlyList<SubagentActivity> Poll(IEnumerable<ContextCycler> cyclers, DateTime nowUtc)
     {
-        var alive = cycler.AliveSubagentIds(nowUtc);
+        var alive = cyclers.SelectMany(c =>
+        {
+            try { return c.AliveSubagentIds(nowUtc); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
+        }).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (alive.Count == 0 || !Directory.Exists(projectsDir))
         {
             tails.Clear();

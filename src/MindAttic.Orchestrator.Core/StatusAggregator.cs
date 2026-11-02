@@ -54,6 +54,23 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         init => billingSwitch = value;
     }
     private readonly SubagentActivityReader subagents = new(options.ClaudeProjectsDir);
+    private readonly Dictionary<string, Sessions.ContextCycler> loginMarks = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The global login's context gate and each per-CLI login's own marks folder, where the gate marks that login's
+    /// CLIs' subagents (M.ORCH-T1410).</summary>
+    private IEnumerable<Sessions.ContextCycler> SubagentMarkCyclers()
+    {
+        yield return contextCycler;
+        IReadOnlyList<Sessions.AccountDir> logins;
+        try { logins = Accounts.Dirs.All(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { yield break; }
+        foreach (var login in logins)
+        {
+            if (!loginMarks.TryGetValue(login.MarksDirectory, out var c))
+                loginMarks[login.MarksDirectory] = c = new(login.MarksDirectory) { ProjectsDir = options.ClaudeProjectsDir };
+            yield return c;
+        }
+    }
 
     /// <summary>The Launcher tabs open now (a live pipe scan); replaceable for tests.</summary>
     internal Func<IReadOnlyList<HostSession>> ScanHosts { get; init; } = new HostSessionScanner(options).Scan;
@@ -475,7 +492,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { warnings.Add($"member sync: {ex.Message}"); }
         }
 
-        var runningSubagents = subagents.Poll(contextCycler, now);
+        var runningSubagents = subagents.Poll(SubagentMarkCyclers(), now);
         var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now),
             contextCycler.Load().Where(c => c.Pid is not null).ToDictionary(c => c.SessionId, c => c.Pid!.Value, StringComparer.Ordinal),
             contextCycler.AskingSessions(now));
