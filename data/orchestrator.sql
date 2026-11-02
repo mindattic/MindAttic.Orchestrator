@@ -9,7 +9,7 @@ INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, 
 -- members
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('honey@mindattic.com', 'Honey', 'admin', 'premium', 'active', 1792771886.8054008, 1792771886.8054008);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1793370770.16842);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1793612802.803717);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'owner', 'premium', 'active', 1792771887.249, 1793617347.825664);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1793616422.7164335);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1793584569.821044);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
@@ -5838,7 +5838,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "b5f5cbe388ea40836e950bd18150a0f0790ec19c",
+    "Tested": "0c42da32d2dbb070218a1f48eeddf489387245af",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
