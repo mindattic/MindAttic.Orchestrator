@@ -1423,4 +1423,4 @@ _Nothing recorded yet._
 | M.ORCH-T1395 | 2026-11-02 | feature | open | 5hr/Weekly limit boxes become toggle buttons that pick which chart the utilization panel draws, 5hr default | — |
 | M.ORCH-T1396 | 2026-11-02 | feature | closed | Let a free/non-Team Claude login (ryandebraal@gmail.com) be prepared and verified in the per-CLI roster, distinct from Team members, to prove the account model isn't single-org-hardcoded | — |
 | M.ORCH-T1397 | 2026-11-02 | fix | closed | org limit/allow/disallow push a live state-bus change so the running daemon wakes and applies the new cutoff at once, instead of waiting for its next tick | — |
-| M.ORCH-T1398 | 2026-11-02 | fix | open | RefreshWaiter.PokeNow: org limit/allow/disallow (and other state-bus changes) wake the daemon at once instead of waiting out MinGap's 10s floor | — |
+| M.ORCH-T1398 | 2026-11-02 | fix | closed | RefreshWaiter.PokeNow: org limit/allow/disallow (and other state-bus changes) wake the daemon at once instead of waiting out MinGap's 10s floor | — |
