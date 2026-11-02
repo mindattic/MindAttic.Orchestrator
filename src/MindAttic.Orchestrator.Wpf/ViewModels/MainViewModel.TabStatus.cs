@@ -1,5 +1,4 @@
 ﻿using System.Windows.Media;
-using System.Windows.Threading;
 using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Billing;
 using MindAttic.Orchestrator.Budget;
@@ -168,7 +167,9 @@ public sealed partial class MainViewModel
     private IReadOnlyList<UsageCutoff> cutoffs = [];
     private IReadOnlyList<WeeklyAllowance> allowances = [];
 
-    /// <summary>A busy tab blinks once per this many tokens (the TabBlinkTokens setting), read with the settings each refresh.</summary>
+    /// <summary>A busy tab's token-growth signal is counted once per this many tokens (the TabBlinkTokens setting), read with
+    /// the settings each refresh: <see cref="TabBlinker.Count"/> needs a step size, though <see cref="TabActivity"/> only reads
+    /// its booleans now (M.ORCH-T1406 removed the blink animation itself, which this used to also pace).</summary>
     private int tabBlinkTokens = MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultTabBlinkTokens;
 
     /// <summary>The SymbolTabLabels setting (M.ORCH-T1255), read with the settings each refresh: symbols ("Σ"/"λ") in
@@ -177,9 +178,6 @@ public sealed partial class MainViewModel
 
     private TabBlinker? blinker;
     private TabBlinker Blinker => blinker ??= new TabBlinker(tab.Key.Length == 0 ? "~global" : tab.Key);
-
-    /// <summary>The one timer every tab's blinks run on, on the global login's tab; running only while a blink is queued.</summary>
-    private DispatcherTimer? blinkTimer;
 
     /// <summary>This login's email for its cutoffs: its roster row's, else the tab's own.</summary>
     private string? CutoffEmail => OwnRow?.Email ?? ScopeEmail;
@@ -210,7 +208,8 @@ public sealed partial class MainViewModel
     /// <summary>Under it: its plan, and plainly when the reading is stale (M.ORCH-T684).</summary>
     public string LastUpdatedCaption => WeeklyAccountLine is { Length: > 0 } line ? line : "Claude's meter not read yet";
 
-    /// <summary>The tab's icon: pause idle, a blinking green play arrow busy, gray disabled.</summary>
+    /// <summary>The tab's icon: a gray "zzz" box idle, a green box with a spinning glyph busy (M.ORCH-T1173/T1270), a plain
+    /// gray glyph disabled.</summary>
     public TabActivity TabActivity => tab.IsApiKey
         ? ActivityOf(usable: tab.SignedIn, pastCutoff: Spend is { OutOfCredit: true }, WorkingCount > 0 || HostCount > 0 || AnyAgentWorking, Blinker.Grew || Blinker.Pending > 0)
         : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0 || HostCount > 0 || AnyAgentWorking,
@@ -252,8 +251,9 @@ public sealed partial class MainViewModel
     /// the old "blocked" glyph only while it's actually unusable (signed out, or the API key with no credit or no key).</summary>
     public string TabDisabledGlyph => tab.SignedIn ? "" : "";
 
-    /// <summary>Every open CLI of this person has stopped (M.ORCH-T890): the green play arrow turns into a steady pause icon (M.ORCH-T1116),
-    /// so it shows at a glance that all of their CLIs are done. Never with no CLI open, and never while the login is disabled.</summary>
+    /// <summary>Every open CLI of this person has stopped (M.ORCH-T890): folded into the gray "zzz" idle badge (M.ORCH-T1173,
+    /// <see cref="ShowsIdleBadge"/>), with <see cref="TabActivityWord"/> saying "Stopped" rather than "Idle" so it still shows at
+    /// a glance that all of their CLIs are done. Never with no CLI open, and never while the login is disabled.</summary>
     public bool IsTabAllStopped => IsPersonTab && TabActivity != TabActivity.Disabled && TabAllStopped;
 
     /// <summary>The tab's gray "zzz" box (M.ORCH-T1173): idle, or every open CLI has stopped, and none of them is asking (the
@@ -309,43 +309,20 @@ public sealed partial class MainViewModel
         _ => "Idle",
     };
 
-    /// <summary>The play arrow's opacity: dimmed for the moment of a blink.</summary>
-    public double TabIconOpacity => Blinker.IsDim ? 0.25 : 1.0;
-
-    /// <summary>The tokens this tab counts for its blinks: its login's uncached tokens today, as the dashboard already read them.</summary>
+    /// <summary>The tokens this tab counts for its token-growth signal: its login's uncached tokens today, as the dashboard
+    /// already read them.</summary>
     private long TabTokens => snapshot?.UsageToday.Fresh ?? 0;
 
-    /// <summary>Hands this tab's token count from the refresh just applied to its blinker; a busy tab's new blinks start the
-    /// shared blink timer, and one that isn't busy drops any it had queued.</summary>
+    /// <summary>Hands this tab's token count from the refresh just applied to its blinker, so <see cref="TabActivity"/>'s
+    /// <c>spending</c> input (<see cref="TabBlinker.Grew"/>/<see cref="TabBlinker.Pending"/>) reflects this refresh's reading;
+    /// a tab that isn't busy drops anything queued (M.ORCH-T1406: the per-token blink animation this also used to drive,
+    /// <c>TabIconOpacity</c>/the shared <c>DispatcherTimer</c>, was removed as dead code -- nothing in XAML had bound
+    /// <c>TabIconOpacity</c> since the busy badge became a plain spinner, M.ORCH-T1173/T1270 -- but the growth signal itself
+    /// still feeds the busy/idle decision, so counting stays).</summary>
     private void CountTabTokens(DateTime nowUtc)
     {
-        var queued = Blinker.Count(TabTokens, Root.tabBlinkTokens, nowUtc);
+        Blinker.Count(TabTokens, Root.tabBlinkTokens, nowUtc);
         if (TabActivity != TabActivity.Busy) Blinker.Clear();
-        else if (queued > 0) Root.StartBlinking();
-        Raise(nameof(TabIconOpacity));
-    }
-
-    private void StartBlinking()
-    {
-        if (blinkTimer is null)
-        {
-            blinkTimer = new DispatcherTimer(DispatcherPriority.Normal) { Interval = TimeSpan.FromMilliseconds(40) };
-            blinkTimer.Tick += (_, _) => TickBlinks(DateTime.UtcNow);
-        }
-        blinkTimer.Start();
-    }
-
-    /// <summary>Moves every tab's blink on; the timer stops once no tab has one queued or on screen.</summary>
-    private void TickBlinks(DateTime nowUtc)
-    {
-        var active = false;
-        foreach (var t in loginTabs)
-        {
-            if (t.blinker is not { } b) continue;
-            if (b.Tick(nowUtc)) t.Raise(nameof(TabIconOpacity));
-            active |= b.IsActive;
-        }
-        if (!active) blinkTimer?.Stop();
     }
 
     /// <summary>The 5-hour window's % used: the reading the status stream just pushed (M.ORCH-T854), else the snapshot's.</summary>

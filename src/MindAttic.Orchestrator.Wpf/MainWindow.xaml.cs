@@ -8,8 +8,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
-using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Term;
@@ -451,19 +449,8 @@ public partial class MainWindow : Window
         else if (e.PropertyName == nameof(MainViewModel.QueueMessage)) Announce(Shown.QueueMessage);
     }
 
-    /// <summary>The slow glowing pulse's colour (M.ORCH-T770): the emergency billing button and a busy login tab's icon both
-    /// use it, built and animated in code rather than a Storyboard (M.ORCH-T775 below).</summary>
-    private static readonly Color GlowColor = Color.FromRgb(0x2F, 0xBF, 0x71);
-
-    /// <summary>Starts <paramref name="glow"/>'s slow forever pulse while <paramref name="on"/>, or settles it at
-    /// <paramref name="exitOpacity"/> over <paramref name="exitSeconds"/> once it isn't: the code-behind equivalent of the
-    /// Storyboard.TargetName animation M.ORCH-T770 used, which needs a NameScope neither the emergency button's library style
-    /// nor a plain TextBlock inside a DataTemplate's repeated items can give it cleanly (M.ORCH-T775). A DropShadowEffect's own
-    /// dependency property animates with BeginAnimation, no NameScope required.</summary>
-    private static void Pulse(DropShadowEffect glow, bool on, double exitOpacity, double exitSeconds) =>
-        glow.BeginAnimation(DropShadowEffect.OpacityProperty, on
-            ? new DoubleAnimation(0.25, 0.95, TimeSpan.FromSeconds(1.3)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever }
-            : new DoubleAnimation(exitOpacity, TimeSpan.FromSeconds(exitSeconds)));
+    // M.ORCH-T770/T775's glow-pulse animation (GlowColor/Pulse) was superseded by the boxed status badges (M.ORCH-T1173/T1270)
+    // and had no caller left anywhere in the project; removed as dead code (M.ORCH-T1406).
 
     /// <summary>How much of <see cref="AgentsBody"/>'s own viewport <see cref="SizeTerminalRow"/> leaves below
     /// <see cref="TerminalFrame"/>, so it reads as a real, wheel-scrollable viewport rather than a terminal that exactly fills

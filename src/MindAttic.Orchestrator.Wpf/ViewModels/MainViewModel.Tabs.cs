@@ -227,7 +227,8 @@ public sealed partial class MainViewModel
             if (!byOrg.TryGetValue(org, out var orgAll)) byOrg[org] = orgAll = OrgScope.For(all, orgs, org, options.WorkingWindow, options.WaitingWindow);
             // The API key's person is scoped to its own login folder's sessions, as any per-CLI login (M.ORCH-T906).
             t.Apply(orgAll, LoginScope.For(orgAll, t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
-            // Its blinks from the token count this refresh read (M.ORCH-T757): no read of its own.
+            // Its token-growth signal from the count this refresh read (M.ORCH-T757): no read of its own. Feeds TabActivity's
+            // "spending" input (Blinker.Grew), not just the now-removed blink animation.
             t.CountTabTokens(now);
             t.RaiseTabStatus();
         }
