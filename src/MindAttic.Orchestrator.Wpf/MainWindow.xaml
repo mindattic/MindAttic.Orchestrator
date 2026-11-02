@@ -28,6 +28,26 @@
     </Window.InputBindings>
 
     <Window.Resources>
+        <!-- A tab's status badge (M.ORCH-T1411): an 18x18 square with its symbol centered both ways. MaTag's own template is a
+             left-aligned horizontal pill sized by its padding, so "zzz" came out wider than tall and off-centre. -->
+        <Style x:Key="TabStatusSquare" TargetType="mc:MaBadge" BasedOn="{StaticResource MaTag}">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="mc:MaBadge">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False"
+                                              TextBlock.LineStackingStrategy="BlockLineHeight" TextBlock.LineHeight="{Binding FontSize, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <!-- A ticket id: a link that opens the ticket in Tickets Desktop to view, approve, prioritize or close it (M.ORCH-T500).
              Its CommandParameter is the id. The library's MaHyperlink (MaLink, SemiBold, underlined on hover and keyboard focus,
              so it reads as a link without colour), plus the command and tooltip. -->
@@ -209,12 +229,12 @@
                                  size (M.ORCH-T1206, 20x20 M.ORCH-T1272) reserves one consistent footprint across tabs: each badge
                                  still renders at its own natural size (FontSize tuned per symbol), centered, so the tab strip
                                  doesn't jitter width or height depending on which one a tab happens to be showing. -->
-                            <mc:MaBadge x:Name="TabIdleBadge" Style="{StaticResource MaTag}" Content="zzz" Background="{DynamicResource MaMuted}"
+                            <mc:MaBadge x:Name="TabIdleBadge" Style="{StaticResource TabStatusSquare}" Content="zzz" Background="{DynamicResource MaMuted}"
                                         Foreground="{DynamicResource MaOnAccent}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsIdleBadge, Converter={StaticResource Visible}}" />
                             <!-- Busy: a green box with the library's own spinner (M.ORCH-T1270, in place of the open CLI count
                                  badge from M.ORCH-T890/M.ORCH-T1261); the count stays in the tooltip/accessible name (TabActivityWord). -->
-                            <mc:MaBadge x:Name="TabBusyBadge" Style="{StaticResource MaTag}" Background="{DynamicResource MaGood}"
+                            <mc:MaBadge x:Name="TabBusyBadge" Style="{StaticResource TabStatusSquare}" Background="{DynamicResource MaGood}"
                                         Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                         AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsBusyBadge, Converter={StaticResource Visible}}">
@@ -223,7 +243,7 @@
                             <!-- One of this person's CLIs is genuinely blocked on them (a permission prompt, a question, or a
                                  /crossrepo or /allocate only they may type, M.ORCH-T790): an orange box, over the idle or busy box
                                  above while it's true, a plain "?" (M.ORCH-T1270, in place of the M.ORCH-T1261 count/? flash). -->
-                            <mc:MaBadge x:Name="TabAskingBadge" Style="{StaticResource MaTag}" Content="?" Background="{DynamicResource MaWarn}"
+                            <mc:MaBadge x:Name="TabAskingBadge" Style="{StaticResource TabStatusSquare}" Content="?" Background="{DynamicResource MaWarn}"
                                         Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
                                         ToolTip="{Binding TabNeedsYouTip}" AutomationProperties.Name="Blocked waiting on you"
                                         Visibility="{Binding TabNeedsYou, Converter={StaticResource Visible}}" />
@@ -290,16 +310,16 @@
                                          badge (M.ORCH-T1270) but scoped to this pane alone, from its matched AgentBoardRow
                                          (TerminalsViewModel.Update, matched by SessionId) rather than the whole login's CLIs. -->
                                     <Grid x:Name="TerminalTabStatusIcon" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
-                                        <mc:MaBadge x:Name="TerminalTabIdleBadge" Style="{StaticResource MaTag}" Content="zzz" Background="{DynamicResource MaMuted}"
+                                        <mc:MaBadge x:Name="TerminalTabIdleBadge" Style="{StaticResource TabStatusSquare}" Content="zzz" Background="{DynamicResource MaMuted}"
                                                     Foreground="{DynamicResource MaOnAccent}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding PaneActivityWord}"
                                                     Visibility="{Binding ShowsPaneIdleBadge, Converter={StaticResource Visible}}" />
-                                        <mc:MaBadge x:Name="TerminalTabBusyBadge" Style="{StaticResource MaTag}" Background="{DynamicResource MaGood}"
+                                        <mc:MaBadge x:Name="TerminalTabBusyBadge" Style="{StaticResource TabStatusSquare}" Background="{DynamicResource MaGood}"
                                                     Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     AutomationProperties.Name="{Binding PaneActivityWord}"
                                                     Visibility="{Binding ShowsPaneBusyBadge, Converter={StaticResource Visible}}">
                                             <mc:MaSpinner Kind="Glyph" Width="12" Height="12" Stroke="{DynamicResource MaOnAccent}" />
                                         </mc:MaBadge>
-                                        <mc:MaBadge x:Name="TerminalTabAskingBadge" Style="{StaticResource MaTag}" Content="?" Background="{DynamicResource MaWarn}"
+                                        <mc:MaBadge x:Name="TerminalTabAskingBadge" Style="{StaticResource TabStatusSquare}" Content="?" Background="{DynamicResource MaWarn}"
                                                     Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     AutomationProperties.Name="{Binding PaneActivityWord}"
                                                     Visibility="{Binding ShowsPaneAskingBadge, Converter={StaticResource Visible}}" />
