@@ -373,8 +373,15 @@ function Test-ClisIdle([string]$BusyExe = $cliExe) {
         Write-Host 'Checking that no other unhosted Claude CLI is still working (CLIs hosted in a TermHost survive the deploy)...' -ForegroundColor Cyan
     }
     $code = $null
-    try { & $BusyExe @busyArgs | Out-Host; $code = $LASTEXITCODE }
+    # The CLI writes UTF-8 (its table has box-drawing characters). Piped, PowerShell 5.1 decodes a native exe's stdout with
+    # [Console]::OutputEncoding, the OEM code page by default, which turned the table into mojibake (M.ORCH-T1418).
+    $savedEncoding = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+        & $BusyExe @busyArgs | Out-Host; $code = $LASTEXITCODE
+    }
     catch { Write-Host "orchestrator busy failed: $($_.Exception.Message)" -ForegroundColor Red }
+    finally { try { [Console]::OutputEncoding = $savedEncoding } catch { } }
     if ($code -eq 0) { return $true }
     if ($code -eq 1) {
         Write-Host 'Deploy refused: the unhosted CLIs above are still working (or their state can''t be read), and installing restarts the dashboard, so each of them would lose its state. CLIs hosted in a TermHost are unaffected and don''t count. Nothing was stopped. Run it again once they are done, with -WaitForIdle to wait for them, or with -IgnoreBusyClis to install anyway.' -ForegroundColor Red
