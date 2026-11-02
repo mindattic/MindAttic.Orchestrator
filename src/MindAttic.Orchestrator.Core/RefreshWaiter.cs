@@ -24,10 +24,16 @@ internal sealed class RefreshWaiter
     }
 
     private int poked;
+    private int urgent;
 
     /// <summary>Counts as a signal, from any thread: a reading that landed somewhere no watched file shows (the meter probe's
     /// database row, M.ORCH-T854) brings the next refresh forward like a file write does.</summary>
     public void Poke() => Interlocked.Exchange(ref poked, 1);
+
+    /// <summary>Like <see cref="Poke"/>, but skips <c>minGap</c>: for a deliberate, rare, operator-driven change (a cutoff, an
+    /// allowance, a setting) that should be respected within a poll tick, not held behind the floor that keeps a burst of routine
+    /// signals (a turn ending, a reading landing) from refreshing too often (bughunt 2026-11-02).</summary>
+    public void PokeNow() => Interlocked.Exchange(ref urgent, 1);
 
     public RefreshWake Wait(TimeSpan interval, CancellationToken cancel)
     {
@@ -37,6 +43,12 @@ internal sealed class RefreshWaiter
         {
             var left = until - DateTime.UtcNow;
             if (cancel.WaitHandle.WaitOne(left < poll ? (left > TimeSpan.Zero ? left : TimeSpan.Zero) : poll)) return RefreshWake.Cancelled;
+            if (Interlocked.Exchange(ref urgent, 0) == 1)
+            {
+                Interlocked.Exchange(ref poked, 0);
+                lastSignal = Stamp();
+                return RefreshWake.Signal;
+            }
             if (DateTime.UtcNow < earliest) continue;
             if (Interlocked.Exchange(ref poked, 0) == 1)
             {

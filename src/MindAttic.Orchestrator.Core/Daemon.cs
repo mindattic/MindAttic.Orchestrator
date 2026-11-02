@@ -60,9 +60,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var hub = status is null ? null : new Status.AppBusHub(status, new Tickets.TicketActivityFeed())
         {
             TicketChanged = waiter.Poke,
-            // The roster, orgs, settings, pause and reminders (M.ORCH-T891): this store's are kept for connecting dashboards, and a
-            // change to one brings the next plan forward.
-            OwnStore = Status.StateBus.StoreOf(store.Db), StateChanged = waiter.Poke,
+            // The roster, orgs, settings, cutoffs, allowances and reminders (M.ORCH-T891, M.ORCH-T1397): this store's are kept for
+            // connecting dashboards, and a change to one brings the next plan forward at once (PokeNow, not the throttled Poke):
+            // a deliberate org command (limit/allow/disallow/...) is rare and should be respected within a poll tick, not sat on
+            // behind the floor that keeps routine signals from refreshing too often.
+            OwnStore = Status.StateBus.StoreOf(store.Db), StateChanged = waiter.PokeNow,
         };
         using var inbox = status is null ? null : new Status.StatusInbox { Relay = e => hub!.Take(e) }
             .On(Status.StatusInbox.Poke, _ => waiter.Poke())

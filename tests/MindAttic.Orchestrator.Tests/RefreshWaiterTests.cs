@@ -127,6 +127,18 @@ public sealed class RefreshWaiterTests
     }
 
     [Test]
+    public void PokeNow_wakes_it_at_once_skipping_MinGap()
+    {
+        var waiter = Waiter();
+        waiter.PokeNow();
+
+        var (wake, took) = Timed(() => waiter.Wait(Interval, CancellationToken.None));
+
+        Assert.That(wake, Is.EqualTo(RefreshWake.Signal));
+        Assert.That(took, Is.LessThan(MinGap), "an urgent, operator-driven change (org limit/allow/disallow) isn't held behind the floor meant for routine signals");
+    }
+
+    [Test]
     public void A_burst_of_signals_never_brings_two_refreshes_closer_than_MinGap()
     {
         var waiter = Waiter();
