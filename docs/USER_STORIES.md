@@ -1431,3 +1431,6 @@ _Nothing recorded yet._
 | M.ORCH-T1403 | 2026-11-02 | feature | closed | Per-person dashboard: Team shows 5-hour + weekly charts, Ultra (solo Max/Ultra, no org) shows weekly-only, API key shows credit burndown | — |
 | M.ORCH-T1404 | 2026-11-02 | fix | closed | Ultra tab strip shows Σ 4%/λ 2% while Claude's own /status reports week 0%/session 1% for the same account | 57ab8688 |
 | M.ORCH-T1405 | 2026-11-02 | fix | closed | AccountSwitch.Seat() mislabels a Team/Enterprise seat on the Ultra tier as standard instead of premium (bughunt finding on M.ORCH-T1404's scope) | — |
+| M.ORCH-T1406 | 2026-11-02 | fix | closed | Audit and fix: every person-tab and CLI-tab icon/badge (status light, activity icon, disabled glyph, blink) reflects live state correctly across every signed-in CLI | — |
+| M.ORCH-T1407 | 2026-11-02 | fix | closed | CLI tab's status badge blanks to unknown on a transient SessionOf miss instead of keeping the pane's already-known session | — |
+| M.ORCH-T1408 | 2026-11-02 | fix | closed | Remove the orphaned per-token blink animation and glow-pulse code-behind: both had zero live consumers after the boxed-badge redesign (M.ORCH-T1173/T1270), one still running a needless 40ms DispatcherTimer | — |
