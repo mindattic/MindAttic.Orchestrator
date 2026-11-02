@@ -957,8 +957,12 @@ public sealed class TerminalsViewModel : ObservableObject
                 pane.SessionId = session;
                 learned = true;
             }
-            // This one CLI's own status badge (M.ORCH-T1272), from the same agent row its session matches.
-            pane.ApplyAgentStatus(session is { Length: > 0 } ? snapshot.Agents.FirstOrDefault(a => a.SessionId == session) : null);
+            // This one CLI's own status badge (M.ORCH-T1272), from the same agent row its session matches: this tick's freshly
+            // resolved session, or, when SessionOf missed this tick (a transient process-tree read failure, or the context
+            // gate's agent rows not caught up yet), the pane's own already-known one (bughunt 2026-11-02, M.ORCH-T1407) -- so a
+            // momentary miss doesn't blank an already-known CLI's badge back to "unknown" every time SessionOf has a bad tick.
+            var badgeSession = BadgeSessionOf(session, pane.SessionId);
+            pane.ApplyAgentStatus(badgeSession is { Length: > 0 } ? snapshot.Agents.FirstOrDefault(a => a.SessionId == badgeSession) : null);
             if (pane.HostPid is not { } || session is not { Length: > 0 }) continue;
             // Its person is the login its CLI is on now: moved to another, it moves to that one's page.
             var login = LoginScope.LoginOf(snapshot, session);
@@ -974,6 +978,14 @@ public sealed class TerminalsViewModel : ObservableObject
 
     /// <summary>A pane's CLI's session was learned or changed (M.ORCH-T862): the session-restore file is rewritten.</summary>
     public event Action? SessionsLearned;
+
+    /// <summary>Which session a pane's status badge is matched against this tick (M.ORCH-T1407): <paramref name="freshSession"/>
+    /// (this tick's <see cref="SessionOf"/>) when it found one, else <paramref name="knownSessionId"/> (the pane's own
+    /// <see cref="TerminalPaneViewModel.SessionId"/>, already learned and never cleared once seen) -- so a tick where
+    /// <see cref="SessionOf"/> misses (a transient process-tree read failure, or the context gate's agent rows not caught up
+    /// yet) doesn't blank an already-known CLI's badge back to "unknown".</summary>
+    internal static string? BadgeSessionOf(string? freshSession, string? knownSessionId) =>
+        freshSession is { Length: > 0 } ? freshSession : knownSessionId;
 
     /// <summary>The Claude session <paramref name="pane"/>'s CLI is in: the agent its Launcher host runs, else the one whose
     /// claude.exe (the pid the context gate recorded in session-context) runs under the pane's own process. Null for a

@@ -673,6 +673,18 @@ public sealed class TerminalPanesTests
         Assert.That(pane.ShowsPaneIdleBadge, Is.False, "unmatched again: back to none of the three");
     }
 
+    /// <summary>M.ORCH-T1407 (bughunt 2026-11-02): a tick where SessionOf misses (a transient process-tree read failure, or the
+    /// context gate's agent rows not caught up yet) must not blank an already-known CLI's badge back to "unknown" -- it keeps
+    /// matching the pane's own last-known session instead.</summary>
+    [Test]
+    public void The_badges_session_falls_back_to_the_panes_own_known_one_when_this_ticks_lookup_misses()
+    {
+        Assert.That(TerminalsViewModel.BadgeSessionOf("fresh", "known"), Is.EqualTo("fresh"), "a fresh match always wins");
+        Assert.That(TerminalsViewModel.BadgeSessionOf(null, "known"), Is.EqualTo("known"), "a miss falls back to what's already known");
+        Assert.That(TerminalsViewModel.BadgeSessionOf("", "known"), Is.EqualTo("known"), "empty counts as a miss too");
+        Assert.That(TerminalsViewModel.BadgeSessionOf(null, null), Is.Null, "nothing known yet: still nothing");
+    }
+
     [Test, Apartment(ApartmentState.STA)]
     public void A_key_from_a_hyperlink_is_no_terminals_and_never_throws()
     {
