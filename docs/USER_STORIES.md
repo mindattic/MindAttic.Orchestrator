@@ -1417,3 +1417,9 @@ _Nothing recorded yet._
 | M.ORCH-T1389 | 2026-11-01 | chore | closed | Update orchestrator.db, orchestrator.sql | — |
 | M.ORCH-T1390 | 2026-11-01 | chore | closed | Update orchestrator.db, orchestrator.sql | — |
 | M.ORCH-T1391 | 2026-11-01 | chore | closed | Update orchestrator.db, orchestrator.sql | — |
+| M.ORCH-T1392 | 2026-11-01 | fix | open | Restarting Launcher from inside Orchestrator throws an exception | — |
+| M.ORCH-T1393 | 2026-11-01 | fix | closed | Tab status icons don't match actual state: most User/CLI tabs show gray 'ZZ' instead of green spinner when active | 4c341a54 |
+| M.ORCH-T1394 | 2026-11-01 | fix | closed | Per-member usage cutoffs didn't move the dashboard's warn line, so a raised weekly cutoff still warned (and unpaced, held) at the org-wide 80% line | 943e6991 |
+| M.ORCH-T1395 | 2026-11-02 | feature | open | 5hr/Weekly limit boxes become toggle buttons that pick which chart the utilization panel draws, 5hr default | — |
+| M.ORCH-T1396 | 2026-11-02 | feature | open | Let a free/non-Team Claude login (ryandebraal@gmail.com) be prepared and verified in the per-CLI roster, distinct from Team members, to prove the account model isn't single-org-hardcoded | — |
+| M.ORCH-T1397 | 2026-11-02 | fix | open | org limit/allow/disallow push a live state-bus change so the running daemon wakes and applies the new cutoff at once, instead of waiting for its next tick | — |

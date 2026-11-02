@@ -125,11 +125,13 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     public Action? TicketChanged { get; init; }
 
     /// <summary>The daemon's own store (<see cref="StateBus.StoreOf(Settings.OrchestratorDb)"/>, M.ORCH-T891): only its roster, orgs,
-    /// settings, pause and reminders are kept for subscribers as they connect (another store's, a scratch one, still goes out but
-    /// can't stand in for them). Null keeps every store's.</summary>
+    /// settings, pause, reminders, cutoffs and allowances are kept for subscribers as they connect (another store's, a scratch
+    /// one, still goes out but can't stand in for them). Null keeps every store's.</summary>
     public string? OwnStore { get; init; }
 
-    /// <summary>Called after the daemon's own store's roster, orgs, settings, pause or reminders changed: its next plan reads them.</summary>
+    /// <summary>Called after the daemon's own store's roster, orgs, settings, pause, reminders, cutoffs or allowances changed: its
+    /// next plan reads them at once instead of at its next tick (<c>org limit</c>/<c>org allow</c>/<c>org disallow</c>,
+    /// bughunt 2026-11-02).</summary>
     public Action? StateChanged { get; init; }
 
     /// <summary>The key a presence is kept under on the stream: one per app.</summary>
@@ -152,7 +154,7 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                     if (envelope.PayloadAs<AppPresence>() is not { App.Length: > 0 } presence) return;
                     stream.Publish(envelope, PresenceKey(presence.App));
                     return;
-                case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Reminders:
+                case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Reminders or StateBus.Cutoffs or StateBus.Allowances:
                     // The whole of its kind each time: the latest is kept, so a dashboard connecting gets it after the state.
                     var own = OwnStore is null || StateBus.SameStore(StateBus.StoreOf(envelope), OwnStore);
                     // Each send is its own connection and the inbox's listeners relay at once, so two quick changes can arrive in

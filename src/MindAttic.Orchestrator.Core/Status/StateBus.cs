@@ -34,13 +34,19 @@ public static class StateBus
     /// <summary>The reminders not sent yet (<see cref="RemindersPayload"/>).</summary>
     public const string Reminders = "reminders";
 
+    /// <summary>Every login's usage cutoffs (<see cref="CutoffsPayload"/>, <c>org limit</c>'s own state row).</summary>
+    public const string Cutoffs = "usage-cutoffs";
+
+    /// <summary>The logins allowed past their weekly target (<see cref="AllowancesPayload"/>, <c>org allow</c>/<c>org disallow</c>).</summary>
+    public const string Allowances = "weekly-allowances";
+
     /// <summary>The version of each of these kinds' payloads.</summary>
     public const int Version = 1;
 
     /// <summary>Every kind of these.</summary>
-    public static IReadOnlyList<string> Kinds { get; } = [Members, Orgs, Settings, Reminders];
+    public static IReadOnlyList<string> Kinds { get; } = [Members, Orgs, Settings, Reminders, Cutoffs, Allowances];
 
-    public static bool IsStateKind(string? kind) => kind is Members or Orgs or Settings or Reminders;
+    public static bool IsStateKind(string? kind) => kind is Members or Orgs or Settings or Reminders or Cutoffs or Allowances;
 
     /// <summary>The store <paramref name="db"/> is, as payloads name it: its full path.</summary>
     public static string StoreOf(OrchestratorDb db) => db.Path;
@@ -96,7 +102,12 @@ public static class StateBus
     /// <summary>The kind a change is, or null when it's none of these.</summary>
     internal static string? KindOf(StoreChange change) => change.Store is null
         ? change.Name switch { StoreChanges.Members => Members, StoreChanges.Orgs => Orgs, _ => null }
-        : change.Name switch { JsonStore.SettingsName => Settings, ReminderBook.Name => Reminders, _ => null };
+        : change.Name switch
+        {
+            JsonStore.SettingsName => Settings, ReminderBook.Name => Reminders,
+            Budget.UsageCutoffs.StateName => Cutoffs, Budget.WeeklyAllowances.StateName => Allowances,
+            _ => null,
+        };
 
     private static void OnChanged(StoreChange change)
     {
@@ -174,6 +185,10 @@ public static class StateBus
                 case Reminders:
                     return store is not null && store.TryLoad<List<Reminder>>(ReminderBook.Name, out var all)
                         ? new RemindersPayload { Store = name, AtUtc = at, Pending = [.. all.Where(r => r.Pending).OrderBy(r => r.DueUtc)] } : null;
+                case Cutoffs:
+                    return store is null ? null : new CutoffsPayload { Store = name, AtUtc = at, Cutoffs = Budget.UsageCutoffs.Load(store) };
+                case Allowances:
+                    return store is null ? null : new AllowancesPayload { Store = name, AtUtc = at, Allowances = Budget.WeeklyAllowances.Load(store).Allowances };
                 default:
                     return null;
             }
@@ -222,4 +237,16 @@ public sealed record SettingsPayload : StatePayload
 public sealed record RemindersPayload : StatePayload
 {
     [JsonPropertyName("pending")] public IReadOnlyList<Reminder> Pending { get; init; } = [];
+}
+
+/// <summary>The <see cref="StateBus.Cutoffs"/> payload: every login's own weekly/5-hour cutoffs (<c>org limit</c>).</summary>
+public sealed record CutoffsPayload : StatePayload
+{
+    [JsonPropertyName("cutoffs")] public IReadOnlyList<UsageCutoff> Cutoffs { get; init; } = [];
+}
+
+/// <summary>The <see cref="StateBus.Allowances"/> payload: every login allowed past its weekly target (<c>org allow</c>).</summary>
+public sealed record AllowancesPayload : StatePayload
+{
+    [JsonPropertyName("allowances")] public IReadOnlyList<WeeklyAllowance> Allowances { get; init; } = [];
 }
