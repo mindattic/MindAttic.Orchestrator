@@ -56,7 +56,7 @@ public static class LoginScope
         var own = all.Accounts.FirstOrDefault(a => Same(a.Email, email));
         return scoped with
         {
-            Budget = own?.Budget, Pace = own?.Pace, Utilization = own?.Utilization, Account = own?.Account,
+            Budget = own?.Budget, Pace = own?.Pace, Utilization = own?.Utilization, WeeklyUtilization = own?.WeeklyUtilization, Account = own?.Account,
             // Codex's and Gemini's usage runs on no Claude login: the global tab shows it.
             ProviderUsage = [.. all.ProviderUsage.Where(u => u.Provider == Providers.Claude)],
         };

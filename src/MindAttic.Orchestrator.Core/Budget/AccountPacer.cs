@@ -9,7 +9,11 @@ namespace MindAttic.Orchestrator.Budget;
 /// <param name="Email">The account (its folder's name).</param>
 /// <param name="Account">Its key as <see cref="ClaudeAccount.Current"/> keys it (the ledger's account); null when unreadable.</param>
 /// <param name="Sessions">CLIs and subagents that spent on it in the last <see cref="BudgetCalculator.RecentWindow"/>.</param>
-public sealed record AccountPace(string Email, string Directory, string? Account, BudgetStatus Budget, Pace Pace, Utilization? Utilization, int Sessions);
+public sealed record AccountPace(string Email, string Directory, string? Account, BudgetStatus Budget, Pace Pace, Utilization? Utilization, int Sessions)
+{
+    /// <summary>This login's current week against its pace (M.ORCH-T1403), for the dashboard's weekly graph.</summary>
+    public Utilization? WeeklyUtilization { get; init; }
+}
 
 /// <summary>
 /// Paces each per-CLI Claude login on its own (M.ORCH-T559): its 5-hour and weekly windows are its token pool's, not the global
@@ -187,7 +191,9 @@ public sealed class AccountPacer
             if (state.Meter is { } probe) Observe(dir, state, probe, sessions.Count, events, now);
             if (settings.WeeklyAwarePacing) Plan(dir.Email, budget, week, now);
         }
-        return new AccountPace(dir.Email, dir.Directory, state.Account, budget, pace, utilization, active);
+        // The weekly chart (M.ORCH-T1403): the same samples the 5-hour chart reads, against the login's own weekly stop.
+        var weeklyUtilization = WeeklyUtilizationSeries.Build(samples, budget, settings.WeeklyStopPercent, now);
+        return new AccountPace(dir.Email, dir.Directory, state.Account, budget, pace, utilization, active) { WeeklyUtilization = weeklyUtilization };
     }
 
     /// <summary>

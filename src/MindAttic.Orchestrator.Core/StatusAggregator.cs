@@ -442,6 +442,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         };
         if (allowedWhy is not null) pace = pace with { Note = $"{pace.Note} {allowedWhy}" };
         var utilization = UtilizationSeries.Build(mine, budget, paceSettings.PaceTargetPercent, now, settings.PaceExponent);
+        // The weekly chart (M.ORCH-T1403), for the global login the same way each per-CLI login gets its own (AccountPacer.Pace).
+        var weeklyUtilization = WeeklyUtilizationSeries.Build(mine, budget, paceSettings.WeeklyStopPercent, now);
         // On course to end under its target: the allowance shown to the CLIs (and held to by the pace gate) says to start more (M.ORCH-T529).
         pace = Pacer.UnderTarget(pace, utilization, settings.MaxSubagents);
         // Split across many CLIs whose live trend together crossed the pace line: new subagents start slower until it bends back (M.ORCH-T785).
@@ -567,7 +569,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { warnings.Add($"API key spend: {ex.Message}"); }
 
-        return new Snapshot(now, result, warnings) { ApiSpend = apiSpend, Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, PartOf = tickets.PartOf, UnknownRepos = new HashSet<string>(tickets.Unknown, StringComparer.OrdinalIgnoreCase), Approved = tickets.Approved, Epics = tickets.Epics, Priorities = tickets.Priorities, Assignees = tickets.Assignees, Reservations = tickets.Reservations, Agents = agentBoard, Billing = billing, Accounts = accountPaces,
+        return new Snapshot(now, result, warnings) { ApiSpend = apiSpend, Budget = budget, Pace = pace, Utilization = utilization, WeeklyUtilization = weeklyUtilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, PartOf = tickets.PartOf, UnknownRepos = new HashSet<string>(tickets.Unknown, StringComparer.OrdinalIgnoreCase), Approved = tickets.Approved, Epics = tickets.Epics, Priorities = tickets.Priorities, Assignees = tickets.Assignees, Reservations = tickets.Reservations, Agents = agentBoard, Billing = billing, Accounts = accountPaces,
             // Each session's per-CLI login, and the global login's email: what the dashboard's tabs split it by (M.ORCH-T613).
             OwnLogins = ownLogin.Select(o => (Session: o.Key, Email: Accounts.Dirs.Of(o.Value)?.Email)).Where(o => o.Email is not null)
                 .ToDictionary(o => o.Session, o => o.Email!, StringComparer.Ordinal),

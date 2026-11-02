@@ -397,10 +397,7 @@
                      caption says it in words. -->
                 <StackPanel x:Name="UtilizationSection" Margin="{StaticResource SectionGap}">
                 <StackPanel x:Name="ClaudeMetersSection" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
-                    <Border x:Name="UtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
-                            Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
-                        <StackPanel>
+                    <StackPanel x:Name="ChartsHeader">
                             <!-- Notifications (M.ORCH-T1167) and the 5hr/weekly cutoff readouts (M.ORCH-T1168) share one
                                  right-aligned row above the panel's own title (M.ORCH-T1180, after two earlier layouts: a
                                  right-edge stack, then a standalone row, neither of which was the one Waffle wanted). What
@@ -465,12 +462,37 @@
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
-                            <TextBlock Text="5-hour utilization" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceTS}" />
-                            <mc:MaLineChart x:Name="UtilizationChart" Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"
-                                            Height="130" Margin="{StaticResource SpaceH0VS}" />
-                            <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Border>
+                    </StackPanel>
+
+                    <!-- The 5-hour chart (M.ORCH-T191): every plan but a solo Ultra account, which has no 5-hour limit worth
+                         charting on its own page (M.ORCH-T1403, ShowsFiveHourChart). -->
+                    <StackPanel x:Name="FiveHourSection" Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}">
+                        <Border x:Name="UtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
+                                AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
+                                Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+                            <StackPanel>
+                                <TextBlock Text="5-hour utilization" Style="{StaticResource MaSectionLabel}" />
+                                <mc:MaLineChart x:Name="UtilizationChart" Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"
+                                                Height="130" Margin="{StaticResource SpaceH0VS}" />
+                                <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- The weekly chart (M.ORCH-T1403): every Claude login, Team seat or solo Ultra alike (ShowsWeeklyChart) -
+                         the same pace-curve drawing as the 5-hour chart, over the week instead (WeeklyUtilizationChartData). -->
+                    <StackPanel x:Name="WeeklySection" Visibility="{Binding ShowsWeeklyChart, Converter={StaticResource Visible}}">
+                        <Border x:Name="WeeklyUtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch" Margin="{StaticResource SpaceTS}"
+                                AutomationProperties.Name="{Binding WeeklyUtilizationText, StringFormat='Weekly utilization: {0}'}"
+                                Visibility="{Binding WeeklyUtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+                            <StackPanel>
+                                <TextBlock Text="Weekly utilization" Style="{StaticResource MaSectionLabel}" />
+                                <mc:MaLineChart x:Name="WeeklyUtilizationChart" Data="{Binding WeeklyUtilization, Converter={x:Static local:WeeklyUtilizationChartData.Converter}}"
+                                                Height="130" Margin="{StaticResource SpaceH0VS}" />
+                                <TextBlock Text="{Binding WeeklyUtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- The API key's person (M.ORCH-T906): its money burning down, in place of the 5-hour chart. From its starting credit
