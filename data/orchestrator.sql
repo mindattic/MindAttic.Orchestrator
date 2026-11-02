@@ -1078,8 +1078,8 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 881706);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 47848);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'MindAttic.Orchestrator', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 532495);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.Cyberpunk2077.ShootDodge', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4025329);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.Cyberpunk2077.WebSlinger', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2945013);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.Cyberpunk2077.ShootDodge', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4045297);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.Cyberpunk2077.WebSlinger', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3093865);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Mods.GTFO.EZ', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 574348);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-01', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4643864);
 
@@ -2446,6 +2446,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('80266bf8-e700-42a4-8046-431131f55d29/agent-ae9085919bd173e85', 'RB-T173', 'fix', 'REA.Bloodlines', 777630, '2026-10-24T12:35:58.42Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('80266bf8-e700-42a4-8046-431131f55d29/agent-afd1b3622748847d4', 'RB-T116', 'feature', 'REA.Bloodlines', 630540, '2026-10-24T15:54:19.862Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a068163fa1929e32e', 'C2WS-T8', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 307307, '2026-11-01T22:53:28.696Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a0ebc5dfbcc7bab3a', 'C2WS-T21', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 95069, '2026-11-02T02:06:49.415Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a2c41ca54197483cf', 'C2WS-T17', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 77418, '2026-11-01T22:30:57.704Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a402443b57ae00b0b', 'C2WS-T12', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 101297, '2026-11-01T23:04:05.472Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a5034a5dd48681170', 'C2WS-T9', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 297869, '2026-11-01T22:54:08.704Z', 0, 'opus');
@@ -2453,6 +2454,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a600ce68753881fbd', 'C2WS-T16', 'chore', 'Mods.Cyberpunk2077.WebSlinger', 193705, '2026-11-01T22:35:31.908Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a9a5fd227be53818f', 'C2WS-T13', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 82226, '2026-11-01T23:06:51.856Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-a9fe7286f692144f7', 'C2WS-T11', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 124175, '2026-11-01T23:00:18.687Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-ab449a3618044d443', 'C2WS-T22', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 71814, '2026-11-02T02:10:26.56Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-ad2017cd243e0026a', 'C2WS-T6', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 92486, '2026-11-01T21:01:07.614Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-ad2bb9915feb2c899', 'C2WS-T7', 'feature', 'Mods.Cyberpunk2077.WebSlinger', 55956, '2026-11-01T21:49:22.666Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('808ce091-f94c-467d-a7d1-b6562cc81444/agent-ad37fc0b4ecbc7d00', 'C2WS-T15', 'chore', 'Mods.Cyberpunk2077.WebSlinger', 433555, '2026-11-01T22:56:13.53Z', 0, 'sonnet');
@@ -3514,6 +3516,7 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (34, 'MAT-T49', 'MindAttic.Agency', 'D:\Projects\MindAttic.worktrees\MindAttic.Agency\MAT-T49', 'Claude', '2026-10-24T06:38:31.351098Z', 1, NULL, NULL, NULL, 11408, '3355791e-fb1c-436b-9d8e-7fb6aeda09fd', 'sonnet', NULL, 'honey@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (35, 'AGP-T14', 'AutoGamePlay', 'D:\Projects\MindAttic\AutoGamePlay', 'Claude', '2026-10-28T17:12:44.6781502Z', 1, NULL, NULL, NULL, 57412, '9a09255a-43ca-4cfa-84d8-258b4a81afb4', 'opus', NULL, 'ohleo199@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (36, 'C2WS-T19', 'Mods.Cyberpunk2077.WebSlinger', 'D:\Projects\MindAttic\Mods.Cyberpunk2077.WebSlinger', 'Claude', '2026-11-01T23:29:09.7037338Z', 1, NULL, NULL, NULL, 50496, '808ce091-f94c-467d-a7d1-b6562cc81444', 'sonnet', NULL, 'ryandebraal@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (37, 'C2WS-T22', 'Mods.Cyberpunk2077.WebSlinger', 'D:\Projects\MindAttic\Mods.Cyberpunk2077.WebSlinger', 'Claude', '2026-11-02T02:07:17.9658274Z', 1, NULL, NULL, NULL, 50496, '808ce091-f94c-467d-a7d1-b6562cc81444', 'opus', NULL, 'ryandebraal@mindattic.com');
 
 -- organizations
 
@@ -5816,7 +5819,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "f62cffa7c55d61519de996913f922c8ef8f57dd8",
+    "Tested": "d0b36b91acec4ab7862657ed98651bc135439ce2",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
