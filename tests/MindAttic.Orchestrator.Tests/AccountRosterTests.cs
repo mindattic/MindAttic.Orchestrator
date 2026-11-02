@@ -56,12 +56,12 @@ public sealed class AccountRosterTests
         var row = Row("a");
         Assert.That(row.Email, Is.EqualTo("a@mindattic.com"));
         Assert.That(row.Org, Is.EqualTo("MindAttic"));
-        Assert.That(row.Plan, Is.EqualTo("Team · Max 5x"));
+        Assert.That(row.Plan, Is.EqualTo("Team · Max"));
         Assert.That((row.WeekPercent, row.WeekResetUtc, row.FiveHourPercent, row.FiveHourResetUtc, row.ReadUtc),
             Is.EqualTo(((double?)75, (DateTime?)WeekReset, (double?)12, (DateTime?)FiveReset, (DateTime?)Now)));
         Assert.That(row.WeekLeftAt(Now), Is.EqualTo(25));
         Assert.That(File.ReadAllText(db.DumpPath), Does.Contain("INSERT INTO accounts (id, email, org, plan, five_hour_percent")
-            .And.Contain("'a/org', 'a@mindattic.com', 'MindAttic', 'Team · Max 5x', 12, ").And.Contain(", 75, "),
+            .And.Contain("'a/org', 'a@mindattic.com', 'MindAttic', 'Team · Max', 12, ").And.Contain(", 75, "),
             "the readable dump beside the database is rewritten with the change");
     }
 
@@ -231,9 +231,24 @@ public sealed class AccountRosterTests
     [Test]
     public void Plans_read_from_the_sign_in()
     {
-        Assert.That(AccountProfile.PlanOf("claude_team", "default_claude_max_5x"), Is.EqualTo("Team · Max 5x"));
-        Assert.That(AccountProfile.PlanOf("claude_max", "default_claude_max_20x"), Is.EqualTo("Max 20x"));
+        Assert.That(AccountProfile.PlanOf("claude_team", "default_claude_max_5x"), Is.EqualTo("Team · Max"));
+        Assert.That(AccountProfile.PlanOf("claude_max", "default_claude_max_20x"), Is.EqualTo("Ultra"));
         Assert.That(AccountProfile.PlanOf("claude_pro", null), Is.EqualTo("Pro"));
         Assert.That(AccountProfile.PlanOf(null, null), Is.Null);
+    }
+
+    [Test]
+    public void A_solo_accounts_tier_falls_back_to_the_organizations_own_rate_limit_tier()
+    {
+        // M.ORCH-T1400: confirmed against a real signed-in account (an upgraded Pro -> Ultra personal subscription) that a
+        // one-person org carries its tier as organizationRateLimitTier, not userRateLimitTier (null there) -- unlike a Team
+        // seat, which has its own userRateLimitTier distinct from the org's pooled one.
+        var path = Path.Combine(dir, ".claude.json");
+        File.WriteAllText(path, """{"oauthAccount":{"accountUuid":"solo","emailAddress":"solo@gmail.com","organizationType":"claude_max","userRateLimitTier":null,"organizationRateLimitTier":"default_claude_max_20x"}}""");
+        File.SetLastWriteTimeUtc(path, Now);
+
+        account.Read(Now);
+
+        Assert.That(account.Profile?.Plan, Is.EqualTo("Ultra"));
     }
 }

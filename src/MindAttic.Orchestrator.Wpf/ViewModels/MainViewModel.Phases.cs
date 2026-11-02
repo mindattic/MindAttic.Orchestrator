@@ -351,7 +351,7 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>What the account menu also showed for the login (M.ORCH-T628): its plan and when its usage was last checked,
-    /// "Team · Max 5x · checked 3m ago"; empty when the roster doesn't know it.</summary>
+    /// "Team · Max · checked 3m ago"; empty when the roster doesn't know it.</summary>
     public string WeeklyAccountLine => AccountLineOf(OwnRow, DateTime.UtcNow);
 
     /// <summary>A roster reading older than this is called stale on the tab (a login is read every <see cref="ClaudeMeterProbe.IdleEvery"/>).</summary>

@@ -20,10 +20,16 @@ public sealed record AccountProfile(string Account, string? Email, string? Org, 
             o.ValueKind != JsonValueKind.Object || Text(o, "accountUuid") is not { } id)
             return null;
         var account = Text(o, "organizationUuid") is { } org ? $"{id}/{org}" : id;
-        return new AccountProfile(account, Text(o, "emailAddress"), Text(o, "organizationName"), PlanOf(Text(o, "organizationType"), Text(o, "userRateLimitTier")));
+        // A Team seat's own tier is userRateLimitTier (a per-seat override within the org); a solo Max/Ultra account (its own
+        // one-person "organization") has none of those and carries its tier as the org's own, organizationRateLimitTier,
+        // instead (M.ORCH-T1400: confirmed against a real account's ~/.claude.json, where userRateLimitTier read null for an
+        // upgraded personal Ultra subscription and silently dropped its tier).
+        var tier = Text(o, "userRateLimitTier") ?? Text(o, "organizationRateLimitTier");
+        return new AccountProfile(account, Text(o, "emailAddress"), Text(o, "organizationName"), PlanOf(Text(o, "organizationType"), tier));
     }
 
-    /// <summary>"Team · Max 5x", "Max 20x", "Pro": the organization's kind, and the Max tier the account's limits are sized by.</summary>
+    /// <summary>"Team · Max", "Ultra", "Pro": the organization's kind, and the Max tier the account's limits are sized by (Anthropic's
+    /// Oct 2026 rename: the $100 tier "Max 5x" is now plain "Max", the $200 tier "Max 20x" is now "Ultra").</summary>
     internal static string? PlanOf(string? organizationType, string? rateLimitTier)
     {
         var kind = organizationType switch
@@ -36,8 +42,8 @@ public sealed record AccountProfile(string Account, string? Email, string? Org, 
             _ => organizationType.Replace("claude_", "", StringComparison.Ordinal),
         };
         var tier = rateLimitTier is null ? null
-            : rateLimitTier.Contains("max_20x", StringComparison.Ordinal) ? "Max 20x"
-            : rateLimitTier.Contains("max_5x", StringComparison.Ordinal) ? "Max 5x"
+            : rateLimitTier.Contains("max_20x", StringComparison.Ordinal) ? "Ultra"
+            : rateLimitTier.Contains("max_5x", StringComparison.Ordinal) ? "Max"
             : null;
         if (kind == "Max" && tier is not null) return tier;
         return kind is null ? tier : tier is null ? kind : $"{kind} · {tier}";
