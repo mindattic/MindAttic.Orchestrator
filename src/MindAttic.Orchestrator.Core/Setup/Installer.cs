@@ -125,7 +125,7 @@ public sealed class Installer
         StopInstalledCopies();
         // Chosen before the copy: a copy that fails partway can leave a truncated file at InstalledExe, which is no exe to restart.
         var old = File.Exists(InstalledExe) ? InstalledExe : LegacyExe;
-        try { File.Copy(runningExe, InstalledExe, overwrite: true); }
+        try { CopyOverInstalled(runningExe); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Stopped for nothing (the old exe still locked, say by an elevated dashboard): the old install's daemon runs
@@ -136,9 +136,43 @@ public sealed class Installer
             throw;
         }
         InstallLegacyCopy(runningExe);
+        foreach (var aside in SafeFiles(InstallDir, ExeName + ".*.old"))
+            try { File.Delete(aside); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         CleanupTermHosts();
         CleanupGateways();
         CleanupTermViewers();
+    }
+
+    /// <summary>
+    /// Copies <paramref name="runningExe"/> over <see cref="InstalledExe"/> (M.ORCH-T1416). With CLIs busy, a copy of the old build
+    /// was found holding it again between <see cref="StopInstalledCopies"/> and the copy, failing the install twice running, so a
+    /// locked file is stopped and retried, then moved aside (a running exe can be renamed) for the new build to take its place,
+    /// and whatever still runs from the moved file is stopped, so the daemon that starts next is this build's.
+    /// </summary>
+    private void CopyOverInstalled(string runningExe)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try { File.Copy(runningExe, InstalledExe, overwrite: true); return; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && attempt < 3)
+            {
+                Thread.Sleep(1000);
+                StopInstalledCopies();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && File.Exists(InstalledExe))
+            {
+                var aside = $"{InstalledExe}.{Environment.ProcessId}.{DateTime.UtcNow:yyyyMMddHHmmss}.old";
+                File.Move(InstalledExe, aside, overwrite: true);
+                try { File.Copy(runningExe, InstalledExe, overwrite: true); }
+                catch (Exception) when (!File.Exists(InstalledExe) || new FileInfo(InstalledExe).Length == 0)
+                {
+                    File.Move(aside, InstalledExe, overwrite: true); // no new build landed: the old one goes back, not nothing
+                    throw;
+                }
+                StopInstalledCopies();
+                return;
+            }
+        }
     }
 
     /// <summary>
@@ -205,6 +239,11 @@ public sealed class Installer
 
     private string LegacyExe => Path.Combine(InstallDir, LegacyExeName);
 
+    /// <summary>An old build <see cref="CopyOverInstalled"/> moved aside: <c>{InstalledExe}.{pid}.{stamp}.old</c> in the install folder.</summary>
+    private bool IsMovedAside(string path) =>
+        SamePath(Path.GetDirectoryName(path) ?? "", InstallDir) &&
+        Path.GetFileName(path).StartsWith(ExeName + ".", StringComparison.OrdinalIgnoreCase) && path.EndsWith(".old", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Stops the installed dashboard and daemon, by their exact exe paths. Never a TermHost (M.ORCH-T932): it is a different
     /// exe name under <c>TermHost\&lt;version&gt;\</c>, each running CLI keeps its host across an upgrade, and the path check below
     /// leaves anything under that folder alone.</summary>
@@ -216,7 +255,7 @@ public sealed class Installer
         {
             try
             {
-                if (p.Id == Environment.ProcessId || p.MainModule?.FileName is not { } path || !installed.Any(e => SamePath(path, e))) continue;
+                if (p.Id == Environment.ProcessId || p.MainModule?.FileName is not { } path || !(installed.Any(e => SamePath(path, e)) || IsMovedAside(path))) continue;
                 // Asked to exit first, so it flushes its log (and an older build disposes its tray icon); killed only if it doesn't.
                 if (EventWaitHandle.TryOpenExisting(DashboardExitEvent(p.Id), out var exit))
                     using (exit) { exit.Set(); p.WaitForExit(5000); }
