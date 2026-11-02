@@ -54,11 +54,14 @@ public static class AccountSwitch
     {
         null => null,
         var p when !p.StartsWith("Team", StringComparison.Ordinal) && !p.StartsWith("Enterprise", StringComparison.Ordinal) => null,
-        var p when p.Contains("Max", StringComparison.Ordinal) => "premium",
+        // Bughunt 2026-11-02: a seat's own Max tier is "Team · Max" or "Team · Ultra" (AccountRoster.PlanOf's Oct 2026 rename of
+        // "Max 20x" to plain "Ultra"), so checking for the literal substring "Max" alone missed every Ultra-tier seat and called
+        // it "standard" -- the opposite of premium.
+        var p when p.Contains("Max", StringComparison.Ordinal) || p.Contains("Ultra", StringComparison.Ordinal) => "premium",
         _ => "standard",
     };
 
-    /// <summary>The seat, or the personal plan ("Max 20x", "Pro") when there's no seat.</summary>
+    /// <summary>The seat, or the personal plan ("Ultra", "Pro") when there's no seat.</summary>
     public static string SeatOrPlan(AccountRow row) => Seat(row) ?? row.Plan ?? "";
 
     /// <summary>Whether its org signs in through SSO: an Enterprise org does; a Team or personal plan signs in by email.</summary>
