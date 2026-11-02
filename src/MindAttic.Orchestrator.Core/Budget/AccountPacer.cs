@@ -106,6 +106,12 @@ public sealed class AccountPacer
         foreach (var (dir, account) in accounts)
         {
             if (!states.TryGetValue(dir.Email, out var state)) states[dir.Email] = state = new State(dir, this);
+            // The folder's signed-in account changed since the last tick (a /login switch, or another account sharing this
+            // CLI's folder, M.ORCH-T1404): its samples are a previous account's own week of readings, not this one's, so
+            // ReportedLimit.Highest/RaiseWeek must never be let raise this account's fresh, genuinely lower reading to match
+            // them. Dropped here (the in-memory cache) and by LoadSamples below (the persisted file, same guard as
+            // LoadLimits already uses for M.ORCH-T774).
+            if (state.Account is not null && state.Account != account) state.Samples = null;
             state.Account = account;
             var ids = byEmail[dir.Email].ToHashSet(StringComparer.Ordinal);
             var mine = sessions.Where(s => ids.Contains(s.SessionId)).ToList();
@@ -122,9 +128,9 @@ public sealed class AccountPacer
         var events = sessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc).ToList();
         var reported = ReportedUsage.Load(now, dir.UsagePath);
         if (state.Meter?.LastReading is { } probed) reported = ClaudeMeterProbe.Fresher(reported, probed, now);
-        var samples = state.Samples ??= LoadSamples(dir);
+        var samples = state.Samples ??= LoadSamples(dir, state.Account);
         // The week's percent is kept with each reading, to learn how much of the week a 5-hour point costs (M.ORCH-T666).
-        if (ReportedLimit.Record(samples, reported, events, now, withWeek: true) && write) SaveSamples(dir, samples);
+        if (ReportedLimit.Record(samples, reported, events, now, withWeek: true) && write) SaveSamples(dir, state.Account, samples);
         var limit = ReportedLimit.Estimate(samples);
         reported = ReportedLimit.Highest(samples, reported, now);
         // This account's own limit hits (M.ORCH-T774), read from its own sessions' transcripts: before this, a wall Claude
@@ -274,23 +280,40 @@ public sealed class AccountPacer
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = false };
 
-    /// <summary>The account's week of Claude's readings (<see cref="AccountDir.SamplesPath"/>); empty when there are none yet.</summary>
-    public static List<UsageSample> LoadSamples(AccountDir dir)
+    /// <summary>The account's week of Claude's readings (<see cref="AccountDir.SamplesPath"/>, M.ORCH-T666), tagged with the
+    /// account they were kept for; empty when there are none yet, or (<paramref name="account"/> given) when the folder's
+    /// signed-in account has changed since they were saved, so ReportedLimit.Highest/RaiseWeek never raises a freshly
+    /// signed-in account's genuinely lower reading to match a previous account's higher one (M.ORCH-T1404, the same guard
+    /// <see cref="LoadLimits"/> already has for M.ORCH-T774). Old, untagged files (saved before this guard existed) are
+    /// read as a bare array and kept, since there's no account to compare them against.</summary>
+    public static List<UsageSample> LoadSamples(AccountDir dir, string? account = null)
     {
-        try { return File.Exists(dir.SamplesPath) ? JsonSerializer.Deserialize<List<UsageSample>>(File.ReadAllText(dir.SamplesPath), Json) ?? [] : []; }
+        try
+        {
+            if (!File.Exists(dir.SamplesPath)) return [];
+            var text = File.ReadAllText(dir.SamplesPath);
+            if (text.TrimStart().StartsWith('[')) return JsonSerializer.Deserialize<List<UsageSample>>(text, Json) ?? [];
+            var stored = JsonSerializer.Deserialize<StoredSamples>(text, Json);
+            return stored is null || (account is not null && stored.Account != account) ? [] : stored.Observations;
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return []; }
     }
 
-    private static void SaveSamples(AccountDir dir, List<UsageSample> samples)
+    private static void SaveSamples(AccountDir dir, string? account, List<UsageSample> samples)
     {
         try
         {
             var temp = dir.SamplesPath + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(samples, Json));
+            File.WriteAllText(temp, JsonSerializer.Serialize(new StoredSamples(account ?? "", samples), Json));
             File.Move(temp, dir.SamplesPath, overwrite: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
+
+    /// <summary>What <see cref="AccountDir.SamplesPath"/> holds: the account it was kept for, and that account's own samples
+    /// (M.ORCH-T1404, the same shape as <see cref="StoredLimits"/>: a bare array couldn't say whose readings they were, so a
+    /// re-signed folder would keep reading the previous account's and could raise its own genuinely low reading to match them).</summary>
+    private sealed record StoredSamples(string Account, List<UsageSample> Observations);
 
     /// <summary>This account's own limit hits (<see cref="AccountDir.LimitsPath"/>, M.ORCH-T774), tagged with the account
     /// they were kept for; empty when there are none yet, or (<paramref name="account"/> given) when the folder's signed-in

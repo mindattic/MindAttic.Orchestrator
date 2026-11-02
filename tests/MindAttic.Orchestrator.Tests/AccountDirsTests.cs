@@ -395,6 +395,65 @@ public sealed class AccountDirsTests
             "an account signed out of its folder isn't paced");
     }
 
+    /// <summary>M.ORCH-T1404: before this, <c>AccountPacer.LoadSamples</c>/<c>SaveSamples</c> kept a folder's week of readings
+    /// tagged only by folder, never by account (unlike <see cref="AccountPacer.LoadLimits"/>, M.ORCH-T774). A folder re-signed
+    /// to a different account (a real /login switch, or another account briefly sharing it) kept reading the previous
+    /// account's samples, and <c>ReportedLimit.Highest</c>/<c>RaiseWeek</c>'s "usage within a window never falls" rule then
+    /// raised the new account's genuinely low, freshly-reported week right back up to the old account's higher one whenever
+    /// their reset times happened to land together - exactly what the dashboard showed for a solo Max/Ultra account signed in
+    /// where another account's samples (or that same account's own, from before an external reset) were still on record.</summary>
+    [Test]
+    public void A_resigned_folders_fresh_low_week_is_never_raised_to_the_previous_accounts_higher_one()
+    {
+        var b = dirs.For("b@example.com");
+        dirs.Prepare(b);
+        var now = DateTime.UtcNow;
+        var weekReset = now.AddDays(3);
+
+        static void WriteWeek(AccountDir dir, double percent, DateTime at, DateTime resetUtc) =>
+            File.WriteAllText(dir.UsagePath, JsonSerializer.Serialize(new
+            {
+                rate_limits = new { seven_day = new { used_percentage = percent, resets_at = new DateTimeOffset(resetUtc).ToUnixTimeSeconds() } },
+                at = at.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            }));
+
+        SignIn(b, "acct-old");
+        WriteWeek(b, 80, now.AddSeconds(-5), weekReset);
+        var pacer = new AccountPacer { Dirs = dirs, Probe = false, ProjectsDir = Path.Combine(dir, "no-projects") };
+        var before = pacer.Tick([], new Dictionary<string, string>(), new OrchestratorSettings(), now, now.Date, null, write: true).Single();
+        Assert.That(before.Budget.WeeklyPercent, Is.EqualTo(80).Within(0.1), "acct-old's own genuine report");
+
+        // The same folder re-signs to a different account: its week is fresh and genuinely low, even though its reset
+        // (set by the subscription's own weekly cycle) happens to land on the same timestamp as acct-old's did.
+        SignIn(b, "acct-new");
+        var now2 = now.AddMinutes(1);
+        WriteWeek(b, 2, now2.AddSeconds(-5), weekReset);
+        var after = pacer.Tick([], new Dictionary<string, string>(), new OrchestratorSettings(), now2, now2.Date, null, write: true).Single();
+
+        Assert.That(after.Account, Is.EqualTo("acct-new"));
+        Assert.That(after.Budget.WeeklyPercent, Is.EqualTo(2).Within(0.1),
+            "never raised to acct-old's 80% just because the reset coincides (M.ORCH-T1404)");
+        Assert.That(AccountPacer.LoadSamples(b, "acct-old"), Is.Empty, "the persisted file is tagged for acct-new now, not acct-old");
+    }
+
+    /// <summary>M.ORCH-T1404: the same guard <see cref="AccountPacer.LoadLimits"/> already has (M.ORCH-T774), now on the
+    /// samples <c>ReportedLimit.Highest</c>/<c>RaiseWeek</c> read "usage never falls" from.</summary>
+    [Test]
+    public void LoadSamples_discards_a_previous_accounts_samples_once_a_different_account_is_asked_for()
+    {
+        var b = dirs.For("b@example.com");
+        dirs.Prepare(b);
+        File.WriteAllText(b.SamplesPath, JsonSerializer.Serialize(new
+        {
+            Account = "acct-old",
+            Observations = new[] { new { AtUtc = DateTime.UtcNow, Percent = 80.0, ResetUtc = DateTime.UtcNow.AddHours(2), WindowFresh = 1_000L } },
+        }));
+
+        Assert.That(AccountPacer.LoadSamples(b), Has.Count.EqualTo(1), "no account given: whoever they were kept for");
+        Assert.That(AccountPacer.LoadSamples(b, "acct-old"), Has.Count.EqualTo(1), "the same account they were kept for");
+        Assert.That(AccountPacer.LoadSamples(b, "acct-new"), Is.Empty, "a different signed-in account never reads the previous one's samples as its own");
+    }
+
     /// <summary>M.ORCH-T774: before this, a wall Claude actually reported to one of a per-CLI login's own sessions never
     /// reached its BudgetCalculator (no LimitCalibration was ever built for it), so only the percent-based target stopped
     /// it, and the pace ledger could only ever say "Claude reported 100%", never "hit the 5-hour limit". Now the account's
