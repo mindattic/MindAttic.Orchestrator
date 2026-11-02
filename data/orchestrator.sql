@@ -1138,7 +1138,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-02', 'Mods.Cyberpunk2077.WebSlinger', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 42378);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-02', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2998482);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-02', 'SyntheticExchangeTheory', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3973649);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-02', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5941669);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-02', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6102797);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-02', 'Unity.SpaceGod', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2561350);
 
 -- ticket_costs
@@ -2421,7 +2421,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('74af4948-b4f1-4a22-8e0b-5ba1bf252736/agent-afc3a54d93ce54888', 'M.ORCH-T671', 'fix', 'MindAttic.Orchestrator', 86843, '2026-10-23T16:16:38.114Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('755321b6-0d26-42da-ab73-4b48f9dc6828', 'M.ORCH-T801', 'fix', 'MindAttic.Orchestrator', 7859, '2026-10-24T18:02:28.099Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('75baad4a-64c9-4da9-b1f8-72f0ae88d93a/agent-a01ce46ca89a683c6', 'GG-T51', 'feature', 'Unity.GridGame', 47701, '2026-11-02T18:35:25.137Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('75baad4a-64c9-4da9-b1f8-72f0ae88d93a/agent-a0650df93de3d572c', 'GG-T61', 'feature', 'Unity.GridGame', 172109, '2026-11-02T18:40:57.927Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('75baad4a-64c9-4da9-b1f8-72f0ae88d93a/agent-a0650df93de3d572c', 'GG-T61', 'feature', 'Unity.GridGame', 330056, '2026-11-02T18:51:12.897Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('75baad4a-64c9-4da9-b1f8-72f0ae88d93a/agent-a0eed37ef3664e526', 'GG-T116', 'feature', 'Unity.GridGame', 97026, '2026-11-02T18:43:33.928Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('75baad4a-64c9-4da9-b1f8-72f0ae88d93a/agent-a11b86e6979e5fa7c', 'GG-T81', 'feature', 'Unity.GridGame', 181671, '2026-11-02T18:37:33.496Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('75baad4a-64c9-4da9-b1f8-72f0ae88d93a/agent-a141f4f8f936e0733', 'GG-T53', 'feature', 'Unity.GridGame', 260682, '2026-11-02T18:42:47.907Z', 0, 'opus');
@@ -5948,7 +5948,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04f558e51b43f37f2d5462d02905b6a20117c656"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "8b38d5c8f719f095270cdc4dbeee2771648b5ad2",
+    "Tested": "7eb2c4a780f650623a0c7268fb70b7a3fb14b0c6",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -5959,8 +5959,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ccf54098cb259c3689963a2d817cf936724bf79"
   },
   "MindAttic.Tickets": {
-    "Tested": "1404c01aaeb786eb9464f58692189598a11dfc5a",
-    "Green": "1404c01aaeb786eb9464f58692189598a11dfc5a"
+    "Tested": "f0f384ebad27e1d5b6111215e2f3563034052ca6",
+    "Green": "f0f384ebad27e1d5b6111215e2f3563034052ca6"
   },
   "MindAttic.Vault": {
     "Tested": "8111a0ea2faf68b1576f27ab083f1a30991d8b62",
