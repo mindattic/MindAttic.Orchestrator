@@ -172,7 +172,9 @@ public sealed class TerminalPaneViewModel : ObservableObject
     }
 
     /// <summary>Its CLI has exited; the tab stays up, showing its last lines, until closed (by hand, or pruned once stale,
-    /// M.ORCH-T1177).</summary>
+    /// M.ORCH-T1177). Also ends any presumed-busy left over from an Enter typed just before it exited (M.ORCH-T1443):
+    /// without this, a CLI closed before its first status read landed kept its login's badge green for up to
+    /// <see cref="PresumeLife"/> after it was already gone.</summary>
     public bool Ended
     {
         get => ended;
@@ -180,6 +182,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         {
             if (!Set(ref ended, value)) return;
             EndedAtUtc = value ? DateTime.UtcNow : null;
+            if (value) SetPresumed(null);
             Raise(nameof(StateText));
         }
     }

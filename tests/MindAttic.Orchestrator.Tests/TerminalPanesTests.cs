@@ -703,6 +703,20 @@ public sealed class TerminalPanesTests
         Assert.That(pane.ShowsPaneBusyBadge, Is.True);
     }
 
+    /// <summary>M.ORCH-T1443: a CLI closed right after Enter, before any status read landed, must not keep its login's badge
+    /// green for up to PresumeLife after it's already gone -- Ended ends the presumption at once.</summary>
+    [Test, Apartment(ApartmentState.STA)]
+    public void Ending_a_pane_clears_a_presumption_with_no_status_read_yet()
+    {
+        var pane = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe" }, hosted: true);
+        pane.Presume(DateTime.UtcNow);
+        Assert.That(pane.IsPresumedBusy, Is.True);
+
+        pane.Ended = true;
+        Assert.That(pane.IsPresumedBusy, Is.False, "the CLI is gone; nothing left to presume busy");
+        Assert.That(pane.ShowsPaneBusyBadge, Is.False);
+    }
+
     [Test]
     public void Only_a_plain_Enter_counts_as_a_submit()
     {
