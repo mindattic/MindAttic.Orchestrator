@@ -100,6 +100,35 @@
             </Border>
         </DataTemplate>
 
+        <!-- A ticket card in the sidebar (M.ORCH-T1439): the whole card is one button that opens the ticket in Tickets Desktop,
+             through the same command as every TicketLink. Its id, then its repo with its type and priority, muted (one line
+             each: the column is too narrow for both, and the id is never the one trimmed), the title up to two lines
+             (all of it in the tooltip), then its status or why it waits. The library's MaSmallStat tile: hover fill, a 2px
+             MaFocus border and ring on keyboard focus, Enter or Space opens it. -->
+        <DataTemplate x:Key="SidebarTicketTemplate" DataType="{x:Type vm:UserTicketRowViewModel}">
+            <Button x:Name="SidebarTicketCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="10,8" HorizontalContentAlignment="Stretch"
+                    Command="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}"
+                    ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
+                <StackPanel>
+                    <TextBlock Text="{Binding Id}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaTileSubtitle}" Margin="{StaticResource SpaceLS}">
+                            <Run Text="{Binding Type, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding Priority, Mode=OneWay}" FontWeight="SemiBold" />
+                        </TextBlock>
+                        <TextBlock Text="{Binding Repo}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                    <TextBlock Text="{Binding Summary}" FontSize="12.5" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Margin="{StaticResource RowGutter}"
+                               LineStackingStrategy="BlockLineHeight" LineHeight="17" MaxHeight="34" />
+                    <Grid Margin="{StaticResource RowGutter}" Visibility="{Binding Status, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+                        <TextBlock Text="{Binding Status}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis"
+                                   Visibility="{Binding IsWaiting, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                        <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap"
+                                   Visibility="{Binding IsWaiting, Converter={StaticResource Visible}}" />
+                    </Grid>
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+
     </Window.Resources>
 
     <Grid x:Name="Root">
@@ -137,11 +166,14 @@
         <Border x:Name="Sidebar" Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" MinWidth="170"
                 BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,1,0" Padding="12,8,12,8"
                 AutomationProperties.Name="People and window tools">
-        <Grid x:Name="TopRow" VerticalAlignment="Top">
+        <!-- Since M.ORCH-T1439 the logins are Auto, capped at half the sidebar (LoginTabScroller's MaxHeight), the tools Auto
+             under them, and the ticket cards take whatever height is left, scrolling on their own. -->
+        <Grid x:Name="TopRow">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
              with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
@@ -166,6 +198,7 @@
         <!-- A vertical sidebar (M.ORCH-T1431, in place of M.ORCH-T822's horizontal scroller and its < > arrows): one row per
              login, each as wide as the column (the strip's own TabPanel stretches them, so no code-behind sizing any more). -->
         <ScrollViewer x:Name="LoginTabScroller" Grid.Row="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
+                      MaxHeight="{Binding ActualHeight, ElementName=TopRow, Converter={x:Static vm:Converters.Share}, ConverterParameter=0.5}"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
         <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" TabStripPlacement="Left" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding StripSelection}"
@@ -250,6 +283,37 @@
             <mc:MaThemeToggle x:Name="ThemeToggle" VerticalAlignment="Center" />
         </StackPanel>
         </Border>
+        <!-- The shown person's tickets as cards (M.ORCH-T1439): Active first, then Pending, each with its count; the same rows as
+             the body's Queue tabs (ActiveTab / PendingTab). On the global login's tab, that login's own (the unassigned queue
+             stays in the body). It takes the height the logins and tools leave and scrolls on its own. The Canvas wants no size
+             of its own, so a long title never widens the column: the scroller is sized to the Canvas, i.e. the column the logins
+             and tools set. Tab enters the list once; Up and Down move between the cards; Enter or Space opens one. -->
+        <Canvas x:Name="SidebarTicketArea" Grid.Row="3" Margin="{StaticResource SpaceTM}" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
+        <ScrollViewer x:Name="SidebarTicketScroller" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="3"
+                      Width="{Binding ActualWidth, ElementName=SidebarTicketArea}" Height="{Binding ActualHeight, ElementName=SidebarTicketArea}">
+        <StackPanel x:Name="SidebarTickets" KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Contained"
+                    AutomationProperties.Name="Tickets: active, then pending. Each opens in Tickets">
+            <TextBlock Text="No active or pending tickets" Style="{StaticResource MaMutedText}"
+                       Visibility="{Binding HasOpenTickets, Converter={x:Static vm:Converters.FalseToVisible}}" />
+            <StackPanel Visibility="{Binding HasOpenTickets, Converter={StaticResource Visible}}">
+                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="{Binding ActiveTab.AccessibleName}">
+                    <Run Text="{Binding ActiveTab.Name, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding ActiveTab.CountText, Mode=OneWay}" />
+                </TextBlock>
+                <TextBlock Text="{Binding ActiveTab.EmptyText}" Style="{StaticResource MaMutedText}"
+                           Visibility="{Binding ActiveTab.HasTickets, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                <ItemsControl x:Name="SidebarActiveTickets" Style="{StaticResource MaRowList}" ItemsSource="{Binding ActiveTab.Tickets}"
+                              ItemTemplate="{StaticResource SidebarTicketTemplate}" AutomationProperties.Name="{Binding ActiveTab.AccessibleName}" />
+                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceTSBXS}" AutomationProperties.Name="{Binding PendingTab.AccessibleName}">
+                    <Run Text="{Binding PendingTab.Name, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding PendingTab.CountText, Mode=OneWay}" />
+                </TextBlock>
+                <TextBlock Text="{Binding PendingTab.EmptyText}" Style="{StaticResource MaMutedText}"
+                           Visibility="{Binding PendingTab.HasTickets, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                <ItemsControl x:Name="SidebarPendingTickets" Style="{StaticResource MaRowList}" ItemsSource="{Binding PendingTab.Tickets}"
+                              ItemTemplate="{StaticResource SidebarTicketTemplate}" AutomationProperties.Name="{Binding PendingTab.AccessibleName}" />
+            </StackPanel>
+        </StackPanel>
+        </ScrollViewer>
+        </Canvas>
         </Grid>
         </Border>
 

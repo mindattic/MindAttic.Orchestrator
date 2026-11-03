@@ -68,6 +68,9 @@ public sealed class UserTicketRowViewModel : ObservableObject
     public string Summary => item.Ticket.Summary;
     public string Priority => item.Priority == 0 ? "" : item.Priority.ToString("+#;-#");
 
+    /// <summary>The sidebar card's accessible name (M.ORCH-T1439): "M.ORCH-T1439, MindAttic.Orchestrator: its title. Open in Tickets".</summary>
+    public string OpenName => $"{Id}, {Repo}: {Summary}. Open in Tickets";
+
     /// <summary>Who it's assigned to ("Unassigned" for nobody), with their room as a status light.</summary>
     public PersonOptionViewModel Assignee => assignee;
 
@@ -137,10 +140,17 @@ public sealed class QueueTabViewModel(QueueStatus status, string name) : Observa
     /// <summary>"Active: 3 tickets", the tab's accessible name.</summary>
     public string AccessibleName => $"{Name}: {Tickets.Count} ticket{(Tickets.Count == 1 ? "" : "s")}";
 
+    /// <summary>It lists anything: the sidebar shows its cards, else "No active tickets" (M.ORCH-T1439).</summary>
+    public bool HasTickets => Tickets.Count > 0;
+
+    /// <summary>"No active tickets", the sidebar's one muted line for an empty group (M.ORCH-T1439).</summary>
+    public string EmptyText => $"No {Name.ToLowerInvariant()} tickets";
+
     public void RaiseCount()
     {
         Raise(nameof(CountText));
         Raise(nameof(AccessibleName));
+        Raise(nameof(HasTickets));
     }
 }
 
@@ -240,6 +250,14 @@ public sealed partial class MainViewModel
         }
     }
 
+    /// <summary>The sidebar's ticket cards (M.ORCH-T1439): this tab's person's Active tickets, then their Pending ones, the same
+    /// rows the body's Queue tabs show. On the global login's tab, that login's own; the unassigned queue stays in the body.</summary>
+    public QueueTabViewModel ActiveTab => QueueTabs[0];
+    public QueueTabViewModel PendingTab => QueueTabs[1];
+
+    /// <summary>Either group lists something; with both empty the sidebar shows one muted line instead of two headings.</summary>
+    public bool HasOpenTickets => ActiveTab.HasTickets || PendingTab.HasTickets;
+
     /// <summary>The tickets of the Queue tab shown.</summary>
     public ObservableCollection<UserTicketRowViewModel> QueueTickets => SelectedQueueTab.Tickets;
 
@@ -318,6 +336,7 @@ public sealed partial class MainViewModel
         SyncClosed(QueueTabs[2].Tickets, done.Where(c => c.Ticket.Status == TicketRules.Closed));
         SyncClosed(QueueTabs[3].Tickets, done.Where(c => c.Ticket.Status == TicketRules.WontDo));
         foreach (var tab in QueueTabs) tab.RaiseCount();
+        Raise(nameof(HasOpenTickets));
         Raise(nameof(HasNoQueueTickets));
         Raise(nameof(NoQueueTicketsText));
     }

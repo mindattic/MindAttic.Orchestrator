@@ -60,6 +60,8 @@ public sealed class TicketsDesktopTests
         var plain = doc.Descendants().Where(e => e.Name == p + "Run" || e.Name == p + "TextBlock")
             .Where(e => (string?)e.Attribute("Text") is { } t && (t.StartsWith("{Binding Id") || t.StartsWith("{Binding TicketId") || t.StartsWith("{Binding Summary")))
             .Where(e => e.Parent?.Name != p + "Hyperlink")
+            // The sidebar's ticket card (M.ORCH-T1439) is itself the link: one button opening it through the same command.
+            .Where(e => !e.Ancestors(p + "Button").Any(b => ((string?)b.Attribute("Command"))?.Contains("OpenInTicketsCommand") == true))
             // An organization's summary isn't a ticket's.
             .Where(e => e.Ancestors(p + "DataTemplate").FirstOrDefault()?.Attribute("DataType")?.Value.Contains("OrgViewModel") != true);
         Assert.That(plain, Is.Empty, "no ticket id or title left as plain text");
