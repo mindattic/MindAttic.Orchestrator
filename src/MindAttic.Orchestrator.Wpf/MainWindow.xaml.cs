@@ -480,12 +480,13 @@ public partial class MainWindow : Window
 
     /// <summary>Redirects a wheel tick anywhere over the window into <see cref="AgentsBody"/>'s own scroll (M.ORCH-T1299),
     /// except one already inside it (left alone so its native scrolling runs unchanged) or one while
-    /// <see cref="LoginsModal"/> is open (it scrolls itself). PreviewMouseWheel tunnels from the window
+    /// <see cref="LoginsModal"/> is open (it scrolls itself) or <see cref="UserSettingsModal"/> is (the page behind a modal's
+    /// dimmed cover stays put). PreviewMouseWheel tunnels from the window
     /// down to the actual element before MouseWheel bubbles back up, so this fires ahead of any inner ScrollViewer along the
     /// way and can mark the tick handled before one swallows it.</summary>
     private void MainWindow_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (e.Handled || !AgentsBody.IsVisible || LoginsModal.IsOpen) return;
+        if (e.Handled || !AgentsBody.IsVisible || LoginsModal.IsOpen || UserSettingsModal.IsOpen) return;
         if (e.OriginalSource is DependencyObject source && IsWithin(source, AgentsBody)) return;
         AgentsBody.ScrollToVerticalOffset(AgentsBody.VerticalOffset - e.Delta);
         e.Handled = true;

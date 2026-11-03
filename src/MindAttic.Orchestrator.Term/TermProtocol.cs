@@ -175,10 +175,16 @@ public static class TermProtocol
 
     /// <summary>Letters and digits kept, anything else a dash, plus a short hash of the whole input, so a name is safe in a
     /// pipe or file name and two different ids that dash to the same text (e.g. "foo.bar" and "foo-bar") still don't collide
-    /// (bughunt 2026-11-02, M.ORCH-T1423: they used to, fighting over the same pipe and sharing the same log/registry file).</summary>
-    public static string Sanitize(string text) =>
-        new string(text.Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-').ToArray()) + "-" +
-        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..8].ToLowerInvariant();
+    /// (bughunt 2026-11-02, M.ORCH-T1423: they used to, fighting over the same pipe and sharing the same log/registry file).
+    /// The hash is added only when a character was replaced (M.ORCH-T1419): text that is already safe (every generated session
+    /// id, <see cref="NewSessionId"/>) keeps the exact name it always had, so a dashboard, gateway or viewer of this version still
+    /// finds the registry file, pane file and pipe of a host started by an earlier one (hosts outlive a redeploy).</summary>
+    public static string Sanitize(string text)
+    {
+        var dashed = new string(text.Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-').ToArray());
+        if (text.All(c => char.IsAsciiLetterOrDigit(c) || c == '-')) return dashed;
+        return dashed + "-" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..8].ToLowerInvariant();
+    }
 
     /// <summary>The longest viewer id kept (<see cref="LogSafeId"/>).</summary>
     public const int MaxViewerId = 64;

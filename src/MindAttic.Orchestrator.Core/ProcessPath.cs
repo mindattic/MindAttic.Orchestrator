@@ -18,7 +18,10 @@ public static class ProcessPath
             var merged = Merge(current,
                 Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.Machine),
                 Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.User));
-            var added = Split(merged).Count - Split(current).Count;
+            // Entries the merge brought in that the current PATH lacks: not a count difference, which duplicates already in the
+            // current PATH (dropped by the merge) would cancel out, leaving the stripped PATH in place.
+            var had = Split(current).Select(e => Key(Environment.ExpandEnvironmentVariables(e))).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var added = Split(merged).Count(e => !had.Contains(Key(e)));
             if (added > 0) Environment.SetEnvironmentVariable("PATH", merged);
             return Math.Max(0, added);
         }

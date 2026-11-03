@@ -61,8 +61,8 @@ public sealed class TermHostTests
     [Test]
     public void The_pipe_is_named_for_the_user_and_the_session()
     {
-        Assert.That(TermProtocol.PipeName("a1b2c3", "Ryan D"), Is.EqualTo("mindattic-term-Ryan-D-a1b2c3"));
-        Assert.That(TermProtocol.PipeName("../x", "me"), Is.EqualTo("mindattic-term-me----x"));
+        Assert.That(TermProtocol.PipeName("a1b2c3", "Ryan D"), Is.EqualTo("mindattic-term-Ryan-D-38cac86e-a1b2c3"));
+        Assert.That(TermProtocol.PipeName("../x", "me"), Is.EqualTo("mindattic-term-me----x-d6b96a97"));
         Assert.That(TermProtocol.NewSessionId(), Does.Match("^[0-9a-f]{12}$"));
     }
 
