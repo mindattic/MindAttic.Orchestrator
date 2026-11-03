@@ -89,6 +89,21 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
 
     private bool ApiBillingOn() => ApiBilling is { } seam ? seam() : ApiBillingInForce();
 
+    /// <summary>Seam: the API key person's login, prepared and ready for a tab (M.ORCH-T906); null prepares it for real.
+    /// Tests fake this rather than let <see cref="Open"/> touch the real Vault/account folders.</summary>
+    internal Func<TabLogin?>? ApiKeyLogin { get; init; }
+
+    private TabLogin? ApiKeyLoginNow() => ApiKeyLogin is { } seam ? seam() : PreparedApiKeyLogin();
+
+    /// <summary>The API key's login folder, made ready for a CLI (M.ORCH-T906); null while the Vault holds no key or it
+    /// couldn't be prepared.</summary>
+    private static TabLogin? PreparedApiKeyLogin()
+    {
+        var dirs = new AccountDirs();
+        return Billing.ApiKeyPerson.Prepare(dirs, new Billing.BillingSwitch()) is null
+            ? new TabLogin(Billing.ApiKeyPerson.Dir(dirs).Directory, Billing.ApiKeyPerson.Email) : null;
+    }
+
     /// <summary>Whether the owner has API billing on (M.ORCH-T706): the mode in force is the API key; a mode that can't be read counts as off.</summary>
     public static bool ApiBillingInForce()
     {
@@ -113,8 +128,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             // The API key's person (M.ORCH-T906): its own login folder, made ready (the Vault key approved there) for a CLI that
             // bills API credits; null while the Vault holds no key.
             if (Billing.ApiKeyPerson.Is(email))
-                return Billing.ApiKeyPerson.Prepare(dirs, new Billing.BillingSwitch()) is null
-                    ? new TabLogin(Billing.ApiKeyPerson.Dir(dirs).Directory, Billing.ApiKeyPerson.Email) : null;
+                return PreparedApiKeyLogin();
             if (AccountDirs.Normalize(email) is { } e && dirs.For(e) is { SignedIn: true } own)
             {
                 dirs.Prepare(own);
@@ -144,6 +158,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         var before = sessions.HostIds();
         var focus = Foreground.Current();
         var noLogin = false;
+        var apiBillingOn = false;
         string? picked = null;
         var configDir = ConfigDirFor(provider, login, () =>
         {
@@ -153,11 +168,15 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             var chosen = (Logins ?? new LoginPicker { Allowances = () => Budget.WeeklyAllowances.Active(store, DateTime.UtcNow), Cutoffs = () => Budget.UsageCutoffs.Load(store) }).ForNewTab(provider, loaded.AutoLogin, DateTime.UtcNow, out _, loaded.WeeklyStopPercent, eligible);
             var dir = chosen?.Directory;
             picked = chosen?.Email;
-            noLogin = dir is null && !ApiBillingOn();
+            apiBillingOn = ApiBillingOn();
+            if (dir is null && apiBillingOn && ApiKeyLoginNow() is { } apiLogin) { dir = apiLogin.ConfigDir; picked = apiLogin.Email; }
+            noLogin = dir is null;
             return dir;
         });
         pickedEmail = picked;
-        if (noLogin) return ("no login of its own has room and API billing is off: it waits for a login with room, or for API billing to be switched on (the API key is the only fallback, never a member's seat)", null);
+        if (noLogin) return (apiBillingOn
+            ? "no login of its own has room and the API key's login isn't ready to take it (no key in the Vault?): it waits for a login with room, or for the Vault's API key to be ready"
+            : "no login of its own has room and API billing is off: it waits for a login with room, or for API billing to be switched on (the API key is the only fallback, never a member's seat)", null);
         var startError = sessions.Start(title, directory, provider, prompt, configDir);
         if (startError is not null) return (startError, null);
         _ = Foreground.RestoreAsync(focus, TimeSpan.FromSeconds(2));

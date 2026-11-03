@@ -250,10 +250,13 @@ public sealed class DispatcherTests
     {
         // M.ORCH-T747/T749: never the global login (a member's seat); the API key only when the owner has API billing on.
         var empty = new AccountDirs(Path.Combine(dir, "accounts"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"));
+        var apiKeyLoginCalls = 0;
         Dispatcher Real(bool billing) =>
             new(new SessionControl(new OrchestratorOptions { LauncherExe = Path.Combine(dir, "no-launcher.exe") }), store)
             {
                 ApiBilling = () => billing,
+                // Faked (never the real Vault/account folders, M.ORCH-T1422): counts whether Open's picker reached for it.
+                ApiKeyLogin = () => { apiKeyLoginCalls++; return new Dispatcher.TabLogin(Path.Combine(dir, "api-key"), "api-key@mindattic.vault"); },
                 Logins = new LoginPicker(empty, () => []),
             };
 
@@ -261,10 +264,13 @@ public sealed class DispatcherTests
         Assert.That(off.Ok, Is.False);
         Assert.That(off.Message, Does.Contain("API billing is off"));
         Assert.That(store.LoadAssignments(), Is.Empty, "it waits: nothing is claimed");
+        Assert.That(apiKeyLoginCalls, Is.Zero, "billing off: the API key fallback is never tried");
 
         var on = Real(true).Dispatch(Item("A-T1"), "Claude");
         Assert.That(on.Message, Does.Not.Contain("API billing is off"), "past the gate; the missing launcher is what stops it here");
         Assert.That(on.Message, Does.Contain("Launcher not found"));
+        Assert.That(apiKeyLoginCalls, Is.EqualTo(1),
+            "M.ORCH-T1422: billing on, nothing free -- the tab's picker must land on the API key's login, never silently fall through to the global one");
 
         var codex = Real(false).Dispatch(Item("A-T1"), "Codex");
         Assert.That(codex.Message, Does.Not.Contain("API billing is off"), "Codex has no Claude login to wait for");
