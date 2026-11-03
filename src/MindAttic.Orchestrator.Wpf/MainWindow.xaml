@@ -132,14 +132,21 @@
         <!-- No emergency billing toggle any more (M.ORCH-T906, which replaced M.ORCH-T770's): the Vault's API key is a person
              with its own tab in the strip below, its own Launcher and CLIs billing API credits; orchestrator billing stays the
              command-line tool. -->
+        <!-- Top-aligned with a star middle row (M.ORCH-T1431): the tools sit right under the last login, and a list too long for
+             the window scrolls on its own rather than pushing the tools off the bottom. Its top matches the CLI tab bar's. -->
         <Border x:Name="Sidebar" Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" MinWidth="170"
-                BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,1,0" Padding="12,12,12,0">
-        <StackPanel x:Name="TopRow">
+                BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,1,0" Padding="12,8,12,8"
+                AutomationProperties.Name="People and window tools">
+        <Grid x:Name="TopRow" VerticalAlignment="Top">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
         <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
              with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
              tab (MainWindow.xaml.cs), which holds every org, like the person strip under it. -->
-        <StackPanel>
-        <ListBox x:Name="OrgStrip" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Orgs}" SelectedItem="{Binding SelectedOrg}"
+        <ListBox x:Name="OrgStrip" Grid.Row="0" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Orgs}" SelectedItem="{Binding SelectedOrg}"
                  Padding="0" Margin="{StaticResource SpaceBS}" AutomationProperties.Name="Organizations, each with its own people"
                  Visibility="{Binding HasOrgs, Converter={StaticResource Visible}}">
             <ListBox.ItemTemplate>
@@ -157,8 +164,8 @@
         </ListBox>
         <!-- The org-wide login actions (Add login, Sign in all, Report) moved from here into Settings' Logins tab (M.ORCH-T804). -->
         <!-- A vertical sidebar (M.ORCH-T1431, in place of M.ORCH-T822's horizontal scroller and its < > arrows): one row per
-             login, every row the same width (SizePersonTabs in MainWindow.xaml.cs), scrolling only if they outgrow the window. -->
-        <ScrollViewer x:Name="LoginTabScroller" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
+             login, each as wide as the column (the strip's own TabPanel stretches them, so no code-behind sizing any more). -->
+        <ScrollViewer x:Name="LoginTabScroller" Grid.Row="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
         <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" TabStripPlacement="Left" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding StripSelection}"
@@ -189,13 +196,7 @@
             </mc:MaTabControl.ItemContainerStyle>
             <mc:MaTabControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MainViewModel}">
-                    <!-- Every person's tab the same width (M.ORCH-T803): WPF sizes a TabItem to its header's content by default,
-                         so Amy/Erin/Honey/Jordan/Ryan's differing name lengths made the strip uneven. Width is plain
-                         FrameworkElement's, not the library's MaTabItem's own (M.ORCH-T667's ItemContainerStyle may only set
-                         MaTabItem's own properties), so it's set directly on the generated container once this header loads
-                         (MainWindow.xaml.cs's LoginTabItem_Loaded), the same code-behind workaround as the busy icon's glow
-                         below. The 'API key' and 'Miscellaneous' tabs are left to their own content. -->
-                    <StackPanel x:Name="LoginTabItem" Orientation="Horizontal" Loaded="LoginTabItem_Loaded">
+                    <StackPanel x:Name="LoginTabItem" Orientation="Horizontal">
                         <Grid x:Name="TabStatusIcon" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
                             <!-- Idle, or every open CLI has stopped (M.ORCH-T890): a gray box, "zzz" (M.ORCH-T1173). A fixed Grid
                                  size (M.ORCH-T1206, 20x20 M.ORCH-T1272) reserves one consistent footprint across tabs: each badge
@@ -232,12 +233,12 @@
             </mc:MaTabControl.ItemTemplate>
         </mc:MaTabControl>
         </ScrollViewer>
-        </StackPanel>
-        <!-- The window tools sit under the logins (M.ORCH-T1431). Team Wall (M.ORCH-T936, People E716) opens every live CLI;
-             Tickets (M.ORCH-T878, Tag E8EC) opens Tickets Desktop; Logins (M.ORCH-T1308, Contact E77B) holds Add login, Sign in
-             all and Report; Settings (M.ORCH-T804, cog E713) opens MindAttic Vault at the Orchestrator tab; then the sun/moon
-             theme toggle (M.ORCH-T678). -->
-        <StackPanel x:Name="SidebarTools" Orientation="Horizontal" Margin="0,16,0,0">
+        <!-- The window tools sit under the logins, a rule apart (M.ORCH-T1431). Team Wall (M.ORCH-T936, People E716) opens every
+             live CLI; Tickets (M.ORCH-T878, Tag E8EC) opens Tickets Desktop; Logins (M.ORCH-T1308, Contact E77B) holds Add login,
+             Sign in all and Report; Settings (M.ORCH-T804, cog E713) opens MindAttic Vault at the Orchestrator tab; then the
+             sun/moon theme toggle (M.ORCH-T678). -->
+        <Border Grid.Row="2" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,8,0,0">
+        <StackPanel x:Name="SidebarTools" Orientation="Horizontal" AutomationProperties.Name="Window tools">
             <Button x:Name="TeamWallButton" Style="{StaticResource MaToolButton}" Content="&#xE716;" Click="TeamWallButton_Click"
                     ToolTip="Team Wall: everyone's live CLIs" AutomationProperties.Name="Team Wall" />
             <Button x:Name="TicketsButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Command="{Binding OpenTicketsAppCommand}"
@@ -248,7 +249,8 @@
                     ToolTip="Settings (opens MindAttic Vault)" AutomationProperties.Name="Settings" />
             <mc:MaThemeToggle x:Name="ThemeToggle" VerticalAlignment="Center" />
         </StackPanel>
-        </StackPanel>
+        </Border>
+        </Grid>
         </Border>
 
         <!-- A person's CLI tab bar (M.ORCH-T810), fixed under their person tab (M.ORCH-T1302, which pulled the chosen terminal

@@ -297,27 +297,21 @@ public sealed class TabStatusTests
             .And.Contain("{Binding ShowsClaudeMeters, Converter"));
     }
 
-    /// <summary>M.ORCH-T803: every person's tab is the same width, since WPF sizes a TabItem to its header's content by
-    /// default and Amy/Erin/Honey/Jordan/Ryan's differing name lengths made the strip uneven. The library's MaTabItem has no
-    /// Width of its own (M.ORCH-T667's ItemContainerStyle may only set MaTabItem's own properties, not plain
-    /// FrameworkElement's), so it's set directly on the generated container from code-behind once the header loads. Since
-    /// M.ORCH-T1096 that width is the widest tab's own content plus a little padding a side, not a fixed 230.</summary>
+    /// <summary>M.ORCH-T803: every person's tab is the same width. Since M.ORCH-T1431 the person tabs are a vertical sidebar
+    /// (TabStripPlacement Left), whose TabPanel stretches every tab to the column, so the code-behind sizing is gone.</summary>
     [Test]
-    public void Every_person_tab_is_as_wide_as_the_widest_ones_content()
+    public void Every_person_tab_is_as_wide_as_the_sidebar()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
-        Assert.That(strip, Does.Contain("x:Name=\"LoginTabItem\"").And.Contain("Loaded=\"LoginTabItem_Loaded\""));
+        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"SidebarTools\"", StringComparison.Ordinal)];
+        Assert.That(strip, Does.Contain("TabStripPlacement=\"Left\"").And.Contain("x:Name=\"LoginTabItem\"").And.Not.Contain("LoginTabItem_Loaded"));
 
         var code = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));
-        Assert.That(code, Does.Not.Contain("PersonTabWidth = 230"), "content-sized since M.ORCH-T1096");
-        // M.ORCH-T1250: the same padding constant also sizes the CLI tab strip, so it's no longer person-tab-specific.
-        Assert.That(code, Does.Contain("private const double TabSidePadding")
-            .And.Contain("private void LoginTabItem_Loaded(")
-            .And.Contain("private void SizePersonTabs()")
-            .And.Contain("tabs.Max(NaturalWidth) + 2 * TabSidePadding"));
+        Assert.That(code, Does.Not.Contain("SizePersonTabs").And.Not.Contain("LoginTabItem_Loaded"));
+        // M.ORCH-T1250: the CLI tabs keep their own equal-width sizing.
+        Assert.That(code, Does.Contain("private const double TabSidePadding").And.Contain("tabs.Max(NaturalWidth) + 2 * TabSidePadding"));
     }
 
     /// <summary>M.ORCH-T790: the tab's red flag counts only CLIs blocked on you, and says so in words.</summary>

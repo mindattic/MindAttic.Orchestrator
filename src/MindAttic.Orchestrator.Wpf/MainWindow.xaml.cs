@@ -501,34 +501,18 @@ public partial class MainWindow : Window
         return false;
     }
 
-    /// <summary>Room added on each side of the widest tab's own content, for both the person tabs (M.ORCH-T1096) and the
-    /// CLI tabs (M.ORCH-T1250).</summary>
+    /// <summary>Room added on each side of the widest CLI tab's own content (M.ORCH-T1250).</summary>
     private const double TabSidePadding = 10;
 
-    /// <summary>Extra width on top of <see cref="TabSidePadding"/> for the CLI tabs only (M.ORCH-T1269), so the CLI tab
-    /// bar's row lines up with the login tab bar above it.</summary>
+    /// <summary>Extra width on top of <see cref="TabSidePadding"/> for the CLI tabs (M.ORCH-T1269).</summary>
     private const double CliTabWidthBoost = 10;
 
     /// <summary>The tab parts already watched for size changes, so a header loading again doesn't subscribe twice.</summary>
     private readonly HashSet<FrameworkElement> watchedTabParts = [];
 
-    /// <summary>A person tab's header content: every person's tab is the same width (M.ORCH-T803), that of the widest one's
-    /// own content plus <see cref="TabSidePadding"/> a side (M.ORCH-T1096), so short names don't sit in a wide tab. The
-    /// library's MaTabItem has no Width of its own (it's plain FrameworkElement's), so the ItemContainerStyle (M.ORCH-T667) can't
-    /// set it; it's set directly on each generated container, again whenever a tab's icon, name or trailing text changes size.</summary>
-    private void LoginTabItem_Loaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { DataContext: MainViewModel { IsPersonTab: true } } content) return;
-        if (ItemsControl.ContainerFromElement(LoginTabStrip, content) is not TabItem tab) return;
-        tab.ApplyTemplate();
-        if (TabRow(tab) is { } row)
-            foreach (var part in row.Children.OfType<FrameworkElement>())
-                if (watchedTabParts.Add(part)) part.SizeChanged += (_, _) => SizePersonTabs();
-        SizePersonTabs();
-    }
-
     /// <summary>A CLI tab's header content: every CLI tab is the same width (M.ORCH-T1250), that of the widest one's own
-    /// content plus <see cref="TabSidePadding"/> a side, the CLI strip's own version of <see cref="LoginTabItem_Loaded"/>.</summary>
+    /// content plus <see cref="TabSidePadding"/> a side, set on each generated container (MaTabItem has no Width of its own
+    /// for the ItemContainerStyle to set), again whenever a tab's parts change size.</summary>
     private void TerminalTabItem_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: TerminalPaneViewModel } content) return;
@@ -590,7 +574,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The row an MaTabItem lays its status light, header and trailing text out in (its template's Bd border's child).</summary>
-    private static StackPanel? TabRow(TabItem tab) => (tab.Template?.FindName("Bd", tab) as Border)?.Child as StackPanel;
+    private static Panel? TabRow(TabItem tab) => (tab.Template?.FindName("Bd", tab) as Border)?.Child as Panel;
 
     /// <summary>Its content's natural width: each part of its row is measured with unbounded width, so this never depends on
     /// the Width already set on it.</summary>
@@ -599,21 +583,9 @@ public partial class MainWindow : Window
             ? tab.Padding.Left + tab.Padding.Right + row.Children.OfType<UIElement>().Where(c => c.Visibility != Visibility.Collapsed).Sum(c => c.DesiredSize.Width)
             : 0;
 
-    private void SizePersonTabs()
-    {
-        var tabs = LoginTabStrip.Items.Cast<object>()
-            .Select(item => LoginTabStrip.ItemContainerGenerator.ContainerFromItem(item) as TabItem)
-            .Where(t => t is { DataContext: MainViewModel { IsPersonTab: true } }).Cast<TabItem>().ToList();
-        if (tabs.Count == 0) return;
-        var width = Math.Ceiling(tabs.Max(NaturalWidth) + 2 * TabSidePadding);
-        foreach (var t in tabs)
-            if (double.IsNaN(t.Width) || Math.Abs(t.Width - width) > 0.5) t.Width = width;
-    }
-
-    /// <summary>Every CLI tab the same width (M.ORCH-T1250), the CLI strip's own version of <see cref="SizePersonTabs"/>:
-    /// each no longer just sizes to its own content (as the no-wrap scroller comment on
-    /// <see cref="TerminalTabScroller_ScrollChanged"/> used to assume), but to the widest one's plus <see cref="TabSidePadding"/>
-    /// a side, plus <see cref="CliTabWidthBoost"/> so the row lines up with the login tab bar above it.</summary>
+    /// <summary>Every CLI tab the same width (M.ORCH-T1250): each no longer just sizes to its own content (as the no-wrap
+    /// scroller comment on <see cref="TerminalTabScroller_ScrollChanged"/> used to assume), but to the widest one's plus
+    /// <see cref="TabSidePadding"/> a side, plus <see cref="CliTabWidthBoost"/>.</summary>
     private void SizeTerminalTabs()
     {
         var tabs = TerminalTabs.Items.Cast<object>()
