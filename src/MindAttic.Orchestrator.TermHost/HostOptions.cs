@@ -96,7 +96,9 @@ internal sealed record HostOptions
                     return null;
             }
         }
-        if (id is not null && TermProtocol.Sanitize(id).Trim('-').Length == 0) { error = $"--id '{id}' has no letter or digit."; return null; }
+        // Checked directly, not through Sanitize (M.ORCH-T1423): Sanitize's hash suffix is never all dashes, so it could no
+        // longer stand in for "this id has no letter or digit at all".
+        if (id is not null && !id.Any(char.IsAsciiLetterOrDigit)) { error = $"--id '{id}' has no letter or digit."; return null; }
         return new HostOptions
         {
             Id = id ?? TermProtocol.NewSessionId(), Cwd = cwd, Env = env, Title = title, Login = login, Repo = repo, Linger = linger, Launch = launch,
