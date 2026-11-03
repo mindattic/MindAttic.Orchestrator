@@ -51,7 +51,13 @@ public static class LoginScope
     /// </summary>
     public static Snapshot For(Snapshot all, string? email, TimeSpan workingWindow, TimeSpan waitingWindow)
     {
-        var scoped = Keep(all, login => Same(login, email), workingWindow, waitingWindow);
+        // The global login's tab also keeps a CLI on a per-CLI folder named for the global login's own email
+        // (M.ORCH-T1415): Tabs() gives that email no tab of its own, so dropping it here left it on no tab at all
+        // and the person's tab read idle while its CLI worked.
+        var globalEmail = AccountDirs.Normalize(all.GlobalEmail);
+        var scoped = email is null
+            ? Keep(all, login => login is null || (globalEmail is not null && Same(AccountDirs.Normalize(login), globalEmail)), workingWindow, waitingWindow)
+            : Keep(all, login => Same(login, email), workingWindow, waitingWindow);
         if (email is null) return scoped;
         var own = all.Accounts.FirstOrDefault(a => Same(a.Email, email));
         return scoped with

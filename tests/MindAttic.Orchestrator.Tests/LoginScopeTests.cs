@@ -59,6 +59,34 @@ public sealed class LoginScopeTests
     }
 
     [Test]
+    public void The_global_logins_tab_keeps_a_cli_on_a_per_cli_folder_named_for_the_global_email()
+    {
+        // M.ORCH-T1415: Tabs() gives the global login's own email no second tab, so its per-CLI CLI must show on the global one.
+        var ws = Workspace();
+        var a = ws.Repos[0];
+        var all = ws with
+        {
+            Repos = [a with
+            {
+                Hosts = [.. a.Hosts, new HostSession("Claude", 9, "p9", @"D:\W\A") { OwnLogin = "Ryan@Example.com" }],
+                Sessions = [.. a.Sessions, new TranscriptSession("r1", @"D:\W\A", Now.AddMinutes(-1), new TokenUsage(2, 0, 0, 2), null)],
+            }, ws.Repos[1]],
+            Agents = [.. ws.Agents, Agent("r1", "A", AgentState.Working, "ryan@example.com") with { Subagents = [] }],
+            OwnLogins = new Dictionary<string, string> { ["j1"] = "jordan@example.com", ["r1"] = "ryan@example.com" },
+        };
+
+        var mine = LoginScope.For(all, null, WorkingWindow, WaitingWindow);
+
+        Assert.That(mine.Agents.Select(x => x.SessionId), Is.EqualTo(new[] { "g1", "r1" }));
+        var repo = mine.Repos.Single(r => r.Name == "A");
+        Assert.That(repo.Sessions.Select(s => s.SessionId), Is.EqualTo(new[] { "g1", "r1" }));
+        Assert.That(repo.Hosts.Select(h => h.ProcessId), Is.EqualTo(new[] { 1, 9 }));
+        Assert.That(repo.State, Is.EqualTo(RepoState.Working), "its own CLI is working, so the person's tab isn't idle");
+        Assert.That(LoginScope.For(all, "jordan@example.com", WorkingWindow, WaitingWindow).Agents.Select(x => x.SessionId),
+            Is.EqualTo(new[] { "j1" }), "another login's tab still keeps only its own");
+    }
+
+    [Test]
     public void A_logins_tab_sees_its_own_clis_and_its_accounts_own_pace_and_every_repo_with_its_tickets()
     {
         var all = Workspace();
