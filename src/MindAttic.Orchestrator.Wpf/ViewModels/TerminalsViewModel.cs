@@ -1181,6 +1181,16 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     public ICommand NextCommand => nextCommand ??= new RelayCommand(() => Step(+1));
     public ICommand PreviousCommand => previousCommand ??= new RelayCommand(() => Step(-1));
 
+    /// <summary>Chooses the tab of TermHost session <paramref name="termId"/> (M.ORCH-T1436, a remembered choice coming back after
+    /// a restart); false, leaving the choice as it is, when none of this person's tabs is that session any more.</summary>
+    internal bool Choose(string? termId)
+    {
+        if (termId is not { Length: > 0 } || Panes.FirstOrDefault(p => string.Equals(p.TermId, termId, StringComparison.OrdinalIgnoreCase)) is not { } pane)
+            return false;
+        SelectedPane = pane;
+        return true;
+    }
+
     private void Step(int by)
     {
         if (Panes.Count < 2) return;

@@ -16,7 +16,7 @@ public sealed record RestoreTab
     /// <summary>The login its CLI was on last (its email), null for the global login.</summary>
     public string? Login { get; init; }
 
-    /// <summary>It was the tab its person's page showed.</summary>
+    /// <summary>It was the tab its person's page showed: with <see cref="HostId"/>, what reselects it after a restart (M.ORCH-T1436).</summary>
     public bool Chosen { get; init; }
 
     /// <summary>The TermHost session its CLI ran in (M.ORCH-T928), null when it ran unhosted (in the dashboard's own process). While

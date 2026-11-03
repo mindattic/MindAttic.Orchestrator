@@ -168,6 +168,8 @@ public partial class MainWindow : Window
             }
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
             await model.RefreshAsync();
+            // Each person back on the CLI tab they last had chosen (M.ORCH-T1436), kept by TermHost session in the restore file.
+            if (restoreOnLoad) model.ReselectRemembered(SessionRestore.Previous);
             if (restored) model.ReselectRestored();
             model.RestoringTerminals = false;
             polling = true;

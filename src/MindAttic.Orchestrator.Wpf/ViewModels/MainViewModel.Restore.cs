@@ -91,6 +91,26 @@ public sealed partial class MainViewModel
         return lines;
     }
 
+    /// <summary>The TermHost sessions of the tabs each person last had chosen (M.ORCH-T1436), from the last run's restore file.</summary>
+    internal static IReadOnlyList<string> RememberedTerms(RestoreState? previous) =>
+        [.. previous?.Tabs.Where(t => t.Chosen && t.HostId is { Length: > 0 }).Select(t => t.HostId!) ?? []];
+
+    /// <summary>After the first refresh, on a start that reattached its hosted CLIs (M.ORCH-T1436): each person's last chosen
+    /// tab, by its TermHost session, chosen again; one whose session is gone leaves that person's default. Never throws.</summary>
+    internal void ReselectRemembered(RestoreState? previous)
+    {
+        if (!IsGlobalTab) { Root.ReselectRemembered(previous); return; }
+        try
+        {
+            SyncTerminals();
+            foreach (var id in RememberedTerms(previous))
+                if (AllTerminals.Panes.FirstOrDefault(p => string.Equals(p.TermId, id, StringComparison.OrdinalIgnoreCase)) is { } pane)
+                    OwnerOf(pane).Terminals.Choose(id);
+            ShowChosenPane();
+        }
+        catch (Exception ex) { OrchestratorLog.For("Restore").Error(ex, "Reselecting each person's remembered CLI tab failed; contained"); }
+    }
+
     /// <summary>After the first refresh (every login's tab is up by then): each restored person's chosen tab chosen again, then
     /// the person and the tab that were on screen.</summary>
     internal void ReselectRestored()
