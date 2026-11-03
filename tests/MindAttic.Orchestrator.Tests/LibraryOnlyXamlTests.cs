@@ -62,6 +62,12 @@ public sealed class LibraryOnlyXamlTests
     /// <summary>Setters an app style may add on top of a library style: behaviour, never looks.</summary>
     private static readonly HashSet<string> BehaviourSetters = ["Command", "CommandParameter", "ToolTip", "Visibility"];
 
+    /// <summary>A library attached property (e.g. mc:MaCallout.ToolTip, M.ORCH-T1441): the library's own look or behaviour,
+    /// so an app style may set it like one of the library type's own properties.</summary>
+    private static bool IsLibraryAttached(string property) =>
+        property.IndexOf(':') is var colon and > 0 && property.IndexOf('.', colon) is var dot and > 0
+        && Library.GetType($"{LibraryNamespace}.{property[(colon + 1)..dot]}") is not null;
+
     /// <summary>The brush properties an element may set, only to a library token, a binding or no fill.</summary>
     private static bool IsBrushProperty(string name) =>
         name.EndsWith("Background") || name.EndsWith("Foreground") || name.EndsWith("Brush") || name is "Fill" or "Stroke" or "Accent";
@@ -179,6 +185,7 @@ public sealed class LibraryOnlyXamlTests
 
         var libraryType = target.Contains(':') ? Library.GetType($"{LibraryNamespace}.{targetName}") : null;
         var looks = setters.Where(p => !BehaviourSetters.Contains(p) && !p.StartsWith("AutomationProperties.")
+                                       && !IsLibraryAttached(p)
                                        && libraryType?.GetProperty(p)?.DeclaringType?.Namespace != LibraryNamespace).ToList();
         return looks.Count == 0 ? null : $"adds looks of its own ({string.Join(", ", looks)}) to a library style";
     }
@@ -272,6 +279,20 @@ public sealed class LibraryOnlyXamlTests
     }
 
     [Test]
+    public void The_login_tabs_tooltip_is_a_callout_pointing_at_the_sidebar_edge()
+    {
+        // M.ORCH-T1441: the user tabs' hover text is the library's callout, its arrow on the right of the sidebar, rather
+        // than a plain tooltip at the pointer; the CLI tabs keep the plain one.
+        var main = Load().Single(f => f.Item1 == "MainWindow.xaml").Item2;
+        var strip = main.Descendants().Single(e => (string?)e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")) == "LoginTabStrip");
+        var setters = strip.Descendants().Where(e => e.Name.LocalName == "Setter")
+            .ToDictionary(e => (string)e.Attribute("Property")!, e => (string?)e.Attribute("Value"));
+        Assert.That(setters, Does.ContainKey("mc:MaCallout.ToolTip").WithValue("{Binding TabHoverTip}"));
+        Assert.That(setters, Does.ContainKey("mc:MaCallout.Placement").WithValue("Right"));
+        Assert.That(setters, Does.Not.ContainKey("ToolTip"), "one tooltip: the callout");
+    }
+
+    [Test]
     public void The_exceptions_stay_few()
     {
         Assert.That(Exceptions.Keys, Is.EquivalentTo(new[] { "Window", "TextBlock", "Path" }));
@@ -311,6 +332,7 @@ public sealed class LibraryOnlyXamlTests
     [TestCase("<TextBlock Text=\"x\" FontWeight=\"SemiBold\" Foreground=\"{DynamicResource MaWarn}\" />")]
     [TestCase("<Path Data=\"M0,0 L1,1\" Fill=\"{DynamicResource MaText}\" />")]
     [TestCase("<mc:MaTabControl><mc:MaTabControl.ItemContainerStyle><Style TargetType=\"mc:MaTabItem\" BasedOn=\"{StaticResource {x:Type mc:MaTabItem}}\"><Setter Property=\"Accent\" Value=\"{Binding TabBrush}\" /><Setter Property=\"ToolTip\" Value=\"{Binding Tip}\" /></Style></mc:MaTabControl.ItemContainerStyle></mc:MaTabControl>")]
+    [TestCase("<mc:MaTabControl><mc:MaTabControl.ItemContainerStyle><Style TargetType=\"mc:MaTabItem\" BasedOn=\"{StaticResource {x:Type mc:MaTabItem}}\"><Setter Property=\"mc:MaCallout.ToolTip\" Value=\"{Binding Tip}\" /><Setter Property=\"mc:MaCallout.Placement\" Value=\"Right\" /></Style></mc:MaTabControl.ItemContainerStyle></mc:MaTabControl>")]
     [TestCase("<Hyperlink Style=\"{StaticResource Link}\" />")]
     public void The_rule_passes_the_librarys_own_pieces(string snippet)
     {

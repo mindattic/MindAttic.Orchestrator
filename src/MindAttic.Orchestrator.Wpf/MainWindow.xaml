@@ -223,7 +223,10 @@
                 <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
                     <Setter Property="Accent" Value="{Binding TabBrush}" />
                     <Setter Property="Trailing" Value="{Binding TabTrailing}" />
-                    <Setter Property="ToolTip" Value="{Binding TabHoverTip}" />
+                    <!-- A callout pointing at the sidebar (M.ORCH-T1441): its arrow touches the tab's right edge, and it flips, or slides
+                         up or down, to stay on the tab's monitor (the library's MaCallout, M.COMP-T167). -->
+                    <Setter Property="mc:MaCallout.ToolTip" Value="{Binding TabHoverTip}" />
+                    <Setter Property="mc:MaCallout.Placement" Value="Right" />
                     <Setter Property="AutomationProperties.Name" Value="{Binding TabTip}" />
                 </Style>
             </mc:MaTabControl.ItemContainerStyle>
