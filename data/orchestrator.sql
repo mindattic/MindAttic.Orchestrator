@@ -15,8 +15,6 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'member', 'premium', 'active', 1792866937.886, 1793635021.5990849);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T22:25:54Z', 0, '2026-10-28T02:40:00Z', 0);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T22:31:09Z', 0, '2026-10-28T02:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T22:36:40Z', 0, '2026-10-28T02:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T22:42:02Z', 0, '2026-10-28T02:40:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T22:47:12Z', 0, '2026-10-28T02:40:00Z', 0);
@@ -809,6 +807,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03T22:11:56Z', 2, '2026-11-03T23:30:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03T22:17:05Z', 2, '2026-11-03T23:30:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03T22:22:22Z', 2, '2026-11-03T23:30:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03T22:27:25Z', 2, '2026-11-03T23:30:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03T22:32:42Z', 2, '2026-11-03T23:30:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -1337,18 +1337,21 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-26', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 214895);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-26', 'REA.Bloodlines', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 34207);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-26', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 15917856);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 133106);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1770658);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3339392);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3707484);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2069932);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Capture', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 494252);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Launcher', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 160281);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 15470475);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 8027001);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7443474);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 167186);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Tickets', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1002401);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Tickets', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1002401);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 30152393);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4042603);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 33198173);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2295306);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5495605);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3045780);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6466921);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1224311);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 99679);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 299908);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12936723);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-28', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 396390);
@@ -1423,7 +1426,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-03', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-03T22:00:00Z', 68699);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-03', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-03T22:00:00Z', 879889);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-03', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-03T22:00:00Z', 246405);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-03', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 512319);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-03', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1114593);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-03', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', '2026-11-03T22:00:00Z', 29343781);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-03', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-03T22:00:00Z', 2389937);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-03', 'Corobs', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-03T22:00:00Z', 543552);
@@ -4022,20 +4025,20 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 -- state
 INSERT INTO state (name, value) VALUES ('api-failovers', '[]');
 INSERT INTO state (name, value) VALUES ('audit', '{
-  "RanUtc": "2026-11-02T22:28:50.4676145Z",
-  "Took": "00:01:04.1455763",
-  "ReposScanned": 75,
-  "FilesScanned": 8796,
+  "RanUtc": "2026-11-03T22:30:47.815582Z",
+  "Took": "00:01:49.0792660",
+  "ReposScanned": 79,
+  "FilesScanned": 9665,
   "Drift": [
     {
       "File": "AGENTS.md",
       "Repo": "MindAttic.Agency",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
-      "Similarity": 0.014925373134328358,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
+      "Similarity": 0.010416666666666666,
       "IsCustom": true
     },
     {
@@ -4043,9 +4046,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Incognito",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Incognito\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.023255813953488372,
       "IsCustom": true
     },
@@ -4054,10 +4057,10 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "SyntheticExchangeTheory",
       "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
-      "Similarity": 0.029411764705882353,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
+      "Similarity": 0.02666666666666667,
       "IsCustom": true
     },
     {
@@ -4065,9 +4068,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Overworld",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.04081632653061224,
       "IsCustom": true
     },
@@ -4076,9 +4079,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.ProjectVania",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.04081632653061224,
       "IsCustom": true
     },
@@ -4087,9 +4090,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "TownWalker",
       "Path": "D:\\Projects\\MindAttic\\TownWalker\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.044444444444444446,
       "IsCustom": true
     },
@@ -4098,9 +4101,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Hare",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Hare\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.05128205128205128,
       "IsCustom": true
     },
@@ -4109,9 +4112,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.GridGame",
       "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.05405405405405406,
       "IsCustom": true
     },
@@ -4120,9 +4123,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Eve",
       "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.07272727272727272,
       "IsCustom": true
     },
@@ -4131,9 +4134,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "UnityRonin",
       "Path": "D:\\Projects\\MindAttic\\UnityRonin\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.07547169811320754,
       "IsCustom": true
     },
@@ -4142,9 +4145,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Export",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.10526315789473684,
       "IsCustom": true
     },
@@ -4153,10 +4156,21 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Prose",
       "Path": "D:\\Projects\\MindAttic\\Prose\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.11764705882352941,
+      "IsCustom": true
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "Corobs",
+      "Path": "D:\\Projects\\MindAttic\\Corobs\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
+      "Similarity": 0.14285714285714285,
       "IsCustom": true
     },
     {
@@ -4164,9 +4178,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "RusNet",
       "Path": "D:\\Projects\\MindAttic\\RusNet\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.14814814814814814,
       "IsCustom": true
     },
@@ -4175,9 +4189,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "AutoGamePlay",
       "Path": "D:\\Projects\\MindAttic\\AutoGamePlay\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.17647058823529413,
       "IsCustom": true
     },
@@ -4186,9 +4200,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "AutoWebNav",
       "Path": "D:\\Projects\\MindAttic\\AutoWebNav\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
     },
@@ -4197,9 +4211,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "KdpPublish",
       "Path": "D:\\Projects\\MindAttic\\KdpPublish\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
     },
@@ -4208,9 +4222,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Chain",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
     },
@@ -4219,9 +4233,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.QuickDuel",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.18867924528301888,
       "IsCustom": true
     },
@@ -4230,9 +4244,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Web",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.21052631578947367,
       "IsCustom": true
     },
@@ -4241,21 +4255,21 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Ricochet",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.2222222222222222,
       "IsCustom": true
     },
     {
       "File": "AGENTS.md",
-      "Repo": "Corobs",
-      "Path": "D:\\Projects\\MindAttic\\Corobs\\AGENTS.md",
+      "Repo": "Unreal.Soulslike",
+      "Path": "D:\\Projects\\MindAttic\\Unreal.Soulslike\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
-      "Similarity": 0.25,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
+      "Similarity": 0.2727272727272727,
       "IsCustom": true
     },
     {
@@ -4263,9 +4277,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "JobHunt",
       "Path": "D:\\Projects\\MindAttic\\JobHunt\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.2857142857142857,
       "IsCustom": true
     },
@@ -4274,9 +4288,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Mods.RogueTrader.Overwatch",
       "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Overwatch\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.3333333333333333,
       "IsCustom": false
     },
@@ -4296,9 +4310,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "IdiotProof",
       "Path": "D:\\Projects\\MindAttic\\IdiotProof\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.4,
       "IsCustom": false
     },
@@ -4307,9 +4321,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "REA.Bloodlines",
       "Path": "D:\\Projects\\MindAttic\\REA.Bloodlines\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.4,
       "IsCustom": false
     },
@@ -4318,8 +4332,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "RusNet",
       "Path": "D:\\Projects\\MindAttic\\RusNet\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.4,
       "IsCustom": false
@@ -4329,9 +4343,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Mods.RogueTrader.Shared",
       "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Shared\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.45454545454545453,
       "IsCustom": false
     },
@@ -4351,9 +4365,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Mods.RogueTrader.Brevity",
       "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Brevity\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.5,
       "IsCustom": false
     },
@@ -4362,8 +4376,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Corobs",
       "Path": "D:\\Projects\\MindAttic\\Corobs\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.5,
       "IsCustom": false
@@ -4373,8 +4387,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Export",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.5,
       "IsCustom": false
@@ -4384,8 +4398,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "SyntheticExchangeTheory",
       "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.5,
       "IsCustom": false
@@ -4395,8 +4409,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.QuickDuel",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.5,
       "IsCustom": false
@@ -4417,9 +4431,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Automata",
       "Path": "D:\\Projects\\MindAttic\\Automata\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.5555555555555556,
       "IsCustom": false
     },
@@ -4428,9 +4442,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Mods.GTFO.EZ.AbsurdItems",
       "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdItems\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -4439,9 +4453,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Mods.GTFO.EZ.AbsurdMoves",
       "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdMoves\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -4450,9 +4464,20 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Mods.GTFO.EZ.AbsurdWeapons",
       "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdWeapons\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
+      "Similarity": 0.5882352941176471,
+      "IsCustom": false
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "Unreal.SpaceGod",
+      "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -4461,8 +4486,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "TownWalker",
       "Path": "D:\\Projects\\MindAttic\\TownWalker\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.6,
       "IsCustom": false
@@ -4472,8 +4497,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Chain",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.6,
       "IsCustom": false
@@ -4483,8 +4508,19 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
+      "Variants": 7,
+      "Similarity": 0.6,
+      "IsCustom": false
+    },
+    {
+      "File": "CLAUDE.md",
+      "Repo": "Unreal.SpaceGod",
+      "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CLAUDE.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.6,
       "IsCustom": false
@@ -4494,8 +4530,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Web",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.6,
       "IsCustom": false
@@ -4505,9 +4541,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Mods.Cyberpunk2077.ShootDodge",
       "Path": "D:\\Projects\\MindAttic\\Mods.Cyberpunk2077.ShootDodge\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.625,
       "IsCustom": false
     },
@@ -4516,9 +4552,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 74,
-      "Variants": 34,
+      "CanonicalCount": 43,
+      "Total": 78,
+      "Variants": 36,
       "Similarity": 0.625,
       "IsCustom": false
     },
@@ -4527,8 +4563,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Eve",
       "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.8,
       "IsCustom": false
@@ -4538,8 +4574,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.GridGame",
       "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.8,
       "IsCustom": false
@@ -4549,8 +4585,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Incognito",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Incognito\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.8,
       "IsCustom": false
@@ -4560,8 +4596,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Overworld",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.8,
       "IsCustom": false
@@ -4571,8 +4607,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.ProjectVania",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
-      "CanonicalCount": 33,
-      "Total": 47,
+      "CanonicalCount": 34,
+      "Total": 49,
       "Variants": 7,
       "Similarity": 0.8,
       "IsCustom": false
@@ -4661,26 +4697,1052 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.Rea.Overworld",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\Assets\\Unity.Rea.Overworld\\Core\\Content\\Json.cs",
-          "Lines": 206
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\AgentGate.cs",
+          "Lines": 2688
         },
         {
-          "Repo": "Unity.Rea.ProjectVania",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\Assets\\Unity.Rea.ProjectVania\\Core\\Settings\\Json.cs",
-          "Lines": 206
-        },
-        {
-          "Repo": "Unity.Rea.Ricochet",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\Assets\\Rea.Ricochet\\Core\\Data\\Json.cs",
-          "Lines": 206
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\AgentGate.cs",
+          "Lines": 2688
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 206,
+      "SharedLines": 2688,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 3
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Hyperspace\\hyperspace.js",
+          "Lines": 2513
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Hyperspace\\hyperspace.js",
+          "Lines": 2513
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 2513,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\HookScriptTests.cs",
+          "Lines": 1844
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\HookScriptTests.cs",
+          "Lines": 1844
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 1844,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\Hud.cs",
+          "Lines": 2592
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.cs",
+          "Lines": 2594
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9558823529411765,
+      "SharedLines": 2475,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AllocateTests.cs",
+          "Lines": 846
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AllocateTests.cs",
+          "Lines": 846
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 846,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipMeshFactory.cs",
+          "Lines": 840
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipMeshFactory.cs",
+          "Lines": 840
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 840,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Theme.xaml",
+          "Lines": 1552
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Theme.xaml",
+          "Lines": 1521
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9993055555555556,
+      "SharedLines": 1444,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Neko\\neko.js",
+          "Lines": 694
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Neko\\neko.js",
+          "Lines": 694
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 694,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\SacredGeometry\\sacred-geometry.js",
+          "Lines": 679
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\SacredGeometry\\sacred-geometry.js",
+          "Lines": 679
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 679,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
+          "Lines": 644
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
+          "Lines": 644
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 644,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Daemon.cs",
+          "Lines": 604
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Daemon.cs",
+          "Lines": 604
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 604,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\BroadcastMaskingTests.cs",
+          "Lines": 598
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\BroadcastMaskingTests.cs",
+          "Lines": 598
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 598,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Hyperspace\\hyperspace-reader.js",
+          "Lines": 572
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Hyperspace\\hyperspace-reader.js",
+          "Lines": 572
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 572,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Cyberspace\\frontpage.css",
+          "Lines": 552
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Cyberspace\\frontpage.css",
+          "Lines": 552
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 552,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.cs",
+          "Lines": 1818
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.cs",
+          "Lines": 1180
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Helm.cs",
+          "Lines": 654
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8936170212765957,
+      "SharedLines": 1055,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Cyberpunk\\cyberpunk.js",
+          "Lines": 503
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Cyberpunk\\cyberpunk.js",
+          "Lines": 503
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 503,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Allocate.cs",
+          "Lines": 476
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Allocate.cs",
+          "Lines": 476
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 476,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountDirsTests.cs",
+          "Lines": 475
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountDirsTests.cs",
+          "Lines": 475
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 475,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\SchedulingCommands.cs",
+          "Lines": 466
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\SchedulingCommands.cs",
+          "Lines": 466
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 466,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\BattleFx.cs",
+          "Lines": 464
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\BattleFx.cs",
+          "Lines": 464
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 464,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\ShipView.cs",
+          "Lines": 457
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\ShipView.cs",
+          "Lines": 457
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 457,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ContextCyclerTests.cs",
+          "Lines": 443
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ContextCyclerTests.cs",
+          "Lines": 443
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 443,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\GatewayTests.cs",
+          "Lines": 421
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\GatewayTests.cs",
+          "Lines": 421
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 421,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaSettingsFormTests.cs",
+          "Lines": 410
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaSettingsFormTests.cs",
+          "Lines": 410
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 410,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
+          "Lines": 406
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
+          "Lines": 406
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 406,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\TermSession.cs",
+          "Lines": 398
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\TermSession.cs",
+          "Lines": 398
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 398,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LampSettingsTests.cs",
+          "Lines": 393
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LampSettingsTests.cs",
+          "Lines": 393
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 393,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\run.ps1",
+          "Lines": 392
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\run.ps1",
+          "Lines": 392
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 392,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorDb.cs",
+          "Lines": 383
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorDb.cs",
+          "Lines": 383
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 383,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\MainlineTestsTests.cs",
+          "Lines": 375
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\MainlineTestsTests.cs",
+          "Lines": 375
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 375,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\GalaxyMapScreen.cs",
+          "Lines": 828
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\GalaxyMapScreen.cs",
+          "Lines": 845
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.905224787363305,
+      "SharedLines": 750,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\Program.cs",
+          "Lines": 374
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\Program.cs",
+          "Lines": 374
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 374,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\SceneTour.cs",
+          "Lines": 372
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\SceneTour.cs",
+          "Lines": 372
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 372,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\HookMarkTests.cs",
+          "Lines": 369
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\HookMarkTests.cs",
+          "Lines": 369
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 369,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\TranscriptReader.cs",
+          "Lines": 367
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\TranscriptReader.cs",
+          "Lines": 367
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 367,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\CliCommandTests.cs",
+          "Lines": 361
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\CliCommandTests.cs",
+          "Lines": 361
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 361,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Phases.cs",
+          "Lines": 358
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Phases.cs",
+          "Lines": 358
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 358,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PacerTests.cs",
+          "Lines": 357
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\PacerTests.cs",
+          "Lines": 357
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 357,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\MainWindow.xaml",
+          "Lines": 828
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\MainWindow.xaml",
+          "Lines": 761
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9365079365079365,
+      "SharedLines": 713,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DaemonSafetyTests.cs",
+          "Lines": 355
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DaemonSafetyTests.cs",
+          "Lines": 355
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 355,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\UsageReport.cs",
+          "Lines": 348
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\UsageReport.cs",
+          "Lines": 348
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 348,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\StreamMasker.cs",
+          "Lines": 347
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\StreamMasker.cs",
+          "Lines": 347
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 347,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorVaultSettings.cs",
+          "Lines": 342
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorVaultSettings.cs",
+          "Lines": 342
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 342,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\GatewayAclTests.cs",
+          "Lines": 339
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\GatewayAclTests.cs",
+          "Lines": 339
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 339,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\BillingTests.cs",
+          "Lines": 333
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\BillingTests.cs",
+          "Lines": 333
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 333,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TranscriptReaderTests.cs",
+          "Lines": 330
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TranscriptReaderTests.cs",
+          "Lines": 330
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 330,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ClaudeMeterProbeTests.cs",
+          "Lines": 326
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ClaudeMeterProbeTests.cs",
+          "Lines": 326
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 326,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\BudgetCalculator.cs",
+          "Lines": 324
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\BudgetCalculator.cs",
+          "Lines": 324
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 324,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.cs",
+          "Lines": 323
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.cs",
+          "Lines": 323
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 323,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\PauseMenu.cs",
+          "Lines": 323
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\PauseMenu.cs",
+          "Lines": 323
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 323,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Camera\\SpaceCamera.cs",
+          "Lines": 320
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Camera\\SpaceCamera.cs",
+          "Lines": 320
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 320,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountRebalancer.cs",
+          "Lines": 316
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountRebalancer.cs",
+          "Lines": 316
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 316,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PaceLedgerTests.cs",
+          "Lines": 315
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\PaceLedgerTests.cs",
+          "Lines": 315
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 315,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\JsonStore.cs",
+          "Lines": 312
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\JsonStore.cs",
+          "Lines": 312
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 312,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Camera\\StarTravel.cs",
+          "Lines": 305
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Camera\\StarTravel.cs",
+          "Lines": 305
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 305,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -4719,6 +5781,1051 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayApp.cs",
+          "Lines": 296
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\GatewayApp.cs",
+          "Lines": 296
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 296,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Forest\\forest.js",
+          "Lines": 284
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Forest\\forest.js",
+          "Lines": 284
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 284,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\StatusStream.cs",
+          "Lines": 280
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\StatusStream.cs",
+          "Lines": 280
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 280,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TerminalsViewModel.cs",
+          "Lines": 624
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TerminalsViewModel.cs",
+          "Lines": 578
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9598603839441536,
+      "SharedLines": 555,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TabStatusTests.cs",
+          "Lines": 271
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TabStatusTests.cs",
+          "Lines": 271
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 271,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ReminderTests.cs",
+          "Lines": 270
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ReminderTests.cs",
+          "Lines": 270
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 270,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\MainlineTests.cs",
+          "Lines": 268
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\MainlineTests.cs",
+          "Lines": 268
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 268,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\JsonStoreTests.cs",
+          "Lines": 263
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\JsonStoreTests.cs",
+          "Lines": 263
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 263,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\ClaudeMeterProbe.cs",
+          "Lines": 263
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\ClaudeMeterProbe.cs",
+          "Lines": 263
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 263,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Menus\\MaModal.cs",
+          "Lines": 259
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Menus\\MaModal.cs",
+          "Lines": 259
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 259,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayConnection.cs",
+          "Lines": 259
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayConnection.cs",
+          "Lines": 259
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 259,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\ContextCycler.cs",
+          "Lines": 252
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\ContextCycler.cs",
+          "Lines": 252
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 252,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TerminalPanesTests.cs",
+          "Lines": 520
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TerminalPanesTests.cs",
+          "Lines": 512
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9664031620553359,
+      "SharedLines": 494,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DashboardViewModelTests.cs",
+          "Lines": 245
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DashboardViewModelTests.cs",
+          "Lines": 245
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 245,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaPageBlocksTests.cs",
+          "Lines": 242
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaPageBlocksTests.cs",
+          "Lines": 242
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 242,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AgentGateTests.cs",
+          "Lines": 242
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AgentGateTests.cs",
+          "Lines": 242
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 242,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SchedulerTests.cs",
+          "Lines": 240
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SchedulerTests.cs",
+          "Lines": 240
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 240,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SnapshotFileTests.cs",
+          "Lines": 230
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SnapshotFileTests.cs",
+          "Lines": 230
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 230,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SubagentActivityTests.cs",
+          "Lines": 227
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SubagentActivityTests.cs",
+          "Lines": 227
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 227,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\App.xaml.cs",
+          "Lines": 226
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\App.xaml.cs",
+          "Lines": 226
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 226,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Lanes.cs",
+          "Lines": 224
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Lanes.cs",
+          "Lines": 224
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 224,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Scheduler.cs",
+          "Lines": 223
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Scheduler.cs",
+          "Lines": 223
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 223,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\tests\\Core.Tests\\MenuAndNavigationTests.cs",
+          "Lines": 222
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\tests\\Core.Tests\\MenuAndNavigationTests.cs",
+          "Lines": 222
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 222,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LoginScopeTests.cs",
+          "Lines": 219
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LoginScopeTests.cs",
+          "Lines": 219
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 219,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Cyberspace\\home-bg.js",
+          "Lines": 218
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Cyberspace\\home-bg.js",
+          "Lines": 218
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 218,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TeamWallWindow.cs",
+          "Lines": 218
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TeamWallWindow.cs",
+          "Lines": 218
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 218,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingSwitch.cs",
+          "Lines": 217
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingSwitch.cs",
+          "Lines": 217
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 217,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountDirs.cs",
+          "Lines": 216
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountDirs.cs",
+          "Lines": 216
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 216,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ContextCyclerMarksTests.cs",
+          "Lines": 214
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ContextCyclerMarksTests.cs",
+          "Lines": 214
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 214,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\OrgCommands.cs",
+          "Lines": 214
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\OrgCommands.cs",
+          "Lines": 214
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 214,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\FallbackViewersTests.cs",
+          "Lines": 212
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\FallbackViewersTests.cs",
+          "Lines": 212
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 212,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LeaseTests.cs",
+          "Lines": 212
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LeaseTests.cs",
+          "Lines": 212
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 212,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\MainWindow.xaml.cs",
+          "Lines": 479
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\MainWindow.xaml.cs",
+          "Lines": 455
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9311111111111111,
+      "SharedLines": 424,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaThemeTests.cs",
+          "Lines": 210
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaThemeTests.cs",
+          "Lines": 210
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 210,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\TermBridge.cs",
+          "Lines": 210
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\TermBridge.cs",
+          "Lines": 210
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 210,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaFieldEditors.cs",
+          "Lines": 209
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaFieldEditors.cs",
+          "Lines": 209
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 209,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaPickerTests.cs",
+          "Lines": 208
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaPickerTests.cs",
+          "Lines": 208
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 208,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\tools\\codex.ps1",
+          "Lines": 206
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\tools\\codex.ps1",
+          "Lines": 206
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 206,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Menus\\MenuScreen.cs",
+          "Lines": 206
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Menus\\MenuScreen.cs",
+          "Lines": 206
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 206,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LoginPickerTests.cs",
+          "Lines": 205
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LoginPickerTests.cs",
+          "Lines": 205
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 205,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\SkyView.cs",
+          "Lines": 203
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\SkyView.cs",
+          "Lines": 203
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 203,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DispatcherTests.cs",
+          "Lines": 200
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DispatcherTests.cs",
+          "Lines": 200
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 200,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\Pacer.cs",
+          "Lines": 200
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\Pacer.cs",
+          "Lines": 200
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 200,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LibraryControlsTests.cs",
+          "Lines": 198
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LibraryControlsTests.cs",
+          "Lines": 198
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 198,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LoginTokensTests.cs",
+          "Lines": 198
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LoginTokensTests.cs",
+          "Lines": 198
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 198,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AllocateHoldsTests.cs",
+          "Lines": 197
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AllocateHoldsTests.cs",
+          "Lines": 197
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 197,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaSecretBoxTests.cs",
+          "Lines": 194
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaSecretBoxTests.cs",
+          "Lines": 194
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 194,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorHistory.cs",
+          "Lines": 194
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorHistory.cs",
+          "Lines": 194
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 194,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\BusyClis.cs",
+          "Lines": 194
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\BusyClis.cs",
+          "Lines": 194
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 194,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\FallbackViewers.cs",
+          "Lines": 194
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\FallbackViewers.cs",
+          "Lines": 194
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 194,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginTokens.cs",
+          "Lines": 194
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginTokens.cs",
+          "Lines": 194
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 194,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaTabStripTests.cs",
+          "Lines": 192
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaTabStripTests.cs",
+          "Lines": 192
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 192,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\UsageReportTests.cs",
+          "Lines": 192
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\UsageReportTests.cs",
+          "Lines": 192
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 192,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaModalTests.cs",
+          "Lines": 190
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaModalTests.cs",
+          "Lines": 190
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 190,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\RateLimitStatusWriterTests.cs",
+          "Lines": 188
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\RateLimitStatusWriterTests.cs",
+          "Lines": 188
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 188,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Mods.GTFO.EZ",
           "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
           "Lines": 75
@@ -4749,6 +6856,538 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 75,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 5
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaLayout.cs",
+          "Lines": 187
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaLayout.cs",
+          "Lines": 187
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 187,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\AllocateWaker.cs",
+          "Lines": 187
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\AllocateWaker.cs",
+          "Lines": 187
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 187,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.TabStatus.cs",
+          "Lines": 185
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.TabStatus.cs",
+          "Lines": 185
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 185,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\BodyView.cs",
+          "Lines": 185
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\BodyView.cs",
+          "Lines": 185
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 185,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaToastTests.cs",
+          "Lines": 184
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaToastTests.cs",
+          "Lines": 184
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 184,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OrgCommandTests.cs",
+          "Lines": 184
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OrgCommandTests.cs",
+          "Lines": 184
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 184,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TeamWallTile.cs",
+          "Lines": 184
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TeamWallTile.cs",
+          "Lines": 184
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 184,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ProviderLogReaderTests.cs",
+          "Lines": 183
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ProviderLogReaderTests.cs",
+          "Lines": 183
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 183,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\LaneView.cs",
+          "Lines": 183
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\LaneView.cs",
+          "Lines": 183
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 183,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\tests\\Core.Tests\\ThemeTests.cs",
+          "Lines": 182
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\tests\\Core.Tests\\ThemeTests.cs",
+          "Lines": 182
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 182,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\Installer.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\Installer.cs",
+          "Lines": 181
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 181,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Collisions.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Collisions.cs",
+          "Lines": 181
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 181,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\StructureViews.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\StructureViews.cs",
+          "Lines": 181
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 181,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountSwitchTests.cs",
+          "Lines": 180
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountSwitchTests.cs",
+          "Lines": 180
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 180,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaSecretBox.cs",
+          "Lines": 179
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaSecretBox.cs",
+          "Lines": 179
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 179,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\WeeklyAllowanceTests.cs",
+          "Lines": 179
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\WeeklyAllowanceTests.cs",
+          "Lines": 179
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 179,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaSelect.cs",
+          "Lines": 178
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaSelect.cs",
+          "Lines": 178
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 178,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Ftl.cs",
+          "Lines": 377
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Ftl.cs",
+          "Lines": 380
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9435483870967742,
+      "SharedLines": 356,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaLineChartTests.cs",
+          "Lines": 177
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaLineChartTests.cs",
+          "Lines": 177
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 177,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountPacer.cs",
+          "Lines": 175
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountPacer.cs",
+          "Lines": 175
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 175,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Samples~\\Gallery\\GalleryDemo.cs",
+          "Lines": 174
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Samples~\\Gallery\\GalleryDemo.cs",
+          "Lines": 174
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 174,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AuditTests.cs",
+          "Lines": 174
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AuditTests.cs",
+          "Lines": 174
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 174,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\SharedPiecesTests.cs",
+          "Lines": 172
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\SharedPiecesTests.cs",
+          "Lines": 172
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 172,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TeamWallTests.cs",
+          "Lines": 172
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TeamWallTests.cs",
+          "Lines": 172
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 172,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ModelChoiceTests.cs",
+          "Lines": 171
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ModelChoiceTests.cs",
+          "Lines": 171
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 171,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\CommentedHookSplice.cs",
+          "Lines": 171
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\CommentedHookSplice.cs",
+          "Lines": 171
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 171,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\prototypes\\T923-relay\\TermHostStub\\Host.cs",
+          "Lines": 171
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\prototypes\\T923-relay\\TermHostStub\\Host.cs",
+          "Lines": 171
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 171,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OrchestratorServerTests.cs",
+          "Lines": 170
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OrchestratorServerTests.cs",
+          "Lines": 170
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 170,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -4787,6 +7426,747 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TabSwitchTests.cs",
+          "Lines": 169
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TabSwitchTests.cs",
+          "Lines": 169
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 169,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AgentGateRemovalTests.cs",
+          "Lines": 167
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AgentGateRemovalTests.cs",
+          "Lines": 167
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 167,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\GlobalFallbackTests.cs",
+          "Lines": 167
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\GlobalFallbackTests.cs",
+          "Lines": 167
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 167,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OrphanWatchTests.cs",
+          "Lines": 167
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OrphanWatchTests.cs",
+          "Lines": 167
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 167,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaLineChart.cs",
+          "Lines": 166
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaLineChart.cs",
+          "Lines": 166
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 166,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\ScreenUsage.cs",
+          "Lines": 166
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\ScreenUsage.cs",
+          "Lines": 166
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 166,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\ModalAndFeedbackTests.cs",
+          "Lines": 165
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\ModalAndFeedbackTests.cs",
+          "Lines": 165
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 165,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ClaudeAccountTests.cs",
+          "Lines": 165
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ClaudeAccountTests.cs",
+          "Lines": 165
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 165,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\ConstructionTests.cs",
+          "Lines": 164
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\ConstructionTests.cs",
+          "Lines": 164
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 164,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaMinimap.cs",
+          "Lines": 164
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaMinimap.cs",
+          "Lines": 164
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 164,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountRosterTests.cs",
+          "Lines": 164
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountRosterTests.cs",
+          "Lines": 164
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 164,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\VirtualizedList.cs",
+          "Lines": 164
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\VirtualizedList.cs",
+          "Lines": 164
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 164,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\MenuStackTests.cs",
+          "Lines": 161
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\MenuStackTests.cs",
+          "Lines": 161
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 161,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermViewer\\RemoteViewer.cs",
+          "Lines": 161
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermViewer\\RemoteViewer.cs",
+          "Lines": 161
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 161,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Sand\\sand.js",
+          "Lines": 159
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Sand\\sand.js",
+          "Lines": 159
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 159,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TicketCostTests.cs",
+          "Lines": 159
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TicketCostTests.cs",
+          "Lines": 159
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 159,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\OrgsCommands.cs",
+          "Lines": 155
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\OrgsCommands.cs",
+          "Lines": 155
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 155,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
+          "Lines": 154
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
+          "Lines": 154
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 154,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaButton.cs",
+          "Lines": 152
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaButton.cs",
+          "Lines": 152
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 152,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaTextbox.cs",
+          "Lines": 152
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaTextbox.cs",
+          "Lines": 152
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 152,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\GatewayAclCommands.cs",
+          "Lines": 152
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\GatewayAclCommands.cs",
+          "Lines": 152
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 152,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\SubagentActivity.cs",
+          "Lines": 151
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\SubagentActivity.cs",
+          "Lines": 151
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 151,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OrchestratorHistoryTests.cs",
+          "Lines": 150
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OrchestratorHistoryTests.cs",
+          "Lines": 150
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 150,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionControl.cs",
+          "Lines": 148
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionControl.cs",
+          "Lines": 148
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 148,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedger.cs",
+          "Lines": 148
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedger.cs",
+          "Lines": 148
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 148,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\OrphanWatch.cs",
+          "Lines": 147
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\OrphanWatch.cs",
+          "Lines": 147
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 147,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TranscriptReaderSkipsTests.cs",
+          "Lines": 146
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TranscriptReaderSkipsTests.cs",
+          "Lines": 146
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 146,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermProtocol.cs",
+          "Lines": 145
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermProtocol.cs",
+          "Lines": 145
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 145,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\FighterViews.cs",
+          "Lines": 145
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\FighterViews.cs",
+          "Lines": 145
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 145,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LimitWakerTests.cs",
+          "Lines": 144
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LimitWakerTests.cs",
+          "Lines": 144
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 144,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountRebalancerTests.cs",
+          "Lines": 143
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountRebalancerTests.cs",
+          "Lines": 143
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 143,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OrganizationsTests.cs",
+          "Lines": 142
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OrganizationsTests.cs",
+          "Lines": 142
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 142,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Embodiment.cs",
+          "Lines": 302
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Embodiment.cs",
+          "Lines": 306
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.936026936026936,
+      "SharedLines": 283,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\InstallerTests.cs",
+          "Lines": 138
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\InstallerTests.cs",
+          "Lines": 138
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 138,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Synthwave\\synthwave.js",
+          "Lines": 137
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Synthwave\\synthwave.js",
+          "Lines": 137
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 137,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaPicker.cs",
+          "Lines": 137
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaPicker.cs",
+          "Lines": 137
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 137,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TermMultiViewerTests.cs",
+          "Lines": 137
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TermMultiViewerTests.cs",
+          "Lines": 137
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 137,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\UtilizationChartLayoutTests.cs",
+          "Lines": 137
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\UtilizationChartLayoutTests.cs",
+          "Lines": 137
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 137,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Audit\\DuplicationAudit.cs",
+          "Lines": 137
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Audit\\DuplicationAudit.cs",
+          "Lines": 137
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 137,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Formicarium",
           "Path": "D:\\Projects\\MindAttic\\Formicarium\\dashboard\\Formicarium.Dashboard\\Components\\Layout\\ReconnectModal.razor.css",
           "Lines": 90
@@ -4807,6 +8187,880 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 90,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
       "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DeployScriptTests.cs",
+          "Lines": 135
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DeployScriptTests.cs",
+          "Lines": 135
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 135,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\UnderTargetTests.cs",
+          "Lines": 134
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\UnderTargetTests.cs",
+          "Lines": 134
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 134,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\AgentAbort.cs",
+          "Lines": 134
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\AgentAbort.cs",
+          "Lines": 134
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 134,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountRoster.cs",
+          "Lines": 134
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountRoster.cs",
+          "Lines": 134
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 134,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\ClaudeKeyChoice.cs",
+          "Lines": 134
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\ClaudeKeyChoice.cs",
+          "Lines": 134
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 134,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipModels.cs",
+          "Lines": 134
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipModels.cs",
+          "Lines": 134
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 134,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorServer.cs",
+          "Lines": 133
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorServer.cs",
+          "Lines": 133
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 133,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\BudgetReportedPathTests.cs",
+          "Lines": 132
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\BudgetReportedPathTests.cs",
+          "Lines": 132
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 132,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountMove.cs",
+          "Lines": 132
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountMove.cs",
+          "Lines": 132
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 132,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\WebSnapshot\\web-snapshot.js",
+          "Lines": 131
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\WebSnapshot\\web-snapshot.js",
+          "Lines": 131
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 131,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AllocateWakerTests.cs",
+          "Lines": 131
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AllocateWakerTests.cs",
+          "Lines": 131
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 131,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\MembersCommand.cs",
+          "Lines": 131
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\MembersCommand.cs",
+          "Lines": 131
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 131,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Summer\\summer.js",
+          "Lines": 130
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Summer\\summer.js",
+          "Lines": 130
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 130,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TicketReplayTests.cs",
+          "Lines": 130
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TicketReplayTests.cs",
+          "Lines": 130
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 130,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Theming\\ThemeTokens.cs",
+          "Lines": 129
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Theming\\ThemeTokens.cs",
+          "Lines": 129
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 129,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Menus\\MenuStack.cs",
+          "Lines": 129
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Menus\\MenuStack.cs",
+          "Lines": 129
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 129,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaMessageBox.cs",
+          "Lines": 129
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaMessageBox.cs",
+          "Lines": 129
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 129,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\TicketReplay.cs",
+          "Lines": 129
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\TicketReplay.cs",
+          "Lines": 129
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 129,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorSettings.cs",
+          "Lines": 129
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorSettings.cs",
+          "Lines": 129
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 129,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Streaming.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Streaming.cs",
+          "Lines": 128
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 128,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\InterstellarView.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\InterstellarView.cs",
+          "Lines": 128
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 128,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaRange.cs",
+          "Lines": 127
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaRange.cs",
+          "Lines": 127
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 127,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaModal.cs",
+          "Lines": 127
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaModal.cs",
+          "Lines": 127
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 127,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\MoveLocksTests.cs",
+          "Lines": 127
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\MoveLocksTests.cs",
+          "Lines": 127
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 127,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Winter\\winter.js",
+          "Lines": 126
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Winter\\winter.js",
+          "Lines": 126
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 126,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\WorkspaceBootstrapTests.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\WorkspaceBootstrapTests.cs",
+          "Lines": 126
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 126,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\Icons.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Icons.cs",
+          "Lines": 126
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 126,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\BudgetTests.cs",
+          "Lines": 125
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\BudgetTests.cs",
+          "Lines": 125
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 125,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TeamWall.cs",
+          "Lines": 125
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TeamWall.cs",
+          "Lines": 125
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 125,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ProcessHelperTests.cs",
+          "Lines": 124
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ProcessHelperTests.cs",
+          "Lines": 124
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 124,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\tests\\Core.Tests\\HudTests.cs",
+          "Lines": 122
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\tests\\Core.Tests\\HudTests.cs",
+          "Lines": 122
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 122,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\HeadlessScreenTests.cs",
+          "Lines": 122
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\HeadlessScreenTests.cs",
+          "Lines": 122
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 122,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LandOnMainTests.cs",
+          "Lines": 122
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LandOnMainTests.cs",
+          "Lines": 122
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 122,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaScrollBarTests.cs",
+          "Lines": 121
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaScrollBarTests.cs",
+          "Lines": 121
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 121,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\AccountsCommand.cs",
+          "Lines": 121
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\AccountsCommand.cs",
+          "Lines": 121
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 121,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\CollectionEditor.cs",
+          "Lines": 120
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\CollectionEditor.cs",
+          "Lines": 120
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 120,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedgerWatch.cs",
+          "Lines": 120
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedgerWatch.cs",
+          "Lines": 120
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 120,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaToggle.cs",
+          "Lines": 119
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaToggle.cs",
+          "Lines": 119
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 119,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\RepoTileViewModel.cs",
+          "Lines": 119
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\RepoTileViewModel.cs",
+          "Lines": 119
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 119,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\MainMenu.cs",
+          "Lines": 239
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\MainMenu.cs",
+          "Lines": 239
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9957264957264957,
+      "SharedLines": 238,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaSpinnerTests.cs",
+          "Lines": 118
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaSpinnerTests.cs",
+          "Lines": 118
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 118,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ReportedLimitTests.cs",
+          "Lines": 118
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ReportedLimitTests.cs",
+          "Lines": 118
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 118,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TermReplayTests.cs",
+          "Lines": 118
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TermReplayTests.cs",
+          "Lines": 118
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 118,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\PlanningCommands.cs",
+          "Lines": 118
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\PlanningCommands.cs",
+          "Lines": 118
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 118,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionRestore.cs",
+          "Lines": 117
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionRestore.cs",
+          "Lines": 117
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 117,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ProcessReaperTests.cs",
+          "Lines": 116
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ProcessReaperTests.cs",
+          "Lines": 116
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 116,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -4840,6 +9094,215 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaToast.cs",
+          "Lines": 115
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaToast.cs",
+          "Lines": 115
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 115,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaToastHost.cs",
+          "Lines": 115
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaToastHost.cs",
+          "Lines": 115
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 115,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\MemberRosterTests.cs",
+          "Lines": 115
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\MemberRosterTests.cs",
+          "Lines": 115
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 115,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OpenTicketSourceTests.cs",
+          "Lines": 115
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OpenTicketSourceTests.cs",
+          "Lines": 115
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 115,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\AgentGateRemoval.cs",
+          "Lines": 114
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\AgentGateRemoval.cs",
+          "Lines": 114
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 114,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ClaimOwnerTests.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ClaimOwnerTests.cs",
+          "Lines": 113
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 113,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TerminalTabPickerTests.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TerminalTabPickerTests.cs",
+          "Lines": 113
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 113,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermGrants.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermGrants.cs",
+          "Lines": 113
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 113,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\DiffReview.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\DiffReview.cs",
+          "Lines": 113
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 113,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\ProviderLogReader.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\ProviderLogReader.cs",
+          "Lines": 113
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 113,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\HelpScreen.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\HelpScreen.cs",
+          "Lines": 113
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 113,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "AutoWebNav",
           "Path": "D:\\Projects\\MindAttic\\AutoWebNav\\.claude\\hooks\\quickload-on-do.ps1",
           "Lines": 56
@@ -4865,6 +9328,177 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 56,
       "SuggestedHome": "mindattic-agent-standard",
       "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SessionRestoreTests.cs",
+          "Lines": 112
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SessionRestoreTests.cs",
+          "Lines": 112
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 112,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\ClaudeAccount.cs",
+          "Lines": 112
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\ClaudeAccount.cs",
+          "Lines": 112
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 112,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\LoginCommand.cs",
+          "Lines": 112
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\LoginCommand.cs",
+          "Lines": 112
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 112,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\DropdownMenu.cs",
+          "Lines": 111
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\DropdownMenu.cs",
+          "Lines": 111
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 111,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaSettingsForm.cs",
+          "Lines": 111
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaSettingsForm.cs",
+          "Lines": 111
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 111,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaUi.cs",
+          "Lines": 110
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaUi.cs",
+          "Lines": 110
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 110,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DashboardAlignmentTests.cs",
+          "Lines": 110
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DashboardAlignmentTests.cs",
+          "Lines": 110
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 110,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TicketPinsTests.cs",
+          "Lines": 110
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TicketPinsTests.cs",
+          "Lines": 110
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 110,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayTerminal.cs",
+          "Lines": 110
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayTerminal.cs",
+          "Lines": 110
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 110,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -4903,9 +9537,598 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ControlStyles.cs",
+          "Lines": 109
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ControlStyles.cs",
+          "Lines": 109
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 109,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\CliHelperTests.cs",
+          "Lines": 109
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\CliHelperTests.cs",
+          "Lines": 109
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 109,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\MoveLocks.cs",
+          "Lines": 109
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\MoveLocks.cs",
+          "Lines": 109
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 109,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TermRegistryTests.cs",
+          "Lines": 231
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TermRegistryTests.cs",
+          "Lines": 221
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9814814814814815,
+      "SharedLines": 217,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Rendering\\MaIcons.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Rendering\\MaIcons.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 108,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaListRow.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaListRow.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 108,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountMoveTests.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountMoveTests.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 108,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PacerHelperTests.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\PacerHelperTests.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 108,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\StateBus.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\StateBus.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 108,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Ocean\\ocean.js",
+          "Lines": 107
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Ocean\\ocean.js",
+          "Lines": 107
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 107,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Editor\\EditorTests.cs",
+          "Lines": 107
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Tests\\Editor\\EditorTests.cs",
+          "Lines": 107
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 107,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Tabs.cs",
+          "Lines": 219
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Tabs.cs",
+          "Lines": 218
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9765258215962441,
+      "SharedLines": 213,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaTooltip.cs",
+          "Lines": 106
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaTooltip.cs",
+          "Lines": 106
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 106,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermSessions.cs",
+          "Lines": 106
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermSessions.cs",
+          "Lines": 106
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 106,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\CliMarks.cs",
+          "Lines": 106
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\CliMarks.cs",
+          "Lines": 106
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 106,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Tokens\\MaPalette.cs",
+          "Lines": 105
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Tokens\\MaPalette.cs",
+          "Lines": 105
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 105,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\BuildWorkspaceWindow.cs",
+          "Lines": 105
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\BuildWorkspaceWindow.cs",
+          "Lines": 105
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 105,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\CssTokenParser.cs",
+          "Lines": 104
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\CssTokenParser.cs",
+          "Lines": 104
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 104,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\BuildingBlockStyleTests.cs",
+          "Lines": 104
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\BuildingBlockStyleTests.cs",
+          "Lines": 104
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 104,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AgentAbortTests.cs",
+          "Lines": 104
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AgentAbortTests.cs",
+          "Lines": 104
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 104,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\WorkspaceBootstrap.cs",
+          "Lines": 104
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\WorkspaceBootstrap.cs",
+          "Lines": 104
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 104,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaSpinner.cs",
+          "Lines": 103
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaSpinner.cs",
+          "Lines": 103
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 103,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ThemeChoiceTests.cs",
+          "Lines": 103
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ThemeChoiceTests.cs",
+          "Lines": 103
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 103,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LimitWaker.cs",
+          "Lines": 103
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LimitWaker.cs",
+          "Lines": 103
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 103,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\GitHubIntakeTests.cs",
+          "Lines": 102
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\GitHubIntakeTests.cs",
+          "Lines": 102
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 102,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\Organizations.cs",
+          "Lines": 102
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\Organizations.cs",
+          "Lines": 102
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 102,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\WeeklyStopTests.cs",
+          "Lines": 101
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\WeeklyStopTests.cs",
+          "Lines": 101
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 101,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\HudWidgetTests.cs",
+          "Lines": 100
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\HudWidgetTests.cs",
+          "Lines": 100
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 100,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\RefreshWaiterTests.cs",
+          "Lines": 100
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\RefreshWaiterTests.cs",
+          "Lines": 100
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 100,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermHostInstalls.cs",
+          "Lines": 100
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermHostInstalls.cs",
+          "Lines": 100
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 100,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\SingleInstance.cs",
+          "Lines": 100
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\SingleInstance.cs",
+          "Lines": 100
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 100,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Unity.Rea.Chain",
           "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\Assets\\Unity.Rea.Chain\\Core\\Settings\\Json.cs",
-          "Lines": 269
+          "Lines": 281
         },
         {
           "Repo": "Unity.Rea.Overworld",
@@ -4913,16 +10136,178 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 206
         },
         {
+          "Repo": "Unity.Rea.ProjectVania",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\Assets\\Unity.Rea.ProjectVania\\Core\\Settings\\Json.cs",
+          "Lines": 215
+        },
+        {
           "Repo": "Unity.Rea.QuickDuel",
           "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\Assets\\Unity.Rea.QuickDuel\\Core\\Settings\\Json.cs",
+          "Lines": 206
+        },
+        {
+          "Repo": "Unity.Rea.Ricochet",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\Assets\\Rea.Ricochet\\Core\\Data\\Json.cs",
           "Lines": 206
         }
       ],
       "Identical": false,
-      "Similarity": 0.945273631840796,
-      "SharedLines": 201,
+      "Similarity": 0.8238095238095238,
+      "SharedLines": 200,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 3
+      "RepoCount": 5
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ScreenUsageTests.cs",
+          "Lines": 99
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ScreenUsageTests.cs",
+          "Lines": 99
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 99,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tools\\publish-wpf.ps1",
+          "Lines": 98
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tools\\publish-wpf.ps1",
+          "Lines": 98
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 98,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaTextBoxTests.cs",
+          "Lines": 98
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaTextBoxTests.cs",
+          "Lines": 98
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 98,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TermHostTests.cs",
+          "Lines": 98
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TermHostTests.cs",
+          "Lines": 98
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 98,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\WebSocketFrameStream.cs",
+          "Lines": 98
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\WebSocketFrameStream.cs",
+          "Lines": 98
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 98,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\GatewaySupervisor.cs",
+          "Lines": 97
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\GatewaySupervisor.cs",
+          "Lines": 97
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 97,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\prototypes\\T923-relay\\TermHostStub\\Ring.cs",
+          "Lines": 97
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\prototypes\\T923-relay\\TermHostStub\\Ring.cs",
+          "Lines": 97
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 97,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermViewer\\ViewerWindow.cs",
+          "Lines": 232
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermViewer\\ViewerWindow.cs",
+          "Lines": 220
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8790697674418605,
+      "SharedLines": 194,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -4941,6 +10326,728 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 0.7941176470588235,
       "SharedLines": 194,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemePalette.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemePalette.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 96,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\AddressBar.xaml.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\AddressBar.xaml.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 96,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ApiKeyPersonTests.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ApiKeyPersonTests.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 96,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DiskWatchTests.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DiskWatchTests.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 96,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ViewModelTests.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ViewModelTests.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 96,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Accounts.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Accounts.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 96,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountSwitch.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountSwitch.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 96,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\Hud.Trade.cs",
+          "Lines": 232
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.Trade.cs",
+          "Lines": 234
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8193832599118943,
+      "SharedLines": 191,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaBadgeTests.cs",
+          "Lines": 95
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaBadgeTests.cs",
+          "Lines": 95
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 95,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TermHostInstallsTests.cs",
+          "Lines": 95
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TermHostInstallsTests.cs",
+          "Lines": 95
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 95,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermGatewayAcl.cs",
+          "Lines": 95
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermGatewayAcl.cs",
+          "Lines": 95
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 95,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaSurface.cs",
+          "Lines": 94
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaSurface.cs",
+          "Lines": 94
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 94,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\GatewayClient.cs",
+          "Lines": 94
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\GatewayClient.cs",
+          "Lines": 94
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 94,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Tooltip\\tooltip.js",
+          "Lines": 93
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Tooltip\\tooltip.js",
+          "Lines": 93
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 93,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\BusyClisTests.cs",
+          "Lines": 93
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\BusyClisTests.cs",
+          "Lines": 93
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 93,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\ApiSpend.cs",
+          "Lines": 93
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\ApiSpend.cs",
+          "Lines": 93
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 93,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemeColor.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemeColor.cs",
+          "Lines": 91
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 91,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginPicker.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginPicker.cs",
+          "Lines": 91
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 91,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\ReportedUsage.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\ReportedUsage.cs",
+          "Lines": 91
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 91,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LimitCalibrationTests.cs",
+          "Lines": 90
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LimitCalibrationTests.cs",
+          "Lines": 90
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 90,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Assigned.cs",
+          "Lines": 211
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Assigned.cs",
+          "Lines": 203
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8838383838383839,
+      "SharedLines": 180,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\AsyncRelayCommandTests.cs",
+          "Lines": 89
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\AsyncRelayCommandTests.cs",
+          "Lines": 89
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 89,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\AppBusHub.cs",
+          "Lines": 89
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\AppBusHub.cs",
+          "Lines": 89
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 89,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\MemberRoster.cs",
+          "Lines": 89
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\MemberRoster.cs",
+          "Lines": 89
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 89,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\GatewayRemoteCommands.cs",
+          "Lines": 89
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\GatewayRemoteCommands.cs",
+          "Lines": 89
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 89,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TermGrantsTests.cs",
+          "Lines": 88
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TermGrantsTests.cs",
+          "Lines": 88
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 88,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaList.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaList.cs",
+          "Lines": 87
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 87,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyPacing.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyPacing.cs",
+          "Lines": 87
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 87,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\MeshFactory.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\MeshFactory.cs",
+          "Lines": 87
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 87,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Model.cs",
+          "Lines": 86
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Model.cs",
+          "Lines": 86
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 86,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\MemberProfileSync.cs",
+          "Lines": 86
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\MemberProfileSync.cs",
+          "Lines": 86
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 86,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LibraryOnlyXamlTests.cs",
+          "Lines": 205
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LibraryOnlyXamlTests.cs",
+          "Lines": 191
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8978494623655914,
+      "SharedLines": 172,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Navigation\\NavigationGraph.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Navigation\\NavigationGraph.cs",
+          "Lines": 85
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 85,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaToast.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaToast.cs",
+          "Lines": 85
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 85,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AgentBoardTests.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AgentBoardTests.cs",
+          "Lines": 85
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 85,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\SessionRestore.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\SessionRestore.cs",
+          "Lines": 85
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 85,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ModeTracker.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ModeTracker.cs",
+          "Lines": 85
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 85,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\LimitCalibration.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\LimitCalibration.cs",
+          "Lines": 85
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 85,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
@@ -5020,6 +11127,980 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\ThemeToggle\\theme-toggle.js",
+          "Lines": 56
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\ThemeToggle\\theme-toggle.js",
+          "Lines": 56
+        },
+        {
+          "Repo": "RusNet",
+          "Path": "D:\\Projects\\MindAttic\\RusNet\\rusnet\\assets\\components\\theme-toggle.js",
+          "Lines": 56
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 56,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\NavigationTests.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\NavigationTests.cs",
+          "Lines": 84
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 84,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Rendering\\MaSprites.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Rendering\\MaSprites.cs",
+          "Lines": 84
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 84,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\WeeklyResetTests.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\WeeklyResetTests.cs",
+          "Lines": 84
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 84,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayGrants.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\GatewayGrants.cs",
+          "Lines": 84
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 84,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\EmbeddedPods.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\EmbeddedPods.cs",
+          "Lines": 84
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 84,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\PodBeacons.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\PodBeacons.cs",
+          "Lines": 84
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 84,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Editor\\PrefabBuilder.cs",
+          "Lines": 83
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Editor\\PrefabBuilder.cs",
+          "Lines": 83
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 83,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\HostOptions.cs",
+          "Lines": 83
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\HostOptions.cs",
+          "Lines": 83
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 83,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermBus.cs",
+          "Lines": 83
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermBus.cs",
+          "Lines": 83
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 83,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Menus\\MenuStackModel.cs",
+          "Lines": 82
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Menus\\MenuStackModel.cs",
+          "Lines": 82
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 82,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaHyperlinkTests.cs",
+          "Lines": 82
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaHyperlinkTests.cs",
+          "Lines": 82
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 82,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AppBusTests.cs",
+          "Lines": 82
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AppBusTests.cs",
+          "Lines": 82
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 82,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermBroadcast.cs",
+          "Lines": 82
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermBroadcast.cs",
+          "Lines": 82
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 82,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\HostSessionScanner.cs",
+          "Lines": 82
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\HostSessionScanner.cs",
+          "Lines": 82
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 82,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginScope.cs",
+          "Lines": 82
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginScope.cs",
+          "Lines": 82
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 82,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaCodeDisplay.cs",
+          "Lines": 81
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaCodeDisplay.cs",
+          "Lines": 81
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 81,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SingleInstanceTests.cs",
+          "Lines": 81
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SingleInstanceTests.cs",
+          "Lines": 81
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 81,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Replay\\HeadlessScreen.cs",
+          "Lines": 81
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Replay\\HeadlessScreen.cs",
+          "Lines": 81
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 81,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Reminders\\ReminderTime.cs",
+          "Lines": 81
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Reminders\\ReminderTime.cs",
+          "Lines": 81
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 81,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\PageScrollbar\\page-scrollbar.js",
+          "Lines": 80
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\PageScrollbar\\page-scrollbar.js",
+          "Lines": 80
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 80,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\ProcessReaper.cs",
+          "Lines": 80
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\ProcessReaper.cs",
+          "Lines": 80
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 80,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\AssetStreamer.cs",
+          "Lines": 80
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\AssetStreamer.cs",
+          "Lines": 80
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 80,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SessionTempPrunerTests.cs",
+          "Lines": 79
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SessionTempPrunerTests.cs",
+          "Lines": 79
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 79,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StatusBusTests.cs",
+          "Lines": 79
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StatusBusTests.cs",
+          "Lines": 79
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 79,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\DiskWatch.cs",
+          "Lines": 79
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\DiskWatch.cs",
+          "Lines": 79
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 79,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Editor\\MaGameObjectMenu.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Editor\\MaGameObjectMenu.cs",
+          "Lines": 78
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\UsageCutoffTests.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\UsageCutoffTests.cs",
+          "Lines": 78
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Native.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Native.cs",
+          "Lines": 78
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\OwnLogins.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\OwnLogins.cs",
+          "Lines": 78
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\prototypes\\T923-relay\\RelayViewer\\MainWindow.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\prototypes\\T923-relay\\RelayViewer\\MainWindow.cs",
+          "Lines": 78
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaStatusPill.cs",
+          "Lines": 77
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaStatusPill.cs",
+          "Lines": 77
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 77,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\TicketActivityFeed.cs",
+          "Lines": 77
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\TicketActivityFeed.cs",
+          "Lines": 77
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 77,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyAllowance.cs",
+          "Lines": 77
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyAllowance.cs",
+          "Lines": 77
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 77,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\WebSnapshot\\snapshot.js",
+          "Lines": 76
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\WebSnapshot\\snapshot.js",
+          "Lines": 76
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 76,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\QueueOrderTests.cs",
+          "Lines": 76
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\QueueOrderTests.cs",
+          "Lines": 76
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 76,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayTokens.cs",
+          "Lines": 76
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\GatewayTokens.cs",
+          "Lines": 76
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 76,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Cyberspace\\tv-static.js",
+          "Lines": 75
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Cyberspace\\tv-static.js",
+          "Lines": 75
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 75,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayBroadcast.cs",
+          "Lines": 75
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\GatewayBroadcast.cs",
+          "Lines": 75
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 75,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\UnderTarget.cs",
+          "Lines": 75
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\UnderTarget.cs",
+          "Lines": 75
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 75,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\prototypes\\T923-relay\\RelayViewer\\RelayConnection.cs",
+          "Lines": 75
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\prototypes\\T923-relay\\RelayViewer\\RelayConnection.cs",
+          "Lines": 75
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 75,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaProgressBar.cs",
+          "Lines": 74
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaProgressBar.cs",
+          "Lines": 74
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 74,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaProgressBarTests.cs",
+          "Lines": 74
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaProgressBarTests.cs",
+          "Lines": 74
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 74,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaFieldContext.cs",
+          "Lines": 74
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaFieldContext.cs",
+          "Lines": 74
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 74,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StatusStreamTests.cs",
+          "Lines": 74
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StatusStreamTests.cs",
+          "Lines": 74
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 74,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\RemindCommand.cs",
+          "Lines": 74
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\RemindCommand.cs",
+          "Lines": 74
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 74,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Sakura\\sakura.js",
+          "Lines": 73
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Sakura\\sakura.js",
+          "Lines": 73
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 73,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaStateRelay.cs",
+          "Lines": 73
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaStateRelay.cs",
+          "Lines": 73
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 73,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaBanner.cs",
+          "Lines": 73
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaBanner.cs",
+          "Lines": 73
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 73,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\OpenTicketSource.cs",
+          "Lines": 73
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\OpenTicketSource.cs",
+          "Lines": 73
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 73,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Reminders\\ReminderSender.cs",
+          "Lines": 73
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Reminders\\ReminderSender.cs",
+          "Lines": 73
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 73,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Launcher",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\tools\\codex.ps1",
           "Lines": 216
@@ -5034,6 +12115,291 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 0.6682464454976303,
       "SharedLines": 146,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Saves.cs",
+          "Lines": 180
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Saves.cs",
+          "Lines": 184
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8,
+      "SharedLines": 145,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\SecretMasker.cs",
+          "Lines": 72
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\SecretMasker.cs",
+          "Lines": 72
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 72,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Hud\\MinimapFit.cs",
+          "Lines": 71
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Hud\\MinimapFit.cs",
+          "Lines": 71
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 71,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginBoard.cs",
+          "Lines": 71
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginBoard.cs",
+          "Lines": 71
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 71,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\ModelViewer.cs",
+          "Lines": 147
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ModelViewer.cs",
+          "Lines": 147
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9647887323943662,
+      "SharedLines": 142,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\ThemeFx\\theme-fx.js",
+          "Lines": 70
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\ThemeFx\\theme-fx.js",
+          "Lines": 70
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 70,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaCheckTests.cs",
+          "Lines": 70
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaCheckTests.cs",
+          "Lines": 70
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 70,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Replay\\Ring.cs",
+          "Lines": 70
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Replay\\Ring.cs",
+          "Lines": 70
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 70,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\Program.cs",
+          "Lines": 69
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\Program.cs",
+          "Lines": 69
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 69,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\BillingCommandTests.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\BillingCommandTests.cs",
+          "Lines": 68
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 68,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\MemberProfileSyncTests.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\MemberProfileSyncTests.cs",
+          "Lines": 68
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 68,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PlanningTests.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\PlanningTests.cs",
+          "Lines": 68
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 68,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SettingsModalTests.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SettingsModalTests.cs",
+          "Lines": 68
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 68,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TicketWorkingTests.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TicketWorkingTests.cs",
+          "Lines": 68
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 68,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Orgs.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Orgs.cs",
+          "Lines": 68
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 68,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
@@ -5068,6 +12434,215 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\ThemeFx\\channel-change.js",
+          "Lines": 67
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\ThemeFx\\channel-change.js",
+          "Lines": 67
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 67,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Feedback\\ToastQueue.cs",
+          "Lines": 67
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Feedback\\ToastQueue.cs",
+          "Lines": 67
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 67,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\UtilizationSeriesTests.cs",
+          "Lines": 67
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\UtilizationSeriesTests.cs",
+          "Lines": 67
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 67,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TerminalKeyboard.cs",
+          "Lines": 67
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TerminalKeyboard.cs",
+          "Lines": 67
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 67,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayOptions.cs",
+          "Lines": 67
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\GatewayOptions.cs",
+          "Lines": 67
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 67,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.LoginCards.cs",
+          "Lines": 151
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.LoginCards.cs",
+          "Lines": 146
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9148936170212766,
+      "SharedLines": 134,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\tools\\build-asset-manifest.ps1",
+          "Lines": 66
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\tools\\build-asset-manifest.ps1",
+          "Lines": 66
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 66,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Cyberspace\\theme.css",
+          "Lines": 66
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Cyberspace\\theme.css",
+          "Lines": 66
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 66,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\DispatchLease.cs",
+          "Lines": 66
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\DispatchLease.cs",
+          "Lines": 66
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 66,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\AgentBoard.cs",
+          "Lines": 66
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\AgentBoard.cs",
+          "Lines": 66
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 66,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\LedgerCommand.cs",
+          "Lines": 66
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\LedgerCommand.cs",
+          "Lines": 66
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 66,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "IdiotProof",
           "Path": "D:\\Projects\\MindAttic\\IdiotProof\\Export.ps1",
           "Lines": 135
@@ -5082,6 +12657,500 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 0.9921875,
       "SharedLines": 132,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\MachineHealth.cs",
+          "Lines": 65
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\MachineHealth.cs",
+          "Lines": 65
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 65,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\DbCommands.cs",
+          "Lines": 65
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\DbCommands.cs",
+          "Lines": 65
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 65,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TerminalFocus.cs",
+          "Lines": 64
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TerminalFocus.cs",
+          "Lines": 64
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 64,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Stream.cs",
+          "Lines": 64
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Stream.cs",
+          "Lines": 64
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 64,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\Palette.cs",
+          "Lines": 64
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\Palette.cs",
+          "Lines": 64
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 64,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\StatusInbox.cs",
+          "Lines": 64
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\StatusInbox.cs",
+          "Lines": 64
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 64,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\BillingCommand.cs",
+          "Lines": 64
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\BillingCommand.cs",
+          "Lines": 64
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 64,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\prototypes\\T923-relay\\TermHostStub\\Native.cs",
+          "Lines": 64
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\prototypes\\T923-relay\\TermHostStub\\Native.cs",
+          "Lines": 64
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 64,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\MatchingTests.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\MatchingTests.cs",
+          "Lines": 63
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 63,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Audit\\ConventionAudit.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Audit\\ConventionAudit.cs",
+          "Lines": 63
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 63,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\GatewayCommand.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\GatewayCommand.cs",
+          "Lines": 63
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 63,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\AsteroidBelt.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\AsteroidBelt.cs",
+          "Lines": 63
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 63,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaTabControl.cs",
+          "Lines": 62
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaTabControl.cs",
+          "Lines": 62
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 62,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AgentActivityTextTests.cs",
+          "Lines": 61
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AgentActivityTextTests.cs",
+          "Lines": 61
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 61,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermGatewayTokens.cs",
+          "Lines": 61
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermGatewayTokens.cs",
+          "Lines": 61
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 61,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\SnapshotFile.cs",
+          "Lines": 61
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\SnapshotFile.cs",
+          "Lines": 61
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 61,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\TicketWorking.cs",
+          "Lines": 61
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\TicketWorking.cs",
+          "Lines": 61
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 61,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\ThemeTests.cs",
+          "Lines": 60
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\ThemeTests.cs",
+          "Lines": 60
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 60,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Registration.cs",
+          "Lines": 60
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Registration.cs",
+          "Lines": 60
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 60,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\TicketQueue.cs",
+          "Lines": 60
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\TicketQueue.cs",
+          "Lines": 60
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 60,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\TicketCosts.cs",
+          "Lines": 60
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\TicketCosts.cs",
+          "Lines": 60
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 60,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\FormattingTests.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\FormattingTests.cs",
+          "Lines": 59
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 59,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Move.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Move.cs",
+          "Lines": 59
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 59,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\QueueViewModels.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\QueueViewModels.cs",
+          "Lines": 59
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 59,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\GateView.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\GateView.cs",
+          "Lines": 59
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 59,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaMessageBoxTests.cs",
+          "Lines": 123
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaMessageBoxTests.cs",
+          "Lines": 123
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9491525423728814,
+      "SharedLines": 117,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
@@ -5106,20 +13175,258 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\HostSessionScannerTests.cs",
+          "Lines": 58
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\HostSessionScannerTests.cs",
+          "Lines": 58
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 58,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\UsageReportCommand.cs",
+          "Lines": 58
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\UsageReportCommand.cs",
+          "Lines": 58
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 58,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\DisplayOptions.cs",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\DisplayOptions.cs",
+          "Lines": 58
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 58,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\ThemeToggle\\theme-toggle.js",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Theming\\MaTheme.cs",
+          "Lines": 57
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Theming\\MaTheme.cs",
+          "Lines": 57
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 57,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Hud\\BannerQueue.cs",
+          "Lines": 57
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Hud\\BannerQueue.cs",
+          "Lines": 57
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 57,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaSettingRow.cs",
+          "Lines": 57
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaSettingRow.cs",
+          "Lines": 57
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 57,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipThumbnails.cs",
+          "Lines": 57
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipThumbnails.cs",
+          "Lines": 57
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 57,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\Components\\UiUx\\UserTimeout.razor",
+          "Lines": 28
+        },
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserTimeout\\UserTimeout.razor",
+          "Lines": 28
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\UserTimeout\\UserTimeout.razor",
+          "Lines": 28
+        },
+        {
+          "Repo": "Tutor",
+          "Path": "D:\\Projects\\MindAttic\\Tutor\\Tutor.Shared\\Components\\UiUx\\UserTimeout.razor",
+          "Lines": 28
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 28,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\QuietHoursTests.cs",
           "Lines": 56
         },
         {
-          "Repo": "RusNet",
-          "Path": "D:\\Projects\\MindAttic\\RusNet\\rusnet\\assets\\components\\theme-toggle.js",
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\QuietHoursTests.cs",
           "Lines": 56
         }
       ],
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 56,
-      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ResetCrossingTests.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ResetCrossingTests.cs",
+          "Lines": 56
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 56,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\UsageCutoff.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\UsageCutoff.cs",
+          "Lines": 56
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 56,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\Utilization.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\Utilization.cs",
+          "Lines": 56
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 56,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\SatelliteSwarm.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\SatelliteSwarm.cs",
+          "Lines": 56
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 56,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
@@ -5145,6 +13452,334 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 37,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
       "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserCircle\\UserCircle.razor",
+          "Lines": 37
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\UserCircle\\UserCircle.razor",
+          "Lines": 37
+        },
+        {
+          "Repo": "Tutor",
+          "Path": "D:\\Projects\\MindAttic\\Tutor\\Tutor.Shared\\Components\\UiUx\\UserCircle.razor",
+          "Lines": 37
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 37,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Tooltip\\tooltip.css",
+          "Lines": 55
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Tooltip\\tooltip.css",
+          "Lines": 55
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 55,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaRow.cs",
+          "Lines": 55
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaRow.cs",
+          "Lines": 55
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 55,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\TestWindowHygieneTests.cs",
+          "Lines": 55
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\TestWindowHygieneTests.cs",
+          "Lines": 55
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 55,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorMigration.cs",
+          "Lines": 55
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorMigration.cs",
+          "Lines": 55
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 55,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionStates.cs",
+          "Lines": 55
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionStates.cs",
+          "Lines": 55
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 55,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Spring\\spring.js",
+          "Lines": 54
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Spring\\spring.js",
+          "Lines": 54
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 54,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Autumn\\autumn.js",
+          "Lines": 54
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Autumn\\autumn.js",
+          "Lines": 54
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 54,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\AutoReplies.cs",
+          "Lines": 54
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\AutoReplies.cs",
+          "Lines": 54
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 54,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\BusyCommand.cs",
+          "Lines": 54
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\BusyCommand.cs",
+          "Lines": 54
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 54,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\ReportCommand.cs",
+          "Lines": 54
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\ReportCommand.cs",
+          "Lines": 54
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 54,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaTag.cs",
+          "Lines": 53
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaTag.cs",
+          "Lines": 53
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 53,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaTextButtonTests.cs",
+          "Lines": 53
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaTextButtonTests.cs",
+          "Lines": 53
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 53,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StateBusTests.cs",
+          "Lines": 130
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StateBusTests.cs",
+          "Lines": 109
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9615384615384616,
+      "SharedLines": 105,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Menus\\MaBackRouter.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Menus\\MaBackRouter.cs",
+          "Lines": 52
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 52,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayCertificates.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\GatewayCertificates.cs",
+          "Lines": 52
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 52,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\AppBus.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\AppBus.cs",
+          "Lines": 52
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 52,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -5217,6 +13852,1408 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaThemeToggle.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaThemeToggle.cs",
+          "Lines": 51
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 51,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\NotifierTests.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\NotifierTests.cs",
+          "Lines": 51
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 51,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TestWindowHygieneTests.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TestWindowHygieneTests.cs",
+          "Lines": 51
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 51,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\GatewayRemote.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\GatewayRemote.cs",
+          "Lines": 51
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 51,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\ProcessTree.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\ProcessTree.cs",
+          "Lines": 51
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 51,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\MockupCommand.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\MockupCommand.cs",
+          "Lines": 51
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 51,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\Materials.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\Materials.cs",
+          "Lines": 51
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 51,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaCanvas.cs",
+          "Lines": 50
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaCanvas.cs",
+          "Lines": 50
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 50,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaBadge.cs",
+          "Lines": 50
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaBadge.cs",
+          "Lines": 50
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 50,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaStatusLight.cs",
+          "Lines": 50
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaStatusLight.cs",
+          "Lines": 50
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 50,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Billing.cs",
+          "Lines": 50
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Billing.cs",
+          "Lines": 50
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 50,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Button\\button.css",
+          "Lines": 33
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Button\\button.css",
+          "Lines": 33
+        },
+        {
+          "Repo": "RusNet",
+          "Path": "D:\\Projects\\MindAttic\\RusNet\\rusnet\\assets\\components\\button.css",
+          "Lines": 33
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 33,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Tag\\tag.js",
+          "Lines": 49
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Tag\\tag.js",
+          "Lines": 49
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 49,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TabBlinker.cs",
+          "Lines": 49
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TabBlinker.cs",
+          "Lines": 49
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 49,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermPaneFile.cs",
+          "Lines": 49
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermPaneFile.cs",
+          "Lines": 49
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 49,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountsViewTests.cs",
+          "Lines": 116
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountsViewTests.cs",
+          "Lines": 102
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9587628865979382,
+      "SharedLines": 98,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "IdeaCms",
+          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\wwwroot\\js\\user-circle.js",
+          "Lines": 24
+        },
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserCircle\\user-circle.js",
+          "Lines": 24
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\UserCircle\\user-circle.js",
+          "Lines": 24
+        },
+        {
+          "Repo": "Tutor",
+          "Path": "D:\\Projects\\MindAttic\\Tutor\\Tutor.Blazor\\wwwroot\\js\\user-circle.js",
+          "Lines": 24
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 24,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Menus\\MenuDefinition.cs",
+          "Lines": 48
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Menus\\MenuDefinition.cs",
+          "Lines": 48
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 48,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaToolbar.cs",
+          "Lines": 48
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaToolbar.cs",
+          "Lines": 48
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 48,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\StaHost.cs",
+          "Lines": 48
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\StaHost.cs",
+          "Lines": 48
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 48,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\UsageHistoryTests.cs",
+          "Lines": 48
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\UsageHistoryTests.cs",
+          "Lines": 48
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 48,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\GatewayTokenReminders.cs",
+          "Lines": 48
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\GatewayTokenReminders.cs",
+          "Lines": 48
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 48,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Redelegation.cs",
+          "Lines": 48
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Redelegation.cs",
+          "Lines": 48
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 48,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Tokens.Tests\\MaPaletteTests.cs",
+          "Lines": 47
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Tokens.Tests\\MaPaletteTests.cs",
+          "Lines": 47
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 47,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermViewer\\Program.cs",
+          "Lines": 47
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermViewer\\Program.cs",
+          "Lines": 47
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 47,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\PacePlan.cs",
+          "Lines": 47
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\PacePlan.cs",
+          "Lines": 47
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 47,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\BroadcastCommand.cs",
+          "Lines": 47
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\BroadcastCommand.cs",
+          "Lines": 47
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 47,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TerminalPanes.cs",
+          "Lines": 118
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TerminalPanes.cs",
+          "Lines": 100
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9263157894736842,
+      "SharedLines": 93,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaPanel.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaPanel.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaText.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaText.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Mvvm\\AsyncRelayCommand.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Mvvm\\AsyncRelayCommand.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaTheme.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaTheme.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\MockupCommandTests.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\MockupCommandTests.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TerminalCopyTests.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TerminalCopyTests.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\Themes\\Spacing.xaml",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\Themes\\Spacing.xaml",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\ViewerPolicy.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\ViewerPolicy.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermWatchers.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermWatchers.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\SnapshotFigures.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\SnapshotFigures.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginBrowser.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginBrowser.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\LineStrip.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\LineStrip.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\WebSnapshot\\web-snapshot-viewer.js",
+          "Lines": 45
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\WebSnapshot\\web-snapshot-viewer.js",
+          "Lines": 45
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 45,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LauncherRespawnTests.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LauncherRespawnTests.cs",
+          "Lines": 45
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 45,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\MachineHealthTests.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\MachineHealthTests.cs",
+          "Lines": 45
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 45,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TerminalClip.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TerminalClip.cs",
+          "Lines": 45
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 45,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\ViewerLink.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\ViewerLink.cs",
+          "Lines": 45
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 45,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\ClosedTicketSource.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\ClosedTicketSource.cs",
+          "Lines": 45
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 45,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\Sql.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\Sql.cs",
+          "Lines": 45
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 45,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\DebrisFields.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\DebrisFields.cs",
+          "Lines": 45
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 45,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginLook.cs",
+          "Lines": 98
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginLook.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9230769230769231,
+      "SharedLines": 89,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DashboardWindowTests.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DashboardWindowTests.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OrchestratorDbBusyRetryTests.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OrchestratorDbBusyRetryTests.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\WeeklyUtilizationSeriesTests.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\WeeklyUtilizationSeriesTests.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionTempPruner.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionTempPruner.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Reminders\\Reminder.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Reminders\\Reminder.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\UsageHistory.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\UsageHistory.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\Starfield.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\Starfield.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserCircle\\user-circle.css",
+          "Lines": 43
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\UserCircle\\user-circle.css",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaElement.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaElement.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaHighContrast.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaHighContrast.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ClosedTicketSourceTests.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ClosedTicketSourceTests.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StatusInboxTests.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StatusInboxTests.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TerminalRenameTests.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TerminalRenameTests.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.AppBus.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.AppBus.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\VaultSecrets.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\VaultSecrets.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\ApiKeyPerson.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\ApiKeyPerson.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingMode.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingMode.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\PageScrollbar\\page-scrollbar.css",
+          "Lines": 42
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\PageScrollbar\\page-scrollbar.css",
+          "Lines": 42
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 42,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Motion\\Motion.cs",
+          "Lines": 42
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Motion\\Motion.cs",
+          "Lines": 42
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 42,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\CoolOffTests.cs",
+          "Lines": 42
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\CoolOffTests.cs",
+          "Lines": 42
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 42,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LoaderTests.cs",
+          "Lines": 42
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LoaderTests.cs",
+          "Lines": 42
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 42,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.State.cs",
+          "Lines": 42
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.State.cs",
+          "Lines": 42
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 42,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermGateway.cs",
+          "Lines": 42
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermGateway.cs",
+          "Lines": 42
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 42,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\BackgroundAgent.cs",
+          "Lines": 42
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\BackgroundAgent.cs",
+          "Lines": 42
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 42,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "TownWalker",
           "Path": "D:\\Projects\\MindAttic\\TownWalker\\tools\\make_icons.py",
           "Lines": 153
@@ -5224,38 +15261,413 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "Unity.GridGame",
           "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\tools\\make_icons.py",
-          "Lines": 181
+          "Lines": 182
         }
       ],
       "Identical": false,
-      "Similarity": 0.5743243243243243,
-      "SharedLines": 90,
+      "Similarity": 0.5337837837837838,
+      "SharedLines": 84,
       "SuggestedHome": "a shared Python package",
       "RepoCount": 2
     },
     {
       "Files": [
         {
-          "Repo": "IdeaCms",
-          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\Components\\UiUx\\UserTimeout.razor",
-          "Lines": 28
-        },
-        {
           "Repo": "MindAttic.Components",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserTimeout\\UserTimeout.razor",
-          "Lines": 28
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Neko\\neko.css",
+          "Lines": 41
         },
         {
-          "Repo": "Tutor",
-          "Path": "D:\\Projects\\MindAttic\\Tutor\\Tutor.Shared\\Components\\UiUx\\UserTimeout.razor",
-          "Lines": 28
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Neko\\neko.css",
+          "Lines": 41
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 28,
+      "SharedLines": 41,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
-      "RepoCount": 3
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\tests\\run-editmode.ps1",
+          "Lines": 41
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\tests\\run-editmode.ps1",
+          "Lines": 41
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Editor\\TmpEssentials.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Editor\\TmpEssentials.cs",
+          "Lines": 41
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\DropdownMenuTests.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\DropdownMenuTests.cs",
+          "Lines": 41
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\Foreground.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\Foreground.cs",
+          "Lines": 41
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\OrgReach.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\OrgReach.cs",
+          "Lines": 41
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\AuditCommand.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\AuditCommand.cs",
+          "Lines": 41
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Target.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Target.cs",
+          "Lines": 41
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserTimeout\\user-timeout.js",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\UserTimeout\\user-timeout.js",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserLogin\\user-login.css",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\UserLogin\\user-login.css",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\tests\\run-playmode.ps1",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\tests\\run-playmode.ps1",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemeValidator.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemeValidator.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AuditNewsTests.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AuditNewsTests.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\CliRosterTests.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\CliRosterTests.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PendingMovesTests.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\PendingMovesTests.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\WatchdogTests.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\WatchdogTests.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\PendingMoves.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\PendingMoves.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\RefreshWaiter.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\RefreshWaiter.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Reminders\\PsstClient.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Reminders\\PsstClient.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\WorkspaceCommands.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\WorkspaceCommands.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\DiscView.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\DiscView.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -5303,6 +15715,101 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Textbox\\textbox.css",
+          "Lines": 39
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Textbox\\textbox.css",
+          "Lines": 39
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 39,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\HashPages\\hash-pages.js",
+          "Lines": 39
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\HashPages\\hash-pages.js",
+          "Lines": 39
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 39,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\MemberLookup.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\MemberLookup.cs",
+          "Lines": 39
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 39,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyUtilizationSeries.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyUtilizationSeries.cs",
+          "Lines": 39
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 39,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\PaceWatchCommand.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\PaceWatchCommand.cs",
+          "Lines": 39
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 39,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Automata",
           "Path": "D:\\Projects\\MindAttic\\Automata\\Automata.Core\\Operator\\OpenAiToolCallingLlm.cs",
           "Lines": 139
@@ -5323,44 +15830,424 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Components",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserCircle\\UserCircle.razor",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Themes\\Light.xaml",
+          "Lines": 38
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Themes\\Light.xaml",
+          "Lines": 38
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 38,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PacePlanTests.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\PacePlanTests.cs",
+          "Lines": 38
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 38,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ProjectionOverflowTests.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ProjectionOverflowTests.cs",
+          "Lines": 38
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 38,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TerminalPaste.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TerminalPaste.cs",
+          "Lines": 38
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 38,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\ModelChoice.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\ModelChoice.cs",
+          "Lines": 38
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 38,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Boarding.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Boarding.cs",
+          "Lines": 38
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 38,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Course.cs",
+          "Lines": 103
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Course.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7244897959183674,
+      "SharedLines": 76,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\ThemeToggle\\theme-toggle.css",
+          "Lines": 25
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\ThemeToggle\\theme-toggle.css",
+          "Lines": 25
+        },
+        {
+          "Repo": "RusNet",
+          "Path": "D:\\Projects\\MindAttic\\RusNet\\rusnet\\assets\\components\\theme-toggle.css",
+          "Lines": 25
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 25,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\tests\\package\\pester\\build.Tests.ps1",
           "Lines": 37
         },
         {
-          "Repo": "Tutor",
-          "Path": "D:\\Projects\\MindAttic\\Tutor\\Tutor.Shared\\Components\\UiUx\\UserCircle.razor",
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\tests\\package\\pester\\build.Tests.ps1",
           "Lines": 37
         }
       ],
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 37,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaFormRow.cs",
+          "Lines": 37
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaFormRow.cs",
+          "Lines": 37
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 37,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\BriefingTests.cs",
+          "Lines": 37
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\BriefingTests.cs",
+          "Lines": 37
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 37,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SessionControlTests.cs",
+          "Lines": 37
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SessionControlTests.cs",
+          "Lines": 37
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 37,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Terminals.cs",
+          "Lines": 37
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Terminals.cs",
+          "Lines": 37
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 37,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayInput.cs",
+          "Lines": 37
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayInput.cs",
+          "Lines": 37
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 37,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\QueueImport.cs",
+          "Lines": 37
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\QueueImport.cs",
+          "Lines": 37
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 37,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\CliRoster.cs",
+          "Lines": 37
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\CliRoster.cs",
+          "Lines": 37
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 37,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermLauncher.cs",
+          "Lines": 103
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermLauncher.cs",
+          "Lines": 93
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7727272727272727,
+      "SharedLines": 73,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\VideoEmbed\\video-embed.css",
+          "Lines": 36
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\VideoEmbed\\video-embed.css",
+          "Lines": 36
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 36,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
       "RepoCount": 2
     },
     {
       "Files": [
         {
-          "Repo": "IdeaCms",
-          "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\wwwroot\\js\\user-circle.js",
-          "Lines": 24
-        },
-        {
           "Repo": "MindAttic.Components",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserCircle\\user-circle.js",
-          "Lines": 24
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Cyberspace\\loader.js",
+          "Lines": 36
         },
         {
-          "Repo": "Tutor",
-          "Path": "D:\\Projects\\MindAttic\\Tutor\\Tutor.Blazor\\wwwroot\\js\\user-circle.js",
-          "Lines": 24
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Cyberspace\\loader.js",
+          "Lines": 36
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 24,
+      "SharedLines": 36,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
-      "RepoCount": 3
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayAudit.cs",
+          "Lines": 36
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\GatewayAudit.cs",
+          "Lines": 36
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 36,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Audit\\AuditRunner.cs",
+          "Lines": 36
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Audit\\AuditRunner.cs",
+          "Lines": 36
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 36,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\prototypes\\T923-relay\\TermHostStub\\Program.cs",
+          "Lines": 36
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\prototypes\\T923-relay\\TermHostStub\\Program.cs",
+          "Lines": 36
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 36,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -5378,6 +16265,177 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 35,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\tests\\Core.Tests\\ButtonContrastTests.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\tests\\Core.Tests\\ButtonContrastTests.cs",
+          "Lines": 35
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 35,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemeTokenNames.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemeTokenNames.cs",
+          "Lines": 35
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 35,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaSelectItem.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaSelectItem.cs",
+          "Lines": 35
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 35,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Report.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Report.cs",
+          "Lines": 35
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 35,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyReset.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyReset.cs",
+          "Lines": 35
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 35,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Restore.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Restore.cs",
+          "Lines": 74
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.927536231884058,
+      "SharedLines": 69,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemeMetrics.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemeMetrics.cs",
+          "Lines": 34
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 34,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermSessionRecord.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermSessionRecord.cs",
+          "Lines": 34
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 34,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Broadsides.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Broadsides.cs",
+          "Lines": 34
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 34,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -5409,19 +16467,228 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Components",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Button\\button.css",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\tools\\vendor.ps1",
           "Lines": 33
         },
         {
-          "Repo": "RusNet",
-          "Path": "D:\\Projects\\MindAttic\\RusNet\\rusnet\\assets\\components\\button.css",
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\tools\\vendor.ps1",
           "Lines": 33
         }
       ],
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 33,
-      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\ButtonContrastTests.cs",
+          "Lines": 33
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\ButtonContrastTests.cs",
+          "Lines": 33
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 33,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ProcessPathTests.cs",
+          "Lines": 33
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ProcessPathTests.cs",
+          "Lines": 33
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 33,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ReplayScreen.cs",
+          "Lines": 33
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ReplayScreen.cs",
+          "Lines": 33
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 33,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaNavigation.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaNavigation.cs",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaSpinner.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaSpinner.cs",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\CutoffAlertsTests.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\CutoffAlertsTests.cs",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SubagentShareTests.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SubagentShareTests.cs",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TerminalEndedPruneTests.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TerminalEndedPruneTests.cs",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TicketsApp.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TicketsApp.cs",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\StatusEnvelope.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\StatusEnvelope.cs",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\ExportedState.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\ExportedState.cs",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
@@ -5440,6 +16707,158 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.6629213483146067,
       "SharedLines": 64,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Mvvm\\ZoomLevel.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Mvvm\\ZoomLevel.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 31,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ExtractionPrunerTests.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ExtractionPrunerTests.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 31,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ApiBurnChartData.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ApiBurnChartData.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 31,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Show.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Show.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 31,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Formatting.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Formatting.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 31,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\TicketsDesktop.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\TicketsDesktop.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 31,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\CutoffAlerts.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\CutoffAlerts.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 31,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\ClisCommand.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\ClisCommand.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 31,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -5465,6 +16884,158 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Editor\\ThemeTokensEditor.cs",
+          "Lines": 30
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Editor\\ThemeTokensEditor.cs",
+          "Lines": 30
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 30,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Tokens.Tests\\XamlPaletteTests.cs",
+          "Lines": 30
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Tokens.Tests\\XamlPaletteTests.cs",
+          "Lines": 30
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 30,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaWindow.cs",
+          "Lines": 30
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaWindow.cs",
+          "Lines": 30
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 30,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\Opener.cs",
+          "Lines": 30
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\Opener.cs",
+          "Lines": 30
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 30,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ApiBurnChartAxisTests.cs",
+          "Lines": 29
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ApiBurnChartAxisTests.cs",
+          "Lines": 29
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 29,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\NativeImportTests.cs",
+          "Lines": 29
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\NativeImportTests.cs",
+          "Lines": 29
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 29,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\UtilizationChartData.cs",
+          "Lines": 29
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\UtilizationChartData.cs",
+          "Lines": 29
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 29,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Practice.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Practice.cs",
+          "Lines": 64
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9137931034482759,
+      "SharedLines": 58,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Automata",
           "Path": "D:\\Projects\\MindAttic\\Automata\\Automata.Core\\Operator\\Tools\\SelectFormOptionTool.cs",
           "Lines": 92
@@ -5478,6 +17049,234 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.6091954022988506,
       "SharedLines": 58,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\UserTimeout\\user-timeout.css",
+          "Lines": 28
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\UserTimeout\\user-timeout.css",
+          "Lines": 28
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 28,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Tokens.Tests\\MaColorTests.cs",
+          "Lines": 28
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Tokens.Tests\\MaColorTests.cs",
+          "Lines": 28
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 28,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\DashboardWindow.cs",
+          "Lines": 28
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\DashboardWindow.cs",
+          "Lines": 28
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 28,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TerminalTabPicker.cs",
+          "Lines": 28
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TerminalTabPicker.cs",
+          "Lines": 28
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 28,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Audit\\AuditModel.cs",
+          "Lines": 28
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Audit\\AuditModel.cs",
+          "Lines": 28
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 28,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\MoveCommand.cs",
+          "Lines": 28
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\MoveCommand.cs",
+          "Lines": 28
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 28,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\prototypes\\T923-relay\\TermHostStub\\Protocol.cs",
+          "Lines": 28
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\prototypes\\T923-relay\\TermHostStub\\Protocol.cs",
+          "Lines": 28
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 28,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\OffScreenWindow.cs",
+          "Lines": 27
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\OffScreenWindow.cs",
+          "Lines": 27
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\AddressBar.xaml",
+          "Lines": 27
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\AddressBar.xaml",
+          "Lines": 27
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PaceWatchCommandTests.cs",
+          "Lines": 27
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\PaceWatchCommandTests.cs",
+          "Lines": 27
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Program.cs",
+          "Lines": 27
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Program.cs",
+          "Lines": 27
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\ToolCallText.cs",
+          "Lines": 27
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\ToolCallText.cs",
+          "Lines": 27
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 27,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -5523,12 +17322,107 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Components",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\ThemeToggle\\theme-toggle.css",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\UiTestBase.cs",
+          "Lines": 26
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\UiTestBase.cs",
+          "Lines": 26
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 26,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Mvvm\\CollectionSync.cs",
+          "Lines": 26
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Mvvm\\CollectionSync.cs",
+          "Lines": 26
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 26,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LoopDetectorTests.cs",
+          "Lines": 26
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LoopDetectorTests.cs",
+          "Lines": 26
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 26,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StoreFaults.cs",
+          "Lines": 26
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StoreFaults.cs",
+          "Lines": 26
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 26,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TerminalCopy.cs",
+          "Lines": 26
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TerminalCopy.cs",
+          "Lines": 26
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 26,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\PinFooter\\pin-footer.js",
           "Lines": 25
         },
         {
-          "Repo": "RusNet",
-          "Path": "D:\\Projects\\MindAttic\\RusNet\\rusnet\\assets\\components\\theme-toggle.css",
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\PinFooter\\pin-footer.js",
           "Lines": 25
         }
       ],
@@ -5541,9 +17435,66 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaSecretClipboard.cs",
+          "Lines": 25
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaSecretClipboard.cs",
+          "Lines": 25
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 25,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermHostKill.cs",
+          "Lines": 25
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermHostKill.cs",
+          "Lines": 25
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 25,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TicketsDesktopTests.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TicketsDesktopTests.cs",
+          "Lines": 55
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9,
+      "SharedLines": 50,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Automata",
           "Path": "D:\\Projects\\MindAttic\\Automata\\Automata.Core\\Operator\\AnthropicToolClient.cs",
-          "Lines": 64
+          "Lines": 65
         },
         {
           "Repo": "Prose",
@@ -5552,8 +17503,312 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         }
       ],
       "Identical": false,
-      "Similarity": 0.6779661016949152,
-      "SharedLines": 45,
+      "Similarity": 0.7333333333333333,
+      "SharedLines": 49,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\VideoEmbed\\video-embed.js",
+          "Lines": 24
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\VideoEmbed\\video-embed.js",
+          "Lines": 24
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 24,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\BackHomeM\\back-home-m.css",
+          "Lines": 24
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\BackHomeM\\back-home-m.css",
+          "Lines": 24
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 24,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Tokens\\MaColor.cs",
+          "Lines": 24
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Tokens\\MaColor.cs",
+          "Lines": 24
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 24,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ExportedStateTests.cs",
+          "Lines": 24
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ExportedStateTests.cs",
+          "Lines": 24
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 24,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StartRequestTests.cs",
+          "Lines": 24
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StartRequestTests.cs",
+          "Lines": 24
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 24,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Terminal.cs",
+          "Lines": 24
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Terminal.cs",
+          "Lines": 24
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 24,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Menus\\FocusTrapModel.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Menus\\FocusTrapModel.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaIconButton.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaIconButton.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaFieldEditorRegistry.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaFieldEditorRegistry.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TempDirs.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TempDirs.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ThemeChoice.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ThemeChoice.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\WeeklyUtilizationChartData.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\WeeklyUtilizationChartData.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Briefing.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Briefing.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\ProcessPath.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\ProcessPath.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\ProcessRunner.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\ProcessRunner.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\TicketActivity.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\TicketActivity.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -5567,6 +17822,177 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "Tutor",
           "Path": "D:\\Projects\\MindAttic\\Tutor\\Tutor.Tests\\UsersAdminContractTests.cs",
+          "Lines": 22
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 22,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Tooltip\\Tooltip.razor",
+          "Lines": 22
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\Tooltip\\Tooltip.razor",
+          "Lines": 22
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 22,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OrchestratorDbPerTest.cs",
+          "Lines": 22
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OrchestratorDbPerTest.cs",
+          "Lines": 22
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 22,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\VaultIsolation.cs",
+          "Lines": 22
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\VaultIsolation.cs",
+          "Lines": 22
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 22,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\LauncherRespawn.cs",
+          "Lines": 22
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\LauncherRespawn.cs",
+          "Lines": 22
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 22,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayLog.cs",
+          "Lines": 22
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\GatewayLog.cs",
+          "Lines": 22
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 22,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\OrchestratorLog.cs",
+          "Lines": 22
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\OrchestratorLog.cs",
+          "Lines": 22
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 22,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\ExtractionPruner.cs",
+          "Lines": 22
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\ExtractionPruner.cs",
+          "Lines": 22
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 22,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorSettingsManifest.cs",
+          "Lines": 22
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorSettingsManifest.cs",
+          "Lines": 22
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 22,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingText.cs",
+          "Lines": 22
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingText.cs",
           "Lines": 22
         }
       ],
@@ -5633,6 +18059,101 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Cyberpunk\\cyberpunk.css",
+          "Lines": 21
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Cyberpunk\\cyberpunk.css",
+          "Lines": 21
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 21,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TerminalMouse.cs",
+          "Lines": 21
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TerminalMouse.cs",
+          "Lines": 21
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 21,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\HostLog.cs",
+          "Lines": 21
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\HostLog.cs",
+          "Lines": 21
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 21,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\CliNudges.cs",
+          "Lines": 21
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\CliNudges.cs",
+          "Lines": 21
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 21,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\OrgRouting.cs",
+          "Lines": 21
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\OrgRouting.cs",
+          "Lines": 21
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 21,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Export",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\MindAttic.Export.Tests\\Migrated\\ProseInlineTests.cs",
           "Lines": 41
@@ -5652,9 +18173,256 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaEventSystem.cs",
+          "Lines": 20
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaEventSystem.cs",
+          "Lines": 20
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 20,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\ActiveProfile.cs",
+          "Lines": 20
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ActiveProfile.cs",
+          "Lines": 20
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 20,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Matrix\\matrix.js",
+          "Lines": 19
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Matrix\\matrix.js",
+          "Lines": 19
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 19,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\WebSnapshot\\snapshots.config.js",
+          "Lines": 19
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\WebSnapshot\\snapshots.config.js",
+          "Lines": 19
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 19,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaInput.cs",
+          "Lines": 19
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaInput.cs",
+          "Lines": 19
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 19,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AfterChangeTests.cs",
+          "Lines": 19
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AfterChangeTests.cs",
+          "Lines": 19
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 19,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\OrgScope.cs",
+          "Lines": 19
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\OrgScope.cs",
+          "Lines": 19
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 19,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\TicketAttribution.cs",
+          "Lines": 19
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\TicketAttribution.cs",
+          "Lines": 19
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 19,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Theming\\ThemeProvider.cs",
+          "Lines": 18
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Theming\\ThemeProvider.cs",
+          "Lines": 18
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 18,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\OrchestratorOptions.cs",
+          "Lines": 18
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\OrchestratorOptions.cs",
+          "Lines": 18
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 18,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\DashboardRequest.cs",
+          "Lines": 18
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\DashboardRequest.cs",
+          "Lines": 18
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 18,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\GatewaySettings.cs",
+          "Lines": 18
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\GatewaySettings.cs",
+          "Lines": 18
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 18,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\ShowCommand.cs",
+          "Lines": 18
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\ShowCommand.cs",
+          "Lines": 18
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 18,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Agency",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\shared\\statusline.ps1",
-          "Lines": 131
+          "Lines": 152
         },
         {
           "Repo": "MindAttic.Web",
@@ -5684,6 +18452,82 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.62,
       "SharedLines": 36,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaAccentTile.cs",
+          "Lines": 17
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaAccentTile.cs",
+          "Lines": 17
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 17,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PacingCommandSettingsTests.cs",
+          "Lines": 17
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\PacingCommandSettingsTests.cs",
+          "Lines": 17
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 17,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\RepoMatcher.cs",
+          "Lines": 17
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\RepoMatcher.cs",
+          "Lines": 17
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 17,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\StartRequest.cs",
+          "Lines": 17
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\StartRequest.cs",
+          "Lines": 17
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 17,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -5728,6 +18572,139 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\BuildWorkspaceWindowTests.cs",
+          "Lines": 16
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\BuildWorkspaceWindowTests.cs",
+          "Lines": 16
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 16,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OffScreenWindow.cs",
+          "Lines": 16
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OffScreenWindow.cs",
+          "Lines": 16
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 16,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TerminalScrollbar.cs",
+          "Lines": 16
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TerminalScrollbar.cs",
+          "Lines": 16
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 16,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\QuietHours.cs",
+          "Lines": 16
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\QuietHours.cs",
+          "Lines": 16
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 16,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\TicketPins.cs",
+          "Lines": 16
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\TicketPins.cs",
+          "Lines": 16
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 16,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Reminders\\PsstAlerts.cs",
+          "Lines": 16
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Reminders\\PsstAlerts.cs",
+          "Lines": 16
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 16,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\OrchestratorKeys.cs",
+          "Lines": 16
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\OrchestratorKeys.cs",
+          "Lines": 16
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 16,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "IdeaCms",
           "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\wwwroot\\js\\user-timeout.js",
           "Lines": 39
@@ -5742,6 +18719,139 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 0.7647058823529411,
       "SharedLines": 31,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Noir\\noir.css",
+          "Lines": 15
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Noir\\noir.css",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\OutfitFont\\outfit-font.css",
+          "Lines": 15
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\OutfitFont\\outfit-font.css",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SourceTextTests.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SourceTextTests.cs",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\App.xaml",
+          "Lines": 15
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\App.xaml",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Charts.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Charts.cs",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\GitHubIntake.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\GitHubIntake.cs",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Hauler.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Hauler.cs",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
@@ -5785,6 +18895,139 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\OutfitFont\\outfit-font.cdn.css",
+          "Lines": 14
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\OutfitFont\\outfit-font.cdn.css",
+          "Lines": 14
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 14,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\RelayReconnectTests.cs",
+          "Lines": 14
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\RelayReconnectTests.cs",
+          "Lines": 14
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 14,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TicketText.cs",
+          "Lines": 14
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TicketText.cs",
+          "Lines": 14
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 14,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Reminders.cs",
+          "Lines": 14
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Reminders.cs",
+          "Lines": 14
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 14,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Notifier.cs",
+          "Lines": 14
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Notifier.cs",
+          "Lines": 14
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 14,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\SubagentShare.cs",
+          "Lines": 14
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\SubagentShare.cs",
+          "Lines": 14
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 14,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Audit\\AuditDiff.cs",
+          "Lines": 14
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Audit\\AuditDiff.cs",
+          "Lines": 14
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 14,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Unity.Cursory",
           "Path": "D:\\Projects\\MindAttic\\Unity.Cursory\\Assets\\Unity.Cursory\\Tests\\PlayMode\\SessionAudioTests.cs",
           "Lines": 37
@@ -5804,6 +19047,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\CaptureDemo\\capture-demo.js",
+          "Lines": 13
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\components\\CaptureDemo\\capture-demo.js",
+          "Lines": 13
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 13,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term.Wpf\\TerminalWindows.cs",
+          "Lines": 13
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term.Wpf\\TerminalWindows.cs",
+          "Lines": 13
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 13,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Unity.Rea.Chain",
           "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\Assets\\Unity.Rea.Chain\\Editor\\RenderPipelineBuilder.cs",
           "Lines": 65
@@ -5817,6 +19098,82 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.6,
       "SharedLines": 26,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Matrix\\matrix.css",
+          "Lines": 12
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\web\\themes\\Matrix\\matrix.css",
+          "Lines": 12
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 12,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Components",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Editor\\MenuValidation.cs",
+          "Lines": 12
+        },
+        {
+          "Repo": "MindAttic.Components.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Editor\\MenuValidation.cs",
+          "Lines": 12
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 12,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\StoreChanges.cs",
+          "Lines": 12
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\StoreChanges.cs",
+          "Lines": 12
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 12,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\LoopDetector.cs",
+          "Lines": 12
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\LoopDetector.cs",
+          "Lines": 12
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 12,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -6040,7 +19397,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "Mods.GTFO.EZ.AbsurdMoves",
           "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdMoves\\src\\GTFO.EZ.AbsurdMoves\\ConfigMigrations.cs",
-          "Lines": 18
+          "Lines": 19
         },
         {
           "Repo": "Mods.GTFO.EZ.AbsurdWeapons",
@@ -6049,7 +19406,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         }
       ],
       "Identical": false,
-      "Similarity": 0.6153846153846154,
+      "Similarity": 0.5714285714285714,
       "SharedLines": 13,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -6344,7 +19701,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "ccf31c7daa1820c169755ca112468822ac1c252a",
+    "Tested": "5908d3510b8185de5503aa348a07f29f1287c5a5",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -6356,8 +19713,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "bb9829c3b4bd5e1e047437b4c8c8e687b09ad07c"
   },
   "MindAttic.Tickets": {
-    "Tested": "d2dad8cbdcb186419c8a6eaad58311a3dadda336",
-    "Green": "d2dad8cbdcb186419c8a6eaad58311a3dadda336"
+    "Tested": "7a625d8636c78fa95f8ccd5a334e4d5312c134de",
+    "Green": "7a625d8636c78fa95f8ccd5a334e4d5312c134de"
   },
   "MindAttic.Vault": {
     "Tested": "638ba5ae0f752e30807057002a47a6c28d47c0d8",
@@ -6619,7 +19976,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2ddb30570ff68e1fc55a4027a160687e2a08c9ad"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "ccf31c7daa1820c169755ca112468822ac1c252a"
+    "Tested": "5908d3510b8185de5503aa348a07f29f1287c5a5"
   }
 }');
 INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
