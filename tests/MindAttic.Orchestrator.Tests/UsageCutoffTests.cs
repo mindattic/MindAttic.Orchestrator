@@ -42,6 +42,23 @@ public sealed class UsageCutoffTests
     }
 
     [Test]
+    public void An_explicit_cutoff_equal_to_the_defaults_is_kept_and_a_5h_only_set_leaves_weekly_on_the_global_dial()
+    {
+        // bughunt 2026-11-02: Set dropped an explicit 90 (equal to the constant) so the member still followed a moved global
+        // dial, and a --5h-only set pinned weekly to 90 instead of leaving it on the global dial.
+        var settings = new OrchestratorSettings { WeeklyReservePercent = 30 }; // global weekly target 70
+        var store = new JsonStore(temps.New());
+
+        UsageCutoffs.Set(store, Erin, "Erin", UsageCutoffs.DefaultWeeklyPercent, null);
+        Assert.That(UsageCutoffs.Apply(UsageCutoffs.Load(store), Erin, settings).WeeklyStopPercent, Is.EqualTo(90));
+
+        UsageCutoffs.Reset(store, Erin, "Erin");
+        UsageCutoffs.Set(store, Erin, "Erin", null, 70);
+        var applied = UsageCutoffs.Apply(UsageCutoffs.Load(store), Erin, settings);
+        Assert.That((applied.WeeklyStopPercent, applied.PaceTargetPercent), Is.EqualTo((settings.WeeklyStopPercent, 70)));
+    }
+
+    [Test]
     public void Raising_a_cutoff_past_the_org_wide_warn_line_raises_its_own_warn_line_too()
     {
         // bughunt 2026-11-01: a member who raised their weekly cutoff to 98 (org limit --weekly 98) so they'd keep

@@ -98,8 +98,9 @@ public sealed partial class MainViewModel
     public ICommand CancelUserSettingsCommand => cancelUserSettingsCommand ??= new RelayCommand(CloseUserSettings);
 
     /// <summary>Saves the dialog: its login's Name and Prefix, with the member's name in the members table (M.ORCH-T670), and
-    /// its cutoffs, each in its bounds (refused, with why, otherwise, and nothing is saved). Cutoffs left at the defaults are
-    /// saved as the defaults (orchestrator org limit --reset), not as a custom pair that happens to match them.</summary>
+    /// its cutoffs, each in its bounds (refused, with why, otherwise, and nothing is saved). A cutoff the member never set and
+    /// left at the live global value it was shown with keeps following that global dial (not pinned); anything else is stored
+    /// as set, even a value equal to the defaults.</summary>
     public ICommand SaveUserSettingsCommand => saveUserSettingsCommand ??= new RelayCommand(async () =>
     {
         if (!userSettingsOpen) return;
@@ -111,10 +112,10 @@ public sealed partial class MainViewModel
         {
             try
             {
-                var set = weekly == UsageCutoffs.DefaultWeeklyPercent && fiveHour == UsageCutoffs.DefaultFiveHourPercent
-                    ? UsageCutoffs.Reset(store, email, TabTitle)
-                    : UsageCutoffs.Set(store, email, TabTitle, weekly, fiveHour);
-                said.Add($"{TabTitle}'s cutoffs: {UsageCutoffs.Text(set.WeeklyPercent, set.FiveHourPercent)}.");
+                int? setWeekly = UsageCutoffs.HasWeekly(Root.cutoffs, email) || weekly != Root.weeklyStopPercent ? weekly : null;
+                int? setFiveHour = UsageCutoffs.HasFiveHour(Root.cutoffs, email) || fiveHour != (int)Root.paceTargetPercent ? fiveHour : null;
+                var set = UsageCutoffs.Set(store, email, TabTitle, setWeekly, setFiveHour);
+                said.Add($"{TabTitle}'s cutoffs: {UsageCutoffs.Text(set, Root.weeklyStopPercent, (int)Root.paceTargetPercent)}.");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException)
             {

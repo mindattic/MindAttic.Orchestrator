@@ -349,7 +349,7 @@ internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
         if (OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is not { } who) return 1;
         var name = OrgDisallowCommand.NameOf(who);
         var result = settings.Reset ? UsageCutoffs.Reset(store, who.Email, name) : UsageCutoffs.Set(store, who.Email, name, settings.Weekly, settings.FiveHour);
-        var line = $"{name} ({who.Email}) cutoffs{(settings.Reset ? " back to the defaults" : "")}: {UsageCutoffs.Text(result.WeeklyPercent, result.FiveHourPercent)}.";
+        var line = $"{name} ({who.Email}) cutoffs{(settings.Reset ? " back to the defaults" : "")}: {UsageCutoffs.Text(result, Ctx.Settings.WeeklyStopPercent, Ctx.Settings.PaceTargetPercent)}.";
         AnsiConsole.MarkupLine(Markup.Escape(line));
         try { MindAttic.Orchestrator.OrchestratorLog.For("Org").Information("{Cutoff:l}", line); }
         catch (Exception ex) when (ex is IOException or InvalidOperationException) { }
