@@ -576,8 +576,24 @@ public sealed class TerminalsViewModel : ObservableObject
     public TerminalsViewModel(string? pipeName = null)
     {
         this.pipeName = pipeName;
-        CloseCommand = new RelayCommand(p => { if (p is TerminalPaneViewModel pane) Close(pane); });
+        CloseCommand = new RelayCommand(p => { if (p is TerminalPaneViewModel pane) CloseAsked(pane); });
     }
+
+    /// <summary>Asks before a tab's close ends its CLI (M.ORCH-T1437): true closes it. Null closes unasked (tests); the window
+    /// sets one that shows the confirm box.</summary>
+    internal Func<TerminalPaneViewModel, bool>? ConfirmClose { get; set; }
+
+    /// <summary>A person's close (the tab's X, <see cref="CloseCommand"/>): asks first, unless its CLI has already ended, and
+    /// closes only on yes. Pruning and replacing ended tabs call <see cref="Close"/> unasked. False when the answer was no.</summary>
+    internal bool CloseAsked(TerminalPaneViewModel pane)
+    {
+        if (!pane.Ended && ConfirmClose is { } confirm && !confirm(pane)) return false;
+        Close(pane);
+        return true;
+    }
+
+    /// <summary>The confirm box's wording for closing <paramref name="pane"/> (M.ORCH-T1437).</summary>
+    internal static string CloseQuestion(TerminalPaneViewModel pane) => $"Close '{pane.Name}'? This ends the CLI running in it.";
 
     /// <summary>Whether new CLIs start in a TermHost (when one is installed); off, every tab runs in this process.</summary>
     public bool UseTermHost { get; init; } = true;

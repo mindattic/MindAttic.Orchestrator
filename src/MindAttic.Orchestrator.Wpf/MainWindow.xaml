@@ -294,7 +294,16 @@
                         </mc:MaTabControl.ItemContainerStyle>
                         <mc:MaTabControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
-                                <StackPanel x:Name="TerminalTab" Orientation="Horizontal" Loaded="TerminalTabItem_Loaded">
+                                <!-- The close X docked at the tab's right edge (M.ORCH-T1437): SizeTerminalTabs stretches this header to the tab. -->
+                                <DockPanel x:Name="TerminalTab" Loaded="TerminalTabItem_Loaded">
+                                    <!-- 10px off the tab's right edge (M.ORCH-T1271); asks before closing (M.ORCH-T1437). -->
+                                    <Button x:Name="TerminalCloseButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-4,-2,-4"
+                                            Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
+                                            Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
+                                            CommandParameter="{Binding}"
+                                            AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
+                                            ToolTip="Close this terminal, ending its CLI" />
+                                <StackPanel x:Name="TerminalTabParts" Orientation="Horizontal" HorizontalAlignment="Left">
                                     <!-- This one CLI's own status (M.ORCH-T1272): the same language as the login tab's aggregate
                                          badge (M.ORCH-T1270) but scoped to this pane alone, from its matched AgentBoardRow
                                          (TerminalsViewModel.Update, matched by SessionId) rather than the whole login's CLIs. -->
@@ -342,14 +351,8 @@
                                                Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="{Binding BroadcastText}"
                                                AutomationProperties.Name="Being watched remotely"
                                                Visibility="{Binding IsWatched, Converter={StaticResource Visible}}" />
-                                    <!-- 10px off the tab's right edge (M.ORCH-T1271). -->
-                                    <Button x:Name="TerminalCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-4,10,-4"
-                                            Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
-                                            Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
-                                            CommandParameter="{Binding}"
-                                            AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
-                                            ToolTip="Close this terminal, ending its CLI" />
                                 </StackPanel>
+                                </DockPanel>
                             </DataTemplate>
                         </mc:MaTabControl.ItemTemplate>
                     </mc:MaTabControl>

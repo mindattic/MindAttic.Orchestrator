@@ -113,6 +113,8 @@ public partial class MainWindow : Window
                 if (added.Control is FrameworkElement terminal) TerminalScrollbar.Hide(terminal);
             }
         };
+        // Closing a CLI tab by hand asks first (M.ORCH-T1437).
+        model.AllTerminals.ConfirmClose = ConfirmCloseTerminal;
         TerminalClip.Attach(TerminalPanesHost);
         TerminalKeyboard.Attach(this, TerminalPanesHost);
         TerminalMouse.Attach(this, TerminalPanesHost);
@@ -518,8 +520,10 @@ public partial class MainWindow : Window
         if (sender is not FrameworkElement { DataContext: TerminalPaneViewModel } content) return;
         if (ItemsControl.ContainerFromElement(TerminalTabs, content) is not TabItem tab) return;
         tab.ApplyTemplate();
+        // The header itself is stretched to the tab (M.ORCH-T1437), so its own parts are what grow with a longer name.
+        var header = (content as Panel)?.Children.OfType<Panel>().SelectMany(p => p.Children.OfType<FrameworkElement>()) ?? [];
         if (TabRow(tab) is { } row)
-            foreach (var part in row.Children.OfType<FrameworkElement>())
+            foreach (var part in row.Children.OfType<FrameworkElement>().Concat(header))
                 if (watchedTabParts.Add(part)) part.SizeChanged += (_, _) => SizeTerminalTabs();
         SizeTerminalTabs();
     }
@@ -576,12 +580,46 @@ public partial class MainWindow : Window
     /// <summary>The row an MaTabItem lays its status light, header and trailing text out in (its template's Bd border's child).</summary>
     private static Panel? TabRow(TabItem tab) => (tab.Template?.FindName("Bd", tab) as Border)?.Child as Panel;
 
+    /// <summary>"Close CLI?" (M.ORCH-T1437): the library's message box, its OK relabelled Close, Cancel the default (Enter, Esc).</summary>
+    private bool ConfirmCloseTerminal(TerminalPaneViewModel pane)
+    {
+        var box = new MindAttic.Components.Wpf.Controls.MaMessageBox(TerminalsViewModel.CloseQuestion(pane), "Close CLI?", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel)
+        {
+            Owner = this,
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+        if (box.Buttons.FirstOrDefault(b => b.Tag is MessageBoxResult.OK) is { } close)
+        {
+            close.Content = "_Close";
+            AutomationProperties.SetName(close, "Close");
+        }
+        box.ShowDialog();
+        return box.Result == MessageBoxResult.OK;
+    }
+
+    /// <summary>MaTabItem's header presenter (its template's HeaderHost), which SizeTerminalTabs stretches (M.ORCH-T1437).</summary>
+    private static ContentPresenter? TabHeader(TabItem tab) => tab.Template?.FindName("HeaderHost", tab) as ContentPresenter;
+
     /// <summary>Its content's natural width: each part of its row is measured with unbounded width, so this never depends on
-    /// the Width already set on it.</summary>
-    private static double NaturalWidth(TabItem tab) =>
-        TabRow(tab) is { } row
-            ? tab.Padding.Left + tab.Padding.Right + row.Children.OfType<UIElement>().Where(c => c.Visibility != Visibility.Collapsed).Sum(c => c.DesiredSize.Width)
-            : 0;
+    /// the Width already set on it. The stretched header counts its own parts instead (M.ORCH-T1437): the close button, and
+    /// the horizontal row whose children a StackPanel always measures unbounded.</summary>
+    private static double NaturalWidth(TabItem tab)
+    {
+        if (TabRow(tab) is not { } row) return 0;
+        var header = TabHeader(tab);
+        return tab.Padding.Left + tab.Padding.Right + row.Children.OfType<UIElement>().Where(c => c.Visibility != Visibility.Collapsed)
+            .Sum(c => ReferenceEquals(c, header) && HeaderNaturalWidth(header!) is { } own ? own : c.DesiredSize.Width);
+    }
+
+    /// <summary>A CLI tab header's natural width (M.ORCH-T1437): its docked close button plus every visible part of its row.</summary>
+    private static double? HeaderNaturalWidth(ContentPresenter header)
+    {
+        if (VisualTreeHelper.GetChildrenCount(header) == 0 || VisualTreeHelper.GetChild(header, 0) is not DockPanel dock) return null;
+        return dock.Children.OfType<FrameworkElement>().Where(c => c.Visibility != Visibility.Collapsed).Sum(c => c is StackPanel parts
+            ? parts.Margin.Left + parts.Margin.Right + parts.Children.OfType<UIElement>().Where(p => p.Visibility != Visibility.Collapsed).Sum(p => p.DesiredSize.Width)
+            : c.DesiredSize.Width);
+    }
 
     /// <summary>Every CLI tab the same width (M.ORCH-T1250): each no longer just sizes to its own content (as the no-wrap
     /// scroller comment on <see cref="TerminalTabScroller_ScrollChanged"/> used to assume), but to the widest one's plus
@@ -594,7 +632,14 @@ public partial class MainWindow : Window
         if (tabs.Count == 0) return;
         var width = Math.Ceiling(tabs.Max(NaturalWidth) + 2 * TabSidePadding + CliTabWidthBoost);
         foreach (var t in tabs)
+        {
             if (double.IsNaN(t.Width) || Math.Abs(t.Width - width) > 0.5) t.Width = width;
+            // The header fills what its row's other parts leave, so the close X sits at the tab's right edge (M.ORCH-T1437).
+            if (TabHeader(t) is not { } header || TabRow(t) is not { } row) continue;
+            var others = row.Children.OfType<UIElement>().Where(c => !ReferenceEquals(c, header) && c.Visibility != Visibility.Collapsed).Sum(c => c.DesiredSize.Width);
+            var fill = Math.Max(0, width - t.Padding.Left - t.Padding.Right - others);
+            if (double.IsNaN(header.Width) || Math.Abs(header.Width - fill) > 0.5) header.Width = fill;
+        }
     }
 
     /// <summary>Scrolls <see cref="LoginTabScroller"/> to the selected person's tab once the strip has laid it out
