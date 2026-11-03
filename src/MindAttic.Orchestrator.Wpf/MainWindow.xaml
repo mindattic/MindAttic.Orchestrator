@@ -343,7 +343,7 @@
                                     <Grid VerticalAlignment="Center">
                                         <TextBlock x:Name="TerminalTabName" Text="{Binding Name}" VerticalAlignment="Center"
                                                    MouseLeftButtonDown="TerminalTabName_MouseLeftButtonDown" />
-                                        <TextBox x:Name="TerminalTabNameEdit" Visibility="Collapsed" VerticalAlignment="Center" Padding="0" Margin="-2,-2,-2,-2"
+                                        <TextBox x:Name="TerminalTabNameEdit" Style="{StaticResource MaTextBox}" Visibility="Collapsed" VerticalAlignment="Center" Padding="0" Margin="-2,-2,-2,-2"
                                                  AutomationProperties.Name="{Binding Title, StringFormat='Rename {0}'}"
                                                  KeyDown="TerminalTabNameEdit_KeyDown" LostKeyboardFocus="TerminalTabNameEdit_LostKeyboardFocus" />
                                     </Grid>
