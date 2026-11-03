@@ -31,13 +31,21 @@ public sealed class TabStatusTests
     }
 
     [Test]
-    public void Hovering_a_persons_tab_shows_only_their_cutoffs_and_the_weekly_reset()
+    public void Hovering_a_persons_tab_shows_their_cutoffs_weekly_reset_and_active_clis_one_per_line()
     {
-        // M.ORCH-T1120: no name, status, email or 5-hour reset; just the cutoffs and when the week resets.
-        var tip = MainViewModel.TabHoverTipOf(" Cutoffs: 5-hour 98%, weekly 95%.", Now.AddHours(7).AddMinutes(3), Now);
-        Assert.That(tip, Does.StartWith("Cutoffs: 5-hour 98%, weekly 95%. Week resets ").And.EndWith("(in 7hr 3m)."));
-        Assert.That(MainViewModel.TabHoverTipOf(" Cutoffs: 5-hour 98%, weekly 95%.", null, Now), Is.EqualTo("Cutoffs: 5-hour 98%, weekly 95%."));
-        Assert.That(MainViewModel.TabHoverTipOf("", Now.AddHours(1), Now), Is.Null, "no cutoffs (signed out, the API key): the full tip instead");
+        // M.ORCH-T1120, bulleted and given the open CLIs M.ORCH-T1424: no name, status or email; just the cutoffs, when
+        // the week resets, and the CLI tabs open on this login, each its own bullet line. The Launcher's own menu pane
+        // is never one of them (M.ORCH-T1430: MainViewModel.ActiveCliTitles filters it out before it reaches here).
+        var tip = MainViewModel.TabHoverTipOf(" Cutoffs: 5-hour 98%, weekly 95%.", Now.AddHours(7).AddMinutes(3), Now, ["repo-foo"]);
+        Assert.That(tip, Is.Not.Null);
+        var lines = tip!.Split('\n');
+        Assert.That(lines[0], Is.EqualTo("• Cutoffs: 5-hour 98%, weekly 95%"));
+        Assert.That(lines[1], Does.StartWith("• Weekly reset: ").And.EndWith("(in 7hr 3m)"));
+        Assert.That(lines[2], Is.EqualTo("• Active CLIs: repo-foo"));
+
+        Assert.That(MainViewModel.TabHoverTipOf(" Cutoffs: 5-hour 98%, weekly 95%.", null, Now, []),
+            Is.EqualTo("• Cutoffs: 5-hour 98%, weekly 95%\n• Weekly reset: not known yet\n• Active CLIs: none open"));
+        Assert.That(MainViewModel.TabHoverTipOf("", Now.AddHours(1), Now, []), Is.Null, "no cutoffs (signed out, the API key): the full tip instead");
     }
 
     [Test]

@@ -55,13 +55,28 @@ public sealed partial class MainViewModel
         (tab.SignedIn && !tab.IsApiKey ? ResetsLineOf(FiveHourResetUtc, WeekReset, DateTime.UtcNow) : "") +
         NeedsYouLine(TabAskingCount);
 
-    /// <summary>What hovering a person's tab shows (M.ORCH-T1120): only their cutoffs and when their week resets, e.g. "Cutoffs:
-    /// 5-hour 98%, weekly 95%. Week resets Tue 10/27 5:00 PM (in 7hr 3m)." A tab with no cutoffs (signed out, the API key,
-    /// the global login's) keeps the full <see cref="TabTip"/>, which stays the accessible name of every tab.</summary>
-    public string TabHoverTip => TabHoverTipOf(TabCutoffsLine, WeekReset, DateTime.UtcNow) ?? TabTip;
+    /// <summary>What hovering a person's tab shows (M.ORCH-T1120, bulleted and given their open CLIs M.ORCH-T1424): their
+    /// cutoffs, when their week resets, and the names of their open CLI tabs, each its own bullet line, e.g.
+    /// "• Cutoffs: 5-hour 98%, weekly 95%\n• Weekly reset: Tue 10/27 5:00 PM (in 7hr 3m)\n• Active CLIs: repo-foo".
+    /// Shown with no hover delay (MainWindow.xaml's ToolTipService.InitialShowDelay="0" on the tab strip) so it's there to
+    /// read the instant the pointer lands, not after the usual tooltip pause. A tab with no cutoffs (signed out, the API
+    /// key, the global login's) keeps the full <see cref="TabTip"/>, which stays the accessible name of every tab.</summary>
+    public string TabHoverTip => TabHoverTipOf(TabCutoffsLine, WeekReset, DateTime.UtcNow, ActiveCliTitles) ?? TabTip;
 
-    internal static string? TabHoverTipOf(string cutoffsLine, DateTime? weekResetUtc, DateTime nowUtc) =>
-        cutoffsLine.Length == 0 ? null : (cutoffsLine + ResetsLineOf(null, weekResetUtc, nowUtc)).Trim();
+    /// <summary>This tab's own open CLI tabs' names, in tab order: the hover tip's "Active CLIs" line. The Launcher's own
+    /// menu pane is always open (M.ORCH-T855) but is never a CLI (M.ORCH-T1430), so it's left out here the same way
+    /// <c>Presume</c> and the Team Wall already leave it out elsewhere; a login with nothing else open reads "none open".</summary>
+    internal IReadOnlyList<string> ActiveCliTitles => Terminals.Panes.Where(p => !p.Request.IsMenu).Select(p => p.Title).ToList();
+
+    internal static string? TabHoverTipOf(string cutoffsLine, DateTime? weekResetUtc, DateTime nowUtc, IReadOnlyList<string> activeCliTitles)
+    {
+        if (cutoffsLine.Length == 0) return null;
+        var weekReset = weekResetUtc is { } t && t > nowUtc
+            ? $"Weekly reset: {t.ToLocalTime().ToString("ddd M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture)} (in {Countdown(t - nowUtc)})"
+            : "Weekly reset: not known yet";
+        var activeCli = activeCliTitles.Count == 0 ? "Active CLIs: none open" : $"Active CLIs: {string.Join(", ", activeCliTitles)}";
+        return $"• {cutoffsLine.Trim().TrimEnd('.')}\n• {weekReset}\n• {activeCli}";
+    }
 
     /// <summary>When this login's 5-hour window resets: the pushed reading's while it's the one shown, else its budget's block, else the roster's.</summary>
     private DateTime? FiveHourResetUtc => (LiveFiveHour is not null ? Live?.FiveHourResetUtc : null)
