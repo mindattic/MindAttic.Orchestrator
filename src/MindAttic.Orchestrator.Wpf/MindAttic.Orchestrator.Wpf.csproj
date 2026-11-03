@@ -22,7 +22,7 @@
   <ItemGroup>
     <!-- Each person's Terminals panel (M.ORCH-T810): the Windows Terminal renderer over ConPTY, a true TTY. -->
     <PackageReference Include="EasyWindowsTerminalControl" Version="1.0.38" />
-    <PackageReference Include="MindAttic.Components.Wpf" Version="26.1.0-sidebar.2" />
+    <PackageReference Include="MindAttic.Components.Wpf" Version="27.0.0" />
   </ItemGroup>
 
   <ItemGroup>
