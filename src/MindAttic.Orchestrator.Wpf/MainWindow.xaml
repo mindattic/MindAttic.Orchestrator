@@ -338,7 +338,15 @@
                                                   Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
                                         </Viewbox>
                                     </Grid>
-                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                    <!-- Double-click the name to rename it in place (M.ORCH-T1432): the TextBox swaps in for the TextBlock in
+                                         the same cell; Enter keeps it, Esc or leaving it cancels (TerminalTabName_* in MainWindow.xaml.cs). -->
+                                    <Grid VerticalAlignment="Center">
+                                        <TextBlock x:Name="TerminalTabName" Text="{Binding Name}" VerticalAlignment="Center"
+                                                   MouseLeftButtonDown="TerminalTabName_MouseLeftButtonDown" />
+                                        <TextBox x:Name="TerminalTabNameEdit" Visibility="Collapsed" VerticalAlignment="Center" Padding="0" Margin="-2,-2,-2,-2"
+                                                 AutomationProperties.Name="{Binding Title, StringFormat='Rename {0}'}"
+                                                 KeyDown="TerminalTabNameEdit_KeyDown" LostKeyboardFocus="TerminalTabNameEdit_LostKeyboardFocus" />
+                                    </Grid>
                                     <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" />
                                     <!-- Shared with remote viewers (M.ORCH-T935), and an eye while someone watches it remotely. -->
                                     <TextBlock x:Name="TerminalSharedGlyph" Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Style="{StaticResource MaMutedText}"

@@ -38,7 +38,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         this.pipeName = pipeName;
         Control = new TerminalView { Visibility = Visibility.Hidden };
         ByControl.AddOrUpdate(Control, this);
-        System.Windows.Automation.AutomationProperties.SetName(Control, request.Title);
+        System.Windows.Automation.AutomationProperties.SetName(Control, Title);
         TabBrush = request.TabColor is { } hex && TryBrush(hex) is { } brush ? brush : Brushes.Gray;
         Login = request.Login;
         if (hosted) UseRelay();
@@ -76,7 +76,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
         return null;
     }
 
-    public PaneRequest Request { get; }
+    /// <summary>What opened it; replaced (never its identity) only by <see cref="Rename"/>.</summary>
+    public PaneRequest Request { get; private set; }
 
     /// <summary>The person whose page it's on: its CLI's login's email, null for the global login. The login it was opened on
     /// until the dashboard sees its CLI on another (moved with "Move to").</summary>
@@ -101,10 +102,32 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>The hosted session once its host registered (or the one reattached to).</summary>
     public TermSessionRecord? Session { get; private set; }
 
-    public string Title => Request.Title;
+    /// <summary>The name the person gave it (M.ORCH-T1432), else its own title.</summary>
+    public string Title => Request.CustomName is { Length: > 0 } custom ? custom : Request.Title;
 
-    public string Name => Request.IsMenu ? SessionControl.ShortName(Request.Name) : $"{SessionControl.ShortName(Request.Name)}{SessionControl.ProviderTag(Request.Provider)}";
-    public string Tooltip => $"{Request.Title}\n{Request.Directory}\n{Request.Alias ?? Login ?? "global login"}";
+    /// <summary>The tab's name: the one the person gave it (M.ORCH-T1432), else the one built from its repo and provider.</summary>
+    public string Name => Request.CustomName is { Length: > 0 } custom ? custom : DefaultName;
+
+    /// <summary>The name it has when not renamed.</summary>
+    public string DefaultName => Request.IsMenu ? SessionControl.ShortName(Request.Name) : $"{SessionControl.ShortName(Request.Name)}{SessionControl.ProviderTag(Request.Provider)}";
+
+    public string Tooltip => (Request.CustomName is { Length: > 0 } custom ? $"{custom}\n{Request.Title}" : Request.Title)
+        + $"\n{Request.Directory}\n{Request.Alias ?? Login ?? "global login"}";
+
+    /// <summary>Renames the tab in place (M.ORCH-T1432): <paramref name="text"/>, trimmed, becomes its name; empty or blank keeps
+    /// the name it had (false), and its own default name clears the custom one. Its id and session are untouched. Raised for the
+    /// tab, its tooltip and automation name; the caller persists it (<see cref="TerminalsViewModel.Rename"/>).</summary>
+    internal bool Rename(string? text)
+    {
+        var name = text?.Trim();
+        if (string.IsNullOrEmpty(name)) return false;
+        var custom = name == DefaultName ? null : name;
+        if (custom == Request.CustomName) return false;
+        Request = Request with { CustomName = custom };
+        System.Windows.Automation.AutomationProperties.SetName(Control, Title);
+        Raise(nameof(Request)); Raise(nameof(Name)); Raise(nameof(Title)); Raise(nameof(Tooltip));
+        return true;
+    }
     public Brush TabBrush { get; }
 
     /// <summary>Black on a light <paramref name="background"/>, white on a dark one (by relative luminance).</summary>
@@ -967,6 +990,26 @@ public sealed class TerminalsViewModel : ObservableObject
             }
         }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Handling a term-session message failed; contained"); }
+    }
+
+    /// <summary>Where the hosted sessions' tab files are (<see cref="TermPaneFile"/>); tests use their own.</summary>
+    internal string? PaneDirectory { get; init; }
+
+    /// <summary>Renames <paramref name="pane"/> in place (M.ORCH-T1432, <see cref="TerminalPaneViewModel.Rename"/>) and keeps the
+    /// name by its identity: a hosted tab's <see cref="TermPaneFile"/> under its TermHost session id, which reattach, a pop-out
+    /// window and a restarted dashboard all read, and the session-restore file (<see cref="Changed"/>). False when the name
+    /// didn't change (blank, or the same). Never throws.</summary>
+    public bool Rename(TerminalPaneViewModel pane, string? text)
+    {
+        try
+        {
+            if (!pane.Rename(text)) return false;
+            if (pane.TermId is { Length: > 0 } id && !TermPaneFile.Write(id, pane.Request, PaneDirectory))
+                OrchestratorLog.For("Terminals").Warning("Couldn't save {Title:l}'s new name to its tab file {Id:l}", pane.Title, id);
+            Changed?.Invoke();
+            return true;
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Renaming {Title:l} failed; contained", pane.Title); return false; }
     }
 
     /// <summary>Closes <paramref name="pane"/>, ending its CLI (a hosted one's TermHost is killed).</summary>

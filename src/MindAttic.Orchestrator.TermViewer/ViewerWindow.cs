@@ -49,7 +49,8 @@ internal sealed class ViewerWindow : Window
         this.pane = pane;
         this.stay = stay;
         this.watchOnly = watchOnly;
-        liveTitle = session.Title is { Length: > 0 } t ? t : pane.Title;
+        // A tab renamed in the dashboard keeps its name in its pop-out window too (M.ORCH-T1432), over the CLI's own title.
+        liveTitle = pane.CustomName is { Length: > 0 } custom ? custom : session.Title is { Length: > 0 } t ? t : pane.Title;
         Width = 1100;
         Height = 700;
         Background = Brushes.Black;
@@ -280,7 +281,7 @@ internal sealed class ViewerWindow : Window
                 if (++upLooks >= 2) { dashboardSeen = true; log.Information("The dashboard is back; {Id:l} folds into its tab", session.Id); Fold(); return; }
             }
             else upLooks = 0;
-            if (TermSessions.Get(session.Id) is { } now && now.Title is { Length: > 0 } title && title != liveTitle)
+            if (pane.CustomName is not { Length: > 0 } && TermSessions.Get(session.Id) is { } now && now.Title is { Length: > 0 } title && title != liveTitle)
             {
                 liveTitle = title;
                 UpdateTitle();

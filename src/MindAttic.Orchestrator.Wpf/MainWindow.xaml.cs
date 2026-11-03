@@ -540,6 +540,55 @@ public partial class MainWindow : Window
         SizeTerminalTabs();
     }
 
+    /// <summary>A double-click on a CLI tab's name renames it in place (M.ORCH-T1432): its TextBox, in the same cell, takes the
+    /// name, all selected. A single click falls through, so it still selects the tab.</summary>
+    private void TerminalTabName_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2 || sender is not TextBlock { DataContext: TerminalPaneViewModel pane, Parent: Grid cell } name
+            || cell.Children.OfType<TextBox>().FirstOrDefault() is not { } box) return;
+        e.Handled = true;
+        box.Tag = pane;
+        box.Text = pane.Name;
+        box.MinWidth = name.ActualWidth;
+        name.Visibility = Visibility.Collapsed;
+        box.Visibility = Visibility.Visible;
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (!ReferenceEquals(box.Tag, pane)) return;
+            box.Focus();
+            Keyboard.Focus(box);
+            box.SelectAll();
+        }, DispatcherPriority.Input);
+    }
+
+    /// <summary>Enter keeps the new name (trimmed; blank keeps the old one); Esc cancels.</summary>
+    private void TerminalTabNameEdit_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox box || e.Key is not (Key.Enter or Key.Return or Key.Escape)) return;
+        e.Handled = true;
+        EndTerminalTabRename(box, commit: e.Key != Key.Escape);
+    }
+
+    /// <summary>Leaving the box without Enter cancels the rename (M.ORCH-T1432).</summary>
+    private void TerminalTabNameEdit_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is TextBox box) EndTerminalTabRename(box, commit: false);
+    }
+
+    private void EndTerminalTabRename(TextBox box, bool commit)
+    {
+        if (box.Tag is not TerminalPaneViewModel pane) return;
+        box.Tag = null; // first: hiding the focused box raises LostKeyboardFocus, which must find no edit left to cancel
+        try { if (commit) model.AllTerminals.Rename(pane, box.Text); }
+        finally
+        {
+            box.Visibility = Visibility.Collapsed;
+            box.MinWidth = 0;
+            if (box.Parent is Grid cell) foreach (var name in cell.Children.OfType<TextBlock>()) name.Visibility = Visibility.Visible;
+            if (commit && pane.IsSelected) pane.Control.Focus();
+        }
+    }
+
     /// <summary>The row an MaTabItem lays its status light, header and trailing text out in (its template's Bd border's child).</summary>
     private static StackPanel? TabRow(TabItem tab) => (tab.Template?.FindName("Bd", tab) as Border)?.Child as StackPanel;
 

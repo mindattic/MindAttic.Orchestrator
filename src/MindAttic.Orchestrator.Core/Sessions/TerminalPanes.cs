@@ -56,6 +56,12 @@ public sealed record PaneRequest(string Title, string Directory)
     /// (<see cref="TermPaneFile.FromRecord"/>): it sorts after every tab that has one.</summary>
     public long? Order { get; init; }
 
+    /// <summary>The name the person gave this tab by renaming it in place (M.ORCH-T1432); null keeps the name built from
+    /// <see cref="Repo"/> and <see cref="Provider"/>. A display name only: the session's id is unchanged, and since it rides in
+    /// the request, it is kept wherever the request is (the session's <see cref="TermPaneFile"/>, the session-restore file),
+    /// so a renamed CLI keeps its name across a pop-out window, reattach and a dashboard restart.</summary>
+    public string? CustomName { get; init; }
+
     /// <summary>The person whose page the tab goes on: the login's email, or null for the global login's.</summary>
     [JsonIgnore]
     public string? Login => AccountDirs.Normalize(Email) ?? LoginOf(ConfigDir);
