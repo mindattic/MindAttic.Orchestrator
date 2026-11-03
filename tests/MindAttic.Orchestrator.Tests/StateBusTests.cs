@@ -102,6 +102,35 @@ public sealed class StateBusTests
     }
 
     [Test]
+    public void A_login_rename_is_pushed_once_at_once_even_when_the_members_table_is_unchanged()
+    {
+        // M.ORCH-T1438: User Settings' Name and Prefix live in the login's own file, which nothing watches; each Save is said as a
+        // roster change so the daemon re-plans (new names on its agent cards) and every dashboard retitles its tabs right away.
+        var store = Scratch();
+        var home = temps.New();
+        var dirs = new AccountDirs(Path.Combine(home, ".claude-accounts"), Path.Combine(home, ".claude"), Path.Combine(home, ".claude.json"));
+        var folder = dirs.For("amy@example.com").Directory;
+        Directory.CreateDirectory(folder);
+        StateBus.Enable(background: false);
+        int Pushed() => sent.Count(e => e.Kind == StateBus.Members);
+
+        var before = Pushed();
+        LoginLook.Rename(dirs, folder, "amy@example.com", "Amy", "AR", store.Db);
+        Assert.That(Pushed(), Is.EqualTo(before + 1), "a login that isn't a member is still said");
+        Assert.That(LoginLook.For(folder, "amy@example.com").Initials, Is.EqualTo("AR"), "written before it's said");
+
+        MemberRoster.Add(store.Db, "amy@example.com", "Amy", "member", "standard", null, Now);
+        before = Pushed();
+        LoginLook.Rename(dirs, folder, "amy@example.com", "Amy", "AY", store.Db);
+        Assert.That(Pushed(), Is.EqualTo(before + 1), "a Prefix-only change leaves the members table alone, and is still said");
+
+        before = Pushed();
+        LoginLook.Rename(dirs, folder, "amy@example.com", "Amy Reed", null, store.Db);
+        Assert.That(Pushed(), Is.EqualTo(before + 1), "a member renamed is said once, by the roster's own write");
+        Assert.That(Last<MembersPayload>(StateBus.Members).Members.Single().Name, Is.EqualTo("Amy Reed"));
+    }
+
+    [Test]
     public void A_write_never_fails_for_a_publish_that_does()
     {
         var store = Scratch();

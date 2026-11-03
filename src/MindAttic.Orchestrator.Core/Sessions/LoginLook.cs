@@ -165,6 +165,11 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
     /// logins <paramref name="alias"/> (blank: back to the default) with the badge <paramref name="initials"/> (null leaves it) in
     /// every folder that's its login and in <paramref name="folder"/>, and, when <paramref name="db"/> holds the email as a member,
     /// keeps the member's name in step (blank clears it, back to the alias). Returns the folders written.
+    /// <para>Said on the status bus as a roster change whenever <paramref name="db"/> is given (M.ORCH-T1438), even when the
+    /// members table itself didn't move (a Prefix-only change, a login that isn't a member): the name and badge live in the
+    /// login's own file, which nothing watches, so without it the daemon kept the old name on the agent cards it publishes, and
+    /// every other dashboard its old tab title, until their next timed read. The roster change brings the daemon's next plan
+    /// forward at once and has every dashboard re-read its logins' tabs.</para>
     /// </summary>
     public static IReadOnlyList<string> Rename(AccountDirs dirs, string folder, string email, string? alias, string? initials = null,
         Settings.OrchestratorDb? db = null)
@@ -175,8 +180,13 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
             SetAlias(folder, email, alias, initials);
             written.Add(folder);
         }
-        if (db is not null && MemberRoster.Find(db, email) is not null)
-            MemberRoster.Set(db, email, alias?.Trim() ?? "", null, null, null, DateTime.UtcNow);
+        if (db is not null)
+        {
+            var member = MemberRoster.Find(db, email);
+            // A member whose name changed has said so already (MemberRoster.Set notes it); anything else is said here.
+            var said = member is not null && MemberRoster.Set(db, email, alias?.Trim() ?? "", null, null, null, DateTime.UtcNow) != member;
+            if (!said) Settings.StoreChanges.Note(db, Settings.StoreChanges.Members);
+        }
         return written;
     }
 

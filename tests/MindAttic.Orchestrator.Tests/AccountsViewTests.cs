@@ -146,6 +146,25 @@ public sealed class AccountsViewTests
     }
 
     [Test]
+    public void User_Settings_Save_applies_its_cutoffs_at_once_under_the_name_just_saved()
+    {
+        // M.ORCH-T1438: the cutoffs are laid over every tab before the dialog closes (not left for a refresh to read back), the
+        // rename is passed the store so it's said on the bus, and the cutoff row keeps the new name, not the tab's old title.
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var code = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "ViewModels", "MainViewModel.LoginCards.cs"));
+        var save = code[code.IndexOf("SaveUserSettingsCommand =>", StringComparison.Ordinal)..];
+        save = save[..save.IndexOf("ResetLimitCommand =>", StringComparison.Ordinal)];
+        Assert.That(save, Does.Contain("SaveAlias(OwnLoginDirs(), login.Folder, login.Email, RenameName, RenamePrefix, aggregator.Db)"));
+        Assert.That(save, Does.Contain("UsageCutoffs.Set(store, email, name,").And.Not.Contain("UsageCutoffs.Set(store, email, TabTitle"));
+        var applied = save.IndexOf("Root.cutoffs = UsageCutoffs.Load(store);", StringComparison.Ordinal);
+        Assert.That(applied, Is.GreaterThan(0));
+        Assert.That(save.IndexOf("tab.RaiseOwnNumbers()", StringComparison.Ordinal), Is.GreaterThan(applied));
+        Assert.That(save.IndexOf("CloseUserSettings();", StringComparison.Ordinal), Is.GreaterThan(applied));
+        Assert.That(save.IndexOf("await RefreshAsync();", StringComparison.Ordinal), Is.GreaterThan(applied));
+    }
+
+    [Test]
     public void A_login_signed_out_since_the_last_refresh_is_the_one_that_opens_its_sign_in()
     {
         // M.ORCH-T796: only a login that was signed in and now isn't; never one seen for the first time, signed out all along,

@@ -107,15 +107,25 @@ public sealed partial class MainViewModel
         int weekly = 0, fiveHour = 0;
         if (limiting is not null && ParseCutoffs(LimitWeekly, LimitFiveHour, out weekly, out fiveHour) is { } why) { LimitError = why; return; }
         var said = new List<string>();
-        if (renaming is { } login) said.Add(SaveAlias(OwnLoginDirs(), login.Folder, login.Email, RenameName, RenamePrefix, aggregator.Db));
+        // The name the cutoffs are kept and said under: the one just saved (M.ORCH-T1438), not the tab's title from before the Save.
+        var name = TabTitle;
+        if (renaming is { } login)
+        {
+            said.Add(SaveAlias(OwnLoginDirs(), login.Folder, login.Email, RenameName, RenamePrefix, aggregator.Db));
+            name = LoginLook.For(login.Folder, login.Email).Alias;
+        }
         if (limiting is { } email)
         {
             try
             {
                 int? setWeekly = UsageCutoffs.HasWeekly(Root.cutoffs, email) || weekly != Root.weeklyStopPercent ? weekly : null;
                 int? setFiveHour = UsageCutoffs.HasFiveHour(Root.cutoffs, email) || fiveHour != (int)Root.paceTargetPercent ? fiveHour : null;
-                var set = UsageCutoffs.Set(store, email, TabTitle, setWeekly, setFiveHour);
-                said.Add($"{TabTitle}'s cutoffs: {UsageCutoffs.Text(set, Root.weeklyStopPercent, (int)Root.paceTargetPercent)}.");
+                var set = UsageCutoffs.Set(store, email, name, setWeekly, setFiveHour);
+                // Applied here at once (M.ORCH-T1438), not left for the refresh below to read back: every tab's Cutoffs tile and
+                // disabled icon show the new numbers the moment the dialog closes, whatever that refresh meets.
+                Root.cutoffs = UsageCutoffs.Load(store);
+                foreach (var tab in Root.LoginTabs) tab.RaiseOwnNumbers();
+                said.Add($"{name}'s cutoffs: {UsageCutoffs.Text(set, Root.weeklyStopPercent, (int)Root.paceTargetPercent)}.");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException)
             {
