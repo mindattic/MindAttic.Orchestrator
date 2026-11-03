@@ -55,12 +55,13 @@ public sealed class SettingsModalTests
     [Test]
     public void A_single_cog_beside_the_theme_toggle_opens_the_settings_in_MindAttic_Vault()
     {
-        // M.ORCH-T804: the top-right strip ends cog, sun/moon. Each docks Right, so the XAML lists them right to left. LAMP
-        // (M.ORCH-T1308) put the Logins button beside the cog.
+        // M.ORCH-T804: the tools end cog, sun/moon; LAMP (M.ORCH-T1308) put Logins beside the cog. Since M.ORCH-T1431 they're
+        // one row under the login sidebar, left to right.
         var doc = Window();
-        var top = Named(doc, "TopRow");
-        var right = top.Elements().Where(e => (string?)e.Attribute("DockPanel.Dock") == "Right").Select(e => (string?)e.Attribute(X + "Name")).ToList();
-        Assert.That(right, Is.EqualTo(new[] { "ThemeToggle", "SettingsButton", "LoginsButton", "TicketsButton", "TeamWallButton" }));
+        var tools = Named(doc, "SidebarTools");
+        Assert.That(tools.Ancestors().Contains(Named(doc, "TopRow")), Is.True);
+        var row = tools.Elements().Select(e => (string?)e.Attribute(X + "Name")).ToList();
+        Assert.That(row, Is.EqualTo(new[] { "TeamWallButton", "TicketsButton", "LoginsButton", "SettingsButton", "ThemeToggle" }));
         Assert.That((string?)Named(doc, "TicketsButton").Attribute("Command"), Is.EqualTo("{Binding OpenTicketsAppCommand}"));
         Assert.That((string?)Named(doc, "LoginsButton").Attribute("Command"), Is.EqualTo("{Binding ToggleLoginsCommand}"));
 
@@ -104,7 +105,7 @@ public sealed class SettingsModalTests
         var csproj = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MindAttic.Orchestrator.Wpf.csproj"));
         var reference = csproj.Descendants("PackageReference").Single(r => (string?)r.Attribute("Include") == "MindAttic.Components.Wpf");
         // A floor, not an exact pin: later bumps (26.0.0, M.ORCH-T1327) keep the Glyph spinner (M.ORCH-T1331).
-        Assert.That(Version.Parse((string?)reference.Attribute("Version") ?? "0.0.0"), Is.GreaterThanOrEqualTo(new Version(24, 0, 0)),
+        Assert.That(Version.Parse(((string?)reference.Attribute("Version") ?? "0.0.0").Split('-')[0]), Is.GreaterThanOrEqualTo(new Version(24, 0, 0)),
             "M.COMP-T147: MaSpinner's Glyph design arrived in 24.0.0");
     }
 }

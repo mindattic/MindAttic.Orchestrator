@@ -12,19 +12,19 @@ using Spectre.Console.Cli;
 internal static class OrchestratorMockups
 {
     /// <summary>
-    /// The top-level window (MainWindow.xaml): the person/org tab strip (M.ORCH-T803) across the top, then the signed-in
+    /// The top-level window (MainWindow.xaml): the person/org tabs as a left sidebar (M.ORCH-T1431), then beside it the signed-in
     /// person's scrolling body — the terminal (M.ORCH-T1302), the pinned 5-hour/weekly pills and stat tiles, the 5-hour
     /// utilization chart, and their ticket queue — with the global login's own Workspace section (allocate, holds,
     /// reminders, finished work, warnings) standing in for a "Miscellaneous" panel (M.ORCH-T763, M.ORCH-T825).
     /// </summary>
     private static readonly MockupPanel[] Dashboard =
     [
-        new(0, 0, 80, 3, "Users (person / org tabs)"),
-        new(0, 3, 48, 10, "Terminal (CLI tabs)"),
-        new(48, 3, 32, 5, "Stats"),
-        new(48, 8, 32, 5, "5-Hour Chart"),
-        new(0, 13, 48, 10, "Queue (this person's tickets)"),
-        new(48, 13, 32, 10, "Workspace (Misc)"),
+        new(0, 0, 16, 23, "Users (sidebar)"),
+        new(16, 0, 38, 13, "Terminal (CLI tabs)"),
+        new(54, 0, 26, 6, "Stats"),
+        new(54, 6, 26, 7, "5-Hour Chart"),
+        new(16, 13, 38, 10, "Queue (this person's tickets)"),
+        new(54, 13, 26, 10, "Workspace (Misc)"),
         new(0, 23, 80, 3, "Status Bar"),
     ];
 

@@ -21,7 +21,8 @@ namespace MindAttic.Orchestrator.Tests;
 public sealed class ThemeChoiceTests
 {
     private static readonly XNamespace P = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
-    private static readonly XNamespace Mc = "clr-namespace:MindAttic.Components.Wpf.Controls;assembly=MindAttic.Components.Wpf";
+    private static readonly XNamespace X = "http://schemas.microsoft.com/winfx/2006/xaml";
+    private static readonly XNamespace Mc ="clr-namespace:MindAttic.Components.Wpf.Controls;assembly=MindAttic.Components.Wpf";
 
     private string dir = "";
 
@@ -147,7 +148,7 @@ public sealed class ThemeChoiceTests
     }
 
     [Test]
-    public void The_switch_sits_in_the_windows_upper_right_corner_and_the_title_bar_follows_the_theme()
+    public void The_switch_sits_in_the_login_sidebar_and_the_title_bar_follows_the_theme()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -157,11 +158,13 @@ public sealed class ThemeChoiceTests
         Assert.That((string?)doc.Root!.Attribute(Mc + "MaWindow.ThemedTitleBar"), Is.EqualTo("True"));
         Assert.That(doc.Root!.Attribute(Mc + "MaWindow.DarkTitleBar"), Is.Null, "ThemedTitleBar replaces DarkTitleBar");
 
-        var top = doc.Root!.Element(P + "Grid")!.Elements().First(e => !e.Name.LocalName.Contains('.'));
-        Assert.That((string?)top.Attribute("Grid.Row"), Is.EqualTo("0"), "the window's top row");
-        Assert.That((string?)top.Attribute("Visibility"), Is.Null, "always shown, even with the login strip hidden");
-        var toggle = top.Elements(Mc + "MaThemeToggle").Single();
-        Assert.That((string?)toggle.Attribute("DockPanel.Dock"), Is.EqualTo("Right"));
+        // M.ORCH-T1431: the window's first element is the left login sidebar, and the toggle ends its tool row.
+        var sidebar = doc.Root!.Element(P + "Grid")!.Elements().First(e => !e.Name.LocalName.Contains('.'));
+        Assert.That((string?)sidebar.Attribute(X + "Name"), Is.EqualTo("Sidebar"));
+        Assert.That((string?)sidebar.Attribute("Grid.Column"), Is.EqualTo("0"), "the window's left column");
+        Assert.That((string?)sidebar.Attribute("Visibility"), Is.Null, "always shown, even with the login strip hidden");
+        var toggle = sidebar.Descendants(Mc + "MaThemeToggle").Single();
+        Assert.That(toggle.Parent!.Elements().Last(), Is.EqualTo(toggle));
 
         Assert.That(File.ReadAllText(Path.Combine(wpf, "MainWindow.xaml.cs")), Does.Contain("ThemeChoice.SaveSwitches(this,"));
         Assert.That(File.ReadAllText(Path.Combine(wpf, "App.xaml.cs")), Does.Contain("ThemeChoice.Apply(Resources,"));
