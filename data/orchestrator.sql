@@ -15,8 +15,6 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'member', 'premium', 'active', 1792866937.886, 1793635021.5990849);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T16:12:49Z', 0, '2026-10-27T19:50:00Z', 0);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T16:18:25Z', 0, '2026-10-27T19:50:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T16:23:55Z', 0, '2026-10-27T19:50:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T16:29:56Z', 0, '2026-10-27T19:50:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T16:35:29Z', 0, '2026-10-27T19:50:00Z', 0);
@@ -784,6 +782,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03T15:59:48Z', 8, '2026-11-03T18:30:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03T16:05:10Z', 8, '2026-11-03T18:30:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03T16:10:10Z', 8, '2026-11-03T18:30:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03T16:15:13Z', 8, '2026-11-03T18:30:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-03T16:20:17Z', 8, '2026-11-03T18:30:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -6313,7 +6313,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "7af2d440baec11dd348f3cb3beef5fa137fb9e4e",
+    "Tested": "3a13746fc8d8dd75efb14620b039ad502f4e37f5",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -6587,7 +6587,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "fcdf09a7811a7a1ce4666a417da53e3b1566c354"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "7af2d440baec11dd348f3cb3beef5fa137fb9e4e"
+    "Tested": "3a13746fc8d8dd75efb14620b039ad502f4e37f5"
   }
 }');
 INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
