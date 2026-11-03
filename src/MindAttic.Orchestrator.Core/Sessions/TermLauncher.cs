@@ -40,6 +40,10 @@ public sealed record TermLaunchSpec
     /// <summary>How long the host stays after the CLI exits while no viewer has seen it; null for the host's default (10 minutes).</summary>
     public TimeSpan? Linger { get; init; }
 
+    /// <summary>Starts the host with <c>--unlisted</c> (M.ORCH-T1444): it registers no file and announces nothing, so no live
+    /// dashboard on the machine opens a tab for it. For a caller that deliberately runs a real host beside one.</summary>
+    public bool Unlisted { get; init; }
+
     /// <summary>
     /// <paramref name="request"/> as a hosted CLI, built the way <c>TerminalPaneViewModel</c> builds its tab: the command line is
     /// <see cref="PaneRequest.ProcessCommandLine"/> (which clears <c>NO_COLOR</c>, sets <c>COLORTERM</c>, the pane pipe's
@@ -56,6 +60,7 @@ public sealed record TermLaunchSpec
         Login = request.Login,
         Repo = request.Name,
         IsMenu = request.IsMenu,
+        Unlisted = request.Unlisted,
     };
 }
 
@@ -157,6 +162,20 @@ public static class TermLauncher
         if (exitCode != 0 || ReadLaunch(output) is not { } launched)
             throw new InvalidOperationException($"TermHost --launch failed (exit {exitCode}): {(error.Length > 0 ? error.Trim() : output.Trim())}");
 
+        // Unlisted (M.ORCH-T1444): the host writes no registry file to poll for, and never will; build the record straight from
+        // what --launch printed rather than waiting out registerWait for a file that's never coming.
+        if (spec.Unlisted)
+        {
+            var hostStart = TermSessions.HostStartOf(launched.Pid)
+                ?? throw new InvalidOperationException($"TermHost {launched.Pid} exited before it registered; see {Path.Combine(TermSessions.DefaultDirectory, TermProtocol.Sanitize(launched.Id) + ".log")}.");
+            return new TermSessionRecord
+            {
+                Id = launched.Id, HostPid = launched.Pid, HostStartUtc = hostStart, Pipe = launched.Pipe, Title = spec.Title,
+                Login = spec.Login, Repo = spec.Repo, Cwd = spec.Directory, CommandLine = spec.CommandLine,
+                State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow, IsMenu = spec.IsMenu,
+            };
+        }
+
         var until = DateTime.UtcNow + (registerWait ?? DefaultRegisterWait);
         while (true)
         {
@@ -185,6 +204,7 @@ public static class TermLauncher
         if (!string.IsNullOrWhiteSpace(spec.Repo)) args.AddRange(["--repo", spec.Repo]);
         if (spec.Linger is { } linger) args.AddRange(["--linger", ((int)Math.Max(0, linger.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture)]);
         if (spec.IsMenu) args.Add("--menu");
+        if (spec.Unlisted) args.Add("--unlisted");
         // One argument: the host runs a single argument with a space in it as a whole command line.
         if (!string.IsNullOrWhiteSpace(spec.CommandLine)) args.AddRange(["--", spec.CommandLine]);
         return args;

@@ -322,7 +322,7 @@ public sealed class TerminalPanesTests
         var window = OffScreenWindow.Show(600, 300, host);
         try
         {
-            Assert.That(terminals.Open(new PaneRequest("JO: Repo [Claude]", temp.New()) { Command = ["cmd.exe", "/k", "echo pane"] }), Is.Null);
+            Assert.That(terminals.Open(new PaneRequest("JO: Repo [Claude]", temp.New()) { Command = ["cmd.exe", "/k", "echo pane"], Unlisted = true }), Is.Null);
             var pane = terminals.Panes.Single();
             Assert.That(pane.IsHosted, Is.True);
             Assert.That(pane.Control, Is.InstanceOf<TerminalView>());
@@ -348,9 +348,10 @@ public sealed class TerminalPanesTests
         // (Terminal.GotFocus, M.ORCH-T930 spike section 3) reclaimed it; a pane nobody clicked into stayed letterboxed
         // forever even as MainWindow.SizeTerminalRow grew its row (M.ORCH-T1208's taller floor made the dead gap around it
         // obvious). It must reclaim the size on its own once its own hosting row actually grows, with no click into it.
-        // Two viewers are used, rather than asserting who wins attaching first (this machine's own live Orchestrator
-        // watches every TermHost session's registry too, M.ORCH-T971, and can race this test for it): B's own TakeSize()
-        // deterministically takes the size away from A, so this test only ever depends on A reclaiming it back by resizing.
+        // Two viewers are used, rather than asserting who wins attaching first: B's own TakeSize() deterministically takes the
+        // size away from A, so this test only ever depends on A reclaiming it back by resizing. The session is unlisted
+        // (M.ORCH-T1444) precisely so a live Orchestrator on this machine can no longer see its registry entry and race it as
+        // a third viewer (M.ORCH-T971).
         if (TermLauncher.FindHost() is null) Assert.Ignore("No TermHost built or installed here.");
         var terminalsA = new TerminalsViewModel();
         var hostA = new System.Windows.Controls.Grid();
@@ -358,7 +359,7 @@ public sealed class TerminalPanesTests
         var windowA = OffScreenWindow.Show(600, 300, hostA);
         try
         {
-            Assert.That(terminalsA.Open(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", Command = ["cmd.exe", "/k", "echo pane"] }), Is.Null);
+            Assert.That(terminalsA.Open(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", Command = ["cmd.exe", "/k", "echo pane"], Unlisted = true }), Is.Null);
             var paneA = terminalsA.Panes.Single();
             paneA.IsSelected = true;
             Assert.That(Pump(() => paneA.Session is not null, TimeSpan.FromSeconds(20)), Is.True, "its TermHost registered");

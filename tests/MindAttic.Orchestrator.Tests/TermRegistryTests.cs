@@ -277,6 +277,23 @@ public sealed class TermRegistryTests
     }
 
     [Test]
+    public void An_unlisted_pane_request_carries_Unlisted_through_the_spec_and_arguments()
+    {
+        // M.ORCH-T1444: a caller that deliberately runs a real host beside a live dashboard (a smoke test, an integration test)
+        // marks it unlisted, so no dashboard on the machine opens a tab for it.
+        var request = new PaneRequest("RD: Repo [Claude]", @"D:\Projects\Repo") { Command = ["claude"], Repo = "Repo", Unlisted = true };
+        var spec = TermLaunchSpec.From(request);
+        Assert.That(spec.Unlisted, Is.True);
+
+        var args = TermLauncher.Arguments(spec, "abc123");
+        Assert.That(args, Does.Contain("--unlisted"));
+
+        var options = HostOptions.Parse(args, out var error);
+        Assert.That(error, Is.Null);
+        Assert.That(options!.Unlisted, Is.True);
+    }
+
+    [Test]
     public void The_launch_arguments_carry_the_command_line_as_one_argument_and_no_environment()
     {
         var spec = new TermLaunchSpec

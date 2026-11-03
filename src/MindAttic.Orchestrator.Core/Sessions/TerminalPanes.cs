@@ -49,6 +49,11 @@ public sealed record PaneRequest(string Title, string Directory)
     /// Terminals panel tabs, and it's shown without a provider bracket.</summary>
     public bool IsMenu { get; init; }
 
+    /// <summary>A hosted CLI started this way registers no file and announces nothing on the status bus (M.ORCH-T1444,
+    /// <c>HostOptions.Unlisted</c>): for a caller that deliberately runs a real TermHost beside a live dashboard (a smoke test,
+    /// an integration test) and never wants that dashboard to open a tab for it.</summary>
+    public bool Unlisted { get; init; }
+
     /// <summary>Where this tab sat among its login's tabs when it was first opened (M.ORCH-T1170): ticks, so later tabs sort
     /// after earlier ones. Saved in the session's <see cref="TermPaneFile"/> sidecar alongside everything else, so a session
     /// still live after a dashboard crash reattaches to the same spot in the tab strip instead of wherever reattachment order
