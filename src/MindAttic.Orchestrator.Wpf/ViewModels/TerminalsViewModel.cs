@@ -128,6 +128,20 @@ public sealed class TerminalPaneViewModel : ObservableObject
         Raise(nameof(Request)); Raise(nameof(Name)); Raise(nameof(Title)); Raise(nameof(Tooltip));
         return true;
     }
+
+    /// <summary>Takes its login's name and Prefix as <paramref name="look"/> has them now (M.ORCH-T1440,
+    /// <see cref="PaneRequest.WithLook"/>): its title's badge and its tooltip follow a rename made in User Settings while it's
+    /// open, with no reopen and no restart of its CLI. A name the person gave the tab (M.ORCH-T1432) still wins; its id and
+    /// session are untouched. False when nothing changed; the caller persists it (<see cref="TerminalsViewModel.RefreshLooks"/>).</summary>
+    internal bool ApplyLook(LoginLook? look)
+    {
+        if (look is null || Request.WithLook(look) is var now && ReferenceEquals(now, Request)) return false;
+        Request = now;
+        System.Windows.Automation.AutomationProperties.SetName(Control, Title);
+        Raise(nameof(Request)); Raise(nameof(Name)); Raise(nameof(Title)); Raise(nameof(Tooltip));
+        return true;
+    }
+
     public Brush TabBrush { get; }
 
     /// <summary>Black on a light <paramref name="background"/>, white on a dark one (by relative luminance).</summary>
@@ -1026,6 +1040,61 @@ public sealed class TerminalsViewModel : ObservableObject
             return true;
         }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Renaming {Title:l} failed; contained", pane.Title); return false; }
+    }
+
+    /// <summary>Its login's look as it is now, for a tab's request (M.ORCH-T1440); null leaves the tab as it is. Reads files, so
+    /// <see cref="RefreshLooksAsync"/> calls it off the UI thread. Tests replace it.</summary>
+    internal Func<PaneRequest, LoginLook?> LookOf { get; init; } = request => request.CurrentLook();
+
+    private bool refreshingLooks;
+
+    /// <summary>Each refresh (M.ORCH-T1440): every open tab takes its login's name and Prefix as they are now, the looks read off
+    /// the UI thread, so a rename in User Settings reaches the CLIs already open (their tab title and tooltip, the tab file a
+    /// reattach or pop-out window reads, the session-restore file) without reopening one. Never throws.</summary>
+    public async Task RefreshLooksAsync()
+    {
+        if (refreshingLooks || Panes.Count == 0) return;
+        refreshingLooks = true;
+        try
+        {
+            var panes = Panes.ToList();
+            var requests = panes.Select(p => p.Request).ToList();
+            var looks = await Task.Run(() => requests.Select(SafeLookOf).ToList());
+            ApplyLooks(panes, looks);
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Refreshing the tabs' login looks failed; contained"); }
+        finally { refreshingLooks = false; }
+    }
+
+    /// <summary><see cref="RefreshLooksAsync"/> on the calling thread: returns how many tabs changed.</summary>
+    internal int RefreshLooks()
+    {
+        var panes = Panes.ToList();
+        return ApplyLooks(panes, panes.Select(p => SafeLookOf(p.Request)).ToList());
+    }
+
+    private LoginLook? SafeLookOf(PaneRequest request)
+    {
+        try { return LookOf(request); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { return null; }
+    }
+
+    /// <summary>Gives each of <paramref name="panes"/> still open its look (<see cref="TerminalPaneViewModel.ApplyLook"/>), and
+    /// keeps each one that changed by its identity as <see cref="Rename"/> does: its <see cref="TermPaneFile"/>, then the
+    /// session-restore file once (<see cref="Changed"/>).</summary>
+    private int ApplyLooks(IReadOnlyList<TerminalPaneViewModel> panes, IReadOnlyList<LoginLook?> looks)
+    {
+        var changed = 0;
+        for (var i = 0; i < panes.Count && i < looks.Count; i++)
+        {
+            var pane = panes[i];
+            if (!Panes.Contains(pane) || !pane.ApplyLook(looks[i])) continue;
+            changed++;
+            if (pane.TermId is { Length: > 0 } id && !TermPaneFile.Write(id, pane.Request, PaneDirectory))
+                OrchestratorLog.For("Terminals").Warning("Couldn't save {Title:l}'s login look to its tab file {Id:l}", pane.Title, id);
+        }
+        if (changed > 0) Changed?.Invoke();
+        return changed;
     }
 
     /// <summary>Closes <paramref name="pane"/>, ending its CLI (a hosted one's TermHost is killed).</summary>

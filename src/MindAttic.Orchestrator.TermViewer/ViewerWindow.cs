@@ -30,7 +30,11 @@ internal sealed class ViewerWindow : Window
     private static readonly Serilog.ILogger log = OrchestratorLog.For("TermViewer");
 
     private readonly TermSessionRecord session;
-    private readonly PaneRequest pane;
+    private PaneRequest pane;
+    // Every badge this session's titles have carried (M.ORCH-T1440): one the login has since been renamed away from is swapped
+    // for its current one, never shown beside it ("JR: RD: Repo").
+    private readonly HashSet<string> badgesSeen = new(StringComparer.Ordinal);
+    private TextBlock? badgeText;
     private readonly bool stay;
     private readonly bool watchOnly;
     private readonly TextBlock status = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 10, 0), Foreground = Brushes.Gainsboro };
@@ -51,6 +55,9 @@ internal sealed class ViewerWindow : Window
         this.watchOnly = watchOnly;
         // A tab renamed in the dashboard keeps its name in its pop-out window too (M.ORCH-T1432), over the CLI's own title.
         liveTitle = pane.CustomName is { Length: > 0 } custom ? custom : session.Title is { Length: > 0 } t ? t : pane.Title;
+        foreach (var title in new[] { session.Title, pane.Title })
+            if (title is { Length: > 0 } && title.IndexOf(':') is > 0 and <= 4 and var colon && title[..colon].All(char.IsLetterOrDigit)) badgesSeen.Add(title[..colon]);
+        if (pane.Initials is { Length: > 0 } initials) badgesSeen.Add(initials);
         Width = 1100;
         Height = 700;
         Background = Brushes.Black;
@@ -133,7 +140,7 @@ internal sealed class ViewerWindow : Window
         return new Border
         {
             Background = fill, CornerRadius = new CornerRadius(3), Margin = new Thickness(6, 3, 6, 3), Padding = new Thickness(6, 0, 6, 0),
-            Child = new TextBlock { Text = pane.Initials, Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center },
+            Child = badgeText = new TextBlock { Text = pane.Initials, Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center },
             ToolTip = pane.Email ?? session.Login,
         };
     }
@@ -146,7 +153,18 @@ internal sealed class ViewerWindow : Window
         return exitCode is { } code ? $"{text} (exited {code})" : text;
     }
 
-    private void UpdateTitle() => Title = TitleOf(pane.Initials, liveTitle, session.Id, exitCode);
+    private void UpdateTitle() => Title = TitleOf(pane.Initials, PaneRequest.Rebadged(liveTitle, badgesSeen, pane.Initials), session.Id, exitCode);
+
+    /// <summary>The login renamed, or given a new Prefix, while this window is open (M.ORCH-T1440): its badge and title take the
+    /// login's current look, read from the login's own file, so it follows the change whether the dashboard is up or not.</summary>
+    private void FollowLook()
+    {
+        if (pane.CurrentLook() is not { } look || pane.WithLook(look) is var now && ReferenceEquals(now, pane)) return;
+        if (pane.Initials is { Length: > 0 } was) badgesSeen.Add(was);
+        pane = now;
+        if (badgeText is not null) badgeText.Text = pane.Initials;
+        UpdateTitle();
+    }
 
     private void SetStatus(string text)
     {
@@ -286,6 +304,7 @@ internal sealed class ViewerWindow : Window
                 liveTitle = title;
                 UpdateTitle();
             }
+            FollowLook();
         }
         catch (Exception ex) { log.Error(ex, "Looking at the dashboard and session failed; contained"); }
     }

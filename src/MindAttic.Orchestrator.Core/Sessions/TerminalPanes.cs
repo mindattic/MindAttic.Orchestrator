@@ -62,6 +62,45 @@ public sealed record PaneRequest(string Title, string Directory)
     /// so a renamed CLI keeps its name across a pop-out window, reattach and a dashboard restart.</summary>
     public string? CustomName { get; init; }
 
+    /// <summary>This request with its login's name and badge as <paramref name="look"/> has them now (M.ORCH-T1440): a login
+    /// renamed, or given a new Prefix, in User Settings after its CLI opened. <see cref="Initials"/> and <see cref="Alias"/> take
+    /// the new ones, and <see cref="Title"/>'s badge ("RD: Repo") the new badge; everything else, <see cref="CustomName"/> and
+    /// the session it runs included, is kept. The same instance when nothing changes, or when it had no badge to begin with (a
+    /// tab opened without a login's look, another provider's).</summary>
+    public PaneRequest WithLook(LoginLook look)
+    {
+        if (Initials is not { Length: > 0 } was) return this;
+        var title = Rebadged(Title, [was], look.Initials);
+        if (title == Title && look.Initials == Initials && look.Alias == Alias) return this;
+        return this with { Title = title, Initials = look.Initials, Alias = look.Alias };
+    }
+
+    /// <summary><paramref name="title"/> with a leading badge from <paramref name="stale"/> ("RD: Repo") swapped for
+    /// <paramref name="now"/> ("JR: Repo"), M.ORCH-T1440; as it is when it starts with none of them, or <paramref name="now"/>
+    /// is blank.</summary>
+    public static string Rebadged(string title, IEnumerable<string?> stale, string? now)
+    {
+        if (now is not { Length: > 0 } || title.StartsWith(now + ":", StringComparison.Ordinal)) return title;
+        foreach (var old in stale)
+            if (old is { Length: > 0 } && title.StartsWith(old + ":", StringComparison.Ordinal)) return now + title[old.Length..];
+        return title;
+    }
+
+    /// <summary>Its login's look as it is now, read from the login's own <see cref="LoginLook.FileName"/> (M.ORCH-T1440): its
+    /// <see cref="ConfigDir"/>'s, else its <see cref="Email"/>'s per-CLI login folder, else the global login's when it has
+    /// neither. Null when that isn't known (an email with no login folder here) or the file can't be read. Reads files.</summary>
+    public LoginLook? CurrentLook(AccountDirs? dirs = null)
+    {
+        try
+        {
+            if (ConfigDir is { Length: > 0 } dir) return LoginLook.ForConfigDir(dir);
+            if (AccountDirs.Normalize(Email) is not { } email) return LoginLook.ForConfigDir(null);
+            var own = (dirs ?? new AccountDirs()).For(email).Directory;
+            return System.IO.Directory.Exists(own) ? LoginLook.For(own, email) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException) { return null; }
+    }
+
     /// <summary>The person whose page the tab goes on: the login's email, or null for the global login's.</summary>
     [JsonIgnore]
     public string? Login => AccountDirs.Normalize(Email) ?? LoginOf(ConfigDir);

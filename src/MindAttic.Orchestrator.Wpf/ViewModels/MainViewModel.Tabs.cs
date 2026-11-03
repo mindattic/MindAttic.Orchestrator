@@ -250,6 +250,9 @@ public sealed partial class MainViewModel
         UpdateOrgPills();
         // A login's tab come or gone takes its terminals with it (to the global login's when gone), M.ORCH-T810.
         SyncTerminals();
+        // The CLIs already open take their login's name and Prefix as they are now (M.ORCH-T1440): a rename in User Settings
+        // (said on the bus as a roster change, M.ORCH-T1438) retitles their tabs at this pass, no reopen.
+        _ = AllTerminals.RefreshLooksAsync();
         OpenLaunchers();
         if (NewlyDisconnected(wasSignedIn, loginTabs.Select(t => t.tab)) is { Count: > 0 } disconnected) AutoSignIn(disconnected);
     }
