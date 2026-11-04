@@ -9,7 +9,7 @@ INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, 
 -- members
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('honey@mindattic.com', 'Honey', 'member', 'premium', 'active', 1792771886.805, 1793634549.737462);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'member', 'premium', 'active', 1792771886.302, 1793802304.6821513);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'owner', 'premium', 'active', 1792771887.249, 1793827679.5709867);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1793831181.1430335);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1793802284.4944277);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'member', 'premium', 'active', 1792771885.882, 1793802304.6821513);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'member', 'premium', 'active', 1792866937.886, 1793635021.5990849);
@@ -4075,10 +4075,10 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 -- state
 INSERT INTO state (name, value) VALUES ('api-failovers', '[]');
 INSERT INTO state (name, value) VALUES ('audit', '{
-  "RanUtc": "2026-11-03T22:30:47.815582Z",
-  "Took": "00:01:49.0792660",
-  "ReposScanned": 79,
-  "FilesScanned": 9665,
+  "RanUtc": "2026-11-04T22:31:55.5880745Z",
+  "Took": "00:01:02.9299706",
+  "ReposScanned": 82,
+  "FilesScanned": 10891,
   "Drift": [
     {
       "File": "AGENTS.md",
@@ -4086,8 +4086,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.010416666666666666,
       "IsCustom": true
     },
@@ -4097,8 +4097,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Incognito\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.023255813953488372,
       "IsCustom": true
     },
@@ -4108,9 +4108,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
-      "Similarity": 0.02666666666666667,
+      "Total": 81,
+      "Variants": 39,
+      "Similarity": 0.02631578947368421,
       "IsCustom": true
     },
     {
@@ -4119,8 +4119,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.04081632653061224,
       "IsCustom": true
     },
@@ -4130,8 +4130,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.04081632653061224,
       "IsCustom": true
     },
@@ -4141,8 +4141,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\TownWalker\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.044444444444444446,
       "IsCustom": true
     },
@@ -4152,8 +4152,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Hare\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.05128205128205128,
       "IsCustom": true
     },
@@ -4163,8 +4163,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.05405405405405406,
       "IsCustom": true
     },
@@ -4174,8 +4174,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.07272727272727272,
       "IsCustom": true
     },
@@ -4185,8 +4185,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\UnityRonin\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.07547169811320754,
       "IsCustom": true
     },
@@ -4196,8 +4196,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.10526315789473684,
       "IsCustom": true
     },
@@ -4207,8 +4207,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Prose\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.11764705882352941,
       "IsCustom": true
     },
@@ -4218,8 +4218,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Corobs\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.14285714285714285,
       "IsCustom": true
     },
@@ -4229,8 +4229,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\RusNet\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.14814814814814814,
       "IsCustom": true
     },
@@ -4240,8 +4240,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\AutoGamePlay\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.17647058823529413,
       "IsCustom": true
     },
@@ -4251,8 +4251,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\AutoWebNav\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
     },
@@ -4262,8 +4262,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\KdpPublish\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
     },
@@ -4273,8 +4273,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
     },
@@ -4284,8 +4284,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.18867924528301888,
       "IsCustom": true
     },
@@ -4295,8 +4295,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.21052631578947367,
       "IsCustom": true
     },
@@ -4306,8 +4306,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.2222222222222222,
       "IsCustom": true
     },
@@ -4317,8 +4317,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unreal.Soulslike\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.2727272727272727,
       "IsCustom": true
     },
@@ -4328,8 +4328,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\JobHunt\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.2857142857142857,
       "IsCustom": true
     },
@@ -4339,8 +4339,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Overwatch\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.3333333333333333,
       "IsCustom": false
     },
@@ -4361,8 +4361,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\IdiotProof\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.4,
       "IsCustom": false
     },
@@ -4372,8 +4372,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\REA.Bloodlines\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.4,
       "IsCustom": false
     },
@@ -4383,7 +4383,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\RusNet\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.4,
       "IsCustom": false
@@ -4394,9 +4394,31 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Shared\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.45454545454545453,
+      "IsCustom": false
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "SpaceGod.Unity.CSharp",
+      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 43,
+      "Total": 81,
+      "Variants": 39,
+      "Similarity": 0.45454545454545453,
+      "IsCustom": false
+    },
+    {
+      "File": ".claude/hooks/quickload-on-do.ps1",
+      "Repo": "JobHunt",
+      "Path": "D:\\Projects\\MindAttic\\JobHunt\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalCount": 5,
+      "Total": 12,
+      "Variants": 5,
+      "Similarity": 0.45714285714285713,
       "IsCustom": false
     },
     {
@@ -4416,8 +4438,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Brevity\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.5,
       "IsCustom": false
     },
@@ -4427,7 +4449,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Corobs\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.5,
       "IsCustom": false
@@ -4438,7 +4460,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.5,
       "IsCustom": false
@@ -4449,7 +4471,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.5,
       "IsCustom": false
@@ -4460,9 +4482,31 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.5,
+      "IsCustom": false
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "SpaceGod.Unreal.Cpp",
+      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 43,
+      "Total": 81,
+      "Variants": 39,
+      "Similarity": 0.5263157894736842,
+      "IsCustom": false
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "SpaceGod.Unreal.CSharp",
+      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 43,
+      "Total": 81,
+      "Variants": 39,
+      "Similarity": 0.5263157894736842,
       "IsCustom": false
     },
     {
@@ -4482,8 +4526,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Automata\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.5555555555555556,
       "IsCustom": false
     },
@@ -4493,8 +4537,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdItems\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -4504,8 +4548,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdMoves\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -4515,8 +4559,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdWeapons\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -4526,9 +4570,42 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.5882352941176471,
+      "IsCustom": false
+    },
+    {
+      "File": "CLAUDE.md",
+      "Repo": "SpaceGod.Unity.CSharp",
+      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\CLAUDE.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
+      "CanonicalCount": 34,
+      "Total": 52,
+      "Variants": 7,
+      "Similarity": 0.6,
+      "IsCustom": false
+    },
+    {
+      "File": "CLAUDE.md",
+      "Repo": "SpaceGod.Unreal.Cpp",
+      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\CLAUDE.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
+      "CanonicalCount": 34,
+      "Total": 52,
+      "Variants": 7,
+      "Similarity": 0.6,
+      "IsCustom": false
+    },
+    {
+      "File": "CLAUDE.md",
+      "Repo": "SpaceGod.Unreal.CSharp",
+      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CLAUDE.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
+      "CanonicalCount": 34,
+      "Total": 52,
+      "Variants": 7,
+      "Similarity": 0.6,
       "IsCustom": false
     },
     {
@@ -4537,7 +4614,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\TownWalker\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.6,
       "IsCustom": false
@@ -4548,7 +4625,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.6,
       "IsCustom": false
@@ -4559,7 +4636,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.6,
       "IsCustom": false
@@ -4570,7 +4647,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.6,
       "IsCustom": false
@@ -4581,7 +4658,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.6,
       "IsCustom": false
@@ -4592,8 +4669,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Mods.Cyberpunk2077.ShootDodge\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.625,
       "IsCustom": false
     },
@@ -4603,8 +4680,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
       "CanonicalCount": 43,
-      "Total": 78,
-      "Variants": 36,
+      "Total": 81,
+      "Variants": 39,
       "Similarity": 0.625,
       "IsCustom": false
     },
@@ -4614,7 +4691,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.8,
       "IsCustom": false
@@ -4625,7 +4702,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.8,
       "IsCustom": false
@@ -4636,7 +4713,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Incognito\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.8,
       "IsCustom": false
@@ -4647,7 +4724,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.8,
       "IsCustom": false
@@ -4658,9 +4735,75 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md",
       "CanonicalCount": 34,
-      "Total": 49,
+      "Total": 52,
       "Variants": 7,
       "Similarity": 0.8,
+      "IsCustom": false
+    },
+    {
+      "File": ".claude/hooks/quickload-on-do.ps1",
+      "Repo": "SyntheticExchangeTheory",
+      "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalCount": 5,
+      "Total": 12,
+      "Variants": 5,
+      "Similarity": 0.8620689655172413,
+      "IsCustom": false
+    },
+    {
+      "File": ".claude/hooks/quickload-on-do.ps1",
+      "Repo": "AutoWebNav",
+      "Path": "D:\\Projects\\MindAttic\\AutoWebNav\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalCount": 5,
+      "Total": 12,
+      "Variants": 5,
+      "Similarity": 0.8735632183908046,
+      "IsCustom": false
+    },
+    {
+      "File": ".claude/hooks/quickload-on-do.ps1",
+      "Repo": "IdiotProof",
+      "Path": "D:\\Projects\\MindAttic\\IdiotProof\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalCount": 5,
+      "Total": 12,
+      "Variants": 5,
+      "Similarity": 0.8735632183908046,
+      "IsCustom": false
+    },
+    {
+      "File": ".claude/hooks/quickload-on-do.ps1",
+      "Repo": "KdpPublish",
+      "Path": "D:\\Projects\\MindAttic\\KdpPublish\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalCount": 5,
+      "Total": 12,
+      "Variants": 5,
+      "Similarity": 0.8735632183908046,
+      "IsCustom": false
+    },
+    {
+      "File": ".claude/hooks/quickload-on-do.ps1",
+      "Repo": "OpenCredentials",
+      "Path": "D:\\Projects\\MindAttic\\OpenCredentials\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalCount": 5,
+      "Total": 12,
+      "Variants": 5,
+      "Similarity": 0.8735632183908046,
+      "IsCustom": false
+    },
+    {
+      "File": ".claude/hooks/quickload-on-do.ps1",
+      "Repo": "ProcessLogger",
+      "Path": "D:\\Projects\\MindAttic\\ProcessLogger\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalCount": 5,
+      "Total": 12,
+      "Variants": 5,
+      "Similarity": 0.9257142857142857,
       "IsCustom": false
     }
   ],
@@ -4668,82 +4811,137 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "File": "CLAUDE.md",
       "Repo": "Automata",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "AutoWebNav",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "Formicarium",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "JobHunt",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "JoyceFit",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "KdpPublish",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "MindAttic.Cryptography",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "MindAttic.Orchestrator",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "Mods.GTFO.EZ",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "Mods.RogueTrader.Brevity",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "REA.Bloodlines",
-      "HaveIt": 32,
-      "Eligible": 43,
+      "HaveIt": 33,
+      "Eligible": 45,
+      "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
+    },
+    {
+      "File": "CLAUDE.md",
+      "Repo": "Unreal.Soulslike",
+      "HaveIt": 33,
+      "Eligible": 45,
       "ExamplePath": "D:\\Projects\\MindAttic\\AutoGamePlay\\CLAUDE.md"
     }
   ],
   "Duplicates": [
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\War.cs",
+          "Lines": 2235
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\War.cs",
+          "Lines": 2235
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\War.cs",
+          "Lines": 2235
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 2235,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Battle.cs",
+          "Lines": 1888
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Battle.cs",
+          "Lines": 1888
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Battle.cs",
+          "Lines": 1888
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 1888,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
     {
       "Files": [
         {
@@ -4762,6 +4960,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 2688,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\Hud.cs",
+          "Lines": 2596
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.cs",
+          "Lines": 2596
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 2596,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Fleet.cs",
+          "Lines": 1699
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Fleet.cs",
+          "Lines": 1699
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Fleet.cs",
+          "Lines": 1699
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 1699,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -4804,6 +5045,69 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipMeshFactory.cs",
+          "Lines": 840
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipMeshFactory.cs",
+          "Lines": 840
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipMeshFactory.cs",
+          "Lines": 840
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipMeshFactory.cs",
+          "Lines": 840
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipMeshFactory.cs",
+          "Lines": 840
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 840,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\InterstellarTraffic.cs",
+          "Lines": 1020
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\InterstellarTraffic.cs",
+          "Lines": 1020
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\InterstellarTraffic.cs",
+          "Lines": 1020
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 1020,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\Hud.cs",
+          "Lines": 2596
+        },
+        {
           "Repo": "Unity.SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\Hud.cs",
           "Lines": 2592
@@ -4812,13 +5116,384 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Repo": "Unreal.SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.cs",
           "Lines": 2594
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.cs",
+          "Lines": 2594
         }
       ],
       "Identical": false,
-      "Similarity": 0.9558823529411765,
-      "SharedLines": 2475,
+      "Similarity": 0.9543343653250774,
+      "SharedLines": 2581,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\InterstellarWars.cs",
+          "Lines": 849
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\InterstellarWars.cs",
+          "Lines": 849
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\InterstellarWars.cs",
+          "Lines": 849
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 849,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\GalaxyMapScreen.cs",
+          "Lines": 845
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\GalaxyMapScreen.cs",
+          "Lines": 845
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\GalaxyMapScreen.cs",
+          "Lines": 845
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\GalaxyMapScreen.cs",
+          "Lines": 845
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 845,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Coop.cs",
+          "Lines": 775
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Coop.cs",
+          "Lines": 775
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Coop.cs",
+          "Lines": 775
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Coop.cs",
+          "Lines": 775
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 775,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\World.cs",
+          "Lines": 775
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\World.cs",
+          "Lines": 775
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\World.cs",
+          "Lines": 775
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 775,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\BeltMining.cs",
+          "Lines": 763
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\BeltMining.cs",
+          "Lines": 763
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\BeltMining.cs",
+          "Lines": 763
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 763,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Law\\Outlaws.cs",
+          "Lines": 743
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Law\\Outlaws.cs",
+          "Lines": 743
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Law\\Outlaws.cs",
+          "Lines": 743
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 743,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\CombatSpecs.cs",
+          "Lines": 696
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\CombatSpecs.cs",
+          "Lines": 696
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\CombatSpecs.cs",
+          "Lines": 696
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 696,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Contracts.cs",
+          "Lines": 693
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Contracts.cs",
+          "Lines": 693
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Contracts.cs",
+          "Lines": 693
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 693,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Holdings.cs",
+          "Lines": 689
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Holdings.cs",
+          "Lines": 689
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Holdings.cs",
+          "Lines": 689
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 689,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Economy.cs",
+          "Lines": 662
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Economy.cs",
+          "Lines": 662
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Economy.cs",
+          "Lines": 662
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 662,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\Statecraft.cs",
+          "Lines": 619
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\Statecraft.cs",
+          "Lines": 619
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\Statecraft.cs",
+          "Lines": 619
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 619,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\BattleFx.cs",
+          "Lines": 464
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\BattleFx.cs",
+          "Lines": 464
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\BattleFx.cs",
+          "Lines": 464
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\BattleFx.cs",
+          "Lines": 464
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\BattleFx.cs",
+          "Lines": 464
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 464,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\ShipView.cs",
+          "Lines": 457
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\ShipView.cs",
+          "Lines": 457
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\ShipView.cs",
+          "Lines": 457
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\ShipView.cs",
+          "Lines": 457
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\ShipView.cs",
+          "Lines": 457
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 457,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Outfitting.cs",
+          "Lines": 588
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Outfitting.cs",
+          "Lines": 588
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Outfitting.cs",
+          "Lines": 588
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 588,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -4842,19 +5517,174 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.cs",
+          "Lines": 1836
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.cs",
+          "Lines": 1188
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Helm.cs",
+          "Lines": 656
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipMeshFactory.cs",
-          "Lines": 840
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.cs",
+          "Lines": 1818
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipMeshFactory.cs",
-          "Lines": 840
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.cs",
+          "Lines": 1184
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.cs",
+          "Lines": 1184
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Helm.cs",
+          "Lines": 655
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Helm.cs",
+          "Lines": 655
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8782755705832629,
+      "SharedLines": 1658,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Fighters.cs",
+          "Lines": 506
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Fighters.cs",
+          "Lines": 506
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Fighters.cs",
+          "Lines": 506
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 840,
+      "SharedLines": 506,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Colonisation.cs",
+          "Lines": 497
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Colonisation.cs",
+          "Lines": 497
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Colonisation.cs",
+          "Lines": 497
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 497,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\SceneTour.cs",
+          "Lines": 372
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\SceneTour.cs",
+          "Lines": 372
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\SceneTour.cs",
+          "Lines": 372
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\SceneTour.cs",
+          "Lines": 372
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\SceneTour.cs",
+          "Lines": 372
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 372,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Companies.cs",
+          "Lines": 489
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Companies.cs",
+          "Lines": 489
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Companies.cs",
+          "Lines": 489
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 489,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Persistence\\ObjectGraph.cs",
+          "Lines": 731
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Persistence\\ObjectGraph.cs",
+          "Lines": 731
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 731,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -4876,6 +5706,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 1444,
       "SuggestedHome": "MindAttic.Components (WPF)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\DeepSpace.cs",
+          "Lines": 468
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\DeepSpace.cs",
+          "Lines": 468
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\DeepSpace.cs",
+          "Lines": 468
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 468,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -4918,6 +5772,64 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\GUI.cs",
+          "Lines": 648
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\GUI.cs",
+          "Lines": 648
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\GUI.cs",
+          "Lines": 648
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 648,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\PauseMenu.cs",
+          "Lines": 323
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\PauseMenu.cs",
+          "Lines": 323
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\PauseMenu.cs",
+          "Lines": 323
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\PauseMenu.cs",
+          "Lines": 323
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\PauseMenu.cs",
+          "Lines": 323
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 323,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
           "Lines": 644
@@ -4931,6 +5843,184 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 644,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Camera\\SpaceCamera.cs",
+          "Lines": 320
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Camera\\SpaceCamera.cs",
+          "Lines": 320
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Camera\\SpaceCamera.cs",
+          "Lines": 320
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Camera\\SpaceCamera.cs",
+          "Lines": 320
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Camera\\SpaceCamera.cs",
+          "Lines": 320
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 320,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\StrategicCommand.cs",
+          "Lines": 426
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\StrategicCommand.cs",
+          "Lines": 426
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\StrategicCommand.cs",
+          "Lines": 426
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 426,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Events\\EventDirector.cs",
+          "Lines": 423
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Events\\EventDirector.cs",
+          "Lines": 423
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Events\\EventDirector.cs",
+          "Lines": 423
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 423,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\WarTests.cs",
+          "Lines": 619
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\WarTests.cs",
+          "Lines": 619
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 619,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\GameManual.cs",
+          "Lines": 408
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\GameManual.cs",
+          "Lines": 408
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\GameManual.cs",
+          "Lines": 408
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 408,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Camera\\StarTravel.cs",
+          "Lines": 305
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Camera\\StarTravel.cs",
+          "Lines": 305
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Camera\\StarTravel.cs",
+          "Lines": 305
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Camera\\StarTravel.cs",
+          "Lines": 305
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Camera\\StarTravel.cs",
+          "Lines": 305
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 305,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\EventDirectorTests.cs",
+          "Lines": 605
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\EventDirectorTests.cs",
+          "Lines": 605
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 605,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -4956,6 +6046,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\DeepSpaceLife.cs",
+          "Lines": 402
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\DeepSpaceLife.cs",
+          "Lines": 402
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\DeepSpaceLife.cs",
+          "Lines": 402
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 402,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Boarding.cs",
+          "Lines": 401
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Boarding.cs",
+          "Lines": 401
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Boarding.cs",
+          "Lines": 401
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 401,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\BroadcastMaskingTests.cs",
           "Lines": 598
@@ -4971,6 +6109,78 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 598,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\PirateClans.cs",
+          "Lines": 397
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\PirateClans.cs",
+          "Lines": 397
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\PirateClans.cs",
+          "Lines": 397
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 397,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\FlightDecks.cs",
+          "Lines": 383
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\FlightDecks.cs",
+          "Lines": 383
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\FlightDecks.cs",
+          "Lines": 383
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 383,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\FlightModels.cs",
+          "Lines": 382
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\FlightModels.cs",
+          "Lines": 382
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\FlightModels.cs",
+          "Lines": 382
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 382,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -4994,6 +6204,59 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Ftl.cs",
+          "Lines": 380
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Ftl.cs",
+          "Lines": 380
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Ftl.cs",
+          "Lines": 380
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Ftl.cs",
+          "Lines": 380
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 380,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Law\\Law.cs",
+          "Lines": 371
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Law\\Law.cs",
+          "Lines": 371
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Law\\Law.cs",
+          "Lines": 371
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 371,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Cyberspace\\frontpage.css",
           "Lines": 552
@@ -5013,26 +6276,141 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\MarketShocks.cs",
+          "Lines": 358
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.cs",
-          "Lines": 1818
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\MarketShocks.cs",
+          "Lines": 358
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.cs",
-          "Lines": 1180
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Helm.cs",
-          "Lines": 654
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\MarketShocks.cs",
+          "Lines": 358
         }
       ],
-      "Identical": false,
-      "Similarity": 0.8936170212765957,
-      "SharedLines": 1055,
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 358,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Sensors\\Sensors.cs",
+          "Lines": 356
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Sensors\\Sensors.cs",
+          "Lines": 356
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Sensors\\Sensors.cs",
+          "Lines": 356
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 356,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\GateConstruction.cs",
+          "Lines": 355
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\GateConstruction.cs",
+          "Lines": 355
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\GateConstruction.cs",
+          "Lines": 355
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 355,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\MilitarySupply.cs",
+          "Lines": 353
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\MilitarySupply.cs",
+          "Lines": 353
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\MilitarySupply.cs",
+          "Lines": 353
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 353,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\LawTests.cs",
+          "Lines": 518
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\LawTests.cs",
+          "Lines": 518
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 518,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Infrastructure\\Infrastructure.cs",
+          "Lines": 341
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Infrastructure\\Infrastructure.cs",
+          "Lines": 341
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Infrastructure\\Infrastructure.cs",
+          "Lines": 341
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 341,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -5052,6 +6430,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 503,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Broadsides.cs",
+          "Lines": 329
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Broadsides.cs",
+          "Lines": 329
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Broadsides.cs",
+          "Lines": 329
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 329,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\NearbySocieties.cs",
+          "Lines": 322
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\NearbySocieties.cs",
+          "Lines": 322
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\NearbySocieties.cs",
+          "Lines": 322
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 322,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -5094,6 +6520,73 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\HoldingsTests.cs",
+          "Lines": 475
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\HoldingsTests.cs",
+          "Lines": 475
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 475,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Dogfighting.cs",
+          "Lines": 313
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Dogfighting.cs",
+          "Lines": 313
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Dogfighting.cs",
+          "Lines": 313
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 313,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Hyperlanes.cs",
+          "Lines": 312
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Hyperlanes.cs",
+          "Lines": 312
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Hyperlanes.cs",
+          "Lines": 312
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 312,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\SchedulingCommands.cs",
           "Lines": 466
@@ -5113,32 +6606,71 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\BattleFx.cs",
-          "Lines": 464
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMath.cs",
+          "Lines": 463
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\BattleFx.cs",
-          "Lines": 464
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMath.cs",
+          "Lines": 463
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMath.cs",
+          "Lines": 463
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 464,
+      "SharedLines": 463,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\ShipView.cs",
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Embodiment.cs",
+          "Lines": 306
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Embodiment.cs",
+          "Lines": 306
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Embodiment.cs",
+          "Lines": 306
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Embodiment.cs",
+          "Lines": 306
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 306,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Audit\\FeatureAudit.cs",
           "Lines": 457
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\ShipView.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Audit\\FeatureAudit.cs",
+          "Lines": 457
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Audit\\FeatureAudit.cs",
           "Lines": 457
         }
       ],
@@ -5147,6 +6679,112 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 457,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\ModularHull.cs",
+          "Lines": 301
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\ModularHull.cs",
+          "Lines": 301
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\ModularHull.cs",
+          "Lines": 301
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 301,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Facilities.cs",
+          "Lines": 299
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Facilities.cs",
+          "Lines": 299
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Facilities.cs",
+          "Lines": 299
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 299,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Lanes.cs",
+          "Lines": 224
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Lanes.cs",
+          "Lines": 224
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Lanes.cs",
+          "Lines": 224
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Lanes.cs",
+          "Lines": 224
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Lanes.cs",
+          "Lines": 224
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 224,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\WeakPatches.cs",
+          "Lines": 296
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\WeakPatches.cs",
+          "Lines": 296
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\WeakPatches.cs",
+          "Lines": 296
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 296,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -5166,6 +6804,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 443,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Salvage.cs",
+          "Lines": 282
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Salvage.cs",
+          "Lines": 282
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Salvage.cs",
+          "Lines": 282
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 282,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -5208,6 +6870,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Crews.cs",
+          "Lines": 271
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Crews.cs",
+          "Lines": 271
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Crews.cs",
+          "Lines": 271
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 271,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
           "Lines": 406
@@ -5227,6 +6913,97 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\TradeLogisticsTests.cs",
+          "Lines": 406
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\TradeLogisticsTests.cs",
+          "Lines": 406
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 406,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\SkyView.cs",
+          "Lines": 203
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\SkyView.cs",
+          "Lines": 203
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\SkyView.cs",
+          "Lines": 203
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\SkyView.cs",
+          "Lines": 203
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\SkyView.cs",
+          "Lines": 203
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 203,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\TradeDeskTests.cs",
+          "Lines": 402
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\TradeDeskTests.cs",
+          "Lines": 402
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 402,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\InterstellarPiracyTests.cs",
+          "Lines": 400
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\InterstellarPiracyTests.cs",
+          "Lines": 400
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 400,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\TermSession.cs",
           "Lines": 398
@@ -5240,6 +7017,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 398,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\FtlNavigation.cs",
+          "Lines": 265
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\FtlNavigation.cs",
+          "Lines": 265
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\FtlNavigation.cs",
+          "Lines": 265
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 265,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Ships.cs",
+          "Lines": 394
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Ships.cs",
+          "Lines": 394
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 394,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -5284,6 +7104,97 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\SaveCompat\\SaveWiring.cs",
+          "Lines": 260
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Core\\SaveCompat\\SaveWiring.cs",
+          "Lines": 260
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Core\\SaveCompat\\SaveWiring.cs",
+          "Lines": 260
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Core\\SaveCompat\\SaveWiring.cs",
+          "Lines": 260
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 260,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CompanyTests.cs",
+          "Lines": 387
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CompanyTests.cs",
+          "Lines": 387
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 387,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\OutlawTests.cs",
+          "Lines": 386
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\OutlawTests.cs",
+          "Lines": 386
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 386,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\BodyCatalog.cs",
+          "Lines": 257
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\BodyCatalog.cs",
+          "Lines": 257
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\BodyCatalog.cs",
+          "Lines": 257
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 257,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorDb.cs",
           "Lines": 383
@@ -5299,6 +7210,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 383,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\TradeDesk.cs",
+          "Lines": 254
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\TradeDesk.cs",
+          "Lines": 254
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\TradeDesk.cs",
+          "Lines": 254
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 254,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -5322,14 +7257,14 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\GalaxyMapScreen.cs",
+          "Lines": 845
+        },
+        {
           "Repo": "Unity.SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\GalaxyMapScreen.cs",
           "Lines": 828
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\GalaxyMapScreen.cs",
-          "Lines": 845
         }
       ],
       "Identical": false,
@@ -5360,21 +7295,55 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\SceneTour.cs",
-          "Lines": 372
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\EscapePodTests.cs",
+          "Lines": 374
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\SceneTour.cs",
-          "Lines": 372
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\EscapePodTests.cs",
+          "Lines": 374
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 372,
+      "SharedLines": 374,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\BodyView.cs",
+          "Lines": 185
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\BodyView.cs",
+          "Lines": 185
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\BodyView.cs",
+          "Lines": 185
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\BodyView.cs",
+          "Lines": 185
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\BodyView.cs",
+          "Lines": 185
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 185,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
     },
     {
       "Files": [
@@ -5398,6 +7367,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Construction.cs",
+          "Lines": 245
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Construction.cs",
+          "Lines": 245
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Construction.cs",
+          "Lines": 245
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 245,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\TranscriptReader.cs",
           "Lines": 367
@@ -5417,6 +7410,127 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\BroadsideTests.cs",
+          "Lines": 366
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\BroadsideTests.cs",
+          "Lines": 366
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 366,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\LaneView.cs",
+          "Lines": 183
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\LaneView.cs",
+          "Lines": 183
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\LaneView.cs",
+          "Lines": 183
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\LaneView.cs",
+          "Lines": 183
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\LaneView.cs",
+          "Lines": 183
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 183,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Collisions.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Collisions.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Collisions.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Collisions.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Collisions.cs",
+          "Lines": 181
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 181,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\StructureViews.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\StructureViews.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\StructureViews.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\StructureViews.cs",
+          "Lines": 181
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\StructureViews.cs",
+          "Lines": 181
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 181,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\CliCommandTests.cs",
           "Lines": 361
@@ -5430,6 +7544,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 361,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Persistence\\ObjectGraph.cs",
+          "Lines": 733
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Persistence\\ObjectGraph.cs",
+          "Lines": 731
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9930458970792768,
+      "SharedLines": 719,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\OreTugTests.cs",
+          "Lines": 359
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\OreTugTests.cs",
+          "Lines": 359
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 359,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -5474,6 +7626,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ContractsTests.cs",
+          "Lines": 357
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ContractsTests.cs",
+          "Lines": 357
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 357,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\MainWindow.xaml",
           "Lines": 828
@@ -5493,6 +7664,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\NearbySystems.cs",
+          "Lines": 237
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\NearbySystems.cs",
+          "Lines": 237
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\NearbySystems.cs",
+          "Lines": 237
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 237,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DaemonSafetyTests.cs",
           "Lines": 355
@@ -5508,6 +7703,102 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 355,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PropellantTests.cs",
+          "Lines": 355
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PropellantTests.cs",
+          "Lines": 355
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 355,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\ImguiTypes.cs",
+          "Lines": 355
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\ImguiTypes.cs",
+          "Lines": 355
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\ImguiTypes.cs",
+          "Lines": 355
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 355,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\Hud.Trade.cs",
+          "Lines": 234
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.Trade.cs",
+          "Lines": 234
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.Trade.cs",
+          "Lines": 234
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.Trade.cs",
+          "Lines": 234
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 234,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\Galaxy.cs",
+          "Lines": 234
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\Galaxy.cs",
+          "Lines": 234
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\Galaxy.cs",
+          "Lines": 234
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 234,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -5550,6 +7841,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\TrajectoryTests.cs",
+          "Lines": 346
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\TrajectoryTests.cs",
+          "Lines": 346
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 346,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorVaultSettings.cs",
           "Lines": 342
@@ -5569,6 +7879,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\LaneUpkeep.cs",
+          "Lines": 227
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\LaneUpkeep.cs",
+          "Lines": 227
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\LaneUpkeep.cs",
+          "Lines": 227
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 227,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\GatewayAclTests.cs",
           "Lines": 339
@@ -5584,6 +7918,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 339,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PilotFlightTests.cs",
+          "Lines": 339
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PilotFlightTests.cs",
+          "Lines": 339
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 339,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Bench\\CSharp\\src\\Program.cs",
+          "Lines": 226
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\Bench\\CSharp\\src\\Program.cs",
+          "Lines": 226
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\Bench\\CSharp\\src\\Program.cs",
+          "Lines": 226
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Bench\\CSharp\\src\\Program.cs",
+          "Lines": 226
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 226,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -5622,6 +8004,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 330,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PeopleAndLabourTests.cs",
+          "Lines": 330
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PeopleAndLabourTests.cs",
+          "Lines": 330
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 330,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\Hud.Coop.cs",
+          "Lines": 219
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.Coop.cs",
+          "Lines": 219
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.Coop.cs",
+          "Lines": 219
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.Coop.cs",
+          "Lines": 219
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 219,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -5683,38 +8113,67 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Trajectories.cs",
+          "Lines": 215
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\PauseMenu.cs",
-          "Lines": 323
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Trajectories.cs",
+          "Lines": 215
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\PauseMenu.cs",
-          "Lines": 323
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Trajectories.cs",
+          "Lines": 215
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 323,
+      "SharedLines": 215,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
+      "RepoCount": 3
     },
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\CruiseDrive.cs",
+          "Lines": 215
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Camera\\SpaceCamera.cs",
-          "Lines": 320
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\CruiseDrive.cs",
+          "Lines": 215
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Camera\\SpaceCamera.cs",
-          "Lines": 320
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\CruiseDrive.cs",
+          "Lines": 215
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 320,
+      "SharedLines": 215,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\DogfightGameTests.cs",
+          "Lines": 318
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\DogfightGameTests.cs",
+          "Lines": 318
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 318,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -5728,6 +8187,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountRebalancer.cs",
+          "Lines": 316
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 316,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GateConstructionTests.cs",
+          "Lines": 316
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\GateConstructionTests.cs",
+          "Lines": 316
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 316,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GateNetworkTests.cs",
+          "Lines": 316
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\GateNetworkTests.cs",
           "Lines": 316
         }
       ],
@@ -5759,6 +8256,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\PilotFlight.cs",
+          "Lines": 209
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\PilotFlight.cs",
+          "Lines": 209
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\PilotFlight.cs",
+          "Lines": 209
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 209,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\OutfittingTests.cs",
+          "Lines": 313
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\OutfittingTests.cs",
+          "Lines": 313
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 313,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\JsonStore.cs",
           "Lines": 312
@@ -5778,13 +8318,37 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Collisions.cs",
+          "Lines": 205
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Camera\\StarTravel.cs",
-          "Lines": 305
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Collisions.cs",
+          "Lines": 205
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Camera\\StarTravel.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Collisions.cs",
+          "Lines": 205
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 205,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\DeepSpaceLifeTests.cs",
+          "Lines": 305
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\DeepSpaceLifeTests.cs",
           "Lines": 305
         }
       ],
@@ -5831,6 +8395,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\InterstellarCruiseTests.cs",
+          "Lines": 302
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\InterstellarCruiseTests.cs",
+          "Lines": 302
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 302,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayApp.cs",
           "Lines": 296
@@ -5846,6 +8429,174 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 296,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\MilitarySupplyTests.cs",
+          "Lines": 295
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\MilitarySupplyTests.cs",
+          "Lines": 295
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 295,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Information\\News.cs",
+          "Lines": 196
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Information\\News.cs",
+          "Lines": 196
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Information\\News.cs",
+          "Lines": 196
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 196,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\SurrenderTests.cs",
+          "Lines": 293
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\SurrenderTests.cs",
+          "Lines": 293
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 293,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\HelmFtl.cs",
+          "Lines": 194
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\HelmFtl.cs",
+          "Lines": 194
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\HelmFtl.cs",
+          "Lines": 194
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 194,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Rendering\\Skyboxes.cs",
+          "Lines": 194
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Rendering\\Skyboxes.cs",
+          "Lines": 194
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Rendering\\Skyboxes.cs",
+          "Lines": 194
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 194,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\FighterViews.cs",
+          "Lines": 145
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\FighterViews.cs",
+          "Lines": 145
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\FighterViews.cs",
+          "Lines": 145
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\FighterViews.cs",
+          "Lines": 145
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\FighterViews.cs",
+          "Lines": 145
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 145,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\SocietySpec.cs",
+          "Lines": 190
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\SocietySpec.cs",
+          "Lines": 190
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\SocietySpec.cs",
+          "Lines": 190
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 190,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -5869,6 +8620,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\SaveGameTests.cs",
+          "Lines": 281
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\SaveGameTests.cs",
+          "Lines": 281
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 281,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\StatusStream.cs",
           "Lines": 280
@@ -5876,6 +8646,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\StatusStream.cs",
+          "Lines": 280
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 280,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CaptureAliveTests.cs",
+          "Lines": 280
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CaptureAliveTests.cs",
           "Lines": 280
         }
       ],
@@ -5907,6 +8696,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\ProceduralSystems.cs",
+          "Lines": 182
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\ProceduralSystems.cs",
+          "Lines": 182
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\ProceduralSystems.cs",
+          "Lines": 182
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 182,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TabStatusTests.cs",
           "Lines": 271
@@ -5914,6 +8727,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TabStatusTests.cs",
+          "Lines": 271
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 271,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopSmoke.cs",
+          "Lines": 271
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopSmoke.cs",
           "Lines": 271
         }
       ],
@@ -5964,6 +8796,59 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipModels.cs",
+          "Lines": 134
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipModels.cs",
+          "Lines": 134
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipModels.cs",
+          "Lines": 134
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipModels.cs",
+          "Lines": 134
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipModels.cs",
+          "Lines": 134
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 134,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\HavenTests.cs",
+          "Lines": 266
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\HavenTests.cs",
+          "Lines": 266
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 266,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\JsonStoreTests.cs",
           "Lines": 263
@@ -5998,6 +8883,116 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 263,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CombatStateTests.cs",
+          "Lines": 263
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CombatStateTests.cs",
+          "Lines": 263
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 263,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\World.Mining.cs",
+          "Lines": 175
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\World.Mining.cs",
+          "Lines": 175
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\World.Mining.cs",
+          "Lines": 175
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 175,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ColonisationTests.cs",
+          "Lines": 260
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ColonisationTests.cs",
+          "Lines": 260
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 260,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityResources.cs",
+          "Lines": 260
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityResources.cs",
+          "Lines": 260
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityResources.cs",
+          "Lines": 260
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 260,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\CombatState.cs",
+          "Lines": 173
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\CombatState.cs",
+          "Lines": 173
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\CombatState.cs",
+          "Lines": 173
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 173,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -6040,6 +9035,141 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\CatalogueStars.cs",
+          "Lines": 171
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\CatalogueStars.cs",
+          "Lines": 171
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\CatalogueStars.cs",
+          "Lines": 171
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 171,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Information\\GalaxyMap.cs",
+          "Lines": 171
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Information\\GalaxyMap.cs",
+          "Lines": 171
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Information\\GalaxyMap.cs",
+          "Lines": 171
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 171,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Streaming.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Streaming.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Streaming.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Streaming.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Streaming.cs",
+          "Lines": 128
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 128,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\InterstellarView.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\InterstellarView.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\InterstellarView.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\InterstellarView.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\InterstellarView.cs",
+          "Lines": 128
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 128,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ReconFighterTests.cs",
+          "Lines": 253
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ReconFighterTests.cs",
+          "Lines": 253
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 253,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\ContextCycler.cs",
           "Lines": 252
@@ -6055,6 +9185,198 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 252,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\EconomyPopulationAndReviewTests.cs",
+          "Lines": 252
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\EconomyPopulationAndReviewTests.cs",
+          "Lines": 252
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 252,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\Icons.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Icons.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\Icons.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Icons.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Icons.cs",
+          "Lines": 126
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 126,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\StarSystemBuilder.cs",
+          "Lines": 168
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\StarSystemBuilder.cs",
+          "Lines": 168
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\StarSystemBuilder.cs",
+          "Lines": 168
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 168,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\TakeChargeTests.cs",
+          "Lines": 251
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\TakeChargeTests.cs",
+          "Lines": 251
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 251,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\GateNetwork.cs",
+          "Lines": 167
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\GateNetwork.cs",
+          "Lines": 167
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\GateNetwork.cs",
+          "Lines": 167
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 167,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\FighterSeat.cs",
+          "Lines": 167
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\FighterSeat.cs",
+          "Lines": 167
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\FighterSeat.cs",
+          "Lines": 167
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 167,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\People.cs",
+          "Lines": 167
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\People.cs",
+          "Lines": 167
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\People.cs",
+          "Lines": 167
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 167,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Settings\\GameSetting.cs",
+          "Lines": 165
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Settings\\GameSetting.cs",
+          "Lines": 165
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Settings\\GameSetting.cs",
+          "Lines": 165
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 165,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -6078,6 +9400,35 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\GalaxyMapScreen.Coop.cs",
+          "Lines": 164
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\GalaxyMapScreen.Coop.cs",
+          "Lines": 164
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\GalaxyMapScreen.Coop.cs",
+          "Lines": 164
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\GalaxyMapScreen.Coop.cs",
+          "Lines": 164
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 164,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DashboardViewModelTests.cs",
           "Lines": 245
@@ -6093,6 +9444,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 245,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CollisionTests.cs",
+          "Lines": 245
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CollisionTests.cs",
+          "Lines": 245
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 245,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\CarrierWings.cs",
+          "Lines": 163
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\CarrierWings.cs",
+          "Lines": 163
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\CarrierWings.cs",
+          "Lines": 163
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 163,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -6135,6 +9529,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\LaneUpkeepTests.cs",
+          "Lines": 242
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\LaneUpkeepTests.cs",
+          "Lines": 242
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 242,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CombatTests.cs",
+          "Lines": 241
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CombatTests.cs",
+          "Lines": 241
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 241,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SchedulerTests.cs",
           "Lines": 240
@@ -6148,6 +9580,135 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 240,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\MainMenu.cs",
+          "Lines": 239
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\MainMenu.cs",
+          "Lines": 239
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 239,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\MainMenu.cs",
+          "Lines": 239
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\MainMenu.cs",
+          "Lines": 239
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\MainMenu.cs",
+          "Lines": 239
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 239,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Coop\\CoopPeer.cs",
+          "Lines": 490
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopPeer.cs",
+          "Lines": 490
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopPeer.cs",
+          "Lines": 486
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopPeer.cs",
+          "Lines": 461
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9334719334719335,
+      "SharedLines": 475,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\BreacherBayTests.cs",
+          "Lines": 235
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\BreacherBayTests.cs",
+          "Lines": 235
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 235,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\SensorsTests.cs",
+          "Lines": 235
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\SensorsTests.cs",
+          "Lines": 235
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 235,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\LaneInterdictorTests.cs",
+          "Lines": 233
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\LaneInterdictorTests.cs",
+          "Lines": 233
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 233,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -6169,6 +9730,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 230,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Charters.cs",
+          "Lines": 153
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Charters.cs",
+          "Lines": 153
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Charters.cs",
+          "Lines": 153
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 153,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -6211,13 +9796,47 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\HelpScreen.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\HelpScreen.cs",
+          "Lines": 113
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Lanes.cs",
-          "Lines": 224
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\HelpScreen.cs",
+          "Lines": 113
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Lanes.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\HelpScreen.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\HelpScreen.cs",
+          "Lines": 113
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 113,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\StrikeCraftTests.cs",
+          "Lines": 224
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\StrikeCraftTests.cs",
           "Lines": 224
         }
       ],
@@ -6226,6 +9845,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 224,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Persistence\\SaveGame.cs",
+          "Lines": 149
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Persistence\\SaveGame.cs",
+          "Lines": 149
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Persistence\\SaveGame.cs",
+          "Lines": 149
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 149,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -6268,6 +9911,130 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\StrategicCommandTests.cs",
+          "Lines": 222
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\StrategicCommandTests.cs",
+          "Lines": 222
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 222,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\FtlRules.cs",
+          "Lines": 148
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\FtlRules.cs",
+          "Lines": 148
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\FtlRules.cs",
+          "Lines": 148
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 148,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FlightModelTests.cs",
+          "Lines": 221
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FlightModelTests.cs",
+          "Lines": 221
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 221,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\SystemSources.cs",
+          "Lines": 147
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\SystemSources.cs",
+          "Lines": 147
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\SystemSources.cs",
+          "Lines": 147
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 147,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FtlNavigationTests.cs",
+          "Lines": 220
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FtlNavigationTests.cs",
+          "Lines": 220
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 220,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\MarketTradeTests.cs",
+          "Lines": 220
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\MarketTradeTests.cs",
+          "Lines": 220
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 220,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LoginScopeTests.cs",
           "Lines": 219
@@ -6275,6 +10042,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LoginScopeTests.cs",
+          "Lines": 219
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 219,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FtlCarriageTests.cs",
+          "Lines": 219
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FtlCarriageTests.cs",
           "Lines": 219
         }
       ],
@@ -6325,6 +10111,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GalaxyGenerationTests.cs",
+          "Lines": 218
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\GalaxyGenerationTests.cs",
+          "Lines": 218
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 218,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\MarketShocksTests.cs",
+          "Lines": 218
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\MarketShocksTests.cs",
+          "Lines": 218
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 218,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingSwitch.cs",
           "Lines": 217
@@ -6332,6 +10156,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingSwitch.cs",
+          "Lines": 217
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 217,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\StatecraftTests.cs",
+          "Lines": 217
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\StatecraftTests.cs",
           "Lines": 217
         }
       ],
@@ -6359,6 +10202,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 216,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\GatePickets.cs",
+          "Lines": 144
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\GatePickets.cs",
+          "Lines": 144
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\GatePickets.cs",
+          "Lines": 144
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 144,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -6395,6 +10262,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 214,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ArsenalTests.cs",
+          "Lines": 214
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ArsenalTests.cs",
+          "Lines": 214
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 214,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\Hdrp\\HdrpRenderBackend.cs",
+          "Lines": 213
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\Hdrp\\HdrpRenderBackend.cs",
+          "Lines": 213
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 213,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -6458,6 +10363,68 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\RenderLod.cs",
+          "Lines": 141
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\RenderLod.cs",
+          "Lines": 141
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\RenderLod.cs",
+          "Lines": 141
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 141,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\SettingsRegistryTests.cs",
+          "Lines": 211
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\SettingsRegistryTests.cs",
+          "Lines": 211
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 211,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\Urp\\UrpRenderBackend.cs",
+          "Lines": 211
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\Urp\\UrpRenderBackend.cs",
+          "Lines": 211
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 211,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaThemeTests.cs",
           "Lines": 210
@@ -6515,6 +10482,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Pursuit.cs",
+          "Lines": 139
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Pursuit.cs",
+          "Lines": 139
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Pursuit.cs",
+          "Lines": 139
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 139,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaPickerTests.cs",
           "Lines": 208
@@ -6530,6 +10521,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 208,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CapitalFlightTests.cs",
+          "Lines": 207
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CapitalFlightTests.cs",
+          "Lines": 207
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 207,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\ScaleModel.cs",
+          "Lines": 138
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\ScaleModel.cs",
+          "Lines": 138
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\ScaleModel.cs",
+          "Lines": 138
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 138,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -6572,6 +10606,63 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\NearbySystemsTests.cs",
+          "Lines": 206
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\NearbySystemsTests.cs",
+          "Lines": 206
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 206,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\SalvageTests.cs",
+          "Lines": 206
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\SalvageTests.cs",
+          "Lines": 206
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 206,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Audit\\FeatureAudit.cs",
+          "Lines": 460
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Audit\\FeatureAudit.cs",
+          "Lines": 457
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8982300884955752,
+      "SharedLines": 411,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LoginPickerTests.cs",
           "Lines": 205
@@ -6591,19 +10682,100 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\SkyView.cs",
-          "Lines": 203
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\BuiltinSkin.cs",
+          "Lines": 205
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\SkyView.cs",
-          "Lines": 203
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\BuiltinSkin.cs",
+          "Lines": 205
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\BuiltinSkin.cs",
+          "Lines": 205
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 203,
+      "SharedLines": 205,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\RaidDoctrineTests.cs",
+          "Lines": 204
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\RaidDoctrineTests.cs",
+          "Lines": 204
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 204,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Json\\MiniJson.cs",
+          "Lines": 202
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Json\\MiniJson.cs",
+          "Lines": 202
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 202,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\AvoidanceTests.cs",
+          "Lines": 201
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\AvoidanceTests.cs",
+          "Lines": 201
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 201,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ScreenWeaponsTests.cs",
+          "Lines": 201
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ScreenWeaponsTests.cs",
+          "Lines": 201
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 201,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -6648,6 +10820,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMesh.cs",
+          "Lines": 200
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMesh.cs",
+          "Lines": 200
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMesh.cs",
+          "Lines": 200
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 200,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\StationSeat.cs",
+          "Lines": 133
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\StationSeat.cs",
+          "Lines": 133
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\StationSeat.cs",
+          "Lines": 133
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 133,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LibraryControlsTests.cs",
           "Lines": 198
@@ -6686,6 +10906,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\RenderPipelineTests.cs",
+          "Lines": 198
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\RenderPipelineTests.cs",
+          "Lines": 198
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 198,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\AsteroidField.cs",
+          "Lines": 132
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\AsteroidField.cs",
+          "Lines": 132
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\AsteroidField.cs",
+          "Lines": 132
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 132,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AllocateHoldsTests.cs",
           "Lines": 197
@@ -6699,6 +10962,73 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 197,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMaterials.cs",
+          "Lines": 197
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMaterials.cs",
+          "Lines": 197
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 197,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Infrastructure\\Satellite.cs",
+          "Lines": 131
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Infrastructure\\Satellite.cs",
+          "Lines": 131
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Infrastructure\\Satellite.cs",
+          "Lines": 131
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 131,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityParticles.cs",
+          "Lines": 195
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityParticles.cs",
+          "Lines": 195
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityParticles.cs",
+          "Lines": 195
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 195,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -6800,6 +11130,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\BoardingShuttleTests.cs",
+          "Lines": 194
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\BoardingShuttleTests.cs",
+          "Lines": 194
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 194,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\ArmourAngling.cs",
+          "Lines": 129
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\ArmourAngling.cs",
+          "Lines": 129
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\ArmourAngling.cs",
+          "Lines": 129
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 129,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaTabStripTests.cs",
           "Lines": 192
@@ -6838,6 +11211,107 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Coop\\CoopInput.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopInput.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopInput.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopInput.cs",
+          "Lines": 128
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 128,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Settlement.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Settlement.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Settlement.cs",
+          "Lines": 128
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 128,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityBridge.cs",
+          "Lines": 407
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityBridge.cs",
+          "Lines": 388
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityBridge.cs",
+          "Lines": 388
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9869451697127938,
+      "SharedLines": 383,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\TradeInsurance.cs",
+          "Lines": 127
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\TradeInsurance.cs",
+          "Lines": 127
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\TradeInsurance.cs",
+          "Lines": 127
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 127,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaModalTests.cs",
           "Lines": 190
@@ -6857,6 +11331,140 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CorvetteTests.cs",
+          "Lines": 190
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CorvetteTests.cs",
+          "Lines": 190
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 190,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\WeakPatchTests.cs",
+          "Lines": 190
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\WeakPatchTests.cs",
+          "Lines": 190
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 190,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\ControlsHelp.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\ControlsHelp.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\ControlsHelp.cs",
+          "Lines": 126
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 126,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Streaming.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Streaming.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Streaming.cs",
+          "Lines": 126
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 126,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Corvettes.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Corvettes.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Corvettes.cs",
+          "Lines": 126
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 126,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Radiators.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Radiators.cs",
+          "Lines": 126
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Radiators.cs",
+          "Lines": 126
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 126,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\RateLimitStatusWriterTests.cs",
           "Lines": 188
@@ -6864,6 +11472,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\RateLimitStatusWriterTests.cs",
+          "Lines": 188
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 188,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\EnergyWeaponsTests.cs",
+          "Lines": 188
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\EnergyWeaponsTests.cs",
           "Lines": 188
         }
       ],
@@ -6910,6 +11537,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\FleetPatterns.cs",
+          "Lines": 125
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\FleetPatterns.cs",
+          "Lines": 125
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\FleetPatterns.cs",
+          "Lines": 125
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 125,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaLayout.cs",
           "Lines": 187
@@ -6948,6 +11599,82 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FighterTests.cs",
+          "Lines": 187
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FighterTests.cs",
+          "Lines": 187
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 187,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GatePicketTests.cs",
+          "Lines": 187
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\GatePicketTests.cs",
+          "Lines": 187
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 187,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\LaneInterdictionTests.cs",
+          "Lines": 187
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\LaneInterdictionTests.cs",
+          "Lines": 187
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 187,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Saves.cs",
+          "Lines": 186
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Saves.cs",
+          "Lines": 186
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 186,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.TabStatus.cs",
           "Lines": 185
@@ -6967,13 +11694,32 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\BodyView.cs",
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\EmbodimentTests.cs",
           "Lines": 185
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\BodyView.cs",
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\EmbodimentTests.cs",
+          "Lines": 185
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 185,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\IndustryTests.cs",
+          "Lines": 185
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\IndustryTests.cs",
           "Lines": 185
         }
       ],
@@ -7062,13 +11808,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\LaneView.cs",
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FtlPhysicsTests.cs",
           "Lines": 183
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\LaneView.cs",
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FtlPhysicsTests.cs",
           "Lines": 183
         }
       ],
@@ -7081,6 +11827,73 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\InterstellarWarTests.cs",
+          "Lines": 183
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\InterstellarWarTests.cs",
+          "Lines": 183
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 183,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\DisplaySettings.cs",
+          "Lines": 122
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\DisplaySettings.cs",
+          "Lines": 122
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\DisplaySettings.cs",
+          "Lines": 122
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 122,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\FleetDoctrine.cs",
+          "Lines": 122
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\FleetDoctrine.cs",
+          "Lines": 122
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\FleetDoctrine.cs",
+          "Lines": 122
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 122,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\tests\\Core.Tests\\ThemeTests.cs",
           "Lines": 182
@@ -7088,6 +11901,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Components.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\tests\\Core.Tests\\ThemeTests.cs",
+          "Lines": 182
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 182,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GalaxyMapTests.cs",
+          "Lines": 182
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\GalaxyMapTests.cs",
           "Lines": 182
         }
       ],
@@ -7119,32 +11951,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Collisions.cs",
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\LagrangeTests.cs",
           "Lines": 181
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Collisions.cs",
-          "Lines": 181
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 181,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\StructureViews.cs",
-          "Lines": 181
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\StructureViews.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\LagrangeTests.cs",
           "Lines": 181
         }
       ],
@@ -7164,6 +11977,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountSwitchTests.cs",
+          "Lines": 180
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 180,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\StarSystemSpec.cs",
+          "Lines": 120
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\StarSystemSpec.cs",
+          "Lines": 120
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\StarSystemSpec.cs",
+          "Lines": 120
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 120,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\UiSmoke.cs",
+          "Lines": 180
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\UiSmoke.cs",
+          "Lines": 180
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\UiSmoke.cs",
           "Lines": 180
         }
       ],
@@ -7233,14 +12094,33 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ShieldEmitterTests.cs",
+          "Lines": 178
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ShieldEmitterTests.cs",
+          "Lines": 178
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 178,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Ftl.cs",
+          "Lines": 380
+        },
+        {
           "Repo": "Unity.SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Ftl.cs",
           "Lines": 377
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Ftl.cs",
-          "Lines": 380
         }
       ],
       "Identical": false,
@@ -7265,6 +12145,68 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 177,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FleetDoctrineTests.cs",
+          "Lines": 176
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FleetDoctrineTests.cs",
+          "Lines": 176
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 176,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\ShipHelm.cs",
+          "Lines": 117
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\ShipHelm.cs",
+          "Lines": 117
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\ShipHelm.cs",
+          "Lines": 117
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 117,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Ships.cs",
+          "Lines": 394
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Ships.cs",
+          "Lines": 361
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9719101123595506,
+      "SharedLines": 351,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -7322,6 +12264,78 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 174,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\JumpGateTests.cs",
+          "Lines": 174
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\JumpGateTests.cs",
+          "Lines": 174
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 174,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\MeshFactory.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\MeshFactory.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\MeshFactory.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\MeshFactory.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\MeshFactory.cs",
+          "Lines": 87
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 87,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\DreadnoughtTests.cs",
+          "Lines": 173
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\DreadnoughtTests.cs",
+          "Lines": 173
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 173,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -7423,6 +12437,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\SpinalMounts.cs",
+          "Lines": 114
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\SpinalMounts.cs",
+          "Lines": 114
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\SpinalMounts.cs",
+          "Lines": 114
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 114,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OrchestratorServerTests.cs",
           "Lines": 170
@@ -7476,6 +12514,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\InformationLagTests.cs",
+          "Lines": 170
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\InformationLagTests.cs",
+          "Lines": 170
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 170,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\CargoHold.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\CargoHold.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\CargoHold.cs",
+          "Lines": 113
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 113,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TabSwitchTests.cs",
           "Lines": 169
@@ -7491,6 +12572,160 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 169,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ArmourAnglingTests.cs",
+          "Lines": 169
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ArmourAnglingTests.cs",
+          "Lines": 169
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 169,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\StreamingTests.cs",
+          "Lines": 168
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\StreamingTests.cs",
+          "Lines": 168
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 168,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\EmbeddedPods.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\EmbeddedPods.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\EmbeddedPods.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\EmbeddedPods.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\EmbeddedPods.cs",
+          "Lines": 84
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 84,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\PodBeacons.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\PodBeacons.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\PodBeacons.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\PodBeacons.cs",
+          "Lines": 84
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\PodBeacons.cs",
+          "Lines": 84
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 84,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Ephemeris.cs",
+          "Lines": 112
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Ephemeris.cs",
+          "Lines": 112
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Ephemeris.cs",
+          "Lines": 112
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 112,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Rendering\\ProceduralSky.cs",
+          "Lines": 112
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Rendering\\ProceduralSky.cs",
+          "Lines": 112
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Rendering\\ProceduralSky.cs",
+          "Lines": 112
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 112,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -7540,6 +12775,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OrphanWatchTests.cs",
+          "Lines": 167
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 167,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\BeltMiningTests.cs",
+          "Lines": 167
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\BeltMiningTests.cs",
           "Lines": 167
         }
       ],
@@ -7628,6 +12882,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\LocalTraffic.cs",
+          "Lines": 110
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\LocalTraffic.cs",
+          "Lines": 110
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\LocalTraffic.cs",
+          "Lines": 110
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 110,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\MarketIntel.cs",
+          "Lines": 110
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\MarketIntel.cs",
+          "Lines": 110
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\MarketIntel.cs",
+          "Lines": 110
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 110,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\ConstructionTests.cs",
           "Lines": 164
@@ -7704,6 +13006,116 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GunneryTests.cs",
+          "Lines": 164
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\GunneryTests.cs",
+          "Lines": 164
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 164,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CarrierStrikeGroupTests.cs",
+          "Lines": 163
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CarrierStrikeGroupTests.cs",
+          "Lines": 163
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 163,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PursuitTests.cs",
+          "Lines": 162
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PursuitTests.cs",
+          "Lines": 162
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 162,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Course.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Course.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Course.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Course.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 108,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\GalaxyStreaming.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\GalaxyStreaming.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\GalaxyStreaming.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 108,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\MenuStackTests.cs",
           "Lines": 161
@@ -7737,6 +13149,145 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 161,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CargoHoldTests.cs",
+          "Lines": 161
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CargoHoldTests.cs",
+          "Lines": 161
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 161,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\FrontierSystems.cs",
+          "Lines": 107
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\FrontierSystems.cs",
+          "Lines": 107
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\FrontierSystems.cs",
+          "Lines": 107
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 107,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CommandCruiserTests.cs",
+          "Lines": 160
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CommandCruiserTests.cs",
+          "Lines": 160
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 160,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\MarineHabitatTests.cs",
+          "Lines": 160
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\MarineHabitatTests.cs",
+          "Lines": 160
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 160,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\AssetStreamer.cs",
+          "Lines": 80
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\AssetStreamer.cs",
+          "Lines": 80
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\AssetStreamer.cs",
+          "Lines": 80
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\AssetStreamer.cs",
+          "Lines": 80
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\AssetStreamer.cs",
+          "Lines": 80
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 80,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\Cpp\\Content\\Python\\init_unreal.py",
+          "Lines": 160
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Cpp\\Content\\Python\\init_unreal.py",
+          "Lines": 160
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\Cpp\\Content\\Python\\init_unreal.py",
+          "Lines": 160
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 160,
+      "SuggestedHome": "a shared Python package",
       "RepoCount": 2
     },
     {
@@ -7780,6 +13331,78 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PolitiesTests.cs",
+          "Lines": 159
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PolitiesTests.cs",
+          "Lines": 159
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 159,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\tools\\unity_extract.py",
+          "Lines": 323
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\unity_extract.py",
+          "Lines": 323
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\unity_extract.py",
+          "Lines": 320
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\unity_extract.py",
+          "Lines": 320
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9559748427672956,
+      "SharedLines": 314,
+      "SuggestedHome": "a shared Python package",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Wreck.cs",
+          "Lines": 104
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Wreck.cs",
+          "Lines": 104
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Wreck.cs",
+          "Lines": 104
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 104,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\OrgsCommands.cs",
           "Lines": 155
@@ -7799,6 +13422,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\MultiSystemLodTests.cs",
+          "Lines": 155
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\MultiSystemLodTests.cs",
+          "Lines": 155
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 155,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\PatrolWings.cs",
+          "Lines": 103
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\PatrolWings.cs",
+          "Lines": 103
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\PatrolWings.cs",
+          "Lines": 103
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 103,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
           "Lines": 154
@@ -7812,6 +13478,82 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 154,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\BoardingTests.cs",
+          "Lines": 154
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\BoardingTests.cs",
+          "Lines": 154
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 154,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\InfrastructureTests.cs",
+          "Lines": 154
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\InfrastructureTests.cs",
+          "Lines": 154
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 154,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FrigateTests.cs",
+          "Lines": 153
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FrigateTests.cs",
+          "Lines": 153
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 153,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\InterstellarColonisationTests.cs",
+          "Lines": 153
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\InterstellarColonisationTests.cs",
+          "Lines": 153
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 153,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -7875,6 +13617,102 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FleetTests.cs",
+          "Lines": 152
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FleetTests.cs",
+          "Lines": 152
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 152,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Bench\\CSharp\\src\\Digest.cs",
+          "Lines": 101
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\Bench\\CSharp\\src\\Digest.cs",
+          "Lines": 101
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\Bench\\CSharp\\src\\Digest.cs",
+          "Lines": 101
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Bench\\CSharp\\src\\Digest.cs",
+          "Lines": 101
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 101,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\Polities.cs",
+          "Lines": 101
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\Polities.cs",
+          "Lines": 101
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\Polities.cs",
+          "Lines": 101
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 101,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\FireCones.cs",
+          "Lines": 101
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\FireCones.cs",
+          "Lines": 101
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\FireCones.cs",
+          "Lines": 101
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 101,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\SubagentActivity.cs",
           "Lines": 151
@@ -7882,6 +13720,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\SubagentActivity.cs",
+          "Lines": 151
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 151,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FleetPatternsTests.cs",
+          "Lines": 151
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FleetPatternsTests.cs",
           "Lines": 151
         }
       ],
@@ -7909,6 +13766,97 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 150,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\OrbitalMechanicsTests.cs",
+          "Lines": 150
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\OrbitalMechanicsTests.cs",
+          "Lines": 150
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 150,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\RenderBackend.cs",
+          "Lines": 150
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\RenderBackend.cs",
+          "Lines": 150
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\RenderBackend.cs",
+          "Lines": 150
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 150,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Lagrange.cs",
+          "Lines": 99
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Lagrange.cs",
+          "Lines": 99
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Lagrange.cs",
+          "Lines": 99
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 99,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\BoardingShuttles.cs",
+          "Lines": 99
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\BoardingShuttles.cs",
+          "Lines": 99
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\BoardingShuttles.cs",
+          "Lines": 99
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 99,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -7951,6 +13899,35 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\tools\\build-core.ps1",
+          "Lines": 148
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\build-core.ps1",
+          "Lines": 148
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\build-core.ps1",
+          "Lines": 148
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\build-core.ps1",
+          "Lines": 148
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 148,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\OrphanWatch.cs",
           "Lines": 147
@@ -7958,6 +13935,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\OrphanWatch.cs",
+          "Lines": 147
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 147,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\ModelViewer.cs",
+          "Lines": 147
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\ModelViewer.cs",
+          "Lines": 147
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 147,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ModelViewer.cs",
+          "Lines": 147
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ModelViewer.cs",
+          "Lines": 147
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ModelViewer.cs",
           "Lines": 147
         }
       ],
@@ -7989,6 +14009,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityRenderers.cs",
+          "Lines": 146
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityRenderers.cs",
+          "Lines": 146
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityRenderers.cs",
+          "Lines": 146
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 146,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityObjects.cs",
+          "Lines": 296
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityObjects.cs",
+          "Lines": 295
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityObjects.cs",
+          "Lines": 295
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9896551724137931,
+      "SharedLines": 292,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermProtocol.cs",
           "Lines": 145
@@ -8008,21 +14076,36 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\FighterViews.cs",
-          "Lines": 145
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude\\hooks\\quickload-on-do.ps1",
+          "Lines": 58
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\FighterViews.cs",
-          "Lines": 145
+          "Repo": "TownWalker",
+          "Path": "D:\\Projects\\MindAttic\\TownWalker\\.claude\\hooks\\quickload-on-do.ps1",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unity.Eve",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\.claude\\hooks\\quickload-on-do.ps1",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unity.GridGame",
+          "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\.claude\\hooks\\quickload-on-do.ps1",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\.claude\\hooks\\quickload-on-do.ps1",
+          "Lines": 58
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 145,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
+      "SharedLines": 58,
+      "SuggestedHome": "mindattic-agent-standard",
+      "RepoCount": 5
     },
     {
       "Files": [
@@ -8046,6 +14129,130 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\BulkFreighterTests.cs",
+          "Lines": 144
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\BulkFreighterTests.cs",
+          "Lines": 144
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 144,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\HelmFtlTests.cs",
+          "Lines": 144
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\HelmFtlTests.cs",
+          "Lines": 144
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 144,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\RadiatorTests.cs",
+          "Lines": 144
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\RadiatorTests.cs",
+          "Lines": 144
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 144,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\SettlementPricingTests.cs",
+          "Lines": 144
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\SettlementPricingTests.cs",
+          "Lines": 144
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 144,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Settings\\SettingsRegistry.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Settings\\SettingsRegistry.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Settings\\SettingsRegistry.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 96,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Session\\SeatAuthority.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\SeatAuthority.cs",
+          "Lines": 96
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\SeatAuthority.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 96,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountRebalancerTests.cs",
           "Lines": 143
@@ -8061,6 +14268,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 143,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Rendering\\RenderPipelineProfiles.cs",
+          "Lines": 95
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Rendering\\RenderPipelineProfiles.cs",
+          "Lines": 95
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Rendering\\RenderPipelineProfiles.cs",
+          "Lines": 95
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 95,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -8084,19 +14315,62 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Embodiment.cs",
+          "Lines": 306
+        },
+        {
           "Repo": "Unity.SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Embodiment.cs",
           "Lines": 302
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Embodiment.cs",
-          "Lines": 306
         }
       ],
       "Identical": false,
       "Similarity": 0.936026936026936,
       "SharedLines": 283,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Smuggling.cs",
+          "Lines": 94
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Smuggling.cs",
+          "Lines": 94
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Smuggling.cs",
+          "Lines": 94
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 94,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\HaulerFlightTests.cs",
+          "Lines": 140
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\HaulerFlightTests.cs",
+          "Lines": 140
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 140,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -8110,6 +14384,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\InstallerTests.cs",
+          "Lines": 138
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 138,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PatrolWingTests.cs",
+          "Lines": 138
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PatrolWingTests.cs",
+          "Lines": 138
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 138,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\GuiCanvases.cs",
+          "Lines": 138
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\GuiCanvases.cs",
+          "Lines": 138
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\GuiCanvases.cs",
           "Lines": 138
         }
       ],
@@ -8217,6 +14534,111 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\HighwayTests.cs",
+          "Lines": 137
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\HighwayTests.cs",
+          "Lines": 137
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 137,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\VoidStations.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\VoidStations.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\VoidStations.cs",
+          "Lines": 91
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 91,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\EnergyWeapons.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\EnergyWeapons.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\EnergyWeapons.cs",
+          "Lines": 91
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 91,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\RenderPipelineSelection.cs",
+          "Lines": 136
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\RenderPipelineSelection.cs",
+          "Lines": 136
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 136,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\ProfileStore.cs",
+          "Lines": 136
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\ProfileStore.cs",
+          "Lines": 136
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 136,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Formicarium",
           "Path": "D:\\Projects\\MindAttic\\Formicarium\\dashboard\\Formicarium.Dashboard\\Components\\Layout\\ReconnectModal.razor.css",
           "Lines": 90
@@ -8256,6 +14678,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 135,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\AlphaCentauriTests.cs",
+          "Lines": 135
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\AlphaCentauriTests.cs",
+          "Lines": 135
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 135,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Rendering\\CameraExposure.cs",
+          "Lines": 90
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Rendering\\CameraExposure.cs",
+          "Lines": 90
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Rendering\\CameraExposure.cs",
+          "Lines": 90
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 90,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -8336,25 +14801,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipModels.cs",
-          "Lines": 134
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipModels.cs",
-          "Lines": 134
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 134,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorServer.cs",
           "Lines": 133
@@ -8370,6 +14816,59 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 133,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\Cpp\\Source\\SpaceGodCore\\Tests\\CsParity\\DotNet\\Program.cs",
+          "Lines": 133
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Cpp\\Source\\SpaceGodCore\\Tests\\CsParity\\DotNet\\Program.cs",
+          "Lines": 133
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\Cpp\\Source\\SpaceGodCore\\Tests\\CsParity\\DotNet\\Program.cs",
+          "Lines": 133
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\Cpp\\Source\\SpaceGodCore\\Tests\\CsParity\\DotNet\\Program.cs",
+          "Lines": 133
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 133,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Coop\\CoopSmoke.cs",
+          "Lines": 271
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopSmoke.cs",
+          "Lines": 271
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopSmoke.cs",
+          "Lines": 261
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9375,
+      "SharedLines": 265,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -8400,6 +14899,92 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountMove.cs",
+          "Lines": 132
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 132,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\HeavyFighterFlightTests.cs",
+          "Lines": 132
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\HeavyFighterFlightTests.cs",
+          "Lines": 132
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 132,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\StationSeatTests.cs",
+          "Lines": 132
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\StationSeatTests.cs",
+          "Lines": 132
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 132,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\OrbitalElements.cs",
+          "Lines": 88
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\OrbitalElements.cs",
+          "Lines": 88
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\OrbitalElements.cs",
+          "Lines": 88
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 88,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Race\\RaceRun.cs",
+          "Lines": 132
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Race\\RaceRun.cs",
+          "Lines": 132
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Race\\RaceRun.cs",
           "Lines": 132
         }
       ],
@@ -8469,6 +15054,102 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\BoardingCommandTests.cs",
+          "Lines": 131
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\BoardingCommandTests.cs",
+          "Lines": 131
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 131,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Coop\\CoopWire.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopWire.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopWire.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopWire.cs",
+          "Lines": 87
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 87,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\AlphaStrike.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\AlphaStrike.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\AlphaStrike.cs",
+          "Lines": 87
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 87,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\FleetCoordination.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\FleetCoordination.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\FleetCoordination.cs",
+          "Lines": 87
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 87,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Summer\\summer.js",
           "Lines": 130
@@ -8495,6 +15176,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TicketReplayTests.cs",
+          "Lines": 130
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 130,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\LocalTrafficTests.cs",
+          "Lines": 130
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\LocalTrafficTests.cs",
           "Lines": 130
         }
       ],
@@ -8602,40 +15302,79 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\AlphaCentauri.cs",
+          "Lines": 86
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Streaming.cs",
-          "Lines": 128
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\AlphaCentauri.cs",
+          "Lines": 86
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Streaming.cs",
-          "Lines": 128
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\AlphaCentauri.cs",
+          "Lines": 86
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 128,
+      "SharedLines": 86,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
+      "RepoCount": 3
     },
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\InterstellarView.cs",
-          "Lines": 128
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Bench\\CSharp\\src\\Simulation.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\Bench\\CSharp\\src\\Simulation.cs",
+          "Lines": 85
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\InterstellarView.cs",
-          "Lines": 128
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\Bench\\CSharp\\src\\Simulation.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Bench\\CSharp\\src\\Simulation.cs",
+          "Lines": 85
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 128,
+      "SharedLines": 85,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\HaulerFlight.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\HaulerFlight.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\HaulerFlight.cs",
+          "Lines": 85
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 85,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -8735,21 +15474,36 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\AsteroidBelt.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\AsteroidBelt.cs",
+          "Lines": 63
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\Icons.cs",
-          "Lines": 126
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\AsteroidBelt.cs",
+          "Lines": 63
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Icons.cs",
-          "Lines": 126
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\AsteroidBelt.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\AsteroidBelt.cs",
+          "Lines": 63
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 126,
+      "SharedLines": 63,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
+      "RepoCount": 4
     },
     {
       "Files": [
@@ -8792,6 +15546,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CaptureTugTests.cs",
+          "Lines": 125
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CaptureTugTests.cs",
+          "Lines": 125
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 125,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\World.Colonies.cs",
+          "Lines": 83
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\World.Colonies.cs",
+          "Lines": 83
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\World.Colonies.cs",
+          "Lines": 83
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 83,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ProcessHelperTests.cs",
           "Lines": 124
@@ -8799,6 +15596,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ProcessHelperTests.cs",
+          "Lines": 124
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 124,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\NearestStarsTests.cs",
+          "Lines": 124
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\NearestStarsTests.cs",
           "Lines": 124
         }
       ],
@@ -8868,6 +15684,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\GateJump.cs",
+          "Lines": 81
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\GateJump.cs",
+          "Lines": 81
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\GateJump.cs",
+          "Lines": 81
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 81,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaScrollBarTests.cs",
           "Lines": 121
@@ -8894,6 +15734,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\AccountsCommand.cs",
+          "Lines": 121
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 121,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\HyperlaneTests.cs",
+          "Lines": 121
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\HyperlaneTests.cs",
+          "Lines": 121
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 121,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\RenderLodTests.cs",
+          "Lines": 121
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\RenderLodTests.cs",
           "Lines": 121
         }
       ],
@@ -8944,6 +15822,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\TachyonLanceTests.cs",
+          "Lines": 120
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\TachyonLanceTests.cs",
+          "Lines": 120
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 120,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\WreckTests.cs",
+          "Lines": 120
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\WreckTests.cs",
+          "Lines": 120
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 120,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaToggle.cs",
           "Lines": 119
@@ -8982,13 +15898,32 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\MultiplayerReadyTests.cs",
+          "Lines": 119
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\MainMenu.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\MultiplayerReadyTests.cs",
+          "Lines": 119
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 119,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\MainMenu.cs",
           "Lines": 239
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\MainMenu.cs",
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\MainMenu.cs",
           "Lines": 239
         }
       ],
@@ -8997,6 +15932,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 238,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\SimClock.cs",
+          "Lines": 79
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\SimClock.cs",
+          "Lines": 79
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\SimClock.cs",
+          "Lines": 79
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 79,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Events\\Opportunity.cs",
+          "Lines": 79
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Events\\Opportunity.cs",
+          "Lines": 79
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Events\\Opportunity.cs",
+          "Lines": 79
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 79,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -9077,6 +16060,40 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\GateView.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\GateView.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\GateView.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\GateView.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\GateView.cs",
+          "Lines": 59
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 59,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionRestore.cs",
           "Lines": 117
@@ -9092,6 +16109,140 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 117,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FacilitiesTests.cs",
+          "Lines": 117
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FacilitiesTests.cs",
+          "Lines": 117
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 117,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\NearbySocietiesTests.cs",
+          "Lines": 117
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\NearbySocietiesTests.cs",
+          "Lines": 117
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 117,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\BodyDefinition.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\BodyDefinition.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\BodyDefinition.cs",
+          "Lines": 78
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\StarDiscovery.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\StarDiscovery.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\StarDiscovery.cs",
+          "Lines": 78
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\Embodiables.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\Embodiables.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\Embodiables.cs",
+          "Lines": 78
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\ElectronicWarfare.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\ElectronicWarfare.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\ElectronicWarfare.cs",
+          "Lines": 78
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -9115,31 +16266,79 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "TownWalker",
-          "Path": "D:\\Projects\\MindAttic\\TownWalker\\.claude\\hooks\\quickload-on-do.ps1",
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PilotLaneTests.cs",
+          "Lines": 116
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PilotLaneTests.cs",
+          "Lines": 116
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 116,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\DisplayOptions.cs",
           "Lines": 58
         },
         {
-          "Repo": "Unity.Eve",
-          "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\.claude\\hooks\\quickload-on-do.ps1",
-          "Lines": 58
-        },
-        {
-          "Repo": "Unity.GridGame",
-          "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\.claude\\hooks\\quickload-on-do.ps1",
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\DisplayOptions.cs",
           "Lines": 58
         },
         {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\.claude\\hooks\\quickload-on-do.ps1",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\DisplayOptions.cs",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\DisplayOptions.cs",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\DisplayOptions.cs",
           "Lines": 58
         }
       ],
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 58,
-      "SuggestedHome": "mindattic-agent-standard",
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\SpaceHud.cs",
+          "Lines": 116
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\SpaceHud.cs",
+          "Lines": 116
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\SpaceHud.cs",
+          "Lines": 116
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 116,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -9220,6 +16419,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ConstructionTests.cs",
+          "Lines": 115
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ConstructionTests.cs",
+          "Lines": 115
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 115,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\EscortTests.cs",
+          "Lines": 115
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\EscortTests.cs",
+          "Lines": 115
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 115,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\AgentGateRemoval.cs",
           "Lines": 114
@@ -9227,6 +16464,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\AgentGateRemoval.cs",
+          "Lines": 114
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 114,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GateBreakerTests.cs",
+          "Lines": 114
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\GateBreakerTests.cs",
           "Lines": 114
         }
       ],
@@ -9334,25 +16590,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\HelpScreen.cs",
-          "Lines": 113
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\HelpScreen.cs",
-          "Lines": 113
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 113,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "AutoWebNav",
           "Path": "D:\\Projects\\MindAttic\\AutoWebNav\\.claude\\hooks\\quickload-on-do.ps1",
           "Lines": 56
@@ -9439,6 +16676,64 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\SatelliteSwarm.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\SatelliteSwarm.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\SatelliteSwarm.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\SatelliteSwarm.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\SatelliteSwarm.cs",
+          "Lines": 56
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 56,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\ViewsSmoke.cs",
+          "Lines": 112
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\ViewsSmoke.cs",
+          "Lines": 112
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\ViewsSmoke.cs",
+          "Lines": 112
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 112,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\DropdownMenu.cs",
           "Lines": 111
@@ -9465,6 +16760,78 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Components.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaSettingsForm.cs",
+          "Lines": 111
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 111,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Events\\EventSources.cs",
+          "Lines": 74
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Events\\EventSources.cs",
+          "Lines": 74
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Events\\EventSources.cs",
+          "Lines": 74
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 74,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\BreacherBays.cs",
+          "Lines": 74
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\BreacherBays.cs",
+          "Lines": 74
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\BreacherBays.cs",
+          "Lines": 74
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 74,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnrealMeshData.cs",
+          "Lines": 111
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnrealMeshData.cs",
+          "Lines": 111
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnrealMeshData.cs",
           "Lines": 111
         }
       ],
@@ -9587,6 +16954,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Industry.cs",
+          "Lines": 73
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Industry.cs",
+          "Lines": 73
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Industry.cs",
+          "Lines": 73
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 73,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\ScreenWeapons.cs",
+          "Lines": 73
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\ScreenWeapons.cs",
+          "Lines": 73
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\ScreenWeapons.cs",
+          "Lines": 73
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 73,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ControlStyles.cs",
           "Lines": 109
@@ -9640,6 +17055,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 109,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\DisplaySettingsTests.cs",
+          "Lines": 109
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\DisplaySettingsTests.cs",
+          "Lines": 109
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 109,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Input\\InputState.cs",
+          "Lines": 220
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Input\\InputState.cs",
+          "Lines": 220
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Input\\InputState.cs",
+          "Lines": 209
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Input\\InputState.cs",
+          "Lines": 209
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9313725490196079,
+      "SharedLines": 218,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -9758,6 +17221,92 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\TravelCourseTests.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\TravelCourseTests.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 108,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\WorksFreighterTests.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\WorksFreighterTests.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 108,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Persistence\\Profiles.cs",
+          "Lines": 72
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Persistence\\Profiles.cs",
+          "Lines": 72
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Persistence\\Profiles.cs",
+          "Lines": 72
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 72,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\MountedTurret.cs",
+          "Lines": 72
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\MountedTurret.cs",
+          "Lines": 72
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\MountedTurret.cs",
+          "Lines": 72
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 72,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Ocean\\ocean.js",
           "Lines": 107
@@ -9792,6 +17341,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 107,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CarrierWingTests.cs",
+          "Lines": 107
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CarrierWingTests.cs",
+          "Lines": 107
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 107,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\SatelliteSeat.cs",
+          "Lines": 71
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\SatelliteSeat.cs",
+          "Lines": 71
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\SatelliteSeat.cs",
+          "Lines": 71
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 71,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -9910,6 +17502,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\LunarTheory.cs",
+          "Lines": 70
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\LunarTheory.cs",
+          "Lines": 70
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\LunarTheory.cs",
+          "Lines": 70
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 70,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\CssTokenParser.cs",
           "Lines": 104
@@ -9982,6 +17598,35 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 104,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Coop\\CoopSettings.cs",
+          "Lines": 69
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopSettings.cs",
+          "Lines": 69
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopSettings.cs",
+          "Lines": 69
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\CoopSettings.cs",
+          "Lines": 69
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 69,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -10081,6 +17726,64 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\Materials.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\Materials.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\Materials.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\Materials.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\Materials.cs",
+          "Lines": 51
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 51,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Rendering\\Photoreal.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Rendering\\Photoreal.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Rendering\\Photoreal.cs",
+          "Lines": 68
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 68,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\WeeklyStopTests.cs",
           "Lines": 101
@@ -10088,6 +17791,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\WeeklyStopTests.cs",
+          "Lines": 101
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 101,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\ProceduralAsteroids.cs",
+          "Lines": 101
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\ProceduralAsteroids.cs",
           "Lines": 101
         }
       ],
@@ -10176,6 +17898,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "Unity.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Json\\JsonObject.cs",
+          "Lines": 100
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Json\\JsonObject.cs",
+          "Lines": 100
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 100,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Unity.Rea.Chain",
           "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\Assets\\Unity.Rea.Chain\\Core\\Settings\\Json.cs",
           "Lines": 281
@@ -10225,6 +17966,68 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 99,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\SatelliteTests.cs",
+          "Lines": 99
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\SatelliteTests.cs",
+          "Lines": 99
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 99,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\TransitMappingTests.cs",
+          "Lines": 99
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\TransitMappingTests.cs",
+          "Lines": 99
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 99,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Diplomacy.cs",
+          "Lines": 66
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Diplomacy.cs",
+          "Lines": 66
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Diplomacy.cs",
+          "Lines": 66
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 66,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -10305,6 +18108,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\PilotTuning.cs",
+          "Lines": 65
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\PilotTuning.cs",
+          "Lines": 65
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\PilotTuning.cs",
+          "Lines": 65
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 65,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\GatewaySupervisor.cs",
           "Lines": 97
@@ -10331,6 +18158,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\prototypes\\T923-relay\\TermHostStub\\Ring.cs",
+          "Lines": 97
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 97,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\DogfightTests.cs",
+          "Lines": 97
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\DogfightTests.cs",
+          "Lines": 97
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 97,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ModularHullTests.cs",
+          "Lines": 97
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ModularHullTests.cs",
           "Lines": 97
         }
       ],
@@ -10514,14 +18379,62 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\AstroTests.cs",
+          "Lines": 96
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\Hud.Trade.cs",
-          "Lines": 232
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\AstroTests.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 96,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Practice.cs",
+          "Lines": 64
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Practice.cs",
+          "Lines": 64
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\Hud.Trade.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Practice.cs",
+          "Lines": 64
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Practice.cs",
+          "Lines": 64
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 64,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UI\\Hud.Trade.cs",
           "Lines": 234
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\Hud.Trade.cs",
+          "Lines": 232
         }
       ],
       "Identical": false,
@@ -10590,6 +18503,106 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\DVec3Tests.cs",
+          "Lines": 95
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\DVec3Tests.cs",
+          "Lines": 95
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 95,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\FlightDeckTests.cs",
+          "Lines": 95
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\FlightDeckTests.cs",
+          "Lines": 95
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 95,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\KineticWeaponsTests.cs",
+          "Lines": 95
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\KineticWeaponsTests.cs",
+          "Lines": 95
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 95,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Escorts.cs",
+          "Lines": 95
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Escorts.cs",
+          "Lines": 95
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 95,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\RearLine.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\RearLine.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\RearLine.cs",
+          "Lines": 63
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 63,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Infrastructure\\MaSurface.cs",
           "Lines": 94
@@ -10622,6 +18635,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 94,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMaterials.cs",
+          "Lines": 197
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMaterials.cs",
+          "Lines": 196
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9528795811518325,
+      "SharedLines": 187,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -10685,6 +18717,78 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\AsteroidFieldTests.cs",
+          "Lines": 93
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\AsteroidFieldTests.cs",
+          "Lines": 93
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 93,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PortBattleTests.cs",
+          "Lines": 92
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PortBattleTests.cs",
+          "Lines": 92
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 92,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\LineStrip.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\LineStrip.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\LineStrip.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\LineStrip.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\LineStrip.cs",
+          "Lines": 46
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 46,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Theming\\ThemeColor.cs",
           "Lines": 91
@@ -10742,6 +18846,68 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\BuriedBridgeTests.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\BuriedBridgeTests.cs",
+          "Lines": 91
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 91,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\Urp\\UrpPostProcessSettings.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\Urp\\UrpPostProcessSettings.cs",
+          "Lines": 91
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 91,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\UrpPostProcessSettings.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\UrpPostProcessSettings.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\UrpPostProcessSettings.cs",
+          "Lines": 91
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 91,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LimitCalibrationTests.cs",
           "Lines": 90
@@ -10757,6 +18923,40 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 90,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\DebrisFields.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\DebrisFields.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\DebrisFields.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\DebrisFields.cs",
+          "Lines": 45
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\DebrisFields.cs",
+          "Lines": 45
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 45,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
     },
     {
       "Files": [
@@ -10856,6 +19056,73 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ProfileTests.cs",
+          "Lines": 89
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ProfileTests.cs",
+          "Lines": 89
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 89,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\ImguiHost.cs",
+          "Lines": 89
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\ImguiHost.cs",
+          "Lines": 89
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\ImguiHost.cs",
+          "Lines": 89
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 89,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\GasGiantWeather.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\GasGiantWeather.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\GasGiantWeather.cs",
+          "Lines": 59
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 59,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TermGrantsTests.cs",
           "Lines": 88
@@ -10871,6 +19138,40 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 88,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\Starfield.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\Starfield.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\Starfield.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\Starfield.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\Starfield.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
     },
     {
       "Files": [
@@ -10913,21 +19214,89 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\RaidDoctrine.cs",
+          "Lines": 58
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\MeshFactory.cs",
-          "Lines": 87
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\RaidDoctrine.cs",
+          "Lines": 58
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\MeshFactory.cs",
-          "Lines": 87
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\RaidDoctrine.cs",
+          "Lines": 58
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 87,
+      "SharedLines": 58,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\tools\\imgdiff.py",
+          "Lines": 58
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\imgdiff.py",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\imgdiff.py",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\imgdiff.py",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\imgdiff.py",
+          "Lines": 58
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 58,
+      "SuggestedHome": "a shared Python package",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Saves.cs",
+          "Lines": 186
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Saves.cs",
+          "Lines": 180
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Saves.cs",
+          "Lines": 184
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Saves.cs",
+          "Lines": 184
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.76,
+      "SharedLines": 174,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -10970,6 +19339,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\Screen.cs",
+          "Lines": 86
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\Screen.cs",
+          "Lines": 86
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\Screen.cs",
+          "Lines": 86
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 86,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LibraryOnlyXamlTests.cs",
           "Lines": 205
@@ -10985,6 +19378,35 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 172,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipThumbnails.cs",
+          "Lines": 57
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipThumbnails.cs",
+          "Lines": 57
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipThumbnails.cs",
+          "Lines": 57
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipThumbnails.cs",
+          "Lines": 57
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 57,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -11091,6 +19513,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\LimitCalibration.cs",
+          "Lines": 85
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 85,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\DiplomacyTests.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\DiplomacyTests.cs",
           "Lines": 85
         }
       ],
@@ -11277,40 +19718,26 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\HelmControls.cs",
+          "Lines": 56
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\EmbeddedPods.cs",
-          "Lines": 84
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\HelmControls.cs",
+          "Lines": 56
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\EmbeddedPods.cs",
-          "Lines": 84
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\HelmControls.cs",
+          "Lines": 56
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 84,
+      "SharedLines": 56,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\PodBeacons.cs",
-          "Lines": 84
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\PodBeacons.cs",
-          "Lines": 84
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 84,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -11486,6 +19913,64 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Target.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Target.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Target.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Target.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Target.cs",
+          "Lines": 41
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Input\\UnrealInputDevice.cs",
+          "Lines": 82
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Input\\UnrealInputDevice.cs",
+          "Lines": 82
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Input\\UnrealInputDevice.cs",
+          "Lines": 82
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 82,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaCodeDisplay.cs",
           "Lines": 81
@@ -11562,6 +20047,73 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\StarDiscoveryTests.cs",
+          "Lines": 81
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\StarDiscoveryTests.cs",
+          "Lines": 81
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 81,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Session\\CommandCodec.cs",
+          "Lines": 54
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\CommandCodec.cs",
+          "Lines": 54
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\CommandCodec.cs",
+          "Lines": 54
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 54,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\SpaceGameMode.cs",
+          "Lines": 174
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\SpaceGameMode.cs",
+          "Lines": 172
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\SpaceGameMode.cs",
+          "Lines": 160
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8903225806451613,
+      "SharedLines": 162,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\PageScrollbar\\page-scrollbar.js",
           "Lines": 80
@@ -11600,21 +20152,84 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Views\\DiscView.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\DiscView.cs",
+          "Lines": 40
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\AssetStreamer.cs",
-          "Lines": 80
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\DiscView.cs",
+          "Lines": 40
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\AssetStreamer.cs",
-          "Lines": 80
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\DiscView.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\DiscView.cs",
+          "Lines": 40
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 80,
+      "SharedLines": 40,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\GalacticPosition.cs",
+          "Lines": 53
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\GalacticPosition.cs",
+          "Lines": 53
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\GalacticPosition.cs",
+          "Lines": 53
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 53,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\World.MiningConvoys.cs",
+          "Lines": 53
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\World.MiningConvoys.cs",
+          "Lines": 53
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\World.MiningConvoys.cs",
+          "Lines": 53
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 53,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -11664,6 +20279,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Activity\\DiskWatch.cs",
+          "Lines": 79
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 79,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\SurfaceAndWeatherTests.cs",
+          "Lines": 79
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\SurfaceAndWeatherTests.cs",
+          "Lines": 79
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 79,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\RenderBackend.cs",
+          "Lines": 79
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\RenderBackend.cs",
           "Lines": 79
         }
       ],
@@ -11771,6 +20424,145 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CameraExposureTests.cs",
+          "Lines": 78
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\CameraExposureTests.cs",
+          "Lines": 78
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Astro.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Astro.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Astro.cs",
+          "Lines": 52
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 52,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Kepler.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Kepler.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Kepler.cs",
+          "Lines": 52
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 52,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Goods.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Goods.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Goods.cs",
+          "Lines": 52
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 52,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Propulsion.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Propulsion.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Propulsion.cs",
+          "Lines": 52
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 52,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\PrizeSettlement.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\PrizeSettlement.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\PrizeSettlement.cs",
+          "Lines": 52
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 52,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaStatusPill.cs",
           "Lines": 77
@@ -11816,6 +20608,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyAllowance.cs",
+          "Lines": 77
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 77,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PilotAimTests.cs",
+          "Lines": 77
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PilotAimTests.cs",
           "Lines": 77
         }
       ],
@@ -11881,6 +20692,40 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 76,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Boarding.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Boarding.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Boarding.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Boarding.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Boarding.cs",
+          "Lines": 38
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 38,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
     },
     {
       "Files": [
@@ -11957,6 +20802,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 75,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\BulkFreighters.cs",
+          "Lines": 50
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\BulkFreighters.cs",
+          "Lines": 50
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\BulkFreighters.cs",
+          "Lines": 50
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 50,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\GateBreakers.cs",
+          "Lines": 50
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\GateBreakers.cs",
+          "Lines": 50
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\GateBreakers.cs",
+          "Lines": 50
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 50,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -12052,6 +20945,55 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 74,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\tools\\play.ps1",
+          "Lines": 200
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\play.ps1",
+          "Lines": 200
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\play.ps1",
+          "Lines": 198
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\play.ps1",
+          "Lines": 197
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Race\\quiet\\play.ps1",
+          "Lines": 173
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\play.ps1",
+          "Lines": 160
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Race\\quiet\\play.head.ps1",
+          "Lines": 171
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Race\\quiet\\play.index.ps1",
+          "Lines": 170
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5096774193548387,
+      "SharedLines": 147,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -12170,25 +21112,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Saves.cs",
-          "Lines": 180
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Saves.cs",
-          "Lines": 184
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8,
-      "SharedLines": 145,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\SecretMasker.cs",
           "Lines": 72
@@ -12246,13 +21169,51 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ColonyHullTests.cs",
+          "Lines": 71
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\ModelViewer.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ColonyHullTests.cs",
+          "Lines": 71
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 71,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GateJumpTests.cs",
+          "Lines": 71
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\GateJumpTests.cs",
+          "Lines": 71
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 71,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\ModelViewer.cs",
           "Lines": 147
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ModelViewer.cs",
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ModelViewer.cs",
           "Lines": 147
         }
       ],
@@ -12261,6 +21222,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 142,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\StrandedWings.cs",
+          "Lines": 47
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\StrandedWings.cs",
+          "Lines": 47
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\StrandedWings.cs",
+          "Lines": 47
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 47,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -12322,6 +21307,49 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Input\\InputDevice.cs",
+          "Lines": 70
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Input\\InputDevice.cs",
+          "Lines": 70
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Input\\InputDevice.cs",
+          "Lines": 70
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 70,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\CommonSettings.cs",
+          "Lines": 70
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\CommonSettings.cs",
+          "Lines": 70
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 70,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\Program.cs",
           "Lines": 69
@@ -12329,6 +21357,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\Program.cs",
+          "Lines": 69
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 69,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\VoidBaseTests.cs",
+          "Lines": 69
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\VoidBaseTests.cs",
           "Lines": 69
         }
       ],
@@ -12443,6 +21490,83 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Orgs.cs",
+          "Lines": 68
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 68,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\HelmTests.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\HelmTests.cs",
+          "Lines": 68
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 68,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Broadsides.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Broadsides.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Broadsides.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Broadsides.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Broadsides.cs",
+          "Lines": 34
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 34,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Audit\\DisplayAudit.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Audit\\DisplayAudit.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Audit\\DisplayAudit.cs",
           "Lines": 68
         }
       ],
@@ -12579,6 +21703,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\EconomyTests.cs",
+          "Lines": 67
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\EconomyTests.cs",
+          "Lines": 67
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 67,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ScaleModelTests.cs",
+          "Lines": 67
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ScaleModelTests.cs",
+          "Lines": 67
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 67,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.LoginCards.cs",
           "Lines": 151
@@ -12693,6 +21855,73 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\SkyboxTests.cs",
+          "Lines": 66
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\SkyboxTests.cs",
+          "Lines": 66
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 66,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\DVec3.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\DVec3.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\DVec3.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\ShipLod.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\ShipLod.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\ShipLod.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "IdiotProof",
           "Path": "D:\\Projects\\MindAttic\\IdiotProof\\Export.ps1",
           "Lines": 135
@@ -12746,6 +21975,121 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 65,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\CaptureEvents.cs",
+          "Lines": 135
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\CaptureEvents.cs",
+          "Lines": 135
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9615384615384616,
+      "SharedLines": 130,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\AssetLibraryCandidates.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\AssetLibraryCandidates.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\AssetLibraryCandidates.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\InterstellarColonisation.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\InterstellarColonisation.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\InterstellarColonisation.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\JumpGate.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\JumpGate.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\JumpGate.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\TravelCourse.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\TravelCourse.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\TravelCourse.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -12864,6 +22208,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\AlliedBoardingTests.cs",
+          "Lines": 64
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\AlliedBoardingTests.cs",
+          "Lines": 64
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 64,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\MatchingTests.cs",
           "Lines": 63
@@ -12921,13 +22284,66 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\BlackMarket.cs",
+          "Lines": 42
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\AsteroidBelt.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\BlackMarket.cs",
+          "Lines": 42
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\BlackMarket.cs",
+          "Lines": 42
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 42,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Gunnery.cs",
+          "Lines": 42
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Gunnery.cs",
+          "Lines": 42
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Gunnery.cs",
+          "Lines": 42
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 42,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\ShaderBinding.cs",
           "Lines": 63
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\AsteroidBelt.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\ShaderBinding.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\ShaderBinding.cs",
           "Lines": 63
         }
       ],
@@ -12955,6 +22371,83 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 62,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\FidelityShots.cs",
+          "Lines": 62
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\FidelityShots.cs",
+          "Lines": 62
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\FidelityShots.cs",
+          "Lines": 62
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 62,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\SaveCompat\\SaveStatics.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Core\\SaveCompat\\SaveStatics.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Core\\SaveCompat\\SaveStatics.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Core\\SaveCompat\\SaveStatics.cs",
+          "Lines": 41
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\ShieldEmitters.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\ShieldEmitters.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\ShieldEmitters.cs",
+          "Lines": 41
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -13111,6 +22604,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\BodyOrientation.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\BodyOrientation.cs",
+          "Lines": 40
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\BodyOrientation.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\FormattingTests.cs",
           "Lines": 59
@@ -13168,13 +22685,18 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\GateView.cs",
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityLights.cs",
           "Lines": 59
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\GateView.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityLights.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityLights.cs",
           "Lines": 59
         }
       ],
@@ -13183,6 +22705,73 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 59,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\ProfileSettings.cs",
+          "Lines": 59
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\ProfileSettings.cs",
+          "Lines": 59
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 59,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\GateTransit.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\GateTransit.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\GateTransit.cs",
+          "Lines": 39
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 39,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\TachyonLances.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\TachyonLances.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\TachyonLances.cs",
+          "Lines": 39
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 39,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -13263,25 +22852,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UI\\DisplayOptions.cs",
-          "Lines": 58
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\DisplayOptions.cs",
-          "Lines": 58
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 58,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Theming\\MaTheme.cs",
           "Lines": 57
@@ -13339,13 +22909,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipThumbnails.cs",
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PhotorealTests.cs",
           "Lines": 57
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipThumbnails.cs",
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PhotorealTests.cs",
           "Lines": 57
         }
       ],
@@ -13354,6 +22924,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 57,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\PracticeSpawn.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\PracticeSpawn.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\PracticeSpawn.cs",
+          "Lines": 38
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 38,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Session\\LocalSession.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\LocalSession.cs",
+          "Lines": 38
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\LocalSession.cs",
+          "Lines": 38
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 38,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -13463,13 +23081,37 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\SatelliteSwarm.cs",
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Bridge\\UnrealHost.cs",
           "Lines": 56
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\SatelliteSwarm.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Bridge\\UnrealHost.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Bridge\\UnrealHost.cs",
+          "Lines": 56
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 56,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\Profiles.cs",
+          "Lines": 56
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\Profiles.cs",
           "Lines": 56
         }
       ],
@@ -13525,6 +23167,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 37,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\DriftingRounds.cs",
+          "Lines": 37
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\DriftingRounds.cs",
+          "Lines": 37
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\DriftingRounds.cs",
+          "Lines": 37
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 37,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 3
     },
     {
@@ -13720,6 +23386,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\PilotAim.cs",
+          "Lines": 36
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\PilotAim.cs",
+          "Lines": 36
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\PilotAim.cs",
+          "Lines": 36
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 36,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaTag.cs",
           "Lines": 53
@@ -13754,6 +23444,59 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 53,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\tools\\build-bench-cpp.ps1",
+          "Lines": 53
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\build-bench-cpp.ps1",
+          "Lines": 53
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\build-bench-cpp.ps1",
+          "Lines": 53
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\build-bench-cpp.ps1",
+          "Lines": 53
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 53,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\LaneInterdictors.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\LaneInterdictors.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\LaneInterdictors.cs",
+          "Lines": 35
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 35,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -13863,6 +23606,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 52,
       "SuggestedHome": "mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\SpaceCoopLink.cs",
+          "Lines": 109
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\SpaceCoopLink.cs",
+          "Lines": 108
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\SpaceCoopLink.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9514563106796117,
+      "SharedLines": 103,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
@@ -14016,13 +23783,66 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\Embodiment.cs",
+          "Lines": 34
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Rendering\\Materials.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\Embodiment.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\Embodiment.cs",
+          "Lines": 34
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 34,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\MarineHabitats.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\MarineHabitats.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\MarineHabitats.cs",
+          "Lines": 34
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 34,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\RenderPipelineSettings.cs",
           "Lines": 51
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\Materials.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\RenderPipelineSettings.cs",
+          "Lines": 51
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\RenderPipelineSettings.cs",
           "Lines": 51
         }
       ],
@@ -14111,6 +23931,35 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\package.ps1",
+          "Lines": 104
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\package.ps1",
+          "Lines": 104
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\package.ps1",
+          "Lines": 104
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\package.ps1",
+          "Lines": 104
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9595959595959596,
+      "SharedLines": 100,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Button\\button.css",
           "Lines": 33
@@ -14130,6 +23979,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 33,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\Morale.cs",
+          "Lines": 33
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Morale.cs",
+          "Lines": 33
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\Morale.cs",
+          "Lines": 33
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 33,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 3
     },
     {
@@ -14180,6 +24053,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermPaneFile.cs",
+          "Lines": 49
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 49,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\SimClockTests.cs",
+          "Lines": 49
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\SimClockTests.cs",
           "Lines": 49
         }
       ],
@@ -14354,6 +24246,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\BoardingCommand.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\BoardingCommand.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\BoardingCommand.cs",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Tokens.Tests\\MaPaletteTests.cs",
           "Lines": 47
@@ -14430,6 +24346,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\SlateGui.cs",
+          "Lines": 47
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\SlateGui.cs",
+          "Lines": 47
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 47,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TerminalPanes.cs",
           "Lines": 118
@@ -14437,6 +24372,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TerminalPanes.cs",
+          "Lines": 100
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9263157894736842,
+      "SharedLines": 93,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\ProceduralAsteroids.cs",
+          "Lines": 101
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\ProceduralAsteroids.cs",
           "Lines": 100
         }
       ],
@@ -14658,13 +24612,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\LineStrip.cs",
+          "Repo": "Unity.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\RgbColor.cs",
           "Lines": 46
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\LineStrip.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\RgbColor.cs",
           "Lines": 46
         }
       ],
@@ -14810,19 +24764,86 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\DebrisFields.cs",
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\DriftingRoundsTests.cs",
           "Lines": 45
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\DebrisFields.cs",
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\DriftingRoundsTests.cs",
           "Lines": 45
         }
       ],
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 45,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\Urp\\UrpPostProcessSettings.cs",
+          "Lines": 91
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\UrpPostProcessSettings.cs",
+          "Lines": 91
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9883720930232558,
+      "SharedLines": 90,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Audit\\SettingsAudit.cs",
+          "Lines": 120
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Audit\\SettingsAudit.cs",
+          "Lines": 100
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Audit\\SettingsAudit.cs",
+          "Lines": 100
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Audit\\SettingsAudit.cs",
+          "Lines": 100
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5052631578947369,
+      "SharedLines": 90,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Escorts.cs",
+          "Lines": 95
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Economy\\Escorts.cs",
+          "Lines": 94
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9438202247191011,
+      "SharedLines": 89,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -14962,13 +24983,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\Starfield.cs",
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ShipLodTests.cs",
           "Lines": 44
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\Starfield.cs",
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ShipLodTests.cs",
           "Lines": 44
         }
       ],
@@ -15165,6 +25186,68 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\ControlsHelpTests.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\ControlsHelpTests.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\InputSystemFacade.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\InputSystemFacade.cs",
+          "Lines": 43
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\InputSystemFacade.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 43,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Editor\\ProjectSetup.cs",
+          "Lines": 99
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Editor\\ProjectSetup.cs",
+          "Lines": 98
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8901098901098901,
+      "SharedLines": 86,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -15456,13 +25539,18 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Target.cs",
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Png.cs",
           "Lines": 41
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Target.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Png.cs",
+          "Lines": 41
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Png.cs",
           "Lines": 41
         }
       ],
@@ -15471,6 +25559,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 41,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\VoidBaseBuilder.cs",
+          "Lines": 27
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\VoidBaseBuilder.cs",
+          "Lines": 27
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Systems\\VoidBaseBuilder.cs",
+          "Lines": 27
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -15703,21 +25815,36 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\ActiveProfile.cs",
+          "Lines": 20
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ActiveProfile.cs",
+          "Lines": 20
+        },
+        {
           "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Views\\DiscView.cs",
-          "Lines": 40
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\ActiveProfile.cs",
+          "Lines": 20
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Views\\DiscView.cs",
-          "Lines": 40
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ActiveProfile.cs",
+          "Lines": 20
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ActiveProfile.cs",
+          "Lines": 20
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 40,
+      "SharedLines": 20,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
+      "RepoCount": 4
     },
     {
       "Files": [
@@ -15974,33 +26101,14 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Boarding.cs",
-          "Lines": 38
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Course.cs",
+          "Lines": 108
         },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Boarding.cs",
-          "Lines": 38
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 38,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
         {
           "Repo": "Unity.SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Course.cs",
           "Lines": 103
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Course.cs",
-          "Lines": 108
         }
       ],
       "Identical": false,
@@ -16031,6 +26139,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 25,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\EmbodimentSession.cs",
+          "Lines": 25
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\EmbodimentSession.cs",
+          "Lines": 25
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\EmbodimentSession.cs",
+          "Lines": 25
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 25,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 3
     },
     {
@@ -16416,6 +26548,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\UnrealSpaceGodCSharp.RuntimeGlue\\TraceChannel.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\UnrealSpaceGodCSharp.RuntimeGlue\\TraceChannel.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\UnrealSpaceGodCSharp.RuntimeGlue\\TraceChannel.cs",
+          "Lines": 35
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 35,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Session\\SessionEvents.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\SessionEvents.cs",
+          "Lines": 23
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\SessionEvents.cs",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Restore.cs",
           "Lines": 85
@@ -16473,13 +26653,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Broadsides.cs",
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\CaptureRunner.cs",
           "Lines": 34
         },
         {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Broadsides.cs",
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\CaptureRunner.cs",
           "Lines": 34
         }
       ],
@@ -16586,6 +26766,68 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 33,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GameManualTests.cs",
+          "Lines": 33
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\GameManualTests.cs",
+          "Lines": 33
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 33,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorExtension.xaml",
+          "Lines": 33
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorExtension.xaml",
+          "Lines": 33
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorExtension.xaml",
+          "Lines": 33
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 33,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Input\\InputDevice.cs",
+          "Lines": 93
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Input\\InputDevice.cs",
+          "Lines": 70
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9230769230769231,
+      "SharedLines": 65,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -16744,6 +26986,59 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\dotnet-sdk.ps1",
+          "Lines": 32
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\dotnet-sdk.ps1",
+          "Lines": 32
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\dotnet-sdk.ps1",
+          "Lines": 32
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\dotnet-sdk.ps1",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorGeneral.xaml",
+          "Lines": 32
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorGeneral.xaml",
+          "Lines": 32
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorGeneral.xaml",
+          "Lines": 32
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Automata",
           "Path": "D:\\Projects\\MindAttic\\Automata\\Automata.Tests\\KeyPoolFailoverTests.cs",
           "Lines": 95
@@ -16759,6 +27054,40 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 64,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\tools\\engine.ps1",
+          "Lines": 21
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\engine.ps1",
+          "Lines": 21
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\engine.ps1",
+          "Lines": 21
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\engine.ps1",
+          "Lines": 21
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\engine.ps1",
+          "Lines": 21
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 21,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -16915,6 +27244,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityNetworking.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityNetworking.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityNetworking.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 31,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\Event.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\Event.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\Event.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 31,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Formicarium",
           "Path": "D:\\Projects\\MindAttic\\Formicarium\\dashboard\\Formicarium.Dashboard\\Components\\Layout\\ReconnectModal.razor",
           "Lines": 30
@@ -17010,6 +27387,107 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GunshipTests.cs",
+          "Lines": 30
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\GunshipTests.cs",
+          "Lines": 30
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 30,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Hauler.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Hauler.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Hauler.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Hauler.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Hauler.cs",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Session\\Commands.cs",
+          "Lines": 20
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\Commands.cs",
+          "Lines": 20
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\Commands.cs",
+          "Lines": 20
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 20,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\race.ps1",
+          "Lines": 67
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\race.ps1",
+          "Lines": 68
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\race.ps1",
+          "Lines": 67
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7741935483870968,
+      "SharedLines": 59,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ApiBurnChartAxisTests.cs",
           "Lines": 29
@@ -17067,14 +27545,33 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\TargetStickinessTests.cs",
+          "Lines": 29
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\TargetStickinessTests.cs",
+          "Lines": 29
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 29,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Practice.cs",
+          "Lines": 64
+        },
+        {
           "Repo": "Unity.SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Practice.cs",
           "Lines": 63
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Practice.cs",
-          "Lines": 64
         }
       ],
       "Identical": false,
@@ -17333,6 +27830,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorComponentWithTargetPath.xaml",
+          "Lines": 27
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorComponentWithTargetPath.xaml",
+          "Lines": 27
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorComponentWithTargetPath.xaml",
+          "Lines": 27
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorGenerateWithTargetPath.xaml",
+          "Lines": 27
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorGenerateWithTargetPath.xaml",
+          "Lines": 27
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorGenerateWithTargetPath.xaml",
+          "Lines": 27
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Unity.Rea.Hare",
           "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Hare\\tools\\gml-json.ps1",
           "Lines": 27
@@ -17347,6 +27892,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 27,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.Shared",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\AtomicFile.cs",
+          "Lines": 27
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Profiles\\AtomicFile.cs",
+          "Lines": 27
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
@@ -17466,6 +28030,97 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PitchRollContinuityTests.cs",
+          "Lines": 26
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\PitchRollContinuityTests.cs",
+          "Lines": 26
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 26,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\Cpp\\Source\\SpaceGodCore\\SpaceGodCore.Build.cs",
+          "Lines": 26
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Cpp\\Source\\SpaceGodCore\\SpaceGodCore.Build.cs",
+          "Lines": 26
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\Cpp\\Source\\SpaceGodCore\\SpaceGodCore.Build.cs",
+          "Lines": 26
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\Cpp\\Source\\SpaceGodCore\\SpaceGodCore.Build.cs",
+          "Lines": 26
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 26,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorConfiguration.xaml",
+          "Lines": 26
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorConfiguration.xaml",
+          "Lines": 26
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.Razor\\targets\\Rules\\RazorConfiguration.xaml",
+          "Lines": 26
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 26,
+      "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\RenderPipelineSelection.cs",
+          "Lines": 136
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\RenderPipelineSettings.cs",
+          "Lines": 51
+        }
+      ],
+      "Identical": false,
+      "Similarity": 1,
+      "SharedLines": 51,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\PinFooter\\pin-footer.js",
           "Lines": 25
@@ -17536,6 +28191,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.9,
       "SharedLines": 50,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipThumbnails.cs",
+          "Lines": 75
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Rendering\\ShipThumbnails.cs",
+          "Lines": 57
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8461538461538461,
+      "SharedLines": 49,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -17865,6 +28539,84 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.WebAssembly\\tools\\net472\\wwwroot\\Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js",
+          "Lines": 23
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.WebAssembly\\tools\\net10.0\\wwwroot\\Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js",
+          "Lines": 23
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.WebAssembly\\hotreload\\net10.0\\Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js",
+          "Lines": 23
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.WebAssembly\\tools\\net472\\wwwroot\\Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js",
+          "Lines": 23
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.WebAssembly\\tools\\net10.0\\wwwroot\\Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js",
+          "Lines": 23
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.WebAssembly\\hotreload\\net10.0\\Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js",
+          "Lines": 23
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.WebAssembly\\tools\\net472\\wwwroot\\Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js",
+          "Lines": 23
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.WebAssembly\\tools\\net10.0\\wwwroot\\Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js",
+          "Lines": 23
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Intermediate\\DotNet\\sdk\\10.0.403\\Sdks\\Microsoft.NET.Sdk.WebAssembly\\hotreload\\net10.0\\Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js",
+          "Lines": 23
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Components (web/Blazor)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Session\\ISession.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\ISession.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Session\\ISession.cs",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "IdeaCms",
           "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Tests\\UsersAdminContractTests.cs",
           "Lines": 22
@@ -18055,6 +28807,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\CaptureRunner.cs",
+          "Lines": 85
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\CaptureRunner.cs",
+          "Lines": 66
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\CaptureRunner.cs",
+          "Lines": 66
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.639344262295082,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "AutoWebNav",
           "Path": "D:\\Projects\\MindAttic\\AutoWebNav\\.claude\\hooks\\quickload-on-do.ps1",
           "Lines": 56
@@ -18090,14 +28866,14 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 57
         },
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude\\hooks\\quickload-on-do.ps1",
+          "Lines": 58
+        },
+        {
           "Repo": "SyntheticExchangeTheory",
           "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\.claude\\hooks\\quickload-on-do.ps1",
           "Lines": 56
-        },
-        {
-          "Repo": "TownWalker",
-          "Path": "D:\\Projects\\MindAttic\\TownWalker\\.claude\\hooks\\quickload-on-do.ps1",
-          "Lines": 58
         }
       ],
       "Identical": false,
@@ -18204,6 +28980,78 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\AssetLibraryCandidatesTests.cs",
+          "Lines": 21
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Tests\\Core.Tests\\AssetLibraryCandidatesTests.cs",
+          "Lines": 21
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 21,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\HelmFlight.cs",
+          "Lines": 14
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\HelmFlight.cs",
+          "Lines": 14
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\HelmFlight.cs",
+          "Lines": 14
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 14,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\build-managed.ps1",
+          "Lines": 21
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\build-managed.ps1",
+          "Lines": 21
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\build-managed.ps1",
+          "Lines": 21
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\build-managed.ps1",
+          "Lines": 21
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 21,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Export",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\MindAttic.Export.Tests\\Migrated\\ProseInlineTests.cs",
           "Lines": 41
@@ -18216,6 +29064,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 1,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Bootstrap.cs",
+          "Lines": 64
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Bootstrap.cs",
+          "Lines": 53
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Bootstrap.cs",
+          "Lines": 53
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.75,
       "SharedLines": 41,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -18242,13 +29114,18 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\ActiveProfile.cs",
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\GameLaunch.cs",
           "Lines": 20
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\ActiveProfile.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\GameLaunch.cs",
+          "Lines": 20
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\GameLaunch.cs",
           "Lines": 20
         }
       ],
@@ -18470,6 +29347,78 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\EscapeKey.cs",
+          "Lines": 12
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\EscapeKey.cs",
+          "Lines": 12
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\EscapeKey.cs",
+          "Lines": 12
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 12,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\BuriedBridges.cs",
+          "Lines": 12
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\BuriedBridges.cs",
+          "Lines": 12
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Combat\\BuriedBridges.cs",
+          "Lines": 12
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 12,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\UnrealSpaceGodCSharp.RuntimeGlue\\GameplayTags.cs",
+          "Lines": 18
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\UnrealSpaceGodCSharp.RuntimeGlue\\GameplayTags.cs",
+          "Lines": 18
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\UnrealSpaceGodCSharp.RuntimeGlue\\GameplayTags.cs",
+          "Lines": 18
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 18,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Agency",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\shared\\statusline.ps1",
           "Lines": 152
@@ -18478,6 +29427,35 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Repo": "MindAttic.Web",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\ryandebraal.com\\.claude\\statusline.ps1",
           "Lines": 52
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6595744680851063,
+      "SharedLines": 36,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\build.ps1",
+          "Lines": 52
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\build.ps1",
+          "Lines": 53
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\build.ps1",
+          "Lines": 53
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\build.ps1",
+          "Lines": 53
         }
       ],
       "Identical": false,
@@ -18755,6 +29733,30 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnityCompat\\UnityScreen.cs",
+          "Lines": 16
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnityCompat\\UnityScreen.cs",
+          "Lines": 16
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnityCompat\\UnityScreen.cs",
+          "Lines": 16
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 16,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "IdeaCms",
           "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\wwwroot\\js\\user-timeout.js",
           "Lines": 39
@@ -18888,13 +29890,18 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Hauler.cs",
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnrealSpace.cs",
           "Lines": 15
         },
         {
           "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UnitySpaceApp.Hauler.cs",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnrealSpace.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnrealSpace.cs",
           "Lines": 15
         }
       ],
@@ -18907,6 +29914,59 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\SceneManagementFacade.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\SceneManagementFacade.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\SceneManagementFacade.cs",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\EngineSettings.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\EngineSettings.cs",
+          "Lines": 15
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\EngineSettings.cs",
+          "Lines": 15
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\tools\\launch.ps1",
+          "Lines": 51
+        },
+        {
           "Repo": "Unity.Eve",
           "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\tools\\launch.ps1",
           "Lines": 50
@@ -18918,10 +29978,10 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         }
       ],
       "Identical": false,
-      "Similarity": 0.5555555555555556,
+      "Similarity": 0.5,
       "SharedLines": 30,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
-      "RepoCount": 2
+      "RepoCount": 3
     },
     {
       "Files": [
@@ -19078,6 +30138,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\EngineSettings.cs",
+          "Lines": 14
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\EngineSettings.cs",
+          "Lines": 14
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 14,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Unity.Cursory",
           "Path": "D:\\Projects\\MindAttic\\Unity.Cursory\\Assets\\Unity.Cursory\\Tests\\PlayMode\\SessionAudioTests.cs",
           "Lines": 37
@@ -19090,6 +30169,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.6875,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\SlateGui.cs",
+          "Lines": 47
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\SlateGui.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5641025641025641,
       "SharedLines": 27,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -19123,6 +30221,54 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term.Wpf\\TerminalWindows.cs",
+          "Lines": 13
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 13,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\Cpp\\Source\\UnrealSpaceGod\\UnrealSpaceGod.Build.cs",
+          "Lines": 13
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Cpp\\Source\\UnrealSpaceGod\\UnrealSpaceGod.Build.cs",
+          "Lines": 13
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\Cpp\\Source\\UnrealSpaceGod\\UnrealSpaceGod.Build.cs",
+          "Lines": 13
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 13,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\MainMenu.Scene.cs",
+          "Lines": 13
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\MainMenu.Scene.cs",
+          "Lines": 13
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\MainMenu.Scene.cs",
           "Lines": 13
         }
       ],
@@ -19291,6 +30437,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.5142857142857142,
       "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Bootstrap.cs",
+          "Lines": 32
+        },
+        {
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Runtime\\Bootstrap.cs",
+          "Lines": 22
+        }
+      ],
+      "Identical": false,
+      "Similarity": 1,
+      "SharedLines": 22,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -19751,7 +30916,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "665af53eec25757bed82face3040e988033dc85f",
+    "Tested": "de80bb745e73ddafe0d27cef300edbef4d7441d5",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -20026,7 +31191,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2ddb30570ff68e1fc55a4027a160687e2a08c9ad"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "665af53eec25757bed82face3040e988033dc85f"
+    "Tested": "de80bb745e73ddafe0d27cef300edbef4d7441d5"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
