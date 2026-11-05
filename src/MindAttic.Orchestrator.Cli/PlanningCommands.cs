@@ -18,8 +18,10 @@ internal sealed class DryRunCommand : Command
         var own = cycler.OnOwnLogin();
         var orgs = MindAttic.Orchestrator.Sessions.OrgRouting.Load(store, store.LoadSettings(), snapshot.GlobalEmail);
         var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs();
-        foreach (var (pid, repos) in clis)
+        foreach (var (pid, allocRepos) in clis)
         {
+            // /crossrepo bounds what the /allocate list widens to (M.ORCH-T1258).
+            var repos = cycler.CrossRepoOf(pid) is { } crossList ? Allocate.WithinCrossRepo(allocRepos, crossList, null, snapshot) : allocRepos;
             AnsiConsole.MarkupLine($"/allocate is on in CLI {pid} for {Markup.Escape(string.Join(", ", repos))}:");
             var self = cycler.LatestSessionOf(pid);
             // Its login (M.ORCH-T668): a ticket assigned to a user goes only to a CLI on theirs.
@@ -77,6 +79,13 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
             repos = [.. repos.Except(unknown)];
         }
         var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
+        // /crossrepo bounds what /allocate's -repo= (or --repos) may widen to (M.ORCH-T1258).
+        if (cli is { } crossPid && cycler.CrossRepoOf(crossPid) is { } crossList)
+        {
+            var narrowed = Allocate.WithinCrossRepo(repos, crossList, Allocate.RepoFor(Environment.CurrentDirectory, snapshot)?.Name, snapshot);
+            if (narrowed.Count == 0) { Console.WriteLine($"Nothing handed out: none of {string.Join(", ", repos)} is in this CLI's /crossrepo list ({string.Join(", ", crossList)})."); return 0; }
+            repos = narrowed;
+        }
         var unthrottled = cli is { } pid && cycler.IsUnthrottled(pid);
         // What the calling CLI filed itself isn't held from its own subagents; what anyone else (its subagents included) filed
         // and is fixing is (M.ORCH-T255).

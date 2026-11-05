@@ -2015,6 +2015,10 @@ public static class AgentGate
                     found |= {r.strip().lower() for r in (cli_mark(kind, pid) or "").split(",") if r.strip()}
                 except Exception:
                     pass
+                # M.ORCH-T1258: the /crossrepo list bounds the work. /allocate -repo=Unity.* widened it to every Unity repo, so
+                # when /crossrepo named repos, only those are excepted; /allocate's own list adds nothing beyond them.
+                if kind == "crossrepo" and found:
+                    break
             return {"all" if r == "*" else r for r in found}
 
         here = repo_of(data.get("cwd") or "")

@@ -245,6 +245,12 @@ public sealed class ContextCycler(string? directory = null)
         .Where(x => IsClaude(x.Key))
         .ToDictionary(x => x.Key, x => (IReadOnlyList<string>)[.. x.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]);
 
+    /// <summary>The repos the CLI <paramref name="pid"/>'s /crossrepo names (M.ORCH-T1258); null when it has no /crossrepo mark,
+    /// so /allocate and next are bounded by nothing but their own repo list.</summary>
+    public IReadOnlyList<string>? CrossRepoOf(int pid) =>
+        CliMarks.Read(Directory, CliMarks.Crossrepo).TryGetValue(pid, out var v)
+            && v.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) is { Length: > 0 } names ? names : null;
+
     /// <summary>When /allocate turned on in each CLI that has it on (M.ORCH-T558: it warms up from then), by process id.</summary>
     public IReadOnlyDictionary<int, DateTime> AllocateSince() => CliMarks.Since(Directory, CliMarks.Allocate);
 

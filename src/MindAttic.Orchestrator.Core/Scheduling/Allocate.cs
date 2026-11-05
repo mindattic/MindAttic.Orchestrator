@@ -801,6 +801,17 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     public static IReadOnlyList<string> Unmatched(IEnumerable<string> names, Snapshot snapshot) =>
         [.. names.Where(n => !IsAll(n) && !snapshot.Repos.Any(r => Named([n], r.Name)))];
 
+    /// <summary>Narrows <paramref name="repos"/> (names, wildcards, "*") to what the CLI's /crossrepo list names (M.ORCH-T1258):
+    /// /allocate -repo=Unity.* with /crossrepo Unity.A works Unity.A only. Each requested repo is expanded against the workspace
+    /// and kept when <paramref name="crossRepo"/> names it or it is the CLI's own repo (<paramref name="own"/>); with no
+    /// /crossrepo list (null) nothing is narrowed.</summary>
+    public static IReadOnlyList<string> WithinCrossRepo(IReadOnlyList<string> repos, IReadOnlyList<string>? crossRepo, string? own, Snapshot snapshot)
+    {
+        if (crossRepo is null || crossRepo.Count == 0) return repos;
+        return [.. snapshot.Repos.Select(r => r.Name)
+            .Where(n => Named(repos, n) && (Named(crossRepo, n) || (own is not null && n.Equals(own, StringComparison.OrdinalIgnoreCase))))];
+    }
+
     /// <summary>The alert text when <paramref name="line"/> is one of <see cref="Tick"/>'s "needs you" lines; null for any other
     /// (a started line can carry "needs you" inside its ticket summary).</summary>
     public static string? NeedsYou(string line) =>
