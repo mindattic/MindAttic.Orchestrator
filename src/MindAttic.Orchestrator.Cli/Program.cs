@@ -112,6 +112,7 @@ internal static class CliApp
             config.AddCommand<ReleaseCommand>("release").WithDescription("Return a ticket to the queue; --remove-worktree also deletes its old clean worktree (one made before tickets were worked on main).");
             config.AddCommand<DaemonCommand>("daemon").WithDescription("Keep the budget file, pace and hooks fresh without the dashboard open.");
             config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
+            config.AddCommand<DiskCleanupCommand>("disk-cleanup").WithDescription("Delete agent-made temp (ended sessions, stale scratch builds) oldest first when the temp drive is under --disk-cleanup-gb; --dry-run lists it.");
             config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");
             config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /allocate hands its subagents, each with its model (--claim: assignment and prompt, worked in the repo's own checkout on main).");
             config.AddCommand<ReviewCommand>("review").WithDescription("From a Sonnet ticket's repo checkout: its one Opus review of the diff before it lands, when the diff is big or touches risky files (--dry-run only says).");

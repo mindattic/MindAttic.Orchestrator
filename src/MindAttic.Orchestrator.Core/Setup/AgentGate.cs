@@ -2941,6 +2941,31 @@ public static class AgentGate
         provider = sys.argv[1].capitalize() if len(sys.argv) > 1 else "Claude"
         if provider != "Claude":
             sys.exit(0)  # /allocate runs in a Claude CLI; a Codex or Gemini CLI is never pushed onto tickets
+        # Disk self-cleanup (M.ORCH-T1449): one free-space read at most once a minute; under the --disk-cleanup-gb line it
+        # starts `orchestrator disk-cleanup --quiet` detached, which deletes agent-made temp only (one run at a time).
+        def disk_check():
+            try:
+                stamp = SESSION_MARKS / "disk-check.stamp"
+                now = time.time()
+                try:
+                    if now - stamp.stat().st_mtime < 60:
+                        return
+                except Exception:
+                    pass
+                try:
+                    stamp.parent.mkdir(parents=True, exist_ok=True)
+                    stamp.write_text(str(now))
+                except Exception:
+                    pass
+                import shutil, tempfile, subprocess
+                line = float(orch_settings().get("DiskCleanupGb", 30) or 0)
+                if line <= 0 or shutil.disk_usage(tempfile.gettempdir()).free / 1073741824 >= line:
+                    return
+                subprocess.Popen(["orchestrator", "disk-cleanup", "--quiet"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL, creationflags=0x00000008 | 0x00000200 | 0x08000000)
+            except Exception:
+                pass
+        disk_check()
         # Every running subagent has a mark, so the pace gate can hold new ones past the allowance.
         if event in ("SubagentStart", "SubagentStop"):
             if event == "SubagentStop":

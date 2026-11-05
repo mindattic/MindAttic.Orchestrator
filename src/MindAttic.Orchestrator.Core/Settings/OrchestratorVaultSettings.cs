@@ -199,6 +199,10 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 100000)]
     public double DiskCriticalGb { get; set; } = 5;
 
+    [Setting("Disk self-cleanup (free GB)", Group = "Alerts", Order = 5, Help = "Free GB on the temp drive under which agent-made temp (ended sessions, stale scratch builds) is deleted, oldest first. 0 turns it off.")]
+    [SettingRange(0, 100000)]
+    public double DiskCleanupGb { get; set; } = 30;
+
     [Setting("Audit every (hours)", Group = "Alerts", Order = 5, Help = "Hours between the audits the daemon runs by itself. 0 means only on demand.")]
     [SettingRange(0, 100000)]
     public int AuditEveryHours { get; set; } = 24;
@@ -291,6 +295,7 @@ public sealed class OrchestratorVaultSettings
         NotifyUrl = s.NotifyUrl,
         DiskWarnGb = s.DiskWarnGb,
         DiskCriticalGb = s.DiskCriticalGb,
+        DiskCleanupGb = s.DiskCleanupGb,
         AuditEveryHours = s.AuditEveryHours,
         GroomAfterDays = s.GroomAfterDays,
         GitHubIntake = s.GitHubIntake,
@@ -348,6 +353,7 @@ public sealed class OrchestratorVaultSettings
         NotifyUrl = string.IsNullOrWhiteSpace(NotifyUrl) ? null : NotifyUrl,
         DiskWarnGb = DiskWarnGb,
         DiskCriticalGb = DiskCriticalGb,
+        DiskCleanupGb = DiskCleanupGb,
         AuditEveryHours = AuditEveryHours,
         GroomAfterDays = GroomAfterDays,
         GitHubIntake = GitHubIntake,

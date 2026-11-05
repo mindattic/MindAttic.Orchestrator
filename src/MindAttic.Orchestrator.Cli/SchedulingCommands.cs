@@ -420,6 +420,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Free GB under which that alert is urgent (default 5).")]
         public double? DiskCriticalGb { get; init; }
 
+        [CommandOption("--disk-cleanup-gb <GB>")]
+        [Description("Free GB on the temp drive under which agent-made temp (ended sessions' folders, stale scratch builds) is deleted, oldest first (default 30; 0 turns it off).")]
+        public double? DiskCleanupGb { get; init; }
+
         [CommandOption("--model <REPO_OR_TICKET=MODEL>")]
         [Description("The model /allocate starts a repo's (or one ticket's) subagents on, overriding the pick: Prose=opus, M.ORCH-T12=sonnet, GTFO.*=sonnet; =auto clears. A ticket's wins over its repo's. Repeatable.")]
         public string[] Model { get; init; } = [];
@@ -482,8 +486,13 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { DiskWarnGb = settings.DiskWarnGb ?? s.DiskWarnGb, DiskCriticalGb = settings.DiskCriticalGb ?? s.DiskCriticalGb };
             if (s.DiskWarnGb > 0 && s.DiskCriticalGb > s.DiskWarnGb) { AnsiConsole.MarkupLine("[red]--disk-critical-gb is at most --disk-warn-gb.[/]"); return 1; }
         }
+        if (settings.DiskCleanupGb is { } cg)
+        {
+            if (!(cg >= 0)) { AnsiConsole.MarkupLine("[red]--disk-cleanup-gb can't be negative.[/]"); return 1; }
+            s = s with { DiskCleanupGb = cg };
+        }
         var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
-            || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null;
+            || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
         if (settings.Notify is { } notify)
         {
@@ -697,7 +706,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.ExemptCommands.Count > 0 ? Markup.Escape(string.Join(", ", s.ExemptCommands)) : "none"));
         AnsiConsole.MarkupLine($"  tickets worked in each repo's own checkout on main; tool worktrees under {Markup.Escape(s.WorktreeRoot)} · " +
             (s.StaleAfterHours > 0 ? $"assignments go stale after {s.StaleAfterHours}h quiet" : "assignments never go stale") + " · " +
-            (s.DiskWarnGb > 0 ? $"alerts under {s.DiskWarnGb:0.#} GB free disk (urgent under {Math.Min(s.DiskCriticalGb, s.DiskWarnGb):0.#} GB)" : "disk space not watched"));
+            (s.DiskWarnGb > 0 ? $"alerts under {s.DiskWarnGb:0.#} GB free disk (urgent under {Math.Min(s.DiskCriticalGb, s.DiskWarnGb):0.#} GB)" : "disk space not watched") + " · " +
+            (s.DiskCleanupGb > 0 ? $"agent temp cleaned up under {s.DiskCleanupGb:0.#} GB free" : "no disk self-cleanup"));
         AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} · {s.MaxSessionsPerRepo} sessions per repo" +
             Markup.Escape(string.Concat(s.RepoMaxSessions.Select(kv => $", {kv.Key} {kv.Value}"))) +
             (s.RepoBudgetPercent.Count > 0 ? " · repo caps " + Markup.Escape(string.Join(", ", s.RepoBudgetPercent.Select(kv => $"{kv.Key} {kv.Value}%"))) : "") +

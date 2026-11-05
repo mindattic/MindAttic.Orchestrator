@@ -165,6 +165,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 EnsureHooks(s);
                 WatchHealth(allocate);
                 WatchDisk(s);
+                CleanDiskIfLow(s, DateTime.UtcNow);
                 tick.Lap("hooks, machine health and disk space");
                 try { if (ledgerLease.TryAcquire()) ledger.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"pace ledger: couldn't update it (retrying next minute): {ex.Message}"); }
@@ -983,6 +984,38 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             Say(LogEventLevel.Information, e.Level == Activity.HealthLevel.Ok
                 ? $"disk space is back to normal ({e.Drive.Root} has {e.Drive.FreeGb:0.0} GB free)"
                 : $"disk space is still low but recovering ({e.Drive.Root} has {e.Drive.FreeGb:0.0} GB free)");
+    }
+
+    private DateTime cleanedUtc;
+    private int cleaning;
+
+    /// <summary>
+    /// Disk self-cleanup (M.ORCH-T1449): under <see cref="OrchestratorSettings.DiskCleanupGb"/> free on %TEMP%'s drive, deletes
+    /// agent-made temp oldest first (<see cref="Activity.DiskCleanup"/>), at most every 5 minutes and off the tick's thread, and
+    /// alerts with what it freed and what big things it left alone. A drive at or over the line costs one free-space read.
+    /// </summary>
+    internal void CleanDiskIfLow(OrchestratorSettings s, DateTime nowUtc)
+    {
+        if (s.DiskCleanupGb <= 0 || nowUtc - cleanedUtc < TimeSpan.FromMinutes(5)) return;
+        if (Activity.DiskCleanup.FreeGb(TempDir) >= s.DiskCleanupGb) return;
+        if (Interlocked.Exchange(ref cleaning, 1) == 1) return;
+        cleanedUtc = nowUtc;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var r = Activity.DiskCleanup.Run(s.DiskCleanupGb, Activity.DiskCleanup.LiveSessionIds(DateTime.UtcNow), DateTime.UtcNow,
+                    dryRun: false, Activity.DiskCleanup.LogPath, TempDir);
+                var text = Activity.DiskCleanup.Describe(r);
+                Say(r.FreedBytes > 0 ? LogEventLevel.Warning : LogEventLevel.Information, $"disk self-cleanup: {text}");
+                if (r.FreedBytes > 0 || r.NotOurs.Count > 0) Alert("Disk self-cleanup", text, urgent: false);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                Say(LogEventLevel.Warning, $"disk self-cleanup failed: {ex.Message}");
+            }
+            finally { Interlocked.Exchange(ref cleaning, 0); }
+        });
     }
 
     /// <summary>The CLI that syncs the ticket database, and its name before the rename (M.ORCH-T564), tried when it isn't installed.</summary>
