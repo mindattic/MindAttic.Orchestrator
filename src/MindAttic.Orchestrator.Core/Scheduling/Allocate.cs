@@ -584,6 +584,10 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 (plan.Pace?.ResetUtc is { } reset ? $" ({Formatting.ResetTime(reset, nowUtc)})" : ""));
         // The switches the settings and the Settings panel offer apply to the CLIs that run /allocate: Tick, which
         // read them, starts nothing since M.ORCH-T164.
+        // While the cool-off is on and its last-resort abort would fire (M.ORCH-T1253), a new subagent is aborted within seconds and its
+        // ticket requeued: claim, spawn, abort, requeue looped at ~45k tokens each. Nothing is handed out until the trend bends back.
+        if (!unthrottled && settings.AgentAbort && plan.Pace?.CoolOffPercent is { } hot)
+            return ([], $"cooling off: this login is on course for {hot:0}% of the 5-hour window, past its pace line, so a new subagent would be aborted; run it again in a few minutes");
         if (!settings.Allocate) return ([], "allocate is paused (orchestrator settings --allocate true, or the dashboard's Settings, resumes it)");
         if (QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet) return ([], $"quiet hours ({quiet}): nothing starts until they end");
         bool Named(string repo) => Allocate.Named(repos, repo);

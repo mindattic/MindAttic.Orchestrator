@@ -2717,6 +2717,9 @@ public static class AgentGate
                 allowed = limits.get("subagent_allowance")
                 if allowed is None or (pid and (DIR / ("unthrottled-" + str(pid))).exists()):
                     return False
+                # Cooling off (M.ORCH-T1253): a new subagent would be aborted within seconds, and `orchestrator next` hands out nothing.
+                if limits.get("cool_off_percent") is not None and orch_settings().get("AgentAbort") is not False:
+                    return True
                 sub = SUBAGENT_MARKS / "subagents"
                 marks = list(sub.iterdir()) if sub.exists() else []
                 def mark_ns(m):
@@ -2890,6 +2893,20 @@ public static class AgentGate
         def my_pid():
             return os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
 
+        def claims_still_held(text, assigned):
+            # The claims nudge (AllocateWaker.ClaimsPrompt) without the tickets no longer assigned; "" when none is left.
+            try:
+                head, sep, rest = text.partition(" min: ")
+                body, dot, tail = rest.partition(". Start a subagent")
+                if not sep or not dot:
+                    return text
+                keep = [c for c in body.split("; ") if (c.split(" ")[0] or "").upper() in assigned]
+                if not keep:
+                    return ""
+                return head + sep + "; ".join(keep) + dot + tail
+            except Exception:
+                return text
+
         def take_nudges(paced=True):
             # What the orchestrator wants this CLI to do next (idle claims to start, work to claim, a resume after a limit, tickets
             # handed back after a move: M.ORCH-T864), left as nudge-<pid>-<kind>.txt files. They reach the model as hook context
@@ -2920,6 +2937,14 @@ public static class AgentGate
                     try:
                         if not stale:
                             text = nf.read_text(encoding="utf-8", errors="replace").strip()
+                            # A nudge to start subagents says nothing while the pace has no room for one (M.ORCH-T1253), and a claims
+                            # nudge drops each ticket the orchestrator no longer has assigned (it was released or closed since it was
+                            # written: `orchestrator release` says "isn't assigned"), and all of it when none is left.
+                            if text and ("-claims" in nf.name or "-work" in nf.name):
+                                if no_subagent_room(orchestrator_status(), pid):
+                                    text = ""
+                                elif "-claims" in nf.name:
+                                    text = claims_still_held(text, set(t.upper() for t in orch_assignments()))
                             if text:
                                 out.append(text)
                     except Exception:

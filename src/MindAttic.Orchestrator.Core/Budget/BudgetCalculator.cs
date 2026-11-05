@@ -484,6 +484,8 @@ public sealed class RateLimitStatusWriter(string? path = null)
                 body["subagents_seen_through_ns"] = pace.SubagentsSeenThroughUtc is { } seen
                     ? (seen.ToUniversalTime().Ticks - DateTime.UnixEpoch.Ticks) * 100 : 0L;
                 body["subagent_note"] = pace.SubagentNote;
+                // The cool-off's abort gate (M.ORCH-T1253): the Stop hook sends nobody on to claim while it would fire.
+                if (pace.CoolOffPercent is { } hot) body["cool_off_percent"] = Math.Round(hot, 1);
                 // Each CLI's fair share is worked out from what each runs (M.ORCH-T495); marks newer than the count are added by CLI.
                 body["subagents_by_cli"] = pace.SubagentsByCli.OrderBy(c => c.Key)
                     .ToDictionary(c => c.Key.ToString(CultureInfo.InvariantCulture), c => c.Value);

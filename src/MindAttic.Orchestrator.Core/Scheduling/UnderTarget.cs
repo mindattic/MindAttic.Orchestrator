@@ -102,7 +102,8 @@ public sealed class UnderTarget
         u.ProjectedEndPercent < u.TargetPercent ? Math.Max(0, u.ProjectedEndPercent) : null;
 
     /// <summary>The pace's subagent allowance has room for another one across every CLI.</summary>
-    public static bool HasRoom(SchedulePlan plan) => plan.Pace?.SubagentAllowance is { } allowed && allowed > plan.Pace.Subagents;
+    public static bool HasRoom(SchedulePlan plan) => plan.Pace?.SubagentAllowance is { } allowed && allowed > plan.Pace.Subagents &&
+        plan.Pace.CoolOffPercent is null; // while the cool-off is on the abort gate fires on new starts (M.ORCH-T1253): no room
 
     /// <summary>The tickets an /allocate CLI could start now in the repos it works: open fixes and approved tickets nobody
     /// has, not blocked, not too big for what's left. A ticket outside every CLI's repos isn't counted: no CLI's repos are
