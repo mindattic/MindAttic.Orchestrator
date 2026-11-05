@@ -2900,7 +2900,12 @@ public static class AgentGate
                 body, dot, tail = rest.partition(". Start a subagent")
                 if not sep or not dot:
                     return text
-                keep = [c for c in body.split("; ") if (c.split(" ")[0] or "").upper() in assigned]
+                if not assigned:
+                    return text  # the list couldn't be read (or is empty): the nudge stands rather than being lost
+                def held(c):
+                    m = re.match(r"\s*((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)", c, re.I)
+                    return m is None or m.group(1).upper() in assigned
+                keep = [c for c in body.split("; ") if held(c)]
                 if not keep:
                     return ""
                 return head + sep + "; ".join(keep) + dot + tail
