@@ -9,6 +9,11 @@
     <Version>1.0.0</Version>
     <!-- The workspace holding the sibling repos. run.ps1 passes the main checkout's parent, because its deploy worktree
          under MindAttic.worktrees has no siblings at ..\..\.. (M.ORCH-T1313). -->
+    <MindAtticRoot Condition="'$(MindAtticRoot)' == '' And Exists('$(MSBuildThisFileDirectory)..\..\..\MindAttic.Helpers')">$(MSBuildThisFileDirectory)..\..\..\</MindAtticRoot>
+    <!-- Any other worktree (<workspace>.worktrees\<repo>\<name>, e.g. the orchestrator's main-tests run) finds the
+         workspace by dropping ".worktrees" from that folder's name, so a plain build there resolves too (M.ORCH-T1310). -->
+    <_MindAtticWorktreesDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\..'))</_MindAtticWorktreesDir>
+    <MindAtticRoot Condition="'$(MindAtticRoot)' == '' And $(_MindAtticWorktreesDir.EndsWith('.worktrees'))">$(_MindAtticWorktreesDir.Substring(0, $([MSBuild]::Subtract($(_MindAtticWorktreesDir.Length), 10))))\</MindAtticRoot>
     <MindAtticRoot Condition="'$(MindAtticRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\</MindAtticRoot>
     <MindAtticDir>$([MSBuild]::EnsureTrailingSlash('$(MindAtticRoot)'))</MindAtticDir>
   </PropertyGroup>
