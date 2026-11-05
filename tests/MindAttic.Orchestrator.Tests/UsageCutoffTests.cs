@@ -70,8 +70,10 @@ public sealed class UsageCutoffTests
         var applied = UsageCutoffs.Apply(UsageCutoffs.Load(store), waffle, settings);
         Assert.That((applied.WeeklyStopPercent, applied.WeeklyWarnPercent), Is.EqualTo((98, 88)));
 
-        var budget = BudgetCalculator.Compute([], applied, DateTime.UtcNow, DateTime.UtcNow) with { WeeklyPercent = 93 };
-        Assert.That(budget.Level, Is.EqualTo(BudgetLevel.Ok), "93% used of a 98% cutoff is still plenty of room");
+        // 85% is past the org-wide 80% line but short of this member's own 88% line: no warning. Their own line still warns.
+        var budget = BudgetCalculator.Compute([], applied, DateTime.UtcNow, DateTime.UtcNow) with { WeeklyPercent = 85 };
+        Assert.That(budget.Level, Is.EqualTo(BudgetLevel.Ok), "85% used of a 98% cutoff is still plenty of room");
+        Assert.That((budget with { WeeklyPercent = 93 }).Level, Is.EqualTo(BudgetLevel.Warn), "93% is past their own 88% line");
     }
 
     [Test, NonParallelizable] // Ctx.StoreDirectory, AnsiConsole.Console and the org overrides are process-wide
