@@ -1,19 +1,23 @@
 namespace MindAttic.Orchestrator.Sessions;
 
+/// <summary>What the pruner made of one session's temp folder: its size, whether it goes, and why.</summary>
+public sealed record TempFolderVerdict(string Path, string SessionId, long Bytes, bool Delete, string Why);
+
+/// <summary>A prune: every session folder's verdict, how many went and their bytes, and the ones that couldn't be deleted.</summary>
+public sealed record TempPruneResult(IReadOnlyList<TempFolderVerdict> Folders, int Deleted, long Bytes, IReadOnlyList<string> Errors);
+
 /// <summary>
 /// Claude Code gives each session a folder %TEMP%\claude\&lt;project&gt;\&lt;session id&gt; (its scratchpad, and tasks\*.output, the
-/// logs of its background commands) and never removes it: 151 folders, 6.7 GB, when C: hit 0 bytes free (M.ORCH-T473). Once a
-/// session has ended its folder is deleted: on the daemon's start and every <see cref="Every"/> after, which is how a
-/// session's folder goes soon after its ticket is closed and its CLI exits, or the reaper ends it.
+/// logs of its background commands and subagents) and never removes it: 151 folders, 6.7 GB, when C: hit 0 bytes free
+/// (M.ORCH-T473). The daemon deletes a folder on its start and every <see cref="Every"/> after, but only by liveness, never by
+/// age (M.ORCH-T1467): its session has definitely ended (<see cref="SessionLiveness.Running"/> says false), no running process
+/// names it, nothing kept points into it, and no file in it is held open. A session that can't be told is kept, however long
+/// it's been quiet.
 /// </summary>
 public static class SessionTempPruner
 {
     /// <summary>How often the daemon looks for ended sessions' folders.</summary>
     public static readonly TimeSpan Every = TimeSpan.FromMinutes(10);
-
-    /// <summary>A folder whose session the context gate never recorded (no process id to check) is ended once nothing in
-    /// it has been written for this long: longer than any session stays quiet while it's still open.</summary>
-    public static readonly TimeSpan UnknownQuietLife = TimeSpan.FromDays(1);
 
     public static string BaseDir() => Path.Combine(Path.GetTempPath(), "claude");
 
@@ -26,52 +30,82 @@ public static class SessionTempPruner
     // Every folder in one folder (not below it), links included.
     private static readonly EnumerationOptions Links = new() { AttributesToSkip = 0, IgnoreInaccessible = false };
 
-    /// <summary>Deletes the folder of every session that has ended; returns how many and their bytes.</summary>
-    /// <param name="running">Whether a session is running: true or false when its CLI is known, null when it isn't (then
-    /// only <see cref="UnknownQuietLife"/> of quiet ends it).</param>
-    public static (int Folders, long Bytes) Prune(string baseDir, Func<string, bool?> running, DateTime nowUtc)
+    /// <summary>Deletes the folder of every session that has definitely ended; returns how many and their bytes.</summary>
+    public static (int Folders, long Bytes) Prune(string baseDir, Func<string, bool?> running) =>
+        Prune(baseDir, SessionLiveness.From(running)) is var r ? (r.Deleted, r.Bytes) : default;
+
+    /// <summary>
+    /// Judges every session folder under <paramref name="baseDir"/> and deletes those that may go (with
+    /// <paramref name="dryRun"/>, nothing: the verdicts say what would). Each deletion is appended to <paramref name="logPath"/>.
+    /// </summary>
+    public static TempPruneResult Prune(string baseDir, SessionLiveness liveness, bool dryRun = false, string? logPath = null)
     {
-        if (!Directory.Exists(baseDir)) return (0, 0);
-        var (folders, bytes) = (0, 0L);
+        var verdicts = new List<TempFolderVerdict>();
+        var errors = new List<string>();
+        var (deleted, bytes) = (0, 0L);
+        if (!Directory.Exists(baseDir)) return new TempPruneResult(verdicts, 0, 0, errors);
         foreach (var project in SafeDirectories(baseDir))
         {
             foreach (var dir in SafeDirectories(project))
             {
+                var id = Path.GetFileName(dir);
                 // Only a session's own folder (its name is the session id): anything else in there isn't one to judge.
-                if (!Guid.TryParse(Path.GetFileName(dir), out _)) continue;
+                if (!Guid.TryParse(id, out _)) continue;
                 try
                 {
                     // Never through a junction or symlink (a scratchpad's pnpm node_modules): its target isn't the session's,
-                    // so it's not cleared, held or counted; the delete removes only the link.
+                    // so it's not held or counted; the delete removes only the link.
                     var files = new DirectoryInfo(dir).GetFiles("*", Walk);
-                    var ended = running(Path.GetFileName(dir)) switch
-                    {
-                        true => false,
-                        false => true,
-                        null => nowUtc - LastWrite(dir, files) >= UnknownQuietLife,
-                    };
-                    if (!ended) continue;
-                    // A read-only file (a git checkout's objects, build output) can't be opened for writing nor deleted:
-                    // clear the flag first, so only a file another process holds keeps the folder (M.ORCH-T482).
-                    foreach (var f in files) ClearReadOnly(f);
-                    // A background command still writing its output holds the file open: that folder waits for the next look.
-                    if (files.Any(InUse)) continue;
-                    // Summed before the delete: a FileInfo that's been refreshed (clearing its flag does) can't be read after.
+                    // Summed before any delete: a FileInfo that's been refreshed (clearing its flag does) can't be read after.
                     var size = files.Sum(f => f.Length);
+                    var (go, why) = Judge(dir, id, files, liveness);
+                    var verdict = new TempFolderVerdict(dir, id, size, go, why);
+                    verdicts.Add(verdict);
+                    if (!go || dryRun) continue;
+                    // A read-only file (a git checkout's objects, build output) can't be deleted: clear the flag first (M.ORCH-T482).
+                    foreach (var f in files) ClearReadOnly(f);
                     // Links first, each by itself: a recursive delete removes a junction but then throws (it tries it as a
                     // volume mount point too), so the folder stayed.
                     foreach (var d in new DirectoryInfo(dir).GetDirectories("*", Walk).Prepend(new DirectoryInfo(dir)))
                         foreach (var link in d.GetDirectories("*", Links).Where(l => l.Attributes.HasFlag(FileAttributes.ReparsePoint))) link.Delete();
                     Directory.Delete(dir, recursive: true);
-                    folders++;
+                    deleted++;
                     bytes += size;
+                    Log(logPath, verdict);
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    errors.Add($"{dir}: {ex.Message}");
+                }
             }
+            if (dryRun) continue;
             try { if (!Directory.EnumerateFileSystemEntries(project).Any()) Directory.Delete(project); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
-        return (folders, bytes);
+        return new TempPruneResult(verdicts, deleted, bytes, errors);
+    }
+
+    /// <summary>Whether a session's folder may go, and why: in order, the session ended, nothing kept points into it, no
+    /// running process names it, no file in it is open. Each check that can't be made keeps the folder.</summary>
+    internal static (bool Delete, string Why) Judge(string dir, string id, FileInfo[] files, SessionLiveness liveness)
+    {
+        var session = liveness.Running(id);
+        if (session.Running is not false) return (false, $"kept: {(session.Running is true ? "running" : "can't tell if it ended")} ({session.Why})");
+        if (liveness.ReferencedBy(id) is { } where) return (false, $"kept: ended ({session.Why}), but {where} points into it");
+        if (liveness.UsedBy(dir) is { } users) return (false, $"kept: ended ({session.Why}), but {users}");
+        if (files.FirstOrDefault(InUse) is { } open) return (false, $"kept: ended ({session.Why}), but {Path.GetRelativePath(dir, open.FullName)} is open");
+        return (true, $"ended: {session.Why}");
+    }
+
+    private static void Log(string? logPath, TempFolderVerdict v)
+    {
+        if (logPath is null) return;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            File.AppendAllText(logPath, $"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}\t{v.Bytes}\t{v.Why}\t{v.Path}{Environment.NewLine}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     private static IEnumerable<string> SafeDirectories(string dir)
@@ -80,22 +114,23 @@ public static class SessionTempPruner
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
     }
 
-    private static DateTime LastWrite(string dir, FileInfo[] files) =>
-        files.Select(f => f.LastWriteTimeUtc).Append(Directory.GetLastWriteTimeUtc(dir)).Max();
-
     private static void ClearReadOnly(FileInfo file)
     {
         try { if (file.IsReadOnly) file.IsReadOnly = false; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
+    /// <summary>Whether any process has the file open. Opened for reading, sharing nothing: any other handle on it refuses
+    /// that, and a read-only file can still be opened this way, so the probe changes nothing (a dry run stays one).</summary>
     private static bool InUse(FileInfo file)
     {
         try
         {
-            using var _ = file.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            using var _ = file.Open(FileMode.Open, FileAccess.Read, FileShare.None);
             return false;
         }
+        catch (FileNotFoundException) { return false; }
+        catch (DirectoryNotFoundException) { return false; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return true; }
     }
 }

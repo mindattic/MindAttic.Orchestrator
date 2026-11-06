@@ -336,8 +336,9 @@ public sealed record OrchestratorSettings
     /// <summary>Free GB under which the disk alert is urgent (see <see cref="Activity.DiskWatch"/>).</summary>
     public double DiskCriticalGb { get; init; } = 5;
 
-    /// <summary>Free GB on %TEMP%'s drive under which agent-made temp (ended sessions' folders, stale scratch builds) is deleted,
-    /// oldest first, until there's this plus <see cref="Activity.DiskCleanup.MarginGb"/> free (M.ORCH-T1449). 0 turns it off.</summary>
+    /// <summary>Free GB on %TEMP%'s drive under which ended sessions' %TEMP%\claude folders are deleted right away, rather than at
+    /// the daemon's next look (M.ORCH-T1449), by session liveness, never age (M.ORCH-T1467); a running session's scratch is only
+    /// named. 0 turns it off.</summary>
     public double DiskCleanupGb { get; init; } = 30;
 
     /// <summary>Off by default, since it writes tickets into every repo's log: hourly, file GitHub issues

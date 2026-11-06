@@ -49,16 +49,17 @@ public sealed class SessionTempPrunerTests
         (int, long) pruned;
         // A background command still writing its log holds it open.
         using (new FileStream(Path.Combine(endedButWriting, "tasks", "b1.output"), FileMode.Open, FileAccess.Write, FileShare.ReadWrite))
-            pruned = SessionTempPruner.Prune(root, id => states.GetValueOrDefault(id), now);
+            pruned = SessionTempPruner.Prune(root, id => states.GetValueOrDefault(id));
 
-        Assert.That(pruned, Is.EqualTo((2, 150L)));
-        Assert.That(Directory.Exists(ended) || Directory.Exists(unknownQuiet), Is.False);
+        Assert.That(pruned, Is.EqualTo((1, 100L)));
+        Assert.That(Directory.Exists(ended), Is.False);
         Assert.That(Directory.Exists(running), Is.True, "a running session keeps its folder");
-        Assert.That(Directory.Exists(unknownRecent), Is.True, "a session nobody recorded is kept while it's recently written");
+        Assert.That(Directory.Exists(unknownQuiet) && Directory.Exists(unknownRecent), Is.True,
+            "a session nobody recorded is kept however long it's been quiet: age never ends a session (M.ORCH-T1467)");
         Assert.That(Directory.Exists(endedButWriting), Is.True, "a log still open waits for the next look");
         Assert.That(Directory.Exists(notASession), Is.True, "only session-id folders are judged");
 
-        Assert.That(SessionTempPruner.Prune(root, _ => false, now), Is.EqualTo((3, 30L)));
+        Assert.That(SessionTempPruner.Prune(root, _ => false), Is.EqualTo((4, 80L)));
         Assert.That(Directory.Exists(Path.Combine(root, "D--Projects-A")), Is.False, "a project folder left empty goes too");
         Assert.That(Directory.Exists(notASession), Is.True);
     }
@@ -84,7 +85,7 @@ public sealed class SessionTempPrunerTests
         File.WriteAllBytes(readOnly, new byte[2]);
         File.SetAttributes(readOnly, FileAttributes.ReadOnly);
 
-        Assert.That(SessionTempPruner.Prune(root, _ => false, DateTime.UtcNow), Is.EqualTo((1, 42L)));
+        Assert.That(SessionTempPruner.Prune(root, _ => false), Is.EqualTo((1, 42L)));
         Assert.That(Directory.Exists(dir), Is.False, "a read-only file isn't one in use");
     }
 
@@ -107,7 +108,7 @@ public sealed class SessionTempPrunerTests
 
         (int, long) pruned;
         using (new FileStream(Path.Combine(outside, "open.log"), FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-            pruned = SessionTempPruner.Prune(root, _ => false, DateTime.UtcNow);
+            pruned = SessionTempPruner.Prune(root, _ => false);
 
         Assert.That(pruned, Is.EqualTo((1, 40L)), "only the session's own files are counted, and the open file outside doesn't keep it");
         Assert.That(Directory.Exists(dir), Is.False);
@@ -116,6 +117,63 @@ public sealed class SessionTempPrunerTests
     }
 
     [Test]
+    public void A_dry_run_deletes_nothing_and_says_why_each_folder_would_go_or_stay()
+    {
+        var ended = Session("D--Projects-A", "88888888-8888-8888-8888-888888888888", 10);
+        var referenced = Session("D--Projects-A", "99999999-9999-9999-9999-999999999999", 10);
+        var used = Session("D--Projects-A", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", 10);
+        var liveness = new SessionLiveness(_ => new SessionVerdict(false, "its CLI has exited"),
+            id => id.StartsWith("9999", StringComparison.Ordinal) ? "the handoff h.json" : null,
+            folder => folder.EndsWith("aaaaaaaaaaaa", StringComparison.Ordinal) ? "tail.exe (pid 1) still name it on their command line" : null);
+
+        var r = SessionTempPruner.Prune(root, liveness, dryRun: true);
+
+        Assert.That(r.Deleted, Is.Zero);
+        Assert.That(Directory.Exists(ended) && Directory.Exists(referenced) && Directory.Exists(used), Is.True, "a dry run deletes nothing");
+        Assert.That(r.Folders.Single(f => f.Path == ended).Delete, Is.True);
+        Assert.That(r.Folders.Single(f => f.Path == referenced).Why, Does.Contain("h.json"));
+        Assert.That(r.Folders.Single(f => f.Path == used).Why, Does.Contain("tail.exe"));
+
+        Assert.That(SessionTempPruner.Prune(root, liveness).Deleted, Is.EqualTo(1), "only the folder nothing points at or uses goes");
+        Assert.That(Directory.Exists(ended), Is.False);
+    }
+
+    [Test]
+    public void Liveness_comes_from_the_recorded_cli_and_unknown_is_never_ended_while_any_cli_runs()
+    {
+        var states = new Dictionary<string, List<SessionLiveness.State>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["live"] = [new(10, null)],
+            ["gone"] = [new(11, null)],
+            ["cleared"] = [new(11, null), new(10, null)],
+        };
+        var procs = new List<SessionLiveness.Proc>
+        {
+            new(10, "claude.exe", "claude"), new(12, "claude.exe", "claude --resume resumed"),
+            new(20, "tail.exe", "tail -F C:/Users/u/AppData/Local/Temp/claude/0123456789abcdef/gone/tasks/b1.output"),
+        };
+        Dictionary<string, string> None() => [];
+        var l = SessionLiveness.Decide(states, new HashSet<int> { 10, 12 }, procs, None);
+
+        Assert.That(l.Running("live").Running, Is.True);
+        Assert.That(l.Running("gone").Running, Is.False);
+        Assert.That(l.Running("cleared").Running, Is.True, "a session of a CLI that still runs (it /clear-ed) is kept");
+        Assert.That(l.Running("resumed").Running, Is.True);
+        Assert.That(l.Running("never-recorded").Running, Is.Null);
+        Assert.That(l.UsedBy(@"C:\Users\u\AppData\Local\Temp\claude\0123456789abcdef\gone"), Does.Contain("tail.exe"));
+        Assert.That(SessionLiveness.Decide(states, new HashSet<int>(), procs, None).Running("never-recorded").Running,
+            Is.False, "with no Claude CLI running at all, every session has ended");
+        Assert.That(SessionLiveness.Decide(states, new HashSet<int>(), null, None).UsedBy("x"),
+            Is.Not.Null, "command lines that can't be read keep the folder");
+    }
+
+    [Test]
+    public void A_path_into_a_sessions_temp_folder_is_found_however_it_is_spelled() =>
+        Assert.That(SessionLiveness.SessionIdsIn(
+            """{"p":"C:\\Users\\u\\AppData\\Local\\Temp\\claude\\b5f60e82a367ad48\\D47BCC9F-306D-4C94-94DB-B128810B563C\\scratchpad"} /tmp/claude/c41659285a6d5e09/8e6b88c0-5c42-417b-ae3c-a490b4ec4acc/x"""),
+            Is.EqualTo(new[] { "d47bcc9f-306d-4c94-94db-b128810b563c", "8e6b88c0-5c42-417b-ae3c-a490b4ec4acc" }));
+
+    [Test]
     public void No_claude_temp_folder_prunes_nothing() =>
-        Assert.That(SessionTempPruner.Prune(Path.Combine(root, "missing"), _ => false, DateTime.UtcNow), Is.EqualTo((0, 0L)));
+        Assert.That(SessionTempPruner.Prune(Path.Combine(root, "missing"), _ => false), Is.EqualTo((0, 0L)));
 }

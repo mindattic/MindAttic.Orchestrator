@@ -165,7 +165,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 EnsureHooks(s);
                 WatchHealth(allocate);
                 WatchDisk(s);
-                CleanDiskIfLow(s, DateTime.UtcNow);
+                CleanDiskIfLow(s, DateTime.UtcNow, options.WorkspaceRoot);
                 tick.Lap("hooks, machine health and disk space");
                 try { if (ledgerLease.TryAcquire()) ledger.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"pace ledger: couldn't update it (retrying next minute): {ex.Message}"); }
@@ -174,7 +174,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Say(LogEventLevel.Warning, $"reaped pid {r.Process.Pid} ({r.Process.Name}): {r.Reason}" +
                         (string.IsNullOrWhiteSpace(r.Process.CommandLine) ? "" : $" — was running: {r.Process.CommandLine}"));
                 tick.Lap("process reaper");
-                PruneSessionTempIfDue(cycler);
+                PruneSessionTempIfDue(options.WorkspaceRoot);
                 tick.Lap("ended sessions' temp folders");
                 // Old side-by-side TermHost versions, once the CLIs still running on them have ended (M.ORCH-T932).
                 // Each in its own try (M.ORCH-T1009), as the gateway's is: one that throws no longer skips the rest of the tick
@@ -908,15 +908,23 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     private DateTime? sessionTempPrunedUtc;
 
     /// <summary>On start and every <see cref="SessionTempPruner.Every"/> after, deletes the %TEMP%\claude folders of sessions
-    /// that have ended (M.ORCH-T473): Claude Code leaves each one's scratchpad and background-command logs there for good.</summary>
-    private void PruneSessionTempIfDue(ContextCycler cycler)
+    /// that have ended (M.ORCH-T473): Claude Code leaves each one's scratchpad and background-command logs there for good. Judged
+    /// by liveness, never age (M.ORCH-T1467): see <see cref="SessionLiveness"/>; each deletion goes in the disk-cleanup log.</summary>
+    private void PruneSessionTempIfDue(string workspaceRoot)
     {
         if (sessionTempPrunedUtc is { } at && DateTime.UtcNow - at < SessionTempPruner.Every) return;
         sessionTempPrunedUtc = DateTime.UtcNow;
         var dir = Path.Combine(TempDir, "claude");
-        var (folders, bytes) = SessionTempPruner.Prune(dir, cycler.SessionRunning, DateTime.UtcNow);
-        if (folders > 0) Say(LogEventLevel.Information, $"deleted {folders} ended sessions' folders under {dir} ({bytes / 1048576.0:0.#} MB)");
+        var r = SessionTempPruner.Prune(dir, SessionLiveness.Current(workspaceRoot), dryRun: false, Activity.DiskCleanup.LogPath);
+        if (r.Deleted > 0) Say(LogEventLevel.Information, $"deleted {r.Deleted} ended sessions' folders under {dir} ({r.Bytes / 1048576.0:0.#} MB)");
+        // An ended session's folder kept because something still uses it: said when that set changes, not every look.
+        var held = string.Join("; ", r.Folders.Where(f => !f.Delete && f.Why.StartsWith("kept: ended", StringComparison.Ordinal))
+            .Select(f => $"{f.Path} ({Activity.DiskWatch.Size(f.Bytes)}): {f.Why}"));
+        if (held != sessionTempHeld && held.Length > 0) Say(LogEventLevel.Information, $"ended sessions' temp folders kept, still in use: {held}");
+        sessionTempHeld = held;
     }
+
+    private string sessionTempHeld = "";
 
     private Activity.HealthLevel healthLevel;
     private DateTime healthSampledUtc;
@@ -994,7 +1002,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// agent-made temp oldest first (<see cref="Activity.DiskCleanup"/>), at most every 5 minutes and off the tick's thread, and
     /// alerts with what it freed and what big things it left alone. A drive at or over the line costs one free-space read.
     /// </summary>
-    internal void CleanDiskIfLow(OrchestratorSettings s, DateTime nowUtc)
+    internal void CleanDiskIfLow(OrchestratorSettings s, DateTime nowUtc, string? workspaceRoot = null)
     {
         if (s.DiskCleanupGb <= 0 || nowUtc - cleanedUtc < TimeSpan.FromMinutes(5)) return;
         if (Activity.DiskCleanup.FreeGb(TempDir) >= s.DiskCleanupGb) return;
@@ -1004,8 +1012,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         {
             try
             {
-                var r = Activity.DiskCleanup.Run(s.DiskCleanupGb, Activity.DiskCleanup.LiveSessionIds(DateTime.UtcNow), DateTime.UtcNow,
-                    dryRun: false, Activity.DiskCleanup.LogPath, TempDir);
+                var r = Activity.DiskCleanup.Run(SessionLiveness.Current(workspaceRoot), dryRun: false, Activity.DiskCleanup.LogPath, TempDir);
                 var text = Activity.DiskCleanup.Describe(r);
                 Say(r.FreedBytes > 0 ? LogEventLevel.Warning : LogEventLevel.Information, $"disk self-cleanup: {text}");
                 if (r.FreedBytes > 0 || r.NotOurs.Count > 0) Alert("Disk self-cleanup", text, urgent: false);

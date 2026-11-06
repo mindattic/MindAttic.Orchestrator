@@ -5,8 +5,9 @@ using MindAttic.Orchestrator;
 using Spectre.Console.Cli;
 
 /// <summary>
-/// <c>orchestrator disk-cleanup</c> (M.ORCH-T1449): deletes agent-made temp, oldest first, when %TEMP%'s drive is under the
-/// <c>--disk-cleanup-gb</c> line, as the daemon does. The context gate starts it detached (<c>--quiet</c>) when a hook sees the
+/// <c>orchestrator disk-cleanup</c> (M.ORCH-T1449): deletes ended sessions' %TEMP%\claude folders when %TEMP%'s drive is under the
+/// <c>--disk-cleanup-gb</c> line, as the daemon does: by session liveness, never age (M.ORCH-T1467). <c>--dry-run</c> deletes
+/// nothing and lists every session folder with its size and verdict (why it would go, or why it's kept). The context gate starts it detached (<c>--quiet</c>) when a hook sees the
 /// drive under the line, so cleanup happens without the dashboard or daemon open. One run at a time (a named mutex: a lock
 /// file can't be made on a full disk).
 /// </summary>
@@ -15,7 +16,7 @@ internal sealed class DiskCleanupCommand : Command<DiskCleanupCommand.Settings>
     public sealed class Settings : CommandSettings
     {
         [CommandOption("--dry-run")]
-        [Description("Only list what would go (everything that may, oldest first), deleting nothing.")]
+        [Description("Delete nothing: list every session folder under %TEMP%\\claude, its size, and whether it would go and why.")]
         public bool DryRun { get; init; }
 
         [CommandOption("--quiet")]
@@ -37,14 +38,14 @@ internal sealed class DiskCleanupCommand : Command<DiskCleanupCommand.Settings>
                 if (!settings.Quiet) AnsiConsole.MarkupLine("Disk self-cleanup is off (orchestrator settings --disk-cleanup-gb).");
                 return 0;
             }
-            var now = DateTime.UtcNow;
-            var r = DiskCleanup.Run(line, DiskCleanup.LiveSessionIds(now), now, settings.DryRun, settings.DryRun ? null : DiskCleanup.LogPath);
+            var liveness = MindAttic.Orchestrator.Sessions.SessionLiveness.Current(OrchestratorOptions.Load(Ctx.Store()).WorkspaceRoot);
+            var r = DiskCleanup.Run(liveness, settings.DryRun, settings.DryRun ? null : DiskCleanup.LogPath, null, out var prune);
             var text = DiskCleanup.Describe(r, settings.DryRun);
             if (!settings.Quiet)
             {
                 AnsiConsole.MarkupLine(Markup.Escape(text));
-                foreach (var d in r.Deleted)
-                    AnsiConsole.MarkupLine($"  {DiskWatch.Size(d.Bytes),9}  {d.NewestWriteUtc.ToLocalTime():MM-dd HH:mm}  {Markup.Escape(d.Reason)}  {Markup.Escape(d.Path)}");
+                foreach (var f in prune.Folders.OrderByDescending(f => f.Delete).ThenByDescending(f => f.Bytes))
+                    AnsiConsole.MarkupLine($"  {(f.Delete ? (settings.DryRun ? "[green]would go[/]" : "[green]deleted[/] ") : "[grey]kept[/]    ")}  {DiskWatch.Size(f.Bytes),9}  {Markup.Escape(f.Path)}{Environment.NewLine}             {Markup.Escape(f.Why)}");
                 foreach (var e in r.Errors) AnsiConsole.MarkupLine($"  [yellow]{Markup.Escape(e)}[/]");
             }
             if (!settings.DryRun && r.FreedBytes > 0) new Notifier().SendAsync(s.NotifyUrl, "Disk self-cleanup", text).GetAwaiter().GetResult();
