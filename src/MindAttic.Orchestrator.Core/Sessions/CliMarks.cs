@@ -159,6 +159,55 @@ public static class CliMarks
             }
     }
 
+    /// <summary>Winds every CLI with /allocate currently on down at once (M.ORCH-T1468): each gets <c>noallocate</c>="wind" (so
+    /// its own turn quicksaves once its last subagent lands, the same as /allocate off always has) and its <c>allocate</c> mark
+    /// cleared -- the per-CLI effect of a typed <c>/allocate off -target=all</c>, written here directly to the database instead
+    /// of through a CLI's own hook. Returns how many it reached. A mark only a file is holding (the database held elsewhere when
+    /// a hook wrote it) isn't cleared here; the next <see cref="ReadIn"/> picks it up as usual.</summary>
+    public static int WindDownEverywhere(string directory)
+    {
+        var on = Read(directory, Allocate).Keys.ToList();
+        if (on.Count == 0) return 0;
+        try
+        {
+            var db = Db();
+            if (!File.Exists(db.Path)) return 0;
+            db.Write((connection, tx) =>
+            {
+                foreach (var pid in on)
+                {
+                    Upsert(connection, tx, NoAllocate, pid, "wind");
+                    Upsert(connection, tx, Allocate, pid, null);
+                }
+            }, dump: false);
+        }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException) { return 0; }
+        return on.Count;
+    }
+
+    private static void Upsert(SqliteConnection connection, SqliteTransaction tx, string kind, int pid, string? value)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.Parameters.AddWithValue("$kind", kind);
+        command.Parameters.AddWithValue("$pid", pid);
+        if (value is null)
+        {
+            command.CommandText = "DELETE FROM cli_marks WHERE kind = $kind AND pid = $pid;";
+        }
+        else
+        {
+            command.CommandText = "INSERT INTO cli_marks (kind, pid, value, written_at, since) VALUES ($kind, $pid, $value, $at, $since) " +
+                "ON CONFLICT (kind, pid) DO UPDATE SET value = excluded.value, written_at = excluded.written_at, " +
+                "since = COALESCE(cli_marks.since, cli_marks.written_at);";
+            var now = Seconds(DateTime.UtcNow);
+            command.Parameters.AddWithValue("$value", value);
+            command.Parameters.AddWithValue("$at", now);
+            command.Parameters.AddWithValue("$since", now);
+        }
+        command.ExecuteNonQuery();
+    }
+
     /// <summary>Drops every row of a CLI process that <paramref name="alive"/> says has closed.</summary>
     public static void Prune(Func<int, bool> alive)
     {

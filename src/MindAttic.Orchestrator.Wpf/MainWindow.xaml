@@ -271,8 +271,10 @@
         </ScrollViewer>
         <!-- The window tools sit under the logins, a rule apart (M.ORCH-T1431). Team Wall (M.ORCH-T936, People E716) opens every
              live CLI; Tickets (M.ORCH-T878, Tag E8EC) opens Tickets Desktop; Logins (M.ORCH-T1308, Contact E77B) holds Add login,
-             Sign in all and Report; Settings (M.ORCH-T804, cog E713) opens MindAttic Vault at the Orchestrator tab; then the
-             sun/moon theme toggle (M.ORCH-T678). -->
+             Sign in all and Report; Settings (M.ORCH-T804, cog E713) opens MindAttic Vault at the Orchestrator tab; Wind down
+             (M.ORCH-T1468, Pause E769) turns /allocate off for every CLI across every login this instance hosts, plus Pacing
+             off, each CLI still finishing its own subagents and quicksaving before going quiet; then the sun/moon theme toggle
+             (M.ORCH-T678). -->
         <Border Grid.Row="2" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,8,0,0">
         <StackPanel x:Name="SidebarTools" Orientation="Horizontal" AutomationProperties.Name="Window tools">
             <Button x:Name="TeamWallButton" Style="{StaticResource MaToolButton}" Content="&#xE716;" Click="TeamWallButton_Click"
@@ -283,6 +285,9 @@
                     ToolTip="Logins" AutomationProperties.Name="Logins" />
             <Button x:Name="SettingsButton" Style="{StaticResource MaToolButton}" Content="&#xE713;" Command="{Binding OpenSettingsCommand}"
                     ToolTip="Settings (opens MindAttic Vault)" AutomationProperties.Name="Settings" />
+            <Button x:Name="WindDownButton" Style="{StaticResource MaToolButton}" Content="&#xE769;" Command="{Binding WindDownCommand}"
+                    ToolTip="Wind down: /allocate off and pacing off for every CLI across every login, each finishing its own subagents first"
+                    AutomationProperties.Name="Wind down every CLI" />
             <mc:MaThemeToggle x:Name="ThemeToggle" VerticalAlignment="Center" />
         </StackPanel>
         </Border>
