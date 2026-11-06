@@ -1598,7 +1598,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-06', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1093674);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-06', 'Mods.GTFO.EZ', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 730739);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-06', 'Prose', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 198623);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-06', 'SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13629794);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-06', 'SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13884113);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -3674,7 +3674,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a1dd5dc8deb3ac253', 'US-T212', 'fix', 'SpaceGod', 81824, '2026-11-06T11:33:29.133Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a2345e3461e99b770', 'US-T209', 'fix', 'SpaceGod', 218809, '2026-11-06T11:08:06.3Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a26bdbb29470a596e', 'US-T224', 'chore', 'SpaceGod', 486654, '2026-11-06T14:24:32.919Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a2793054c72840bb8', 'US-T226', 'fix', 'SpaceGod', 319252, '2026-11-06T14:53:08.221Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a2793054c72840bb8', 'US-T226', 'fix', 'SpaceGod', 330226, '2026-11-06T14:54:56.964Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a28cba4d640aa79b7', 'US-T202', 'fix', 'SpaceGod', 133778, '2026-11-06T08:59:53.074Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a2dbeb359aeb01d05', 'US-T186', 'feature', 'SpaceGod', 637431, '2026-11-06T09:00:23.388Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a2ee7d2d7811e21d4', 'US-T181', 'fix', 'SpaceGod', 260494, '2026-11-06T07:37:33.269Z', 0, 'sonnet');
@@ -3694,6 +3694,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a6bb300d82ce01e93', 'US-T216', 'fix', 'SpaceGod', 156970, '2026-11-06T12:30:34.874Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a7709b8f28ab52bed', 'US-T203', 'feature', 'SpaceGod', 151910, '2026-11-06T09:00:26.262Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a7cdea9813c5566c5', 'US-T208', 'fix', 'SpaceGod', 114902, '2026-11-06T10:51:48.857Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a820d077aa24f314b', 'US-T227', 'fix', 'SpaceGod', 35823, '2026-11-06T15:04:06.131Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a88466a3efbe97342', 'US-T193', 'feature', 'SpaceGod', 479368, '2026-11-06T07:37:51.028Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a88b9fd0b31d850d0', 'US-T195', 'feature', 'SpaceGod', 140652, '2026-11-06T07:37:50.083Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-a898cc788028da919', 'US-T168', 'fix', 'SpaceGod', 33334, '2026-11-06T08:35:35.764Z', 0, 'sonnet');
@@ -3710,7 +3711,8 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-ac823c797103e9d08', 'US-T148', 'fix', 'SpaceGod', 428305, '2026-11-06T09:58:21.533Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-aca8008f07a3abe50', 'US-T177', 'fix', 'SpaceGod', 104686, '2026-11-06T07:10:13.59Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-ace0a5e6fa463ba5b', 'US-T182', 'fix', 'SpaceGod', 259182, '2026-11-06T07:36:52.27Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-ae2c6c3448cdcbe8b', 'US-T223', 'fix', 'SpaceGod', 104536, '2026-11-06T14:52:39.452Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-ad9aefb05f1ba826b', 'US-T227', 'fix', 'SpaceGod', 75233, '2026-11-06T15:01:44.553Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-ae2c6c3448cdcbe8b', 'US-T223', 'fix', 'SpaceGod', 110595, '2026-11-06T14:54:16.989Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-ae46bbe2b5306a99c', 'US-T214', 'fix', 'SpaceGod', 107955, '2026-11-06T11:39:39.567Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-aeca2b4db91eafc10', 'US-T175', 'fix', 'SpaceGod', 152109, '2026-11-06T07:37:38.323Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b893efa6-a92a-4c17-a01d-06c9c127a3fb/agent-aeed00eb02240a176', 'US-T158', 'fix', 'SpaceGod', 36001, '2026-11-06T09:17:47.734Z', 0, 'sonnet');
@@ -31567,7 +31569,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "65132c328a1f26bb8aeba05d739687b6a10c4d16",
+    "Tested": "bc1631b30d35ecef8a50c1e3f67e3629883fa1b5",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -31579,7 +31581,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "bb9829c3b4bd5e1e047437b4c8c8e687b09ad07c"
   },
   "MindAttic.Tickets": {
-    "Tested": "6018e2fe6d25fd94948261e463232befb96baea3",
+    "Tested": "7ec920a70832ad49a971284ab09a1ff9c2338fd8",
     "Green": "12e25bf2080de40da24c6a6774d9517049756bb4"
   },
   "MindAttic.Vault": {
@@ -31842,7 +31844,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2ddb30570ff68e1fc55a4027a160687e2a08c9ad"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "65132c328a1f26bb8aeba05d739687b6a10c4d16"
+    "Tested": "bc1631b30d35ecef8a50c1e3f67e3629883fa1b5"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
