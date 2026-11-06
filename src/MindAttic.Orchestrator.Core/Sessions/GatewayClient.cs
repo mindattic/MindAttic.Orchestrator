@@ -80,7 +80,7 @@ public sealed class GatewayClient : IDisposable
             PooledConnectionLifetime = TimeSpan.FromMinutes(5),
             SslOptions = new SslClientAuthenticationOptions { RemoteCertificateValidationCallback = (_, cert, _, errors) => Trusted(cert, errors) },
         };
-        http = new HttpClient(handler) { Timeout = ListTimeout };
+        http = new HttpClient(handler) { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
     }
 
     public GatewayRemote Remote { get; }
@@ -111,7 +111,9 @@ public sealed class GatewayClient : IDisposable
             {
                 Content = JsonContent.Create(new { ownerKey, scope = "interact", minutes = MintMinutes }),
             };
-            using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
+            using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            bounded.CancelAfter(ListTimeout);
+            using var response = await http.SendAsync(request, bounded.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 mintProblem = response.StatusCode switch
@@ -162,7 +164,9 @@ public sealed class GatewayClient : IDisposable
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, BaseUrl + "/sessions");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
+            using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            bounded.CancelAfter(ListTimeout);
+            using var response = await http.SendAsync(request, bounded.Token).ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.Unauthorized) return GatewayListing.Offline("it refused the token (expired or revoked)");
             if (!response.IsSuccessStatusCode) return GatewayListing.Offline($"it answered {(int)response.StatusCode}");
             var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -189,6 +193,41 @@ public sealed class GatewayClient : IDisposable
             HttpRequestError.SecureConnectionError => "its certificate doesn't match the pin",
             _ => "it can't be reached",
         };
+
+    /// <summary>How long a tickets command run on the host may take, end to end.</summary>
+    public static readonly TimeSpan TicketsTimeout = TimeSpan.FromMinutes(4);
+
+    /// <summary>
+    /// Runs the tickets CLI on the host with <paramref name="args"/> (M.ORCH-T1479), in the workspace folder
+    /// <paramref name="relativeDirectory"/> names there; needs the owner key (the owner's own host). Returns its exit code and
+    /// output; a host that can't be reached or refuses comes back as exit 1 with why. Never throws but on cancellation.
+    /// </summary>
+    public async Task<(int ExitCode, string Output)> RunTicketsAsync(IReadOnlyList<string> args, string? relativeDirectory, CancellationToken ct)
+    {
+        if (BaseUrl is null) return (1, $"The host's gateway URL ({Remote.Url}) isn't an https address.");
+        await MintIfDueAsync(ct).ConfigureAwait(false);
+        if (token is null) return (1, "Couldn't reach the host for a token: " + (mintProblem ?? "no owner key here (orchestrator machine connect)") + ".");
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl + "/tickets")
+            {
+                Content = JsonContent.Create(new { args, directory = relativeDirectory }),
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            bounded.CancelAfter(TicketsTimeout);
+            using var response = await http.SendAsync(request, bounded.Token).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) return (1, "The host's gateway is older than this PC's Orchestrator: deploy MindAttic.Orchestrator on the host (orchestrator machine pull, then run.ps1).");
+            if (!response.IsSuccessStatusCode) return (1, $"The host refused the tickets command ({(int)response.StatusCode}).");
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+            var root = doc.RootElement;
+            return (root.TryGetProperty("exitCode", out var code) && code.TryGetInt32(out var c) ? c : 1,
+                root.TryGetProperty("output", out var output) ? output.GetString() ?? "" : "");
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return (1, "The host didn't finish the tickets command in time."); }
+        catch (HttpRequestException ex) { return (1, "The host can't be reached: " + Describe(ex) + "."); }
+        catch (JsonException) { return (1, "The host's answer couldn't be read."); }
+    }
 
     /// <summary>
     /// Opens session <paramref name="sessionId"/>'s stream: a WebSocket to <c>/sessions/{id}/stream</c> (<c>?mode=watch</c> when

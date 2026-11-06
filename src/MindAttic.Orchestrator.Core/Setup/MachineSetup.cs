@@ -89,6 +89,7 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         var remotes = s.Gateway.Remotes.Where(r => !string.Equals(r.Name, remote.Name, StringComparison.OrdinalIgnoreCase)).Append(remote).ToList();
         store.SaveSettings(s with { Gateway = s.Gateway with { Remotes = remotes } });
         say($"The dashboard now opens {hostName}'s Team Wall ({url}).");
+        InstallTicketsShim(orchestratorExe);
 
         using var client = new Sessions.GatewayClient(remote);
         var listing = await client.ListAsync(CancellationToken.None).ConfigureAwait(false);
@@ -107,6 +108,7 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
             Environment.SetEnvironmentVariable(TicketsDbVar, null, EnvironmentVariableTarget.User);
             say($"{TicketsDbVar} cleared: the ticket tools use the checkout's database again (new terminals).");
         }
+        RemoveTicketsShim();
         StartDaemon(installer);
         say("This machine is standalone again. Run orchestrator db migrate to go back to SQL Server, if it used one.");
     }
@@ -127,6 +129,9 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         store.SaveSettings(s with { Gateway = gateway });
         say($"Gateway on: https://{bind}:{gateway.Port}, certificate for {string.Join(", ", names)}.");
         OpenFirewall(gateway.Port);
+        // The gateway lists only shared sessions; on the owner's own host every CLI is the owner's to watch from the PC.
+        if (TermBroadcast.Update(b => b with { ShareAll = true }) is null) say("Couldn't turn on sharing every session (orchestrator broadcast share all).");
+        else say("Every CLI on this host is shared with your PC's Team Wall.");
         StartDaemon(installer);
 
         say("Waiting for the daemon to start the gateway…");
@@ -246,6 +251,71 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
     }
 
     // ---- the pieces ----
+
+    /// <summary>The folder of the client's <c>tickets</c> shim, first on the user PATH.</summary>
+    public static string ShimDirectory => Path.Combine(MachineRole.Directory, "client", "bin");
+
+    /// <summary>
+    /// Puts a <c>tickets</c> shim first on the user PATH (M.ORCH-T1479): <c>tickets.cmd</c> for cmd and PowerShell, and an
+    /// extensionless script for Git Bash (which Claude Code's Bash tool runs), both handing the arguments to
+    /// <c>orchestrator machine tickets --</c>, which runs them on the host. So every tickets command on this PC, an agent's
+    /// included, reads and writes the host's tickets.
+    /// </summary>
+    private void InstallTicketsShim(string orchestratorExe)
+    {
+        var installed = Path.Combine(@"C:\Apps\MindAttic.Orchestrator\Cli", "orchestrator.exe");
+        var exe = File.Exists(installed) ? installed : orchestratorExe;
+        Directory.CreateDirectory(ShimDirectory);
+        File.WriteAllText(Path.Combine(ShimDirectory, "tickets.cmd"), $"@\"{exe}\" machine tickets -- %*\r\n@exit /b %ERRORLEVEL%\r\n", new UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(ShimDirectory, "tickets"), $"#!/bin/sh\nexec \"{exe.Replace('\\', '/')}\" machine tickets -- \"$@\"\n", new UTF8Encoding(false));
+        var path = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.User) ?? "";
+        var parts = path.Split(';', StringSplitOptions.RemoveEmptyEntries).Where(p => !p.TrimEnd('\\').Equals(ShimDirectory, StringComparison.OrdinalIgnoreCase));
+        Environment.SetEnvironmentVariable("Path", string.Join(';', new[] { ShimDirectory }.Concat(parts)), EnvironmentVariableTarget.User);
+        say($"tickets on this PC now runs on the host (shim in {ShimDirectory}, first on your PATH; new terminals pick it up).");
+    }
+
+    private void RemoveTicketsShim()
+    {
+        var path = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.User) ?? "";
+        var parts = path.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (parts.RemoveAll(p => p.TrimEnd('\\').Equals(ShimDirectory, StringComparison.OrdinalIgnoreCase)) > 0)
+            Environment.SetEnvironmentVariable("Path", string.Join(';', parts), EnvironmentVariableTarget.User);
+        try { if (Directory.Exists(ShimDirectory)) Directory.Delete(ShimDirectory, recursive: true); }
+        catch (IOException) { }
+        say("tickets runs on this machine again.");
+    }
+
+    /// <summary>
+    /// Runs a tickets command on the host (M.ORCH-T1479), in the workspace folder <paramref name="currentDirectory"/> is in.
+    /// A <c>--description-file</c> is read here and sent as <c>--description</c>, since the host can't see this machine's files.
+    /// </summary>
+    public async Task<(int ExitCode, string Output)> RunTicketsOnHostAsync(IReadOnlyList<string> args, string currentDirectory, CancellationToken ct)
+    {
+        var role = MachineRole.Current;
+        var store = new JsonStore();
+        if (!role.IsClient || GatewayRemotes.Find(store.LoadSettings().Gateway, MachineRole.HostRemoteName) is not { } remote)
+            return (1, "This machine isn't connected to a host (orchestrator machine connect).");
+        var sent = new List<string>(args.Count);
+        for (var i = 0; i < args.Count; i++)
+        {
+            if (args[i] == "--description-file" && i + 1 < args.Count)
+            {
+                var file = Path.GetFullPath(args[++i], currentDirectory);
+                if (!File.Exists(file)) return (1, $"No such file: {file}");
+                sent.Add("--description");
+                sent.Add(File.ReadAllText(file));
+                continue;
+            }
+            sent.Add(args[i]);
+        }
+        string? relative = null;
+        var root = Path.GetFullPath(WorkspaceRoot);
+        var here = Path.GetFullPath(currentDirectory);
+        if (here.StartsWith(root, StringComparison.OrdinalIgnoreCase)) relative = Path.GetRelativePath(root, here);
+        using var client = new Sessions.GatewayClient(remote);
+        return await client.RunTicketsAsync(sent, relative == "." ? null : relative, ct).ConfigureAwait(false);
+    }
+
 
     private const string TicketsDbVar = "MINDATTIC_TICKETS_DB";
 

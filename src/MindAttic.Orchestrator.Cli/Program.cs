@@ -222,6 +222,7 @@ internal static class CliApp
                 m.AddCommand<MachineStandaloneCommand>("standalone").WithDescription("Everything on this machine again (undoes handoff or host).");
                 m.AddCommand<MachinePullCommand>("pull").WithDescription("git pull every repo in the workspace; on a client, refresh the host's tickets too.");
                 m.AddCommand<MachineKitCommand>("kit").WithDescription("Write only the host kit to <folder>.");
+                m.AddCommand<MachineTicketsCommand>("tickets").WithDescription("On a client: run a tickets command on the host (tickets -- <args>); the tickets shim on this PC does it for you.");
             });
             // Let crashes reach the catch below so they're logged, not just printed.
             config.PropagateExceptions();

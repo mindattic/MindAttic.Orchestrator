@@ -70,9 +70,16 @@ Run the line the host printed:
 orchestrator machine connect mindattic-vm --pin <sha256> --owner-key <key>
 ```
 
-The dashboard is now the host's Team Wall: every CLI on the VM, live. The owner key is sealed for your Windows user (DPAPI)
-and mints a fresh gateway token whenever the old one runs low, so the link never expires. For the full dashboard, Remote
-Desktop to the VM (`mstsc /v:mindattic-vm`); closing Remote Desktop leaves everything running.
+The dashboard is now the host's Team Wall: every CLI on the VM, live (the host shares every session with you, `orchestrator
+broadcast share all`). The owner key is sealed for your Windows user (DPAPI) and mints a fresh gateway token whenever the
+old one runs low, so the link never expires. For the full dashboard, Remote Desktop to the VM (`mstsc /v:mindattic-vm`);
+closing Remote Desktop leaves everything running.
+
+`tickets` on your PC now runs on the host (M.ORCH-T1479): `connect` puts a `tickets` shim first on your user PATH
+(`tickets.cmd` for cmd and PowerShell, and a script for Git Bash, which Claude Code's Bash tool uses). It hands every command
+to the host's gateway, which runs the real tickets CLI there, in the same workspace folder you typed it in. So a ticket you
+or a local Claude CLI file on the PC lands in the host's database at once, and every read is the host's, live. A
+`--description-file` is read on the PC and sent along. Tickets Desktop on the PC shows the mirror.
 
 ## Every day
 
@@ -86,9 +93,10 @@ Desktop to the VM (`mstsc /v:mindattic-vm`); closing Remote Desktop leaves every
 
 ## Limits
 
-- **Tickets are the host's.** On a client, the ticket tools read a mirror of the host's database that each pull replaces.
-  A ticket written on your PC is kept beside the mirror and said, but it doesn't reach the host: file tickets in a host
-  CLI. Writing straight to the host's tickets from the PC is MindAttic.Tickets' part of this.
+- **Tickets are the host's.** The `tickets` command reaches the host through the gateway, so it needs the VM on. Anything
+  that opens the ticket database directly on the PC (Tickets Desktop, the libraries) reads the mirror each pull refreshes,
+  and an edit made there is kept beside the mirror (and said) but doesn't reach the host: make edits through `tickets` or on
+  the host.
 - **Secrets stay put.** Vault's keys and the year-long Claude tokens are sealed with DPAPI for one Windows user on one
   machine, so they can't be copied: setup signs the Claude logins in again, and keys the host needs (API key, Psst) are
   entered once in Vault.Desktop there.

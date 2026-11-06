@@ -147,3 +147,17 @@ internal sealed class MachineKitCommand : Command<MachineKitCommand.Settings>
         return 0;
     }
 }
+
+/// <summary><c>orchestrator machine tickets -- &lt;args&gt;</c> (M.ORCH-T1479): on a client, a tickets command run on the host. The
+/// client's <c>tickets</c> shim calls it, so it's rarely typed.</summary>
+internal sealed class MachineTicketsCommand : AsyncCommand
+{
+    public override async Task<int> ExecuteAsync(CommandContext context)
+    {
+        var args = context.Remaining.Raw.ToList();
+        if (args.Count == 0) { Console.Error.WriteLine("Say what to run: orchestrator machine tickets -- ticket list"); return 2; }
+        var (code, output) = await Machine.Setup().RunTicketsOnHostAsync(args, Environment.CurrentDirectory, CancellationToken.None);
+        (code == 0 ? Console.Out : Console.Error).Write(output.EndsWith('\n') || output.Length == 0 ? output : output + Environment.NewLine);
+        return code;
+    }
+}

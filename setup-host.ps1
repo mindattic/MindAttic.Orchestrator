@@ -115,6 +115,22 @@ function Ensure-Winget {
     Update-PathFromRegistry
     $local = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps'
     if (-not (Has 'winget') -and (Test-Path (Join-Path $local 'winget.exe'))) { $env:Path += ";$local" }
+    if (-not (Has 'winget')) {
+        # No Store on this image (a sandbox, a stripped VM or HVD): App Installer and its dependencies from winget's own release.
+        Say 'Installing winget from github.com/microsoft/winget-cli (no Microsoft Store here)...'
+        $dl = Join-Path $LogDir 'winget'
+        $null = New-Item -ItemType Directory -Force -Path $dl
+        $base = 'https://github.com/microsoft/winget-cli/releases/latest/download'
+        Invoke-WebRequest "$base/DesktopAppInstaller_Dependencies.zip" -OutFile "$dl\deps.zip" -UseBasicParsing
+        Expand-Archive "$dl\deps.zip" -DestinationPath "$dl\deps" -Force
+        $arch = if ([Environment]::Is64BitOperatingSystem) { 'x64' } else { 'x86' }
+        foreach ($dep in Get-ChildItem "$dl\deps" -Recurse -Include *.appx, *.msix | Where-Object { $_.FullName -match "\\$arch\\" -or $_.Name -match "_$arch" }) {
+            try { Add-AppxPackage -Path $dep.FullName -ErrorAction Stop } catch { Say "  dependency $($dep.Name): $($_.Exception.Message)" 'Yellow' }
+        }
+        Invoke-WebRequest "$base/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -OutFile "$dl\winget.msixbundle" -UseBasicParsing
+        Add-AppxPackage -Path "$dl\winget.msixbundle"
+        if (Test-Path (Join-Path $local 'winget.exe')) { $env:Path += ";$local" }
+    }
     if (-not (Has 'winget')) { Fail 'winget (App Installer) is not available. Install "App Installer" from the Microsoft Store, then run this again.' }
 }
 

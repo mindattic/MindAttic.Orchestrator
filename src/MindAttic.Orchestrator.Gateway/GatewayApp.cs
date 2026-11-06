@@ -67,6 +67,16 @@ internal sealed record TokenRequest(
     [property: JsonPropertyName("scope")] string? Scope,
     [property: JsonPropertyName("minutes")] int? Minutes);
 
+/// <summary><c>POST /tickets</c>'s body: the tickets CLI's arguments, and the folder (relative to the workspace root) it was
+/// typed in, which picks the repo a command without <c>--repo</c> means.</summary>
+internal sealed record TicketsRequest(
+    [property: JsonPropertyName("args")] List<string>? Args,
+    [property: JsonPropertyName("directory")] string? Directory);
+
+internal sealed record TicketsResponse(
+    [property: JsonPropertyName("exitCode")] int ExitCode,
+    [property: JsonPropertyName("output")] string Output);
+
 internal sealed record TokenResponse(
     [property: JsonPropertyName("token")] string Token,
     [property: JsonPropertyName("subject")] string Subject,
@@ -79,6 +89,8 @@ internal sealed record TokenResponse(
 /// <item><c>GET /health</c>: unauthenticated liveness, <c>{ ok, version }</c>.</item>
 /// <item><c>POST /auth/token</c>: <c>{ ownerKey, scope?, minutes? }</c> to a short-lived bearer token; five wrong keys from one
 /// address in five minutes and it answers 429 until they age out.</item>
+/// <item><c>POST /tickets</c>: <c>{ args, directory? }</c> runs the tickets CLI here for the owner's own client (M.ORCH-T1479):
+/// the owner's interact token only, <c>{ exitCode, output }</c> back.</item>
 /// <item><c>GET /sessions</c>: this machine's hosted sessions the caller may see.</item>
 /// <item><c>GET /sessions/{id}/stream</c>, a WebSocket (permessage-deflate offered): the session's frames, both ways
 /// (<see cref="TermBridge"/>); <c>?mode=watch</c> asks for read-only. It lasts as long as its token, or the latest fresh one
@@ -146,6 +158,34 @@ internal static class GatewayApp
             {
                 g.Log.Error(ex, "issuing a token failed; contained");
                 return TypedResults.StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        });
+
+        app.MapPost("/tickets", async (TicketsRequest? request, HttpContext http) =>
+        {
+            try
+            {
+                // The owner's own client (M.ORCH-T1479): its tickets commands run here, on the host, which owns the ticket database.
+                // Only the owner's interact token: a member's token never reaches it.
+                if (Authenticate(http, g) is not { } who)
+                {
+                    AuditRefusal(g, "", RemoteOf(http), TokenRefusal(http));
+                    return Results.Unauthorized();
+                }
+                if (!string.Equals(who.Subject.Trim(), g.Options.Owner.Trim(), StringComparison.OrdinalIgnoreCase) || who.Scope != GatewayScopes.Interact)
+                {
+                    AuditRefusal(g, who.Subject, RemoteOf(http), "tickets: not the owner's interact token");
+                    return Results.StatusCode(StatusCodes.Status403Forbidden);
+                }
+                if (request?.Args is not { Count: > 0 and <= 64 } args || args.Any(a => a is null || a.Length > 32_000)) return Results.BadRequest();
+                g.Log.Write($"tickets {args[0]} {(args.Count > 1 ? args[1] : "")} for {who.Subject} from {RemoteOf(http)}");
+                var result = await TicketsRunner.RunAsync(args, request.Directory, http.RequestAborted);
+                return Results.Json(new TicketsResponse(result.ExitCode, result.Output));
+            }
+            catch (Exception ex)
+            {
+                g.Log.Error(ex, "running a tickets command failed; contained");
+                return Results.StatusCode(StatusCodes.Status500InternalServerError);
             }
         });
 
