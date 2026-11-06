@@ -23,8 +23,16 @@
         3. C:\LocalNuGet filled from the kit; long paths on.
         4. Never sleep or hibernate; Remote Desktop on; the gateway's port open in the firewall.
         5. Automatic sign-in at boot (Sysinternals Autologon keeps the password as an LSA secret, never in plain text).
+        6. SQL Server 2022 Developer (the localhost instance, you and Administrators as sysadmin), SQL Server LocalDB and
+           SQL Server Management Studio, each only if missing (M.ORCH-T1486).
+      Restarts: when Windows or SQL Server setup needs a restart, setup restarts the machine itself and carries on after
+      the automatic sign-in (a RunOnce entry starts it again; the administrator part re-runs through an elevated
+      scheduled task, \MindAttic\Setup\Admin, so no second UAC prompt). At most 3 restarts; all of it is removed when done.
       Your part (as you):
-        6. git identity from the kit, GitHub sign-in, Claude Code.
+        6b. The database backups (-Databases, else the kit folder's sibling "databases") restored onto the instance each
+           came from: databases\localhost\*.bak onto SQL Server, databases\localdb\*.bak onto LocalDB. A database that's
+           already there is left alone.
+        6c. git identity from the kit, GitHub sign-in, Claude Code.
         7. The workspace: the root repo and the core apps' repos cloned (or pulled), your settings restored.
         8. MindAttic.Vault, Tickets, Launcher, Orchestrator and Scheduler built and installed, the agent standard's global
            commands and commit hooks installed.
@@ -48,6 +56,10 @@
     Don't run the Claude sign-ins (do them later: claude auth login, orchestrator login --all).
 .PARAMETER CoreOnly
     Clone only the root and the core apps' repos, not every repo in the workspace.
+.PARAMETER Databases
+    The folder of database backups to restore (localhost\*.bak, localdb\*.bak). Default: "databases" beside the kit folder.
+.PARAMETER SkipSql
+    Don't install SQL Server, LocalDB or SSMS, and don't restore backups.
 #>
 [CmdletBinding()]
 param(
@@ -58,9 +70,12 @@ param(
     [switch]$SkipAutoLogon,
     [switch]$SkipLogins,
     [switch]$CoreOnly,
-    # Internal: the elevated half this script starts for itself.
+    [string]$Databases,
+    [switch]$SkipSql,
+    # Internal: the elevated half this script starts for itself, and the run that resumes after a restart.
     [switch]$AdminPhase,
-    [string]$ForUser
+    [string]$ForUser,
+    [switch]$Resumed
 )
 
 $ErrorActionPreference = 'Stop'
@@ -75,6 +90,18 @@ $Feed = 'C:\LocalNuGet'
 $CoreRepos = @('MindAttic.Vault', 'MindAttic.Tickets', 'MindAttic.Launcher', 'MindAttic.Scheduler', 'MindAttic.Orchestrator')
 $OrchestratorCli = Join-Path $Apps 'MindAttic.Orchestrator\Cli\orchestrator.exe'
 $OrchestratorExe = Join-Path $Apps 'MindAttic.Orchestrator\MindAttic.Orchestrator.Desktop.exe'
+$SqlDir = Join-Path $LogDir 'sql'
+$StateFile = Join-Path $LogDir 'state.json'
+$ResumeFile = Join-Path $LogDir 'resume.cmd'
+$SetupTaskPath = '\MindAttic\Setup\'
+$AdminTaskName = 'Admin'
+$RunOnceKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce'
+$RunOnceName = 'MindAtticHostSetup'
+$MaxRestarts = 3
+$RestartExitCode = 3010
+# Microsoft's own bootstrappers (the installers winget's Microsoft.SQLServer.2022.Developer / .Express packages run).
+$SseiDevUrl = 'https://download.microsoft.com/download/c/c/9/cc9c6797-383c-4b24-8920-dc057c1de9d3/SQL2022-SSEI-Dev.exe'
+$SseiExprUrl = 'https://download.microsoft.com/download/29654887-7cde-4397-bba3-d7f087970845/SQL2022-SSEI-Expr.exe'
 
 function Say([string]$text, [string]$color = 'Gray') {
     $line = "[{0:HH:mm:ss}] {1}" -f (Get-Date), $text
@@ -96,6 +123,109 @@ function Update-PathFromRegistry {
 }
 
 function Has([string]$command) { [bool](Get-Command $command -ErrorAction SilentlyContinue) }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Restarts: resume after sign-in, at most $MaxRestarts times (M.ORCH-T1486)
+# ---------------------------------------------------------------------------------------------------------------------
+
+function Get-SetupState {
+    try { if (Test-Path $StateFile) { return Get-Content $StateFile -Raw | ConvertFrom-Json } } catch { }
+    [pscustomobject]@{ Restarts = 0 }
+}
+
+function Save-SetupState($state) { $state | ConvertTo-Json | Set-Content -Path $StateFile -Encoding UTF8 }
+
+function Test-RestartPending {
+    if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') { return $true }
+    if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired') { return $true }
+    $renames = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Name PendingFileRenameOperations -ErrorAction SilentlyContinue).PendingFileRenameOperations
+    return [bool]$renames
+}
+
+# The arguments this run was started with, for the run that resumes it (the internal ones left out).
+function Get-ScriptArgs {
+    $a = @()
+    if ($Kit) { $a += "-Kit `"$Kit`"" }
+    if ($Databases) { $a += "-Databases `"$Databases`"" }
+    if ($Workspace -ne 'D:\Projects\MindAttic') { $a += "-Workspace `"$Workspace`"" }
+    if ($RootRemote) { $a += "-RootRemote `"$RootRemote`"" }
+    if ($Bind -ne '0.0.0.0') { $a += "-Bind `"$Bind`"" }
+    foreach ($s in @(@('SkipAutoLogon', $SkipAutoLogon), @('SkipLogins', $SkipLogins), @('CoreOnly', $CoreOnly), @('SkipSql', $SkipSql))) {
+        if ($s[1]) { $a += "-$($s[0])" }
+    }
+    $a -join ' '
+}
+
+# Every sign-in until setup is done starts it again (HKCU RunOnce, through a short .cmd: RunOnce skips long commands).
+function Set-ResumeAtSignIn {
+    $self = $script:SelfPath
+    Set-Content -Path $ResumeFile -Encoding ASCII -Value @(
+        '@echo off',
+        "powershell.exe -NoProfile -NoExit -ExecutionPolicy Bypass -File `"$self`" $(Get-ScriptArgs) -Resumed"
+    )
+    Set-ItemProperty -Path $RunOnceKey -Name $RunOnceName -Value "cmd.exe /c `"$ResumeFile`""
+}
+
+function Clear-Resume {
+    Remove-ItemProperty -Path $RunOnceKey -Name $RunOnceName -ErrorAction SilentlyContinue
+    Remove-Item $ResumeFile, $StateFile -Force -ErrorAction SilentlyContinue
+}
+
+# Administrator part, before a restart: the run after it starts this part through a task that runs elevated without a UAC
+# prompt (RunLevel Highest, as you), so an unattended resume isn't stopped at a prompt nobody sees. The part removes the
+# task again once it finishes without needing a restart. Only for a user who is an administrator (Highest elevates no one else).
+function Register-AdminTask {
+    # This part runs elevated: as $ForUser themselves when they approved the prompt with their own (administrator) account.
+    $me = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $admins = @(Get-LocalGroupMember -SID 'S-1-5-32-544' -ErrorAction SilentlyContinue | ForEach-Object Name)
+    if ($me -ne $ForUser -and $admins -notcontains $ForUser) { Say "$ForUser isn't an administrator: after the restart, approve the UAC prompt (or sign in as an administrator) to carry on." 'Yellow'; return }
+    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$script:SelfPath`" -AdminPhase -ForUser `"$ForUser`" $(Get-ScriptArgs)"
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments
+    $principal = New-ScheduledTaskPrincipal -UserId $ForUser -LogonType Interactive -RunLevel Highest
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 4)
+    Register-ScheduledTask -TaskPath $SetupTaskPath -TaskName $AdminTaskName -Action $action -Principal $principal -Settings $settings -Force | Out-Null
+}
+
+function Unregister-AdminTask {
+    if (Get-ScheduledTask -TaskPath $SetupTaskPath -TaskName $AdminTaskName -ErrorAction SilentlyContinue) {
+        Unregister-ScheduledTask -TaskPath $SetupTaskPath -TaskName $AdminTaskName -Confirm:$false
+    }
+}
+
+# User part: runs the administrator part, through the elevated task when a restart left one, else with one UAC prompt.
+# Returns its exit code ($RestartExitCode: restart now).
+function Invoke-AdminPart {
+    $task = Get-ScheduledTask -TaskPath $SetupTaskPath -TaskName $AdminTaskName -ErrorAction SilentlyContinue
+    if ($task) {
+        try {
+            Step 'Administrator part (through the elevated setup task, no prompt)'
+            Start-ScheduledTask -TaskPath $SetupTaskPath -TaskName $AdminTaskName
+            Start-Sleep -Seconds 3
+            while ((Get-ScheduledTask -TaskPath $SetupTaskPath -TaskName $AdminTaskName -ErrorAction SilentlyContinue).State -in 'Running', 'Queued') { Start-Sleep -Seconds 5 }
+            $info = Get-ScheduledTaskInfo -TaskPath $SetupTaskPath -TaskName $AdminTaskName -ErrorAction SilentlyContinue
+            return $(if ($info) { [int]$info.LastTaskResult } else { 0 }) # gone = it finished and removed itself
+        }
+        catch { Say "The setup task couldn't be started ($($_.Exception.Message)); asking for administrator rights instead." 'Yellow' }
+    }
+    Step 'Asking for administrator rights (one prompt)'
+    $adminArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$script:SelfPath`" -AdminPhase -ForUser `"$env:USERDOMAIN\$env:USERNAME`" $(Get-ScriptArgs)"
+    $admin = Start-Process powershell -Verb RunAs -ArgumentList $adminArgs -Wait -PassThru
+    return $admin.ExitCode
+}
+
+# Administrator part: counts the restart and says whether to take it (false once $MaxRestarts are used up: carry on).
+function Request-Restart([string]$why) {
+    $state = Get-SetupState
+    if ([int]$state.Restarts -ge $MaxRestarts) {
+        Say "$why But setup has restarted $MaxRestarts times already; carrying on without restarting." 'Yellow'
+        return $false
+    }
+    $state.Restarts = [int]$state.Restarts + 1
+    Save-SetupState $state
+    Say "$why Restart $($state.Restarts) of at most ${MaxRestarts}: setup carries on by itself after the automatic sign-in." 'Yellow'
+    $script:RestartNeeded = $true
+    return $true
+}
 
 function Read-KitManifest {
     if (-not $Kit) { return $null }
@@ -177,6 +307,91 @@ function Grant-UserModify([string]$path) {
     if ($ForUser) { & icacls $path /grant "${ForUser}:(OI)(CI)M" /T /C /Q | Out-Null }
 }
 
+function Get-Download([string]$url, [string]$name) {
+    $null = New-Item -ItemType Directory -Force -Path $SqlDir
+    $file = Join-Path $SqlDir $name
+    if (-not (Test-Path $file)) { Say "  downloading $name"; Invoke-WebRequest $url -OutFile $file -UseBasicParsing }
+    return $file
+}
+
+# Microsoft's bootstrapper fetching install media into $SqlDir\<folder> (one at a time: two at once save nothing).
+function Get-SqlMedia([string]$bootstrapper, [string]$mediaType, [string]$folder, [string]$filter) {
+    $target = Join-Path $SqlDir $folder
+    $found = Get-ChildItem $target -Recurse -Filter $filter -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($found) { return $found.FullName }
+    Say "  downloading the $mediaType media (this can take a while)"
+    $p = Start-Process $bootstrapper -ArgumentList "/ACTION=Download /MEDIAPATH=`"$target`" /MEDIATYPE=$mediaType /QUIET" -Wait -PassThru
+    $found = Get-ChildItem $target -Recurse -Filter $filter -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $found) { Fail "The SQL Server bootstrapper didn't download the $mediaType media (exit $($p.ExitCode))." }
+    return $found.FullName
+}
+
+# SQL Server 2025 Developer as the default instance (localhost), Windows sign-in, you and Administrators sysadmin, started
+# at boot. 2025 because Microsoft's SQL Server 2022 Developer bootstrapper no longer starts (it crashes fetching its manifest),
+# and a 2022 server or LocalDB restores onto 2025 (never the other way).
+function Ensure-SqlServer {
+    if (Get-Service 'MSSQLSERVER' -ErrorAction SilentlyContinue) {
+        Say 'SQL Server (localhost) is installed.'
+        Set-Service 'MSSQLSERVER' -StartupType Automatic
+        if ((Get-Service 'MSSQLSERVER').Status -ne 'Running') { Start-Service 'MSSQLSERVER' }
+        return
+    }
+    if ((Test-RestartPending) -and (Request-Restart 'Windows has a restart pending, and SQL Server setup won''t run until it happens.')) { return }
+    Say 'Installing SQL Server 2025 Developer (localhost)...'
+    $ssei = Get-Download $SseiDevUrl 'SQL2025-SSEI-StdDev.exe'
+    $iso = Get-SqlMedia $ssei 'ISO' 'developer' '*.iso'
+    $mounted = Mount-DiskImage -ImagePath $iso -PassThru
+    try {
+        $drive = ($mounted | Get-Volume).DriveLetter
+        $sysadmins = "`"$ForUser`" `"BUILTIN\Administrators`""
+        $setupArgs = "/Q /ACTION=Install /FEATURES=SQLENGINE /INSTANCENAME=MSSQLSERVER /SQLSVCACCOUNT=`"NT Service\MSSQLSERVER`" " +
+            "/SQLSYSADMINACCOUNTS=$sysadmins /SQLSVCSTARTUPTYPE=Automatic /TCPENABLED=1 /UPDATEENABLED=False /IACCEPTSQLSERVERLICENSETERMS"
+        $p = Start-Process "${drive}:\setup.exe" -ArgumentList $setupArgs -Wait -PassThru
+    }
+    finally { Dismount-DiskImage -ImagePath $iso | Out-Null }
+    $summary = 'C:\Program Files\Microsoft SQL Server\170\Setup Bootstrap\Log\Summary.txt'
+    switch ($p.ExitCode) {
+        0 { Say 'SQL Server installed.' 'Green'; Remove-Item (Split-Path $iso -Parent) -Recurse -Force -ErrorAction SilentlyContinue }
+        3010 { Say 'SQL Server installed.' 'Green'; Remove-Item (Split-Path $iso -Parent) -Recurse -Force -ErrorAction SilentlyContinue; $null = Request-Restart 'SQL Server setup asks for a restart.' }
+        default {
+            if ((Test-RestartPending) -and (Request-Restart "SQL Server setup stopped (exit $($p.ExitCode)), and Windows has a restart pending.")) { return }
+            Say "SQL Server setup failed (exit $($p.ExitCode)); see $summary. Run this script again to retry." 'Yellow'
+        }
+    }
+}
+
+function Find-SqlLocalDb {
+    Get-ChildItem 'C:\Program Files\Microsoft SQL Server\*\Tools\Binn\SqlLocalDB.exe' -ErrorAction SilentlyContinue |
+        Sort-Object { [int]($_.FullName -replace '^.*Microsoft SQL Server\\(\d+)\\.*$', '$1') } -Descending | Select-Object -First 1
+}
+
+# SQL Server 2025 LocalDB ((localdb)\MSSQLLocalDB, where Prose, IdiotProof and the other apps keep their databases).
+function Ensure-LocalDb {
+    $exe = Find-SqlLocalDb
+    if ($exe -and $exe.FullName -match '\\(1[7-9]|[2-9]\d)\d\\') { Say "SQL Server LocalDB is installed ($($exe.FullName))."; return }
+    Say 'Installing SQL Server 2025 LocalDB...'
+    $ssei = Get-Download $SseiExprUrl 'SQL2025-SSEI-Expr.exe'
+    $msi = Get-SqlMedia $ssei 'LocalDB' 'localdb' 'SqlLocalDB.msi'
+    $p = Start-Process 'msiexec.exe' -ArgumentList "/i `"$msi`" /qn /norestart IACCEPTSQLLOCALDBLICENSETERMS=YES /l*v `"$SqlDir\localdb-install.log`"" -Wait -PassThru
+    switch ($p.ExitCode) {
+        0 { Say 'LocalDB installed.' 'Green' }
+        3010 { Say 'LocalDB installed.' 'Green'; $null = Request-Restart 'LocalDB setup asks for a restart.' }
+        default { Say "LocalDB setup failed (exit $($p.ExitCode)); see $SqlDir\localdb-install.log." 'Yellow' }
+    }
+}
+
+function Ensure-Sql {
+    if ($SkipSql) { return }
+    Step 'SQL Server, LocalDB and Management Studio'
+    Ensure-SqlServer
+    if ($script:RestartNeeded) { return }
+    Ensure-LocalDb
+    if ($script:RestartNeeded) { return }
+    Install-Package 'Microsoft.SQLServerManagementStudio.22' 'SQL Server Management Studio 22'
+    # The full instance reads the backups as its service account.
+    if ($Databases -and (Test-Path $Databases)) { & icacls $Databases /grant 'NT SERVICE\MSSQLSERVER:(OI)(CI)RX' /T /C /Q | Out-Null }
+}
+
 function Invoke-AdminPhase {
     Step 'Administrator part'
     Ensure-DDrive
@@ -251,6 +466,10 @@ function Invoke-AdminPhase {
             }
         }
     }
+
+    Ensure-Sql
+    if ($script:RestartNeeded) { Register-AdminTask; return }
+    Unregister-AdminTask
     Say 'Administrator part done.' 'Green'
 }
 
@@ -261,6 +480,59 @@ function Invoke-AdminPhase {
 function Invoke-Native([string]$what, [scriptblock]$block) {
     & $block
     if ($LASTEXITCODE -ne 0) { Fail "$what (exit $LASTEXITCODE)" }
+}
+
+function Invoke-Sql([string]$server, [string]$sql) {
+    $c = New-Object System.Data.SqlClient.SqlConnection "Server=$server;Integrated Security=true;TrustServerCertificate=true;Connect Timeout=60"
+    $c.Open()
+    try {
+        $cmd = $c.CreateCommand(); $cmd.CommandTimeout = 0; $cmd.CommandText = $sql
+        $t = New-Object System.Data.DataTable; $t.Load($cmd.ExecuteReader()); return ,$t
+    }
+    finally { $c.Close() }
+}
+
+# Restores each backup onto $server, its files in $dataDir, unless a database of that name is already there.
+function Restore-Backups([string]$server, [object[]]$files, [string]$dataDir) {
+    foreach ($bak in $files) {
+        $db = $bak.BaseName
+        try {
+            if ((Invoke-Sql $server "SELECT COUNT(*) AS n FROM sys.databases WHERE name = N'$($db -replace "'", "''")'").Rows[0].n -gt 0) { Say "  $db is already on $server."; continue }
+            $moves = foreach ($f in (Invoke-Sql $server "RESTORE FILELISTONLY FROM DISK = N'$($bak.FullName)'").Rows) {
+                $suffix = if ($f.Type -eq 'L') { '_log.ldf' } elseif ([int]$f.FileId -gt 2) { "_$($f.FileId).ndf" } else { '.mdf' }
+                "MOVE N'$($f.LogicalName -replace "'", "''")' TO N'$dataDir\$db$suffix'"
+            }
+            Say "  restoring $db onto $server..."
+            $null = Invoke-Sql $server "RESTORE DATABASE [$db] FROM DISK = N'$($bak.FullName)' WITH $($moves -join ', '), RECOVERY" # checksums in the backup are verified anyway
+        }
+        catch { Say "  $db couldn't be restored onto ${server}: $($_.Exception.Message)" 'Yellow' }
+    }
+}
+
+# The backups from your PC (databases\localhost\*.bak, databases\localdb\*.bak; a flat folder: Orchestrator and Tickets to
+# localhost, the rest to LocalDB), each onto the instance it came from.
+function Restore-Databases {
+    if ($SkipSql -or -not $Databases) { return }
+    Step "Databases from $Databases"
+    $all = @(Get-ChildItem $Databases -Recurse -Filter *.bak -ErrorAction SilentlyContinue)
+    if (-not $all) { Say 'No .bak files there.'; return }
+    $full = @($all | Where-Object { $_.Directory.Name -eq 'localhost' -or ($_.DirectoryName -eq $Databases -and $_.BaseName -in 'MindAttic.Orchestrator', 'MindAttic.Tickets') })
+    $local = @($all | Where-Object { $full -notcontains $_ })
+    if ($full) {
+        try {
+            $dataDir = (Invoke-Sql 'localhost' "SELECT CAST(SERVERPROPERTY('InstanceDefaultDataPath') AS nvarchar(260)) AS p").Rows[0].p.TrimEnd('\')
+            Restore-Backups 'localhost' $full $dataDir
+        }
+        catch { Say "SQL Server (localhost) isn't reachable, so its backups wait: $($_.Exception.Message)" 'Yellow' }
+    }
+    if ($local) {
+        $exe = Find-SqlLocalDb
+        if (-not $exe) { Say 'LocalDB isn''t installed, so its backups wait.' 'Yellow' }
+        else {
+            & $exe.FullName create MSSQLLocalDB -s 2>&1 | Out-Null # makes the default instance if it isn't there yet, and starts it
+            Restore-Backups '(localdb)\MSSQLLocalDB' $local $env:USERPROFILE
+        }
+    }
 }
 
 function Ensure-Identity($manifest) {
@@ -417,29 +689,48 @@ function Ensure-Logins {
 
 # ---------------------------------------------------------------------------------------------------------------------
 
+$script:SelfPath = $MyInvocation.MyCommand.Path
+$script:RestartNeeded = $false
+if ($Kit) { $Kit = (Resolve-Path $Kit).Path }
+if (-not $Databases -and $Kit) {
+    $beside = Join-Path (Split-Path $Kit -Parent) 'databases'
+    if (Test-Path $beside) { $Databases = $beside }
+}
+if ($Databases) { $Databases = (Resolve-Path $Databases).Path }
+
 if ($AdminPhase) {
-    try { Invoke-AdminPhase; exit 0 } catch { Say $_.Exception.Message 'Red'; exit 1 }
+    try {
+        Invoke-AdminPhase
+        if ($script:RestartNeeded) { exit $RestartExitCode }
+        exit 0
+    }
+    catch { Say $_.Exception.Message 'Red'; exit 1 }
 }
 
 Say "MindAttic Orchestrator host setup on $env:COMPUTERNAME as $env:USERDOMAIN\$env:USERNAME (log: $Log)" 'Cyan'
-if ($Kit) { $Kit = (Resolve-Path $Kit).Path }
+if ($Resumed) { Say "Carrying on after a restart (restarts so far: $((Get-SetupState).Restarts))." 'Cyan' }
 $manifest = Read-KitManifest
 if ($manifest) { Say "Kit from $($manifest.SourceMachine), made $($manifest.CreatedUtc)." }
-
-# The administrator part runs elevated in its own window (one UAC prompt); everything else runs as you, so the daemon, the
-# CLIs and their files belong to you, not to the administrator.
-$self = $MyInvocation.MyCommand.Path
-$adminArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$self`"", '-AdminPhase', '-ForUser', "`"$env:USERDOMAIN\$env:USERNAME`"")
-if ($Kit) { $adminArgs += @('-Kit', "`"$Kit`"") }
-if ($SkipAutoLogon) { $adminArgs += '-SkipAutoLogon' }
 if (Test-Admin) {
     Say 'Running elevated: the apps and the daemon would be installed for the administrator. Run this from a normal (non-admin) PowerShell.' 'Yellow'
 }
-Step 'Asking for administrator rights (one prompt)'
-$admin = Start-Process powershell -Verb RunAs -ArgumentList $adminArgs -Wait -PassThru
-if ($admin.ExitCode -ne 0) { Fail "The administrator part failed; see $Log." }
+
+# Any restart from here on (setup's own, or yours) carries on at the next sign-in, until setup is done.
+Set-ResumeAtSignIn
+
+# The administrator part runs elevated in its own window (one UAC prompt); everything else runs as you, so the daemon, the
+# CLIs and their files belong to you, not to the administrator.
+$adminExit = Invoke-AdminPart
+if ($adminExit -eq $RestartExitCode) {
+    Step 'Restarting'
+    Say 'Restarting in 60 seconds to finish installing. Setup carries on by itself after the sign-in (shutdown /a cancels).' 'Yellow'
+    & shutdown.exe /r /t 60 /c 'MindAttic host setup: restarting to finish installing; it carries on after sign-in.'
+    exit 0
+}
+if ($adminExit -ne 0) { Fail "The administrator part failed (exit $adminExit); see $Log. Run this again to retry." }
 Update-PathFromRegistry
 
+Restore-Databases
 Ensure-Identity $manifest
 Ensure-Claude
 Ensure-Workspace $manifest
@@ -448,6 +739,7 @@ Ensure-AllRepos
 Become-Host
 Ensure-Logins
 
+Clear-Resume
 Step 'Done'
 Say 'This machine is the MindAttic Orchestrator host. The dashboard opens now; /allocate in its CLIs works the tickets.' 'Green'
 Say 'On your PC: pull, deploy MindAttic.Orchestrator (run.ps1), then run the connect line above. From then on `orchestrator machine pull` brings you the newest code.' 'Green'

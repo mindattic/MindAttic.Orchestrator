@@ -54,6 +54,13 @@ as an LSA secret by Sysinternals Autologon), and the Claude sign-ins. Then it:
 - gives the workspace a `D:` (a blank extra disk, else `C:\MindAttic-D` mapped as `D:` at every boot, since
   `D:\Projects\MindAttic` is built into every app);
 - installs git, the GitHub CLI, the .NET 10 SDK, Node.js, Python 3, PowerShell 7, Windows Terminal and Claude Code;
+- installs SQL Server 2025 Developer as `localhost` (unless a SQL Server is already there; you and Administrators are
+  sysadmin), SQL Server 2025 LocalDB and SQL Server Management Studio 22 (M.ORCH-T1486; `-SkipSql` skips them), then
+  restores the backups in `-Databases` (default: the `databases` folder beside the kit; `localhost\*.bak` onto SQL Server,
+  `localdb\*.bak` onto LocalDB, any database already there left alone). 2025, because your PC's LocalDB is already 2025 and
+  a backup only restores onto the same version or newer;
+- restarts Windows by itself when SQL Server setup needs it (at most 3 times) and carries on after the automatic sign-in,
+  with no second UAC prompt;
 - fills `C:\LocalNuGet` from the kit, turns sleep off and Remote Desktop on, and opens the gateway's port (TCP 7443);
 - clones the workspace and every repo, builds and installs Vault, Tickets, Launcher, Orchestrator and Scheduler, and
   installs the agent standard's global commands and commit hooks;
