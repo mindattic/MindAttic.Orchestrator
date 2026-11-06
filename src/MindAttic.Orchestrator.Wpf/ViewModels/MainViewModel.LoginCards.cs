@@ -140,7 +140,7 @@ public sealed partial class MainViewModel
         await RefreshAsync();
     });
 
-    /// <summary>Defaults: puts the dialog's cutoffs back to 90% of the week and 98% of the 5-hour window, for Save to keep.</summary>
+    /// <summary>Defaults: puts the dialog's cutoffs back to 90% of the week and 96% of the 5-hour window, for Save to keep.</summary>
     public ICommand ResetLimitCommand => resetLimitCommand ??= new RelayCommand(() =>
     {
         LimitWeekly = UsageCutoffs.DefaultWeeklyPercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -195,7 +195,7 @@ public sealed partial class MainViewModel
     /// <summary>Why the dialog's numbers can't be saved; empty when they can.</summary>
     public string LimitError { get => limitError; private set => Set(ref limitError, value); }
 
-    /// <summary>The bounds the dialog says: "50 to 100" and "1 to 100", the defaults 90 and 98.</summary>
+    /// <summary>The bounds the dialog says: "50 to 100" and "1 to 100", the defaults 90 and 96.</summary>
     public string LimitHint => $"Weekly {UsageCutoffs.MinWeeklyPercent} to 100 ({UsageCutoffs.DefaultWeeklyPercent} by default); 5-hour " +
         $"{UsageCutoffs.MinFiveHourPercent} to 100 ({UsageCutoffs.DefaultFiveHourPercent} by default). At either, this login's access is cut off " +
         "until it resets or you allow it past (orchestrator org allow).";

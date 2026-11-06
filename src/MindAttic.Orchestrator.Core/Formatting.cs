@@ -27,7 +27,7 @@ public static class Formatting
 
     private static string Tenths(double n) => n.ToString("0.0", CultureInfo.InvariantCulture);
 
-    /// <summary>Where the 5-hour percent gains a decimal: near the 98% target a whole percent hides the last few points.</summary>
+    /// <summary>Where the 5-hour percent gains a decimal: near the 96% target a whole percent hides the last few points.</summary>
     public const double FiveHourTenthsFrom = 90;
 
     /// <summary>The 5-hour usage percent, with its sign: whole percents below 90 ("42%"), one decimal from 90 on ("90.0%",

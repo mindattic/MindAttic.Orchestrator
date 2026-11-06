@@ -446,7 +446,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         // The weekly and 5-hour cutoffs are per user, and org limit is the only way to change one (M.ORCH-T707): rejected
         // here, before anything is staged, so these can never half-apply or swallow other options given alongside them.
         : settings.WeeklyTarget is not null || settings.WeeklyReserve is not null || settings.WeeklyLine is not null || settings.WeeklyWindDown is not null
-            ? "The weekly line is each member's own cutoff now (90% of the week, 98% of the 5-hour window by default): orchestrator org limit <who> --weekly <pct> --5h <pct>."
+            ? "The weekly line is each member's own cutoff now (90% of the week, 96% of the 5-hour window by default): orchestrator org limit <who> --weekly <pct> --5h <pct>."
         : null;
 
     public override int Execute(CommandContext context, Settings settings)

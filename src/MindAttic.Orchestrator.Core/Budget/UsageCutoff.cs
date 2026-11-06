@@ -34,7 +34,7 @@ public sealed class UsageCutoffBook
 public static class UsageCutoffs
 {
     public const string StateName = "usage-cutoffs";
-    public const int DefaultWeeklyPercent = 90, DefaultFiveHourPercent = 98;
+    public const int DefaultWeeklyPercent = 90, DefaultFiveHourPercent = 96;
     /// <summary>The lowest weekly cutoff (the weekly reserve's own limit, 50) and the lowest 5-hour one.</summary>
     public const int MinWeeklyPercent = 100 - OrchestratorSettings.MaxWeeklyReservePercent, MinFiveHourPercent = 1;
 

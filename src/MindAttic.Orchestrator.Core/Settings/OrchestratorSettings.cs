@@ -52,7 +52,7 @@ public sealed record OrchestratorSettings
 
     /// <summary>How much of each limit pacing aims to use by the reset; the rest is margin for usage
     /// the orchestrator can't see (claude.ai, other machines).</summary>
-    public int PaceTargetPercent { get; init; } = 98;
+    public int PaceTargetPercent { get; init; } = 96;
 
     /// <summary>The share of each account's week kept back (M.ORCH-T609): every CLI on an account stops at
     /// <see cref="WeeklyStopPercent"/> (100 minus this) of that account's week instead of burning it all. 0 to

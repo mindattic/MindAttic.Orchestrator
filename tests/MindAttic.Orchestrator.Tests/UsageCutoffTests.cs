@@ -6,7 +6,7 @@ using Spectre.Console;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>M.ORCH-T707: per-user usage cutoffs, 90% of the week and 98% of the 5-hour window by default, changed only by
+/// <summary>M.ORCH-T707: per-user usage cutoffs, 90% of the week and 96% of the 5-hour window by default, changed only by
 /// <c>org limit</c>; no 75% line.</summary>
 public sealed class UsageCutoffTests
 {
@@ -17,18 +17,18 @@ public sealed class UsageCutoffTests
     public void TearDown() => temps.DeleteAll();
 
     [Test]
-    public void Everyone_defaults_to_90_and_98_and_a_set_cutoff_applies_to_that_login_only()
+    public void Everyone_defaults_to_90_and_96_and_a_set_cutoff_applies_to_that_login_only()
     {
         var settings = new OrchestratorSettings();
         var store = new JsonStore(temps.New());
-        Assert.That((UsageCutoffs.WeeklyFor(null, Erin), UsageCutoffs.FiveHourFor(null, Erin)), Is.EqualTo((90, 98)));
+        Assert.That((UsageCutoffs.WeeklyFor(null, Erin), UsageCutoffs.FiveHourFor(null, Erin)), Is.EqualTo((90, 96)));
 
         UsageCutoffs.Set(store, Erin, "Erin", 80, null);
         var cutoffs = UsageCutoffs.Load(store);
         var erin = UsageCutoffs.Apply(cutoffs, Erin, settings);
         var other = UsageCutoffs.Apply(cutoffs, "honey@mindattic.com", settings);
-        Assert.That((erin.WeeklyStopPercent, erin.PaceTargetPercent), Is.EqualTo((80, 98)));
-        Assert.That((other.WeeklyStopPercent, other.PaceTargetPercent), Is.EqualTo((90, 98)));
+        Assert.That((erin.WeeklyStopPercent, erin.PaceTargetPercent), Is.EqualTo((80, 96)));
+        Assert.That((other.WeeklyStopPercent, other.PaceTargetPercent), Is.EqualTo((90, 96)));
         // The warn line keeps the same 10-point gap to Erin's own (lowered) weekly cutoff that the org-wide default
         // keeps to its own (90 - 80 = 10); her untouched 5-hour cutoff keeps the org-wide 80 (bughunt 2026-11-01).
         Assert.That((erin.WeeklyWarnPercent, erin.FiveHourWarnPercent), Is.EqualTo((70, 80)));
@@ -88,7 +88,7 @@ public sealed class UsageCutoffTests
         {
             var said = Cli(out var exit, "org", "limit");
             Assert.That(exit, Is.Zero, said);
-            Assert.That(said, Does.Contain("Erin").And.Contain("90% of the week, 98% of the 5-hour window (default)"));
+            Assert.That(said, Does.Contain("Erin").And.Contain("90% of the week, 96% of the 5-hour window (default)"));
 
             said = Cli(out exit, "org", "limit", "erin", "--weekly", "80", "--5h", "95");
             Assert.That(exit, Is.Zero, said);

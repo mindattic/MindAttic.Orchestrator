@@ -376,7 +376,7 @@ public static class AgentGate
             return _week_stop[0]
         _five_stop = []
         def five_hour_stop_percent():
-            # The login's own 5-hour cutoff (org limit --5h, 98% by default) as the daemon last wrote it into this login's
+            # The login's own 5-hour cutoff (org limit --5h, 96% by default) as the daemon last wrote it into this login's
             # status, read even when that status is stale, so a daemon that's down doesn't let the login run to STOP_PERCENT;
             # STOP_PERCENT only when no status names one (bughunt 2026-10-27).
             if _five_stop:
@@ -1857,7 +1857,7 @@ public static class AgentGate
 
     private static string OrgCommandFor(string name) => """
         ---
-        description: "The organization: /NAME usage prints every member's usage table; /NAME login <who> signs a member in; /NAME members lists them (add, set and remove change them); /NAME start <repo> <who> starts a CLI on a member's login; /NAME allow <who> [--until <reset|time>] lets that member's login take work past its weekly target until its weekly reset, /NAME disallow <who> takes it back, and /NAME limit [<who> --weekly <pct> --5h <pct> | --reset] lists or sets each member's usage cutoffs (90% of the week and 98% of the 5-hour window by default). <who> is a member's email, the part before the @, name, first name, login alias or initials. Each works on the org chosen in the dashboard's switcher; --org <id|name> picks another. /NAME help lists them."
+        description: "The organization: /NAME usage prints every member's usage table; /NAME login <who> signs a member in; /NAME members lists them (add, set and remove change them); /NAME start <repo> <who> starts a CLI on a member's login; /NAME allow <who> [--until <reset|time>] lets that member's login take work past its weekly target until its weekly reset, /NAME disallow <who> takes it back, and /NAME limit [<who> --weekly <pct> --5h <pct> | --reset] lists or sets each member's usage cutoffs (90% of the week and 96% of the 5-hour window by default). <who> is a member's email, the part before the @, name, first name, login alias or initials. Each works on the org chosen in the dashboard's switcher; --org <id|name> picks another. /NAME help lists them."
         argument-hint: "[usage [--detail] [--since <date>] [--csv|--json] [--md|--html <file>] | login <who> | members [add|set|remove ...] | start <repo> <who> | allow <who> [--until <reset|time>] | disallow <who> | limit [<who> --weekly <pct> --5h <pct> | --reset] | help] [--org <id|name>]"
         ---
         /NAME $ARGUMENTS was asked for. All it does is run MindAttic.Orchestrator's CLI: do nothing else, and don't work out any answer yourself.

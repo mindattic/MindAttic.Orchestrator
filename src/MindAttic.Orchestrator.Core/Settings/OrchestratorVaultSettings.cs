@@ -59,7 +59,7 @@ public sealed class OrchestratorVaultSettings
 
     [Setting("Pace target (%)", Group = "Pacing", Order = 2, Help = "How much of each 5-hour limit pacing aims to use by its reset.")]
     [SettingRange(1, 100)]
-    public int PaceTargetPercent { get; set; } = 98;
+    public int PaceTargetPercent { get; set; } = 96;
 
     [Setting("Exempt from pacing", Group = "Pacing", Order = 3,
         Help = "Slash commands whose turns skip every pace gate (no hold, no subagent wait, no stop); their spend still counts. Empty exempts none.")]

@@ -176,7 +176,7 @@ internal static class CliApp
                 });
                 o.AddCommand<OrgStartCommand>("start").WithDescription("Start a CLI in <repo> on a member's login (orchestrator start <repo> --account <their email>).");
                 o.AddCommand<OrgAllowCommand>("allow").WithDescription("Let a member's login take work past its weekly target: allow <who> [[--until reset|<time>]], until its weekly reset by default (M.ORCH-T694).");
-                o.AddCommand<OrgLimitCommand>("limit").WithDescription("Per-user usage cutoffs (M.ORCH-T707): limit alone lists them; limit <who> --weekly <pct> --5h <pct> sets them, --reset puts back 90 and 98.");
+                o.AddCommand<OrgLimitCommand>("limit").WithDescription("Per-user usage cutoffs (M.ORCH-T707): limit alone lists them; limit <who> --weekly <pct> --5h <pct> sets them, --reset puts back 90 and 96.");
                 o.AddCommand<OrgDisallowCommand>("disallow").WithDescription("Take back org allow: disallow <who>; that login stops at its weekly target again.");
             });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
@@ -428,7 +428,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         public bool? Pace { get; init; }
 
         [CommandOption("--target <PERCENT>")]
-        [Description("How much of each limit pacing aims to use by the reset (default 98).")]
+        [Description("How much of each limit pacing aims to use by the reset (default 96).")]
         public int? Target { get; init; }
 
         [CommandOption("--week")]

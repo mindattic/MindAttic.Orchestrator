@@ -1,7 +1,7 @@
 # How orchestration works
 
 MindAttic.Orchestrator keeps Claude agents working around the clock on the workspace's tickets, and spends each
-5-hour usage window almost to its end (98% by default, adjustable) without ever reaching Claude's limit.
+5-hour usage window almost to its end (96% by default, adjustable) without ever reaching Claude's limit.
 
 ## Why spend almost all of every window, and never the limit
 
@@ -9,7 +9,7 @@ Claude's subscription meters usage in 5-hour windows. Whatever a window doesn't 
 idle hour is lost work. Reaching the limit is worse than stopping early: every session, tab and subagent stops
 mid-step until the reset, work is left half done, and nothing can run, not even a typed question. So the goal is to
 land as close to the limit as possible at the moment the window resets, never on it before. The target is
-`PaceTargetPercent` (98% by default, set in the dashboard's Settings). The gap above it is room for what the
+`PaceTargetPercent` (96% by default, set in the dashboard's Settings). The gap above it is room for what the
 orchestrator can't predict: you typing a question, an agent it didn't start, a reply bigger than usual.
 
 ## The loop
@@ -224,7 +224,7 @@ The request goes to the host, never into the CLI, on a pipe of its own beside th
   default; `orchestrator settings --failover false`) turns it off.
 
   **Past a login's line, straight to the key (M.ORCH-T681):** a CLI on someone's own per-CLI login that reaches the
-  5-hour pace target (`PaceTargetPercent`, 98%) or the weekly target (`WeeklyStopPercent`: 100 minus the weekly reserve),
+  5-hour pace target (`PaceTargetPercent`, 96%) or the weekly target (`WeeklyStopPercent`: 100 minus the weekly reserve),
   or whose pace stops or limit is hit, is never moved to another person's login (each person's remainder stays theirs):
   it fails over to the API key with `now: true`, so the tab restarts it at once instead of the pace gate refusing its
   calls, keeping its session and login, and moves back when that login's window resets. Only while the fallback is the API
