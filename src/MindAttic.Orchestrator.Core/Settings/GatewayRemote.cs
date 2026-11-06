@@ -28,6 +28,11 @@ public sealed record GatewayRemote
     /// <summary>The bearer token, DPAPI-sealed for this Windows user and base64 (<see cref="GatewayRemotes.Seal"/>).</summary>
     public string? SealedToken { get; init; }
 
+    /// <summary>The gateway's owner key, DPAPI-sealed for this Windows user and base64: set only for the owner's own host
+    /// (<c>orchestrator machine client</c>, M.ORCH-T1473), so this machine mints fresh tokens itself (<c>POST /auth/token</c>)
+    /// and the link never expires.</summary>
+    public string? SealedOwnerKey { get; init; }
+
     /// <summary>Who the wall says these CLIs belong to.</summary>
     public string Who => string.IsNullOrWhiteSpace(Person) ? Name : Person.Trim();
 }
@@ -74,12 +79,17 @@ public static class GatewayRemotes
         Convert.ToBase64String(LoginTokens.Dpapi.Protect(Encoding.UTF8.GetBytes(token.Trim()), Entropy));
 
     /// <summary>The remote's token in the clear, or null when it has none or it can't be unsealed here (another user or machine).</summary>
-    public static string? Token(GatewayRemote remote)
+    public static string? Token(GatewayRemote remote) => Unseal(remote.SealedToken);
+
+    /// <summary>The remote's owner key in the clear, or null when it has none or it can't be unsealed here.</summary>
+    public static string? OwnerKey(GatewayRemote remote) => Unseal(remote.SealedOwnerKey);
+
+    private static string? Unseal(string? sealedText)
     {
-        if (string.IsNullOrWhiteSpace(remote.SealedToken)) return null;
+        if (string.IsNullOrWhiteSpace(sealedText)) return null;
         try
         {
-            return LoginTokens.Dpapi.Unprotect(Convert.FromBase64String(remote.SealedToken), Entropy) is { } plain
+            return LoginTokens.Dpapi.Unprotect(Convert.FromBase64String(sealedText), Entropy) is { } plain
                 ? Encoding.UTF8.GetString(plain) : null;
         }
         catch (FormatException) { return null; }

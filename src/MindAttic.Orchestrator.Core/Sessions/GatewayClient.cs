@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Net.Security;
 using System.Net.WebSockets;
 using System.Security.Authentication;
@@ -55,8 +56,11 @@ public sealed class GatewayClient : IDisposable
 
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
     private readonly HttpClient http;
-    private readonly string? token;
+    private volatile string? token;
     private readonly string? pin;
+    private readonly string? ownerKey;
+    private readonly SemaphoreSlim minting = new(1, 1);
+    private volatile string? mintProblem;
 
     private readonly Func<GatewayRemote?>? latest;
 
@@ -67,6 +71,7 @@ public sealed class GatewayClient : IDisposable
         Remote = remote;
         this.latest = latest;
         token = GatewayRemotes.Token(remote);
+        ownerKey = GatewayRemotes.OwnerKey(remote);
         pin = GatewayRemotes.NormalizePin(remote.CertSha256);
         BaseUrl = GatewayRemotes.NormalizeUrl(remote.Url);
         var handler = new SocketsHttpHandler
@@ -84,7 +89,50 @@ public sealed class GatewayClient : IDisposable
     public string? BaseUrl { get; }
 
     /// <summary>Whether a token was found and could be unsealed for this Windows user.</summary>
-    public bool HasToken => token is not null;
+    public bool HasToken => token is not null || ownerKey is not null;
+
+    /// <summary>A token minted with the owner key lasts this long (the gateway's most).</summary>
+    public const int MintMinutes = 60;
+
+    /// <summary>
+    /// With the owner key (the owner's own host, M.ORCH-T1473), a fresh token from <c>POST /auth/token</c> whenever there is none
+    /// or it has under 10 minutes left, so the link never lapses. Without one, nothing: the token given is used until it expires.
+    /// Never throws; a failed mint leaves the old token, and the listing says why it's offline.
+    /// </summary>
+    internal async Task MintIfDueAsync(CancellationToken ct)
+    {
+        if (ownerKey is null || BaseUrl is null) return;
+        if (token is { } t && GatewayRemotes.ExpiresUtc(t) is { } exp && exp - DateTime.UtcNow > TimeSpan.FromMinutes(10)) return;
+        await minting.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (token is { } again && GatewayRemotes.ExpiresUtc(again) is { } e2 && e2 - DateTime.UtcNow > TimeSpan.FromMinutes(10)) return;
+            using var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl + "/auth/token")
+            {
+                Content = JsonContent.Create(new { ownerKey, scope = "interact", minutes = MintMinutes }),
+            };
+            using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                mintProblem = response.StatusCode switch
+                {
+                    HttpStatusCode.Unauthorized => "it refused this machine's owner key (the host's key changed: run the connect line it prints again)",
+                    HttpStatusCode.TooManyRequests => "it's refusing owner keys from here for a while (too many wrong ones)",
+                    var code => $"it answered {(int)code} to the owner key",
+                };
+                return;
+            }
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+            if (doc.RootElement.TryGetProperty("token", out var minted) && minted.GetString() is { Length: > 0 } fresh)
+            {
+                token = fresh;
+                mintProblem = null;
+            }
+        }
+        catch (HttpRequestException ex) { mintProblem = Describe(ex); }
+        catch (Exception ex) when (ex is JsonException or OperationCanceledException or InvalidOperationException) { mintProblem = "no token: " + ex.GetType().Name; }
+        finally { minting.Release(); }
+    }
 
     /// <summary>When the token says it expires (unverified); null when it doesn't say.</summary>
     public DateTime? TokenExpiresUtc => GatewayRemotes.ExpiresUtc(token);
@@ -106,6 +154,8 @@ public sealed class GatewayClient : IDisposable
     public async Task<GatewayListing> ListAsync(CancellationToken ct)
     {
         if (BaseUrl is null) return GatewayListing.Offline("its URL isn't an https address");
+        await MintIfDueAsync(ct).ConfigureAwait(false);
+        if (token is null && mintProblem is { } why) return GatewayListing.Offline(why);
         if (token is null) return GatewayListing.Offline("no token (or it can't be unsealed by this Windows user)");
         if (TokenExpiresUtc is { } expires && expires <= DateTime.UtcNow) return GatewayListing.Offline("its token has expired");
         try
@@ -148,6 +198,7 @@ public sealed class GatewayClient : IDisposable
     public async Task<Stream> ConnectAsync(string sessionId, bool watch, CancellationToken ct)
     {
         if (BaseUrl is null) throw new InvalidOperationException($"Gateway {Remote.Name}'s URL isn't an https address.");
+        await MintIfDueAsync(ct).ConfigureAwait(false);
         if (token is null) throw new InvalidOperationException($"Gateway {Remote.Name} has no token this Windows user can open.");
         var url = new Uri("wss" + BaseUrl["https".Length..] + "/sessions/" + Uri.EscapeDataString(sessionId) + "/stream" + (watch ? "?mode=watch" : ""));
         var socket = new ClientWebSocket();
@@ -168,7 +219,7 @@ public sealed class GatewayClient : IDisposable
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(ConnectTimeout);
             await socket.ConnectAsync(url, timeout.Token).ConfigureAwait(false);
-            return new WebSocketFrameStream(socket, latest is null ? null : FreshToken, token);
+            return new WebSocketFrameStream(socket, latest is null && ownerKey is null ? null : FreshToken, token);
         }
         catch
         {
@@ -181,10 +232,16 @@ public sealed class GatewayClient : IDisposable
     /// gateway (URL and pin), so a token meant for another one never goes to this one. Null when there is none.</summary>
     internal string? FreshToken()
     {
+        // The owner's own host: the token this client minted last (the wall's listing re-mints it before it runs low).
+        if (ownerKey is not null) return token;
         if (latest?.Invoke() is not { } now) return null;
         if (GatewayRemotes.NormalizeUrl(now.Url) != BaseUrl || GatewayRemotes.NormalizePin(now.CertSha256) != pin) return null;
         return GatewayRemotes.Token(now);
     }
 
-    public void Dispose() => http.Dispose();
+    public void Dispose()
+    {
+        http.Dispose();
+        minting.Dispose();
+    }
 }

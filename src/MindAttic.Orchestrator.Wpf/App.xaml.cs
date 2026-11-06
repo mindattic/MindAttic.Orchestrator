@@ -197,6 +197,15 @@ public partial class App : Application
 
         // Closing the window quits: there's no tray to hide in (M.ORCH-T501).
         ShutdownMode = ShutdownMode.OnMainWindowClose;
+        // A client's dashboard is its host's Team Wall (M.ORCH-T1473): the daemon, the CLIs and their state are all over there.
+        if (MachineRole.Current is { IsClient: true } client)
+        {
+            log.Information("Client of {Host:l}: opening its host's Team Wall instead of the local dashboard", client.Host ?? client.GatewayUrl ?? "?");
+            if (TeamWallWindow.Open($"MindAttic Orchestrator — host {client.Host ?? client.GatewayUrl}") is not { } wall) { Shutdown(); return; }
+            MainWindow = wall;
+            instance.OnShowRequested(_ => Dispatcher.BeginInvoke(() => { if (MainWindow is { } w) DashboardWindow.Restore(w); }));
+            return;
+        }
         var main = new MainWindow();
         MainWindow = main;
         // This dashboard holds the Terminals panels' terminals, and takes the ones the Launcher sends it (M.ORCH-T810).
@@ -243,6 +252,13 @@ public partial class App : Application
     private void RunDaemon()
     {
         OrchestratorLog.Start("Daemon");
+        // A client's daemon is the host's (M.ORCH-T1473): Scheduler's logon job still starts this, and it exits at once.
+        if (MachineRole.Current.IsClient)
+        {
+            OrchestratorLog.For("Daemon").Information("This machine is a client of {Host:l}; the host runs the daemon, so this one exits", MachineRole.Current.Host ?? "its host");
+            Shutdown();
+            return;
+        }
         daemonMutex = new Mutex(initiallyOwned: true, Installer.DaemonMutex, out var first);
         if (!first)
         {
@@ -380,6 +396,13 @@ public partial class App : Application
     {
         try
         {
+            // A client paces nothing and runs no daemon (M.ORCH-T1473): its hooks would only warn that the daemon is down.
+            if (MachineRole.Current.IsClient)
+            {
+                foreach (var did in new[] { Installer.EnsureShortcuts(self), AgentGateRemoval.Remove() })
+                    if (did is not null) log.Information("Setup (client): {Did:l}", did);
+                return;
+            }
             var gate = new MindAttic.Orchestrator.Settings.JsonStore().LoadSettings();
             foreach (var did in new[] { installer.EnsureDaemon(self), Installer.EnsureShortcuts(self), AgentGate.Ensure(contextPercent: gate.ContextCyclePercent, keepGoing: gate.KeepGoing), AgentGate.EnsureOtherProviders() })
                 if (did is not null) log.Information("Setup: {Did:l}", did);

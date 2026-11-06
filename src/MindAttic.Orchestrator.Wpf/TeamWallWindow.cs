@@ -104,22 +104,29 @@ internal sealed class TeamWallWindow : Window
         Closed += (_, _) => Shutdown();
     }
 
-    /// <summary>Opens the wall, or brings it forward when it's open already. Never throws.</summary>
-    public static void Open()
+    /// <summary>Opens the wall, or brings it forward when it's open already, and returns it; null when it couldn't open. Never
+    /// throws. <paramref name="title"/> retitles it (a client's dashboard is the wall of its host, M.ORCH-T1473).</summary>
+    public static Window? Open(string? title = null)
     {
         try
         {
             if (shown is { } open)
             {
                 DashboardWindow.Restore(open);
-                return;
+                return open;
             }
             var wall = new TeamWallWindow();
+            if (title is not null) wall.Title = title;
             shown = wall;
             wall.Closed += (_, _) => { if (ReferenceEquals(shown, wall)) shown = null; };
             wall.Show();
+            return wall;
         }
-        catch (Exception ex) { log.Error(ex, "Opening the Team Wall failed; contained"); }
+        catch (Exception ex)
+        {
+            log.Error(ex, "Opening the Team Wall failed; contained");
+            return null;
+        }
     }
 
     private static Button Bar(string text, string tip) =>

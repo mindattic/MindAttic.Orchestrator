@@ -185,6 +185,14 @@ While it's on, the repos named are that CLI's cross-repo exception, so its subag
 
 To check on it: `orchestrator status` (sessions), `orchestrator budget` (percent, pace, hold), `orchestrator queue`.
 
+## Run it on another machine
+
+To keep the daemon, the CLIs and their builds off your own PC, run them on a Windows 11 VM (M.ORCH-T1473). On the PC:
+`orchestrator machine handoff --kit <folder>`. On the VM: `setup-host.ps1 -Kit <folder>`, which installs everything and
+prints one `orchestrator machine connect ...` line. Run that line on the PC, and its dashboard becomes the VM's live Team
+Wall. From then on, `orchestrator machine pull` brings the agents' newest code to the PC. See
+[docs/REMOTE_HOST.md](docs/REMOTE_HOST.md).
+
 ## Install
 
 There's no setup step. `MindAttic.Orchestrator.Desktop.exe` is one self-contained file: drop it anywhere and double-click it. The first run:
@@ -229,6 +237,7 @@ The same core drives a CLI, deployed as `orchestrator.exe` in `C:\Apps\MindAttic
 | `remind "<text>" --at <time> [--to <contact>]` / `remind --list` / `remind --cancel <id>` | save a reminder the daemon texts through Psst when it's due (see [Watching](#watching)); `--at` takes `9am`, `tomorrow`, `tomorrow 8am`, `fri 5pm`, `tonight`, `in 2h`, `30m` or `2026-10-20 09:00`, local time; `--to` a Psst contact or a US number, by default you (Psst's own number). A CLI agent asked to "remind me tomorrow" runs it too |
 | `workspace export` | write `docs\workspace-repos.json` in the workspace root repo from the repos on disk (commit and push it so new machines get them) |
 | `workspace build <folder> [--root URL] [--install-apps]` / `workspace install-apps` | clone the workspace root, then every repo it lists, into a folder; on a partial workspace, only what's missing; `install-apps` runs every other app's `run.ps1` |
+| `machine` / `machine handoff [--kit <folder>]` / `machine connect <host> --pin <sha256> --owner-key <key>` / `machine host [--bind <address>]` / `machine pull` / `machine kit <folder>` / `machine standalone` | run the Orchestrator on another machine (M.ORCH-T1473, [docs/REMOTE_HOST.md](docs/REMOTE_HOST.md)): this machine's role; hand off from the PC; connect the PC's dashboard to the host; make this machine the host (`setup-host.ps1` runs it); pull every repo; write the host kit; everything on this machine again |
 
 Starting sessions needs the deployed Launcher at `C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe`.
 

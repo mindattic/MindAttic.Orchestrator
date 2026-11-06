@@ -272,7 +272,8 @@ public sealed class Installer
     /// Returns what it did, or null when one was already up.</summary>
     public string? EnsureDaemon(string exe)
     {
-        if (DaemonRunning()) return null;
+        // The host runs it (M.ORCH-T1473).
+        if (DaemonRunning() || MachineRole.Current.IsClient) return null;
         StartDaemon(exe);
         return "started the daemon";
     }

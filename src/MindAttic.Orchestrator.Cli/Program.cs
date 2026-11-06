@@ -212,6 +212,17 @@ internal static class CliApp
                 w.AddCommand<WorkspaceInstallAppsCommand>("install-apps").WithDescription("Run every app's run.ps1 in the workspace (not the orchestrator's own).");
                 w.AddCommand<WorkspaceBuildCommand>("build").WithDescription("Clone the workspace root, then every repo it lists, into a folder.");
             });
+            config.AddBranch("machine", m =>
+            {
+                m.SetDescription("Run the Orchestrator on another machine (a VM or HVD) so it doesn't use this one's memory (M.ORCH-T1473, docs/REMOTE_HOST.md). Bare: this machine's role.");
+                m.SetDefaultCommand<MachineShowCommand>();
+                m.AddCommand<MachineHandoffCommand>("handoff").WithDescription("On the PC, first: push the data to git, write the host kit (--kit <folder>), and stop running the Orchestrator here (role client).");
+                m.AddCommand<MachineConnectCommand>("connect").WithDescription("On the PC, last: connect <host> --pin <sha256> --owner-key <key>, the line setup-host.ps1 prints; the dashboard becomes the host's Team Wall.");
+                m.AddCommand<MachineHostCommand>("host").WithDescription("On the VM (setup-host.ps1 runs it): role host, the gateway on for the network, the firewall opened, the daemon started; prints the connect line.");
+                m.AddCommand<MachineStandaloneCommand>("standalone").WithDescription("Everything on this machine again (undoes handoff or host).");
+                m.AddCommand<MachinePullCommand>("pull").WithDescription("git pull every repo in the workspace; on a client, refresh the host's tickets too.");
+                m.AddCommand<MachineKitCommand>("kit").WithDescription("Write only the host kit to <folder>.");
+            });
             // Let crashes reach the catch below so they're logged, not just printed.
             config.PropagateExceptions();
         });

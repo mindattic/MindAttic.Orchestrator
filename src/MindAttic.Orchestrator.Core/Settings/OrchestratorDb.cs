@@ -43,6 +43,8 @@ public sealed class OrchestratorDb(string path)
     /// </summary>
     public static string StatePath(string fallbackDirectory) =>
         Environment.GetEnvironmentVariable(EnvVar) is { Length: > 0 } env ? env
+            // A client never writes the checkout's copy, which the host commits: its pull would be blocked (M.ORCH-T1473).
+            : Setup.MachineRole.Current.IsClient ? Setup.MachineRole.ClientOrchestratorDb
             : System.IO.Directory.Exists(System.IO.Path.Combine(MindAttic.Tickets.Workspace.DefaultRoot, "MindAttic.Orchestrator"))
                 ? DefaultPath(MindAttic.Tickets.Workspace.DefaultRoot)
                 : System.IO.Path.Combine(fallbackDirectory, "orchestrator.db");
@@ -79,7 +81,7 @@ public sealed class OrchestratorDb(string path)
 
     /// <summary>The orchestrator's SQL Server database, the store of its data, when this is the live database and this machine
     /// has one configured (<see cref="OrchestratorServer.Configured"/>); null keeps everything in this SQLite file.</summary>
-    public OrchestratorServer? Server => TestServer ?? (IsLive && OrchestratorServer.Configured() is { } c ? Servers.GetOrAdd(c, s => new OrchestratorServer(s)) : null);
+    public OrchestratorServer? Server => TestServer ?? (IsLive && !Setup.MachineRole.Current.IsClient && OrchestratorServer.Configured() is { } c ? Servers.GetOrAdd(c, s => new OrchestratorServer(s)) : null);
 
     /// <summary>A scratch SQL Server database for a test's scratch file, which the live setting never reaches.</summary>
     internal OrchestratorServer? TestServer { get; init; }
