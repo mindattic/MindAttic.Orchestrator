@@ -102,6 +102,12 @@ public static partial class AgentAbort
         return chosen;
     }
 
+    /// <summary>Which subagent the memory guard sheds (M.ORCH-T1497): the one started last (the least work lost), never one
+    /// landing its work; null when there's none, or only ones landing (they're about to finish and free their memory anyway).</summary>
+    public static AbortCandidate? Youngest(IReadOnlyList<(AbortCandidate Candidate, DateTime StartedUtc)> running) =>
+        running.Where(r => !r.Candidate.Landing).OrderByDescending(r => r.StartedUtc)
+            .ThenBy(r => r.Candidate.AgentId, StringComparer.Ordinal).Select(r => r.Candidate).FirstOrDefault();
+
     /// <summary>A subagent's burn as a percent of its login's 5-hour window per hour: its fresh tokens over the last
     /// <see cref="Settle"/> when its transcript's responses are known (<paramref name="recentEvents"/>), else its whole run's average
     /// (<paramref name="activity"/>, over at least <see cref="Settle"/>); 0 without a limit.</summary>
@@ -119,12 +125,17 @@ public static partial class AgentAbort
 
     /// <summary>Writes <paramref name="c"/>'s abort mark in <paramref name="marksDirectory"/> (a login's <c>session-context</c>):
     /// what the pace gate tells it as it refuses its calls.</summary>
-    public static void WriteMark(string marksDirectory, AbortCandidate c, string? login, double projected, double target, DateTime nowUtc)
+    public static void WriteMark(string marksDirectory, AbortCandidate c, string? login, double projected, double target, DateTime nowUtc) =>
+        WriteMark(marksDirectory, c, login, nowUtc, lead: null,
+            why: $"{login ?? "this login"}'s 5-hour window is on course to end near {projected.ToString("0", CultureInfo.InvariantCulture)}%, " +
+                 $"past its {target.ToString("0", CultureInfo.InvariantCulture)}% pace line, even with new subagents slowed");
+
+    /// <summary>An abort mark with its own <paramref name="lead"/> (what it's for, "to free memory"; null is a cool-off's) and
+    /// <paramref name="why"/>.</summary>
+    public static void WriteMark(string marksDirectory, AbortCandidate c, string? login, DateTime nowUtc, string? lead, string why)
     {
         var folder = Path.Combine(marksDirectory, DirName);
         Directory.CreateDirectory(folder);
-        var why = $"{login ?? "this login"}'s 5-hour window is on course to end near {projected.ToString("0", CultureInfo.InvariantCulture)}%, " +
-                  $"past its {target.ToString("0", CultureInfo.InvariantCulture)}% pace line, even with new subagents slowed";
         var body = JsonSerializer.Serialize(new Dictionary<string, object?>
         {
             ["ticket"] = c.TicketId,
@@ -132,6 +143,7 @@ public static partial class AgentAbort
             ["percent_per_hour"] = Math.Round(Math.Max(0, c.PercentPerHour), 3),
             ["login"] = login,
             ["why"] = why,
+            ["lead"] = lead,
         });
         var path = Path.Combine(folder, MarkName(c.AgentId));
         var temp = path + ".tmp";
@@ -215,19 +227,71 @@ public sealed class AgentAborter(JsonStore store, string globalMarksDirectory, s
     private readonly Dictionary<string, DateTime> coolingSince = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, SubagentActivityReader> readers = new(StringComparer.OrdinalIgnoreCase);
 
-    public IReadOnlyList<AbortedAgent> Tick(Snapshot snapshot, OrchestratorSettings settings, DateTime nowUtc)
+    private List<(string Key, string? Email, string Marks, Pace? Pace, Utilization? Window, BudgetStatus? Budget)> Logins(Snapshot snapshot)
     {
         var logins = new List<(string Key, string? Email, string Marks, Pace? Pace, Utilization? Window, BudgetStatus? Budget)>
         {
             (GlobalKey, null, globalMarksDirectory, snapshot.Pace, snapshot.Utilization, snapshot.Budget),
         };
         logins.AddRange(snapshot.Accounts.Select(a => (a.Email, (string?)a.Email, Path.Combine(a.Directory, "session-context"), (Pace?)a.Pace, a.Utilization, (BudgetStatus?)a.Budget)));
-        foreach (var gone in coolingSince.Keys.Where(k => logins.All(l => !l.Key.Equals(k, StringComparison.OrdinalIgnoreCase))).ToList()) coolingSince.Remove(gone);
+        return logins;
+    }
 
-        // Every subagent working a ticket, as the transcripts know it: its ticket and its responses in the reader's window.
-        // Keyed by the bare id the marks use: a transcript's id is its file name, "agent-<id>" (bughunt 2026-10-27).
-        var ticketed = snapshot.Repos.SelectMany(r => r.Sessions).SelectMany(s => s.TicketedSubagents)
+    // Every subagent working a ticket, as the transcripts know it: its ticket and its responses in the reader's window.
+    // Keyed by the bare id the marks use: a transcript's id is its file name, "agent-<id>" (bughunt 2026-10-27).
+    private static Dictionary<string, TicketedSubagent> Ticketed(Snapshot snapshot) =>
+        snapshot.Repos.SelectMany(r => r.Sessions).SelectMany(s => s.TicketedSubagents)
             .GroupBy(a => AgentAbort.MarkName(AgentAbort.BareId(a.AgentId)), StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
+    /// <summary>How often the memory guard sheds a subagent while RAM stays critical: one, then a minute for its memory to free.</summary>
+    public static readonly TimeSpan ShedEvery = TimeSpan.FromMinutes(1);
+
+    private DateTime memoryShedUtc = DateTime.MinValue;
+
+    /// <summary>
+    /// The memory guard's last resort (M.ORCH-T1497): while RAM is at <see cref="MemoryLevel.Critical"/> or worse, once every
+    /// <see cref="ShedEvery"/>, the youngest ticket subagent across every login (<see cref="AgentAbort.Youngest"/>: the least work
+    /// lost, never one landing) is aborted the way a cool-off aborts one (it stops at its next tool call, its work kept, its ticket
+    /// released and first in the queue). A CLI itself and a manual session's own subagents are never touched; nothing is killed.
+    /// Returns the one shed, or null.
+    /// </summary>
+    public AbortedAgent? ShedForMemory(Snapshot snapshot, OrchestratorSettings settings, MemoryState? memory, DateTime nowUtc)
+    {
+        if (!settings.MemoryGuard || memory is not { Level: >= MemoryLevel.Critical } || nowUtc - memoryShedUtc < ShedEvery) return null;
+        var ticketed = Ticketed(snapshot);
+        var pool = new List<(AbortCandidate Candidate, DateTime StartedUtc, string Marks, string? Email)>();
+        foreach (var login in Logins(snapshot))
+        {
+            var cycler = new ContextCycler(login.Marks) { ProjectsDir = projectsDirectory };
+            var alive = cycler.AliveSubagents(nowUtc);
+            if (alive.Count == 0) continue;
+            var marked = AgentAbort.Marks(login.Marks, nowUtc).Select(m => m.AgentId).ToHashSet(StringComparer.Ordinal);
+            if (!readers.TryGetValue(login.Marks, out var reader)) readers[login.Marks] = reader = new SubagentActivityReader(projectsDirectory);
+            var activity = reader.Poll(cycler, nowUtc).ToDictionary(a => AgentAbort.MarkName(a.AgentId), StringComparer.Ordinal);
+            foreach (var (agent, cli) in alive)
+            {
+                if (marked.Contains(agent) || activity.GetValueOrDefault(agent) is not { } doing) continue;
+                var ticket = ticketed.GetValueOrDefault(agent)?.TicketId ?? (doing.Task is { } task ? TicketAttribution.FromPrompt(task)?.Id : null);
+                if (ticket is null) continue;
+                pool.Add((new AbortCandidate(agent, ticket, 0, AgentAbort.Landing(doing.Doing)) { Cli = cli }, doing.StartedUtc, login.Marks, login.Email));
+            }
+        }
+        if (AgentAbort.Youngest([.. pool.Select(p => (p.Candidate, p.StartedUtc))]) is not { } pick) return null;
+        var from = pool.First(p => ReferenceEquals(p.Candidate, pick));
+        AgentAbort.WriteMark(from.Marks, pick, from.Email, nowUtc, lead: "to free memory",
+            why: $"RAM is critically low ({memory.Reading.Describe()}), and out of RAM the pagefile grows until the disk is full; " +
+                 "the newest subagent is stopped each minute until it recovers");
+        memoryShedUtc = nowUtc;
+        try { AgentAbort.Requeue(store, pick.TicketId, nowUtc); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+        return new AbortedAgent(from.Email, pick.AgentId, pick.TicketId, 0, 0, 0);
+    }
+
+    public IReadOnlyList<AbortedAgent> Tick(Snapshot snapshot, OrchestratorSettings settings, DateTime nowUtc)
+    {
+        var logins = Logins(snapshot);
+        foreach (var gone in coolingSince.Keys.Where(k => logins.All(l => !l.Key.Equals(k, StringComparison.OrdinalIgnoreCase))).ToList()) coolingSince.Remove(gone);
+        var ticketed = Ticketed(snapshot);
         var aborted = new List<AbortedAgent>();
         foreach (var login in logins)
         {

@@ -164,4 +164,45 @@ public sealed class AgentAbortTests
     private static UsageEvent Event(DateTime at, long fresh) => new(at, new TokenUsage(fresh, 0, 0, 0));
 
     private static Ticket T(string id) => new(id, "2026-10-01", "fix", "open", $"summary of {id}", "");
+
+    // ── The memory guard's shed (M.ORCH-T1497) ─────────────────────────────
+
+    [Test]
+    public void Short_of_RAM_the_youngest_subagent_not_landing_is_shed()
+    {
+        var running = new[]
+        {
+            (C("a1", 5), Now.AddMinutes(-30)),
+            (C("a2", 1), Now.AddMinutes(-2)),
+            (C("a3", 9, landing: true), Now.AddMinutes(-1)),
+        };
+        Assert.That(AgentAbort.Youngest(running)?.AgentId, Is.EqualTo("a2"), "the newest loses least; one landing is about to free its memory anyway");
+        Assert.That(AgentAbort.Youngest([(C("a3", 9, landing: true), Now)]), Is.Null);
+        Assert.That(AgentAbort.Youngest([]), Is.Null);
+    }
+
+    [Test]
+    public void A_memory_abort_mark_says_what_it_is_for()
+    {
+        var marks = Path.Combine(Path.GetTempPath(), "abort-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            AgentAbort.WriteMark(marks, C("a1", 0), null, Now, lead: "to free memory", why: "RAM is critically low");
+            var body = File.ReadAllText(Path.Combine(marks, AgentAbort.DirName, "a1"));
+            Assert.That(body, Does.Contain("\"lead\":\"to free memory\"").And.Contain("RAM is critically low"));
+            Assert.That(AgentAbort.Marks(marks, Now).Single().AgentId, Is.EqualTo("a1"));
+        }
+        finally { Directory.Delete(marks, recursive: true); }
+    }
+
+    [Test]
+    public void No_subagent_is_shed_unless_RAM_is_critical()
+    {
+        // Neither gets as far as reading the snapshot or the store.
+        var aborter = new AgentAborter(null!, Path.GetTempPath(), Path.GetTempPath());
+        var tight = new MemoryState(MemoryLevel.Tight, new MemoryReading(3, 50, true), "");
+        Assert.That(aborter.ShedForMemory(null!, new OrchestratorSettings(), tight, Now), Is.Null);
+        var critical = tight with { Level = MemoryLevel.Critical };
+        Assert.That(aborter.ShedForMemory(null!, new OrchestratorSettings { MemoryGuard = false }, critical, Now), Is.Null);
+    }
 }

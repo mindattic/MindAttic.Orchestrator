@@ -1968,7 +1968,9 @@ public static class AgentGate
             if abort is not None:
                 ticket = (abort.get("ticket") if isinstance(abort, dict) else None) or "your ticket"
                 why = (abort.get("why") if isinstance(abort, dict) else None) or "this login's 5-hour window is on course past its pace line"
-                refuse(f"ABORTED by the orchestrator to cool off this login: {why}. Stop now: make no more tool calls (each one is refused) "
+                # What the abort is for: cooling a login off (M.ORCH-T786), or freeing RAM (M.ORCH-T1497).
+                lead = (abort.get("lead") if isinstance(abort, dict) else None) or "to cool off this login"
+                refuse(f"ABORTED by the orchestrator {lead}: {why}. Stop now: make no more tool calls (each one is refused) "
                        f"and end your turn with a short report saying you were aborted, what you finished, and what's left uncommitted. "
                        f"Don't commit, push, close or release anything: your uncommitted work is kept as it is, and "
                        f"the orchestrator already released {ticket}'s claim and put it first in the queue for the next round, so the "

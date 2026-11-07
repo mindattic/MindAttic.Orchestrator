@@ -322,6 +322,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                                 $"(burning ~{a.PercentPerHour:0.#}% of the 5-hour window an hour): the window is on course for {a.ProjectedPercent:0}%, past its " +
                                 $"{a.TargetPercent:0}% pace line even with new subagents slowed. It stops at its next tool call, its work kept as it is; " +
                                 $"{a.TicketId}'s claim is released and it's first in the queue for the next round.");
+                        // The memory guard's last resort (M.ORCH-T1497): RAM critical, the newest ticket subagent is shed each minute.
+                        if (aborter.ShedForMemory(snapshot, s, Activity.MemoryGuard.Shared.Last, DateTime.UtcNow) is { } shed)
+                            Say(LogEventLevel.Error, $"memory guard [{shed.Login ?? "global login"}]: RAM is critical, so the newest subagent {shed.AgentId} " +
+                                $"on {shed.TicketId} was stopped to free memory. It stops at its next tool call, its work kept as it is; " +
+                                $"{shed.TicketId}'s claim is released and it's first in the queue once memory recovers.");
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
                     {
