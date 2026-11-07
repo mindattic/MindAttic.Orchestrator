@@ -1999,6 +1999,17 @@ public sealed class HookScriptTests
 
     private void DaemonDown() => Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10));
 
+    /// <summary>Drops every stop latch: its stop-latch.json and, when the test's scratch orchestrator.db exists,
+    /// the database's stop-latch state row the hooks keep it in (M.ORCH-T528), or the latch just seen would still hold.</summary>
+    private void ClearLatches()
+    {
+        File.Delete(Path.Combine(Marks, AgentGate.StopLatchName));
+        var path = MindAttic.Orchestrator.Settings.OrchestratorDb.DefaultPath();
+        if (!File.Exists(path)) return;
+        using var connection = new MindAttic.Orchestrator.Settings.OrchestratorDb(path).Open();
+        MindAttic.Orchestrator.Settings.OrchestratorDb.Execute(connection, $"DELETE FROM state WHERE name = '{AgentGate.StopLatchStateName}';");
+    }
+
     /// <summary>Signed in to A with A's week at 99%: the stop is seen and latched for A.</summary>
     private void AAtItsWeeklyStop()
     {
@@ -2063,7 +2074,7 @@ public sealed class HookScriptTests
         Assert.That(PromptHeld(), Is.True, "the meter probe read B's own meter: B's week is at the line");
 
         // The probe's reading confirmed B's windows (the daemon records them): B's statusline readings now count too.
-        File.Delete(Path.Combine(Marks, AgentGate.StopLatchName));
+        ClearLatches();
         var record = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(Marks, Budget.ClaudeAccount.FileName)))!.AsObject();
         record["confirmed"] = new System.Text.Json.Nodes.JsonObject
         {
@@ -2074,10 +2085,10 @@ public sealed class HookScriptTests
         Thread.Sleep(1100); // a statusline's stamp is to the second: not the second B was signed in to
         Reading(99, weekReset: bWeek, fiveReset: DateTime.UtcNow.AddHours(1));
         Assert.That(PromptHeld(), Is.True, "B's statusline, its windows confirmed");
-        File.Delete(Path.Combine(Marks, AgentGate.StopLatchName));
+        ClearLatches();
         Reading(99, weekReset: bWeek, fiveReset: DateTime.UtcNow.AddHours(4));
         Assert.That(PromptHeld(), Is.True, "B's next 5-hour window, known by B's own week");
-        File.Delete(Path.Combine(Marks, AgentGate.StopLatchName));
+        ClearLatches();
         Reading(99);
         Assert.That(PromptHeld(), Is.False, "A's windows, restamped by another CLI");
     }
