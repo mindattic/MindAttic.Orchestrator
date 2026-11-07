@@ -255,8 +255,9 @@ public sealed partial class MainViewModel
     public QueueTabViewModel ActiveTab => QueueTabs[0];
     public QueueTabViewModel PendingTab => QueueTabs[1];
 
-    /// <summary>Either group lists something; with both empty the sidebar shows one muted line instead of two headings.</summary>
-    public bool HasOpenTickets => ActiveTab.HasTickets || PendingTab.HasTickets;
+    /// <summary>Either group lists something, or a live session is running with no ticket attributed yet (M.ORCH-T1519);
+    /// with all three empty the sidebar shows one muted line instead of the headings.</summary>
+    public bool HasOpenTickets => ActiveTab.HasTickets || PendingTab.HasTickets || HasLiveActivity;
 
     /// <summary>The tickets of the Queue tab shown.</summary>
     public ObservableCollection<UserTicketRowViewModel> QueueTickets => SelectedQueueTab.Tickets;

@@ -129,6 +129,21 @@
             </Button>
         </DataTemplate>
 
+        <!-- A live, ticket-less activity card in the sidebar (M.ORCH-T1519): the same MaSmallStat look as a ticket card, but
+             with nothing to open - no ticket id, no OpenInTicketsCommand - and its title the session's current "Doing" text
+             instead of a ticket summary, so a busy member never reads as having "no active or pending tickets" just because
+             nothing's been attributed to a ticket yet. -->
+        <DataTemplate x:Key="SidebarActivityTemplate" DataType="{x:Type vm:LiveActivityRowViewModel}">
+            <Button x:Name="SidebarActivityCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="10,8" HorizontalContentAlignment="Stretch"
+                    Focusable="False" ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
+                <StackPanel>
+                    <TextBlock Text="{Binding Repo}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Summary}" FontSize="12.5" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Margin="{StaticResource RowGutter}"
+                               LineStackingStrategy="BlockLineHeight" LineHeight="17" MaxHeight="34" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+
     </Window.Resources>
 
     <Grid x:Name="Root">
@@ -320,6 +335,14 @@
             <TextBlock Text="No active or pending tickets" Style="{StaticResource MaMutedText}"
                        Visibility="{Binding HasOpenTickets, Converter={x:Static vm:Converters.FalseToVisible}}" />
             <StackPanel Visibility="{Binding HasOpenTickets, Converter={StaticResource Visible}}">
+                <!-- Live activity with no ticket attributed yet (M.ORCH-T1519): above Active, since it's happening right now
+                     too - just not yet tied to a ticket id. Hidden entirely once nothing untracked is running. -->
+                <StackPanel Visibility="{Binding HasLiveActivity, Converter={StaticResource Visible}}">
+                    <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" Text="Working, no ticket yet"
+                               AutomationProperties.Name="Working with no ticket attributed yet" />
+                    <ItemsControl x:Name="SidebarLiveActivity" Style="{StaticResource MaRowList}" ItemsSource="{Binding LiveActivity}"
+                                  ItemTemplate="{StaticResource SidebarActivityTemplate}" AutomationProperties.Name="Working, no ticket attributed yet" />
+                </StackPanel>
                 <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="{Binding ActiveTab.AccessibleName}">
                     <Run Text="{Binding ActiveTab.Name, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding ActiveTab.CountText, Mode=OneWay}" />
                 </TextBlock>

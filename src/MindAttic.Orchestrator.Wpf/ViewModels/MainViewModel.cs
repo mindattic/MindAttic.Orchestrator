@@ -436,6 +436,7 @@ public sealed partial class MainViewModel : ObservableObject
             tiles.Remove(gone);
         }
         snapshot = next;
+        SyncLiveActivity(next);
         Regroup();
         ApplyPhases(next);
         ApplyBilling(next);
