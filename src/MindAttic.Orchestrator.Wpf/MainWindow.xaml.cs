@@ -770,6 +770,8 @@ public partial class MainWindow : Window
             var placement = e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint;
             var agent = pane.HostPid is { } host ? tab.AgentOfHost(host) : null;
             var menu = DropdownMenu(container, $"Move the {pane.Name} CLI to", placement);
+            // Copy PID (M.ORCH-T1518): the CLI's own pid, which CLIs address each other by (MINDATTIC_CLI_PID, nudge-<pid>-*.txt).
+            AddCopyPidItems(menu, agent?.CliPid, pane.HostPid);
             // Rename… (M.ORCH-T1509): a little modal for the tab's own name, kept across reattach, undock/dock and restarts.
             var rename = DropdownItem("Rename…");
             rename.ToolTip = "Give this tab a name of your own (double-clicking its name does too)";
@@ -809,6 +811,37 @@ public partial class MainWindow : Window
             menu.IsOpen = true;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Building the Move to menu failed; contained"); }
+    }
+
+    /// <summary>"Copy PID n" (M.ORCH-T1518): the CLI's pid, copied as just the number; disabled until the CLI's first turn makes it known.
+    /// Then "Copy host PID n" when the tab's TermHost is known, which helps meanwhile.</summary>
+    private static void AddCopyPidItems(ContextMenu menu, int? cliPid, int? hostPid)
+    {
+        var cli = DropdownItem(cliPid is { } pid ? $"Copy PID {pid}" : "Copy PID");
+        if (cliPid is { } known)
+        {
+            cli.ToolTip = "This CLI's process id, the one other CLIs address it by (MINDATTIC_CLI_PID, nudge-<pid>-*.txt): click to copy it";
+            cli.Click += (_, _) => CopyPid(known);
+        }
+        else
+        {
+            cli.IsEnabled = false;
+            cli.ToolTip = "This CLI's PID isn't known yet: it shows up once its first turn starts";
+            ToolTipService.SetShowOnDisabled(cli, true);
+        }
+        menu.Items.Add(cli);
+        if (hostPid is not { } host) return;
+        var hostItem = DropdownItem($"Copy host PID {host}");
+        hostItem.ToolTip = "The TermHost process that hosts this CLI (not the CLI itself): click to copy it";
+        hostItem.Click += (_, _) => CopyPid(host);
+        menu.Items.Add(hostItem);
+    }
+
+    private static void CopyPid(int pid)
+    {
+        try { Clipboard.SetDataObject(pid.ToString(System.Globalization.CultureInfo.InvariantCulture), copy: true); }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or ExternalException or InvalidOperationException)
+        { OrchestratorLog.For("Dashboard").Warning(ex, "Copying a PID failed (the clipboard is locked by another process); contained"); }
     }
 
     /// <summary>"Pop out (interactive)" and "Pop out (watch only)" (M.ORCH-T931): a TermViewer window on this CLI beside its tab,
