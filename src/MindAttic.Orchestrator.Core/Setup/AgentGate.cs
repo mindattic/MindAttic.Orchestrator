@@ -2171,15 +2171,73 @@ public static class AgentGate
                     slot.unlink()
             except Exception:
                 pass
+        # The memory guard (M.ORCH-T1494/T1495): out of RAM the pagefile grows until the disk is full and only a hard restart
+        # recovers. Free RAM is read live here, so a stale or dead daemon can't hide a fall; the daemon's own level (it steps
+        # down only once clear of the line for a minute) counts too while its status is fresh. Never latched: it lifts as RAM
+        # comes back. /pacing off and exempt commands don't skip it.
+        MEMORY_LEVELS = ("ok", "tight", "critical", "emergency")
+        def free_ram_gb():
+            fake = os.environ.get("MINDATTIC_FAKE_FREE_RAM_GB")
+            if fake:
+                try:
+                    return float(fake)
+                except ValueError:
+                    pass
+            try:
+                # MemoryGuard.SimulatePath stands in for a while, for trying the guard out; it lapses by itself.
+                sim = Path(os.environ.get("LOCALAPPDATA") or "") / "MindAttic" / "Orchestrator" / "memory-simulate.txt"
+                if time.time() - sim.stat().st_mtime < {{(int)Activity.MemoryGuard.SimulateFor.TotalSeconds}}:
+                    return float(sim.read_text().strip())
+            except Exception:
+                pass
+            try:
+                import ctypes
+                class MEMORYSTATUSEX(ctypes.Structure):
+                    _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong)] + [(n, ctypes.c_ulonglong) for n in (
+                        "ullTotalPhys", "ullAvailPhys", "ullTotalPageFile", "ullAvailPageFile", "ullTotalVirtual", "ullAvailVirtual", "ullAvailExtendedVirtual")]
+                m = MEMORYSTATUSEX()
+                m.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+                if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)):
+                    return m.ullAvailPhys / 1073741824.0
+            except Exception:
+                pass
+            return None
+        def memory_now(s):
+            # (level, free GB or None, the lines) now: the worse of the daemon's level and the live reading's. A fresh status
+            # without the guard's lines is a daemon with the guard off (or from before it): nothing is held for memory then.
+            if s and not isinstance(s.get("memory_lines"), dict):
+                return "ok", None, None
+            lines = dict(tight_gb={{MemoryDefault(s => s.MemoryTightGb)}}, critical_gb={{MemoryDefault(s => s.MemoryCriticalGb)}},
+                         emergency_gb={{MemoryDefault(s => s.MemoryEmergencyGb)}}, per_subagent_gb={{MemoryDefault(s => s.MemoryPerSubagentGb)}})
+            if s:
+                try:
+                    lines.update({str(k): float(v) for k, v in s["memory_lines"].items()})
+                except Exception:
+                    pass
+            free = free_ram_gb()
+            live = ("ok" if free is None else "emergency" if free < lines["emergency_gb"] else "critical" if free < lines["critical_gb"]
+                    else "tight" if free < lines["tight_gb"] else "ok")
+            daemon = s.get("memory_level") if s and s.get("memory_level") in MEMORY_LEVELS else "ok"
+            return max(live, daemon, key=MEMORY_LEVELS.index), free, lines
+        def free_text(free):
+            return (format(free, ".1f") + " GB RAM free") if free is not None else "RAM low"
+        def memory_stop_note(s):
+            level, free, _ = memory_now(s)
+            if level != "emergency":
+                return None
+            return ("RAM emergency (" + free_text(free) + "): tool calls are refused until memory recovers, so the machine doesn't page "
+                    "itself to a full disk. End your turn now with one short line saying where you stopped; your uncommitted work stays where it is.")
+
         # The orchestrator's stop, or Claude's own percent at the line: a dead daemon can't switch the stop off (M.ORCH-T167),
         # and neither a stalled one nor an idle session's lower report lifts a stop already seen (latched, M.ORCH-T196).
+        # Or a RAM emergency, live and unlatched.
         def stop_note():
             s = status()
             note = orchestrator_stop(s)
             if note:
                 return note
             own = claude_stop()
-            return claude_stop_note(own, running=bool(s)) if own else None
+            return claude_stop_note(own, running=bool(s)) if own else memory_stop_note(s)
         def hold_at_stop():
             # Checked before every other hold and through each of them, so a call held for the pace delay or a subagent slot
             # when the stop comes on is held on and refused, never let through once its wait ends (M.ORCH-T196: in the
@@ -2195,6 +2253,68 @@ public static class AgentGate
                 gate_log("refused", time.monotonic() - start)
                 refuse(note)
         hold_at_stop()
+
+        # Short of RAM no new subagent starts, exempt turns and /pacing off included (M.ORCH-T1495): it waits, as a full allowance
+        # does, until RAM recovers or MAX_HOLD refuses it. One with RAM to spare starts only if free RAM, less what the subagents
+        # started in the last minute will take (they're still loading) and itself, stays above the hold line: Agent calls sent
+        # in one message decide one at a time under a lock, each recording what it reserved.
+        if tool in ("Agent", "Task"):
+            RESERVED = Path.home() / ".claude" / "session-context" / "memory-reserved"
+            RESERVED_LOCK = RESERVED.parent / "memory-reserved.lock"
+            def reserve_for_memory():
+                # True once this subagent's RAM is reserved; False to keep waiting, with why.
+                level, free, lines = memory_now(status())
+                if lines is None or free is None:
+                    return True, None
+                if level != "ok":
+                    return False, "RAM is low (" + free_text(free) + ")"
+                RESERVED.mkdir(parents=True, exist_ok=True)
+                give_up = time.monotonic() + 5
+                while True:
+                    try:
+                        os.close(os.open(str(RESERVED_LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+                        break
+                    except FileExistsError:
+                        try:
+                            if time.time() - RESERVED_LOCK.stat().st_mtime > 10:
+                                RESERVED_LOCK.unlink()
+                        except Exception:
+                            pass
+                        if time.monotonic() > give_up:
+                            return False, "another gate is deciding"
+                        time.sleep(0.05)
+                try:
+                    recent = 0
+                    for f in RESERVED.iterdir():
+                        try:
+                            if time.time() - f.stat().st_mtime > 60:
+                                f.unlink()
+                            else:
+                                recent += 1
+                        except Exception:
+                            pass
+                    left = free - (recent + 1) * lines["per_subagent_gb"]
+                    if left < lines["tight_gb"]:
+                        return False, (free_text(free) + ", " + str(recent) + " subagent" + ("" if recent == 1 else "s") +
+                                       " just started and still loading: no room for one more above the " + format(lines["tight_gb"], "g") + " GB line")
+                    (RESERVED / (str(os.getpid()) + "-" + str(time.time_ns()))).write_text("")
+                    return True, None
+                finally:
+                    try:
+                        RESERVED_LOCK.unlink()
+                    except Exception:
+                        pass
+            why = None
+            while True:
+                ok, why = reserve_for_memory()
+                if ok:
+                    break
+                if time.monotonic() - start >= MAX_HOLD:
+                    gate_log("refused", time.monotonic() - start)
+                    refuse(why[:1].upper() + why[1:] + ", so this subagent wasn't started: the machine would page itself to a full disk. "
+                           "Don't start it now: finish this turn's work yourself, or end the turn, and try again once memory recovers.")
+                time.sleep(5)
+                hold_at_stop()
 
         # Exempt commands (M.ORCH-T198): a turn typed as one of them (the context gate marks its session state) and a Skill
         # call naming one skip every pacing gate below: no pace delay, no subagent hold. Never the stop, held above first
@@ -2497,6 +2617,10 @@ public static class AgentGate
     /// <summary>Where the pace gate keeps a slot for each Agent call it let through until its SubagentStart marks it
     /// (in <c>~/.claude/session-context</c>), so calls sent together can't all pass one free place (M.ORCH-T197).</summary>
     public const string SlotDirName = "subagent-slots";
+
+    /// <summary>A memory-guard default, as the hooks' Python reads it (invariant culture, M.ORCH-T1495).</summary>
+    private static string MemoryDefault(Func<Settings.OrchestratorSettings, double> line) =>
+        line(new Settings.OrchestratorSettings()).ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>A slot whose SubagentStart hasn't come this long after its call was let through was never used.</summary>
     public const int SlotLifeSeconds = 120;

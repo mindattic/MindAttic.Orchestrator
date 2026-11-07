@@ -50,6 +50,10 @@ public sealed class HookScriptTests
         psi.Environment.Remove("CLAUDE_CONFIG_DIR");
         psi.Environment["CLAUDECODE"] = "1";
         psi.Environment["CLAUDE_CODE_ENTRYPOINT"] = "cli";
+        // Plenty of free RAM unless a test says otherwise (M.ORCH-T1495), whatever the machine running the tests has; and
+        // never this machine's memory-simulate file.
+        psi.Environment["MINDATTIC_FAKE_FREE_RAM_GB"] = "64";
+        psi.Environment["LOCALAPPDATA"] = dir;
         foreach (var (k, v) in env ?? new Dictionary<string, string>()) psi.Environment[k] = v;
         var p = Process.Start(psi)!;
         // Raw UTF-8, non-ASCII unescaped, as Claude Code writes it (M.ORCH-T392).
@@ -2727,5 +2731,62 @@ public sealed class HookScriptTests
         var logins = new MindAttic.Orchestrator.Sessions.ContextCycler(Marks).OnOwnLogin();
         Assert.That(logins.Keys, Is.EquivalentTo(new[] { "own2" }));
         Assert.That(new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, ".claude-accounts")).Of(logins["own2"])?.Email, Is.EqualTo("b@example.com"));
+    }
+
+    // ── The memory guard in the pace gate (M.ORCH-T1495) ────────────────────
+
+    private static Dictionary<string, string> FreeRam(double gb) => new() { ["MINDATTIC_FAKE_FREE_RAM_GB"] = gb.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+
+    [Test]
+    public void Short_of_RAM_a_new_subagent_waits_then_is_refused_even_with_pacing_off()
+    {
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, "unthrottled-" + Cli), "");
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        var (output, took) = GateHeld(agent, 2, FreeRam(3));
+        Assert.That(output, Does.Contain("\"deny\"").And.Contain("RAM is low (3.0 GB RAM free)"));
+        Assert.That(took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)), "held for MAX_HOLD first");
+        Assert.That(Gate(new { tool_name = "Read", tool_input = new { file_path = "x" } }, FreeRam(3)).Output, Does.Not.Contain("deny"), "other tools run on");
+    }
+
+    [Test]
+    public void A_burst_of_subagents_starts_only_as_many_as_free_RAM_holds()
+    {
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        // 6.5 GB free, 4 GB line, 1 GB each: two fit.
+        var burst = Enumerable.Range(0, 4).Select(_ => Run(AgentGate.ScriptName, agent, FreeRam(6.5))).ToList();
+        try
+        {
+            Thread.Sleep(8_000);
+            Assert.That(burst.Count(p => p.HasExited), Is.EqualTo(2));
+        }
+        finally
+        {
+            foreach (var p in burst) { try { p.Kill(); } catch (InvalidOperationException) { } p.Dispose(); }
+        }
+    }
+
+    [Test]
+    public void A_RAM_emergency_refuses_every_tool_call_and_lifts_when_RAM_returns()
+    {
+        var read = new { tool_name = "Read", tool_input = new { file_path = "x" } };
+        var (output, _) = GateHeld(read, 2, FreeRam(0.5));
+        Assert.That(output, Does.Contain("\"deny\"").And.Contain("RAM emergency (0.5 GB RAM free)").And.Contain("End your turn now"));
+        Assert.That(Gate(read, FreeRam(8)).Output, Does.Not.Contain("deny"), "never latched");
+    }
+
+    [Test]
+    public void The_daemons_level_holds_until_it_steps_down_and_its_lines_are_used()
+    {
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        var lines = new { tight_gb = 4.0, critical_gb = 2.0, emergency_gb = 1.0, per_subagent_gb = 1.0 };
+        Status(new { memory_level = "tight", memory_lines = lines });
+        Assert.That(GateHeld(agent, 2, FreeRam(5)).Output, Does.Contain("RAM is low"), "5 GB is over the line, but the daemon hasn't stepped down yet");
+
+        Status(new { memory_level = "ok", memory_lines = new { tight_gb = 8.0, critical_gb = 2.0, emergency_gb = 1.0, per_subagent_gb = 1.0 } });
+        Assert.That(GateHeld(agent, 2, FreeRam(7)).Output, Does.Contain("RAM is low"), "the daemon's own 8 GB line");
+
+        Status(new { subagent_allowance = 8, subagents_running = 0 });
+        Assert.That(GateHeld(agent, 2, FreeRam(0.5)).Output, Does.Not.Contain("RAM"), "a fresh status without lines: the guard is off");
     }
 }
