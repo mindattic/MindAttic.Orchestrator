@@ -479,7 +479,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         if (writing) rateLimitFile!.Write(budget, pace);
         // Each per-CLI login's own budget and pace (M.ORCH-T559), written for its CLIs' hooks by the process writing the global one.
         IReadOnlyList<AccountPace> accountPaces = [];
-        try { accountPaces = Accounts.Tick(claudeSessions, ownLogin, settings, now, startOfTodayUtc, typicalPerSession, writing && rateLimitFile?.Path == new RateLimitStatusWriter().Path); }
+        try { accountPaces = Accounts.Tick(claudeSessions, ownLogin, settings, now, startOfTodayUtc, writing && rateLimitFile?.Path == new RateLimitStatusWriter().Path); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { warnings.Add($"per-CLI logins: {ex.Message}"); }
         // Each member's name and role as claude.ai has them (M.ORCH-T701), read at each sign-in and periodically after, by the
         // process keeping the real status.

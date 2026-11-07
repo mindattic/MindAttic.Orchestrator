@@ -89,8 +89,13 @@ public sealed class AccountPacer
     /// </summary>
     /// <param name="sessions">Every Claude session the transcripts hold.</param>
     /// <param name="onOwnLogin">Session → the config folder it runs under (<see cref="ContextCycler.OnOwnLogin"/>).</param>
+    /// <remarks>Each account's typical per-session burn (for its own pace's session cap) is worked out here from its own
+    /// sessions alone (M.ORCH-T1469): a CLI moved onto a fresh or lightly-used login must never read the global login's (or
+    /// the login it moved from) typical burn as what one more session would cost, or a login with real room left coasts at
+    /// low utilization and 0 recent burn, reading as stuck on someone else's budget. With no sessions of its own yet, it's
+    /// null, which <see cref="Pacer.Compute"/> reads as "start one and measure it", never a borrowed rate.</remarks>
     public IReadOnlyList<AccountPace> Tick(IReadOnlyList<TranscriptSession> sessions, IReadOnlyDictionary<string, string> onOwnLogin,
-        OrchestratorSettings settings, DateTime nowUtc, DateTime startOfTodayUtc, double? typicalPerSession, bool write)
+        OrchestratorSettings settings, DateTime nowUtc, DateTime startOfTodayUtc, bool write)
     {
         // Each folder's sign-in read once a tick: an account's .claude.json can run to megabytes.
         var accounts = Dirs.All().Select(d => (Dir: d, Account: d.Account)).Where(a => a.Account is { } k && k != ClaudeAccount.ApiKey).ToList();
@@ -121,13 +126,13 @@ public sealed class AccountPacer
             var mine = sessions.Where(s => ids.Contains(s.SessionId)).ToList();
             // Let past its weekly target by the user (M.ORCH-T694): its week stops at the wall until the allowance ends.
             var (own, allowedWhy) = WeeklyAllowances.Apply(allowed, dir.Email, UsageCutoffs.Apply(cutoffs, dir.Email, settings), nowUtc);
-            result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, typicalPerSession, write, allowedWhy));
+            result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, write, allowedWhy));
         }
         return result;
     }
 
     private AccountPace Pace(AccountDir dir, State state, List<TranscriptSession> sessions, OrchestratorSettings settings,
-        DateTime now, DateTime startOfTodayUtc, double? typicalPerSession, bool write, string? why = null)
+        DateTime now, DateTime startOfTodayUtc, bool write, string? why = null)
     {
         var events = sessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc).ToList();
         var reported = ReportedUsage.Load(now, dir.UsagePath);
@@ -161,7 +166,11 @@ public sealed class AccountPacer
         // Weekly-aware pacing (M.ORCH-T666): from its line the week caps this login's window; off, the cap is null and nothing changes.
         // Held only as far as the week, spent as it's being spent, needs (M.ORCH-T669), against this login's own weekly reset.
         var week = WeeklyPacing.Cap(budget, WeeklyRatio.Learn(samples), settings, now, WeeklyBurn.PerHour(samples, budget.WeekResetUtc, now));
-        var pace = Pacer.Compute(budget, active, typicalPerSession, settings, now, state.Writer.AgentDelay(now), subagents, week) with
+        // This login's own typical burn, from its own sessions alone (M.ORCH-T1469): never the global login's (or the one it
+        // moved from), which could read a much heavier rate onto a fresh or lightly-spent login and make it look like not
+        // even one more session fits when the window is barely touched.
+        var ownTypicalPerSession = Pacer.TypicalPerSession(sessions.Select(s => s.Events), startOfTodayUtc.AddDays(-StatusAggregator.HistoryDays));
+        var pace = Pacer.Compute(budget, active, ownTypicalPerSession, settings, now, state.Writer.AgentDelay(now), subagents, week) with
         {
             SubagentsSeenThroughUtc = seenThrough,
             SubagentsByCli = state.Marks.AliveSubagents(now).Where(x => x.Cli is not null)

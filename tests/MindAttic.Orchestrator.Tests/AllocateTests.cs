@@ -414,7 +414,7 @@ public sealed class AllocateTests
         Directory.CreateDirectory(fresh.MarksDirectory); // its own folder, signed in, no Prepare() (the symlinked shares it makes aren't needed here)
         File.WriteAllText(fresh.ConfigPath, """{"oauthAccount":{"accountUuid":"acct-fresh","emailAddress":"fresh@example.com"}}""");
         var pacer = new AccountPacer { Dirs = dirs, Probe = false, ProjectsDir = Path.Combine(dir, "no-projects") };
-        var paces = pacer.Tick([], new Dictionary<string, string>(), new OrchestratorSettings(), Now, Now.Date, null, write: false);
+        var paces = pacer.Tick([], new Dictionary<string, string>(), new OrchestratorSettings(), Now, Now.Date, write: false);
         var pace = paces.Single().Pace;
         Assert.That((pace.IsPaced, pace.SubagentAllowance, pace.Subagents, pace.Stop), Is.EqualTo((false, 4, 0, false)),
             "a fresh login's room is its own (MaxConcurrentSessions, default 4 here), not left null for Next to guess at");

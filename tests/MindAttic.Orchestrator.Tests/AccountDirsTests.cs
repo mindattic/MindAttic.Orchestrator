@@ -378,7 +378,7 @@ public sealed class AccountDirsTests
         var pacer = new AccountPacer { Dirs = dirs, Probe = false, ProjectsDir = Path.Combine(dir, "no-projects") };
         // "Today" starts an hour back, not at now.Date: in the first minutes after UTC midnight the "own" session
         // (two minutes old) fell on yesterday's side of now.Date and Today.Fresh read 0 (M.ORCH-T1065).
-        var paces = pacer.Tick(sessions, new Dictionary<string, string> { ["own"] = b.Directory }, new OrchestratorSettings(), now, now.AddHours(-1), null, write: true);
+        var paces = pacer.Tick(sessions, new Dictionary<string, string> { ["own"] = b.Directory }, new OrchestratorSettings(), now, now.AddHours(-1), write: true);
 
         var pace = paces.Single();
         Assert.That(pace.Email, Is.EqualTo("b@example.com"));
@@ -391,8 +391,50 @@ public sealed class AccountDirsTests
         Assert.That(AccountPacer.LoadSamples(b), Has.Count.EqualTo(1), "its reading is kept to size its limit and grade its windows");
 
         File.Delete(b.ConfigPath);
-        Assert.That(pacer.Tick(sessions, new Dictionary<string, string>(), new OrchestratorSettings(), now, now.Date, null, write: false), Is.Empty,
+        Assert.That(pacer.Tick(sessions, new Dictionary<string, string>(), new OrchestratorSettings(), now, now.Date, write: false), Is.Empty,
             "an account signed out of its folder isn't paced");
+    }
+
+    /// <summary>M.ORCH-T1469: before this, every per-CLI login's pace used one shared "typical per session" burn rate, worked
+    /// out from the global login's own sessions (<c>StatusAggregator.typicalPerSession</c>) and passed straight through
+    /// <see cref="AccountPacer.Tick"/> to every account's own <c>Pacer.Compute</c>. A CLI on a login with little or no spend
+    /// of its own (freshly signed in, or just moved there from another login) read whichever other login's typical session
+    /// happened to be heaviest as what one more session would cost, so even at a low percent and 0 recent burn it could coast
+    /// - "not even one more session fits" - though its own window had plenty of room. Now each account's typical per-session
+    /// burn comes from its own sessions' own history alone.</summary>
+    [Test]
+    public void An_accounts_pace_never_borrows_another_logins_typical_per_session_burn()
+    {
+        var heavy = dirs.For("heavy@example.com");
+        var light = dirs.For("light@example.com");
+        dirs.Prepare(heavy);
+        dirs.Prepare(light);
+        SignIn(heavy, "acct-heavy");
+        SignIn(light, "acct-light");
+        var now = DateTime.UtcNow;
+
+        static TranscriptSession Session(string id, long fresh, DateTime at) =>
+            new(id, @"D:\W\A", at, default, null) { Events = [new UsageEvent(at, new TokenUsage(fresh, 0, 0, 0))] };
+        // heavy@example.com: one long-closed burst two days back - outside the recent window and its own current block, but
+        // still inside the 7-day history a typical per-session burn is read from: 600,000 tokens in one 10-minute bucket,
+        // 3,600,000 tokens/hour.
+        var heavySession = Session("heavy-burst", 600_000, now.AddDays(-2));
+        // light@example.com: barely spent (or just moved to), one small session an hour ago - 2% of a 529,800-token 5-hour
+        // limit, 0 recent burn (older than the 30-minute recent window), its own typical burn a tiny fraction of heavy's.
+        var lightSession = Session("light-own", 10_600, now.AddHours(-1));
+
+        var settings = new OrchestratorSettings { BlockBudget = 529_800 };
+        var pacer = new AccountPacer { Dirs = dirs, Probe = false, ProjectsDir = Path.Combine(dir, "no-projects") };
+        var paces = pacer.Tick([heavySession, lightSession],
+            new Dictionary<string, string> { ["heavy-burst"] = heavy.Directory, ["light-own"] = light.Directory },
+            settings, now, now.Date, write: true);
+
+        var lightPace = paces.Single(p => p.Email == "light@example.com");
+        Assert.That(lightPace.Budget.BlockPercent, Is.InRange(1, 3), "about 2% of its own 5-hour block");
+        Assert.That(lightPace.Pace.RecentPerHour, Is.EqualTo(0), "its one session is older than the recent window");
+        Assert.That(lightPace.Pace.Mode, Is.Not.EqualTo(PaceMode.Coast),
+            "2% used and plenty of its own room left must never coast just because another login (heavy) burns far more");
+        Assert.That(lightPace.Pace.SessionCap, Is.GreaterThan(0), "its own modest typical burn, not heavy's, sizes what one more session costs");
     }
 
     /// <summary>M.ORCH-T1404: before this, <c>AccountPacer.LoadSamples</c>/<c>SaveSamples</c> kept a folder's week of readings
@@ -420,7 +462,7 @@ public sealed class AccountDirsTests
         SignIn(b, "acct-old");
         WriteWeek(b, 80, now.AddSeconds(-5), weekReset);
         var pacer = new AccountPacer { Dirs = dirs, Probe = false, ProjectsDir = Path.Combine(dir, "no-projects") };
-        var before = pacer.Tick([], new Dictionary<string, string>(), new OrchestratorSettings(), now, now.Date, null, write: true).Single();
+        var before = pacer.Tick([], new Dictionary<string, string>(), new OrchestratorSettings(), now, now.Date, write: true).Single();
         Assert.That(before.Budget.WeeklyPercent, Is.EqualTo(80).Within(0.1), "acct-old's own genuine report");
 
         // The same folder re-signs to a different account: its week is fresh and genuinely low, even though its reset
@@ -428,7 +470,7 @@ public sealed class AccountDirsTests
         SignIn(b, "acct-new");
         var now2 = now.AddMinutes(1);
         WriteWeek(b, 2, now2.AddSeconds(-5), weekReset);
-        var after = pacer.Tick([], new Dictionary<string, string>(), new OrchestratorSettings(), now2, now2.Date, null, write: true).Single();
+        var after = pacer.Tick([], new Dictionary<string, string>(), new OrchestratorSettings(), now2, now2.Date, write: true).Single();
 
         Assert.That(after.Account, Is.EqualTo("acct-new"));
         Assert.That(after.Budget.WeeklyPercent, Is.EqualTo(2).Within(0.1),
@@ -471,7 +513,7 @@ public sealed class AccountDirsTests
             new(id, @"D:\W\A", at, default, null) { Events = [new UsageEvent(at, new TokenUsage(fresh, 0, 0, 0))], Hits = hits };
         var sessions = new[] { Session("own", 1_000, now.AddMinutes(-2), new LimitHit(now.AddMinutes(-1), LimitKind.Session, resetAt)) };
         var pacer = new AccountPacer { Dirs = dirs, Probe = false, ProjectsDir = Path.Combine(dir, "no-projects") };
-        var paces = pacer.Tick(sessions, new Dictionary<string, string> { ["own"] = b.Directory }, new OrchestratorSettings(), now, now.Date, null, write: true);
+        var paces = pacer.Tick(sessions, new Dictionary<string, string> { ["own"] = b.Directory }, new OrchestratorSettings(), now, now.Date, write: true);
 
         var pace = paces.Single();
         Assert.That(pace.Budget.AtLimitUntilUtc, Is.EqualTo(resetAt), "its own session's hit stops its own budget, not just Claude's raw percent");
