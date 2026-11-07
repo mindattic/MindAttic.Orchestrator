@@ -148,6 +148,9 @@ public sealed class MainlineTestsTests
         store = new JsonStore(Path.Combine(dir, "store"));
         head = "aaaaaaa1";
         diff = "src/A.cs";
+        // Reset per test: Main_is_read_at_most_once_a_minute... sets README.md, and NUnit reuses the fixture's instance, so
+        // every later test found no solution and started no suite (M.ORCH-T1504).
+        root = "A.slnx";
         git.Clear();
         runs.Clear();
     }
