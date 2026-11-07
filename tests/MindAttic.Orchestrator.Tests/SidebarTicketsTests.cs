@@ -4,8 +4,9 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>The sidebar lists the shown person's Active, then Pending tickets as cards under the window tools, each opening in
-/// Tickets Desktop (M.ORCH-T1439); the logins and tools keep their room and the cards take the rest.</summary>
+/// <summary>The sidebar lists the shown person's Active, then Pending tickets as cards under the logins, each opening in
+/// Tickets Desktop (M.ORCH-T1439); the logins keep their room and the cards take the rest (the window tools are in the menu
+/// bar since M.ORCH-T1499).</summary>
 public sealed class SidebarTicketsTests
 {
     private static readonly XNamespace X = "http://schemas.microsoft.com/winfx/2006/xaml";
@@ -20,18 +21,20 @@ public sealed class SidebarTicketsTests
     private static XElement Named(XDocument doc, string name) => doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
 
     [Test]
-    public void The_cards_take_the_rest_of_the_sidebar_under_the_tools()
+    public void The_cards_take_the_rest_of_the_sidebar_under_the_logins()
     {
+        // The window tools moved out of the sidebar to the top menu bar (M.ORCH-T1499), so the sidebar is orgs, logins, then
+        // the cards (M.ORCH-T1503).
         var doc = Window();
         var top = Named(doc, "TopRow");
         Assert.That(top.Attribute("VerticalAlignment"), Is.Null, "it fills the sidebar so the last row can take the rest");
         var rows = top.Elements().Single(e => e.Name.LocalName == "Grid.RowDefinitions").Elements().Select(r => (string?)r.Attribute("Height")).ToList();
-        Assert.That(rows, Is.EqualTo(new[] { "Auto", "Auto", "Auto", "*" }));
+        Assert.That(rows, Is.EqualTo(new[] { "Auto", "Auto", "*" }));
         Assert.That((string?)Named(doc, "LoginTabScroller").Attribute("MaxHeight"), Does.Contain("Converters.Share").And.Contain("ElementName=TopRow"),
-            "the logins are capped, so they never push the tools off");
+            "the logins are capped, so they never push the cards off");
         var area = Named(doc, "SidebarTicketArea");
         Assert.That(area.Parent, Is.EqualTo(top));
-        Assert.That((string?)area.Attribute("Grid.Row"), Is.EqualTo("3"));
+        Assert.That((string?)area.Attribute("Grid.Row"), Is.EqualTo("2"));
         Assert.That(area.Name.LocalName, Is.EqualTo("Canvas"), "wants no width of its own, so a title never widens the column");
 
         var list = Named(doc, "SidebarTickets");
