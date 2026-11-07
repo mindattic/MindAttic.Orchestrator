@@ -543,8 +543,8 @@ public partial class MainWindow : Window
     /// name, all selected. A single click falls through, so it still selects the tab.</summary>
     private void TerminalTabName_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // The name sits in its MarqueeBox (M.ORCH-T1509), which is what's swapped for the box.
-        if (e.ClickCount != 2 || sender is not TextBlock { DataContext: TerminalPaneViewModel pane, Parent: MarqueeBox { Parent: Grid cell } name }
+        // The name sits in its marquee Canvas (MarqueeBox.Enabled, M.ORCH-T1509), which is what's swapped for the box.
+        if (e.ClickCount != 2 || sender is not TextBlock { DataContext: TerminalPaneViewModel pane, Parent: Canvas { Parent: Grid cell } name }
             || cell.Children.OfType<TextBox>().FirstOrDefault() is not { } box) return;
         e.Handled = true;
         box.Tag = pane;
@@ -585,7 +585,7 @@ public partial class MainWindow : Window
         {
             box.Visibility = Visibility.Collapsed;
             box.MinWidth = 0;
-            if (box.Parent is Grid cell) foreach (var name in cell.Children.OfType<MarqueeBox>()) name.Visibility = Visibility.Visible;
+            if (box.Parent is Grid cell) foreach (var name in cell.Children.OfType<Canvas>()) name.Visibility = Visibility.Visible;
             if (commit && pane.IsSelected) pane.Control.Focus();
         }
     }

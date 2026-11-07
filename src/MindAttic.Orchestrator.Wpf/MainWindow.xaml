@@ -81,16 +81,17 @@
         </DataTemplate>
 
         <!-- A ticket card in the sidebar (M.ORCH-T1439): the whole card is one button that opens the ticket in Tickets Desktop,
-             through the same command as every TicketLink. Its id, then its repo with its type and priority, muted (one line
-             each: the column is too narrow for both, and the id is never the one trimmed), the title up to two lines
-             (all of it in the tooltip), then its status or why it waits. The library's MaSmallStat tile: hover fill, a 2px
-             MaFocus border and ring on keyboard focus, Enter or Space opens it. -->
+             through the same command as every TicketLink. Its id and friendly name as "ID · name" (M.ORCH-T1450, falling back
+             to a cut summary with no name yet), then its repo with its type and priority, muted (one line each: the column is
+             too narrow for both, and the caption is never the one trimmed), the title up to two lines (all of it in the
+             tooltip), then its status or why it waits. The library's MaSmallStat tile: hover fill, a 2px MaFocus border and
+             ring on keyboard focus, Enter or Space opens it. -->
         <DataTemplate x:Key="SidebarTicketTemplate" DataType="{x:Type vm:UserTicketRowViewModel}">
             <Button x:Name="SidebarTicketCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="10,8" HorizontalContentAlignment="Stretch"
                     Command="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}"
                     ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
                 <StackPanel>
-                    <TextBlock Text="{Binding Id}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Caption}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaTileSubtitle}" Margin="{StaticResource SpaceLS}">
                             <Run Text="{Binding Type, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding Priority, Mode=OneWay}" FontWeight="SemiBold" />
@@ -436,11 +437,13 @@
                                     <!-- Double-click the name to rename it in place (M.ORCH-T1432): the TextBox swaps in for the TextBlock in
                                          the same cell; Enter keeps it, Esc or leaving it cancels (TerminalTabName_* in MainWindow.xaml.cs). -->
                                     <Grid VerticalAlignment="Center">
-                                        <!-- A name too long for the tab scrolls across it, blinks 3 times, then starts over (M.ORCH-T1509). -->
-                                        <local:MarqueeBox x:Name="TerminalTabNameMarquee" MaxWidth="180" VerticalAlignment="Center">
+                                        <!-- A name too long for the tab scrolls across it, blinks 3 times, then starts over
+                                             (M.ORCH-T1509): a plain Canvas (library-only rule's own layout panel), scrolled
+                                             and clipped by the MarqueeBox attached behaviour, not a custom element. -->
+                                        <Canvas x:Name="TerminalTabNameMarquee" MaxWidth="180" VerticalAlignment="Center" local:MarqueeBox.Enabled="True">
                                             <TextBlock x:Name="TerminalTabName" Text="{Binding Name}" VerticalAlignment="Center"
                                                        MouseLeftButtonDown="TerminalTabName_MouseLeftButtonDown" />
-                                        </local:MarqueeBox>
+                                        </Canvas>
                                         <TextBox x:Name="TerminalTabNameEdit" Style="{StaticResource MaTextBox}" Visibility="Collapsed" VerticalAlignment="Center" Padding="0" Margin="-2,-2,-2,-2"
                                                  AutomationProperties.Name="{Binding Title, StringFormat='Rename {0}'}"
                                                  KeyDown="TerminalTabNameEdit_KeyDown" LostKeyboardFocus="TerminalTabNameEdit_LostKeyboardFocus" />
