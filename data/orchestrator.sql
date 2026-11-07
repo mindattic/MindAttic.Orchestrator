@@ -31699,7 +31699,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "f73065c335c754e5e6ad4d78bd2b73cf2f1af62a",
+    "Tested": "10ba2e59c4ee28a951ad93aa58d4a9e340510ccb",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -31974,7 +31974,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2ddb30570ff68e1fc55a4027a160687e2a08c9ad"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "f73065c335c754e5e6ad4d78bd2b73cf2f1af62a"
+    "Tested": "10ba2e59c4ee28a951ad93aa58d4a9e340510ccb"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
