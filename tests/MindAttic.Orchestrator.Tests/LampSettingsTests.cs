@@ -198,7 +198,7 @@ public sealed class LampSettingsTests
         }
         Assert.That(manifest.Credentials.Select(c => c.ProviderId), Is.EqualTo(new[] { "claude" }), "Claude's key, from the shared named keys");
         Assert.That(manifest.AllFields().Select(f => f.Group).Distinct(),
-            Is.EquivalentTo(new[] { "Budget", "Pacing", "Scheduler", "Logins", "Reviews", "Alerts", "Dashboard", "Folders", "Gateway" }));
+            Is.EquivalentTo(new[] { "Budget", "Pacing", "Scheduler", "Logins", "Reviews", "Alerts", "Memory", "Dashboard", "Folders", "Gateway" }));
     }
 
     [Test]
