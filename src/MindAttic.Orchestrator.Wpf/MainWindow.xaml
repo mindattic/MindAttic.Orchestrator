@@ -375,15 +375,41 @@
             <Grid x:Name="TerminalTabStripRow" Margin="{StaticResource SpaceBS}" Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Button x:Name="TerminalTabScrollLeft" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE76B;"
+                <!-- The pinned Usage tab (M.ORCH-T1446): unclosable and titleless, always first, outside the scrollable
+                     strip and Terminals.Panes (it isn't a CLI's pane, so it can never be closed, dragged, or scrolled away
+                     from index 0). Clicking it (UsageTabItem_MouseLeftButtonDown) shows this login's 5-hour/weekly charts
+                     (UtilizationSection, already right under the terminal in AgentsBody) where the terminal normally sits
+                     instead of switching any CLI's terminal away (TerminalFrame's own Visibility below); choosing a real
+                     CLI/Launcher tab again (even the one already chosen, caught by RealTerminalTabs_PreviewMouseLeftButtonDown
+                     since that raises no SelectedPane change of its own) leaves it. -->
+                <mc:MaTabItem x:Name="UsageTabItem" Grid.Column="0" Accent="{Binding TabBrush}"
+                              IsSelected="{Binding Terminals.IsUsageShown, Mode=OneWay}"
+                              MouseLeftButtonDown="UsageTabItem_MouseLeftButtonDown" KeyDown="UsageTabItem_KeyDown"
+                              ToolTip="{Binding UsageTabTip}" AutomationProperties.Name="{Binding UsageTabTip}">
+                    <mc:MaTabItem.Header>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding UsageSigmaLabel}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
+                                         Margin="{StaticResource SpaceLXS}" Value="{Binding WeeklyLimitPercent, Mode=OneWay}"
+                                         Foreground="{Binding WeeklyLimitBrush}" />
+                            <TextBlock Text="{Binding UsageLambdaLabel}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
+                            <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
+                                         Margin="{StaticResource SpaceLXS}" Value="{Binding FiveHourLimitPercent, Mode=OneWay}"
+                                         Foreground="{Binding FiveHourLimitBrush}" />
+                        </StackPanel>
+                    </mc:MaTabItem.Header>
+                </mc:MaTabItem>
+                <Button x:Name="TerminalTabScrollLeft" Grid.Column="1" Style="{StaticResource MaToolButton}" Content="&#xE76B;"
                         Click="TerminalTabScrollLeft_Click" Margin="{StaticResource SpaceRXS}" Visibility="Collapsed"
                         ToolTip="Scroll the CLI tabs left" AutomationProperties.Name="Scroll the CLI tabs left" />
-                <ScrollViewer x:Name="TerminalTabScroller" Grid.Column="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
+                <ScrollViewer x:Name="TerminalTabScroller" Grid.Column="2" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                               HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
-                              ScrollChanged="TerminalTabScroller_ScrollChanged">
+                              ScrollChanged="TerminalTabScroller_ScrollChanged"
+                              PreviewMouseLeftButtonDown="RealTerminalTabs_PreviewMouseLeftButtonDown">
                     <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ContextMenuOpening="OnTerminalTabContextMenu" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
                                      AutomationProperties.Name="Terminals" AutomationProperties.HelpText="{Binding Terminals.Summary}">
                         <mc:MaTabControl.ItemContainerStyle>
@@ -463,7 +489,7 @@
                         </mc:MaTabControl.ItemTemplate>
                     </mc:MaTabControl>
                 </ScrollViewer>
-                <Button x:Name="TerminalTabScrollRight" Grid.Column="2" Style="{StaticResource MaToolButton}" Content="&#xE76C;"
+                <Button x:Name="TerminalTabScrollRight" Grid.Column="3" Style="{StaticResource MaToolButton}" Content="&#xE76C;"
                         Click="TerminalTabScrollRight_Click" Margin="{StaticResource SpaceLXS}" Visibility="Collapsed"
                         ToolTip="Scroll the CLI tabs right" AutomationProperties.Name="Scroll the CLI tabs right" />
             </Grid>
@@ -520,7 +546,7 @@
                      ApplyBody(AgentsBody, AgentsBodyList) in MainWindow.xaml.cs flattens AgentsBodyList alone): the native
                      terminal window must never be torn down by a realize/derealize cycle just because it scrolled out of view. -->
                 <Grid x:Name="TerminalFrame" MinHeight="160" Margin="{StaticResource SpaceTS}"
-                      Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
+                      Visibility="{Binding Terminals.ShowsTerminal, Converter={StaticResource Visible}}">
                     <!-- WPF claims arrow keys (and Tab) for its own directional/tab focus navigation even when a hosted
                          native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never
                          sees them (M.ORCH-T833): switched off here so they pass straight through to the terminal. -->

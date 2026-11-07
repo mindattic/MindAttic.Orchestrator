@@ -199,6 +199,59 @@ public sealed class TerminalPanesTests
         Assert.That(person.SelectedPane, Is.SameAs(c), "and back the other way from the first to the last");
     }
 
+    /// <summary>M.ORCH-T1446: the pinned Usage tab is never one of <see cref="PersonTerminalsViewModel.Panes"/> (it isn't a
+    /// CLI's pane), so choosing it only swaps what the terminal area shows; the chosen CLI underneath is remembered, and
+    /// choosing any real tab again -- even the one already chosen, which raises no SelectedPane change on its own -- leaves it.</summary>
+    [Test, Apartment(ApartmentState.STA)]
+    public void Choosing_the_pinned_Usage_tab_hides_the_terminal_without_touching_the_chosen_pane_or_Panes()
+    {
+        var all = new TerminalsViewModel();
+        var person = new PersonTerminalsViewModel(all);
+        TerminalPaneViewModel Pane(string repo) =>
+            new(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe", ConfigDir = @"C:\a\.claude-accounts\amy@example.com" });
+        var (a, b) = (Pane("A"), Pane("B"));
+        var changes = 0;
+        person.SelectionChanged += () => changes++;
+
+        person.SyncTo([a, b]);
+        Assert.That(person.SelectedPane, Is.SameAs(a));
+        Assert.That(person.ShowsTerminal, Is.True);
+        Assert.That(person.IsUsageShown, Is.False);
+
+        person.ShowUsageCommand.Execute(null);
+        Assert.That(person.IsUsageShown, Is.True);
+        Assert.That(person.ShowsTerminal, Is.False, "the terminal area shows the charts instead");
+        Assert.That(person.SelectedPane, Is.SameAs(a), "the chosen CLI is remembered, not cleared");
+        Assert.That(person.Panes, Is.EqualTo(new[] { a, b }), "the pinned tab is never one of the real panes");
+        Assert.That(changes, Is.EqualTo(1));
+
+        person.ShowUsageCommand.Execute(null);
+        Assert.That(changes, Is.EqualTo(1), "showing it again while already shown is a no-op");
+
+        person.SelectedPane = a; // the real strip's own already-selected tab clicked again
+        Assert.That(person.IsUsageShown, Is.False, "choosing a real CLI tab, even the one already chosen, leaves the pinned tab");
+        Assert.That(person.ShowsTerminal, Is.True);
+        Assert.That(changes, Is.EqualTo(2));
+
+        person.ShowUsageCommand.Execute(null);
+        person.NextCommand.Execute(null); // cycling to a different real tab leaves it too
+        Assert.That(person.IsUsageShown, Is.False);
+        Assert.That(person.SelectedPane, Is.SameAs(b));
+    }
+
+    /// <summary>M.ORCH-T1446: the terminal area never shows while there's no real pane open, whether or not the pinned
+    /// Usage tab was last chosen -- there's nothing for either of them to replace.</summary>
+    [Test, Apartment(ApartmentState.STA)]
+    public void The_terminal_area_stays_hidden_with_no_panes_whichever_tab_was_last_chosen()
+    {
+        var all = new TerminalsViewModel();
+        var person = new PersonTerminalsViewModel(all);
+        Assert.That(person.HasPanes, Is.False);
+        Assert.That(person.ShowsTerminal, Is.False);
+        person.ShowUsageCommand.Execute(null);
+        Assert.That(person.ShowsTerminal, Is.False, "nothing to show either way");
+    }
+
     [Test, Apartment(ApartmentState.STA)]
     public void The_Launcher_s_own_menu_pane_shows_without_a_provider_bracket()
     {
@@ -290,6 +343,29 @@ public sealed class TerminalPanesTests
         Assert.That((string?)Named("TerminalFrame").Attribute("Margin"), Is.EqualTo("{StaticResource SpaceTS}"));
         Assert.That((string?)Named("TerminalTabs").Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.Panes}"));
         Assert.That(Named("TerminalPanesHost").Parent, Is.SameAs(Named("TerminalFrame")));
+    }
+
+    /// <summary>M.ORCH-T1446: the pinned Usage tab sits first in the strip, outside the scrollable, ItemsSource-bound real
+    /// CLI tab control (it isn't one of Terminals.Panes), and has no close button -- it can never be closed, dragged, or
+    /// scrolled away from index 0.</summary>
+    [Test]
+    public void The_pinned_Usage_tab_sits_first_and_outside_the_real_CLI_tab_strip()
+    {
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var xaml = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XElement Named(string name) => xaml.Descendants().Single(e => (string?)e.Attribute(x + "Name") == name);
+
+        var strip = Named("TerminalTabStripRow");
+        var usage = Named("UsageTabItem");
+        var scroller = Named("TerminalTabScroller");
+        Assert.That(usage.Parent, Is.SameAs(strip), "pinned directly in the strip, not inside the scrollable area");
+        Assert.That((string?)usage.Attribute("Grid.Column"), Is.EqualTo("0"), "first, ahead of the scroll buttons and the real strip");
+        var order = strip.Elements().ToList();
+        Assert.That(order.IndexOf(usage), Is.LessThan(order.IndexOf(scroller)), "before the real CLI tabs");
+        Assert.That(usage.Ancestors().Contains(Named("TerminalTabs")), Is.False, "never one of the ItemsSource-bound CLI panes");
+        Assert.That(usage.Descendants().Any(e => e.Name.LocalName == "Button"), Is.False, "no close button: it can't be closed");
     }
 
     [Test, Apartment(ApartmentState.STA)]

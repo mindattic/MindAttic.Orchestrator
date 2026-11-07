@@ -757,6 +757,28 @@ public partial class MainWindow : Window
     private void TerminalTabScrollRight_Click(object sender, RoutedEventArgs e) =>
         TerminalTabScroller.ScrollToHorizontalOffset(TerminalTabScroller.HorizontalOffset + TerminalTabScrollStep);
 
+    /// <summary>The pinned Usage tab (M.ORCH-T1446): shows this login's 5-hour/weekly charts (UtilizationSection, already
+    /// right under the terminal in AgentsBody) in place of the terminal, scrolled to the top so they're there without
+    /// scrolling past where the terminal normally sits.</summary>
+    private void ShowUsageTab()
+    {
+        Shown.Terminals.ShowUsageCommand.Execute(null);
+        AgentsBody.ScrollToTop();
+    }
+
+    private void UsageTabItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) => ShowUsageTab();
+
+    private void UsageTabItem_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter && e.Key != Key.Space) return;
+        ShowUsageTab();
+        e.Handled = true;
+    }
+
+    /// <summary>Clicking anywhere in the real CLI tab strip (even the tab already chosen there, which raises no
+    /// SelectedPane change to hook) leaves the pinned Usage tab (M.ORCH-T1446).</summary>
+    private void RealTerminalTabs_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) => Shown.Terminals.ClearUsageShown();
+
     /// <summary>A CLI tab's right-click menu (M.ORCH-T883; Shift+F10 too): "Move to" each other signed-in login, read when it's
     /// opened, moving that CLI there. Not on the Launcher's own menu tab; disabled until the CLI's host is known.</summary>
     private async void OnTerminalTabContextMenu(object sender, ContextMenuEventArgs e)

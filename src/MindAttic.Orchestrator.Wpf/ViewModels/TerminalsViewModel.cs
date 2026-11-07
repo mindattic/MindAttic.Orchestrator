@@ -1217,6 +1217,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
 {
     private readonly TerminalsViewModel all;
     private TerminalPaneViewModel? selected;
+    private bool usageShown;
 
     public PersonTerminalsViewModel(TerminalsViewModel all) => this.all = all;
 
@@ -1237,12 +1238,47 @@ public sealed class PersonTerminalsViewModel : ObservableObject
                 return;
             }
             if (value is not null && !Panes.Contains(value)) return;
+            // A real CLI/Launcher tab taking the choice (M.ORCH-T1446) always leaves the pinned Usage tab, even choosing the
+            // one already chosen there (clicking the tab strip's own already-selected item raises no SelectedPane change to
+            // hook: MainWindow.xaml.cs's RealTerminalTabs_PreviewMouseLeftButtonDown calls ClearUsageShown for that case).
+            if (value is not null) ClearUsageShown();
             if (!Set(ref selected, value)) return;
             SelectionChanged?.Invoke();
         }
     }
 
     public bool HasPanes => Panes.Count > 0;
+
+    /// <summary>The pinned Usage tab (M.ORCH-T1446, at index 0 of the strip, never one of <see cref="Panes"/>) is chosen:
+    /// <see cref="ShowsTerminal"/> hides the terminal area so it shows this login's 5-hour/weekly charts instead, while
+    /// <see cref="SelectedPane"/> itself keeps whichever CLI was chosen, so choosing a real tab again returns to it.</summary>
+    public bool IsUsageShown => usageShown;
+
+    /// <summary>Whether the terminal area shows the chosen CLI's terminal: a real pane is open and the pinned Usage tab
+    /// isn't chosen over it.</summary>
+    public bool ShowsTerminal => HasPanes && !usageShown;
+
+    private ICommand? showUsageCommand;
+
+    /// <summary>Clicking the pinned Usage tab (M.ORCH-T1446): shows this login's 5-hour/weekly charts where the chosen
+    /// terminal normally sits, instead of switching any CLI's terminal away.</summary>
+    public ICommand ShowUsageCommand => showUsageCommand ??= new RelayCommand(() =>
+    {
+        if (usageShown) return;
+        usageShown = true;
+        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal));
+        SelectionChanged?.Invoke();
+    });
+
+    /// <summary>A real CLI or Launcher tab taking focus leaves the pinned Usage tab (M.ORCH-T1446); a no-op once it's
+    /// already left.</summary>
+    internal void ClearUsageShown()
+    {
+        if (!usageShown) return;
+        usageShown = false;
+        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal));
+        SelectionChanged?.Invoke();
+    }
 
     /// <summary>How many terminals this person has open, in words.</summary>
     public string Summary => Panes.Count switch { 0 => "", 1 => "1 open", var n => $"{n} open" };
@@ -1307,6 +1343,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         }
         else if (cleared) SelectionChanged?.Invoke();
         Raise(nameof(HasPanes));
+        Raise(nameof(ShowsTerminal));
         Raise(nameof(Summary));
     }
 }

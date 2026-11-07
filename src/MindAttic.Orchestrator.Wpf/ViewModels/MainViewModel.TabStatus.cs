@@ -422,7 +422,8 @@ public sealed partial class MainViewModel
                                      nameof(TabCliCount),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
-                                     nameof(ApiBurnText), nameof(ShowsClaudeMeters) })
+                                     nameof(ApiBurnText), nameof(ShowsClaudeMeters),
+                                     nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip) })
             Raise(name);
     }
 

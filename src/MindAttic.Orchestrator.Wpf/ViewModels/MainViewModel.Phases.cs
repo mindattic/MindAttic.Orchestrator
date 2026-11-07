@@ -283,6 +283,19 @@ public sealed partial class MainViewModel
     /// <summary>The weekly box's figure and bar colour (M.ORCH-T1191): the same band as <see cref="FiveHourLimitBrush"/>.</summary>
     public Brush WeeklyLimitBrush => BandBrush(WeekUsed);
 
+    // ── the pinned Usage tab (M.ORCH-T1446) ─────────────────────────────────
+
+    /// <summary>The pinned Usage tab's weekly label: "Σ", or "wk" with the SymbolTabLabels setting off, the same choice
+    /// <see cref="TabUsagePairsOf"/> already reads for the tab's own trailing text.</summary>
+    public string UsageSigmaLabel => Root.symbolTabLabels ? "Σ" : "wk";
+
+    /// <summary>The pinned Usage tab's 5-hour label: "λ", or "5h" with the setting off.</summary>
+    public string UsageLambdaLabel => Root.symbolTabLabels ? "λ" : "5h";
+
+    /// <summary>The pinned Usage tab's tooltip and accessible name (it's titleless): the same figures as
+    /// <see cref="TabTrailing"/>, since the tab itself shows only the two bars.</summary>
+    public string UsageTabTip => TabTrailing.Length > 0 ? $"Usage: {TabTrailing}" : "Usage: this login's 5-hour and weekly limits";
+
     /// <summary>The 5hr/weekly/graph usage band (M.ORCH-T1191, author request): green under a third, the theme's own text
     /// colour through the middle third, orange from two-thirds up -- a fixed band on the raw percentage, unlike the tab
     /// light's cutoff-relative Good/Warn/Over (<see cref="StatusOf"/>).</summary>
@@ -398,6 +411,7 @@ public sealed partial class MainViewModel
                                      nameof(WeeklyUtilization), nameof(WeeklyUtilizationText), nameof(ShowsFiveHourChart), nameof(ShowsWeeklyChart),
                                      nameof(FiveHourLimitPercent), nameof(FiveHourLimitText), nameof(FiveHourLimitBrush),
                                      nameof(WeeklyLimitPercent), nameof(WeeklyLimitText), nameof(WeeklyLimitBrush),
+                                     nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip),
                                      nameof(CutoffsHeadline), nameof(CutoffsCaption), nameof(LastUpdatedHeadline), nameof(LastUpdatedCaption) })
             Raise(name);
     }
