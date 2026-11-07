@@ -874,9 +874,10 @@ public partial class MainWindow : Window
         menu.Items.Add(new Separator());
     }
 
-    /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): User Settings
-    /// (M.ORCH-T1098, Rename and Org limit merged), the login action that was standalone buttons on the person's page. The tab is
-    /// selected first, since the dialog is the shown tab's.</summary>
+    /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): Run Launcher
+    /// (M.ORCH-T1525, an escape hatch for when a login is left with no tabs and the automatic one didn't fire) above User Settings
+    /// (M.ORCH-T1098, Rename and Org limit merged), the login actions that were standalone buttons on the person's page. The tab is
+    /// selected first, since each dialog or action is the shown tab's.</summary>
     private void OnLoginTabContextMenu(object sender, ContextMenuEventArgs e)
     {
         if (e.OriginalSource is not DependencyObject source
@@ -898,6 +899,8 @@ public partial class MainWindow : Window
             };
             menu.Items.Add(item);
         }
+        Add("Run Launcher", "Opens this login's Launcher by hand (brings an already-open one to front): for when a login is left with no tabs and the automatic Launcher didn't open",
+            tab.RunLauncherCommand);
         Add("User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
             tab.UserSettingsCommand);
         menu.IsOpen = true;

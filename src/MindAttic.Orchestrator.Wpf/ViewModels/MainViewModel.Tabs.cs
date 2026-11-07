@@ -486,6 +486,18 @@ public sealed partial class MainViewModel
         return fallback is not null ? (fallback, fallback) : (null, $"Opened the Launcher as {tabTitle} in its own window.");
     }
 
+    private ICommand? runLauncherCommand;
+
+    /// <summary>Run Launcher (M.ORCH-T1525), from this tab's right-click menu: opens this login's Launcher by hand, the same
+    /// path the automatic opens use (<see cref="OpenLauncherPaneAsync"/>) -- an escape hatch for when a login is left with no
+    /// tabs and the automatic one (<see cref="OpenLaunchers"/>, the last-tab respawn) didn't fire or failed quietly.</summary>
+    public ICommand RunLauncherCommand => runLauncherCommand ??= new RelayCommand(async () =>
+    {
+        var (error, status) = await OpenLauncherPaneAsync(ScopeEmail, TabTitle);
+        if (error is { } e) Toasts.Insert(0, new ToastViewModel($"Couldn't run {TabTitle}'s Launcher", e, Palette.Over, null));
+        AccountsMessage = status;
+    }, () => IsTabSignedIn);
+
     private void Retitle(LoginTab next)
     {
         if (next == tab) return;
