@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using NUnit.Framework;
 
@@ -96,7 +97,11 @@ public sealed class SettingsModalTests
 
         var code = File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));
         Assert.That(code, Does.Contain("OrgToolbar.DataContext = model;"));
-        Assert.That(code, Does.Not.Contain("SettingsModal").And.Not.Contain("SizeSettings"));
+        // The old app-level settings dialog (M.ORCH-T498, M.ORCH-T804) is gone for good: LAMP (M.ORCH-T1308) moved every
+        // app-level setting to MindAttic Vault. UserSettingsModal (M.ORCH-T1419) is a different, legitimate per-user
+        // dialog (usage cutoffs), so only a bare "SettingsModal" - not preceded by "User" - should trip this.
+        Assert.That(Regex.IsMatch(code, @"(?<!User)SettingsModal"), Is.False, "the old app-level SettingsModal is gone for good");
+        Assert.That(code, Does.Not.Contain("SizeSettings"));
     }
 
     [Test]
