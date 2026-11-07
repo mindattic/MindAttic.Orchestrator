@@ -208,6 +208,20 @@ public sealed class TerminalPanesTests
         Assert.That(cli.Name, Is.EqualTo("Repo"), "nor a Claude CLI tab its provider tag (M.ORCH-T1176): every tab was one");
     }
 
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_redeploying_placeholder_reads_redeploying_even_once_its_inert_relay_marks_it_ended()
+    {
+        // M.ORCH-T1511: the "redeploying…" placeholder that stands in the Launcher's slot while MindAttic.Launcher rebuilds
+        // must still read "redeploying…", not "ended", however its own (never-attached) state settles.
+        var placeholder = new TerminalPaneViewModel(new PaneRequest("RD: Launcher", temp.New()) { Repo = "Launcher", Provider = "Launcher", CommandLine = "cmd.exe", IsMenu = true, Initials = "RD" }, hosted: true)
+        { Redeploying = true };
+        Assert.That(placeholder.StateText, Is.EqualTo("redeploying…"));
+        placeholder.Ended = true;
+        Assert.That(placeholder.StateText, Is.EqualTo("redeploying…"), "Redeploying still wins over Ended");
+        placeholder.Redeploying = false;
+        Assert.That(placeholder.StateText, Is.EqualTo("ended"), "once redeploying is over, the usual state shows again");
+    }
+
     [Test]
     public void The_terminal_draws_in_Windows_Terminal_s_own_colors()
     {
@@ -245,18 +259,19 @@ public sealed class TerminalPanesTests
         var xaml = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
         XElement Named(string name) => xaml.Descendants().Single(e => (string?)e.Attribute(x + "Name") == name);
-        // M.ORCH-T1302: only the person's CLI tab bar is a fixed row right under the person tabs (Root's row 1); the chosen
-        // terminal scrolls with everything else in AgentsBody (row 2), a plain sibling of AgentsBodyList rather than one of
-        // its virtualized rows, so a native terminal window is never torn down just because it scrolled out of view
-        // (TerminalClip.cs keeps it clipped to AgentsBody's own viewport instead).
+        // M.ORCH-T1302: only the person's CLI tab bar is a fixed row right under the person tabs (Root's row 2, after the menu
+        // bar's own row 0 and the login tabs' row 1, M.ORCH-T1499); the chosen terminal scrolls with everything else in
+        // AgentsBody (row 3), a plain sibling of AgentsBodyList rather than one of its virtualized rows, so a native terminal
+        // window is never torn down just because it scrolled out of view (TerminalClip.cs keeps it clipped to AgentsBody's own
+        // viewport instead).
         var rootGrid = Named("Root");
         Assert.That(Named("TerminalsPanel").Parent, Is.SameAs(rootGrid));
-        Assert.That((string?)Named("TerminalsPanel").Attribute("Grid.Row"), Is.EqualTo("1"));
+        Assert.That((string?)Named("TerminalsPanel").Attribute("Grid.Row"), Is.EqualTo("2"));
         // Wrapped in a scroller row (M.ORCH-T1171, mirroring the login tabs' M.ORCH-T822), so its direct parent is that
         // row's ScrollViewer rather than TerminalsPanel itself; it must still live inside TerminalsPanel.
         Assert.That(Named("TerminalTabs").Ancestors().Contains(Named("TerminalsPanel")), Is.True);
         var rows = rootGrid.Elements().Single(e => e.Name.LocalName == "Grid.RowDefinitions").Elements().Select(r => (string?)r.Attribute("Height")).ToList();
-        Assert.That(rows[1], Is.EqualTo("Auto"));
+        Assert.That(rows[2], Is.EqualTo("Auto"), "the CLI tab bar's own row");
         Assert.That((string?)Named("AgentsBody").Attribute("Grid.Row"), Is.EqualTo(rows.IndexOf("*").ToString()), "everything under the CLI tab bar scrolls");
         foreach (var name in new[] { "TerminalsPanel", "TerminalTabs" })
             Assert.That(Named(name).Ancestors().Contains(Named("AgentsBody")), Is.False, $"{name} stays fixed");

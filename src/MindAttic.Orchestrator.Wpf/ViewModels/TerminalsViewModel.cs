@@ -200,7 +200,13 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>Keys or a paste were just dropped because the relay is reconnecting (M.ORCH-T979); clears after a few seconds.</summary>
     public bool InputNotSent { get => inputNotSent; private set { if (Set(ref inputNotSent, value)) Raise(nameof(StateText)); } }
 
-    public string StateText => Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
+    /// <summary>An inert placeholder standing in the Launcher's own slot while MindAttic.Launcher redeploys after its tab closed
+    /// (M.ORCH-T1511): never a real CLI's, never attached to a process. Shown ahead of every other state in
+    /// <see cref="StateText"/>, so a placeholder that's also marked <see cref="Ended"/> still reads "redeploying…", not "ended".</summary>
+    public bool Redeploying { get => redeploying; internal set { if (Set(ref redeploying, value)) Raise(nameof(StateText)); } }
+    private bool redeploying;
+
+    public string StateText => Redeploying ? "redeploying…" : Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
 
     private bool paneKnown, paneBusy, paneAsking;
 
