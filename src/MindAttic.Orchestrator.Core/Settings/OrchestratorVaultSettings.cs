@@ -203,6 +203,26 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 100000)]
     public double DiskCleanupGb { get; set; } = 30;
 
+    [Setting("Memory guard", Group = "Memory", Order = 1,
+        Help = "When RAM runs low, no new subagents, CLIs or test runs start and running work finishes; lower still, the newest subagent is shed, then tool calls are refused until memory recovers. /pacing off doesn't turn it off.")]
+    public bool MemoryGuard { get; set; } = true;
+
+    [Setting("Hold new work under (free GB)", Group = "Memory", Order = 2, Help = "Free RAM under which nothing new starts; running work finishes.")]
+    [SettingRange(0.5, 1024)]
+    public double MemoryTightGb { get; set; } = 4;
+
+    [Setting("Shed a subagent under (free GB)", Group = "Memory", Order = 3, Help = "Free RAM under which the newest /allocate subagent is stopped each minute and its ticket requeued.")]
+    [SettingRange(0.25, 1024)]
+    public double MemoryCriticalGb { get; set; } = 2;
+
+    [Setting("Refuse tool calls under (free GB)", Group = "Memory", Order = 4, Help = "Free RAM under which every agent's tool calls are refused so turns end, until memory recovers.")]
+    [SettingRange(0.1, 1024)]
+    public double MemoryEmergencyGb { get; set; } = 1;
+
+    [Setting("RAM per subagent (GB)", Group = "Memory", Order = 5, Help = "What one more subagent is assumed to take: it starts only while free RAM less this stays above the hold line.")]
+    [SettingRange(0.1, 64)]
+    public double MemoryPerSubagentGb { get; set; } = 1;
+
     [Setting("Audit every (hours)", Group = "Alerts", Order = 5, Help = "Hours between the audits the daemon runs by itself. 0 means only on demand.")]
     [SettingRange(0, 100000)]
     public int AuditEveryHours { get; set; } = 24;
@@ -296,6 +316,11 @@ public sealed class OrchestratorVaultSettings
         DiskWarnGb = s.DiskWarnGb,
         DiskCriticalGb = s.DiskCriticalGb,
         DiskCleanupGb = s.DiskCleanupGb,
+        MemoryGuard = s.MemoryGuard,
+        MemoryTightGb = s.MemoryTightGb,
+        MemoryCriticalGb = s.MemoryCriticalGb,
+        MemoryEmergencyGb = s.MemoryEmergencyGb,
+        MemoryPerSubagentGb = s.MemoryPerSubagentGb,
         AuditEveryHours = s.AuditEveryHours,
         GroomAfterDays = s.GroomAfterDays,
         GitHubIntake = s.GitHubIntake,
@@ -354,6 +379,11 @@ public sealed class OrchestratorVaultSettings
         DiskWarnGb = DiskWarnGb,
         DiskCriticalGb = DiskCriticalGb,
         DiskCleanupGb = DiskCleanupGb,
+        MemoryGuard = MemoryGuard,
+        MemoryTightGb = MemoryTightGb,
+        MemoryCriticalGb = MemoryCriticalGb,
+        MemoryEmergencyGb = MemoryEmergencyGb,
+        MemoryPerSubagentGb = MemoryPerSubagentGb,
         AuditEveryHours = AuditEveryHours,
         GroomAfterDays = GroomAfterDays,
         GitHubIntake = GitHubIntake,

@@ -473,6 +473,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
         // The room under the stop limits a burst of new subagents (M.ORCH-T959): they spend past the stop while it waits for a tool call.
         else pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, Pacer.StopPercent(paceSettings));
+        // Short of RAM, nothing new starts, whatever the windows allow (M.ORCH-T1494).
+        pace = Pacer.CapByMemory(pace, Activity.MemoryGuard.Shared.Observe(settings, now), settings);
         var writing = rateLimitFile is not null && (statusLease is null || statusLease.IsHeld || statusLease.TryAcquire());
         if (writing) rateLimitFile!.Write(budget, pace);
         // Each per-CLI login's own budget and pace (M.ORCH-T559), written for its CLIs' hooks by the process writing the global one.

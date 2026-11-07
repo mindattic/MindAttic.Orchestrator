@@ -341,6 +341,24 @@ public sealed record OrchestratorSettings
     /// named. 0 turns it off.</summary>
     public double DiskCleanupGb { get; init; } = 30;
 
+    /// <summary>The memory guard (M.ORCH-T1494): when RAM runs low, new work stops (subagents, CLIs, main-line tests) and running
+    /// work finishes, the way the 5-hour and weekly stops scale back; past <see cref="MemoryCriticalGb"/> the newest subagent is
+    /// shed, past <see cref="MemoryEmergencyGb"/> tool calls are refused. /pacing off doesn't turn it off; only this does.</summary>
+    public bool MemoryGuard { get; init; } = true;
+
+    /// <summary>Free RAM (GB) under which no new work starts (<see cref="Activity.MemoryLevel.Tight"/>).</summary>
+    public double MemoryTightGb { get; init; } = 4;
+
+    /// <summary>Free RAM (GB) under which the newest /allocate subagent is shed (<see cref="Activity.MemoryLevel.Critical"/>).</summary>
+    public double MemoryCriticalGb { get; init; } = 2;
+
+    /// <summary>Free RAM (GB) under which every tool call is refused until memory recovers (<see cref="Activity.MemoryLevel.Emergency"/>).</summary>
+    public double MemoryEmergencyGb { get; init; } = 1;
+
+    /// <summary>RAM (GB) one more subagent is assumed to take: a new one starts only while free RAM less this stays above
+    /// <see cref="MemoryTightGb"/>.</summary>
+    public double MemoryPerSubagentGb { get; init; } = 1;
+
     /// <summary>Off by default, since it writes tickets into every repo's log: hourly, file GitHub issues
     /// labelled "orchestrator" and CI runs that failed on main as tickets (see <see cref="Tickets.GitHubIntake"/>).</summary>
     public bool GitHubIntake { get; init; }

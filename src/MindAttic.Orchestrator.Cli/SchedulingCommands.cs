@@ -424,6 +424,26 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Free GB on the temp drive under which agent-made temp (ended sessions' folders, stale scratch builds) is deleted, oldest first (default 30; 0 turns it off).")]
         public double? DiskCleanupGb { get; init; }
 
+        [CommandOption("--memory-guard <ON>")]
+        [Description("true (the default): when RAM runs low, hold new subagents, CLIs and test runs and let running work finish; lower still, shed the newest subagent, then refuse tool calls. false turns it off.")]
+        public bool? MemoryGuard { get; init; }
+
+        [CommandOption("--memory-tight-gb <GB>")]
+        [Description("Free RAM under which nothing new starts (default 4).")]
+        public double? MemoryTightGb { get; init; }
+
+        [CommandOption("--memory-critical-gb <GB>")]
+        [Description("Free RAM under which the newest /allocate subagent is shed each minute (default 2).")]
+        public double? MemoryCriticalGb { get; init; }
+
+        [CommandOption("--memory-emergency-gb <GB>")]
+        [Description("Free RAM under which every tool call is refused until memory recovers (default 1).")]
+        public double? MemoryEmergencyGb { get; init; }
+
+        [CommandOption("--memory-per-subagent-gb <GB>")]
+        [Description("RAM one more subagent is assumed to take (default 1).")]
+        public double? MemoryPerSubagentGb { get; init; }
+
         [CommandOption("--model <REPO_OR_TICKET=MODEL>")]
         [Description("The model /allocate starts a repo's (or one ticket's) subagents on, overriding the pick: Prose=opus, M.ORCH-T12=sonnet, GTFO.*=sonnet; =auto clears. A ticket's wins over its repo's. Repeatable.")]
         public string[] Model { get; init; } = [];
@@ -491,8 +511,24 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             if (!(cg >= 0)) { AnsiConsole.MarkupLine("[red]--disk-cleanup-gb can't be negative.[/]"); return 1; }
             s = s with { DiskCleanupGb = cg };
         }
+        var memoryChanged = settings.MemoryGuard is not null || settings.MemoryTightGb is not null || settings.MemoryCriticalGb is not null
+            || settings.MemoryEmergencyGb is not null || settings.MemoryPerSubagentGb is not null;
+        if (memoryChanged)
+        {
+            s = s with
+            {
+                MemoryGuard = settings.MemoryGuard ?? s.MemoryGuard,
+                MemoryTightGb = settings.MemoryTightGb ?? s.MemoryTightGb,
+                MemoryCriticalGb = settings.MemoryCriticalGb ?? s.MemoryCriticalGb,
+                MemoryEmergencyGb = settings.MemoryEmergencyGb ?? s.MemoryEmergencyGb,
+                MemoryPerSubagentGb = settings.MemoryPerSubagentGb ?? s.MemoryPerSubagentGb,
+            };
+            if (!(s.MemoryEmergencyGb > 0 && s.MemoryEmergencyGb <= s.MemoryCriticalGb && s.MemoryCriticalGb <= s.MemoryTightGb))
+            { AnsiConsole.MarkupLine("[red]The memory lines go 0 < --memory-emergency-gb <= --memory-critical-gb <= --memory-tight-gb.[/]"); return 1; }
+            if (!(s.MemoryPerSubagentGb > 0)) { AnsiConsole.MarkupLine("[red]--memory-per-subagent-gb is more than 0.[/]"); return 1; }
+        }
         var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
-            || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null;
+            || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null || memoryChanged;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
         if (settings.Notify is { } notify)
         {
@@ -708,6 +744,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.StaleAfterHours > 0 ? $"assignments go stale after {s.StaleAfterHours}h quiet" : "assignments never go stale") + " · " +
             (s.DiskWarnGb > 0 ? $"alerts under {s.DiskWarnGb:0.#} GB free disk (urgent under {Math.Min(s.DiskCriticalGb, s.DiskWarnGb):0.#} GB)" : "disk space not watched") + " · " +
             (s.DiskCleanupGb > 0 ? $"agent temp cleaned up under {s.DiskCleanupGb:0.#} GB free" : "no disk self-cleanup"));
+        AnsiConsole.MarkupLine("  memory guard " + (s.MemoryGuard
+            ? $"on: new work holds under {s.MemoryTightGb:0.#} GB free RAM, the newest subagent is shed under {s.MemoryCriticalGb:0.#} GB, " +
+              $"tool calls are refused under {s.MemoryEmergencyGb:0.#} GB; {s.MemoryPerSubagentGb:0.#} GB assumed per subagent"
+            : "off (--memory-guard true)"));
         AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} · {s.MaxSessionsPerRepo} sessions per repo" +
             Markup.Escape(string.Concat(s.RepoMaxSessions.Select(kv => $", {kv.Key} {kv.Value}"))) +
             (s.RepoBudgetPercent.Count > 0 ? " · repo caps " + Markup.Escape(string.Join(", ", s.RepoBudgetPercent.Select(kv => $"{kv.Key} {kv.Value}%"))) : "") +

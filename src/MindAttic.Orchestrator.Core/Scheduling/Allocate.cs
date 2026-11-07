@@ -648,6 +648,13 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         // subtracts its running agents: with nothing subtracted, each call handed out the whole setting again (M.ORCH-T549).
         // With no CLI resolved the fair-share block below is skipped, so unstarted claims count here too (M.ORCH-T732): else
         // each next --claim handed out the full allowance again.
+        // Short of RAM nothing new is handed out, counted or unthrottled (M.ORCH-T1494): the daemon's judgment (it steps down only
+        // once clear of the line) or this process's own live reading, whichever is worse.
+        var memory = new[] { plan.Pace?.Memory, Activity.MemoryGuard.Shared.Observe(settings, nowUtc) }
+            .Where(m => m is not null).MaxBy(m => m!.Level);
+        if (memory is { Level: > Activity.MemoryLevel.Ok } low)
+            return ([], $"RAM is low ({low.Reading.Describe()}): nothing new starts until it recovers, so the machine doesn't page " +
+                "itself to a full disk. Finish what's running and run it again in a few minutes");
         var unstarted = cli is null && !unthrottled && plan.Pace?.SubagentAllowance is not null ? UnstartedClaims(plan, cliRunning, login) : 0;
         var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents - unstarted
             : settings.MaxConcurrentSessions - plan.Queue.Count(Busy));

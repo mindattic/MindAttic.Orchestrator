@@ -164,6 +164,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
                 EnsureHooks(s);
                 WatchHealth(allocate);
+                WatchMemory(s);
                 WatchPagefile();
                 WatchDisk(s);
                 CleanDiskIfLow(s, DateTime.UtcNow, options.WorkspaceRoot);
@@ -963,6 +964,28 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private Activity.HealthLevel alertedHealth;
+
+    private Activity.MemoryLevel memoryLevel;
+
+    /// <summary>Every tick, the memory guard's level (M.ORCH-T1494; it reads the machine at most every 5 seconds): a change is
+    /// logged, and a fall to a new level alerted. The holding itself is done where work starts (the pace's allowance, the
+    /// gates' live check, allocate, new CLIs, main-line tests).</summary>
+    private void WatchMemory(OrchestratorSettings s)
+    {
+        if (Activity.MemoryGuard.Shared.Observe(s, DateTime.UtcNow) is not { } m || m.Level == memoryLevel) return;
+        var worse = m.Level > memoryLevel;
+        memoryLevel = m.Level;
+        var what = m.Level switch
+        {
+            Activity.MemoryLevel.Tight => "no new subagents, CLIs or test runs start; running work finishes",
+            Activity.MemoryLevel.Critical => "nothing new starts, and the newest /allocate subagent is stopped each minute",
+            Activity.MemoryLevel.Emergency => "every agent's tool calls are refused until memory recovers",
+            _ => "new work may start again",
+        };
+        var text = $"memory guard {m.Key}: {m.Why}; {what}";
+        Say(m.Level >= Activity.MemoryLevel.Critical ? LogEventLevel.Error : m.Level == Activity.MemoryLevel.Tight ? LogEventLevel.Warning : LogEventLevel.Information, text);
+        if (worse) Alert(m.Level == Activity.MemoryLevel.Tight ? "RAM low: holding new work" : "RAM critical", text, urgent: m.Level >= Activity.MemoryLevel.Critical);
+    }
 
     private DateTime pagefileCheckedUtc;
 

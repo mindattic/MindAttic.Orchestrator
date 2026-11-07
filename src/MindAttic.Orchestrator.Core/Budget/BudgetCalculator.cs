@@ -491,6 +491,21 @@ public sealed class RateLimitStatusWriter(string? path = null)
                     .ToDictionary(c => c.Key.ToString(CultureInfo.InvariantCulture), c => c.Value);
             }
         }
+        // The memory guard (M.ORCH-T1494), paced or not: the gates hold new subagents while it's past ok and refuse tool calls at
+        // an emergency, and check free RAM live against these lines themselves, so a stale file can't hide a fall.
+        if (pace?.Memory is { } memory)
+        {
+            body["memory_level"] = memory.Key;
+            // To the half GB, so the file isn't rewritten for every few MB that move.
+            body["memory_free_gb"] = Math.Round(memory.Reading.FreeGb * 2, MidpointRounding.AwayFromZero) / 2;
+            if (memory.Reading.CommitCounted) body["memory_commit_percent"] = Math.Round(memory.Reading.CommitPercent);
+            if (memory.Level > Activity.MemoryLevel.Ok) body["memory_note"] = Activity.MemoryGuard.Note(memory, pace.Subagents);
+            body["memory_lines"] = new Dictionary<string, double>
+            {
+                ["tight_gb"] = memory.Lines.TightGb, ["critical_gb"] = memory.Lines.CriticalGb,
+                ["emergency_gb"] = memory.Lines.EmergencyGb, ["per_subagent_gb"] = memory.Lines.PerSubagentGb,
+            };
+        }
         // pace-gate.py holds each tool call this long; the average is what the next refresh corrects the
         // measured rate by (Pacer.AgentDelay), so it's kept until it decays even once the hold is off.
         var nowUtc = UtcNow();

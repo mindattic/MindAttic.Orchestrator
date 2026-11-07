@@ -91,9 +91,16 @@ public sealed record Pace(
         (var five, var week) => five ?? week,
     };
 
+    /// <summary>The memory guard's judgment when this pace was worked out (M.ORCH-T1494); null while it's off.</summary>
+    public Activity.MemoryState? Memory { get; init; }
+
+    /// <summary>Short of RAM: nothing new starts, whatever the windows allow.</summary>
+    public bool MemoryHold => Memory is { Level: > Activity.MemoryLevel.Ok };
+
     /// <summary>What agents are told about the allowance at the start of each turn.</summary>
     public string SubagentNote => SubagentAllowance switch
     {
+        _ when Memory is { Level: > Activity.MemoryLevel.Ok } m => Activity.MemoryGuard.Note(m, Subagents),
         null => "",
         0 => $"Subagents: none new right now ({Note}). Finish with the {Subagents} running; a new one waits until there's room.",
         var a when CoolOffPercent is { } hot => $"Subagents: {a} at once across all agents ({Subagents} running now). Cooling off: this login's " +
@@ -363,6 +370,27 @@ public static class Pacer
             SubagentAllowance = capped,
             Note = $"{pace.Note} Claude reports the window at {p:0.#}%, {Math.Max(0, stopPercent - p):0.#} points under the {stopPercent:0.#}% stop: no more than {capped} subagent{(capped == 1 ? "" : "s")} at once, so a burst can't run past the stop.",
         };
+    }
+
+    /// <summary>
+    /// The memory guard's cap on new subagents (M.ORCH-T1494), the last step on every pace, paced or not, /pacing off included.
+    /// Short of RAM (<paramref name="memory"/> past <see cref="Activity.MemoryLevel.Ok"/>) none new start: the allowance is the
+    /// ones running, so they finish and nothing replaces them. With RAM to spare, no more start than free RAM holds above the
+    /// hold line at <see cref="OrchestratorSettings.MemoryPerSubagentGb"/> each. It never cuts below the running ones (shedding
+    /// is the daemon's, at Critical), never raises an allowance, and leaves the pace as it is while the guard is off.
+    /// </summary>
+    public static Pace CapByMemory(Pace pace, Activity.MemoryState? memory, OrchestratorSettings s)
+    {
+        if (memory is null || !s.MemoryGuard) return pace;
+        pace = pace with { Memory = memory };
+        var cap = memory.Level > Activity.MemoryLevel.Ok ? pace.Subagents
+            : pace.Subagents + Activity.MemoryGuard.Fits(memory.Reading, s);
+        if (pace.SubagentAllowance is { } allowed && allowed <= cap) return pace;
+        if (pace.SubagentAllowance is null && memory.Level == Activity.MemoryLevel.Ok && cap >= s.MaxSubagents) return pace;
+        var note = memory.Level > Activity.MemoryLevel.Ok
+            ? $"{pace.Note} RAM is low ({memory.Reading.Describe()}): no new subagents until it recovers."
+            : $"{pace.Note} Free RAM ({memory.Reading.Describe()}) holds {cap} subagent{(cap == 1 ? "" : "s")} at once.";
+        return pace with { SubagentAllowance = cap, Note = note.TrimStart() };
     }
 
     /// <summary>The fewest CLIs spending on one login for <see cref="CoolOff"/> to apply: it's for a login split across many CLIs.</summary>

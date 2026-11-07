@@ -37,6 +37,8 @@ public sealed record HealthSample(long TotalHandles, double CommitPercent, doubl
 /// on record, and its cause is stopped at the source (the pace gate refuses whole-drive searches, the reaper kills
 /// orphaned and runaway tool processes); no handle warning has fired since. Commit hit 97-100% often under full load
 /// (lghub_agent and GTFO held most of it) and no agent tool call or Claude CLI failed for memory.
+/// <para>Running out of RAM is now held for, by <see cref="MemoryGuard"/> (M.ORCH-T1494), not here: it filled the system-managed
+/// pagefile until the disk was full and only a hard restart recovered. These alerts stay as they were.</para>
 /// </summary>
 public static partial class MachineHealth
 {
@@ -114,6 +116,16 @@ public static partial class MachineHealth
         else if (s.FreeRamGb < 2 + freePad) Mark(HealthLevel.Warn, $"{s.FreeRamGb:0.0} GB RAM free");
 
         return (level, reasons.Count == 0 ? null : string.Join("; ", reasons));
+    }
+
+    /// <summary>Free physical RAM (GB) and commit charge (% of the commit limit) alone, without walking every process:
+    /// cheap enough for <see cref="MemoryGuard"/> to read every few seconds. Null when Windows can't say.</summary>
+    internal static (double FreeGb, double CommitPercent)? Memory()
+    {
+        var mem = new MEMORYSTATUSEX { dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>() };
+        if (!GlobalMemoryStatusEx(ref mem)) return null;
+        var commit = mem.ullTotalPageFile == 0 ? 0 : 100.0 * (mem.ullTotalPageFile - mem.ullAvailPageFile) / mem.ullTotalPageFile;
+        return (mem.ullAvailPhys / (1024.0 * 1024 * 1024), commit);
     }
 
     /// <summary>
