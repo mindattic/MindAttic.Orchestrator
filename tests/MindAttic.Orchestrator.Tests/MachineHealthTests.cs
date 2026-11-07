@@ -73,4 +73,13 @@ public sealed class MachineHealthTests
         Assert.That(s.TopMemory, Has.Count.EqualTo(3));
         Assert.That(s.TopMemory[0].Gb, Is.GreaterThan(0));
     }
+
+    [TestCase(new[] { @"?:\pagefile.sys" }, true)]
+    [TestCase(new[] { @"C:\pagefile.sys 0 0" }, true)]
+    [TestCase(new[] { @"C:\pagefile.sys" }, true)]
+    [TestCase(new[] { @"C:\pagefile.sys 16384 16384" }, false)]
+    [TestCase(new[] { @"C:\pagefile.sys 16384 16384", @"D:\pagefile.sys 0 0" }, true)]
+    [TestCase(new string[0], false)]
+    public void A_pagefile_is_unbounded_unless_every_one_has_a_maximum(string[] pagingFiles, bool unbounded) =>
+        Assert.That(MachineHealth.PagefileUnbounded(pagingFiles), Is.EqualTo(unbounded));
 }

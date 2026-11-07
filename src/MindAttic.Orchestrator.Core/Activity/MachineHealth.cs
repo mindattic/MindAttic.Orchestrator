@@ -116,6 +116,34 @@ public static partial class MachineHealth
         return (level, reasons.Count == 0 ? null : string.Join("; ", reasons));
     }
 
+    /// <summary>
+    /// Whether a pagefile may grow without limit, from the Memory Management <c>PagingFiles</c> registry entries
+    /// ("C:\pagefile.sys 16384 16384" is fixed; "?:\pagefile.sys" or sizes "0 0" are system-managed). An unbounded pagefile
+    /// grows until the disk is full once RAM runs out (M.ORCH-T1493); set-pagefile.ps1 fixes its size.
+    /// </summary>
+    public static bool PagefileUnbounded(IEnumerable<string> pagingFiles)
+    {
+        foreach (var entry in pagingFiles)
+        {
+            var parts = entry.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0) continue;
+            if (parts[0].StartsWith("?:", StringComparison.Ordinal)) return true;
+            if (parts.Length < 3 || !long.TryParse(parts[2], out var max) || max <= 0) return true;
+        }
+        return false;
+    }
+
+    /// <summary><see cref="PagefileUnbounded(IEnumerable{string})"/> for this machine; false when it can't be read.</summary>
+    public static bool PagefileUnbounded()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management");
+            return key?.GetValue("PagingFiles") is string[] files && PagefileUnbounded(files);
+        }
+        catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException) { return false; }
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct MEMORYSTATUSEX
     {

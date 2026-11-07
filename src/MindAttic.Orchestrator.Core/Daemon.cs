@@ -164,6 +164,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
                 EnsureHooks(s);
                 WatchHealth(allocate);
+                WatchPagefile();
                 WatchDisk(s);
                 CleanDiskIfLow(s, DateTime.UtcNow, options.WorkspaceRoot);
                 tick.Lap("hooks, machine health and disk space");
@@ -962,6 +963,21 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private Activity.HealthLevel alertedHealth;
+
+    private DateTime pagefileCheckedUtc;
+
+    /// <summary>Once a day, alerts while the pagefile is system-managed: out of RAM it grows until the disk is full and only a
+    /// hard restart recovers (M.ORCH-T1493). set-pagefile.ps1 at the repo root fixes its size.</summary>
+    private void WatchPagefile()
+    {
+        if (DateTime.UtcNow - pagefileCheckedUtc < TimeSpan.FromDays(1)) return;
+        pagefileCheckedUtc = DateTime.UtcNow;
+        if (!Activity.MachineHealth.PagefileUnbounded()) return;
+        const string text = "The pagefile is system-managed, so when RAM runs out it grows until the disk is full. "
+            + "Run set-pagefile.ps1 from MindAttic.Orchestrator (fixes it at 16 GB) and restart Windows.";
+        Say(LogEventLevel.Warning, text);
+        Alert("Pagefile can fill the disk", text, urgent: false);
+    }
 
     private readonly Activity.DiskWatch disk = new();
 
