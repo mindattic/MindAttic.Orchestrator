@@ -167,7 +167,7 @@
              space and RAM load (DiskFreeText/RamUtilizationText, MainViewModel.HostStats.cs), refreshed every RefreshAsync
              tick (5s). Bound to the global login's tab in code-behind (MenuBarTools.DataContext = model), like OrgStrip:
              these five tools and the two readouts are the same regardless of which login's tab is shown. -->
-        <Border x:Name="MenuBar" Grid.Row="0" Grid.ColumnSpan="2" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,0,1" Padding="12,8,12,8">
+        <Border x:Name="MenuBar" Style="{StaticResource MaStatusBar}" Grid.Row="0" Grid.ColumnSpan="2" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,0,1" Padding="12,8,12,8">
             <StackPanel x:Name="MenuBarTools" Orientation="Horizontal" HorizontalAlignment="Right" AutomationProperties.Name="Window tools and host status">
                 <TextBlock x:Name="DiskFreeText" Text="{Binding DiskFreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
                            ToolTip="Free space on the system drive" AutomationProperties.Name="{Binding DiskFreeText}"
@@ -199,7 +199,7 @@
 
         <!-- Top-aligned with a star middle row (M.ORCH-T1431): the tools sit right under the last login, and a list too long for
              the window scrolls on its own rather than pushing the tools off the bottom. Its top matches the CLI tab bar's. -->
-        <Border x:Name="Sidebar" Grid.Row="1" Grid.RowSpan="3" Grid.Column="0" MinWidth="170"
+        <Border x:Name="Sidebar" Style="{StaticResource MaSidePane}" Grid.Row="1" Grid.RowSpan="3" Grid.Column="0" MinWidth="170"
                 BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,1,0" Padding="12,8,12,8"
                 AutomationProperties.Name="People and window tools">
         <!-- Since M.ORCH-T1439 the logins are Auto, and the ticket cards take whatever height is left, scrolling on their own.
