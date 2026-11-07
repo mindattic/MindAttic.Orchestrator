@@ -214,6 +214,8 @@ public partial class MainWindow : Window
         // Its tabs are written to the session-restore file as they change, and offered back after a crash (M.ORCH-T862).
         restoreOnLoad = true;
         SessionRestore.Track(model);
+        // Back where it was last time, maximized or not, before it's shown (M.ORCH-T1510).
+        SessionRestore.TrackWindow(this);
         // Kept as they stand when the window starts closing: the tabs' teardown after that isn't what was open.
         Closing += (_, _) => SessionRestore.Freeze();
         terminalsPipe = new CancellationTokenSource();

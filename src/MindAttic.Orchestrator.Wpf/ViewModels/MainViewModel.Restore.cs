@@ -95,6 +95,11 @@ public sealed partial class MainViewModel
     internal static IReadOnlyList<string> RememberedTerms(RestoreState? previous) =>
         [.. previous?.Tabs.Where(t => t.Chosen && t.HostId is { Length: > 0 }).Select(t => t.HostId!) ?? []];
 
+    /// <summary>The TermHost session of the CLI tab that was on screen when the last run's restore file was written
+    /// (M.ORCH-T1510); null when none was, or it ran unhosted.</summary>
+    internal static string? RememberedShown(RestoreState? previous) =>
+        previous is { SelectedTab: { } i } && i >= 0 && i < previous.Tabs.Count && previous.Tabs[i].HostId is { Length: > 0 } id ? id : null;
+
     /// <summary>After the first refresh, on a start that reattached its hosted CLIs (M.ORCH-T1436): each person's last chosen
     /// tab, by its TermHost session, chosen again; one whose session is gone leaves that person's default. Never throws.</summary>
     internal void ReselectRemembered(RestoreState? previous)
@@ -106,6 +111,17 @@ public sealed partial class MainViewModel
             foreach (var id in RememberedTerms(previous))
                 if (AllTerminals.Panes.FirstOrDefault(p => string.Equals(p.TermId, id, StringComparison.OrdinalIgnoreCase)) is { } pane)
                     OwnerOf(pane).Terminals.Choose(id);
+            // And what was on screen (M.ORCH-T1510): the CLI tab shown, else the person shown, so a restart (clean or not) opens
+            // where it was left, not on whichever reattached tab happened to come up last.
+            if (RememberedShown(previous) is { } shownId
+                && AllTerminals.Panes.FirstOrDefault(p => string.Equals(p.TermId, shownId, StringComparison.OrdinalIgnoreCase)) is { } shown)
+                ShowPane(shown);
+            else if (previous?.SelectedPerson is { } key
+                     && loginTabs.FirstOrDefault(t => string.Equals(t.tab.Key, key, StringComparison.OrdinalIgnoreCase)) is { } person)
+            {
+                if (person.OrgId != selectedOrgId) SelectOrg(person.OrgId);
+                Select(person);
+            }
             ShowChosenPane();
         }
         catch (Exception ex) { OrchestratorLog.For("Restore").Error(ex, "Reselecting each person's remembered CLI tab failed; contained"); }

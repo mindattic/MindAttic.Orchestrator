@@ -59,6 +59,55 @@ internal static class SessionRestore
         catch (Exception ex) { Log.Error(ex, "Tracking the terminals for session restore failed; contained"); }
     }
 
+    private static Window? window;
+    private static DispatcherTimer? moved;
+
+    /// <summary>
+    /// The dashboard's window back where it was at the last run's end (M.ORCH-T1510), before it's shown: its normal bounds, then
+    /// maximized when it was; skipped when they'd be off every screen now. Then its moves and resizes are kept the same way as
+    /// the tabs, a second after each one settles.
+    /// </summary>
+    internal static void TrackWindow(Window main)
+    {
+        try
+        {
+            window = main;
+            if (Previous?.Window is { } was
+                && was.Fits(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight))
+            {
+                main.WindowStartupLocation = WindowStartupLocation.Manual;
+                main.Left = was.Left;
+                main.Top = was.Top;
+                main.Width = was.Width;
+                main.Height = was.Height;
+                if (was.Maximized) main.WindowState = WindowState.Maximized;
+            }
+            var settle = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
+            moved = settle;
+            settle.Tick += (_, _) => { settle.Stop(); Changed(); };
+            void Settle() { settle.Stop(); settle.Start(); }
+            main.LocationChanged += (_, _) => Settle();
+            main.SizeChanged += (_, _) => Settle();
+            main.StateChanged += (_, _) => Settle();
+        }
+        catch (Exception ex) { Log.Error(ex, "Restoring the dashboard window's place failed; contained"); }
+    }
+
+    /// <summary>The window's bounds as they are now (its normal ones while maximized or minimized); null when unknown.</summary>
+    private static RestoreWindow? WindowNow()
+    {
+        try
+        {
+            if (window is not { } w) return null;
+            var normal = w.WindowState == WindowState.Normal ? new Rect(w.Left, w.Top, w.Width, w.Height) : w.RestoreBounds;
+            if (normal.IsEmpty || !double.IsFinite(normal.Width)) return last?.Window;
+            // Minimized keeps whether it was maximized before (what it comes back as), as the last write had it.
+            var maximized = w.WindowState == WindowState.Maximized || (w.WindowState == WindowState.Minimized && last?.Window?.Maximized == true);
+            return new RestoreWindow(normal.Left, normal.Top, normal.Width, normal.Height, maximized);
+        }
+        catch (Exception) { return last?.Window; }
+    }
+
     /// <summary>Something worth saving changed: written once the burst settles (one write for many tabs opening at once).</summary>
     internal static void Changed()
     {
@@ -111,7 +160,7 @@ internal static class SessionRestore
         if (frozen || model is null) return;
         try
         {
-            var state = model.CaptureRestore(reason, clean);
+            var state = model.CaptureRestore(reason, clean) with { Window = WindowNow() };
             last = state;
             Store.Save(state);
         }

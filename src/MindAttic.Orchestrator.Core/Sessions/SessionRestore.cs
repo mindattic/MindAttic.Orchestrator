@@ -47,6 +47,22 @@ public sealed record RestoreState
     public int? SelectedTab { get; init; }
 
     public IReadOnlyList<RestoreTab> Tabs { get; init; } = [];
+
+    /// <summary>Where the dashboard's window was (M.ORCH-T1510), put back at the next start; null when unknown.</summary>
+    public RestoreWindow? Window { get; init; }
+}
+
+/// <summary>The dashboard window's normal (unmaximized) bounds in device-independent pixels, and whether it was maximized
+/// (M.ORCH-T1510).</summary>
+public sealed record RestoreWindow(double Left, double Top, double Width, double Height, bool Maximized)
+{
+    /// <summary>Whether these bounds are usable on a virtual screen at (<paramref name="left"/>, <paramref name="top"/>) of
+    /// <paramref name="width"/> x <paramref name="height"/>: a real size, and at least 100 x 50 of the window's top on screen,
+    /// so a monitor unplugged since never puts it out of reach.</summary>
+    public bool Fits(double left, double top, double width, double height) =>
+        Width >= 200 && Height >= 150 && double.IsFinite(Left) && double.IsFinite(Top)
+        && Math.Min(Left + Width, left + width) - Math.Max(Left, left) >= 100
+        && Math.Min(Top + 50, top + height) - Math.Max(Top, top) >= 50;
 }
 
 /// <summary>
