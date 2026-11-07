@@ -142,6 +142,15 @@ public sealed class TerminalPaneViewModel : ObservableObject
         return true;
     }
 
+    /// <summary>Gives this tab a fresh position stamp (M.ORCH-T1526, a tab-strip drag): its id and session are
+    /// untouched, same as <see cref="Rename"/>/<see cref="ApplyLook"/>; the caller persists it
+    /// (<see cref="TerminalsViewModel.Restamp"/>).</summary>
+    internal void SetOrder(long order)
+    {
+        Request = Request with { Order = order };
+        Raise(nameof(Request));
+    }
+
     public Brush TabBrush { get; }
 
     /// <summary>Black on a light <paramref name="background"/>, white on a dark one (by relative luminance).</summary>
@@ -1106,6 +1115,23 @@ public sealed class TerminalsViewModel : ObservableObject
         return changed;
     }
 
+    /// <summary>Gives every pane in <paramref name="ordered"/> a fresh, rising position stamp, in that order
+    /// (M.ORCH-T1526, applying a tab-strip drag: <see cref="PersonTerminalsViewModel.Reorder"/>), and keeps
+    /// each by its identity like <see cref="Rename"/> does: its <see cref="TermPaneFile"/>, then the
+    /// session-restore file once (<see cref="Changed"/>). A full re-stamp of the whole strip rather than just
+    /// the moved tabs, since ticks never run out and this is a rare, explicit user action - simpler than
+    /// renumbering only what strictly needs it.</summary>
+    internal void Restamp(IEnumerable<TerminalPaneViewModel> ordered)
+    {
+        foreach (var pane in ordered)
+        {
+            pane.SetOrder(Interlocked.Increment(ref nextOrder));
+            if (pane.TermId is { Length: > 0 } id && !TermPaneFile.Write(id, pane.Request, PaneDirectory))
+                OrchestratorLog.For("Terminals").Warning("Couldn't save {Title:l}'s new position to its tab file {Id:l}", pane.Title, id);
+        }
+        Changed?.Invoke();
+    }
+
     /// <summary>Closes <paramref name="pane"/>, ending its CLI (a hosted one's TermHost is killed).</summary>
     public void Close(TerminalPaneViewModel pane)
     {
@@ -1345,5 +1371,25 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         Raise(nameof(HasPanes));
         Raise(nameof(ShowsTerminal));
         Raise(nameof(Summary));
+    }
+
+    /// <summary>Applies a drag on the real CLI tab strip (M.ORCH-T1526, MainWindow.xaml.cs's
+    /// TerminalTabs_Reordered): moves <paramref name="moved"/> to <paramref name="newIndex"/> among
+    /// <see cref="Panes"/> (the same index semantics <see cref="ObservableCollection{T}.Move"/> itself uses)
+    /// and gives every pane here a fresh position stamp in the new order (<see cref="TerminalsViewModel.Restamp"/>),
+    /// so a later resync (<c>SyncTerminals</c>, triggered by any login's tab opening or closing) reproduces this
+    /// order instead of reverting it. False, a no-op, for a pane that isn't one of this person's or an index
+    /// it's already at (including the pinned Usage tab, which is never one of <see cref="Panes"/> to begin with,
+    /// and the Launcher's own tab, which is an ordinary pane here like any other).</summary>
+    internal bool Reorder(TerminalPaneViewModel moved, int newIndex)
+    {
+        var from = Panes.IndexOf(moved);
+        if (from < 0) return false;
+        newIndex = Math.Clamp(newIndex, 0, Panes.Count - 1);
+        if (newIndex == from) return false;
+
+        Panes.Move(from, newIndex);
+        all.Restamp(Panes);
+        return true;
     }
 }

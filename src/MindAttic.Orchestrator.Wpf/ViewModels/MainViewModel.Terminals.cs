@@ -47,17 +47,19 @@ public sealed partial class MainViewModel
         return loginTabs.FirstOrDefault(t => t.IsPersonTab && string.Equals(t.ScopeEmail ?? global, login, StringComparison.OrdinalIgnoreCase)) ?? this;
     }
 
-    /// <summary>Hands each person's tab its own terminals (on the global login's tab, which holds them all), the Launcher's
-    /// own menu pane first (M.LNCH-T77) and every CLI tab after it in its original position (M.ORCH-T1170): the order it was
-    /// first opened in, not the order a dashboard restart happened to reattach it in, so a crash and restart leaves the tab
-    /// strip looking the same as before. A tab with no recorded position (opened before this existed, or reattached from a
-    /// record with no sidecar) sorts after every tab that has one.</summary>
+    /// <summary>Hands each person's tab its own terminals (on the global login's tab, which holds them all), in their
+    /// position (M.ORCH-T1170): the order they were first opened in, or last dragged to (M.ORCH-T1526,
+    /// <see cref="PersonTerminalsViewModel.Reorder"/>) — not the order a dashboard restart happened to reattach them in, so
+    /// a crash and restart leaves the tab strip looking the same as before. This includes the Launcher's own menu pane
+    /// (M.LNCH-T77): it is an ordinary, freely-draggable tab here like any other, no longer hard-pinned first. A tab with no
+    /// recorded position (opened before this existed, or reattached from a record with no sidecar) sorts after every tab
+    /// that has one.</summary>
     private void SyncTerminals()
     {
         if (!IsGlobalTab) { Root.SyncTerminals(); return; }
         var owners = AllTerminals.Panes.ToLookup(OwnerOf);
         foreach (var t in loginTabs)
-            t.Terminals.SyncTo([.. owners[t].OrderByDescending(p => p.Request.IsMenu).ThenBy(p => p.Request.Order ?? long.MaxValue)]);
+            t.Terminals.SyncTo([.. owners[t].OrderBy(p => p.Request.Order ?? long.MaxValue)]);
         ShowChosenPane();
     }
 

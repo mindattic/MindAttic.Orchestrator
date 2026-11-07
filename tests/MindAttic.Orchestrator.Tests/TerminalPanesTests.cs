@@ -252,6 +252,111 @@ public sealed class TerminalPanesTests
         Assert.That(person.ShowsTerminal, Is.False, "nothing to show either way");
     }
 
+    // ---- drag-and-drop reordering (M.ORCH-T1526) ----------------------------------------------------
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void Reorder_moves_the_pane_and_leaves_the_chosen_one_untouched()
+    {
+        var all = new TerminalsViewModel();
+        var person = new PersonTerminalsViewModel(all);
+        TerminalPaneViewModel Pane(string repo) => new(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe" });
+        var (a, b, c) = (Pane("A"), Pane("B"), Pane("C"));
+        person.SyncTo([a, b, c]);
+        person.SelectedPane = b;
+
+        Assert.That(person.Reorder(a, 2), Is.True);
+
+        Assert.That(person.Panes, Is.EqualTo(new[] { b, c, a }));
+        Assert.That(person.SelectedPane, Is.SameAs(b), "reordering never changes which tab is chosen");
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void Reorder_is_a_no_op_for_a_pane_that_is_not_this_person_s_or_an_index_already_its_own()
+    {
+        var all = new TerminalsViewModel();
+        var person = new PersonTerminalsViewModel(all);
+        TerminalPaneViewModel Pane(string repo) => new(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe" });
+        var (a, b) = (Pane("A"), Pane("B"));
+        person.SyncTo([a, b]);
+
+        Assert.That(person.Reorder(Pane("elsewhere"), 0), Is.False);
+        Assert.That(person.Reorder(a, 0), Is.False, "already at index 0");
+        Assert.That(person.Panes, Is.EqualTo(new[] { a, b }), "neither no-op moved anything");
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void After_a_reorder_every_pane_s_Order_is_strictly_ascending_in_the_new_order()
+    {
+        var all = new TerminalsViewModel();
+        var person = new PersonTerminalsViewModel(all);
+        TerminalPaneViewModel Pane(string repo) => new(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe" });
+        var (a, b, c) = (Pane("A"), Pane("B"), Pane("C"));
+        person.SyncTo([a, b, c]);
+
+        Assert.That(person.Reorder(c, 0), Is.True);
+
+        Assert.That(person.Panes, Is.EqualTo(new[] { c, a, b }));
+        Assert.That(person.Panes.Select(p => p.Request.Order), Is.Ordered.Ascending);
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_reordered_pane_s_Order_round_trips_through_its_tab_file()
+    {
+        var dir = temp.New();
+        var all = new TerminalsViewModel { PaneDirectory = dir };
+        var person = new PersonTerminalsViewModel(all);
+        TerminalPaneViewModel Pane(string repo, string id)
+        {
+            var pane = new TerminalPaneViewModel(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe" }, hosted: true) { TermId = id };
+            TermPaneFile.Write(id, pane.Request, dir);
+            return pane;
+        }
+        var (a, b) = (Pane("A", "a1"), Pane("B", "b1"));
+        person.SyncTo([a, b]);
+
+        Assert.That(person.Reorder(b, 0), Is.True);
+
+        Assert.That(TermPaneFile.Read("b1", dir)!.Order, Is.EqualTo(b.Request.Order));
+        Assert.That(TermPaneFile.Read("a1", dir)!.Order, Is.EqualTo(a.Request.Order));
+        Assert.That(b.Request.Order!.Value, Is.LessThan(a.Request.Order!.Value));
+        a.DisposeControl();
+        b.DisposeControl();
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_reorder_survives_a_resync_because_it_is_stamped_into_Order_not_just_moved_in_Panes()
+    {
+        // Regression for the whole point of Restamp: SyncTerminals (MainViewModel.Terminals.cs) re-derives each
+        // person's tab order from AllTerminals.Panes.OrderBy(Request.Order) on every resync (any login's tab
+        // opening or closing) - a reorder that only called ObservableCollection.Move without also restamping
+        // Order would silently revert the next time that happens.
+        var all = new TerminalsViewModel();
+        var person = new PersonTerminalsViewModel(all);
+        TerminalPaneViewModel Pane(string repo) => new(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe" });
+        var (a, b, c) = (Pane("A"), Pane("B"), Pane("C"));
+        person.SyncTo([a, b, c]);
+
+        Assert.That(person.Reorder(c, 0), Is.True);
+        var resynced = new[] { a, b, c }.OrderBy(p => p.Request.Order ?? long.MaxValue).ToArray();
+
+        Assert.That(resynced, Is.EqualTo(new[] { c, a, b }), "the drag's order, not the original open order");
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void The_Launcher_s_own_tab_is_an_ordinary_pane_to_Reorder_no_longer_pinned_first()
+    {
+        var all = new TerminalsViewModel();
+        var person = new PersonTerminalsViewModel(all);
+        var menu = new TerminalPaneViewModel(new PaneRequest("RD: Launcher", temp.New()) { Repo = "Launcher", Provider = "Launcher", CommandLine = "cmd.exe", IsMenu = true, Initials = "RD" });
+        TerminalPaneViewModel Pane(string repo) => new(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe" });
+        var cli = Pane("Repo");
+        person.SyncTo([menu, cli]);
+
+        Assert.That(person.Reorder(menu, 1), Is.True, "the Launcher's tab can be dragged like any other");
+
+        Assert.That(person.Panes, Is.EqualTo(new[] { cli, menu }));
+    }
+
     [Test, Apartment(ApartmentState.STA)]
     public void The_Launcher_s_own_menu_pane_shows_without_a_provider_bracket()
     {

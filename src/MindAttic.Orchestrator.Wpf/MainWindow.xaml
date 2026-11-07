@@ -410,7 +410,13 @@
                               HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
                               ScrollChanged="TerminalTabScroller_ScrollChanged"
                               PreviewMouseLeftButtonDown="RealTerminalTabs_PreviewMouseLeftButtonDown">
+                    <!-- Drag-and-drop reordering (M.ORCH-T1526, M.COMP-T168): the Launcher's own tab is an ordinary
+                         pane here like any other CLI session (no longer hard-pinned first - see SyncTerminals), so
+                         every tab in this strip is freely draggable. TerminalTabs_Reordered applies and persists the
+                         move via PersonTerminalsViewModel.Reorder. The pinned Usage tab above is unaffected - it was
+                         never part of Terminals.Panes/this control in the first place. -->
                     <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ContextMenuOpening="OnTerminalTabContextMenu" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
+                                     AllowReorder="True" Reordered="TerminalTabs_Reordered"
                                      AutomationProperties.Name="Terminals" AutomationProperties.HelpText="{Binding Terminals.Summary}">
                         <mc:MaTabControl.ItemContainerStyle>
                             <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">

@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Term;
 using MindAttic.Orchestrator.Wpf.ViewModels;
@@ -778,6 +779,15 @@ public partial class MainWindow : Window
     /// <summary>Clicking anywhere in the real CLI tab strip (even the tab already chosen there, which raises no
     /// SelectedPane change to hook) leaves the pinned Usage tab (M.ORCH-T1446).</summary>
     private void RealTerminalTabs_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) => Shown.Terminals.ClearUsageShown();
+
+    /// <summary>A completed drag on the real CLI tab strip (M.ORCH-T1526, TerminalTabs.AllowReorder):
+    /// applies and persists the move via <see cref="PersonTerminalsViewModel.Reorder"/>. Silently ignores a
+    /// moved item that isn't one of this login's panes (shouldn't happen - TerminalTabs is only ever bound
+    /// to Terminals.Panes - but a stray event is a no-op here, not a crash).</summary>
+    private void TerminalTabs_Reordered(object sender, TabReorderEventArgs e)
+    {
+        if (e.MovedItem is TerminalPaneViewModel pane) Shown.Terminals.Reorder(pane, e.NewIndex);
+    }
 
     /// <summary>A CLI tab's right-click menu (M.ORCH-T883; Shift+F10 too): "Move to" each other signed-in login, read when it's
     /// opened, moving that CLI there. Not on the Launcher's own menu tab; disabled until the CLI's host is known.</summary>
