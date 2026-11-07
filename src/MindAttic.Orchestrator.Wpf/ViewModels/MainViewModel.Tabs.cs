@@ -355,8 +355,18 @@ public sealed partial class MainViewModel
             var owner = OwnerOf(pane);
             // The Launcher's own tab, gone (closed by hand, or its menu exited on its own): always redeploys before reopening
             // (M.ORCH-T1511), regardless of whether the person has other CLI tabs open -- unlike any other tab, never routed
-            // through the generic last-tab-gone decision below.
-            if (pane.Request.IsMenu) { OnLauncherTabGone(owner, pane); return; }
+            // through the generic last-tab-gone decision below. Except when the Launcher's own in-app Redeploy is why it's
+            // gone: that already sent a PaneRequest{IsMenu:true} down the pipe for its replacement (received and opened by
+            // OpenTerminal before this tab's process even exited, M.LNCH-T107) before spawning run.ps1 -WaitPid -Force itself.
+            // Running our own LauncherRedeployer on top of that races a second dotnet publish against the one already in
+            // flight, which can catch the deployed exe mid-move and fail the replacement's own relaunch (M.ORCH-T1524).
+            if (pane.Request.IsMenu)
+            {
+                if (AllTerminals.Panes.Any(p => p != pane && p.Request.IsMenu && !p.Ended && ReferenceEquals(OwnerOf(p), owner)))
+                    return;
+                OnLauncherTabGone(owner, pane);
+                return;
+            }
             var key = owner.tab.Key;
             var hasLive = AllTerminals.Panes.Any(p => !p.Ended && ReferenceEquals(OwnerOf(p), owner));
             var outcome = launcherRespawn.Decide(key, owner.IsTabSignedIn, hasLive, ShuttingDown, RestoringTerminals, DateTime.UtcNow);
