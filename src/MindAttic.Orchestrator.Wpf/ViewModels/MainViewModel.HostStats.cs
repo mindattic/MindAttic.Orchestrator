@@ -43,11 +43,27 @@ public sealed partial class MainViewModel
         var m => $"{m.Reading.Describe()}: every agent's tool calls are refused so turns end, until memory recovers. Close what you can.",
     };
 
-    private void SetHostStats(double freeGb, double? ramPercent, MemoryState? memoryNow = null)
+    private bool allocatePaused;
+
+    /// <summary>The menu bar's banner while allocation is paused globally (<c>orchestrator settings --allocate false</c>,
+    /// M.ORCH-T1491), shown in MaWarn beside the memory guard's readout: every CLI's /allocate stays recorded, but
+    /// orchestrator next hands none of them anything. Empty while it's on.</summary>
+    public string AllocatePausedText => AllocatePausedLine(allocatePaused);
+
+    internal static string AllocatePausedLine(bool paused) => paused ? MindAttic.Orchestrator.Scheduling.Allocate.PausedGlobally : "";
+
+    /// <summary>What the banner's tooltip says: why nothing is handed out, and how to resume it.</summary>
+    public string AllocatePausedToolTip =>
+        "The master switch for /allocate is off: the CLIs that typed /allocate keep it, but orchestrator next hands none of them a ticket. " +
+        "orchestrator settings --allocate true resumes it, or the Allocate setting in MindAttic Vault's Orchestrator page.";
+
+    private void SetHostStats(double freeGb, double? ramPercent, MemoryState? memoryNow = null, bool allocatePausedNow = false)
     {
         diskFreeGb = freeGb;
         ramUtilizationPercent = ramPercent;
         memory = memoryNow;
+        allocatePaused = allocatePausedNow;
+        Raise(nameof(AllocatePausedText));
         Raise(nameof(DiskFreeText));
         Raise(nameof(RamUtilizationText));
         Raise(nameof(RamCalmText));

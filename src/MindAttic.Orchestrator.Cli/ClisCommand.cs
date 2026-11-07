@@ -47,6 +47,9 @@ internal sealed class ClisCommand : Command<ClisCommand.Settings>
         AnsiConsole.Write(table);
         var on = roster.Clis.Count(c => c.Allocate);
         AnsiConsole.MarkupLine($"{roster.Clis.Count} open CLI(s), /allocate on in {on}.");
+        // The master switch apart from each CLI's own /allocate (M.ORCH-T1491): paused, none of them is handed anything.
+        if (Ctx.Store().TryLoadSettings(out var s) && !s.Allocate)
+            AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(MindAttic.Orchestrator.Scheduling.Allocate.PausedGlobally)}[/]");
         return 0;
     }
 }

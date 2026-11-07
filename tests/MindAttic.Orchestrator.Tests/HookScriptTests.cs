@@ -2179,7 +2179,7 @@ public sealed class HookScriptTests
         Assert.That(lines, Has.Length.EqualTo(5), full);
         Assert.That(lines[0], Is.Empty, "a leading blank line so the billing line never shares a line with the hook's own label");
         Assert.That(lines[2], Is.EqualTo("[Orchestrator] Pacing is on."));
-        Assert.That(lines[3], Is.EqualTo("[Orchestrator] Allocation is off."));
+        Assert.That(lines[3], Is.EqualTo("[Orchestrator] Allocation is off in this CLI."));
         Assert.That(lines[4], Is.EqualTo("[Orchestrator] Crossrepo is off."));
         return lines[1];
     }
@@ -2199,15 +2199,45 @@ public sealed class HookScriptTests
     {
         SignedIn("{" + TeamLogin + "}");
         string FullMessage() => JsonDocument.Parse(Gate(Starting, AgentGate.ContextScriptName).Output).RootElement.GetProperty("systemMessage").GetString()!;
-        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is on.\n[Orchestrator] Allocation is off.\n[Orchestrator] Crossrepo is off."), "a fresh CLI is paced, not allocating, not crossrepo");
+        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is on.\n[Orchestrator] Allocation is off in this CLI.\n[Orchestrator] Crossrepo is off."), "a fresh CLI is paced, not allocating, not crossrepo");
 
         Gate(Said("/pacing off"), AgentGate.ContextScriptName);
         Gate(Said("/allocate"), AgentGate.ContextScriptName);
-        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is off.\n[Orchestrator] Allocation is on.\n[Orchestrator] Crossrepo is off."));
+        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is off.\n[Orchestrator] Allocation is on in this CLI.\n[Orchestrator] Crossrepo is off."));
 
         Gate(Said("/pacing on"), AgentGate.ContextScriptName);
         Gate(Said("/allocate off"), AgentGate.ContextScriptName);
-        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is on.\n[Orchestrator] Allocation is off.\n[Orchestrator] Crossrepo is off."), "back off/off once each is turned back");
+        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is on.\n[Orchestrator] Allocation is off in this CLI.\n[Orchestrator] Crossrepo is off."), "back off/off once each is turned back");
+    }
+
+    [Test]
+    public void Allocation_paused_globally_is_said_at_the_start_and_in_the_allocate_on_reply()
+    {
+        // M.ORCH-T1491: orchestrator settings --allocate false hands no CLI anything; "Allocation is off" never said whether it
+        // was this CLI's own or the global pause, and /allocate on recorded fine with no word that nothing would come of it.
+        SignedIn("{" + TeamLogin + "}");
+        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
+        File.WriteAllText(settings, """{ "Allocate": false }""");
+        string FullMessage() => JsonDocument.Parse(Gate(Starting, AgentGate.ContextScriptName).Output).RootElement.GetProperty("systemMessage").GetString()!;
+        const string Resume = "orchestrator settings --allocate true resumes it.";
+        Assert.That(FullMessage(), Does.Contain("\n[Orchestrator] Allocation is off in this CLI, and paused globally for every CLI: " + Resume + "\n"));
+
+        var said = Gate(Said("/allocate"), AgentGate.ContextScriptName).Output;
+        using (var reply = JsonDocument.Parse(said))
+        {
+            Assert.That(reply.RootElement.GetProperty("hookSpecificOutput").GetProperty("additionalContext").GetString(),
+                Does.Contain("/allocate on was recorded for this CLI").And.Contain("paused globally").And.Contain("orchestrator settings --allocate true"),
+                "the model's reply says turning it on here does nothing until the global switch is back");
+            Assert.That(reply.RootElement.GetProperty("systemMessage").GetString(), Does.Contain("paused globally").And.Contain("--allocate true"), "and you're told directly");
+        }
+        Assert.That(FullMessage(), Does.Contain("\n[Orchestrator] Allocation is on in this CLI, but paused globally for every CLI: " + Resume + "\n"),
+            "recorded here all the same, so it starts once the switch is back on");
+
+        Assert.That(Gate(Said("/allocate off"), AgentGate.ContextScriptName).Output, Does.Not.Contain("paused globally"), "turning it off needs no word");
+        File.WriteAllText(settings, """{ "Allocate": true }""");
+        Assert.That(Gate(Said("/allocate"), AgentGate.ContextScriptName).Output, Does.Not.Contain("paused globally"), "on, nothing extra is said");
+        Assert.That(FullMessage(), Does.Contain("\n[Orchestrator] Allocation is on in this CLI.\n"));
     }
 
     [Test]

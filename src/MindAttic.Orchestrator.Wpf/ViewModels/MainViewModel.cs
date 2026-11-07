@@ -335,7 +335,7 @@ public sealed partial class MainViewModel : ObservableObject
             var clock = Stopwatch.StartNew();
             var dirs = OwnLoginDirs();
             IReadOnlyList<Member> readMembers = [];
-            var (next, tabs, nextOrgs, diskFree, ramPercent) = await BuiltAfterChanges(() => Task.Run(() =>
+            var (next, tabs, nextOrgs, diskFree, ramPercent, allocatePausedNow) = await BuiltAfterChanges(() => Task.Run(() =>
             {
                 var built = aggregator.Refresh();
                 // Each login's name and color, read with the snapshot, off the UI thread; and the organization's members, so
@@ -355,11 +355,13 @@ public sealed partial class MainViewModel : ObservableObject
                 // reused from the same cheap stat calls the disk-space and memory alerts already read (M.ORCH-T471/M.ORCH-T1494).
                 var diskFreeGb = DiskWatch.Read(["C:\\"]) is [{ } drive, ..] ? drive.FreeGb : 0;
                 var ramUtilizationPercent = MachineHealth.RamUtilizationPercent();
-                return (built, LoginScope.Tabs(built, dirs, members, hasKey), orgDirectory, diskFreeGb, ramUtilizationPercent);
+                // The master switch for /allocate (M.ORCH-T1491): only a setting that was read and is off shows the banner.
+                var paused = store.TryLoadSettings(out var settingsNow) && !settingsNow.Allocate;
+                return (built, LoginScope.Tabs(built, dirs, members, hasKey), orgDirectory, diskFreeGb, ramUtilizationPercent, paused);
             }), () => localChanges);
             ApplyTabs(next, tabs, nextOrgs);
             // The memory guard's level (M.ORCH-T1498): the daemon's, stepped, as the snapshot's pace carries it; else this process's own.
-            SetHostStats(diskFree, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last);
+            SetHostStats(diskFree, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow);
             // What a pushed snapshot's figures are laid over until the next read (M.ORCH-T872).
             (lastMembers, lastOrgs, restShown) = (readMembers, nextOrgs, rest);
             await TickAllocateAsync(next);

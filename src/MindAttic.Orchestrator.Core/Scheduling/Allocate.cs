@@ -35,6 +35,10 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     public static string DefaultWaitingPath { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "allocate-waiting.json");
 
+    /// <summary>What the dashboard's banner and <c>orchestrator clis</c> say while the master switch is off (M.ORCH-T1491):
+    /// every CLI's own /allocate stays recorded, but none is handed anything.</summary>
+    public const string PausedGlobally = "Allocation paused globally - orchestrator settings --allocate true resumes";
+
     private readonly Dictionary<string, string> told = [];
 
     /// <summary>Stories whose agent ended without closing them: not retried (it would likely fail the same way) until

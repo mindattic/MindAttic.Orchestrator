@@ -169,6 +169,12 @@
              these five tools and the two readouts are the same regardless of which login's tab is shown. -->
         <Border x:Name="MenuBar" Style="{StaticResource MaStatusBar}" Grid.Row="0" Grid.ColumnSpan="2" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,0,1" Padding="12,8,12,8">
             <StackPanel x:Name="MenuBarTools" Orientation="Horizontal" HorizontalAlignment="Right" AutomationProperties.Name="Window tools and host status">
+                <!-- Allocation paused globally (the orchestrator settings allocate switch off, M.ORCH-T1491): in MaWarn like the memory
+                     guard's held readout, shown only while the master switch is off, so a CLI's /allocate handing out nothing
+                     is never silent. -->
+                <TextBlock x:Name="AllocatePausedText" Text="{Binding AllocatePausedText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRL}"
+                           ToolTip="{Binding AllocatePausedToolTip}" AutomationProperties.Name="{Binding AllocatePausedText}"
+                           Visibility="{Binding AllocatePausedText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock x:Name="DiskFreeText" Text="{Binding DiskFreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
                            ToolTip="Free space on the system drive" AutomationProperties.Name="{Binding DiskFreeText}"
                            Visibility="{Binding DiskFreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />

@@ -431,10 +431,13 @@ public sealed partial class MainViewModel
     public string AllocateText => AllocateLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AllocateClis(), store.LoadSettings().Allocate) +
         (allocate.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", allocate.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
 
-    internal static string AllocateLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis, bool on = true) => clis.Count == 0
+    internal static string AllocateLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis, bool on = true) =>
+        // Paused globally (M.ORCH-T1491) says so even before any CLI typed /allocate: one typed now would get nothing either.
+        !on && clis.Count == 0 ? "Allocate is paused globally: a CLI that types /allocate gets no tickets until orchestrator settings --allocate true (or Settings) resumes it."
+        : clis.Count == 0
         ? "Proposals wait for you. Type /allocate in a CLI to have its repos' tickets worked by its own subagents."
         // Paused from Settings or the CLI: the CLIs' marks stay, but orchestrator next hands them nothing.
-        : !on ? $"Allocate is paused: the {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} that typed /allocate get no tickets until you resume it from Settings."
+        : !on ? $"Allocate is paused globally: the {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} that typed /allocate get no tickets until orchestrator settings --allocate true (or Settings) resumes it."
         : $"Allocate is on in {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} for " +
           string.Join(", ", clis.Values.SelectMany(r => r).Select(r => r == Allocate.AllRepos ? "every repo" : r).Distinct(StringComparer.OrdinalIgnoreCase)) +
           ", each through its own subagents, paced to the 5-hour window.";
