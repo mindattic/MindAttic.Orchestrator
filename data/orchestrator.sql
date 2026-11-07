@@ -2,7 +2,7 @@
 
 -- accounts
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1793332800, 11, 1793743200, 1793315177, 1792686357.102392);
-INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', 'ryandebraal@mindattic.com', 'MindAttic', 'Team · Max', 8, 1794035400, 25, 1794348000, 1794034213, 1793453926.3653111);
+INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', 'ryandebraal@mindattic.com', 'MindAttic', 'Team · Max', 4, 1794053400, 26, 1794348000, 1794035962, 1793453926.3653111);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', 'shampoo1232@mindattic.com', 'MindAttic', 'Team · Max 5x', 51, 1792600200, 96, 1792702800, 1792589089, 1792464053.5616076);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', 'pdftransferjr@mindattic.com', 'MindAttic', 'Team · Max 5x', 81, 1792688400, 93, 1792929600, 1792685787, 1792670412.137807);
 
@@ -1037,6 +1037,12 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T06:50:13Z', 8, '2026-11-07T07:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T06:54:24Z', 8, '2026-11-07T07:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T06:58:25Z', 8, '2026-11-07T07:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T07:02:42Z', 8, '2026-11-07T07:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T07:06:49Z', 10, '2026-11-07T07:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T07:11:01.1741963Z', 1, '2026-11-07T12:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T07:11:01Z', 1, '2026-11-07T12:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T07:15:14Z', 3, '2026-11-07T12:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T07:19:22Z', 4, '2026-11-07T12:10:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -1354,6 +1360,8 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-07T02:20:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-06T21:20:00Z', 'Under', 'ended at 1%', 1, 1, 154063, 61, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-07T05:10:00Z', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-07T00:10:00Z', 'Under', 'ended at 3%', 3, 3, 520441, 61, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-07T05:40:00Z', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-07T00:40:00Z', 'Under', 'ended at 29%', 29, 29, 4898554, 139, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-07T07:10:00Z', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-07T02:10:00Z', 'Under', 'ended at 11%', 11, 11, 1944849, 67, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-07T07:10:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-07T02:10:00Z', 'Under', 'ended at 10%', 10, 10, 0, 65, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -1758,15 +1766,15 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-06', 'SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22726827);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-06', 'Unity.GridGame', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 11472235);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 268123);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 105258);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 60433);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 135278);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 95141);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 229048);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 7017);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'MindAttic.Launcher', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 64916);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 168398);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'MindAttic.Launcher', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 109005);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'MindAttic.Launcher', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 99469);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 77398);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 137096);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'Unity.GridGame', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 96849);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1764219);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 151053);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-07', 'Unity.GridGame', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 133546);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -3931,6 +3939,19 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bc754ee7-b2e2-4870-b745-42c627ec13c1/agent-afd8f71b6b14f5077', 'RB-T234', 'feature', 'REA.Bloodlines', 190337, '2026-10-28T03:01:16.458Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bce53b3f-dde0-4412-856b-8feb6217ba2b', 'U.RICO-T134', 'fix', 'Unity.Ricochet', 23506, '2026-10-28T15:00:40.896Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd617946-ff52-4e58-97ae-2a6cf5699b0b', 'SS-T93', 'chore', 'Prose', 460014, '2026-10-15T20:39:39.816Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-a136689efd3fd97cc', 'M.ORCH-T1504', 'fix', 'MindAttic.Orchestrator', 97489, '2026-11-07T07:13:10.043Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-a19b72a64313eede8', 'M.ORCH-T1455', 'fix', 'MindAttic.Orchestrator', 45881, '2026-11-07T07:06:25.573Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-a3df8311217e35e80', 'M.ORCH-T1508', 'fix', 'MindAttic.Orchestrator', 36057, '2026-11-07T07:15:11.854Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-a413c7e11469fe732', 'M.ORCH-T1456', 'fix', 'MindAttic.Orchestrator', 204323, '2026-11-07T07:19:26.752Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-a49c45ccb11a0c227', 'M.ORCH-T1454', 'fix', 'MindAttic.Orchestrator', 290201, '2026-11-07T07:19:33.159Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-a4e68f54328b37825', 'M.ORCH-T1453', 'fix', 'MindAttic.Orchestrator', 207031, '2026-11-07T07:12:53.404Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-a630c526a7dbf85c0', 'M.ORCH-T1517', 'fix', 'MindAttic.Orchestrator', 74727, '2026-11-07T07:19:31.871Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-a751ffa2d2087fa8b', 'M.ORCH-T1452', 'fix', 'MindAttic.Orchestrator', 191147, '2026-11-07T07:10:05.141Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-a93a1a5949135c229', 'M.ORCH-T1464', 'fix', 'MindAttic.Orchestrator', 46587, '2026-11-07T07:08:57.613Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-a98e46ac40bf056d0', 'M.ORCH-T1516', 'fix', 'MindAttic.Orchestrator', 64257, '2026-11-07T07:17:41.913Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-aa070e84f1a7ea9de', 'M.ORCH-T1463', 'fix', 'MindAttic.Orchestrator', 55732, '2026-11-07T07:07:03.042Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-ab59f69d2641483f3', 'M.ORCH-T1506', 'fix', 'MindAttic.Orchestrator', 100073, '2026-11-07T07:14:30.345Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd67fe50-4ff9-488f-aef0-b3d39e0077ff/agent-af6c356ef82365681', 'M.ORCH-T1503', 'fix', 'MindAttic.Orchestrator', 73251, '2026-11-07T07:10:07.224Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bd8c4d39-d4df-435b-867b-23ae59638fa7', 'FOR-T2', 'chore', 'Formicarium', 93531, '2026-10-16T00:57:34.742Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('bde4744f-6cf3-4e60-bc02-1f7ee03cc790', 'M.AUTH-T17', 'docs', 'MindAttic.Authentication', 17982, '2026-10-21T18:11:25.493Z', 1, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('be8f3e9e-f3bb-46d0-88e0-f37479bc80ce', 'RB-T187', 'fix', 'REA.Bloodlines', 7292, '2026-10-25T03:53:28.468Z', 1, 'opus');
@@ -4461,11 +4482,11 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (37, 'M.HELP-T17', 'MindAttic.Helpers', 'D:\Projects\MindAttic\MindAttic.Helpers', 'Claude', '2026-11-02T14:26:59.2333102Z', 1, NULL, NULL, NULL, 38652, 'ed92e10c-6499-4acb-8226-42ef4abdeb1b', 'sonnet', NULL, 'ryandebraal@gmail.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (38, 'IDEA-T42', 'IdeaCms', 'D:\Projects\MindAttic\IdeaCms', 'Claude', '2026-11-02T14:26:59.2333102Z', 1, NULL, NULL, NULL, 38652, 'ed92e10c-6499-4acb-8226-42ef4abdeb1b', 'sonnet', NULL, 'ryandebraal@gmail.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (39, 'PRS-T792', 'Prose', 'D:\Projects\MindAttic\Prose', 'Claude', '2026-11-05T18:34:06.8588118Z', 1, NULL, NULL, NULL, 67308, '4f9789de-5d51-49bc-bab2-f41d9979ffef', 'sonnet', NULL, 'ryandebraal@gmail.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (40, 'M.ORCH-T1452', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-05T22:56:07.2155278Z', 1, NULL, NULL, NULL, 67308, '4f9789de-5d51-49bc-bab2-f41d9979ffef', 'sonnet', NULL, 'ryandebraal@gmail.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (41, 'M.ORCH-T1453', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-05T22:56:07.2155278Z', 1, NULL, NULL, NULL, 67308, '4f9789de-5d51-49bc-bab2-f41d9979ffef', 'sonnet', NULL, 'ryandebraal@gmail.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (42, 'M.ORCH-T1454', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-05T22:56:07.2155278Z', 1, NULL, NULL, NULL, 67308, '4f9789de-5d51-49bc-bab2-f41d9979ffef', 'sonnet', NULL, 'ryandebraal@gmail.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (43, 'US-T117', 'SpaceGod', 'D:\Projects\MindAttic\SpaceGod', 'Claude', '2026-11-06T22:14:38.5130994Z', 1, NULL, NULL, NULL, 45888, '9e3c5407-bc7d-4e03-870d-bf3e25af197f', 'opus', NULL, 'shampoo1232@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (44, 'US-T82', 'SpaceGod', 'D:\Projects\MindAttic\SpaceGod', 'Claude', '2026-11-06T23:10:36.8364447Z', 1, NULL, NULL, NULL, 45888, '9e3c5407-bc7d-4e03-870d-bf3e25af197f', 'opus', NULL, 'shampoo1232@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (40, 'M.ORCH-T1454', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-07T07:01:02.4802943Z', 1, NULL, NULL, NULL, 40684, 'bd67fe50-4ff9-488f-aef0-b3d39e0077ff', 'sonnet', NULL, 'ohleo199@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (41, 'M.ORCH-T1456', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-07T07:02:49.7899891Z', 1, NULL, NULL, NULL, 40684, 'bd67fe50-4ff9-488f-aef0-b3d39e0077ff', 'sonnet', NULL, 'ohleo199@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (42, 'M.ORCH-T1514', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-07T07:13:47.3818119Z', 1, NULL, NULL, NULL, 40684, 'bd67fe50-4ff9-488f-aef0-b3d39e0077ff', 'opus', NULL, 'ohleo199@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (43, 'M.ORCH-T1515', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-07T07:13:47.3818119Z', 1, NULL, NULL, NULL, 40684, 'bd67fe50-4ff9-488f-aef0-b3d39e0077ff', 'opus', NULL, 'ohleo199@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (44, 'M.ORCH-T1517', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-07T07:15:22.4405477Z', 1, NULL, NULL, NULL, 40684, 'bd67fe50-4ff9-488f-aef0-b3d39e0077ff', 'opus', NULL, 'ohleo199@mindattic.com');
 
 -- organizations
 
@@ -31552,8 +31573,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "ccca191abff653f296e2c7bfef22e2e20db14c32"
   },
   "IdiotProof": {
-    "Tested": "7efe5b71981a07cdc5edc517ee87ad8ed291e7ed",
-    "Green": "7efe5b71981a07cdc5edc517ee87ad8ed291e7ed"
+    "Tested": "8a4cbd0c7731aceb1b45e20d41cbc340946c44f0",
+    "Green": "8a4cbd0c7731aceb1b45e20d41cbc340946c44f0"
   },
   "JobHunt": {
     "Tested": "9be873a8d98948c466d3400b1a4bcb1aed96ad66",
@@ -31611,7 +31632,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "f5ecd6661fe8d34818fa1555b740c452e2d6ec15",
+    "Tested": "9be0886ce4ddad388ae5ad4bedb571faf43ffb4e",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -31623,8 +31644,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "bb9829c3b4bd5e1e047437b4c8c8e687b09ad07c"
   },
   "MindAttic.Tickets": {
-    "Tested": "6417929c1834e86518072bfd87ddfb62c26824d5",
-    "Green": "6417929c1834e86518072bfd87ddfb62c26824d5"
+    "Tested": "5fc12b306707ba4c13dcebc8150a370908d40506",
+    "Green": "5fc12b306707ba4c13dcebc8150a370908d40506"
   },
   "MindAttic.Vault": {
     "Tested": "d4fbcafee723d01da9913f9f1fb438c5b048f5e2",
@@ -32065,36 +32086,6 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "Open": true
   },
   {
-    "TicketId": "M.ORCH-T1452",
-    "Repo": "MindAttic.Orchestrator",
-    "Directory": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator",
-    "FirstSeenUtc": "2026-11-06T02:41:03.8433323Z",
-    "State": "orphaned",
-    "Deaths": 1,
-    "Redispatches": 0,
-    "DeadStartedUtc": "2026-11-05T22:56:07.2155278Z",
-    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
-    "Cli": 67308,
-    "Ahead": 0,
-    "Uncommitted": [],
-    "Open": true
-  },
-  {
-    "TicketId": "M.ORCH-T1453",
-    "Repo": "MindAttic.Orchestrator",
-    "Directory": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator",
-    "FirstSeenUtc": "2026-11-06T02:41:03.8433323Z",
-    "State": "orphaned",
-    "Deaths": 1,
-    "Redispatches": 0,
-    "DeadStartedUtc": "2026-11-05T22:56:07.2155278Z",
-    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
-    "Cli": 67308,
-    "Ahead": 0,
-    "Uncommitted": [],
-    "Open": true
-  },
-  {
     "TicketId": "M.ORCH-T1454",
     "Repo": "MindAttic.Orchestrator",
     "Directory": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator",
@@ -32120,36 +32111,6 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "DeadStartedUtc": "2026-11-05T18:34:06.8588118Z",
     "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
     "Cli": 67308,
-    "Ahead": 0,
-    "Uncommitted": [],
-    "Open": true
-  },
-  {
-    "TicketId": "US-T117",
-    "Repo": "SpaceGod",
-    "Directory": "D:\\Projects\\MindAttic\\SpaceGod",
-    "FirstSeenUtc": "2026-11-07T02:08:41.6156253Z",
-    "State": "orphaned",
-    "Deaths": 1,
-    "Redispatches": 0,
-    "DeadStartedUtc": "2026-11-06T22:14:38.5130994Z",
-    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
-    "Cli": 45888,
-    "Ahead": 0,
-    "Uncommitted": [],
-    "Open": true
-  },
-  {
-    "TicketId": "US-T82",
-    "Repo": "SpaceGod",
-    "Directory": "D:\\Projects\\MindAttic\\SpaceGod",
-    "FirstSeenUtc": "2026-11-07T02:08:41.6156253Z",
-    "State": "orphaned",
-    "Deaths": 1,
-    "Redispatches": 0,
-    "DeadStartedUtc": "2026-11-06T23:10:36.8364447Z",
-    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
-    "Cli": 45888,
     "Ahead": 0,
     "Uncommitted": [],
     "Open": true
