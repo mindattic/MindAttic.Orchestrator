@@ -112,9 +112,16 @@ public sealed class LampSettingsTests
             "https://ntfy.sh/new-topic", s => s.NotifyUrl),
         Case("diskWarnGb", s => s with { DiskWarnGb = 30 }, 30d, v => v.DiskWarnGb = 0, 0d, s => s.DiskWarnGb),
         Case("diskCriticalGb", s => s with { DiskCriticalGb = 2 }, 2d, v => v.DiskCriticalGb = 8.5, 8.5, s => s.DiskCriticalGb),
+        Case("diskCleanupGb", s => s with { DiskCleanupGb = 30 }, 30d, v => v.DiskCleanupGb = 0, 0d, s => s.DiskCleanupGb),
         Case("auditEveryHours", s => s with { AuditEveryHours = 0 }, 0, v => v.AuditEveryHours = 6, 6, s => s.AuditEveryHours),
         Case("groomAfterDays", s => s with { GroomAfterDays = 14 }, 14, v => v.GroomAfterDays = 60, 60, s => s.GroomAfterDays),
         Case("gitHubIntake", s => s with { GitHubIntake = true }, true, v => v.GitHubIntake = false, false, s => s.GitHubIntake),
+        // Memory
+        Case("memoryGuard", s => s with { MemoryGuard = false }, false, v => v.MemoryGuard = true, true, s => s.MemoryGuard),
+        Case("memoryTightGb", s => s with { MemoryTightGb = 4 }, 4d, v => v.MemoryTightGb = 6, 6d, s => s.MemoryTightGb),
+        Case("memoryCriticalGb", s => s with { MemoryCriticalGb = 2 }, 2d, v => v.MemoryCriticalGb = 1.5, 1.5, s => s.MemoryCriticalGb),
+        Case("memoryEmergencyGb", s => s with { MemoryEmergencyGb = 1 }, 1d, v => v.MemoryEmergencyGb = 0.5, 0.5, s => s.MemoryEmergencyGb),
+        Case("memoryPerSubagentGb", s => s with { MemoryPerSubagentGb = 1 }, 1d, v => v.MemoryPerSubagentGb = 2, 2d, s => s.MemoryPerSubagentGb),
         // Dashboard
         Case("theme", s => s with { Theme = "Light" }, "Light", v => v.Theme = "Dark", "Dark", s => s.Theme),
         Case("symbolTabLabels", s => s with { SymbolTabLabels = false }, false, v => v.SymbolTabLabels = true, true, s => s.SymbolTabLabels),
