@@ -1026,6 +1026,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T05:55:35Z', 7, '2026-11-07T07:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T05:59:36Z', 7, '2026-11-07T07:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T06:03:38Z', 7, '2026-11-07T07:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T06:08:40Z', 7, '2026-11-07T07:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T06:13:46Z', 7, '2026-11-07T07:10:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -31591,7 +31593,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "9dc831066609d3f239b3e674607816e7ed17a5be",
+    "Tested": "c12ae93eae36a3b574fd5f50d6ba73d4e06fb105",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -31603,8 +31605,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "bb9829c3b4bd5e1e047437b4c8c8e687b09ad07c"
   },
   "MindAttic.Tickets": {
-    "Tested": "bc6f84eed25fb6237fc1e0778f50a4eed7695ca1",
-    "Green": "bc6f84eed25fb6237fc1e0778f50a4eed7695ca1"
+    "Tested": "803c13b032561aafeaa3cc3e332c2c3c6fb7921b",
+    "Green": "803c13b032561aafeaa3cc3e332c2c3c6fb7921b"
   },
   "MindAttic.Vault": {
     "Tested": "d4fbcafee723d01da9913f9f1fb438c5b048f5e2",
@@ -31634,8 +31636,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "0223132d1fd651281201d57401151b833fd53fa8"
   },
   "Unity.Cursory": {
-    "Tested": "9f7e14b71e61c7c0b6fb52d620b5be299ffa38b5",
-    "Green": "9f7e14b71e61c7c0b6fb52d620b5be299ffa38b5"
+    "Tested": "cb8d5f8857ff7c88b2763fe6ede658e2993773c8",
+    "Green": "cb8d5f8857ff7c88b2763fe6ede658e2993773c8"
   },
   "REA.Bloodlines": {
     "Tested": "1b7ba7da3114157b5de591acb91f1935aae350d2",
@@ -31789,8 +31791,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "ac10f4db9f08df61a40b3421dbddb4bb9ca987f7"
   },
   "Unity.Rea.QuickDuel": {
-    "Tested": "9f9066710285516a83d2d8cf3cc9ecaffcec16a2",
-    "Green": "9f9066710285516a83d2d8cf3cc9ecaffcec16a2"
+    "Tested": "34a3db6e2b0a43ed08657beca706a953c34af9f8",
+    "Green": "34a3db6e2b0a43ed08657beca706a953c34af9f8"
   },
   "Unity.Rea.Hare": {
     "Tested": "da39a879915c4d4cbd792b111f51cfa8bda02302"
@@ -31866,7 +31868,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2ddb30570ff68e1fc55a4027a160687e2a08c9ad"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "7f7b4305e879a1bedf1c922b6844099068b619c4"
+    "Tested": "c12ae93eae36a3b574fd5f50d6ba73d4e06fb105"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
