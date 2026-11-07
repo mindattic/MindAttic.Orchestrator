@@ -140,6 +140,34 @@ public sealed class TicketPinsTests
     }
 
     [Test]
+    public void IsOwn_is_the_sidebars_Active_and_Pending_filter_not_the_pin_alone()
+    {
+        // A-T1 is pinned to Ryan but nobody's claimed it yet: Pending for Ryan, as before M.ORCH-T1450.
+        assignees["A-T1"] = Ryan;
+        var pinned = Plan().Queue.Single(q => q.Id == "A-T1");
+        Assert.That(pinned.IsAssigned, Is.False);
+        Assert.That(TicketPins.IsOwn(pinned, Ryan), Is.True);
+        Assert.That(TicketPins.IsOwn(pinned, Jordan), Is.False);
+
+        // A-T2 is unassigned and unpinned; Jordan's CLI claims it. A claim pins nothing, so going by the pin alone
+        // (M.ORCH-T1450's "misses newly claimed ones") never showed it to Jordan even though Jordan's CLI works it.
+        var (jordans, _) = Allocate.Next(Plan(), store.LoadSettings(), store, ["A"], null, claim: true, Now, _ => "main", login: Jordan);
+        Assert.That(jordans.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2" }));
+        var claimed = Plan().Queue.Single(q => q.Id == "A-T2");
+        Assert.That((claimed.IsPinned, claimed.IsAssigned), Is.EqualTo((false, true)), "claimed, not pinned");
+        Assert.That(TicketPins.IsOwn(claimed, Jordan), Is.True, "claimed under Jordan's login: Jordan's Active ticket");
+        Assert.That(TicketPins.IsOwn(claimed, Ryan), Is.False, "not claimed under Ryan's");
+        Assert.That(TicketPins.IsOwn(claimed, null), Is.False, "no login known: nobody's");
+
+        // Closed or won't-do is never Active or Pending for anyone, however stale a claim or pin still names it
+        // (M.ORCH-T1450's "closed tickets still listed").
+        var closed = claimed with { Ticket = claimed.Ticket with { Status = TicketRules.Closed } };
+        Assert.That(TicketPins.IsOwn(closed, Jordan), Is.False, "still shows the live claim, but the ticket itself is closed");
+        var wontDo = pinned with { Ticket = pinned.Ticket with { Status = TicketRules.WontDo } };
+        Assert.That(TicketPins.IsOwn(wontDo, Ryan), Is.False, "and still shows the pin");
+    }
+
+    [Test]
     public void Each_persons_tickets_view_sits_below_their_open_clis_and_assigns_in_Tickets_Desktop()
     {
         var root = TestContext.CurrentContext.TestDirectory;

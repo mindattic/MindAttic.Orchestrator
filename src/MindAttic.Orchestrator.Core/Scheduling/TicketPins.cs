@@ -38,6 +38,17 @@ public static class TicketPins
     public static bool Redelegable(QueueItem item) => !item.IsPinned;
 
     /// <summary>
+    /// Whether <paramref name="item"/> belongs in <paramref name="email"/>'s own Active or Pending tickets (M.ORCH-T1450): never
+    /// a closed or won't-do ticket, however stale a claim that still names it; while it's claimed or being worked, whoever's
+    /// login that is now (<see cref="Assignment.Account"/>) — a claim (<c>orchestrator next --claim</c>) is rarely also pinned,
+    /// so going only by the pin missed almost everything a CLI actually claims; otherwise (nothing live on it yet) the pin
+    /// itself, so a ticket assigned to someone still shows as waiting on their card until a CLI picks it up.
+    /// </summary>
+    public static bool IsOwn(QueueItem item, string? email) =>
+        email is not null && item.Ticket.Status == MindAttic.Tickets.Log.TicketRules.Open &&
+        (item.IsAssigned ? Same(item.Assignment?.Account, email) : Same(item.Assignee, email));
+
+    /// <summary>
     /// Why a user can't take their pinned tickets right now, or null while they have room: not signed in on this machine; their
     /// week at or past its stop line (<paramref name="weeklyStopPercent"/>, the weekly reserve's); their 5-hour window at or past
     /// its target (<paramref name="fiveHourStopPercent"/>, the pace target). A window never read counts as untouched.

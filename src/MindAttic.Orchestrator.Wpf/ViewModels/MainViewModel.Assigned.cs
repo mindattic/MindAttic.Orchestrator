@@ -7,6 +7,7 @@ using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Tickets;
+using MindAttic.Tickets.Data;
 using MindAttic.Tickets.Log;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
@@ -71,6 +72,10 @@ public sealed class UserTicketRowViewModel : ObservableObject
     /// <summary>The sidebar card's accessible name (M.ORCH-T1439): "M.ORCH-T1439, MindAttic.Orchestrator: its title. Open in Tickets".</summary>
     public string OpenName => $"{Id}, {Repo}: {Summary}. Open in Tickets";
 
+    /// <summary>"ID · friendly name", or "ID · summary" cut short with no name yet (M.ORCH-T1450, the same friendly-name system
+    /// <c>tickets ticket names</c> backfills): what the sidebar card's bold line shows instead of a bare, unlabeled id.</summary>
+    public string Caption => TicketsDb.Caption(Id, owner.FriendlyNameOf(Id), Summary);
+
     /// <summary>Who it's assigned to ("Unassigned" for nobody), with their room as a status light.</summary>
     public PersonOptionViewModel Assignee => assignee;
 
@@ -89,7 +94,8 @@ public sealed class UserTicketRowViewModel : ObservableObject
     {
         { Ticket.Status: TicketRules.WontDo } => "Won't do" + (closedUtc is { } w ? $", closed {Formatting.Ago(w, DateTime.UtcNow)}" : ""),
         { Ticket.Status: TicketRules.Closed } => "Closed" + (closedUtc is { } c ? $" {Formatting.Ago(c, DateTime.UtcNow)}" : ""),
-        { Assignment: { } a, IsAssigned: true } => $"Being worked since {Formatting.Ago(a.StartedUtc, DateTime.UtcNow)}" + (a.Account is { } on ? $" on {on}" : ""),
+        { Assignment: { } a, IsAssigned: true } => $"Being worked since {Formatting.Ago(a.StartedUtc, DateTime.UtcNow)}" +
+            (a.Account is { } on ? $" on {on}" : "") + (a.Model is { } model ? $" ({model})" : ""),
         { BlockedBy.Count: > 0 } => $"Waits for {string.Join(", ", item.BlockedBy)}",
         { MayWork: false } => "Waits for approval",
         { TooBig: true } => $"Too big for what's left ({item.Estimate})",
@@ -166,6 +172,9 @@ public sealed partial class MainViewModel
     private readonly ObservableCollection<PersonOptionViewModel> orgPeople = [];
     private readonly PersonOptionViewModel nobody = new(null);
 
+    /// <summary>Every ticket's friendly name (M.ORCH-T1450), read once for every tab from the global login's workspace root.</summary>
+    private readonly MindAttic.Orchestrator.Tickets.TicketNameSource nameSource = new();
+
     /// <summary>"Unassigned", then every person of this tab's org (M.ORCH-T754) with a tab, by their tab's name, and anyone of the
     /// org a ticket is pinned to with no tab here. With one org, everyone. Every option is also in the global login's tab's list of
     /// all of them, which names an assignee wherever they are.</summary>
@@ -211,6 +220,10 @@ public sealed partial class MainViewModel
 
     /// <summary>A user's name as their tab is titled ("Ryan"), else their email.</summary>
     internal string NameOf(string email) => Root.people.FirstOrDefault(p => TicketPins.Same(p.Email, email))?.Name ?? email;
+
+    /// <summary><paramref name="ticketId"/>'s friendly name for its sidebar card ("ID · name", M.ORCH-T1450); null with none yet
+    /// (<c>tickets ticket names</c> backfills them) or no migrated database, so the card falls back to its summary.</summary>
+    internal string? FriendlyNameOf(string ticketId) => Root.nameSource.Names(Root.WorkspaceRoot).GetValueOrDefault(ticketId);
 
     // The Queue's tabs (M.ORCH-T849).
 
@@ -326,11 +339,15 @@ public sealed partial class MainViewModel
         Root.ApplyUserTickets();
     }
 
-    /// <summary>This tab's Queue tabs from the plan's queue and the recently closed tickets.</summary>
+    /// <summary>This tab's Queue tabs from the plan's queue and the recently closed tickets. Active and Pending go by
+    /// <see cref="TicketPins.IsOwn"/> (M.ORCH-T1450): a claimed or worked ticket by whoever's login holds it now, not only a
+    /// pin, which a claim rarely also carries - without this the sidebar missed almost every ticket a CLI actually claims,
+    /// while still showing a stale one once it closed if the two were ever conflated. Closed and Won't do stay pin-based: a
+    /// closed ticket's claim is long gone, so the pin is all there is to go by.</summary>
     private void SyncQueueTabs(IReadOnlyList<QueueItem> queue, IReadOnlyList<ClosedTicket> closed)
     {
         var email = PersonEmail;
-        List<QueueItem> mine = email is null ? [] : [.. queue.Where(q => TicketPins.Same(q.Assignee, email))];
+        List<QueueItem> mine = [.. queue.Where(q => TicketPins.IsOwn(q, email))];
         List<ClosedTicket> done = email is null ? [] : [.. closed.Where(c => TicketPins.Same(c.Assignee, email))];
         SyncOpen(QueueTabs[0].Tickets, mine.Where(q => q.IsAssigned));
         SyncOpen(QueueTabs[1].Tickets, mine.Where(q => !q.IsAssigned));
@@ -342,11 +359,15 @@ public sealed partial class MainViewModel
         Raise(nameof(NoQueueTicketsText));
     }
 
+    /// <summary>A ticket id as a sync key (M.ORCH-T1450): trimmed and upper-cased, so the same ticket read in two different
+    /// cases (or with stray whitespace) still dedupes to its one row, never a second one a case-sensitive key missed.</summary>
+    private static string Key(string id) => id.Trim().ToUpperInvariant();
+
     private void SyncOpen(ObservableCollection<UserTicketRowViewModel> rows, IEnumerable<QueueItem> items) =>
-        rows.SyncBy([.. items], q => q.Id, r => r.Id, q => { var r = new UserTicketRowViewModel(q, this); r.Update(q); return r; }, (r, q) => r.Update(q));
+        rows.SyncBy([.. items], q => Key(q.Id), r => Key(r.Id), q => { var r = new UserTicketRowViewModel(q, this); r.Update(q); return r; }, (r, q) => r.Update(q));
 
     private void SyncClosed(ObservableCollection<UserTicketRowViewModel> rows, IEnumerable<ClosedTicket> items) =>
-        rows.SyncBy([.. items], c => c.Id, r => r.Id, c => { var r = new UserTicketRowViewModel(c, this); r.Update(c); return r; }, (r, c) => r.Update(c));
+        rows.SyncBy([.. items], c => Key(c.Id), r => Key(r.Id), c => { var r = new UserTicketRowViewModel(c, this); r.Update(c); return r; }, (r, c) => r.Update(c));
 
     /// <summary>Brings the people and every tab's ticket lists up to date with the plan and the roster's last reading; on the
     /// global login's tab, after each plan and each roster read.</summary>
