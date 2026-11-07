@@ -358,7 +358,8 @@ public sealed partial class MainViewModel : ObservableObject
                 return (built, LoginScope.Tabs(built, dirs, members, hasKey), orgDirectory, diskFreeGb, ramUtilizationPercent);
             }), () => localChanges);
             ApplyTabs(next, tabs, nextOrgs);
-            SetHostStats(diskFree, ramPercent);
+            // The memory guard's level (M.ORCH-T1498): the daemon's, stepped, as the snapshot's pace carries it; else this process's own.
+            SetHostStats(diskFree, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last);
             // What a pushed snapshot's figures are laid over until the next read (M.ORCH-T872).
             (lastMembers, lastOrgs, restShown) = (readMembers, nextOrgs, rest);
             await TickAllocateAsync(next);

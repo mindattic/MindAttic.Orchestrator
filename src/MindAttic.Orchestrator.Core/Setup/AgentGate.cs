@@ -2728,7 +2728,22 @@ public static class AgentGate
                 "[Orchestrator] Pacing is " + ("off" if pacing_off(pid) else "on") + ".",
                 "[Orchestrator] Allocation is " + ("on" if allocate_repos(pid) else "off") + ".",
                 "[Orchestrator] Crossrepo is " + ("on" if cli_mark("crossrepo", pid) else "off") + ".",
-            ]
+            ] + [l for l in (memory_start_line(),) if l]
+
+        def memory_start_line():
+            # The memory guard (M.ORCH-T1498), as the daemon's fresh status has it; nothing said without one.
+            try:
+                s = orchestrator_status()
+            except Exception:
+                return None
+            if not s:
+                return None
+            if not isinstance(s.get("memory_lines"), dict):
+                return "[Orchestrator] Memory guard is off."
+            level = s.get("memory_level") or "ok"
+            free = s.get("memory_free_gb")
+            return ("[Orchestrator] Memory guard is on" + ("" if level == "ok" else ": RAM is " + level) +
+                    (" (" + format(free, "g") + " GB RAM free)" if isinstance(free, (int, float)) else "") + ".")
 
         # A turn ending on one of these is asking for a go-ahead the orchestrator gives itself.
         ASKS = re.compile(r"\b(shall i|should i|do you want|want me to|would you like|ready for me to|ok(?:ay)? to (?:start|continue|proceed|go)|"
@@ -3398,6 +3413,9 @@ public static class AgentGate
             # Each turn starts knowing how many subagents the pace allows right now, and whether the window is at its stop.
             s = orchestrator_status()
             notes = [n for n in (s.get("subagent_note"), s.get("stop_note")) if n]
+            # Short of RAM, said paced or not (M.ORCH-T1498); paced, the subagent note already is it.
+            if s.get("memory_note") and s.get("memory_note") not in notes:
+                notes.append(s.get("memory_note"))
             if CROSSREPO_NOTE[0]:
                 notes.append(CROSSREPO_NOTE[0])
             if ALLOCATE_NOTE[0]:

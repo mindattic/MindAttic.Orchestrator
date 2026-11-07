@@ -12,6 +12,25 @@ land as close to the limit as possible at the moment the window resets, never on
 `PaceTargetPercent` (96% by default, set in the dashboard's Settings). The gap above it is room for what the
 orchestrator can't predict: you typing a question, an agent it didn't start, a reply bigger than usual.
 
+## Never past the machine's RAM either
+
+The windows aren't the only wall. Out of RAM, Windows pages to a pagefile that, system-managed, grows until the disk is
+full, and only a hard restart recovers, losing everything in flight. So the memory guard (M.ORCH-T1494) is a third
+cutoff beside the 5-hour and weekly ones, and like them it lets running work finish rather than start more:
+
+- **Tight** (under `MemoryTightGb`, 4 GB free, or 80% of a fixed commit limit): every pace's subagent allowance drops to
+  the ones running (`Pacer.CapByMemory`, the last step on every pace, paced or not), `orchestrator next` hands nothing out,
+  no CLI starts (`orchestrator start --ignore-memory` overrides; the dashboard asks), and main-line suites wait.
+- **Critical** (2 GB, 88%): also, once a minute, the newest ticket subagent is aborted through the cool-off's abort mark
+  ("to free memory"): it stops at its next tool call, its work kept, its ticket first in the queue. Nothing is killed.
+- **Emergency** (1 GB, 94%): every tool call is held, then refused with "end your turn", unlatched, until RAM returns.
+
+Entered at once, left a step at a time once 2 GB (5 points) clear of the line for a minute: the flapping that made
+machine health alert-only (M.ORCH-T357/T374) doesn't come back. Below Tight, new subagents start only as far as free RAM
+holds at `MemoryPerSubagentGb` (1 GB) each above the line. The pace gate reads free RAM itself on each Agent call (a burst
+reserves its share under a lock for the minute they load) and on every call for the emergency, so a stale daemon can't
+hide a fall. `set-pagefile.ps1` fixes the pagefile at 16 GB, the backstop that keeps the disk from filling whatever happens.
+
 ## The loop
 
 The daemon starts at logon and refreshes every 15 seconds, sooner when a turn ends or Claude reports new usage:

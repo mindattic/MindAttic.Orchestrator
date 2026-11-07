@@ -174,9 +174,17 @@
                 <TextBlock x:Name="DiskFreeText" Text="{Binding DiskFreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
                            ToolTip="Free space on the system drive" AutomationProperties.Name="{Binding DiskFreeText}"
                            Visibility="{Binding DiskFreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <TextBlock x:Name="RamUtilizationText" Text="{Binding RamUtilizationText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRL}"
-                           ToolTip="Physical RAM in use on this machine" AutomationProperties.Name="{Binding RamUtilizationText}"
-                           Visibility="{Binding RamUtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <!-- The memory guard's level (M.ORCH-T1498): muted while ok, MaWarn while it holds new work, MaBad once it sheds
+                     subagents or refuses tool calls; one of the three shows, the tooltip says what's held. -->
+                <TextBlock x:Name="RamUtilizationText" Text="{Binding RamCalmText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRL}"
+                           ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamCalmText}"
+                           Visibility="{Binding RamCalmText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock x:Name="RamWarnText" Text="{Binding RamWarnText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRL}"
+                           ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
+                           Visibility="{Binding RamWarnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock x:Name="RamBadText" Text="{Binding RamBadText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRL}"
+                           ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
+                           Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <Button x:Name="TeamWallButton" Style="{StaticResource MaToolButton}" Content="&#xE716;" Click="TeamWallButton_Click"
                         ToolTip="Team Wall: everyone's live CLIs" AutomationProperties.Name="Team Wall" />
                 <Button x:Name="TicketsButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Command="{Binding OpenTicketsAppCommand}"
