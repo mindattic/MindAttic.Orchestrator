@@ -321,7 +321,9 @@ public sealed class ContextCyclerTests
                 return output;
             }
             var ctx = Path.Combine(dir, ".claude", "session-context");
-            string? Mark(int cli) => File.Exists(Path.Combine(ctx, $"allocate-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"allocate-{cli}")) : null;
+            // Read as every reader does (M.ORCH-T1517): the hook records the mark in the test's scratch orchestrator.db's
+            // cli_marks row once that database is there, and an allocate-<pid> file only while it's missing or held.
+            string? Mark(int cli) => CliMarks.Read(ctx, CliMarks.Allocate).GetValueOrDefault(cli);
 
             Typed(1, repo, "/allocate");
             Assert.That(Mark(1), Is.EqualTo("A"), "this CLI's own repo, for this CLI only");
@@ -446,7 +448,9 @@ public sealed class ContextCyclerTests
                 Assert.That(p.WaitForExit(20_000), Is.True);
             }
             var ctx = Path.Combine(dir, ".claude", "session-context");
-            string? Mark(int cli) => File.Exists(Path.Combine(ctx, $"allocate-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"allocate-{cli}")) : null;
+            // Read as every reader does (M.ORCH-T1517): the hook records the mark in the test's scratch orchestrator.db's
+            // cli_marks row once that database is there, and an allocate-<pid> file only while it's missing or held.
+            string? Mark(int cli) => CliMarks.Read(ctx, CliMarks.Allocate).GetValueOrDefault(cli);
 
             Hook(1, a, "SessionStart");
             Hook(1, a, "UserPromptSubmit", "fix the build");
