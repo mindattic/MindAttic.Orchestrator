@@ -1052,6 +1052,9 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T07:48:25Z', 11, '2026-11-07T12:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T07:52:35Z', 12, '2026-11-07T12:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T07:56:46Z', 12, '2026-11-07T12:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T08:00:50Z', 12, '2026-11-07T12:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T08:04:55Z', 12, '2026-11-07T12:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-07T08:09:13Z', 12, '2026-11-07T12:10:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -31588,8 +31591,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "ccca191abff653f296e2c7bfef22e2e20db14c32"
   },
   "IdiotProof": {
-    "Tested": "8a4cbd0c7731aceb1b45e20d41cbc340946c44f0",
-    "Green": "8a4cbd0c7731aceb1b45e20d41cbc340946c44f0"
+    "Tested": "8b07ac5a08538c6b26d2b8fdbb9d0127863e9b15",
+    "Green": "8b07ac5a08538c6b26d2b8fdbb9d0127863e9b15"
   },
   "JobHunt": {
     "Tested": "9be873a8d98948c466d3400b1a4bcb1aed96ad66",
@@ -31659,8 +31662,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "bb9829c3b4bd5e1e047437b4c8c8e687b09ad07c"
   },
   "MindAttic.Tickets": {
-    "Tested": "9c30fdffffce52172201b401b8c2aa989151f0e9",
-    "Green": "9c30fdffffce52172201b401b8c2aa989151f0e9"
+    "Tested": "533ee32459881cfcb8125238952019396e457ba0",
+    "Green": "533ee32459881cfcb8125238952019396e457ba0"
   },
   "MindAttic.Vault": {
     "Tested": "d4fbcafee723d01da9913f9f1fb438c5b048f5e2",
