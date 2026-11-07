@@ -20,8 +20,6 @@ namespace MindAttic.Orchestrator.Tests;
 [Apartment(ApartmentState.STA)]
 public sealed class ThemeChoiceTests
 {
-    private static readonly XNamespace P = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
-    private static readonly XNamespace X = "http://schemas.microsoft.com/winfx/2006/xaml";
     private static readonly XNamespace Mc ="clr-namespace:MindAttic.Components.Wpf.Controls;assembly=MindAttic.Components.Wpf";
 
     private string dir = "";
@@ -148,7 +146,7 @@ public sealed class ThemeChoiceTests
     }
 
     [Test]
-    public void The_switch_sits_in_the_login_sidebar_and_the_title_bar_follows_the_theme()
+    public void There_is_no_switch_of_its_own_any_more_and_the_title_bar_still_follows_the_theme()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -158,15 +156,13 @@ public sealed class ThemeChoiceTests
         Assert.That((string?)doc.Root!.Attribute(Mc + "MaWindow.ThemedTitleBar"), Is.EqualTo("True"));
         Assert.That(doc.Root!.Attribute(Mc + "MaWindow.DarkTitleBar"), Is.Null, "ThemedTitleBar replaces DarkTitleBar");
 
-        // M.ORCH-T1431: the window's first element is the left login sidebar, and the toggle ends its tool row.
-        var sidebar = doc.Root!.Element(P + "Grid")!.Elements().First(e => !e.Name.LocalName.Contains('.'));
-        Assert.That((string?)sidebar.Attribute(X + "Name"), Is.EqualTo("Sidebar"));
-        Assert.That((string?)sidebar.Attribute("Grid.Column"), Is.EqualTo("0"), "the window's left column");
-        Assert.That((string?)sidebar.Attribute("Visibility"), Is.Null, "always shown, even with the login strip hidden");
-        var toggle = sidebar.Descendants(Mc + "MaThemeToggle").Single();
-        Assert.That(toggle.Parent!.Elements().Last(), Is.EqualTo(toggle));
+        // M.ORCH-T1512: moved into MindAttic.Vault.Desktop's Orchestrator settings page -- not used often enough to earn its
+        // own icon here any more, and this window no longer saves a switch of its own.
+        Assert.That(doc.Descendants(Mc + "MaThemeToggle"), Is.Empty);
+        var windowCs = File.ReadAllText(Path.Combine(wpf, "MainWindow.xaml.cs"));
+        Assert.That(windowCs, Does.Not.Contain("ThemeChoice.SaveSwitches(this,"));
+        Assert.That(windowCs, Does.Contain("ThemeChoice.Follow("), "still picks up a change made in Vault live, no restart");
 
-        Assert.That(File.ReadAllText(Path.Combine(wpf, "MainWindow.xaml.cs")), Does.Contain("ThemeChoice.SaveSwitches(this,"));
         Assert.That(File.ReadAllText(Path.Combine(wpf, "App.xaml.cs")), Does.Contain("ThemeChoice.Apply(Resources,"));
         Assert.That(File.ReadAllText(Path.Combine(wpf, "BuildWorkspaceWindow.cs")), Does.Contain("SetThemedTitleBar(this, true)"));
     }

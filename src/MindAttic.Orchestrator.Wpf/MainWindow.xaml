@@ -156,19 +156,19 @@
              (MainWindow.xaml.cs sets its DataContext), and this strip keeps the global login's tab's, which holds every tab.
              Shown once there's a second login; Ctrl+Tab and Ctrl+Shift+Tab step through them. Its own row above the header,
              so the header, chart and view pills can fold away on a tab while the strip stays. -->
-        <!-- The window's upper-right corner (M.ORCH-T678): the library's sun/moon MaThemeToggle switches the whole dashboard
-             between dark (the default) and light at once, every view following, and the choice is saved in the orchestrator's
-             settings (ThemeChoice, wired in MainWindow.xaml.cs) so it holds across restarts. It shares the login strip's row and
-             stays when the strip is hidden. -->
+        <!-- Dark (the default) or light, every view following at once (ThemeChoice, M.ORCH-T678): no switch of its own in this
+             window any more (M.ORCH-T1512, it wasn't used often enough to earn a permanent icon), set instead from
+             MindAttic.Vault.Desktop's Orchestrator settings page. This window only applies the saved choice at start
+             (App.xaml.cs) and follows a change made there live (ThemeChoice.Follow, MainWindow.xaml.cs). -->
         <!-- No emergency billing toggle any more (M.ORCH-T906, which replaced M.ORCH-T770's): the Vault's API key is a person
              with its own tab in the strip below, its own Launcher and CLIs billing API credits; orchestrator billing stays the
              command-line tool. -->
         <!-- The app's menu bar (M.ORCH-T1499): a full-width strip above the sidebar and the terminal body, right-aligned.
-             Holds what used to be the sidebar's own window-tools row (Team Wall, Tickets, Logins, Settings, Wind down, the
-             theme toggle), moved here so it's reachable regardless of which login's tab is open, plus this host machine's
-             own C: free space and RAM load (DiskFreeText/RamUtilizationText, MainViewModel.HostStats.cs), refreshed every
-             RefreshAsync tick (5s). Bound to the global login's tab in code-behind (MenuBarTools.DataContext = model), like
-             OrgStrip: these six tools and the two readouts are the same regardless of which login's tab is shown. -->
+             Holds what used to be the sidebar's own window-tools row (Team Wall, Tickets, Logins, Settings, Wind down),
+             moved here so it's reachable regardless of which login's tab is open, plus this host machine's own C: free
+             space and RAM load (DiskFreeText/RamUtilizationText, MainViewModel.HostStats.cs), refreshed every RefreshAsync
+             tick (5s). Bound to the global login's tab in code-behind (MenuBarTools.DataContext = model), like OrgStrip:
+             these five tools and the two readouts are the same regardless of which login's tab is shown. -->
         <Border x:Name="MenuBar" Grid.Row="0" Grid.ColumnSpan="2" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,0,1" Padding="12,8,12,8">
             <StackPanel x:Name="MenuBarTools" Orientation="Horizontal" HorizontalAlignment="Right" AutomationProperties.Name="Window tools and host status">
                 <TextBlock x:Name="DiskFreeText" Text="{Binding DiskFreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
@@ -196,7 +196,6 @@
                 <Button x:Name="WindDownButton" Style="{StaticResource MaToolButton}" Content="&#xE769;" Command="{Binding WindDownCommand}"
                         ToolTip="Wind down: /allocate off and pacing off for every CLI across every login, each finishing its own subagents first"
                         AutomationProperties.Name="Wind down every CLI" />
-                <mc:MaThemeToggle x:Name="ThemeToggle" VerticalAlignment="Center" />
             </StackPanel>
         </Border>
 

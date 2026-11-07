@@ -95,8 +95,8 @@ public partial class MainWindow : Window
         model.Terminals.Panes.CollectionChanged += OnTerminalPanesChanged;
         // Scales the window's content and binds Ctrl+Plus / Ctrl+Minus / Ctrl+0 on the window, wherever focus is.
         model.Zoom.Attach(Root, this);
-        // The upper-right sun/moon switch (M.ORCH-T678) changes the theme live; each switch is saved, so it holds at the next start.
-        ThemeChoice.SaveSwitches(this, model.Store);
+        // No theme switch of its own any more (M.ORCH-T1512): changed from MindAttic.Vault.Desktop's Orchestrator settings
+        // page instead, and ThemeChoice.Follow (below) picks it up live, with no restart.
         // No emergency billing button any more (M.ORCH-T906): the API key is a person with its own tab, Launcher and CLIs.
 
         CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape(),
@@ -353,7 +353,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            // LAMP (M.ORCH-T1308): the theme chosen in MindAttic.Vault.Desktop applies live, as the sun/moon switch's does.
+            // LAMP (M.ORCH-T1308): the theme chosen in MindAttic.Vault.Desktop's Orchestrator settings page (M.ORCH-T1512) applies
+            // here live, with no restart.
             if (payload is Status.SettingsPayload) ThemeChoice.Follow(Application.Current?.Resources, model.Store);
             if (!model.ApplyPushedState(payload)) return;
             var read = await model.ReapplyStateAsync(Hidden || !IsLoaded);

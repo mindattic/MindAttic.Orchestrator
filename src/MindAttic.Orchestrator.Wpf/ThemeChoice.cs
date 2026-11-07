@@ -7,9 +7,12 @@ namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
 /// The dashboard's light or dark theme (M.ORCH-T678), kept in the orchestrator's settings (<see cref="OrchestratorSettings.Theme"/>,
-/// in the database) so it holds across restarts. Dark unless light was chosen: the app applies the saved choice at start, and
-/// the library's MaThemeToggle in the window's upper-right corner switches it live, every view following at once (each brush is
-/// the library theme's, as DynamicResource or through <see cref="ViewModels.Palette"/>), and each switch is saved.
+/// in the database) so it holds across restarts. Dark unless light was chosen: the app applies the saved choice at start, every
+/// view following at once (each brush is the library theme's, as DynamicResource or through <see cref="ViewModels.Palette"/>).
+/// The dashboard's own window no longer carries a switch of its own (M.ORCH-T1512: it wasn't used often enough to earn a
+/// permanent icon); it is set instead from MindAttic.Vault.Desktop's Orchestrator settings page, and <see cref="Follow"/> picks
+/// up a change made there live, with no restart. <see cref="SaveSwitches"/> and the library's MaThemeToggle remain here as the
+/// general wiring a switch saves through, for whatever UI hosts one.
 /// </summary>
 public static class ThemeChoice
 {
