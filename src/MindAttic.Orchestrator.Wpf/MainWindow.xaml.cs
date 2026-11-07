@@ -119,6 +119,8 @@ public partial class MainWindow : Window
         };
         // Closing a CLI tab by hand asks first (M.ORCH-T1437).
         model.AllTerminals.ConfirmClose = ConfirmCloseTerminal;
+        // The Rename tab modal closed by its own X or backdrop is a cancel (M.ORCH-T1509).
+        RenameTabModal.Closed += (_, _) => { if (renamingTab is not null) CloseRenameTab(null); };
         TerminalClip.Attach(TerminalPanesHost);
         TerminalKeyboard.Attach(this, TerminalPanesHost);
         TerminalMouse.Attach(this, TerminalPanesHost);
@@ -405,7 +407,7 @@ public partial class MainWindow : Window
     private void UpdateTerminalsCover()
     {
         var shown = Shown;
-        var covered = shown.IsLoginsOpen || shown.IsUserSettingsOpen || model.IsLoading || model.IsOrgEmpty;
+        var covered = shown.IsLoginsOpen || shown.IsUserSettingsOpen || RenameTabModal.IsOpen || model.IsLoading || model.IsOrgEmpty;
         TerminalPanesHost.Visibility = covered ? Visibility.Hidden : Visibility.Visible;
     }
 
@@ -420,7 +422,7 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() =>
         {
             var shown = Shown;
-            if (!IsActive || shown.IsLoginsOpen || shown.IsUserSettingsOpen
+            if (!IsActive || shown.IsLoginsOpen || shown.IsUserSettingsOpen || RenameTabModal.IsOpen
                 || TerminalPanesHost.Visibility != Visibility.Visible) return;
             if (model.AllTerminals.SelectedPane?.Control is not { IsVisible: true } terminal) return;
             var focused = Keyboard.FocusedElement as DependencyObject;
@@ -538,12 +540,14 @@ public partial class MainWindow : Window
     /// name, all selected. A single click falls through, so it still selects the tab.</summary>
     private void TerminalTabName_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount != 2 || sender is not TextBlock { DataContext: TerminalPaneViewModel pane, Parent: Grid cell } name
+        // The name sits in its MarqueeBox (M.ORCH-T1509), which is what's swapped for the box.
+        if (e.ClickCount != 2 || sender is not TextBlock { DataContext: TerminalPaneViewModel pane, Parent: MarqueeBox { Parent: Grid cell } name }
             || cell.Children.OfType<TextBox>().FirstOrDefault() is not { } box) return;
         e.Handled = true;
         box.Tag = pane;
         box.Text = pane.Name;
         box.MinWidth = name.ActualWidth;
+        box.MaxWidth = name.MaxWidth;
         name.Visibility = Visibility.Collapsed;
         box.Visibility = Visibility.Visible;
         Dispatcher.BeginInvoke(() =>
@@ -578,9 +582,63 @@ public partial class MainWindow : Window
         {
             box.Visibility = Visibility.Collapsed;
             box.MinWidth = 0;
-            if (box.Parent is Grid cell) foreach (var name in cell.Children.OfType<TextBlock>()) name.Visibility = Visibility.Visible;
+            if (box.Parent is Grid cell) foreach (var name in cell.Children.OfType<MarqueeBox>()) name.Visibility = Visibility.Visible;
             if (commit && pane.IsSelected) pane.Control.Focus();
         }
+    }
+
+    /// <summary>The tab the Rename tab modal is naming (M.ORCH-T1509); null while it's closed.</summary>
+    private TerminalPaneViewModel? renamingTab;
+
+    /// <summary>Opens the Rename tab modal on <paramref name="pane"/> (M.ORCH-T1509, its right-click menu's Rename…): its name now
+    /// in the box, all selected. The terminals are hidden meanwhile, since their native windows would draw over it.</summary>
+    private void OpenRenameTab(TerminalPaneViewModel pane)
+    {
+        try
+        {
+            renamingTab = pane;
+            RenameTabBox.Text = pane.Name;
+            RenameTabHint.Text = $"Its own name is {pane.DefaultName}; Reset goes back to it. A name too long for the tab scrolls across it.";
+            RenameTabModal.IsOpen = true;
+            UpdateTerminalsCover();
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!ReferenceEquals(renamingTab, pane)) return;
+                RenameTabBox.Focus();
+                Keyboard.Focus(RenameTabBox);
+                RenameTabBox.SelectAll();
+            }, DispatcherPriority.Input);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Rename tab failed; contained"); }
+    }
+
+    /// <summary>Closes the Rename tab modal, keeping <paramref name="name"/> as the tab's name when given (blank keeps the old one;
+    /// its default name clears the custom one), saved by <see cref="TerminalsViewModel.Rename"/>.</summary>
+    private void CloseRenameTab(string? name)
+    {
+        var pane = renamingTab;
+        renamingTab = null;
+        try { if (pane is not null && name is not null && model.AllTerminals.Panes.Contains(pane)) model.AllTerminals.Rename(pane, name); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Renaming a tab failed; contained"); }
+        finally
+        {
+            RenameTabModal.IsOpen = false;
+            UpdateTerminalsCover();
+            PinTerminalFocus();
+        }
+    }
+
+    private void RenameTabSave_Click(object sender, RoutedEventArgs e) => CloseRenameTab(RenameTabBox.Text);
+
+    private void RenameTabCancel_Click(object sender, RoutedEventArgs e) => CloseRenameTab(null);
+
+    private void RenameTabReset_Click(object sender, RoutedEventArgs e) => CloseRenameTab(renamingTab?.DefaultName);
+
+    /// <summary>Enter saves, Esc cancels.</summary>
+    private void RenameTabBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Enter or Key.Return) { e.Handled = true; CloseRenameTab(RenameTabBox.Text); }
+        else if (e.Key == Key.Escape) { e.Handled = true; CloseRenameTab(null); }
     }
 
     /// <summary>The row an MaTabItem lays its status light, header and trailing text out in (its template's Bd border's child).</summary>
@@ -710,6 +768,12 @@ public partial class MainWindow : Window
             var placement = e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint;
             var agent = pane.HostPid is { } host ? tab.AgentOfHost(host) : null;
             var menu = DropdownMenu(container, $"Move the {pane.Name} CLI to", placement);
+            // Rename… (M.ORCH-T1509): a little modal for the tab's own name, kept across reattach, undock/dock and restarts.
+            var rename = DropdownItem("Rename…");
+            rename.ToolTip = "Give this tab a name of your own (double-clicking its name does too)";
+            rename.Click += (_, _) => OpenRenameTab(pane);
+            menu.Items.Add(rename);
+            menu.Items.Add(new Separator());
             AddPopOutItems(menu, pane);
             AddBroadcastItems(menu, pane);
             if (agent is null)

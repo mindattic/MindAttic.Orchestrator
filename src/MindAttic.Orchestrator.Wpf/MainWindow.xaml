@@ -425,8 +425,11 @@
                                     <!-- Double-click the name to rename it in place (M.ORCH-T1432): the TextBox swaps in for the TextBlock in
                                          the same cell; Enter keeps it, Esc or leaving it cancels (TerminalTabName_* in MainWindow.xaml.cs). -->
                                     <Grid VerticalAlignment="Center">
-                                        <TextBlock x:Name="TerminalTabName" Text="{Binding Name}" VerticalAlignment="Center"
-                                                   MouseLeftButtonDown="TerminalTabName_MouseLeftButtonDown" />
+                                        <!-- A name too long for the tab scrolls across it, blinks 3 times, then starts over (M.ORCH-T1509). -->
+                                        <local:MarqueeBox x:Name="TerminalTabNameMarquee" MaxWidth="180" VerticalAlignment="Center">
+                                            <TextBlock x:Name="TerminalTabName" Text="{Binding Name}" VerticalAlignment="Center"
+                                                       MouseLeftButtonDown="TerminalTabName_MouseLeftButtonDown" />
+                                        </local:MarqueeBox>
                                         <TextBox x:Name="TerminalTabNameEdit" Style="{StaticResource MaTextBox}" Visibility="Collapsed" VerticalAlignment="Center" Padding="0" Margin="-2,-2,-2,-2"
                                                  AutomationProperties.Name="{Binding Title, StringFormat='Rename {0}'}"
                                                  KeyDown="TerminalTabNameEdit_KeyDown" LostKeyboardFocus="TerminalTabNameEdit_LostKeyboardFocus" />
@@ -929,6 +932,27 @@
                             ToolTip="Fill in the default cutoffs, 98% of the 5-hour window and 90% of the week; Save keeps them" />
                     <Button Style="{StaticResource MaButton}" Content="Cancel" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Command="{Binding CancelUserSettingsCommand}" />
                     <Button Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="{StaticResource SpaceHLVS}" Command="{Binding SaveUserSettingsCommand}" />
+                </StackPanel>
+            </mc:MaModal.Footer>
+        </mc:MaModal>
+
+        <!-- Rename a CLI tab (M.ORCH-T1509), from its right-click menu: the name the person gives it, kept by the tab's identity
+             (its TermHost tab file and the session-restore file, M.ORCH-T1432), so a reattach, undock and dock, a pop-out or a
+             restarted dashboard keep it. Blank goes back to the name built from its repo. Driven from MainWindow.xaml.cs
+             (OpenRenameTab/RenameTab*). -->
+        <mc:MaModal x:Name="RenameTabModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="Rename tab" AutomationProperties.Name="Rename tab" DialogWidth="400">
+            <StackPanel>
+                <TextBlock Text="Name" Margin="{StaticResource SpaceBXS}" />
+                <TextBox x:Name="RenameTabBox" Style="{StaticResource MaTextBox}" Height="32" AutomationProperties.Name="Tab name"
+                         KeyDown="RenameTabBox_KeyDown" />
+                <TextBlock x:Name="RenameTabHint" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
+            </StackPanel>
+            <mc:MaModal.Footer>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource MaButton}" Content="Reset" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Click="RenameTabReset_Click"
+                            ToolTip="Go back to the name built from its repo" />
+                    <Button Style="{StaticResource MaButton}" Content="Cancel" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Click="RenameTabCancel_Click" />
+                    <Button Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="{StaticResource SpaceHLVS}" Click="RenameTabSave_Click" />
                 </StackPanel>
             </mc:MaModal.Footer>
         </mc:MaModal>
