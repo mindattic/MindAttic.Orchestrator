@@ -93,6 +93,31 @@ approved, while any other requirement they carry, such as an earlier phase's tic
 is never queued, proposed, handed out by `orchestrator next --claim` or counted as work by keep-going: while unapproved
 it waits for your yes with the other proposed tickets, and once approved it just stays open until its children are done.
 
+## Ticket attribution: flagged, not blocked (M.ORCH-T1520)
+
+MINDATTIC_AGENT.md's GOLDEN RULE says every request is a ticket, filed before any code is written for
+it. Nothing here enforces that as a hard rule against a live session, and that's a deliberate choice, not
+an oversight:
+
+- A session's ticket is still only a heuristic guess (`Activity/TicketAttribution.cs`'s `FromPrompt`/
+  `FromWorktree`), not a hard foreign key: it can come back `null` even while the session is genuinely
+  working, and nothing stops that session from continuing.
+- The obvious place to enforce it harder is the pace gate (`AgentGate.cs`/`pace-gate.py`), the
+  `PreToolUse` hook already gating every tool call for every login, org-wide, with no staged rollout and
+  no feature flag to fall back on. Extending that single ~3,700-line generated-Python file to also refuse
+  a tool call for missing ticket attribution was considered and rejected for a first cut: a bug there
+  would hold every CLI's every tool call at once, which is a far worse failure than an occasional
+  ticket-less session.
+- Instead, the dashboard sidebar (`MainViewModel.LiveActivity.cs`) flags a live session that's gone past
+  `TicketlessFlagAfter` (15 minutes) with no ticket attributed: its activity card (M.ORCH-T1519, the same
+  card shown for a session with no ticket at all) turns up a warning line, and the first time a session
+  crosses the line it also raises a toast, the same shape as the existing "Looks stuck" toast. Both are
+  UI-only: nothing is refused, held or blocked.
+- This is a first cut, not the final word: a hard block is still worth building once there's a safe way to
+  stage or flag-gate a pace-gate change (or once ticket attribution is itself a hard foreign key, which
+  would remove the need for a guess-based gate entirely). Re-evaluate before assuming "flag only" is
+  permanent.
+
 ## Scaling up and down
 
 The same arithmetic both speeds up and slows down:

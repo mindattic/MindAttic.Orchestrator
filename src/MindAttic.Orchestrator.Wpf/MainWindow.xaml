@@ -140,6 +140,9 @@
                     <TextBlock Text="{Binding Repo}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Summary}" FontSize="12.5" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Margin="{StaticResource RowGutter}"
                                LineStackingStrategy="BlockLineHeight" LineHeight="17" MaxHeight="34" />
+                    <!-- Flagged past the grace period (M.ORCH-T1520): a UI-only nudge, not a block. -->
+                    <TextBlock Text="{Binding OverdueText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}"
+                               TextWrapping="Wrap" Margin="{StaticResource RowGutter}" Visibility="{Binding IsOverdue, Converter={StaticResource Visible}}" />
                 </StackPanel>
             </Button>
         </DataTemplate>
