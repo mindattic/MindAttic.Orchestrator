@@ -1162,25 +1162,26 @@ public sealed class HookScriptTests
     [Test]
     public void Allocate_takes_repo_names_or_wildcards_and_its_repos_are_this_clis_cross_repo_exception()
     {
-        var mark = Path.Combine(Marks, $"allocate-{Cli}");
+        // The mark is this CLI's cli_marks row once the orchestrator's database is there, else its file (M.ORCH-T1516).
+        string? Mark() => CliMark("allocate", Cli);
         object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt, cwd = ws };
         Gate(Prompt("/allocate -repo=a,b on"), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b"));
+        Assert.That(Mark(), Is.EqualTo("a,b"));
         Assert.That(Gate(Prompt("/allocate -repos=MindAttic.Tickets"), AgentGate.ContextScriptName).Output,
             Does.Contain("\"block\"").And.Contain("-repos is gone"), "the -repos alias is turned away, not guessed at");
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b"), "and changes nothing");
+        Assert.That(Mark(), Is.EqualTo("a,b"), "and changes nothing");
 
         // Its subagents edit and close tickets in the repos it's working, though this CLI sits in another repo.
         var uss = Path.Combine(ws, "UnitySolarSystem");
         var file = Path.Combine(ws, "MindAttic.Tickets", "src", "x.cs");
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Does.Contain("\"deny\""), "not named yet");
         Gate(Prompt("/allocate -repo=MINDATTIC.*"), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b,MINDATTIC.*"), "a wildcard is kept as typed");
+        Assert.That(Mark(), Is.EqualTo("a,b,MINDATTIC.*"), "a wildcard is kept as typed");
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Is.Empty, "MindAttic.* names MindAttic.Tickets");
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = Path.Combine(uss, "x.cs") }, cwd = Path.Combine(ws, "MindAttic.Tickets") }).Output,
             Does.Contain("\"deny\""), "but not UnitySolarSystem");
         Gate(Prompt("/allocate off"), AgentGate.ContextScriptName);
-        Assert.That(File.Exists(mark), Is.False);
+        Assert.That(Mark(), Is.Null);
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Does.Contain("\"deny\""), "off: back to its own repo");
     }
 
@@ -1283,19 +1284,19 @@ public sealed class HookScriptTests
     [Test]
     public void An_allocate_skill_call_is_recorded_only_when_the_user_asked_for_allocate()
     {
-        var mark = Path.Combine(Marks, $"allocate-{Cli}");
+        string? Mark() => CliMark("allocate", Cli); // its cli_marks row, or its file (M.ORCH-T1516)
         Gate(Said("work the Tickets tickets"), AgentGate.ContextScriptName);
         // The refusal names the command the user would type, /allocate.
         Assert.That(Gate(SkillCall("allocate", "-repo=MindAttic.Tickets")).Output, Does.Contain("\"deny\"").And.Contain("/allocate"));
-        Assert.That(File.Exists(mark), Is.False);
+        Assert.That(Mark(), Is.Null);
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
 
         Gate(Said("turn auto pilot on for MindAttic.Tickets"), AgentGate.ContextScriptName);
         Assert.That(Gate(SkillCall("allocate", "-repo=MindAttic.Tickets")).Output, Does.Not.Contain("\"deny\""));
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Tickets"));
+        Assert.That(Mark(), Is.EqualTo("MindAttic.Tickets"));
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Is.Empty, "its repos are this CLI's exception, as typed /allocate's are");
         Assert.That(Gate(SkillCall("allocate", "-repos=X")).Output, Does.Contain("\"deny\"").And.Contain("-repos is gone"), "the same rules as typed");
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Tickets"));
+        Assert.That(Mark(), Is.EqualTo("MindAttic.Tickets"));
     }
 
     [Test]
