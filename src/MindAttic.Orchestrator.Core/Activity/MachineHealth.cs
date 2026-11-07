@@ -128,6 +128,14 @@ public static partial class MachineHealth
         return (mem.ullAvailPhys / (1024.0 * 1024 * 1024), commit);
     }
 
+    /// <summary>Physical RAM in use, as Windows itself reports it (dwMemoryLoad): the percent of total physical memory
+    /// that's not free, for the dashboard's menu bar (M.ORCH-T1499). Null when Windows can't say.</summary>
+    public static double? RamUtilizationPercent()
+    {
+        var mem = new MEMORYSTATUSEX { dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>() };
+        return GlobalMemoryStatusEx(ref mem) ? mem.dwMemoryLoad : null;
+    }
+
     /// <summary>
     /// Whether a pagefile may grow without limit, from the Memory Management <c>PagingFiles</c> registry entries
     /// ("C:\pagefile.sys 16384 16384" is fixed; "?:\pagefile.sys" or sizes "0 0" are system-managed). An unbounded pagefile

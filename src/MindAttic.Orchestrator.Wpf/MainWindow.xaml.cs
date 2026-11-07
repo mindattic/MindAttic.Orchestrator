@@ -48,6 +48,10 @@ public partial class MainWindow : Window
         // The org-wide login actions (Add login, Sign in all, Report), in the Logins dialog since LAMP moved the settings to
         // MindAttic Vault (M.ORCH-T1308), are the global login's tab's too (M.ORCH-T763), not the shown tab's.
         OrgToolbar.DataContext = model;
+        // The menu bar's window tools and host readout (M.ORCH-T1499) are the global login's tab's too, like the org strip:
+        // the same Team Wall/Tickets/Logins/Settings/Wind down/theme toggle and the same C: free space and RAM reading,
+        // regardless of which login's tab is shown.
+        MenuBarTools.DataContext = model;
         Root.SizeChanged += (_, _) => SizeTerminalRow();
         TerminalFrame.IsVisibleChanged += (_, _) => SizeTerminalRow();
         // AgentsBody's own height can change without Root's (e.g. TerminalsPanel's tab strip showing or hiding above it),

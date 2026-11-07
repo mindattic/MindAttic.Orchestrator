@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows.Input;
 using System.Windows.Media;
 using MindAttic.Components.Wpf.Mvvm;
+using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
@@ -334,7 +335,7 @@ public sealed partial class MainViewModel : ObservableObject
             var clock = Stopwatch.StartNew();
             var dirs = OwnLoginDirs();
             IReadOnlyList<Member> readMembers = [];
-            var (next, tabs, nextOrgs) = await BuiltAfterChanges(() => Task.Run(() =>
+            var (next, tabs, nextOrgs, diskFree, ramPercent) = await BuiltAfterChanges(() => Task.Run(() =>
             {
                 var built = aggregator.Refresh();
                 // Each login's name and color, read with the snapshot, off the UI thread; and the organization's members, so
@@ -350,9 +351,14 @@ public sealed partial class MainViewModel : ObservableObject
                 try { hasKey = aggregator.BillingSwitch.HasKey; }
                 catch (Exception ex) when (ex is not OutOfMemoryException) { }
                 lastApiKey = hasKey;
-                return (built, LoginScope.Tabs(built, dirs, members, hasKey), orgDirectory);
+                // The menu bar's own host readout (M.ORCH-T1499): this machine's C: free space and RAM load, not any login's,
+                // reused from the same cheap stat calls the disk-space and memory alerts already read (M.ORCH-T471/M.ORCH-T1494).
+                var diskFreeGb = DiskWatch.Read(["C:\\"]) is [{ } drive, ..] ? drive.FreeGb : 0;
+                var ramUtilizationPercent = MachineHealth.RamUtilizationPercent();
+                return (built, LoginScope.Tabs(built, dirs, members, hasKey), orgDirectory, diskFreeGb, ramUtilizationPercent);
             }), () => localChanges);
             ApplyTabs(next, tabs, nextOrgs);
+            SetHostStats(diskFree, ramPercent);
             // What a pushed snapshot's figures are laid over until the next read (M.ORCH-T872).
             (lastMembers, lastOrgs, restShown) = (readMembers, nextOrgs, rest);
             await TickAllocateAsync(next);
