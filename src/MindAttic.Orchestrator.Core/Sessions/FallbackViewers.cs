@@ -241,6 +241,8 @@ public sealed class FallbackViewers
         var need = NeedingWindow(sessions, HasViewer, since, dismissed, nowUtc, LaunchGrace)
             .Where(s => !crashes.TryGetValue(s.Id, out var c) || nowUtc >= c.RetryAfterUtc).ToList();
         if (need.Count == 0) return 0;
+        // Each viewer is a whole WPF process: none new while RAM is short (M.ORCH-T1496); the CLIs run on without one.
+        if (Activity.MemoryGuard.Shared.Last is { Level: > Activity.MemoryLevel.Ok }) return 0;
         if (Exe(nowUtc) is not { } path) return 0;
         var started = 0;
         foreach (var session in need)

@@ -102,7 +102,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         // The git-touching chores (audit, db syncs, mirror, GitHub intake) run in one daemon: two in the same checkout collide on
         // index.lock and undo each other's reset and merge --abort (M.ORCH-T722).
         using var gitChoresLease = new DispatchLease(store.Directory, GitChoresLeaseName, store.Db);
-        var mainTests = new MainlineTests(store);
+        // One suite at a time, and none while RAM is short (M.ORCH-T1496): each is a whole dotnet test of several GB.
+        var mainTests = new MainlineTests(store)
+        {
+            MaxRunning = 1,
+            Held = () => Activity.MemoryGuard.Shared.Last is { Level: > Activity.MemoryLevel.Ok } m ? $"RAM is low ({m.Reading.Describe()})" : null,
+        };
         var reminders = new Reminders.ReminderSender(store, new Reminders.PsstClient(Runner), (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent));
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);

@@ -71,6 +71,16 @@ public sealed partial class MainlineTests(JsonStore store)
     internal Func<Func<SuiteResult>, Task<SuiteResult>> Spawn { get; init; } =
         work => Task.Factory.StartNew(work, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
+    /// <summary>Suites run at once across every repo (M.ORCH-T1496: a dotnet test is several GB, and every repo whose main line
+    /// moved started one together); a repo past it waits, still untested, for a later check. The daemon runs one at a time.</summary>
+    internal int MaxRunning { get; init; } = int.MaxValue;
+
+    /// <summary>Why no suite may start now (the memory guard past ok, M.ORCH-T1496); null lets them. A held repo stays untested
+    /// and starts at a later check, its landings coalesced.</summary>
+    internal Func<string?> Held { get; init; } = () => null;
+
+    private string? heldSaid;
+
     private readonly Dictionary<string, Run> running = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> retryAfter = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, (string Head, int Count)> incomplete = new(StringComparer.OrdinalIgnoreCase);
@@ -121,6 +131,11 @@ public sealed partial class MainlineTests(JsonStore store)
         if (mayStart && nowUtc - checkedUtc >= CheckEvery)
         {
             checkedUtc = nowUtc;
+            if (heldSaid is not null && Held() is null)
+            {
+                lines.Add(new Line(false, "main tests: memory recovered; suites due start again"));
+                heldSaid = null;
+            }
             foreach (var (name, path) in repos)
             {
                 if (running.ContainsKey(name)) continue;
@@ -147,6 +162,13 @@ public sealed partial class MainlineTests(JsonStore store)
                 }
                 // The solution comes from the commit being built, tracked files only: the repo's own folder may be behind
                 // origin or hold an untracked or ignored generated solution the fresh worktree doesn't have (M.ORCH-T598).
+                if (running.Count >= MaxRunning) continue;
+                if (Held() is { } why)
+                {
+                    if (heldSaid is null) lines.Add(new Line(false, $"main tests: holding {name}'s full suite (and any others due): {why}"));
+                    heldSaid = why;
+                    continue;
+                }
                 var (listed, tracked) = Git(path, ["ls-tree", "--name-only", head]);
                 if (listed != 0 || SolutionIn(tracked.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) is not { } solution) continue;
                 var since = Since(path, st.Green ?? st.Tested, head);

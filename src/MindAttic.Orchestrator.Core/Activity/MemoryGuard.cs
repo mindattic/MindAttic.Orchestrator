@@ -138,6 +138,13 @@ public sealed class MemoryGuard
     public static int Fits(MemoryReading r, OrchestratorSettings s) =>
         (int)Math.Clamp(Math.Floor((r.FreeGb - s.MemoryTightGb) / Math.Max(0.1, s.MemoryPerSubagentGb)), 0, 1000);
 
+    /// <summary>Why a new CLI mayn't start now (M.ORCH-T1496), or null: short of RAM a new one (each holds 0.5-1 GB, more with
+    /// its subagents) is what tips the machine into paging.</summary>
+    public static string? StartHeld(OrchestratorSettings s) =>
+        Shared.Observe(s, DateTime.UtcNow) is { Level: > MemoryLevel.Ok } m
+            ? $"RAM is low ({m.Reading.Describe()}): no new CLI starts until it recovers, so the machine doesn't page itself to a full disk."
+            : null;
+
     /// <summary>What an agent or a refused start is told at <paramref name="m"/>'s level; empty at <see cref="MemoryLevel.Ok"/>.</summary>
     public static string Note(MemoryState m, int running) => m.Level switch
     {

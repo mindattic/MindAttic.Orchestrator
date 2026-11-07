@@ -99,6 +99,40 @@ public sealed class MainlineTestsTests
         Assert.That(ran, Is.EqualTo(Path.Combine(dir, "wt", "A", MainlineTests.WorktreeName, "B.slnx")));
     }
 
+    [Test]
+    public void While_RAM_is_short_no_suite_starts_and_it_starts_once_memory_recovers()
+    {
+        var m = Make();
+        string? held = "RAM is low (3.0 GB RAM free)";
+        var tests = new MainlineTests(store) { Git = m.Git, MainlineOf = m.MainlineOf, RunSuite = m.RunSuite, Spawn = m.Spawn, Held = () => held };
+        Tick(tests, Now);
+        head = "bbbbbbb2";
+        var lines = Tick(tests, Now.AddMinutes(5));
+        Assert.That(runs, Is.Empty);
+        Assert.That(lines.Select(l => l.Text), Has.Some.Contains("holding A's full suite"));
+        held = null;
+        lines = Tick(tests, Now.AddMinutes(10));
+        Assert.That(runs, Has.Count.EqualTo(1));
+        Assert.That(lines.Select(l => l.Text), Has.Some.Contains("memory recovered"));
+    }
+
+    [Test]
+    public void No_more_suites_run_at_once_than_MaxRunning()
+    {
+        var m = Make();
+        var tests = new MainlineTests(store) { Git = m.Git, MainlineOf = m.MainlineOf, RunSuite = m.RunSuite, Spawn = m.Spawn, MaxRunning = 1 };
+        var b = Path.Combine(dir, "B");
+        Directory.CreateDirectory(b);
+        IReadOnlyList<MainlineTests.Line> TickBoth(DateTime at) => tests.Tick([("A", repo), ("B", b)], Path.Combine(dir, "wt"), () => TicketsDb.Open(TicketsDb.DefaultPath(dir)), at);
+        TickBoth(Now);
+        head = "bbbbbbb2";
+        TickBoth(Now.AddMinutes(5));
+        Assert.That(runs, Has.Count.EqualTo(1), "B waits for A's run");
+        runs[0].SetResult(Result([], ["T1"]));
+        TickBoth(Now.AddMinutes(10));
+        Assert.That(runs, Has.Count.EqualTo(2), "then B's starts");
+    }
+
     [SetUp]
     public void SetUp()
     {

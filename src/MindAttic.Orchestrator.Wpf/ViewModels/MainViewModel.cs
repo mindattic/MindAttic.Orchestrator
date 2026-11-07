@@ -558,6 +558,16 @@ public sealed partial class MainViewModel : ObservableObject
             }
             on = auto?.Email ?? GlobalLogin;
         }
+        // Short of RAM (M.ORCH-T1496) a CLI you start yourself asks first; automated starts are simply held.
+        if (MindAttic.Orchestrator.Activity.MemoryGuard.StartHeld(store.LoadSettings()) is { } low
+            && MindAttic.Components.Wpf.Controls.MaMessageBox.Show(System.Windows.Application.Current?.MainWindow,
+                low + " Another CLI can push it into paging, which grows the pagefile until the disk is full.",
+                "Start a CLI anyway?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning,
+                System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes)
+        {
+            StatusMessage = $"Not started: {low}";
+            return;
+        }
         var error = control.Start(tile.Name, tile.Path, kind, text, configDir);
         StatusMessage = error ?? $"Opened a {kind} tab for {tile.Name}" + (configDir is null ? "" : $" on {on}'s own login") + ". It'll appear here within a few seconds.";
         if (error is null && Selected == tile) Prompt = "";

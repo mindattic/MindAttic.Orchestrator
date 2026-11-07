@@ -309,6 +309,10 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         [CommandOption("--account <EMAIL>")]
         [Description("Run the CLI on this account's own login (signed in first, in the browser, when it has none yet), paced on its own token pool. Without it a Claude CLI goes on the Auto login: a signed-in per-CLI login no CLI runs on yet (most headroom first), else the global login (settings --auto-login false: always the global login).")]
         public string? Account { get; init; }
+
+        [CommandOption("--ignore-memory")]
+        [Description("Start it even while RAM is low (the memory guard holds new CLIs then).")]
+        public bool IgnoreMemory { get; init; }
     }
 
     /// <summary>Where per-CLI logins' folders are; tests point it elsewhere (never the real ~/.claude-accounts).</summary>
@@ -343,6 +347,11 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             // Why the picker found none (bughunt 2026-10-27): Auto login off, or its own reason, not only "no room".
             var why = !Ctx.Settings.AutoLogin ? "Auto login is off" : pickNote is { Length: > 0 } note ? note : "no login of its own has room";
             AnsiConsole.MarkupLine($"[red]{Markup.Escape(why)} and API billing is off: not started on the global login (a member's own seat). Pass --account, or switch API billing on.[/]");
+            return 1;
+        }
+        if (!settings.IgnoreMemory && MindAttic.Orchestrator.Activity.MemoryGuard.StartHeld(Ctx.Settings) is { } low)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(low)} Not started (--ignore-memory starts it anyway).[/]");
             return 1;
         }
         var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt, configDir);
