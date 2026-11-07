@@ -2831,4 +2831,34 @@ public sealed class HookScriptTests
         Status(new { subagent_allowance = 8, subagents_running = 0 });
         Assert.That(GateHeld(agent, 2, FreeRam(0.5)).Output, Does.Not.Contain("RAM"), "a fresh status without lines: the guard is off");
     }
+
+    /// <summary>M.ORCH-T1528: a Bash or PowerShell call run in the background is marked with its task id, its CLI and when; a
+    /// foreground call isn't; stopping the task by hand takes its mark away.</summary>
+    [Test]
+    public void A_background_shell_is_marked_until_it_is_stopped()
+    {
+        var background = Path.Combine(Marks, "background");
+        Gate(new { hook_event_name = "PostToolUse", session_id = "s9", cwd = ws, tool_name = "Bash",
+            tool_input = new { command = "sleep 5", description = "Wait", run_in_background = false }, tool_response = new { stdout = "" } }, AgentGate.ContextScriptName);
+        Assert.That(Directory.Exists(background) && Directory.EnumerateFiles(background).Any(), Is.False, "a foreground call isn't marked");
+
+        Gate(new { hook_event_name = "PostToolUse", session_id = "s9", cwd = ws, tool_name = "Bash",
+            tool_input = new { command = "dotnet run", description = "Run the study", run_in_background = true },
+            tool_response = new { backgroundTaskId = "b9tz/r09" } }, AgentGate.ContextScriptName);
+        var mark = Path.Combine(background, "b9tz_r09");
+        Assert.That(File.Exists(mark), Is.True, "the task id is made a safe file name");
+        var read = Sessions.BackgroundJobs.Parse("b9tz_r09", File.ReadAllText(mark), DateTime.UtcNow)!;
+        Assert.That(read.Cli, Is.EqualTo(Cli));
+        Assert.That(read.SessionId, Is.EqualTo("s9"));
+        Assert.That(read.What, Is.EqualTo("Run the study"));
+        Assert.That(DateTime.UtcNow - read.AtUtc, Is.LessThan(TimeSpan.FromMinutes(1)));
+
+        Gate(new { hook_event_name = "PostToolUse", session_id = "s9", cwd = ws, tool_name = "PowerShell",
+            tool_input = new { command = "Start-Sleep 60", run_in_background = true }, tool_response = "started" }, AgentGate.ContextScriptName);
+        Assert.That(Directory.EnumerateFiles(background).Count(), Is.EqualTo(2), "a response without a task id still gets a mark");
+
+        Gate(new { hook_event_name = "PostToolUse", session_id = "s9", cwd = ws, tool_name = "TaskStop",
+            tool_input = new { task_id = "b9tz/r09" }, tool_response = new { } }, AgentGate.ContextScriptName);
+        Assert.That(File.Exists(mark), Is.False, "stopped by hand, its mark goes");
+    }
 }

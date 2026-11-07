@@ -229,7 +229,8 @@ public sealed partial class MainViewModel
         !usable || pastCutoff ? TabActivity.Disabled : working || spending ? TabActivity.Busy : TabActivity.Idle;
 
     /// <summary>Whether one of this login's live CLIs is genuinely busy right now -- its own turn mid-run or held by the pace
-    /// gate while working, or it has a subagent running or an /allocate claim open (M.ORCH-T1393): the same live per-session
+    /// gate while working, or it has a subagent or a background job running (M.ORCH-T1528) or an /allocate claim open (M.ORCH-T1393,
+    /// <see cref="MindAttic.Orchestrator.Activity.AgentBoardRow.IsBusy"/>): the same live per-session
     /// signal <see cref="AllStoppedOf"/> and the Terminals panel's own pane badge (<c>TerminalPaneViewModel.ApplyAgentStatus</c>)
     /// already trust (<c>AgentBoard</c>, built from the context gate's <c>.state.json</c> files), not
     /// <see cref="MindAttic.Orchestrator.RepoState.Working"/>'s transcript-age window. A headless <c>/allocate</c> agent has no
@@ -241,8 +242,7 @@ public sealed partial class MainViewModel
     private bool AnyAgentWorking => AnyAgentWorkingOf(snapshot?.Agents);
 
     internal static bool AnyAgentWorkingOf(IEnumerable<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents) =>
-        agents?.Any(a => a.State is MindAttic.Orchestrator.Activity.AgentState.Working or MindAttic.Orchestrator.Activity.AgentState.HeldByPace
-            || a.Subagents.Count > 0 || a.Claims.Count > 0) == true;
+        agents?.Any(a => a.IsBusy) == true;
 
     /// <summary>Whether a login is at or past its weekly or its 5-hour cutoff (M.ORCH-T707/T742); never read is not past.</summary>
     internal static bool PastCutoffOf(double? weekUsed, int weeklyCutoff, double? fiveHourUsed, int fiveHourCutoff) =>
@@ -291,14 +291,14 @@ public sealed partial class MainViewModel
 
     /// <summary>
     /// The number of open CLIs when all of them are idle, else 0, judged per CLI as <c>orchestrator busy</c> does (M.ORCH-T873):
-    /// a CLI works while its turn runs, while any of its subagents runs, while it holds an /allocate claim, or while it holds on
-    /// a prompt. A Launcher tab with no CLI row behind it (no prompt typed yet, its state unread) is unknown, never idle.
+    /// a CLI works while its turn runs, while any of its subagents or background jobs runs (M.ORCH-T1528), while it holds an
+    /// /allocate claim, or while it holds on a prompt. A Launcher tab with no CLI row behind it (no prompt typed yet, its state unread) is unknown, never idle.
     /// </summary>
     internal static int AllStoppedOf(IEnumerable<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents, IEnumerable<HostSession>? hosts)
     {
         var rows = agents?.ToList() ?? [];
         if (rows.Count == 0) return 0;
-        if (rows.Any(a => a.State != MindAttic.Orchestrator.Activity.AgentState.Waiting || a.Subagents.Count > 0 || a.Claims.Count > 0 || a.Asking))
+        if (rows.Any(a => a.IsBusy || a.Asking))
             return 0;
         var covered = rows.Where(a => a.Host is not null).Select(a => a.Host!.PipeName).ToHashSet(StringComparer.Ordinal);
         if (hosts?.Any(h => !covered.Contains(h.PipeName)) == true) return 0;

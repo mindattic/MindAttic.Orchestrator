@@ -302,7 +302,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
     internal void ApplyAgentStatus(AgentBoardRow? row, DateTime takenUtc)
     {
         var known = row is not null;
-        var busy = row is { State: AgentState.Working or AgentState.HeldByPace } || row is { Subagents.Count: > 0 } || row is { Claims.Count: > 0 };
+        // Busy as orchestrator busy judges it: its turn, a subagent, a background job (M.ORCH-T1528) or a claim.
+        var busy = row?.IsBusy == true;
         var asking = row?.Asking == true;
         if (presumedSinceUtc is { } since && known && EndsPresumption(since, busy, takenUtc)) SetPresumed(null);
         if (known == paneKnown && busy == paneBusy && asking == paneAsking) return;

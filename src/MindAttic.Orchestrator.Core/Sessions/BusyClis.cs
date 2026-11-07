@@ -11,7 +11,7 @@ public enum CliActivity
     /// <summary>Its turn has ended, nothing of its is running, and it holds no claimed ticket: done.</summary>
     Idle,
 
-    /// <summary>Mid-turn, a subagent running, a ticket claimed, or holding on a prompt.</summary>
+    /// <summary>Mid-turn, a subagent or a background job running, a ticket claimed, or holding on a prompt.</summary>
     Working,
 
     /// <summary>Its state couldn't be read or isn't recorded: never taken for idle.</summary>
@@ -44,7 +44,8 @@ public sealed record BusyReport(DateTime AtUtc, IReadOnlyList<BusyCli> Clis)
 /// Whether any Claude CLI on this machine is still working (M.ORCH-T873), on any login, so a redeploy (which restarts the dashboard,
 /// and with it every terminal its Terminals panels host) can refuse rather than cut them off. A CLI is working while its turn runs
 /// (the context gate's <c>busy</c>), while any of its subagents runs (their marks, in the global login's and every per-CLI login's
-/// session-context), while it holds an <c>/allocate</c> claim, or while it holds on a prompt (<c>asking</c>). Anything that can't
+/// session-context), while a background shell it started runs (<see cref="BackgroundJobs"/>, M.ORCH-T1528), while it holds an
+/// <c>/allocate</c> claim, or while it holds on a prompt (<c>asking</c>). Anything that can't
 /// be read is <see cref="CliActivity.Unknown"/>, never idle. The CLI running the check (<c>MINDATTIC_CLI_PID</c>, else the
 /// claude.exe it runs under) is <see cref="CliActivity.Self"/> and doesn't count.
 /// </summary>
@@ -117,12 +118,17 @@ public static class BusyClis
             problems.Add($"the /allocate claims couldn't be read: {ex.Message}");
         }
 
-        return Judge(procs, states, subagents, claims, self ?? CallingCli(), accounts, problems, now);
+        // Background shells (M.ORCH-T1528): marked in the shared session-context, whatever login the CLI runs on.
+        var background = BackgroundJobs.RunningByCli(cycler.Directory, now);
+
+        return Judge(procs, states, subagents, claims, self ?? CallingCli(), accounts, problems, now, background);
     }
 
-    /// <summary>The judgement itself, over what <see cref="Scan"/> read (a seam for tests).</summary>
+    /// <summary>The judgement itself, over what <see cref="Scan"/> read (a seam for tests). <paramref name="background"/>: how many
+    /// background jobs each CLI (by process id) has running (<see cref="BackgroundJobs.RunningByCli"/>).</summary>
     public static BusyReport Judge(IReadOnlyList<Proc> procs, IReadOnlyList<State> states, IReadOnlyList<Subagent> subagents,
-        IReadOnlyList<Assignment> claims, int? self, AccountDirs accounts, IReadOnlyList<string> problems, DateTime nowUtc)
+        IReadOnlyList<Assignment> claims, int? self, AccountDirs accounts, IReadOnlyList<string> problems, DateTime nowUtc,
+        IReadOnlyDictionary<int, int>? background = null)
     {
         var clis = new List<BusyCli>();
         var live = procs.Select(p => p.Pid).ToHashSet();
@@ -163,10 +169,12 @@ public static class BusyClis
             if (state?.AskingSinceUtc is { } asking) why.Add("holding on a prompt for you" + Since(asking, nowUtc));
             var mine = subagents.Where(s => s.Cli == p.Pid).ToList();
             if (mine.Count > 0) why.Add($"{mine.Count} subagent(s) running");
+            var jobs = background?.GetValueOrDefault(p.Pid) ?? 0;
+            if (jobs > 0) why.Add($"{jobs} background job(s) running");
             var held = claims.Where(a => a.Cli == p.Pid || (state is not null && a.CliSession is not null && a.CliSession == state.SessionId))
                 .Select(a => a.TicketId).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList();
             if (held.Count > 0) why.Add("/allocate claims in flight: " + string.Join(", ", held));
-            var working = state?.Turn == "busy" || state?.AskingSinceUtc is not null || mine.Count > 0 || held.Count > 0;
+            var working = state?.Turn == "busy" || state?.AskingSinceUtc is not null || mine.Count > 0 || jobs > 0 || held.Count > 0;
             var activity = working ? CliActivity.Working : unknown ? CliActivity.Unknown : CliActivity.Idle;
             clis.Add(new BusyCli(p.Pid, repo, login, state?.SessionId, activity, why));
         }

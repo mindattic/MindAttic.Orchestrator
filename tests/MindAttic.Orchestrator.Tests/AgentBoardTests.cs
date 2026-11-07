@@ -155,4 +155,24 @@ public sealed class AgentBoardTests
         Assert.That(rows.Single(r => r.SessionId == "s1").Asking, Is.True);
         Assert.That(rows.Single(r => r.SessionId == "s2").Asking, Is.False, "idle past the window is waiting, not blocked on you");
     }
+
+    /// <summary>M.ORCH-T1528: a session whose turn ended while its CLI's background shell runs is busy, and says so.</summary>
+    [Test]
+    public void A_waiting_session_whose_cli_has_a_background_job_running_is_busy()
+    {
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-30)), Session("s2", Now.AddMinutes(-30))) };
+        var rows = AgentBoard.Build(repos, null, [], [], WorkingWindow, Now,
+            live: new Dictionary<string, bool> { ["s1"] = false, ["s2"] = false },
+            clis: new Dictionary<string, int> { ["s1"] = 11, ["s2"] = 22 },
+            background: new Dictionary<int, int> { [11] = 1 });
+
+        var s1 = rows.Single(r => r.SessionId == "s1");
+        Assert.That(s1.BackgroundJobs, Is.EqualTo(1));
+        Assert.That(s1.IsBusy, Is.True);
+        Assert.That(s1.StateDetail, Is.EqualTo("1 background job running"));
+        var s2 = rows.Single(r => r.SessionId == "s2");
+        Assert.That(s2.BackgroundJobs, Is.Zero);
+        Assert.That(s2.IsBusy, Is.False);
+        Assert.That(s2.StateDetail, Is.EqualTo("Waiting for you"));
+    }
 }

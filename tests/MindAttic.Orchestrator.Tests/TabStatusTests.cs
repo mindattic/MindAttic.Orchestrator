@@ -436,4 +436,19 @@ public sealed class TabStatusTests
         Assert.That(MainViewModel.SnapshotFiveHourOf(null, rosterFiveHourUsed: 5), Is.EqualTo(5), "no budget at all: the roster's last reading");
         Assert.That(MainViewModel.SnapshotFiveHourOf(null, rosterFiveHourUsed: null), Is.Null, "never read anywhere");
     }
+
+    /// <summary>M.ORCH-T1528: "you're working on something in the background and you know it, so the CLI tab should be green and
+    /// spinning, and therefore the User tab should be green and spinning." A CLI idle at its prompt with a background shell
+    /// running counts as working for the person tab, and keeps the tab from reading "all stopped".</summary>
+    [Test]
+    public void A_cli_with_a_background_job_running_keeps_its_person_tab_busy()
+    {
+        AgentBoardRow Row(string id, int background) =>
+            new(id, "A", null, null, DateTime.UtcNow, DateTime.UtcNow, AgentState.Waiting, "", false, default, []) { BackgroundJobs = background };
+
+        Assert.That(MainViewModel.AnyAgentWorkingOf([Row("a", 0)]), Is.False, "idle at a prompt with nothing running");
+        Assert.That(MainViewModel.AnyAgentWorkingOf([Row("a", 1)]), Is.True, "a background job is running");
+        Assert.That(MainViewModel.AllStoppedOf([Row("a", 0), Row("b", 0)], []), Is.EqualTo(2));
+        Assert.That(MainViewModel.AllStoppedOf([Row("a", 0), Row("b", 1)], []), Is.Zero, "one CLI's background job means not all stopped");
+    }
 }

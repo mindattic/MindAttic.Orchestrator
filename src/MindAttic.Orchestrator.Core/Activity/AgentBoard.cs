@@ -59,6 +59,15 @@ public sealed record AgentBoardRow(
     /// or /allocate only you may type (<see cref="Sessions.ContextCycler.AskingSessions"/>). Not merely idle: a turn that
     /// simply ended isn't this.</summary>
     public bool Asking { get; init; }
+
+    /// <summary>How many background shells (a Bash or PowerShell call run in the background) its CLI has running now (M.ORCH-T1528,
+    /// <see cref="Sessions.BackgroundJobs"/>): its turn may have ended, but its work hasn't.</summary>
+    public int BackgroundJobs { get; init; }
+
+    /// <summary>Whether its CLI is busy, as <c>orchestrator busy</c> judges one (M.ORCH-T873): its turn running (or held by the
+    /// pace gate), a subagent or a background job running, or an /allocate claim open. What the CLI's pane badge and its person's
+    /// tab spin green for.</summary>
+    public bool IsBusy => State is AgentState.Working or AgentState.HeldByPace || Subagents.Count > 0 || Claims.Count > 0 || BackgroundJobs > 0;
 }
 
 /// <summary>
@@ -78,7 +87,8 @@ public static class AgentBoard
         DateTime nowUtc,
         IReadOnlyDictionary<string, bool>? live = null,
         IReadOnlyDictionary<string, int>? clis = null,
-        IReadOnlySet<string>? asking = null)
+        IReadOnlySet<string>? asking = null,
+        IReadOnlyDictionary<int, int>? background = null)
     {
         var byParent = subagents.ToLookup(s => s.ParentSessionId, StringComparer.Ordinal);
         var byTicket = assignments.DistinctBy(a => a.TicketId, StringComparer.OrdinalIgnoreCase).ToDictionary(a => a.TicketId, StringComparer.OrdinalIgnoreCase);
@@ -100,8 +110,12 @@ public static class AgentBoard
                 else if (live.TryGetValue(session.SessionId, out var busy)) working = busy;
                 else continue;
                 var state = !working ? AgentState.Waiting : paceHolding ? AgentState.HeldByPace : AgentState.Working;
+                // Its turn ended, but a background shell it started still runs (M.ORCH-T1528): working, not waiting on you.
+                int? cliPid = clis is not null && clis.TryGetValue(session.SessionId, out var cp) ? cp : null;
+                var jobs = cliPid is { } bp ? background?.GetValueOrDefault(bp) ?? 0 : 0;
                 var detail = state switch
                 {
+                    AgentState.Waiting when jobs > 0 => jobs == 1 ? "1 background job running" : $"{jobs} background jobs running",
                     AgentState.Waiting => "Waiting for you",
                     AgentState.HeldByPace => pace!.Note,
                     _ => "Working",
@@ -111,7 +125,7 @@ public static class AgentBoard
                 var started = assignment?.StartedUtc ?? (session.Events.Count > 0 ? session.Events[0].AtUtc : session.LastWriteUtc);
 
                 // Its CLI's claims: made by its CLI process (any of its sessions, so a /clear keeps them), or in this session.
-                int? cli = clis is not null && clis.TryGetValue(session.SessionId, out var p) ? p : null;
+                var cli = cliPid;
                 var claims = assignments.Where(a => a.IsClaim && ((cli is not null && a.Cli == cli) ||
                         (a.CliSession is not null && a.CliSession == session.SessionId)))
                     .Select(a => a.TicketId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -121,7 +135,7 @@ public static class AgentBoard
                     started, session.LastWriteUtc, state, detail,
                     assignment?.Pilot is not null, session.UsageToday,
                     [.. byParent[session.SessionId]]) { Doing = session.Doing, DoingAtUtc = session.DoingAtUtc, Claims = claims, CliPid = cli,
-                      Asking = asking?.Contains(session.SessionId) == true });
+                      Asking = asking?.Contains(session.SessionId) == true, BackgroundJobs = jobs });
             }
         }
         return [.. rows.OrderByDescending(r => r.LastActivityUtc)];

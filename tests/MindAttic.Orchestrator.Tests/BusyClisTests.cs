@@ -146,4 +146,16 @@ public sealed class BusyClisTests
         var mixed = Judge([Proc(1) with { HostPid = 900 }, Proc(2)], [State("a", 1, "busy"), State("b", 2, "idle"), unreadable], subagents: [orphan]);
         Assert.That(mixed.Blocking.Count(c => c.Pid is null), Is.EqualTo(2), "with an unhosted CLI open they may be its");
     }
+
+    /// <summary>M.ORCH-T1528: a CLI whose turn ended but whose background shell still runs is working, not idle.</summary>
+    [Test]
+    public void An_idle_cli_with_a_background_job_running_is_working()
+    {
+        var report = BusyClis.Judge([Proc(1), Proc(2)], [State("a", 1, "idle"), State("b", 2, "idle")], [], [], null, Accounts, [], Now,
+            background: new Dictionary<int, int> { [1] = 2 });
+        Assert.That(report.Blocking.Single().Pid, Is.EqualTo(1));
+        Assert.That(report.Blocking.Single().Activity, Is.EqualTo(CliActivity.Working));
+        Assert.That(report.Blocking.Single().Why, Does.Contain("2 background job(s) running"));
+        Assert.That(report.Clis.Single(c => c.Pid == 2).Activity, Is.EqualTo(CliActivity.Idle), "another CLI's job isn't its");
+    }
 }
