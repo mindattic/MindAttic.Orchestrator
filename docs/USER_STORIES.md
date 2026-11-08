@@ -1564,3 +1564,4 @@ _Nothing recorded yet._
 | M.ORCH-T1536 | 2026-11-08 | fix | closed | Login tab bars should be right-aligned; tooltip's first line should be the sigma/lambda percents | — |
 | M.ORCH-T1537 | 2026-11-08 | fix | open | Switching to the ryandebraal@mindattic.com login tab takes ~30s, unlike other login tabs | — |
 | M.ORCH-T1538 | 2026-11-08 | fix | open | Bughunt: dead refresh-timing Stopwatch, and DisposeControl leaves 3 DispatcherTimers running after a pane closes | — |
+| M.ORCH-T1539 | 2026-11-08 | fix | open | Bughunt: GatewayClient uncaught InvalidOperationException, OpenTicketSource unknown-as-empty, ExportedState/MachineRole uncaught file I/O, DiffReview's ignored WaitAll result | — |
