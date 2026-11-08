@@ -122,8 +122,12 @@ public sealed class OpenTicketSourceTests
     }
 
     [Test]
-    public void A_first_database_read_that_fails_marks_the_repo_unknown_not_empty()
+    public void A_first_database_read_that_fails_marks_the_repo_unknown_and_falls_back_to_the_markdown()
     {
+        // Bughunt, M.ORCH-T1538: FromDatabase used to return [] here (an empty list is a legitimate answer to OpenFor's
+        // own `is { } db` check), so a repo read for the first time while its database happened to be mid-write looked
+        // like it genuinely had zero open tickets - the exact "unknown, not none" Unknown says it is not. null now falls
+        // through to the same markdown fallback a repo absent from the database's own repo list already takes.
         var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one | — |\n");
         var path = TicketsDb.DefaultPath(root);
         using (var db = TicketsDb.Open(path)) db.Import([a]);
@@ -133,8 +137,8 @@ public sealed class OpenTicketSourceTests
 
         var source = new OpenTicketSource();
         var warnings = new List<string>();
-        Assert.That(source.OpenFor(a, warnings), Is.Empty);
-        Assert.That(source.Unknown, Does.Contain("A"));
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1" }), "the markdown's own open tickets, not an empty list");
+        Assert.That(source.Unknown, Does.Contain("A"), "the database's own figures are still unknown");
 
         GC.Collect();
         GC.WaitForPendingFinalizers();

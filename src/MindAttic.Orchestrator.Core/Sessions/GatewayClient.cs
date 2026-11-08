@@ -227,6 +227,10 @@ public sealed class GatewayClient : IDisposable
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return (1, "The host didn't finish the tickets command in time."); }
         catch (HttpRequestException ex) { return (1, "The host can't be reached: " + Describe(ex) + "."); }
         catch (JsonException) { return (1, "The host's answer couldn't be read."); }
+        // Bughunt, M.ORCH-T1538: a well-formed-JSON-but-not-an-object answer (null, an array, a scalar) makes
+        // TryGetProperty above throw InvalidOperationException, which escaped uncaught, breaking this method's own "never
+        // throws but on cancellation" contract - the same class of host-answer problem JsonException already covers.
+        catch (InvalidOperationException) { return (1, "The host's answer couldn't be read."); }
     }
 
     /// <summary>

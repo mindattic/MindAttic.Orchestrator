@@ -144,7 +144,11 @@ public sealed class OpenTicketSource
                 if (fromDb is not { } last || last.Path != path)
                 {
                     unknown.Add(repo.Name);
-                    return [];
+                    // Bughunt, M.ORCH-T1538: this returned [] (empty list), which OpenFor's `is { } db` null-check treats as
+                    // a legitimate, zero-open-tickets answer - the exact "unknown, not none" it was just marked as above.
+                    // null instead falls through to the USER_STORIES.md fallback, the same path a repo absent from the
+                    // database's own repo list already takes (the ternary this method ends with).
+                    return null;
                 }
             }
         }

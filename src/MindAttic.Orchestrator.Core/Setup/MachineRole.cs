@@ -108,7 +108,9 @@ public sealed record MachineRole
     internal void Save(string path)
     {
         System.IO.Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var temp = path + ".tmp";
+        // Unique per process (bughunt, M.ORCH-T1538), as every other temp-file writer in this codebase already is (e.g.
+        // ExportedState.Write): a fixed name is a latent race if two processes ever call Save concurrently.
+        var temp = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
         File.WriteAllText(temp, JsonSerializer.Serialize(this with { ChangedUtc = DateTime.UtcNow }, Json));
         File.Move(temp, path, overwrite: true);
     }

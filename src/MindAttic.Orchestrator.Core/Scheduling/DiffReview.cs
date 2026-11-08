@@ -119,7 +119,12 @@ public static class DiffReview
                 try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or AggregateException) { }
                 return (false, $"the review ran past {Timeout.TotalMinutes:0} minutes and was stopped");
             }
-            Task.WaitAll([output, error], TimeSpan.FromSeconds(10));
+            // Bughunt, M.ORCH-T1538: this used to ignore WaitAll's own return value, so a pipe read still incomplete after
+            // 10s (a lingering grandchild keeping stdout/stderr open, the same race Dispatcher.Git's own elapsed-time math
+            // guards against) read as "" the same as a read that genuinely completed empty - a review that actually
+            // finished (ExitCode 0) was then reported as a failure with no reason, rather than the real situation.
+            if (!Task.WaitAll([output, error], TimeSpan.FromSeconds(10)))
+                return (false, $"claude exited {p.ExitCode}, but its output hadn't finished arriving 10s later");
             var said = output.IsCompletedSuccessfully ? output.Result.Trim() : "";
             return p.ExitCode == 0 && said.Length > 0 ? (true, said)
                 : (false, $"claude exited {p.ExitCode}: {(said.Length > 0 ? said : error.IsCompletedSuccessfully ? error.Result.Trim() : "")}");

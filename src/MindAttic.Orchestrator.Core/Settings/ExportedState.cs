@@ -48,13 +48,18 @@ public static class ExportedState
     {
         try { db.SaveState(name, json); }
         catch (System.Data.Common.DbException) { } // held past the busy timeout: the file alone, which reads newer
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var tmp = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
         try
         {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(tmp, json, new UTF8Encoding(false));
             File.Move(tmp, path, overwrite: true);
         }
+        // Bughunt, M.ORCH-T1538: every sibling temp-file writer in this codebase catches these (the Launcher or the
+        // statusline hook can momentarily hold path open while reading it); this one didn't, so a transient lock here
+        // propagated out of Write uncaught - at both call sites (ClaudeAccount.Save, BillingMode.Write), with nothing
+        // above them catching it either. The row write above already stands in when only the file side fails.
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         finally { if (File.Exists(tmp)) File.Delete(tmp); }
     }
 

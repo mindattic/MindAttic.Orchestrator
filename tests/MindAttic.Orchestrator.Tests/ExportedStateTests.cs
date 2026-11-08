@@ -33,13 +33,17 @@ public sealed class ExportedStateTests
     [Test]
     public void Write_deletes_its_temp_file_even_when_the_move_into_place_fails()
     {
-        // A directory already sitting where the exported file would go makes File.Move throw: the write never completes,
-        // but the per-write temp file it staged first must not be left behind (matches OrchestratorDb.WriteDump's cleanup).
+        // A directory already sitting where the exported file would go makes File.Move throw IOException: the write never
+        // completes, but the per-write temp file it staged first must not be left behind (matches OrchestratorDb.WriteDump's
+        // cleanup). Bughunt, M.ORCH-T1538: Write used to let that exception (and any other transient IOException/
+        // UnauthorizedAccessException - a reader holding the file open, same as every sibling temp-file writer already
+        // tolerates) escape uncaught; the row write already stands in when only the file side fails, so it's swallowed the
+        // same way the row side's own DbException already is a few lines up, not thrown.
         var db = new OrchestratorDb(Path.Combine(dir, "orchestrator.db"));
         var path = Path.Combine(dir, "state", "mark.json");
         Directory.CreateDirectory(path);
 
-        Assert.That(() => ExportedState.Write(db, "mark", path, """{ "On": true }"""), Throws.Exception);
+        Assert.That(() => ExportedState.Write(db, "mark", path, """{ "On": true }"""), Throws.Nothing);
 
         var leftover = Directory.GetFiles(Path.GetDirectoryName(path)!, "*.tmp");
         Assert.That(leftover, Is.Empty, "the staged temp file is cleaned up rather than orphaned");
