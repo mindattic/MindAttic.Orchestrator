@@ -367,6 +367,9 @@ public sealed partial class MainViewModel : ObservableObject
             await TickAllocateAsync(next);
             foreach (var tab in LoginTabs)
                 if (tab.StatusMessage.StartsWith("Refresh failed:", StringComparison.Ordinal)) tab.StatusMessage = "";
+            // Found dead (bughunt, M.ORCH-T1538): clock was started and never read, so a slow refresh never left a trace.
+            if (clock.Elapsed > SlowRefreshThreshold)
+                OrchestratorLog.For("Dashboard").Warning("A refresh took {Ms}ms", clock.ElapsedMilliseconds);
         }
         // Any failure is shown and retried next tick: this runs from an async void timer, so an escaped exception would
         // close the dashboard, and with it allocate and rl-status.json if this window holds the lease.
@@ -397,6 +400,9 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>A refresh was asked for while one ran.</summary>
     private bool refreshQueued;
+
+    /// <summary>How long a refresh may take before it's logged (M.ORCH-T1538): generous, so only a real stall is noisy.</summary>
+    private static readonly TimeSpan SlowRefreshThreshold = TimeSpan.FromSeconds(5);
 
     /// <summary>Counts the changes made here that a snapshot reads back (a billing switch, a priority bump).</summary>
     private int localChanges;

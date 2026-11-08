@@ -553,6 +553,11 @@ public sealed class TerminalPaneViewModel : ObservableObject
     {
         try
         {
+            // Each is otherwise self-stopping on its own Tick (bughunt, M.ORCH-T1538): left running past a close, the
+            // eventual tick still ran SetPresumed(null)/RaiseBadges()/PresumptionChanged against this already-disposed pane.
+            presumeTimer?.Stop();
+            notSentTimer?.Stop();
+            typingTimer?.Stop();
             screen?.Dispose();
             if (Relay is { } relay) relay.Dispose();
             else if (Local is { } local)
