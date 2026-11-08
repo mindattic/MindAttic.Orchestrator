@@ -264,9 +264,15 @@
             <mc:MaTabControl.ItemContainerStyle>
                 <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
                     <Setter Property="Accent" Value="{Binding TabBrush}" />
-                    <Setter Property="Trailing" Value="{Binding TabTrailing}" />
+                    <!-- The plain percent figures ("Σ: 15% | λ: 29%") move to the tooltip (M.ORCH-T1532): the bars beside the
+                         name below show them instead, so Trailing only still carries text for the cases a bar can't say
+                         (unsigned, the API key's money, "sign in again", "stale · read Xh ago" - TabTrailingFace). -->
+                    <Setter Property="Trailing" Value="{Binding TabTrailingFace}" />
                     <!-- A callout pointing at the sidebar (M.ORCH-T1441): its arrow touches the tab's right edge, and it flips, or slides
-                         up or down, to stay on the tab's monitor (the library's MaCallout, M.COMP-T167). -->
+                         up or down, to stay on the tab's monitor (the library's MaCallout, M.COMP-T167). Its figures show up
+                         instantly (M.ORCH-T1532, ToolTipService's own delay on the owning tab - MaCalloutToolTip is still a
+                         plain ToolTip underneath, so that delay still governs it): no hover-delay wait to read a login's usage. -->
+                    <Setter Property="ToolTipService.InitialShowDelay" Value="0" />
                     <Setter Property="mc:MaCallout.ToolTip" Value="{Binding TabHoverTip}" />
                     <Setter Property="mc:MaCallout.Placement" Value="Right" />
                     <Setter Property="AutomationProperties.Name" Value="{Binding TabTip}" />
@@ -306,6 +312,23 @@
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
                         </Grid>
                         <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <!-- The same sigma/lambda bars as the pinned Usage tab's own header, beside the name in place of the
+                             plain "Σ: 15% | λ: 29%" figures (M.ORCH-T1532): the percents themselves move to the tooltip
+                             (TabHoverTip/TabTip already fold TabTrailing's text in regardless of what the tab face shows).
+                             Hidden whenever there's nothing a bar can say - unsigned, the API key tab (money, not a usage
+                             percent), "sign in again" or a stale reading - which keeps showing as plain text (TabTrailingFace,
+                             the style's Trailing setter above). -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}"
+                                    Visibility="{Binding ShowsTabUsageBars, Converter={StaticResource Visible}}">
+                            <TextBlock Text="{Binding UsageSigmaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" />
+                            <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
+                                         Margin="{StaticResource SpaceLXS}" Value="{Binding WeeklyLimitPercent, Mode=OneWay}"
+                                         Foreground="{Binding WeeklyLimitBrush}" />
+                            <TextBlock Text="{Binding UsageLambdaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
+                            <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
+                                         Margin="{StaticResource SpaceLXS}" Value="{Binding FiveHourLimitPercent, Mode=OneWay}"
+                                         Foreground="{Binding FiveHourLimitBrush}" />
+                        </StackPanel>
                     </StackPanel>
                 </DataTemplate>
             </mc:MaTabControl.ItemTemplate>
@@ -381,11 +404,12 @@
                 </Grid.ColumnDefinitions>
                 <!-- The pinned Usage tab (M.ORCH-T1446): unclosable and titleless, always first, outside the scrollable
                      strip and Terminals.Panes (it isn't a CLI's pane, so it can never be closed, dragged, or scrolled away
-                     from index 0). Clicking it (UsageTabItem_MouseLeftButtonDown) shows this login's 5-hour/weekly charts
-                     (UtilizationSection, already right under the terminal in AgentsBody) where the terminal normally sits
-                     instead of switching any CLI's terminal away (TerminalFrame's own Visibility below); choosing a real
-                     CLI/Launcher tab again (even the one already chosen, caught by RealTerminalTabs_PreviewMouseLeftButtonDown
-                     since that raises no SelectedPane change of its own) leaves it. -->
+                     from index 0). Clicking it (UsageTabItem_MouseLeftButtonDown) shows its own page, UsageFrame, where the
+                     terminal normally sits (M.ORCH-T1532: its own frame holding the charts, in place of just hiding
+                     TerminalFrame and scrolling to where they used to sit inline in AgentsBodyList) instead of switching any
+                     CLI's terminal away (TerminalFrame's own Visibility below); choosing a real CLI/Launcher tab again (even
+                     the one already chosen, caught by RealTerminalTabs_PreviewMouseLeftButtonDown since that raises no
+                     SelectedPane change of its own) leaves it. -->
                 <mc:MaTabItem x:Name="UsageTabItem" Grid.Column="0" Accent="{Binding TabBrush}"
                               IsSelected="{Binding Terminals.IsUsageShown, Mode=OneWay}"
                               MouseLeftButtonDown="UsageTabItem_MouseLeftButtonDown" KeyDown="UsageTabItem_KeyDown"
@@ -559,11 +583,13 @@
                     <Grid x:Name="TerminalPanesHost" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
                 </Grid>
 
-                <StackPanel x:Name="AgentsBodyList">
-                <!-- This 5-hour window's utilization (M.ORCH-T191), right after the CLI terminal (M.ORCH-T1319):
-                     its own full-width row, tall enough that the pace line straight to the target at the reset, the window's
-                     own line (red while over that pace, green under) and where the recent rate ends up are easy to read. The
-                     caption says it in words. -->
+                <!-- The pinned Usage tab's own page (M.ORCH-T1532, in place of just hiding TerminalFrame and scrolling to
+                     where the charts used to sit in the normal flow, M.ORCH-T1446): a plain sibling of TerminalFrame in the
+                     same spot, shown only while Terminals.IsUsageShown, holding the charts that used to live in
+                     AgentsBodyList's own UtilizationSection. A real CLI/Launcher tab never sees this frame; its own scroll
+                     no longer passes through the charts on the way to the toolbar and tickets below. -->
+                <Grid x:Name="UsageFrame" Margin="{StaticResource SpaceTS}"
+                      Visibility="{Binding Terminals.IsUsageShown, Converter={StaticResource Visible}}">
                 <StackPanel x:Name="UtilizationSection" Margin="{StaticResource SectionGap}">
                 <StackPanel x:Name="ClaudeMetersSection" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
                     <StackPanel x:Name="ChartsHeader">
@@ -680,7 +706,9 @@
                     </Border>
                 </StackPanel>
                 </StackPanel>
+                </Grid>
 
+                <StackPanel x:Name="AgentsBodyList">
                 <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom under their fixed person tab and
                      terminal tabs (M.ORCH-T1302): the terminal and the 5-hour chart above, then their stats (the 5-hour
                      window, the week, their cutoffs and when Claude's meter was last read), the toolbar, the 5-hour chart and

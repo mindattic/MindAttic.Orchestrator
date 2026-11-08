@@ -73,6 +73,18 @@ public sealed partial class MainViewModel
         : tab.IsApiKey ? ApiTrailingOf(Spend)
         : TabUsageOf(FiveHourUsed, WeekUsed, MeterReadUtc, NeedsSignInAgain, DateTime.UtcNow, Lambda, Root.symbolTabLabels);
 
+    /// <summary>Whether the tab shows the weekly/5-hour bars beside its name instead of <see cref="TabTrailing"/>'s own text
+    /// (M.ORCH-T1532, in place of the plain "Σ: 15% | λ: 29%" figures): signed in, not the API key tab (its trailing is
+    /// money, not a usage percent, M.ORCH-T906) and not stale or needing a fresh sign-in (those replace the figures with a
+    /// sentence, <see cref="TabUsageOf"/>, that a bar can't say). The percents themselves still reach the tooltip: TabTip
+    /// and TabHoverTip fold in TabTrailing's own text regardless of what the tab face shows.</summary>
+    public bool ShowsTabUsageBars => tab.SignedIn && !tab.IsApiKey && !NeedsSignInAgain && !IsStale(MeterReadUtc, DateTime.UtcNow);
+
+    /// <summary>What the tab's own Trailing text shows (M.ORCH-T1532): empty while <see cref="ShowsTabUsageBars"/> draws the
+    /// bars in its place, else the same <see cref="TabTrailing"/> as before (unsigned, the API key's money, "sign in
+    /// again", or "stale · read Xh ago").</summary>
+    public string TabTrailingFace => ShowsTabUsageBars ? "" : TabTrailing;
+
     /// <summary>When this login's meter was last read: the pushed reading's, else its <c>claude-usage.json</c>'s; null on the global
     /// login's tab, or never read (M.ORCH-T1119).</summary>
     private DateTime? MeterReadUtc
@@ -417,7 +429,7 @@ public sealed partial class MainViewModel
     /// <summary>Raises everything the tab strip shows for this tab.</summary>
     private void RaiseTabStatus()
     {
-        foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip), nameof(TabHoverTip),
+        foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabTip), nameof(TabHoverTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge), nameof(TabActivityWord),
                                      nameof(TabCliCount),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),

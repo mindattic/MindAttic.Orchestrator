@@ -758,9 +758,9 @@ public partial class MainWindow : Window
     private void TerminalTabScrollRight_Click(object sender, RoutedEventArgs e) =>
         TerminalTabScroller.ScrollToHorizontalOffset(TerminalTabScroller.HorizontalOffset + TerminalTabScrollStep);
 
-    /// <summary>The pinned Usage tab (M.ORCH-T1446): shows this login's 5-hour/weekly charts (UtilizationSection, already
-    /// right under the terminal in AgentsBody) in place of the terminal, scrolled to the top so they're there without
-    /// scrolling past where the terminal normally sits.</summary>
+    /// <summary>The pinned Usage tab (M.ORCH-T1446, its own page M.ORCH-T1532): shows UsageFrame, holding this login's
+    /// 5-hour/weekly charts, in place of the terminal, scrolled to the top so they're there without scrolling past
+    /// where the terminal normally sits.</summary>
     private void ShowUsageTab()
     {
         Shown.Terminals.ShowUsageCommand.Execute(null);
