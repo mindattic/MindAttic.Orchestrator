@@ -125,6 +125,11 @@ public sealed partial class MainViewModel
     /// <summary>The cutoffs the visible label leaves out (M.ORCH-T968), for the tooltip and accessible name: "cutoffs 5-hour 98%, weekly 90%".</summary>
     internal string TabCutoffsLine => tab.SignedIn && !tab.IsApiKey ? $" Cutoffs: 5-hour {FiveHourCutoff}%, weekly {WeeklyCutoff}%." : "";
 
+    /// <summary>The hover tip's own lead line (M.ORCH-T1536): the same "Σ: 15% | λ: 29%" figures as the tab face's bars
+    /// (ShowsTabUsageBars) and TabTrailing's own text, current rather than the cutoffs TabCutoffsLine gives; empty for the
+    /// API key tab (its trailing is money) or signed out.</summary>
+    internal string TabUsageLine => tab.SignedIn && !tab.IsApiKey ? TabUsagePairsOf(FiveHourUsed, WeekUsed, Lambda, Root.symbolTabLabels) : "";
+
     /// <summary>"$37.66 left", or "$1.20 today" with no starting credit set; "" before the first read.</summary>
     internal static string ApiTrailingOf(ApiSpend? spend) =>
         spend is null ? "" : spend.LeftUsd is { } left ? $"{ApiSpend.Usd(left)} left" : $"{ApiSpend.Usd(spend.TodayUsd)} today";
@@ -429,7 +434,7 @@ public sealed partial class MainViewModel
     /// <summary>Raises everything the tab strip shows for this tab.</summary>
     private void RaiseTabStatus()
     {
-        foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabTip), nameof(TabHoverTip),
+        foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabUsageLine), nameof(TabTip), nameof(TabHoverTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge), nameof(TabActivityWord),
                                      nameof(TabCliCount),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),

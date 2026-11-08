@@ -128,6 +128,27 @@
             </Button>
         </DataTemplate>
 
+        <!-- The login tab strip's own sigma/lambda bars (M.ORCH-T1536), the same pair as the pinned Usage tab's own header,
+             but in MaTabItem.TrailingContent rather than the Header (M.COMP-T172): Trailing/TrailingContent dock to the
+             strip's trailing edge in TabStripPlacement="Left" the way the header never does, so this is what actually gets
+             the bars right-aligned, where embedding them in the Header DataTemplate (M.ORCH-T1532's first cut) could not.
+             Hidden per row by its own root Visibility (ShowsTabUsageBars) exactly as before; TrailingContent itself is
+             always set ({Binding}, the login's own MainViewModel), so the trigger that collapses PART_TrailingContent on a
+             null TrailingContent never fires here - this is what hides it instead. -->
+        <DataTemplate x:Key="LoginUsageBarsTemplate" DataType="{x:Type vm:MainViewModel}">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                        Visibility="{Binding ShowsTabUsageBars, Converter={StaticResource Visible}}">
+                <TextBlock Text="{Binding UsageSigmaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" />
+                <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
+                             Margin="{StaticResource SpaceLXS}" Value="{Binding WeeklyLimitPercent, Mode=OneWay}"
+                             Foreground="{Binding WeeklyLimitBrush}" />
+                <TextBlock Text="{Binding UsageLambdaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
+                <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
+                             Margin="{StaticResource SpaceLXS}" Value="{Binding FiveHourLimitPercent, Mode=OneWay}"
+                             Foreground="{Binding FiveHourLimitBrush}" />
+            </StackPanel>
+        </DataTemplate>
+
     </Window.Resources>
 
     <Grid x:Name="Root">
@@ -264,10 +285,17 @@
             <mc:MaTabControl.ItemContainerStyle>
                 <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
                     <Setter Property="Accent" Value="{Binding TabBrush}" />
-                    <!-- The plain percent figures ("Σ: 15% | λ: 29%") move to the tooltip (M.ORCH-T1532): the bars beside the
-                         name below show them instead, so Trailing only still carries text for the cases a bar can't say
-                         (unsigned, the API key's money, "sign in again", "stale · read Xh ago" - TabTrailingFace). -->
+                    <!-- The plain percent figures ("Σ: 15% | λ: 29%") move to the tooltip (M.ORCH-T1532): the bars at the
+                         strip's trailing edge below show them instead, so Trailing only still carries text for the cases a
+                         bar can't say (unsigned, the API key's money, "sign in again", "stale · read Xh ago" -
+                         TabTrailingFace). -->
                     <Setter Property="Trailing" Value="{Binding TabTrailingFace}" />
+                    <!-- Right-aligned (M.ORCH-T1536, M.COMP-T172): TrailingContent docks exactly where Trailing does, which
+                         in TabStripPlacement="Left" (the control's own template) is the strip's trailing edge - the Header
+                         DataTemplate below never gets that treatment, so the bars couldn't live there. Always set; the
+                         template's own root hides itself per row (ShowsTabUsageBars). -->
+                    <Setter Property="TrailingContent" Value="{Binding}" />
+                    <Setter Property="TrailingContentTemplate" Value="{StaticResource LoginUsageBarsTemplate}" />
                     <!-- A callout pointing at the sidebar (M.ORCH-T1441): its arrow touches the tab's right edge, and it flips, or slides
                          up or down, to stay on the tab's monitor (the library's MaCallout, M.COMP-T167). Its figures show up
                          instantly (M.ORCH-T1532, ToolTipService's own delay on the owning tab - MaCalloutToolTip is still a
@@ -312,23 +340,6 @@
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
                         </Grid>
                         <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <!-- The same sigma/lambda bars as the pinned Usage tab's own header, beside the name in place of the
-                             plain "Σ: 15% | λ: 29%" figures (M.ORCH-T1532): the percents themselves move to the tooltip
-                             (TabHoverTip/TabTip already fold TabTrailing's text in regardless of what the tab face shows).
-                             Hidden whenever there's nothing a bar can say - unsigned, the API key tab (money, not a usage
-                             percent), "sign in again" or a stale reading - which keeps showing as plain text (TabTrailingFace,
-                             the style's Trailing setter above). -->
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}"
-                                    Visibility="{Binding ShowsTabUsageBars, Converter={StaticResource Visible}}">
-                            <TextBlock Text="{Binding UsageSigmaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" />
-                            <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
-                                         Margin="{StaticResource SpaceLXS}" Value="{Binding WeeklyLimitPercent, Mode=OneWay}"
-                                         Foreground="{Binding WeeklyLimitBrush}" />
-                            <TextBlock Text="{Binding UsageLambdaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
-                            <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
-                                         Margin="{StaticResource SpaceLXS}" Value="{Binding FiveHourLimitPercent, Mode=OneWay}"
-                                         Foreground="{Binding FiveHourLimitBrush}" />
-                        </StackPanel>
                     </StackPanel>
                 </DataTemplate>
             </mc:MaTabControl.ItemTemplate>

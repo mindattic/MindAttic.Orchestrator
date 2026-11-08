@@ -31,21 +31,26 @@ public sealed class TabStatusTests
     }
 
     [Test]
-    public void Hovering_a_persons_tab_shows_their_cutoffs_weekly_reset_and_active_clis_one_per_line()
+    public void Hovering_a_persons_tab_leads_with_its_current_sigma_lambda_then_cutoffs_weekly_reset_and_active_clis()
     {
-        // M.ORCH-T1120, bulleted and given the open CLIs M.ORCH-T1424: no name, status or email; just the cutoffs, when
-        // the week resets, and the CLI tabs open on this login, each its own bullet line. The Launcher's own menu pane
-        // is never one of them (M.ORCH-T1430: MainViewModel.ActiveCliTitles filters it out before it reaches here).
-        var tip = MainViewModel.TabHoverTipOf(" Cutoffs: 5-hour 98%, weekly 95%.", Now.AddHours(7).AddMinutes(3), Now, ["repo-foo"]);
+        // M.ORCH-T1120, bulleted and given the open CLIs M.ORCH-T1424, led by the current Σ/λ percents M.ORCH-T1536 (now
+        // that the tab face itself shows bars rather than that text): no name, status or email; just the usage line, the
+        // cutoffs, when the week resets, and the CLI tabs open on this login, each of the latter three its own bullet
+        // line. The Launcher's own menu pane is never one of them (M.ORCH-T1430: MainViewModel.ActiveCliTitles filters it
+        // out before it reaches here).
+        var tip = MainViewModel.TabHoverTipOf("Σ: 15% | λ: 29%", " Cutoffs: 5-hour 98%, weekly 95%.", Now.AddHours(7).AddMinutes(3), Now, ["repo-foo"]);
         Assert.That(tip, Is.Not.Null);
         var lines = tip!.Split('\n');
-        Assert.That(lines[0], Is.EqualTo("• Cutoffs: 5-hour 98%, weekly 95%"));
-        Assert.That(lines[1], Does.StartWith("• Weekly reset: ").And.EndWith("(in 7hr 3m)"));
-        Assert.That(lines[2], Is.EqualTo("• Active CLIs: repo-foo"));
+        Assert.That(lines[0], Is.EqualTo("Σ: 15% | λ: 29%"));
+        Assert.That(lines[1], Is.EqualTo("• Cutoffs: 5-hour 98%, weekly 95%"));
+        Assert.That(lines[2], Does.StartWith("• Weekly reset: ").And.EndWith("(in 7hr 3m)"));
+        Assert.That(lines[3], Is.EqualTo("• Active CLIs: repo-foo"));
 
-        Assert.That(MainViewModel.TabHoverTipOf(" Cutoffs: 5-hour 98%, weekly 95%.", null, Now, []),
-            Is.EqualTo("• Cutoffs: 5-hour 98%, weekly 95%\n• Weekly reset: not known yet\n• Active CLIs: none open"));
-        Assert.That(MainViewModel.TabHoverTipOf("", Now.AddHours(1), Now, []), Is.Null, "no cutoffs (signed out, the API key): the full tip instead");
+        Assert.That(MainViewModel.TabHoverTipOf("Σ: 15% | λ: 29%", " Cutoffs: 5-hour 98%, weekly 95%.", null, Now, []),
+            Is.EqualTo("Σ: 15% | λ: 29%\n• Cutoffs: 5-hour 98%, weekly 95%\n• Weekly reset: not known yet\n• Active CLIs: none open"));
+        Assert.That(MainViewModel.TabHoverTipOf("", " Cutoffs: 5-hour 98%, weekly 95%.", null, Now, []),
+            Is.EqualTo("• Cutoffs: 5-hour 98%, weekly 95%\n• Weekly reset: not known yet\n• Active CLIs: none open"), "no usage line (the API key tab): no lead line, same as before");
+        Assert.That(MainViewModel.TabHoverTipOf("Σ: 15% | λ: 29%", "", Now.AddHours(1), Now, []), Is.Null, "no cutoffs (signed out, the API key): the full tip instead");
     }
 
     [Test]
@@ -286,7 +291,11 @@ public sealed class TabStatusTests
         Assert.That(strip, Does.Not.Contain("Opacity=\"{Binding TabIconOpacity}\""), "replaced by the soothing pulse (M.ORCH-T770)");
         Assert.That(strip, Does.Not.Contain("<Storyboard"), "the pulse is driven from code-behind now (M.ORCH-T775), not a Storyboard element");
         Assert.That(strip, Does.Not.Contain("(UIElement.Effect)"), "self-targeting an Effect's sub-property throws at runtime; name it and target it directly");
-        Assert.That(strip, Does.Contain("Property=\"Trailing\" Value=\"{Binding TabTrailing}\"")
+        // M.ORCH-T1536: the plain percent figures move to the tooltip; the tab face shows bars instead (TrailingContent),
+        // right-aligned the same way Trailing itself is - Trailing now only carries the text a bar can't say.
+        Assert.That(strip, Does.Contain("Property=\"Trailing\" Value=\"{Binding TabTrailingFace}\"")
+            .And.Contain("Property=\"TrailingContent\" Value=\"{Binding}\"")
+            .And.Contain("Property=\"TrailingContentTemplate\" Value=\"{StaticResource LoginUsageBarsTemplate}\"")
             .And.Contain("Property=\"Accent\" Value=\"{Binding TabBrush}\"")
             .And.Contain("Property=\"AutomationProperties.Name\" Value=\"{Binding TabTip}\"")
             .And.Contain("{Binding TabTitle}"));

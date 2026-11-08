@@ -59,8 +59,11 @@ public sealed class LibraryOnlyXamlTests
                    "geometry instead; like TextBlock, its Fill may set no colour but a library token or a binding",
     };
 
-    /// <summary>Setters an app style may add on top of a library style: behaviour, never looks.</summary>
-    private static readonly HashSet<string> BehaviourSetters = ["Command", "CommandParameter", "ToolTip", "Visibility"];
+    /// <summary>Setters an app style may add on top of a library style: behaviour, never looks.
+    /// <c>ToolTipService.InitialShowDelay</c> (M.ORCH-T1536) is timing, not a look - unlike <c>ToolTipService.ShowDuration</c>
+    /// and <c>ToolTipService.HasDropShadow</c>, which stay banned by <see cref="Every_tooltip_is_the_librarys_never_windows_default"/>
+    /// as a tooltip chrome of the app's own.</summary>
+    private static readonly HashSet<string> BehaviourSetters = ["Command", "CommandParameter", "ToolTip", "Visibility", "ToolTipService.InitialShowDelay"];
 
     /// <summary>A library attached property (e.g. mc:MaCallout.ToolTip, M.ORCH-T1441): the library's own look or behaviour,
     /// so an app style may set it like one of the library type's own properties.</summary>

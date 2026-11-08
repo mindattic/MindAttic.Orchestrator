@@ -435,12 +435,16 @@ public sealed class TerminalPanesTests
             Assert.That(Named(name).Ancestors().Contains(Named("AgentsBody")), Is.False, $"{name} stays fixed");
         Assert.That(Named("TerminalFrame").Ancestors().Contains(Named("AgentsBody")), Is.True, "the chosen terminal scrolls with the body");
         Assert.That(Named("TerminalFrame").Ancestors().Contains(Named("AgentsBodyList")), Is.False, "never one of AgentsBodyList's virtualized rows");
-        // In AgentsBodyList: the 5-hour chart first, right after the terminal (M.ORCH-T1319), then the stats, the toolbar
-        // and Tickets. The pinned limit pills are gone (they rendered as blank boxes, M.ORCH-T1318).
+        // The pinned Usage tab's own page (M.ORCH-T1532): a plain sibling of TerminalFrame, not one of AgentsBodyList's
+        // virtualized rows either, holding the 5-hour/weekly chart that used to open AgentsBodyList inline.
+        Assert.That(Named("UsageFrame").Ancestors().Contains(Named("AgentsBody")), Is.True, "the Usage tab's page scrolls with the body");
+        Assert.That(Named("UsageFrame").Ancestors().Contains(Named("AgentsBodyList")), Is.False, "never one of AgentsBodyList's virtualized rows");
+        // In AgentsBodyList: the stats first (the chart moved into UsageFrame, M.ORCH-T1532), then the toolbar and Tickets.
+        // The pinned limit pills are gone (they rendered as blank boxes, M.ORCH-T1318).
         var body = Named("AgentsBodyList").Elements().Select(e => (string?)e.Attribute(x + "Name")).ToList();
-        Assert.That(body.IndexOf("UtilizationSection"), Is.Zero, "the 5-hour chart comes right after the CLI terminal");
+        Assert.That(body.IndexOf("Header"), Is.Zero, "the stats come right after the CLI terminal, the chart now in its own Usage tab page");
         Assert.That(body, Has.No.Member("PinnedLimitBars"));
-        Assert.That(body.IndexOf("Header"), Is.EqualTo(body.IndexOf("UtilizationSection") + 1));
+        Assert.That(body, Has.No.Member("UtilizationSection"), "moved into UsageFrame, a sibling of TerminalFrame");
         Assert.That(body.IndexOf("Toolbar"), Is.EqualTo(body.IndexOf("Header") + 1));
         Assert.That(body.IndexOf("UserTickets"), Is.EqualTo(body.IndexOf("Toolbar") + 1));
         // No side margin of its own: the page body's 24px gutters place the CLI in line with the CLI tab bar (M.ORCH-T1326 keeps
