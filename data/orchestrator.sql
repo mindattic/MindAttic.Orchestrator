@@ -1461,6 +1461,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-08T05:00:00Z', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-08T00:00:00Z', 'Under', 'ended at 10%', 10, 10, 0, 63, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-08T05:00:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-08T00:00:00Z', 'Under', 'ended at 10%', 10, 10, 0, 63, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-08T05:00:00Z', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-08T00:00:00Z', 'Under', 'ended at 35%', 35, 35, 4832887, 165, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-08T09:20:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-08T04:20:00Z', 'Under', 'ended at 43%', 43, 43, 7078749, 70, 0, NULL, NULL, 15, 16.2, 0, 0, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -1881,7 +1882,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-08', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 125783);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-08', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 786020);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-08', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3924213);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-08', 'SpaceGod', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5234960);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-08', 'SpaceGod', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5546777);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-08', 'Unity.Eve', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2317979);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-08', 'Unity.GridGame', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6006393);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-08', 'Unity.GridGame', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 848247);
@@ -4086,9 +4087,9 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a0366c374e5d054cc', 'US-T105', 'feature', 'SpaceGod', 397236, '2026-11-08T06:31:33.626Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a0690c5240cc948d6', 'US-T260', 'feature', 'SpaceGod', 652450, '2026-11-08T09:09:59.956Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a1576138e86cbbf35', 'US-T262', 'feature', 'SpaceGod', 558711, '2026-11-08T08:44:48.004Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a181bdc06d7780017', 'US-T257', 'feature', 'SpaceGod', 172607, '2026-11-08T09:21:12.812Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a2db668381ee757c2', 'US-T258', 'feature', 'SpaceGod', 222208, '2026-11-08T09:18:47.939Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a2f05b9043716d429', 'US-T259', 'feature', 'SpaceGod', 484685, '2026-11-08T09:17:31.277Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a181bdc06d7780017', 'US-T257', 'feature', 'SpaceGod', 189718, '2026-11-08T09:28:40.764Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a2db668381ee757c2', 'US-T258', 'feature', 'SpaceGod', 296820, '2026-11-08T09:26:24.477Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a2f05b9043716d429', 'US-T259', 'feature', 'SpaceGod', 711055, '2026-11-08T09:26:20.82Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a401ae4ecfdbd5c75', 'US-T139', 'feature', 'SpaceGod', 561525, '2026-11-08T06:27:23.26Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a4e8f26cbe8aeac1b', 'US-T266', 'feature', 'SpaceGod', 790199, '2026-11-08T07:51:29.145Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c0602111-19d7-4f1e-8da9-901389cbd3ba/agent-a638286ceb9136137', 'US-T263', 'feature', 'SpaceGod', 382169, '2026-11-08T08:30:13.37Z', 0, 'opus');
@@ -31785,7 +31786,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "f6048c7cbdc1fd846cb39f535cb653bb9ccf2012",
+    "Tested": "2cc5bb5ad3d190f9a185b9d56dbac45e0db02859",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -31797,8 +31798,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "bb9829c3b4bd5e1e047437b4c8c8e687b09ad07c"
   },
   "MindAttic.Tickets": {
-    "Tested": "a86526b3aa192159915a2ec5f4ea5298d0c2c7eb",
-    "Green": "a86526b3aa192159915a2ec5f4ea5298d0c2c7eb"
+    "Tested": "ef705afa52f8cb3cad8afa3e85eff1160e7f2b4c",
+    "Green": "ef705afa52f8cb3cad8afa3e85eff1160e7f2b4c"
   },
   "MindAttic.Vault": {
     "Tested": "d4fbcafee723d01da9913f9f1fb438c5b048f5e2",
@@ -32060,7 +32061,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2ddb30570ff68e1fc55a4027a160687e2a08c9ad"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "f6048c7cbdc1fd846cb39f535cb653bb9ccf2012"
+    "Tested": "2cc5bb5ad3d190f9a185b9d56dbac45e0db02859"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
