@@ -178,12 +178,21 @@ public sealed partial class MainViewModel
     private void Select(MainViewModel? next)
     {
         if (next is null || ReferenceEquals(next, SelectedTab) || !loginTabs.Contains(next)) return;
+        // Timed (M.ORCH-T1537): a user report of one login's tab taking ~30s to switch to, unlike the rest, with nothing
+        // in the log to say where the time goes. Logged only past SlowSelectThreshold so an ordinary switch stays silent.
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         selectedTab = next;
         foreach (var t in loginTabs) { t.Raise(nameof(SelectedTab)); t.Raise(nameof(StripSelection)); }
         SelectedTabChanged?.Invoke(this, EventArgs.Empty);
         // The person shown is the one whose chosen terminal shows (M.ORCH-T810).
         ShowChosenPane();
+        if (clock.Elapsed > SlowSelectThreshold)
+            OrchestratorLog.For("Dashboard").Warning("Switching to {Login:l}'s tab took {Ms}ms", next.TabTitle, clock.ElapsedMilliseconds);
     }
+
+    /// <summary>How long <see cref="Select"/> may take before it's logged (M.ORCH-T1537): generous, so only a real stall is
+    /// noisy, never an ordinary switch.</summary>
+    private static readonly TimeSpan SlowSelectThreshold = TimeSpan.FromMilliseconds(300);
 
     private void Step(int by)
     {
