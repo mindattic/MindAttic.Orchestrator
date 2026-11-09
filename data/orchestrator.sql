@@ -31668,8 +31668,6 @@ INSERT INTO state (name, value) VALUES ('dashboard-repos', '{
 }');
 INSERT INTO state (name, value) VALUES ('limit-resumes', '{}');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
-  "769a8a4b-8246-4da2-bead-c1cce2f2ceda@2026-11-01T08:40:00Z": "2026-11-01T08:40:00Z",
-  "dd9a9ad1-6017-443b-954d-d83ea90f8bda@2026-11-01T08:40:00Z": "2026-11-01T08:40:00Z",
   "3333ca57-3958-484e-9ea3-73d40bd07573@2026-11-09T00:20:00Z": "2026-11-09T00:20:00Z"
 }');
 INSERT INTO state (name, value) VALUES ('limits', '[
@@ -31951,7 +31949,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "56de7c92056dfaf2255061fda28954e5f2567269",
+    "Tested": "49b066070ba56dba81630a77086f018ec15e0293",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
