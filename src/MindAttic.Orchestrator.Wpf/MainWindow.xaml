@@ -134,7 +134,8 @@
              the bars right-aligned, where embedding them in the Header DataTemplate (M.ORCH-T1532's first cut) could not.
              Hidden per row by its own root Visibility (ShowsTabUsageBars) exactly as before; TrailingContent itself is
              always set ({Binding}, the login's own MainViewModel), so the trigger that collapses PART_TrailingContent on a
-             null TrailingContent never fires here - this is what hides it instead. -->
+             null TrailingContent never fires here - this is what hides it instead. The lambda pair collapses on its own
+             (ShowsFiveHourChart, M.ORCH-T1540) for a solo Ultra login, which has no 5-hour window to show. -->
         <DataTemplate x:Key="LoginUsageBarsTemplate" DataType="{x:Type vm:MainViewModel}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                         Visibility="{Binding ShowsTabUsageBars, Converter={StaticResource Visible}}">
@@ -142,10 +143,12 @@
                 <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
                              Margin="{StaticResource SpaceLXS}" Value="{Binding WeeklyLimitPercent, Mode=OneWay}"
                              Foreground="{Binding WeeklyLimitBrush}" />
-                <TextBlock Text="{Binding UsageLambdaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
-                <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
-                             Margin="{StaticResource SpaceLXS}" Value="{Binding FiveHourLimitPercent, Mode=OneWay}"
-                             Foreground="{Binding FiveHourLimitBrush}" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}">
+                    <TextBlock Text="{Binding UsageLambdaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
+                    <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
+                                 Margin="{StaticResource SpaceLXS}" Value="{Binding FiveHourLimitPercent, Mode=OneWay}"
+                                 Foreground="{Binding FiveHourLimitBrush}" />
+                </StackPanel>
             </StackPanel>
         </DataTemplate>
 
@@ -431,10 +434,14 @@
                             <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
                                          Margin="{StaticResource SpaceLXS}" Value="{Binding WeeklyLimitPercent, Mode=OneWay}"
                                          Foreground="{Binding WeeklyLimitBrush}" />
-                            <TextBlock Text="{Binding UsageLambdaLabel}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
-                            <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
-                                         Margin="{StaticResource SpaceLXS}" Value="{Binding FiveHourLimitPercent, Mode=OneWay}"
-                                         Foreground="{Binding FiveHourLimitBrush}" />
+                            <!-- The lambda pair is a solo Ultra login's own 5-hour figure, which it doesn't have (M.ORCH-T1540,
+                                 ShowsFiveHourChart). -->
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}">
+                                <TextBlock Text="{Binding UsageLambdaLabel}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
+                                <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
+                                             Margin="{StaticResource SpaceLXS}" Value="{Binding FiveHourLimitPercent, Mode=OneWay}"
+                                             Foreground="{Binding FiveHourLimitBrush}" />
+                            </StackPanel>
                         </StackPanel>
                     </mc:MaTabItem.Header>
                 </mc:MaTabItem>
@@ -651,8 +658,11 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </ScrollViewer>
+                                <!-- A solo Ultra login has no 5-hour window to show here (M.ORCH-T1540, ShowsFiveHourChart,
+                                     the same condition FiveHourSection's chart below already collapses on). -->
                                 <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" Margin="{StaticResource SpaceLS}" MinWidth="104"
-                                        AutomationProperties.Name="{Binding FiveHourLimitText}">
+                                        AutomationProperties.Name="{Binding FiveHourLimitText}"
+                                        Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}">
                                     <StackPanel>
                                         <TextBlock Text="{Binding FiveHourLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding FiveHourLimitBrush}" />
                                         <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
