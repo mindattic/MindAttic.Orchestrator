@@ -88,6 +88,10 @@ public static class TermSessionEvents
 
     /// <summary>The host is ending and its registry file is gone: close any viewer of it.</summary>
     public const string Ended = "ended";
+
+    /// <summary>Drop its tab but leave the host and CLI running (M.ORCH-T1448, <c>orchestrator undock</c>); <see cref="Started"/>
+    /// re-sent docks it again.</summary>
+    public const string Undock = "undock";
 }
 
 /// <summary>The <c>term-session</c> bus payload (<see cref="TermBus.Kind"/>, v1): the session's record as it stands, plus
@@ -98,7 +102,8 @@ public sealed record TermSessionEvent : TermSessionRecord
 
     public TermSessionEvent(TermSessionRecord session, string sessionEvent) : base(session) => Event = sessionEvent;
 
-    /// <summary><see cref="TermSessionEvents.Started"/>, <see cref="TermSessionEvents.Changed"/> or <see cref="TermSessionEvents.Ended"/>.</summary>
+    /// <summary><see cref="TermSessionEvents.Started"/>, <see cref="TermSessionEvents.Changed"/>, <see cref="TermSessionEvents.Ended"/>
+    /// or <see cref="TermSessionEvents.Undock"/>.</summary>
     [JsonPropertyName("event")] public string Event { get; init; } = "";
 
     /// <summary>The record alone, without the event.</summary>

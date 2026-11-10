@@ -47,6 +47,14 @@ public static partial class TermPaneFile
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException) { return null; }
     }
 
+    /// <summary>Marks <paramref name="session"/>'s tab undocked or docked (M.ORCH-T1448), building its file from the record when it
+    /// has none; false when it couldn't be written.</summary>
+    public static bool SetUndocked(TermSessionRecord session, bool undocked, string? directory = null)
+    {
+        var request = Read(session.Id, directory) ?? FromRecord(session);
+        return request.Undocked == undocked || Write(session.Id, request with { Undocked = undocked }, directory);
+    }
+
     public static void Delete(string id, string? directory = null)
     {
         try { File.Delete(PathOf(id, directory)); }

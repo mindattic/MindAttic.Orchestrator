@@ -49,6 +49,10 @@ public sealed record PaneRequest(string Title, string Directory)
     /// Terminals panel tabs, and it's shown without a provider bracket.</summary>
     public bool IsMenu { get; init; }
 
+    /// <summary>Undocked (M.ORCH-T1448): its CLI runs on headless and no dashboard gives it a tab (not at start, resync or its
+    /// host's own announce) until it's docked again.</summary>
+    public bool Undocked { get; init; }
+
     /// <summary>A hosted CLI started this way registers no file and announces nothing on the status bus (M.ORCH-T1444,
     /// <c>HostOptions.Unlisted</c>): for a caller that deliberately runs a real TermHost beside a live dashboard (a smoke test,
     /// an integration test) and never wants that dashboard to open a tab for it.</summary>

@@ -785,11 +785,21 @@ public partial class MainWindow : Window
         try
         {
             if (e.OriginalSource is not DependencyObject source
-                || ItemsControl.ContainerFromElement(TerminalTabs, source) is not FrameworkElement { DataContext: TerminalPaneViewModel pane } container
-                || pane.Request.IsMenu) return;
+                || ItemsControl.ContainerFromElement(TerminalTabs, source) is not FrameworkElement { DataContext: TerminalPaneViewModel pane } container) return;
+            var placement = e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint;
+            var undocked = await Task.Run(TerminalsViewModel.UndockedSessions);
+            if (pane.Request.IsMenu)
+            {
+                // The Launcher's tab has no CLI of its own; it's where an undocked CLI is docked back from (M.ORCH-T1448).
+                if (undocked.Count == 0) return;
+                e.Handled = true;
+                var dockMenu = DropdownMenu(container, "Dock a CLI", placement);
+                AddDockItems(dockMenu, undocked);
+                dockMenu.IsOpen = true;
+                return;
+            }
             e.Handled = true;
             var tab = Shown;
-            var placement = e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint;
             var agent = pane.HostPid is { } host ? tab.AgentOfHost(host) : null;
             var menu = DropdownMenu(container, $"Move the {pane.Name} CLI to", placement);
             // Copy PID (M.ORCH-T1518): the CLI's own pid, which CLIs address each other by (MINDATTIC_CLI_PID, nudge-<pid>-*.txt).
@@ -799,6 +809,18 @@ public partial class MainWindow : Window
             rename.ToolTip = "Give this tab a name of your own (double-clicking its name does too)";
             rename.Click += (_, _) => OpenRenameTab(pane);
             menu.Items.Add(rename);
+            if (pane.IsHosted)
+            {
+                var undock = DropdownItem("Undock");
+                undock.ToolTip = "Drop this tab but keep its CLI running headless; Dock (on the Launcher's tab) or /dock brings it back";
+                undock.Click += (_, _) =>
+                {
+                    if (!model.AllTerminals.Undock(pane))
+                        OrchestratorLog.For("Dashboard").Warning("Couldn't undock {Title:l}: its tab file couldn't be marked", pane.Title);
+                };
+                menu.Items.Add(undock);
+            }
+            AddDockItems(menu, undocked);
             menu.Items.Add(new Separator());
             AddPopOutItems(menu, pane);
             AddBroadcastItems(menu, pane);
@@ -833,6 +855,21 @@ public partial class MainWindow : Window
             menu.IsOpen = true;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Building the Move to menu failed; contained"); }
+    }
+
+    /// <summary>"Dock <title>" for each undocked hosted CLI (M.ORCH-T1448).</summary>
+    private void AddDockItems(ContextMenu menu, IReadOnlyList<(TermSessionRecord Session, string Title)> undocked)
+    {
+        foreach (var (session, title) in undocked)
+        {
+            var item = DropdownItem($"Dock {title}");
+            item.ToolTip = "Give this undocked CLI its tab back; it was never stopped";
+            item.Click += (_, _) =>
+            {
+                if (model.AllTerminals.Dock(session) is { } docked) model.AllTerminals.SelectedPane = docked;
+            };
+            menu.Items.Add(item);
+        }
     }
 
     /// <summary>"Copy PID n" (M.ORCH-T1518): the CLI's pid, copied as just the number; disabled until the CLI's first turn makes it known.

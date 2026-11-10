@@ -105,6 +105,8 @@ internal static class CliApp
             config.ConfigureConsole(AnsiConsole.Console);
             config.AddCommand<StatusCommand>("status").WithDescription("Every repo: state, live sessions, open tickets, tokens today.");
             config.AddCommand<StartCommand>("start").WithDescription("Open an agent tab for a repo through the Launcher; --account <email> runs its Claude CLI on that per-CLI login's token pool.");
+            config.AddCommand<DockCommand>("dock").WithDescription("Give a hosted CLI (its id, else this CLI's own) its dashboard tab back now, never restarting it (M.ORCH-T1448).");
+            config.AddCommand<UndockCommand>("undock").WithDescription("Drop a hosted CLI's dashboard tab (its id, else this CLI's own); the CLI keeps running headless until orchestrator dock (M.ORCH-T1448).");
             config.AddCommand<SendCommand>("send").WithDescription("Type text into a live Launcher-hosted session.");
             config.AddCommand<BudgetCommand>("budget").WithDescription("Token budget for the current 5-hour block and the week, and the pace; --block/--weekly/--warn/--pace/--target set them, --hits lists learned limits.");
             config.AddCommand<QueueCommand>("queue").WithDescription("Every open ticket across the workspace, in the order the scheduler would start them: explicit priority, then newest first, each ticket's open prerequisites just before it.");

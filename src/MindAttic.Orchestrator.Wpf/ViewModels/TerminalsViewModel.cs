@@ -1005,6 +1005,7 @@ public sealed class TerminalsViewModel : ObservableObject
                 return null;
             }
             if (Panes.Any(p => string.Equals(p.TermId, session.Id, StringComparison.OrdinalIgnoreCase))) return null;
+            if (request is { Undocked: true }) return null;
             request ??= TermPaneFile.FromRecord(session);
             var pane = new TerminalPaneViewModel(request, session);
             Panes.Add(pane);
@@ -1041,9 +1042,49 @@ public sealed class TerminalsViewModel : ObservableObject
                 case TermSessionEvents.Ended when pane is not null:
                     pane.Ended = true;
                     break;
+                case TermSessionEvents.Undock when pane is not null:
+                    Drop(pane);
+                    break;
             }
         }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Handling a term-session message failed; contained"); }
+    }
+
+    /// <summary>Undock (M.ORCH-T1448): marks <paramref name="pane"/>'s session undocked and drops its tab, leaving its TermHost and
+    /// CLI running headless. False for a tab that isn't hosted, or whose mark couldn't be written (the tab stays).</summary>
+    public bool Undock(TerminalPaneViewModel pane)
+    {
+        if (pane.Session is not { } session || !TermPaneFile.SetUndocked(session, undocked: true, PaneDirectory)) return false;
+        Drop(pane);
+        return true;
+    }
+
+    /// <summary>Dock (M.ORCH-T1448): clears <paramref name="session"/>'s undocked mark and gives it its tab back, the same reattach
+    /// a restart uses.</summary>
+    public TerminalPaneViewModel? Dock(TermSessionRecord session)
+    {
+        if (!TermPaneFile.SetUndocked(session, undocked: false, PaneDirectory)) return null;
+        var pane = Reattach(session, TermPaneFile.Read(session.Id, PaneDirectory));
+        if (pane is not null) Changed?.Invoke();
+        return pane;
+    }
+
+    /// <summary>The live hosted sessions marked undocked, with their tab's title. Reads files.</summary>
+    public static IReadOnlyList<(TermSessionRecord Session, string Title)> UndockedSessions() =>
+        TermSessions.Enumerate()
+            .Select(s => (Session: s, Request: TermPaneFile.Read(s.Id)))
+            .Where(x => x.Request is { Undocked: true })
+            .Select(x => (x.Session, x.Request!.Title))
+            .ToList();
+
+    /// <summary>Takes <paramref name="pane"/>'s tab away without ending its CLI (its relay to the host is let go).</summary>
+    private void Drop(TerminalPaneViewModel pane)
+    {
+        if (SelectedPane == pane) SelectedPane = null;
+        Panes.Remove(pane);
+        pane.DisposeControl();
+        OrchestratorLog.For("Terminals").Information("Undocked {Title:l} ({Id:l}); its CLI runs on headless", pane.Title, pane.TermId);
+        Changed?.Invoke();
     }
 
     /// <summary>Where the hosted sessions' tab files are (<see cref="TermPaneFile"/>); tests use their own.</summary>
