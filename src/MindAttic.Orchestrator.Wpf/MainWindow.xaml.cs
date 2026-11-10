@@ -688,7 +688,11 @@ public partial class MainWindow : Window
     /// <summary>A CLI tab header's natural width (M.ORCH-T1437): its docked close button plus every visible part of its row.</summary>
     private static double? HeaderNaturalWidth(ContentPresenter header)
     {
-        if (VisualTreeHelper.GetChildrenCount(header) == 0 || VisualTreeHelper.GetChild(header, 0) is not DockPanel dock) return null;
+        if (VisualTreeHelper.GetChildrenCount(header) == 0) return null;
+        // The template's root is a Grid holding the Usage header and this DockPanel (M.ORCH-T1555). Not finding it, the header's
+        // own DesiredSize (the Width set last pass) counted as its natural width, and every pass widened the tabs (M.ORCH-T1569).
+        var root = VisualTreeHelper.GetChild(header, 0);
+        if ((root as DockPanel ?? (root as Panel)?.Children.OfType<DockPanel>().FirstOrDefault()) is not { } dock) return null;
         return dock.Children.OfType<FrameworkElement>().Where(c => c.Visibility != Visibility.Collapsed).Sum(c => c is StackPanel parts
             ? parts.Margin.Left + parts.Margin.Right + parts.Children.OfType<UIElement>().Where(p => p.Visibility != Visibility.Collapsed).Sum(p => p.DesiredSize.Width)
             : c.DesiredSize.Width);
@@ -699,7 +703,8 @@ public partial class MainWindow : Window
     /// <see cref="TabSidePadding"/> a side, plus <see cref="CliTabWidthBoost"/>.</summary>
     private void SizeTerminalTabs()
     {
-        var tabs = TerminalTabs.Items.Cast<object>()
+        // The CLI and Launcher tabs only: the pinned Usage tab keeps its own width.
+        var tabs = TerminalTabs.Items.OfType<TerminalPaneViewModel>()
             .Select(item => TerminalTabs.ItemContainerGenerator.ContainerFromItem(item) as TabItem)
             .Where(t => t is not null).Cast<TabItem>().ToList();
         if (tabs.Count == 0) return;
