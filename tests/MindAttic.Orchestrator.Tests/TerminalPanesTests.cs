@@ -214,6 +214,9 @@ public sealed class TerminalPanesTests
         person.SelectionChanged += () => changes++;
 
         person.SyncTo([a, b]);
+        // Chosen here, not left to SyncTo (which chooses the newest of tabs arriving together): this is about the Usage tab.
+        person.SelectedPane = a;
+        changes = 0;
         Assert.That(person.SelectedPane, Is.SameAs(a));
         Assert.That(person.ShowsTerminal, Is.True);
         Assert.That(person.IsUsageShown, Is.False);
