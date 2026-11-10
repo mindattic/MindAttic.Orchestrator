@@ -1,5 +1,8 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace MindAttic.Orchestrator.Wpf;
 
@@ -92,6 +95,54 @@ public partial class MainWindow
         if (sender is not FrameworkElement { Tag: string name } || TouchKeys.Sequence(name) is not { } sequence) return;
         Shown.Terminals.SelectedPane?.WriteInput(sequence);
     }
+
+    /// <summary>The mic (M.ORCH-T1544): the say box takes the keyboard, then Windows voice typing (Win+H) opens on it. Over
+    /// Remote Desktop it hears the phone's microphone once the Windows App redirects it.</summary>
+    private void MicButton_Click(object sender, RoutedEventArgs e)
+    {
+        SayBox.Focus();
+        Keyboard.Focus(SayBox);
+        SayBox.CaretIndex = SayBox.Text.Length;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, VoiceTyping.Open);
+    }
+
+    private void SayButton_Click(object sender, RoutedEventArgs e) => Say();
+
+    private void SayBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.None) return;
+        e.Handled = true;
+        Say();
+    }
+
+    /// <summary>Pastes the say box's text into the CLI on screen as a paste (so a long dictation lands whole in its prompt)
+    /// and submits it; an empty box just sends Enter.</summary>
+    private void Say()
+    {
+        if (Shown.Terminals.SelectedPane is not { } pane) return;
+        var text = SayBox.Text.Trim();
+        if (text.Length > 0 && !pane.WriteInput(TerminalPaste.Payload(text, pane.Bracketed))) return;
+        pane.WriteInput("\r");
+        SayBox.Clear();
+    }
+}
+
+/// <summary>Opens Windows voice typing (Win+H) on whatever has the keyboard (M.ORCH-T1544).</summary>
+internal static class VoiceTyping
+{
+    private const byte WinKey = 0x5B, HKey = 0x48;
+    private const uint KeyUp = 0x0002;
+
+    public static void Open()
+    {
+        keybd_event(WinKey, 0, 0, 0);
+        keybd_event(HKey, 0, 0, 0);
+        keybd_event(HKey, 0, KeyUp, 0);
+        keybd_event(WinKey, 0, KeyUp, 0);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte vk, byte scan, uint flags, nuint extraInfo);
 }
 
 /// <summary>What each touch key sends a CLI: the bytes the key itself would (M.ORCH-T1543).</summary>
@@ -108,6 +159,7 @@ internal static class TouchKeys
         ["left"] = "\x1b[D",
         ["ctrl-c"] = "\x03",
         ["enter"] = "\r",
+        ["voice"] = "/voice\r",
     };
 
     public static string? Sequence(string name) => Sequences.GetValueOrDefault(name);

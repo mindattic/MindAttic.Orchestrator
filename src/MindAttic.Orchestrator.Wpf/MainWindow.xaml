@@ -933,6 +933,23 @@
              keyboard over Remote Desktop lacks, sent to the CLI on screen. Not focusable, so the terminal keeps the keyboard. -->
         <Border x:Name="TouchBar" Grid.Row="4" Grid.ColumnSpan="2" Style="{StaticResource MaStatusBar}" Visibility="Collapsed"
                 AutomationProperties.Name="Touch keys for the CLI">
+          <DockPanel>
+            <!-- Talk to the CLI (M.ORCH-T1544): the mic opens Windows voice typing (Win+H) into the say box, which a phone
+                 keyboard types into too; Send (or Enter) pastes it into the CLI on screen and submits it. -->
+            <Grid x:Name="SayRow" DockPanel.Dock="Top" Margin="3,0,3,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="MicButton" Grid.Column="0" Style="{StaticResource MaPrimaryButton}" Content="&#xE720;"
+                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" MinWidth="48" MinHeight="44" Margin="0,0,6,0"
+                        Click="MicButton_Click" ToolTip="Talk: Windows voice typing into the box (Win+H)" AutomationProperties.Name="Talk to the CLI" />
+                <TextBox x:Name="SayBox" Grid.Column="1" Style="{StaticResource MaTextBox}" MinHeight="44" FontSize="15"
+                         VerticalContentAlignment="Center" KeyDown="SayBox_KeyDown" AutomationProperties.Name="Say to the CLI" />
+                <Button x:Name="SayButton" Grid.Column="2" Style="{StaticResource MaButton}" Content="Send" MinWidth="64" MinHeight="44" Margin="6,0,0,0"
+                        Click="SayButton_Click" AutomationProperties.Name="Send to the CLI" />
+            </Grid>
             <WrapPanel x:Name="TouchKeysPanel" HorizontalAlignment="Center">
                 <WrapPanel.Resources>
                     <Style TargetType="Button" BasedOn="{StaticResource MaButton}">
@@ -952,7 +969,9 @@
                 <Button Content="→" Tag="right" AutomationProperties.Name="Right arrow" />
                 <Button Content="^C" Tag="ctrl-c" ToolTip="Ctrl+C: interrupt" AutomationProperties.Name="Control C" />
                 <Button Content="Enter" Tag="enter" AutomationProperties.Name="Enter" />
+                <Button Content="/voice" Tag="voice" ToolTip="Claude Code's own voice mode" AutomationProperties.Name="Claude voice mode" />
             </WrapPanel>
+          </DockPanel>
         </Border>
 
         <!-- Covers every row until the first refresh lands (M.ORCH-T184). -->
