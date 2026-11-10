@@ -286,6 +286,37 @@ public sealed class Installer
         return psi;
     }
 
+    /// <summary>MindAttic.Scheduler's job that starts the daemon at logon (M.ORCH-T475).</summary>
+    public const string SchedulerDaemonTask = @"\MindAttic\Scheduler\Orchestrator.Daemon";
+
+    /// <summary>The per-user Run value that starts the daemon at logon on a PC without MindAttic.Scheduler (M.ORCH-T1558).</summary>
+    public const string LogonValueName = "MindAttic.Orchestrator.Daemon";
+
+    private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+
+    /// <summary>
+    /// The daemon at logon on a release install (M.ORCH-T1558): Scheduler's job does it where Scheduler is installed, and this
+    /// stands aside (its Run value removed); a PC with no such job, a new user's, gets a per-user Run value instead, so pacing
+    /// and the hooks' holds are on after a restart before anyone opens the dashboard. The daemon is single-instance, so the two
+    /// meeting is harmless. Returns what it changed, or null.
+    /// </summary>
+    public static string? EnsureLogonStart(string exe)
+    {
+        if (MachineRole.Current.IsClient) return null;
+        using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RunKey);
+        var current = key.GetValue(LogonValueName) as string;
+        if (Run("schtasks", "/Query", "/TN", SchedulerDaemonTask).Code == 0)
+        {
+            if (current is null) return null;
+            key.DeleteValue(LogonValueName, throwOnMissingValue: false);
+            return "left the daemon's logon start to Scheduler";
+        }
+        var wanted = $"\"{exe}\" {DaemonArg}";
+        if (string.Equals(current, wanted, StringComparison.OrdinalIgnoreCase)) return null;
+        key.SetValue(LogonValueName, wanted);
+        return "starts the daemon at logon (no Scheduler job)";
+    }
+
     private static void StartDaemon(string exe)
     {
         try { Process.Start(DaemonStartInfo(exe))?.Dispose(); }
@@ -346,6 +377,12 @@ public sealed class Installer
         Run("schtasks", "/Delete", "/TN", LegacyTaskName, "/F");
         foreach (var path in ShortcutPaths())
             try { File.Delete(path); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
+            key?.DeleteValue(LogonValueName, throwOnMissingValue: false);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException) { }
         // After the daemon is stopped, so it can't register them again.
         return AgentGateRemoval.Remove();
     }

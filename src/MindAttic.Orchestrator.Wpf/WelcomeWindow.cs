@@ -100,7 +100,7 @@ public sealed class WelcomeWindow : Window
     private void Refresh()
     {
         var missing = SetupTools.Missing();
-        tools.Show(missing.Count == 0, missing.Count == 0 ? "git, the GitHub CLI, Claude Code and the .NET 10 runtimes are installed."
+        tools.Show(missing.Count == 0, missing.Count == 0 ? "git, the GitHub CLI, Claude Code, Python and the .NET 10 runtimes are installed."
             : $"Missing: {string.Join(", ", missing.Select(t => t.Name))}. Installs them with winget and Claude Code's own installer.");
         var gh = missing.All(t => t.Exe != "gh") && SetupTools.GitHubSignedIn();
         github.Show(gh, gh ? "Signed in to GitHub: the workspace's repos clone and push as you."
@@ -242,6 +242,8 @@ internal static class SetupTools
         new("git", "git", $"winget install --id Git.Git {Winget}"),
         new("the GitHub CLI", "gh", $"winget install --id GitHub.cli {Winget}"),
         new("Claude Code", "claude", "irm https://claude.ai/install.ps1 | iex"),
+        // The pacing and context hooks the Orchestrator installs into Claude Code are Python (AgentGate.Command, M.ORCH-T1558).
+        new("Python 3", "python", $"winget install --id Python.Python.3.13 {Winget}"),
         // The CLI, TermHost, Gateway and TermViewer beside the self-contained Desktop exe run on the shared runtimes (M.ORCH-T1547).
         new("the .NET 10 Desktop Runtime", "", $"winget install --id Microsoft.DotNet.DesktopRuntime.10 {Winget}", () => HasRuntime("Microsoft.WindowsDesktop.App")),
         new("the ASP.NET Core 10 Runtime", "", $"winget install --id Microsoft.DotNet.AspNetCore.10 {Winget}", () => HasRuntime("Microsoft.AspNetCore.App")),
@@ -268,7 +270,8 @@ internal static class SetupTools
                 try
                 {
                     var candidate = Path.Combine(Environment.ExpandEnvironmentVariables(dir), exe + ext);
-                    if (File.Exists(candidate)) return candidate;
+                    // WindowsApps' python.exe is only a shortcut to the Store page, not Python.
+                    if (File.Exists(candidate) && !candidate.Contains(@"\Microsoft\WindowsApps\", StringComparison.OrdinalIgnoreCase)) return candidate;
                 }
                 catch (ArgumentException) { }
             }

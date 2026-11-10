@@ -12,7 +12,7 @@ keys and a mic underneath.
    **Install.cmd**. It installs the Orchestrator and the MindAttic Launcher (which starts every CLI) into `C:\Apps`, puts
    `tickets` on your PATH, and opens the dashboard.
 2. The **Welcome** window (M.ORCH-T1545) walks you through four steps, each one button:
-   - **Tools**: installs git, the GitHub CLI, Claude Code and the .NET 10 runtimes if they're missing.
+   - **Tools**: installs git, the GitHub CLI, Claude Code, Python (the pacing hooks run on it) and the .NET 10 runtimes if they're missing.
    - **GitHub**: signs you in to GitHub in your browser, so your repos clone and your CLIs can push.
    - **Workspace**: the folder your repos live in. **Start an empty one** and clone your own repos into it; that's all
      anyone needs. Or clone MindAttic's own workspace, which needs its owner to add your GitHub account as a collaborator

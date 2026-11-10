@@ -125,7 +125,7 @@ if (-not $Publish) { Write-Host "Not published. To publish: .\release.ps1 -Publi
 
 $notes = @"
 Unzip anywhere and double-click **Install.cmd**. It installs the Orchestrator and the Launcher into C:\Apps, puts ``tickets``
-on your PATH, and opens the dashboard. Its Welcome window installs the tools (git, the GitHub CLI, Claude Code, the .NET 10
+on your PATH, and opens the dashboard. Its Welcome window installs the tools (git, the GitHub CLI, Claude Code, Python, the .NET 10
 runtimes), signs you in to GitHub and Claude, and sets up a workspace: an empty one for your own repos, or MindAttic's.
 
 To drive it from your phone over Tailscale and Remote Desktop, see

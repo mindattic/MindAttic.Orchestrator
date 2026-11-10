@@ -406,7 +406,7 @@ public partial class App : Application
                 return;
             }
             var gate = new MindAttic.Orchestrator.Settings.JsonStore().LoadSettings();
-            foreach (var did in new[] { installer.EnsureDaemon(self), Installer.EnsureShortcuts(self), AgentGate.Ensure(contextPercent: gate.ContextCyclePercent, keepGoing: gate.KeepGoing), AgentGate.EnsureOtherProviders() })
+            foreach (var did in new[] { installer.EnsureDaemon(self), Installer.EnsureLogonStart(self), Installer.EnsureShortcuts(self), AgentGate.Ensure(contextPercent: gate.ContextCyclePercent, keepGoing: gate.KeepGoing), AgentGate.EnsureOtherProviders() })
                 if (did is not null) log.Information("Setup: {Did:l}", did);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or COMException)
@@ -451,7 +451,14 @@ public partial class App : Application
         // Not LoadSettings: a settings.json that can't be read would be saved over with defaults, every budget, priority,
         // approval and reservation lost; and a save that fails is said, not a crash at startup (M.ORCH-T337).
         // Saved as the orchestrator's own override of Vault Global's workspace root (M.ORCH-T1328).
-        try { store.SaveSettings(OrchestratorVaultSettings.WithWorkspaceRoot(store.LoadSettingsToChange(), folder, store.LoadGlobal())); }
+        try
+        {
+            var settings = OrchestratorVaultSettings.WithWorkspaceRoot(store.LoadSettingsToChange(), folder, store.LoadGlobal());
+            // The worktree root beside it, unless one was chosen (M.ORCH-T1558): the default names a D: drive a new PC may lack.
+            if (string.Equals(settings.WorktreeRoot, new OrchestratorSettings().WorktreeRoot, StringComparison.OrdinalIgnoreCase))
+                settings = settings with { WorktreeRoot = Path.Combine(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(folder)) ?? folder, Path.GetFileName(Path.TrimEndingDirectorySeparator(folder)) + ".worktrees") };
+            store.SaveSettings(settings);
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             log.Error(ex, "Couldn't save the workspace folder");
