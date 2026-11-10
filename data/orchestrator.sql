@@ -1973,12 +1973,12 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-09', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5906206);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-09', 'SpaceGod', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 412343);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-09', 'SpaceGod', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1107935);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 138280);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 247696);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 720393);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 569335);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 667267);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 163540);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'MindAttic.Orchestrator', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 334172);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'Mods.MechWarrior5.SaveEditor', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 607484);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'MindAttic.Orchestrator', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 528818);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'Mods.MechWarrior5.SaveEditor', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 779386);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 639450);
 
 -- ticket_costs
@@ -31848,63 +31848,63 @@ INSERT INTO state (name, value) VALUES ('limits', '[
 ]');
 INSERT INTO state (name, value) VALUES ('mainline-tests', '{
   "Automata": {
-    "Tested": "12f53f3342a1c2c95d73e69bed27619362bea3b0",
-    "Green": "12f53f3342a1c2c95d73e69bed27619362bea3b0"
+    "Tested": "bdc9d499d765b1f99ce73e81f8d95b410b1d4cf4",
+    "Green": "bdc9d499d765b1f99ce73e81f8d95b410b1d4cf4"
   },
   "AutoWebNav": {
-    "Tested": "8bee492579333d916e54fb137c6fc2dc1ffad71f",
-    "Green": "8bee492579333d916e54fb137c6fc2dc1ffad71f"
+    "Tested": "3ac14a168e1dc95d7a651542e9bce18b56610639",
+    "Green": "3ac14a168e1dc95d7a651542e9bce18b56610639"
   },
   "Cursory": {
-    "Tested": "90ca9f03c118a9278b42950df627c57c8e047c49",
-    "Green": "90ca9f03c118a9278b42950df627c57c8e047c49"
+    "Tested": "ebbb35b183bd5d67e0e47b88a3f6ee63e76c4590",
+    "Green": "ebbb35b183bd5d67e0e47b88a3f6ee63e76c4590"
   },
   "Formicarium": {
-    "Tested": "64b24e346cd34af98e05bbbe6d8df23d14599de4",
-    "Green": "64b24e346cd34af98e05bbbe6d8df23d14599de4"
+    "Tested": "3ec6ea3ce147727e2113a191fa03e7b0427f94f6",
+    "Green": "3ec6ea3ce147727e2113a191fa03e7b0427f94f6"
   },
   "Gadfly": {
-    "Tested": "ccca191abff653f296e2c7bfef22e2e20db14c32",
-    "Green": "ccca191abff653f296e2c7bfef22e2e20db14c32"
+    "Tested": "282e68f204df464821c6ce845e5bce373e1f3687",
+    "Green": "282e68f204df464821c6ce845e5bce373e1f3687"
   },
   "IdiotProof": {
     "Tested": "cc0644026a3a05fb5ba9b1e9799ace344454454d",
     "Green": "cc0644026a3a05fb5ba9b1e9799ace344454454d"
   },
   "JobHunt": {
-    "Tested": "9be873a8d98948c466d3400b1a4bcb1aed96ad66",
-    "Green": "9be873a8d98948c466d3400b1a4bcb1aed96ad66"
+    "Tested": "febf61a073da922c938e7c333bfb20eca086e89a",
+    "Green": "febf61a073da922c938e7c333bfb20eca086e89a"
   },
   "MediaButler": {
-    "Tested": "9db99ca5d6ca13c0c11f6e518fff6e4730c41eb7",
-    "Green": "9db99ca5d6ca13c0c11f6e518fff6e4730c41eb7"
+    "Tested": "fb91e646ea4083a37be9a378e90c97c2036f1c70",
+    "Green": "fb91e646ea4083a37be9a378e90c97c2036f1c70"
   },
   "MindAttic.Authentication": {
-    "Tested": "8850db8433610ae1bbbd2d01ca553b3fdbd497bf",
-    "Green": "8850db8433610ae1bbbd2d01ca553b3fdbd497bf"
+    "Tested": "9279fcaccb1c280ea7353bb81e897c95abf1db74",
+    "Green": "9279fcaccb1c280ea7353bb81e897c95abf1db74"
   },
   "MindAttic.Browser": {
-    "Tested": "fcf93bf188b8b75517c08c9228bef66349ab165a",
-    "Green": "fcf93bf188b8b75517c08c9228bef66349ab165a"
+    "Tested": "cf295bac142bcf1b26fd6060dd7c355c07056a2f",
+    "Green": "cf295bac142bcf1b26fd6060dd7c355c07056a2f"
   },
   "MindAttic.Capture": {
     "Tested": "c4272836318e00dcdbb2965faafa0b03da3c5e66",
     "Green": "c4272836318e00dcdbb2965faafa0b03da3c5e66"
   },
   "MindAttic.Components": {
-    "Tested": "7a84773e9ef411223554f6b7ff19a9b84c1ce4ec",
-    "Green": "7a84773e9ef411223554f6b7ff19a9b84c1ce4ec"
+    "Tested": "6b5e36c3321fafeecc80aedc32cf0e49df5efb35",
+    "Green": "6b5e36c3321fafeecc80aedc32cf0e49df5efb35"
   },
   "MindAttic.Deploy": {
-    "Tested": "a9e7db3fc8c24f3ef2b3861e6ba076675e9c0fec",
-    "Green": "a9e7db3fc8c24f3ef2b3861e6ba076675e9c0fec"
+    "Tested": "4dfc4ba613a5e0dae5000d4415aaae223a8cb700",
+    "Green": "4dfc4ba613a5e0dae5000d4415aaae223a8cb700"
   },
   "MindAttic.Export": {
-    "Tested": "a7bbe8c323e139e42516551ed2c993d98c745ea6",
-    "Green": "a7bbe8c323e139e42516551ed2c993d98c745ea6"
+    "Tested": "00028e1c0afb5796dd0d8f3fd4e8a98ebe79631e",
+    "Green": "00028e1c0afb5796dd0d8f3fd4e8a98ebe79631e"
   },
   "MindAttic.Helpers": {
-    "Tested": "d642907c5676cf39d5f2790c17aa4bee1d25dd43"
+    "Tested": "61f65e61203facd5a99c76f5ecc1b535967d68d2"
   },
   "MindAttic.Ideas": {
     "Tested": "34bd819bffbebc91212cb7bec5421027053fbcd6",
@@ -31927,7 +31927,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "ec082acc6b79e8a61158f77485a83db08a35c871",
+    "Tested": "b6d4932ac9102c958d85e8e101985f9749de1552",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
@@ -31939,11 +31939,11 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "bb9829c3b4bd5e1e047437b4c8c8e687b09ad07c"
   },
   "MindAttic.Tickets": {
-    "Tested": "89fa8a7ec94be8cd1a2bcd83567f292287c096bc",
-    "Green": "89fa8a7ec94be8cd1a2bcd83567f292287c096bc"
+    "Tested": "64036af23a5119379255a59197f3455a841a28b1",
+    "Green": "64036af23a5119379255a59197f3455a841a28b1"
   },
   "MindAttic.Vault": {
-    "Tested": "d4fbcafee723d01da9913f9f1fb438c5b048f5e2",
+    "Tested": "5ad1233ce124f41734717ea8a7c6cced58f3ac92",
     "Green": "8111a0ea2faf68b1576f27ab083f1a30991d8b62"
   },
   "OpenCredentials": {
@@ -31951,8 +31951,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "d2b9b09b803a6b0fb83ce76eb793413ca5dc115f"
   },
   "ProcessLogger": {
-    "Tested": "133c6e68352c408f13ff3be5bdc1237d67624a16",
-    "Green": "133c6e68352c408f13ff3be5bdc1237d67624a16"
+    "Tested": "b91bc6f58444d74fbe0c7a9e2aaf3b262776694d",
+    "Green": "b91bc6f58444d74fbe0c7a9e2aaf3b262776694d"
   },
   "TaxRateCollector": {
     "Tested": "51b92892258268c3652b4b66d2b5f5e83c3df7b1",
@@ -31974,8 +31974,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "cb8d5f8857ff7c88b2763fe6ede658e2993773c8"
   },
   "REA.Bloodlines": {
-    "Tested": "1b7ba7da3114157b5de591acb91f1935aae350d2",
-    "Green": "1b7ba7da3114157b5de591acb91f1935aae350d2"
+    "Tested": "dd385ccc298dc3a0c327c7c3d1fbb7504227bf9c",
+    "Green": "dd385ccc298dc3a0c327c7c3d1fbb7504227bf9c"
   },
   "ChiMesh": {
     "Tested": "14a3cdbf2ad9a423803612d0fea14b6a76b33699"
@@ -32017,7 +32017,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "c829e9437d167c68441071f75d8067baa043a9c7"
   },
   "MindAttic.Cryptography": {
-    "Tested": "a73ee7ca856ad33bf5dd63ebb15ad06663a976bb"
+    "Tested": "fdd4b796ad3a822854e7bf03f95958b8fb442f58"
   },
   "MindAttic.Scheduler": {
     "Tested": "a463923d4c97ce4750fe3f2887f2eae078ca7146"
@@ -32112,8 +32112,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "cd2e79ba66969f8d12c8c3aeec6e318f8f421841"
   },
   "AutoGamePlay": {
-    "Tested": "271120e2bc695c3a6cc2aaad1df1d87efcbbfa13",
-    "Green": "271120e2bc695c3a6cc2aaad1df1d87efcbbfa13"
+    "Tested": "a337d992536a252efa4fabe00b0c012d48c2a287",
+    "Green": "a337d992536a252efa4fabe00b0c012d48c2a287"
   },
   "Unity.Rea.Chain": {
     "Tested": "9a2624c4cb0ae3f289dbebd17eccd89010101832"
@@ -32151,8 +32151,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "5fa438626e39fe6d5823e3b6dd881bd6065f9af7"
   },
   "IdeaCms": {
-    "Tested": "35f58980c607f4f5e60a975747ebd1fd814f4494",
-    "Green": "35f58980c607f4f5e60a975747ebd1fd814f4494"
+    "Tested": "1eef2e35a76aa0dda42974415aa774c64541e182",
+    "Green": "1eef2e35a76aa0dda42974415aa774c64541e182"
   },
   "Mods.GTFO.EZ.AbsurdItems": {
     "Tested": "9656a663e6275dca6b99609dee2fd7b8ce1330fb"
@@ -32198,11 +32198,11 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "106a8dccff1e95bc0340918f24896896dc6c37dc"
   },
   "MindAttic.Components.SIDEBAR": {
-    "Tested": "7a84773e9ef411223554f6b7ff19a9b84c1ce4ec",
-    "Green": "7a84773e9ef411223554f6b7ff19a9b84c1ce4ec"
+    "Tested": "6b5e36c3321fafeecc80aedc32cf0e49df5efb35",
+    "Green": "6b5e36c3321fafeecc80aedc32cf0e49df5efb35"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "ec082acc6b79e8a61158f77485a83db08a35c871"
+    "Tested": "b6d4932ac9102c958d85e8e101985f9749de1552"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
