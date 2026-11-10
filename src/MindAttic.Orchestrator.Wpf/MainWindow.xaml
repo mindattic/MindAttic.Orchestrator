@@ -1016,25 +1016,18 @@
                         Click="SayButton_Click" AutomationProperties.Name="Send to the CLI" />
             </Grid>
             <WrapPanel x:Name="TouchKeysPanel" HorizontalAlignment="Center">
-                <WrapPanel.Resources>
-                    <Style TargetType="Button" BasedOn="{StaticResource MaButton}">
-                        <Setter Property="Focusable" Value="False" />
-                        <Setter Property="MinWidth" Value="48" />
-                        <Setter Property="MinHeight" Value="44" />
-                        <Setter Property="Margin" Value="3" />
-                        <EventSetter Event="Click" Handler="TouchKey_Click" />
-                    </Style>
-                </WrapPanel.Resources>
-                <Button Content="Esc" Tag="esc" AutomationProperties.Name="Escape" />
-                <Button Content="Tab" Tag="tab" AutomationProperties.Name="Tab" />
-                <Button Content="⇧Tab" Tag="shift-tab" ToolTip="Shift+Tab: Claude Code's mode switch" AutomationProperties.Name="Shift Tab" />
-                <Button Content="↑" Tag="up" AutomationProperties.Name="Up arrow" />
-                <Button Content="↓" Tag="down" AutomationProperties.Name="Down arrow" />
-                <Button Content="←" Tag="left" AutomationProperties.Name="Left arrow" />
-                <Button Content="→" Tag="right" AutomationProperties.Name="Right arrow" />
-                <Button Content="^C" Tag="ctrl-c" ToolTip="Ctrl+C: interrupt" AutomationProperties.Name="Control C" />
-                <Button Content="Enter" Tag="enter" AutomationProperties.Name="Enter" />
-                <Button Content="/voice" Tag="voice" ToolTip="Claude Code's own voice mode" AutomationProperties.Name="Claude voice mode" />
+                <!-- Each the library's MaButton (M.ORCH-T1549, M.ORCH-T1550: no style or EventSetter of the dashboard's own), not
+                     focusable so the terminal keeps the keyboard, at a finger's size. -->
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="Esc" Tag="esc" AutomationProperties.Name="Escape" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="Tab" Tag="tab" AutomationProperties.Name="Tab" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="⇧Tab" Tag="shift-tab" ToolTip="Shift+Tab: Claude Code's mode switch" AutomationProperties.Name="Shift Tab" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="↑" Tag="up" AutomationProperties.Name="Up arrow" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="↓" Tag="down" AutomationProperties.Name="Down arrow" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="←" Tag="left" AutomationProperties.Name="Left arrow" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="→" Tag="right" AutomationProperties.Name="Right arrow" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="^C" Tag="ctrl-c" ToolTip="Ctrl+C: interrupt" AutomationProperties.Name="Control C" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="Enter" Tag="enter" AutomationProperties.Name="Enter" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="/voice" Tag="voice" ToolTip="Claude Code's own voice mode" AutomationProperties.Name="Claude voice mode" />
             </WrapPanel>
           </DockPanel>
         </Border>
