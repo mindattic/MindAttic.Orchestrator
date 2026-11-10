@@ -50,7 +50,8 @@ Do these once, at the PC.
 1. Install **Tailscale** and sign in with the same account as the PC. If the PC belongs to someone else's tailnet, ask them to
    **Share** the machine with you from the admin console. Both should show **Connected**. Note the PC's Tailscale name (or its
    `100.x.x.x` address).
-2. Install Microsoft's **Windows App** (iPhone, iPad, Android, Mac). Add a PC:
+2. Install Microsoft's **Windows App Mobile** (formerly Remote Desktop; publisher Microsoft Corporation, on the App Store and
+   Google Play). Tailscale only connects the phone to the PC; this app is what shows the PC's screen. Add a PC:
    - **PC name**: the Tailscale name, or the 100.x address.
    - **User**: `MicrosoftAccount\<your-email>`, and your Microsoft account password.
    - **Display**: resolution matched to the device, so Windows itself is phone-sized. Tailscale only carries the
@@ -60,7 +61,7 @@ Do these once, at the PC.
 
 ## 4. In bed
 
-Connect from the Windows App and open the Orchestrator (it's on the desktop). Tap the phone icon at the left of the menu bar:
+Connect from Windows App Mobile and open the Orchestrator (it's on the desktop). Tap the phone icon at the left of the menu bar:
 the window maximizes to the phone's screen and shows the phone layout:
 
 | Control | What it does |
@@ -72,7 +73,7 @@ the window maximizes to the phone's screen and shows the phone layout:
 | `/voice` | starts Claude Code's own voice mode in the CLI |
 | Esc, Tab, ⇧Tab, arrows, ^C, Enter | the keys a phone keyboard lacks: answer menus, switch mode (⇧Tab), interrupt (^C) |
 
-When you're done, close the Windows App instead of signing out, so your CLIs keep running. Back at the desk, tap the monitor
+When you're done, close Windows App Mobile instead of signing out, so your CLIs keep running. Back at the desk, tap the monitor
 icon in the same spot for the full dashboard; the window goes back to the size it was. A window opened at desk size is
 maximized to fit when you reconnect from the phone.
 
@@ -83,6 +84,6 @@ maximized to fit when you reconnect from the phone.
 - **Connection times out but Tailscale shows Connected.** The Tailscale network may be set to Public. In an administrator
   PowerShell, `Get-NetConnectionProfile` shows it; set it to Private.
 - **Too many failed attempts.** Windows locks the account for about 10 minutes after 10 wrong passwords. Wait it out.
-- **The mic hears nothing.** Check the Windows App's microphone redirection, then Online speech recognition (step 2.5).
+- **The mic hears nothing.** Check Windows App Mobile's microphone redirection, then Online speech recognition (step 2.5).
   Typing in the say box with the phone's keyboard always works.
 - **Test it before you rely on it.** Put the phone on mobile data and connect. If it works there, it works anywhere.
