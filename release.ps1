@@ -126,7 +126,7 @@ if (-not $Publish) { Write-Host "Not published. To publish: .\release.ps1 -Publi
 $notes = @"
 Unzip anywhere and double-click **Install.cmd**. It installs the Orchestrator and the Launcher into C:\Apps, puts ``tickets``
 on your PATH, and opens the dashboard. Its Welcome window installs the tools (git, the GitHub CLI, Claude Code, the .NET 10
-runtimes), signs you in to GitHub (your account needs access to the mindattic organization) and Claude, and sets up the workspace.
+runtimes), signs you in to GitHub (the owner must first add your account as a collaborator on the private mindattic/codex-standard) and Claude, and sets up the workspace.
 
 To drive it from your phone over Tailscale and Remote Desktop, see
 [docs/TAILSCALE.md](https://github.com/mindattic/MindAttic.Orchestrator/blob/main/docs/TAILSCALE.md).

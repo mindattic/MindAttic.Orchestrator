@@ -97,7 +97,7 @@ public sealed class WelcomeWindow : Window
             : $"Missing: {string.Join(", ", missing.Select(t => t.Name))}. Installs them with winget and Claude Code's own installer.");
         var gh = missing.All(t => t.Exe != "gh") && SetupTools.GitHubSignedIn();
         github.Show(gh, gh ? "Signed in to GitHub: the workspace's repos clone and push as you."
-            : "Sign in to GitHub in your browser with an account in the mindattic organization (its workspace repo is private), so the repos clone and your CLIs can push.");
+            : "Sign in to GitHub in your browser with an account the owner added as a collaborator on mindattic/codex-standard (the workspace root is private), so the repos clone and your CLIs can push.");
         var root = WorkspaceRoot();
         var ws = !WorkspaceBootstrap.IsEmpty(root);
         workspace.Show(ws, ws ? $"Workspace: {root}" : "Clone the MindAttic workspace into a folder, or point at one already on this PC.");
