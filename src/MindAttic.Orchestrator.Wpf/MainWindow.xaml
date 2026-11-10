@@ -628,9 +628,8 @@
             <StackPanel>
                 <!-- The chosen terminal (M.ORCH-T810), first in the scrolling body (M.ORCH-T1302: pulled back in from its own
                      fixed row, M.ORCH-T861, so scrolling down past it reaches the chart and Tickets): MainWindow.xaml.cs's
-                     SizeTerminalRow sizes it to about AgentsBody's own viewport height, less AgentsBodyScrollHandle, so it fills
-                     the window's first screen the way M.ORCH-T1268 wanted without reserving the chart and tickets a fixed row of
-                     their own. A plain sibling of AgentsBodyList below, never one of its virtualized rows (VirtualizedList.
+                     SizeTerminalRow sizes it to AgentsBody's own viewport (less its gutter), so it fills the page exactly: the
+                     chart and tickets are on the Usage tab now (M.ORCH-T1572), and the body doesn't scroll under a CLI. A plain sibling of AgentsBodyList below, never one of its virtualized rows (VirtualizedList.
                      ApplyBody(AgentsBody, AgentsBodyList) in MainWindow.xaml.cs flattens AgentsBodyList alone): the native
                      terminal window must never be torn down by a realize/derealize cycle just because it scrolled out of view. -->
                 <Grid x:Name="TerminalFrame" MinHeight="160" Margin="{StaticResource SpaceTS}"

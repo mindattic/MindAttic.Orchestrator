@@ -120,7 +120,12 @@ public sealed class AccountPacer
             // ReportedLimit.Highest/RaiseWeek must never be let raise this account's fresh, genuinely lower reading to match
             // them. Dropped here (the in-memory cache) and by LoadSamples below (the persisted file, same guard as
             // LoadLimits already uses for M.ORCH-T774).
-            if (state.Account is not null && state.Account != account) state.Samples = null;
+            if (state.Account is not null && state.Account != account)
+            {
+                state.Samples = null;
+                // The probe asks again at once for the new account, not after the old one's backoff.
+                state.Meter?.Reset();
+            }
             state.Account = account;
             var ids = byEmail[dir.Email].ToHashSet(StringComparer.Ordinal);
             var mine = sessions.Where(s => ids.Contains(s.SessionId)).ToList();
@@ -135,8 +140,12 @@ public sealed class AccountPacer
         DateTime now, DateTime startOfTodayUtc, bool write, string? why = null)
     {
         var events = sessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc).ToList();
+        // A reading the probe tagged with another account (the folder since re-signed, M.ORCH-T1404) is that account's, never
+        // this one's: before, the old account's 99% landed in the freshly emptied samples and stopped the new account.
+        bool Theirs(ReportedUsage? r) => r?.Account is { } a && state.Account is { } mine && a != mine;
         var reported = ReportedUsage.Load(now, dir.UsagePath);
-        if (state.Meter?.LastReading is { } probed) reported = ClaudeMeterProbe.Fresher(reported, probed, now);
+        if (Theirs(reported)) reported = null;
+        if (state.Meter?.LastReading is { } probed && !Theirs(probed)) reported = ClaudeMeterProbe.Fresher(reported, probed, now);
         var samples = state.Samples ??= LoadSamples(dir, state.Account);
         // The week's percent is kept with each reading, to learn how much of the week a 5-hour point costs (M.ORCH-T666).
         if (ReportedLimit.Record(samples, reported, events, now, withWeek: true) && write) SaveSamples(dir, state.Account, samples);

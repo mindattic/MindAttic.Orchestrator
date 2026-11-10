@@ -164,9 +164,11 @@ public sealed class Installer
                 var aside = $"{InstalledExe}.{Environment.ProcessId}.{DateTime.UtcNow:yyyyMMddHHmmss}.old";
                 File.Move(InstalledExe, aside, overwrite: true);
                 try { File.Copy(runningExe, InstalledExe, overwrite: true); }
-                catch (Exception) when (!File.Exists(InstalledExe) || new FileInfo(InstalledExe).Length == 0)
+                catch (Exception)
                 {
-                    File.Move(aside, InstalledExe, overwrite: true); // no new build landed: the old one goes back, not nothing
+                    // No whole new build landed: the old one goes back, over nothing or over a partly written copy (disk full
+                    // partway), which is no exe to restart the daemon from.
+                    File.Move(aside, InstalledExe, overwrite: true);
                     throw;
                 }
                 StopInstalledCopies();

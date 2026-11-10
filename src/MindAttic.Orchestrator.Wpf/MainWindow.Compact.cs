@@ -51,10 +51,32 @@ public partial class MainWindow
 
     private void FitToScreen()
     {
-        var area = SystemParameters.WorkArea;
-        if (WindowState == WindowState.Normal && (ActualWidth > area.Width + 1 || ActualHeight > area.Height + 1))
-            WindowState = WindowState.Maximized;
+        if (WindowState != WindowState.Normal) return;
+        // The work area of the monitor the window is on, not the primary one's (SystemParameters.WorkArea): a window on a larger
+        // second monitor was maximized for being bigger than the primary's screen.
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (hwnd == IntPtr.Zero || !GetMonitorInfo(MonitorFromWindow(hwnd, MonitorDefaultToNearest), ref info)) return;
+        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+        var width = (info.Work.Right - info.Work.Left) / dpi.DpiScaleX;
+        var height = (info.Work.Bottom - info.Work.Top) / dpi.DpiScaleY;
+        if (ActualWidth > width + 1 || ActualHeight > height + 1) WindowState = WindowState.Maximized;
     }
+
+    private const uint MonitorDefaultToNearest = 2;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Rect { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MonitorInfo { public int Size; public Rect Monitor, Work; public uint Flags; }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
 
     private void ApplyCompact()
     {
@@ -98,8 +120,11 @@ public partial class MainWindow
     private void TouchKey_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { Tag: string name } || TouchKeys.Sequence(name) is not { } sequence) return;
-        Shown.Terminals.SelectedPane?.WriteInput(sequence);
+        ShownPane?.WriteInput(sequence);
     }
+
+    /// <summary>The CLI on screen; null on the Usage tab, where the chosen CLI is hidden and nothing should type into it.</summary>
+    private ViewModels.TerminalPaneViewModel? ShownPane => Shown.Terminals.ShowsTerminal ? Shown.Terminals.SelectedPane : null;
 
     /// <summary>The mic (M.ORCH-T1544): the say box takes the keyboard, then Windows voice typing (Win+H) opens on it. Over
     /// Remote Desktop it hears the phone's microphone once the Windows App redirects it.</summary>
@@ -124,7 +149,7 @@ public partial class MainWindow
     /// and submits it; an empty box just sends Enter.</summary>
     private void Say()
     {
-        if (Shown.Terminals.SelectedPane is not { } pane) return;
+        if (ShownPane is not { } pane) return;
         var text = SayBox.Text.Trim();
         if (text.Length > 0 && !pane.WriteInput(TerminalPaste.Payload(text, pane.Bracketed))) return;
         pane.WriteInput("\r");

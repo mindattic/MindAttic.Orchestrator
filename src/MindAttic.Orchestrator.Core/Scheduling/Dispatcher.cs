@@ -240,6 +240,15 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
 
     internal static readonly TimeSpan GitTimeout = TimeSpan.FromMinutes(2);
 
+    /// <summary>git log/rev-list arguments selecting the commits that name <paramref name="ticketId"/> as a whole id: an extended
+    /// regex, so M.ORCH-T12 never matches a commit naming M.ORCH-T123 (a --fixed-strings grep is a substring match), as
+    /// TicketActivity.NamesTicket already guards.</summary>
+    internal static string[] TicketGrep(string ticketId)
+    {
+        var escaped = string.Concat(ticketId.Select(c => @".[]()*+?{}|^$\".Contains(c) ? "\\" + c : c.ToString()));
+        return ["--extended-regexp", $"--grep=(^|[^A-Za-z0-9]){escaped}([^0-9]|$)"];
+    }
+
     /// <summary>The branch <paramref name="repoPath"/>'s work lands on: what origin/HEAD points at (main or master), else
     /// whichever of main and master origin has, else main.</summary>
     public static string Mainline(string repoPath)

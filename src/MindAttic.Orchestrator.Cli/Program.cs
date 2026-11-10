@@ -309,7 +309,7 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         public string? Prompt { get; init; }
 
         [CommandOption("--account <EMAIL>")]
-        [Description("Run the CLI on this account's own login (signed in first, in the browser, when it has none yet), paced on its own token pool. Without it a Claude CLI goes on the Auto login: a signed-in per-CLI login no CLI runs on yet (most headroom first), else the global login (settings --auto-login false: always the global login).")]
+        [Description("Run the CLI on this account's own login (signed in first, in the browser, when it has none yet), paced on its own token pool. Without it a Claude CLI goes on the Auto login: a signed-in per-CLI login no CLI runs on yet (most headroom first); when none has room (or settings --auto-login false), the API key while API billing is on, else it isn't started (never the global login, a member's own seat).")]
         public string? Account { get; init; }
 
         [CommandOption("--ignore-memory")]

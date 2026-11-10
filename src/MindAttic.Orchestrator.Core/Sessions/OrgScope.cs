@@ -14,7 +14,8 @@ public static class OrgScope
     public static Snapshot For(Snapshot all, OrgDirectory orgs, string orgId, TimeSpan workingWindow, TimeSpan waitingWindow)
     {
         if (!orgs.HasOrgs) return all;
-        bool Mine(string? email) => orgs.OrgOfClaude(email) == orgId;
+        var routing = Routing(all, orgs);
+        bool Mine(string? email) => routing.OrgOfLogin(email) == orgId;
         var scoped = LoginScope.Keep(all, Mine, workingWindow, waitingWindow);
         scoped = scoped with { Accounts = [.. all.Accounts.Where(a => Mine(a.Email))] };
         // The global login's meter and pace are the snapshot's own: another org's, when the global login isn't this org's.
@@ -27,7 +28,11 @@ public static class OrgScope
     /// <summary>Whether <paramref name="orgId"/>'s queue lists <paramref name="item"/>: every unclaimed ticket, and a claimed one
     /// only when the CLI holding it is one of the org's.</summary>
     public static bool Lists(Snapshot all, OrgDirectory orgs, string orgId, QueueItem item) =>
-        !orgs.HasOrgs || item.Assignment is not { } a || orgs.OrgOfClaude(LoginOf(all, a)) == orgId;
+        !orgs.HasOrgs || item.Assignment is not { } a || Routing(all, orgs).OrgOfLogin(LoginOf(all, a)) == orgId;
+
+    /// <summary>A login's org as dispatch sees it (<see cref="OrgRouting.OrgOfLogin"/>): the global login named in a member row by
+    /// its email counts as the global login too, so the dashboard's org view and dispatch never disagree on it.</summary>
+    private static OrgRouting Routing(Snapshot all, OrgDirectory orgs) => new(orgs, new Dictionary<string, string>(), all.GlobalEmail);
 
     /// <summary>What the org switcher says of an org: its people and logins ("3 people · 4 logins · 1 Codex").</summary>
     public static string Summary(OrgDirectory orgs, string orgId, int tabs)

@@ -175,7 +175,7 @@ public static class DiffReview
         // In the repo's shared checkout (M.ORCH-T1122) other agents' unpushed commits sit past origin/main too: only the commits
         // naming this ticket are its diff. Where none can be listed (git can't tell), everything past origin/main is, as in a
         // worktree of its own.
-        var (logCode, log) = git(top, ["log", "--format=%H", "--fixed-strings", $"--grep={ticketId}", $"{against}..HEAD"]);
+        var (logCode, log) = git(top, ["log", "--format=%H", .. Dispatcher.TicketGrep(ticketId), $"{against}..HEAD"]);
         var mine = logCode == 0 ? log.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) : null;
         if (mine is { Length: 0 }) return new($"No commits naming {ticketId} past {against} here: commit its work first, then review it.", false);
         string[] Diff(params string[] head) => mine is null ? [.. head, $"{against}...HEAD"] : ["show", "--format=", .. head[1..], .. mine];

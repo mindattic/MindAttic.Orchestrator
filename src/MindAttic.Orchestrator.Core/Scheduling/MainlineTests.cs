@@ -124,7 +124,9 @@ public sealed partial class MainlineTests(JsonStore store)
             incomplete.Remove(done.Repo);
             retryAfter.Remove(done.Repo);
             st.Tested = done.Head;
-            if (result.Failed.Count == 0) st.Green = done.Head;
+            // Only a run that completed is green: one given up on after MaxIncomplete tries tested nothing (its Failed is empty
+            // because nothing ran), and a fake green there hid the commits that may have broken main from later tickets.
+            if (result.Completed && result.Failed.Count == 0) st.Green = done.Head;
             changed = true;
         }
 
@@ -468,9 +470,16 @@ public sealed partial class MainlineTests(JsonStore store)
             return r.ExitCode == 0 ? new SuiteResult(true, [], new HashSet<string> { BuildName })
                 : new SuiteResult(true, [new Failure(BuildName, BuildErrors(r.Output + "\n" + r.Error))], new HashSet<string>());
         var (failed, passed) = ReadTrx(trx.Select(System.IO.File.ReadAllText));
-        passed.Add(BuildName);
+        // Some projects' results don't make the build good: one that didn't compile (a compiler or MSBuild error) writes no TRX
+        // while the rest do, and its tests silently dropped out while an open "the build" ticket was closed as passing.
+        var output = r.Output + "\n" + r.Error;
+        if (r.ExitCode != 0 && CompileError.IsMatch(output)) failed = [.. failed, new Failure(BuildName, BuildErrors(output))];
+        else passed.Add(BuildName);
         return new SuiteResult(true, failed, passed);
     }
+
+    /// <summary>A compiler or MSBuild error line ("error CS0103", "error MSB3073"): a project that didn't build, not a failing test.</summary>
+    private static readonly System.Text.RegularExpressions.Regex CompileError = new(@": error (CS|MSB|NETSDK|NU)\d{4}", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     /// <summary>The build's first few errors, else the end of its output.</summary>
     internal static string BuildErrors(string output)

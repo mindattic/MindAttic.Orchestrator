@@ -228,9 +228,9 @@ public sealed partial class MainViewModel
     /// <summary>The tab's icon: a gray "zzz" box idle, a green box with a spinning glyph busy (M.ORCH-T1173/T1270), a plain
     /// gray glyph disabled.</summary>
     public TabActivity TabActivity => tab.IsApiKey
-        ? ActivityOf(usable: tab.SignedIn, pastCutoff: Spend is { OutOfCredit: true }, WorkingCount > 0 || HostCount > 0 || AnyAgentWorking || AnyPanePresumedBusy, Blinker.Grew || Blinker.Pending > 0)
+        ? ActivityOf(usable: tab.SignedIn, pastCutoff: Spend is { OutOfCredit: true }, WorkingCount > 0 || HostCount > 0 || AnyAgentWorking || AnyPanePresumedBusy, Blinker.Grew)
         : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0 || HostCount > 0 || AnyAgentWorking || AnyPanePresumedBusy,
-            Blinker.Grew || Blinker.Pending > 0);
+            Blinker.Grew);
 
     /// <summary>One of this person's CLI tabs just had Enter typed into it and no status read has spoken since (M.ORCH-T1413).</summary>
     private bool AnyPanePresumedBusy => Terminals?.Panes.Any(p => p.IsPresumedBusy) == true;

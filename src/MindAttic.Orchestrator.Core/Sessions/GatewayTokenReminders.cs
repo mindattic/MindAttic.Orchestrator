@@ -43,7 +43,7 @@ public static class GatewayTokenReminders
         string? problem = null;
         foreach (var r in Plan(member, expiresUtc, DateTime.Now))
         {
-            var args = new List<string> { "--silent", "remind", "--at", r.AtLocal.ToString("yyyy-MM-ddTHH:mm"), "--name", r.Name };
+            var args = new List<string> { "--silent", "remind", "--at", r.AtLocal.ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture), "--name", r.Name };
             args.AddRange(Plain(r.Message).Split(' ', StringSplitOptions.RemoveEmptyEntries));
             var (ok, output) = Run(psst, args);
             if (ok) done++;

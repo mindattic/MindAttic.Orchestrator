@@ -278,7 +278,7 @@ public sealed class OrphanWatch(JsonStore store)
         var mainline = Dispatcher.Mainline(repoPath);
         if (!ownWorktree)
         {
-            var (code, mine) = Dispatcher.Git(directory, "rev-list", "--count", "--fixed-strings", $"--grep={ticketId}", $"origin/{mainline}..HEAD");
+            var (code, mine) = Dispatcher.Git(directory, ["rev-list", "--count", .. Dispatcher.TicketGrep(ticketId), $"origin/{mainline}..HEAD"]);
             return code == 0 && int.TryParse(mine.Trim(), out var own) ? (own, []) : null;
         }
         var (statusCode, status) = Dispatcher.Git(directory, "status", "--porcelain");

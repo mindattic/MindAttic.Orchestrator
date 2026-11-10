@@ -44,12 +44,19 @@ internal sealed class BusyCommand : Command<BusyCommand.Settings>
         if (settings.Wait)
         {
             using var cancel = new CancellationTokenSource();
-            Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancel.Cancel(); };
-            report = BusyClis.WaitForIdle(TimeSpan.FromSeconds(Math.Max(5, settings.Poll)),
-                settings.Timeout is { } m ? TimeSpan.FromMinutes(Math.Max(0, m)) : null,
-                r => AnsiConsole.MarkupLine($"[grey]{DateTime.Now:HH:mm:ss}[/] waiting on {r.Blocking.Count} CLI(s): " +
-                    Markup.Escape(string.Join(" | ", BusyClis.Describe(r)))),
-                cancel.Token, settings.Self);
+            ConsoleCancelEventHandler onCancel = (_, e) => { e.Cancel = true; cancel.Cancel(); };
+            Console.CancelKeyPress += onCancel;
+            // Unhooked once the wait is over (as DaemonCommand and PaceWatchCommand do): a Ctrl+C while the report prints
+            // would otherwise cancel the disposed source and crash.
+            try
+            {
+                report = BusyClis.WaitForIdle(TimeSpan.FromSeconds(Math.Max(5, settings.Poll)),
+                    settings.Timeout is { } m ? TimeSpan.FromMinutes(Math.Max(0, m)) : null,
+                    r => AnsiConsole.MarkupLine($"[grey]{DateTime.Now:HH:mm:ss}[/] waiting on {r.Blocking.Count} CLI(s): " +
+                        Markup.Escape(string.Join(" | ", BusyClis.Describe(r)))),
+                    cancel.Token, settings.Self);
+            }
+            finally { Console.CancelKeyPress -= onCancel; }
         }
         else report = BusyClis.Scan(settings.Self);
 

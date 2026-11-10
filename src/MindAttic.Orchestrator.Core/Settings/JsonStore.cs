@@ -62,10 +62,27 @@ public sealed class JsonStore
 
     /// <summary>Vault Global as it reads now (M.ORCH-T1328): what the orchestrator's blank alert recipient and workspace root
     /// follow. Null for a scratch store, or when it can't be read.</summary>
-    public MindAtticGlobalSettings? LoadGlobal()
+    public MindAtticGlobalSettings? LoadGlobal() => TryLoadGlobal(out var g) ? g : null;
+
+    /// <summary>Vault Global as it reads now; false when it can't be read (held, or mid-write by Vault.Desktop), which is not the
+    /// same as Global having nothing set: the fields that follow it keep the row's values then, never reset to their defaults.</summary>
+    private bool TryLoadGlobal(out MindAtticGlobalSettings? loaded)
     {
-        try { return global(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException) { return null; }
+        try { loaded = global(); return true; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException) { loaded = null; return false; }
+    }
+
+    /// <summary>The Vault values resolved against Vault Global; while Global can't be read, the row's own resolved alert recipient
+    /// and workspace root stand (they flapped to the defaults for a tick before, switching the daemon's workspace, M.ORCH-T513).</summary>
+    private OrchestratorSettings Resolve(JsonObject merged, OrchestratorSettings row)
+    {
+        var readable = TryLoadGlobal(out var g);
+        var resolved = OrchestratorVaultSettings.FromJson(merged).ApplyTo(row, g);
+        return readable ? resolved : resolved with
+        {
+            PsstAlertTo = row.PsstAlertTo, PsstAlertToOverride = row.PsstAlertToOverride,
+            WorkspaceRoot = row.WorkspaceRoot, WorkspaceRootOverride = row.WorkspaceRootOverride,
+        };
     }
 
     // The user's Global file, read each time (it's tiny), so an edit in Vault.Desktop is followed at once.
@@ -332,7 +349,7 @@ public sealed class JsonStore
         EnsureManifest();
         var merged = OrchestratorVaultSettings.Merge(synced, rowValues, vault!);
         // The Vault holds the overrides; the settings (and the hooks' row) get them resolved against Vault Global.
-        return OrchestratorVaultSettings.FromJson(merged).ApplyTo(row, LoadGlobal());
+        return Resolve(merged, row);
     }
 
     /// <summary>Inside a settings write: records <paramref name="s"/>'s Vault values as synced and writes them to the Vault file
@@ -432,7 +449,7 @@ public sealed class JsonStore
             if (file == VaultFile.Missing) return true; // written by the next write
             var merged = OrchestratorVaultSettings.Merge(synced, rowValues, vault!);
             inSync = JsonNode.DeepEquals(merged, rowValues) && JsonNode.DeepEquals(merged, synced) && JsonNode.DeepEquals(merged, vault)
-                && ResolvedAlike(row, OrchestratorVaultSettings.FromJson(merged).ApplyTo(row, LoadGlobal()));
+                && ResolvedAlike(row, Resolve(merged, row));
             return true;
         }
         catch (Exception ex) when (ex is JsonException or DbException or IOException or UnauthorizedAccessException or NotSupportedException)

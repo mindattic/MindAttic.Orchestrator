@@ -351,7 +351,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public bool? ExcludeLauncherFromTeamWall { get; init; }
 
         [CommandOption("--auto-login <ON>")]
-        [Description("true (default): a Claude tab started without a login chosen (dashboard Auto, start without --account, Queue starts, accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login; false: always the global login.")]
+        [Description("true (default): a Claude tab started without a login chosen (dashboard Auto, start without --account, Queue starts, accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first; false: no per-CLI login is picked. Either way, with no login of its own a start uses the API key while API billing is on, else it isn't started (never the global login).")]
         public bool? AutoLogin { get; init; }
 
         [CommandOption("--rebalance <ON>")]
@@ -715,7 +715,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset") +
             (s.OrphanRedispatches > 0 ? $" · a ticket whose CLI or tab exited mid-task is orphaned after {s.OrphanQuietMinutes} quiet min and redispatched in its repo's checkout, up to {s.OrphanRedispatches} times"
                 : $" · a ticket whose CLI or tab exited mid-task is shown as orphaned after {s.OrphanQuietMinutes} quiet min, not redispatched") +
-            (s.AutoLogin ? " · a new Claude tab goes on a free per-CLI login (one CLI per account), else the global login" : " · a new Claude tab uses the global login unless given --account") +
+            (s.AutoLogin ? " · a new Claude tab goes on a free per-CLI login (one CLI per account), else the API key while billing is on" : " · a new Claude tab needs --account (or the API key while billing is on)") +
             (s.RebalanceLogins ? " · a CLI on a login that runs low moves to a free login with more headroom" : " · a CLI stays on its login when it runs low") +
             " · a CLI whose login runs out waits for its reset (API billing is only ever switched on by you)" +
             " · CLIs open in Windows Terminal, a window per person" +

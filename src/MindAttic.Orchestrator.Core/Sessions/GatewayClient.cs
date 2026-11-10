@@ -103,7 +103,9 @@ public sealed class GatewayClient : IDisposable
     {
         if (ownerKey is null || BaseUrl is null) return;
         if (token is { } t && GatewayRemotes.ExpiresUtc(t) is { } exp && exp - DateTime.UtcNow > TimeSpan.FromMinutes(10)) return;
-        await minting.WaitAsync(ct).ConfigureAwait(false);
+        // Inside the never-throws contract too: a cancelled wait (another call minting) or a disposed client threw out of it.
+        try { await minting.WaitAsync(ct).ConfigureAwait(false); }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException) { mintProblem ??= "no token: " + ex.GetType().Name; return; }
         try
         {
             if (token is { } again && GatewayRemotes.ExpiresUtc(again) is { } e2 && e2 - DateTime.UtcNow > TimeSpan.FromMinutes(10)) return;

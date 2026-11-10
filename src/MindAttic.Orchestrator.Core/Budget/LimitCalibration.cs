@@ -159,7 +159,11 @@ public static partial class LimitHitParser
 
         while (zone.IsInvalidTime(reset)) reset = reset.AddMinutes(30);
         var kind = m.Groups["kind"].Value.Equals("weekly", StringComparison.OrdinalIgnoreCase) ? LimitKind.Weekly : LimitKind.Session;
-        hit = new LimitHit(atUtc, kind, TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(reset, DateTimeKind.Unspecified), zone));
+        // A time the fall-back hour repeats is its first occurrence, as WeeklyReset.ToUtc takes it (M.ORCH-T430):
+        // ConvertTimeToUtc takes the second, an hour after the real reset, holding every CLI an hour too long.
+        var unspecified = DateTime.SpecifyKind(reset, DateTimeKind.Unspecified);
+        var offset = zone.IsAmbiguousTime(unspecified) ? zone.GetAmbiguousTimeOffsets(unspecified).Max() : zone.GetUtcOffset(unspecified);
+        hit = new LimitHit(atUtc, kind, DateTime.SpecifyKind(unspecified - offset, DateTimeKind.Utc));
         return true;
     }
 

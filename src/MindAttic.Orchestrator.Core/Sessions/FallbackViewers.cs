@@ -257,7 +257,9 @@ public sealed class FallbackViewers
             }
             catch (Exception ex)
             {
-                // Remembered all the same, so a viewer that can't start isn't retried every second.
+                // Remembered all the same, so a viewer that can't start isn't retried every second. The previous viewer's
+                // process is released here too, as on a successful relaunch, rather than dropped undisposed.
+                if (launched.Remove(session.Id, out var old)) old.Process?.Dispose();
                 launched[session.Id] = new Launched(nowUtc, null);
                 log.Error(ex, "Starting a TermViewer for {Id:l} failed", session.Id);
             }

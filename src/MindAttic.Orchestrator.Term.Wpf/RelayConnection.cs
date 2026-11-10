@@ -293,6 +293,7 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
                 link = p;
                 // A sequence the last link cut off mid-character mustn't prefix this one's replay with U+FFFD (bughunt 2026-10-27).
                 utf8.Reset();
+                escEnded = false;
                 // Queued under the gate that set the link, so the Hello is the first frame this link carries.
                 outbox.Writer.TryWrite((p, TermProtocol.Frame(TermFrameKind.Hello,
                     TermProtocol.Hello(protocol, (ushort)(cols > 0 ? cols : 120), (ushort)(rows > 0 ? rows : 30), interactive, viewerId ?? ViewerId))));
@@ -414,9 +415,15 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
             try { tap(text); }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Debug("An output tap on {Pipe:l} failed: {Message:l}", name, ex.Message); }
         }
-        // The CLI's own full reset (ESC c) would turn win32-input-mode off in the renderer.
-        if (text.Contains("\u001bc", StringComparison.Ordinal)) Raise(Win32InputMode);
+        // The CLI's own full reset (ESC c) would turn win32-input-mode off in the renderer: also when the host's read split it,
+        // ESC ending one chunk and the c starting the next.
+        var reset = text.Contains("\u001bc", StringComparison.Ordinal) || (escEnded && text[0] == 'c');
+        escEnded = text[^1] == '\u001b';
+        if (reset) Raise(Win32InputMode);
     }
+
+    /// <summary>Whether the last chunk <see cref="Emit"/> decoded ended with ESC (reader thread only).</summary>
+    private bool escEnded;
 
     /// <summary>Queues a frame for the current link (M.ORCH-T975): the writer task writes it, never the caller (the UI thread).
     /// Returns false, queueing nothing, when there is no live link to queue it for (checked and enqueued under one lock

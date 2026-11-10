@@ -436,7 +436,9 @@ internal sealed class TermSession
         lock (gate)
         {
             if (link.IsClosed) return false;
-            var (data, reassert, exact) = ReplayScreen.Build(screen is { } s ? s.Snapshot : null, ring.ToArray, modes,
+            // The emulator's snapshot only between escape sequences: mid-sequence (a read that ended inside one) the ring, which
+            // holds its first bytes, so the live stream's next frame completes it rather than printing as text.
+            var (data, reassert, exact) = ReplayScreen.Build(screen is { MidSequence: false } s ? s.Snapshot : null, ring.ToArray, modes,
                 ex => StopScreen(ex, "the emulator's snapshot failed"));
             // M.ORCH-T994: a replay over the viewer's backlog would drop it on every attach, so its oldest scrollback goes.
             var fitted = ReplayScreen.Fit(data, ReplayBudget - reassert.Length);

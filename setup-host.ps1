@@ -496,14 +496,17 @@ function Invoke-Sql([string]$server, [string]$sql) {
 function Restore-Backups([string]$server, [object[]]$files, [string]$dataDir) {
     foreach ($bak in $files) {
         $db = $bak.BaseName
+        # Quoted for T-SQL: a path or name with ' (C:\Users\O'Brien) or ] broke the statement.
+        $bakPath = $bak.FullName -replace "'", "''"
+        $dbName = $db -replace '\]', ']]'
         try {
             if ((Invoke-Sql $server "SELECT COUNT(*) AS n FROM sys.databases WHERE name = N'$($db -replace "'", "''")'").Rows[0].n -gt 0) { Say "  $db is already on $server."; continue }
-            $moves = foreach ($f in (Invoke-Sql $server "RESTORE FILELISTONLY FROM DISK = N'$($bak.FullName)'").Rows) {
+            $moves = foreach ($f in (Invoke-Sql $server "RESTORE FILELISTONLY FROM DISK = N'$bakPath'").Rows) {
                 $suffix = if ($f.Type -eq 'L') { '_log.ldf' } elseif ([int]$f.FileId -gt 2) { "_$($f.FileId).ndf" } else { '.mdf' }
-                "MOVE N'$($f.LogicalName -replace "'", "''")' TO N'$dataDir\$db$suffix'"
+                "MOVE N'$($f.LogicalName -replace "'", "''")' TO N'$(("$dataDir\$db$suffix") -replace "'", "''")'"
             }
             Say "  restoring $db onto $server..."
-            $null = Invoke-Sql $server "RESTORE DATABASE [$db] FROM DISK = N'$($bak.FullName)' WITH $($moves -join ', '), RECOVERY" # checksums in the backup are verified anyway
+            $null = Invoke-Sql $server "RESTORE DATABASE [$dbName] FROM DISK = N'$bakPath' WITH $($moves -join ', '), RECOVERY" # checksums in the backup are verified anyway
         }
         catch { Say "  $db couldn't be restored onto ${server}: $($_.Exception.Message)" 'Yellow' }
     }

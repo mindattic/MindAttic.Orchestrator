@@ -190,7 +190,8 @@ public static class OrgStore
         var removed = false;
         db.WriteData((connection, tx) =>
         {
-            Sql.Run(connection, tx, "DELETE FROM org_members WHERE org_id = @id;", ("@id", id));
+            // Its members go back to the default org, keeping their person and login (they were deleted, losing both).
+            Sql.Run(connection, tx, "UPDATE org_members SET org_id = @default WHERE org_id = @id;", ("@id", id), ("@default", Organization.DefaultId));
             removed = Sql.Run(connection, tx, "DELETE FROM organizations WHERE id = @id;", ("@id", id)) > 0;
         });
         if (removed) StoreChanges.Note(db, StoreChanges.Orgs);

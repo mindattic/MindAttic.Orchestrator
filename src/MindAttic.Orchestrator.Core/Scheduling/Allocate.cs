@@ -309,6 +309,13 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 ?? plan.Queue.FirstOrDefault(q => Same(q.Repo, a.Repo))?.RepoPath ?? a.Directory;
             bool closed;
             string note;
+            // The repo's tickets couldn't be read this tick: its queue is empty for that reason alone, so "not in the queue" would
+            // call an unfinished ticket finished (Scheduler's Finished skips such repos the same way). Judged again next tick.
+            if (!a.InOwnWorktree(repoPath) && snapshot.UnknownRepos.Contains(a.Repo))
+            {
+                gone.Remove(a);
+                continue;
+            }
             // Only an agent started before M.ORCH-T1122 has a worktree of its own to land and tidy; one in the checkout pushed
             // to main itself, so it's done when its ticket is closed.
             try { (closed, note) = a.InOwnWorktree(repoPath) ? Land(a, repoPath) : (!plan.Queue.Any(q => q.Id == a.TicketId), ""); }

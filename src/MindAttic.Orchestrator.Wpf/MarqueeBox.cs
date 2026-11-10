@@ -45,13 +45,26 @@ public static class MarqueeBox
         // The child isn't added yet when this fires from the Canvas's own opening tag (its attributes are set before its
         // nested content), so wait for Loaded, by when the whole visual tree, children included, is there.
         if (canvas.IsLoaded) Start(canvas);
-        else canvas.Loaded += (_, _) => Start(canvas);
+        else
+        {
+            // Once: the Scroller handles every later Loaded itself. Left subscribed, each reload (a tab dragged to a new place)
+            // made another Scroller over the same TextBlock, their animations fighting.
+            void OnLoaded(object s, RoutedEventArgs a)
+            {
+                canvas.Loaded -= OnLoaded;
+                Start(canvas);
+            }
+            canvas.Loaded += OnLoaded;
+        }
     }
+
+    /// <summary>The Scroller already running on a Canvas, so a second Start never adds another.</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Canvas, Scroller> Running = new();
 
     private static void Start(Canvas canvas)
     {
-        if (canvas.Children.Count != 1 || canvas.Children[0] is not FrameworkElement child) return;
-        _ = new Scroller(canvas, child);
+        if (canvas.Children.Count != 1 || canvas.Children[0] is not FrameworkElement child || Running.TryGetValue(canvas, out _)) return;
+        Running.Add(canvas, new Scroller(canvas, child));
     }
 
     /// <summary>One loop's times for <paramref name="overflow"/> pixels hidden: how long the scroll takes, when the blinks start

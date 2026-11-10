@@ -487,7 +487,10 @@ public partial class MainWindow : Window
             if (!shows) return;
             AgentsBody.ScrollToTop();
             var viewport = AgentsBody.ActualHeight;
-            if (viewport > 0) TerminalFrame.Height = Math.Max(TerminalRowMinHeight, viewport - TerminalFrame.Margin.Top - TerminalFrame.Margin.Bottom);
+            // Less the scroll area's own gutter (MaBodyScroll's 16 at the bottom), or the terminal's last row sat under its edge.
+            var gutter = Components.Wpf.Controls.MaScrollArea.GetGutter(AgentsBody);
+            if (viewport > 0) TerminalFrame.Height = Math.Max(TerminalRowMinHeight,
+                viewport - gutter.Top - gutter.Bottom - TerminalFrame.Margin.Top - TerminalFrame.Margin.Bottom);
         }
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
     }
@@ -535,10 +538,34 @@ public partial class MainWindow : Window
         // The header itself is stretched to the tab (M.ORCH-T1437), so its own parts are what grow with a longer name.
         var header = (content as Panel)?.Children.OfType<Panel>().SelectMany(p => p.Children.OfType<FrameworkElement>()) ?? [];
         if (TabRow(tab) is { } row)
+        {
+            var added = new List<FrameworkElement>();
             foreach (var part in row.Children.OfType<FrameworkElement>().Concat(header))
-                if (watchedTabParts.Add(part)) part.SizeChanged += (_, _) => SizeTerminalTabs();
+                if (watchedTabParts.Add(part))
+                {
+                    part.SizeChanged += OnTabPartSizeChanged;
+                    added.Add(part);
+                }
+            // Released when the tab goes (closed, or another login's strip shown): the set held every header ever built, and
+            // through them their closed panes, for the life of the window.
+            if (added.Count > 0)
+            {
+                void Release(object? s, RoutedEventArgs a)
+                {
+                    content.Unloaded -= Release;
+                    foreach (var part in added)
+                    {
+                        part.SizeChanged -= OnTabPartSizeChanged;
+                        watchedTabParts.Remove(part);
+                    }
+                }
+                content.Unloaded += Release;
+            }
+        }
         SizeTerminalTabs();
     }
+
+    private void OnTabPartSizeChanged(object sender, SizeChangedEventArgs e) => SizeTerminalTabs();
 
     /// <summary>A double-click on a CLI tab's name renames it in place (M.ORCH-T1432): its TextBox, in the same cell, takes the
     /// name, all selected. A single click falls through, so it still selects the tab.</summary>

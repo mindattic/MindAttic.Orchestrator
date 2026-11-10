@@ -62,6 +62,10 @@ internal sealed partial class HeadlessScreen : IDisposable
 
     public bool OnAlternateScreen => terminal.ActiveScreen == TerminalScreen.Alternate;
 
+    /// <summary>Whether the CLI's output stopped partway through an escape sequence: the parser holds its start, which no
+    /// <see cref="Snapshot"/> carries, so a viewer replayed from one would see the rest of it as text.</summary>
+    public bool MidSequence => !InGround();
+
     public void Feed(ReadOnlySpan<byte> chunk)
     {
         if (!chunk.IsEmpty) terminal.VTWrite(chunk);

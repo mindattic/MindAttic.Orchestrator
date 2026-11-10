@@ -60,16 +60,22 @@ internal static class TicketsRunner
         psi.Environment["NO_COLOR"] = "1";
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("tickets didn't start");
         p.StandardInput.Close();
-        var stdout = p.StandardOutput.ReadToEndAsync(ct);
-        var stderr = p.StandardError.ReadToEndAsync(ct);
+        // The limit covers reading the output too: a child of tickets still holding its stdout kept the reads (and the
+        // request) waiting past it.
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
         limit.CancelAfter(Timeout);
-        try { await p.WaitForExitAsync(limit.Token).ConfigureAwait(false); }
+        var stdout = p.StandardOutput.ReadToEndAsync(limit.Token);
+        var stderr = p.StandardError.ReadToEndAsync(limit.Token);
+        try
+        {
+            await p.WaitForExitAsync(limit.Token).ConfigureAwait(false);
+            return (p.ExitCode, await stdout.ConfigureAwait(false) + await stderr.ConfigureAwait(false));
+        }
         catch (OperationCanceledException)
         {
-            try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+            if (ct.IsCancellationRequested) return (130, "The request was cancelled before tickets finished."); // the client went away: not a timeout
             return (124, $"tickets timed out on the host after {Timeout.TotalMinutes:0} minutes.");
         }
-        return (p.ExitCode, await stdout.ConfigureAwait(false) + await stderr.ConfigureAwait(false));
     }
 }

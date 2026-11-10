@@ -89,7 +89,9 @@ internal sealed record HostOptions
                     break;
                 case "--linger" when hasValue:
                     if (!int.TryParse(args[++i], out var seconds) || seconds < 0) { error = $"--linger wants seconds, not '{args[i]}'."; return null; }
-                    linger = TimeSpan.FromSeconds(seconds);
+                    // Capped below a wait's own limit (int.MaxValue ms, about 24.8 days): past it the wait threw and the host left
+                    // as soon as the CLI did, the opposite of lingering.
+                    linger = TimeSpan.FromSeconds(Math.Min(seconds, int.MaxValue / 1000));
                     break;
                 default:
                     error = $"Unknown or incomplete argument '{arg}'.";

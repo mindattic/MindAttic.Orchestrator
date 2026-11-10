@@ -121,7 +121,9 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         foreach (var dir in AccountDirs.All())
         {
             if (dir.Account is not { } account || account == ClaudeAccount.ApiKey) continue;
-            var samples = AccountPacer.LoadSamples(dir);
+            // This account's own samples only, as LoadLimits below: a folder re-signed to another account still holds the old
+            // one's file until it's rewritten, and its windows were graded (and alerted on) again as this account's.
+            var samples = AccountPacer.LoadSamples(dir, account);
             if (samples.Count == 0) continue;
             var hits = AccountPacer.LoadLimits(dir, account);
             var mine = events.Where(e => e.Account == account).ToList();

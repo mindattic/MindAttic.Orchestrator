@@ -311,7 +311,10 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         string? relative = null;
         var root = Path.GetFullPath(WorkspaceRoot);
         var here = Path.GetFullPath(currentDirectory);
-        if (here.StartsWith(root, StringComparison.OrdinalIgnoreCase)) relative = Path.GetRelativePath(root, here);
+        // Inside the workspace only: a sibling sharing its name's start (D:\Projects\MindAttic.worktrees) isn't in it.
+        var trimmed = root.TrimEnd(Path.DirectorySeparatorChar);
+        if (here.Equals(trimmed, StringComparison.OrdinalIgnoreCase) || here.StartsWith(trimmed + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            relative = Path.GetRelativePath(root, here);
         using var client = new Sessions.GatewayClient(remote);
         return await client.RunTicketsAsync(sent, relative == "." ? null : relative, ct).ConfigureAwait(false);
     }
@@ -468,9 +471,13 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
             var stderr = p.StandardError.ReadToEndAsync();
             if (!p.WaitForExit(timeout))
             {
-                try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+                try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or AggregateException or System.ComponentModel.Win32Exception) { }
                 return (-1, $"{file} timed out after {timeout.TotalMinutes:0} min");
             }
+            // It exited, but a child that inherited its pipes (a git credential helper) can hold them open: the output is waited
+            // for briefly, as ProcessRunner does, never without a limit (machine handoff/connect/pull hung on it).
+            if (!Task.WaitAll([stdout, stderr], TimeSpan.FromSeconds(10)))
+                return (p.ExitCode, ((stdout.IsCompletedSuccessfully ? stdout.Result : "") + (stderr.IsCompletedSuccessfully ? stderr.Result : "")).Trim());
             return (p.ExitCode, (stdout.Result + stderr.Result).Trim());
         }
         catch (System.ComponentModel.Win32Exception ex) { return (-1, $"{file}: {ex.Message}"); }

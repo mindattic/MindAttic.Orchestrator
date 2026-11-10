@@ -113,6 +113,7 @@ robocopy (Join-Path $here 'Vault.Desktop') $vaultDir /E /NFL /NDL /NJH /NJS /NP 
 if ($LASTEXITCODE -ge 8) { throw 'Copying Vault.Desktop failed.' }
 $ticketsDir = Join-Path $orchestrator 'Tickets'
 robocopy (Join-Path $here 'Tickets') $ticketsDir /E /NFL /NDL /NJH /NJS /NP | Out-Null
+if ($LASTEXITCODE -ge 8) { throw 'Copying the tickets tool failed.' }
 $bin = Join-Path $orchestrator 'bin'
 New-Item -ItemType Directory -Force $bin | Out-Null
 "@dotnet `"$ticketsDir\tickets.dll`" %*" | Set-Content -Encoding ASCII (Join-Path $bin 'tickets.cmd')

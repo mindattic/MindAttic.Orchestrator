@@ -160,8 +160,11 @@ internal static class TermBridge
                     // Read-only: the host skips a 0x0 size, so a watcher's Hello never resizes the session.
                     // From protocol 2 it is also marked read-only (M.ORCH-T930), keeping the viewer's id, cleaned for the host's
                     // log (M.ORCH-T990).
+                    // At least protocol 2 whatever the viewer claims: a watcher claiming 1 got the plain Hello, which the host
+                    // reads as interactive (a watcher only ever reaches a protocol 2+ host: a protocol 1 one is owner-only, 409).
                     if (access < GatewayAccess.Interact)
-                        frame = TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(hello.Protocol, 0, 0, interactive: false, TermProtocol.LogSafeId(hello.ViewerId)));
+                        frame = TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(Math.Max(hello.Protocol, TermProtocol.MultiViewer), 0, 0,
+                            interactive: false, TermProtocol.LogSafeId(hello.ViewerId)));
                     else if (frame.Length > 12 && TermProtocol.LogSafeId(hello.ViewerId) is var clean && clean != hello.ViewerId)
                         // The size and flags as sent (bytes 0 to 6 of the payload), the id cleaned.
                         frame = TermProtocol.Frame(TermFrameKind.Hello, [.. frame.AsSpan(5, 7), .. System.Text.Encoding.UTF8.GetBytes(clean)]);
