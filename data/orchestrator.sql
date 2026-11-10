@@ -1973,12 +1973,12 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-09', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5906206);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-09', 'SpaceGod', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 412343);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-09', 'SpaceGod', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1107935);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 247696);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 352580);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 720393);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 667267);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 965783);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 163540);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'MindAttic.Orchestrator', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 528818);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'Mods.MechWarrior5.SaveEditor', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 779386);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'MindAttic.Orchestrator', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 608732);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'Mods.MechWarrior5.SaveEditor', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 878972);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 639450);
 
 -- ticket_costs
@@ -31947,31 +31947,31 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "8111a0ea2faf68b1576f27ab083f1a30991d8b62"
   },
   "OpenCredentials": {
-    "Tested": "d2b9b09b803a6b0fb83ce76eb793413ca5dc115f",
-    "Green": "d2b9b09b803a6b0fb83ce76eb793413ca5dc115f"
+    "Tested": "60d29520ff660bba8a68f27d694e2a0be5ed81cb",
+    "Green": "60d29520ff660bba8a68f27d694e2a0be5ed81cb"
   },
   "ProcessLogger": {
     "Tested": "b91bc6f58444d74fbe0c7a9e2aaf3b262776694d",
     "Green": "b91bc6f58444d74fbe0c7a9e2aaf3b262776694d"
   },
   "TaxRateCollector": {
-    "Tested": "51b92892258268c3652b4b66d2b5f5e83c3df7b1",
+    "Tested": "bf34af0851c129b59dd647bf65034fd15144c550",
     "Green": "d1e339899c7ef43c19732e3b122d11ce68584ffa"
   },
   "ThinkTank": {
-    "Tested": "2537a04c91855f57f5ca33f46fed38d849f780dc",
-    "Green": "2537a04c91855f57f5ca33f46fed38d849f780dc"
+    "Tested": "7f6f7c71cadec6f64d13349442a34933c09051e3",
+    "Green": "7f6f7c71cadec6f64d13349442a34933c09051e3"
   },
   "Tutor": {
-    "Tested": "26cc84202dfaf13e83f9562bb8b3d9579bed790c",
-    "Green": "26cc84202dfaf13e83f9562bb8b3d9579bed790c"
+    "Tested": "6722b7376be514af7bc7ad573542a6fab5a90d3c",
+    "Green": "6722b7376be514af7bc7ad573542a6fab5a90d3c"
   },
   "Unity.GridGame": {
     "Tested": "0223132d1fd651281201d57401151b833fd53fa8"
   },
   "Unity.Cursory": {
-    "Tested": "cb8d5f8857ff7c88b2763fe6ede658e2993773c8",
-    "Green": "cb8d5f8857ff7c88b2763fe6ede658e2993773c8"
+    "Tested": "7f729d865c62ebd52b8ee852b2061ad967c1e58e",
+    "Green": "7f729d865c62ebd52b8ee852b2061ad967c1e58e"
   },
   "REA.Bloodlines": {
     "Tested": "dd385ccc298dc3a0c327c7c3d1fbb7504227bf9c",
@@ -32125,8 +32125,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "ac10f4db9f08df61a40b3421dbddb4bb9ca987f7"
   },
   "Unity.Rea.QuickDuel": {
-    "Tested": "34a3db6e2b0a43ed08657beca706a953c34af9f8",
-    "Green": "34a3db6e2b0a43ed08657beca706a953c34af9f8"
+    "Tested": "1f2b1c4a10d7e7b6db9bb2f105af0a02faa512c6",
+    "Green": "1f2b1c4a10d7e7b6db9bb2f105af0a02faa512c6"
   },
   "Unity.Rea.Hare": {
     "Tested": "da39a879915c4d4cbd792b111f51cfa8bda02302"
@@ -32173,7 +32173,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "04b7a32cd639b2ca8f2f167909c00a21c6f8fa52"
   },
   "Mods.RogueTrader.TakeTurns": {
-    "Tested": "f664df3f09a12fec8fc0332563ae0577002756a4"
+    "Tested": "431523bf156b6c246ea79a4bdeb1d0a6cf8041c1"
   },
   "Mods.RogueTrader.Brevity": {
     "Tested": "85c4c67cfeeb3df7a415ae0abb23bf0fdfdc45bc"
@@ -32268,8 +32268,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "f23f4674ab2315a4e6605c69796ebb939fd0d003"
   },
   "Mods.MechWarrior5.Shared": {
-    "Tested": "c9861cf6f6fa301ad5ad5eb5a0e53be8569b5c53",
-    "Green": "c9861cf6f6fa301ad5ad5eb5a0e53be8569b5c53"
+    "Tested": "0038d22ac427af390c01fbcc9d6916806192b981",
+    "Green": "0038d22ac427af390c01fbcc9d6916806192b981"
   }
 }');
 INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
