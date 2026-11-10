@@ -70,7 +70,7 @@ A Windows daemon, dashboard and CLI that keeps Claude agents working the workspa
 
 You need Windows and Claude Code. The released exe is self-contained, so no .NET install is needed to run it.
 
-1. Download `MindAttic.Orchestrator.Desktop.exe` from [Releases](https://github.com/mindattic/MindAttic.Orchestrator/releases) and double-click it.
+1. Download `MindAttic.Orchestrator-v1.zip` from [the latest release](https://github.com/mindattic/MindAttic.Orchestrator/releases/latest), unzip it and double-click **Install.cmd** (it installs the Orchestrator, the Launcher and the Vault; no source or .NET SDK needed).
 2. On a new PC the **Welcome** window (M.ORCH-T1545) takes you through the rest, one button each: the tools (git, the GitHub
    CLI, Claude Code), GitHub sign-in, the workspace (default `D:\Projects\MindAttic`: build one or point at one), and your
    Claude account's sign-in.
