@@ -8,19 +8,39 @@ namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
 /// The phone layout (M.ORCH-T1543), for a Remote Desktop session from a phone over Tailscale: drops the people sidebar, the
-/// status bar and the host readouts, maximizes the window so it fills the phone's screen, lets the chosen CLI fill the first
-/// screen, and shows <see cref="TouchBar"/>'s keys a phone keyboard lacks. Only the menu bar's <see cref="LayoutToggle"/>
-/// switches it (M.ORCH-T1563; no longer the window's size), and the choice is saved
+/// status bar and the host readouts, lets the chosen CLI fill the first screen, and shows <see cref="TouchBar"/>'s keys a phone
+/// keyboard lacks. Two things switch it, the last one wins (M.ORCH-T1565): resizing the window across the breakpoint (narrower
+/// than <see cref="CompactBelow"/>, or portrait and narrower than <see cref="CompactPortraitBelow"/>), and the menu bar's
+/// <see cref="LayoutToggle"/>, which also maximizes the window into the phone layout. The layout is saved
 /// (<see cref="Settings.OrchestratorSettings.Layout"/>), so it holds across restarts. Leaving it puts the desktop layout back
 /// exactly as it was. Only properties the XAML doesn't bind are changed, and each one's own value is put back.
 /// </summary>
 public partial class MainWindow
 {
+    internal const double CompactBelow = 760;
+    internal const double CompactPortraitBelow = 1000;
+
+    /// <summary>How far past a breakpoint the window must widen to leave the phone layout, so a drag across it doesn't flicker.</summary>
+    internal const double CompactHysteresis = 40;
+
     private readonly Dictionary<(DependencyObject, DependencyProperty), object> desktopValues = [];
     private bool compact;
 
-    /// <summary>The window's state before the phone layout maximized it, put back on leaving it.</summary>
-    private WindowState desktopState = WindowState.Normal;
+    /// <summary>Which side of the breakpoint the window's size was on at the last resize; null until it is first measured.</summary>
+    private bool? sizeSide;
+
+    /// <summary>The window's state before the toggle maximized it into the phone layout, put back on leaving it; null when it
+    /// wasn't the toggle that maximized it.</summary>
+    private WindowState? desktopState;
+
+    /// <summary>Whether the window's size is on the phone layout's side of the breakpoint at <paramref name="width"/> x
+    /// <paramref name="height"/> (device-independent pixels), given which side it was on (<paramref name="now"/>).</summary>
+    internal static bool WantsCompact(double width, double height, bool now)
+    {
+        if (width <= 0 || height <= 0) return now;
+        var slack = now ? CompactHysteresis : 0;
+        return width < CompactBelow + slack || (height > width && width < CompactPortraitBelow + slack);
+    }
 
     /// <summary>The saved layout choice: true for the phone layout, false (the default) for the desktop's.</summary>
     internal static bool SavedLayout(Settings.JsonStore store)
@@ -53,6 +73,7 @@ public partial class MainWindow
     private void AttachCompactLayout()
     {
         Loaded += (_, _) => ApplyCompact(SavedLayout(model.Store));
+        SizeChanged += (_, _) => OnCompactResize();
         // Reconnecting Remote Desktop from a phone shrinks the display under a window sized for the desk: it would hang off the
         // screen, so it's maximized to whatever the display is now.
         Loaded += (_, _) => FitToScreen();
@@ -69,10 +90,37 @@ public partial class MainWindow
             WindowState = WindowState.Maximized;
     }
 
+    /// <summary>A resize that crosses the breakpoint switches the layout to that side's (and saves it); one that stays on the
+    /// same side leaves whatever the toggle chose. The first measurement only notes the side, so the saved layout holds at start.</summary>
+    private void OnCompactResize()
+    {
+        if (ActualWidth <= 0 || ActualHeight <= 0 || WindowState == WindowState.Minimized) return;
+        var side = WantsCompact(ActualWidth, ActualHeight, sizeSide ?? compact);
+        var crossed = sizeSide is { } was && was != side;
+        sizeSide = side;
+        if (!crossed || side == compact) return;
+        SaveLayout(model.Store, side);
+        ApplyCompact(side);
+    }
+
     private void LayoutToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        SaveLayout(model.Store, LayoutToggle.IsChecked);
-        ApplyCompact(LayoutToggle.IsChecked);
+        var phone = LayoutToggle.IsChecked;
+        SaveLayout(model.Store, phone);
+        var before = WindowState;
+        if (phone && compact != phone && WindowState != WindowState.Maximized)
+        {
+            desktopState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
+            WindowState = WindowState.Maximized;
+        }
+        else if (!phone && desktopState is { } state)
+        {
+            desktopState = null;
+            WindowState = state;
+        }
+        // A maximize/restore above is itself a resize: only note the side it lands on, so it isn't taken for a crossing.
+        if (WindowState != before) sizeSide = null;
+        ApplyCompact(phone);
     }
 
     private void ApplyCompact(bool want)
@@ -80,12 +128,7 @@ public partial class MainWindow
         LayoutToggle.SetCurrentValue(Components.Wpf.Controls.MaToggleIcon.IsCheckedProperty, want);
         if (want == compact) return;
         compact = want;
-        if (compact)
-        {
-            desktopState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
-            WindowState = WindowState.Maximized;
-        }
-        else WindowState = desktopState;
+        if (!compact) desktopState = null;
         Hold(Sidebar, VisibilityProperty, Visibility.Collapsed);
         Hold(StatusBar, VisibilityProperty, Visibility.Collapsed);
         Hold(TouchBar, VisibilityProperty, Visibility.Visible);

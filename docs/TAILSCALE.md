@@ -3,7 +3,8 @@
 Your Windows PC does the work: its RAM and CPU run every Claude CLI. Your phone is just the remote. Tailscale gets the phone
 to the PC from anywhere, without port forwarding (it works on an apartment or HOA network). Remote Desktop shows you the PC.
 The Orchestrator's phone layout (M.ORCH-T1543) fills the phone's screen with the CLI, with touch keys and a mic underneath.
-Switch to it with the phone icon at the left of the dashboard's menu bar (M.ORCH-T1563); the choice is remembered.
+It switches on by itself when the window gets phone-narrow (M.ORCH-T1565), or by hand with the phone icon at the left of
+the dashboard's menu bar (M.ORCH-T1563); the layout is remembered.
 
 ## 1. Install the Orchestrator on the PC
 

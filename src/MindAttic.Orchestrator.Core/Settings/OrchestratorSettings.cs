@@ -304,8 +304,8 @@ public sealed record OrchestratorSettings
     public string? Theme { get; init; }
 
     /// <summary>The dashboard layout picked with its menu bar's phone/desktop toggle (M.ORCH-T1560, saved since M.ORCH-T1562):
-    /// "Phone" or "Desktop". Null (or anything else) is the desktop layout. Only the toggle switches it (M.ORCH-T1563), never
-    /// the window's size. The dashboard's own, so it isn't one of the Vault's settings.</summary>
+    /// "Phone" or "Desktop". Null (or anything else) is the desktop layout. The toggle and a resize across the phone breakpoint
+    /// (M.ORCH-T1565) both set it, the last one winning. The dashboard's own, so it isn't one of the Vault's settings.</summary>
     public string? Layout { get; init; }
 
     /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so allocate
