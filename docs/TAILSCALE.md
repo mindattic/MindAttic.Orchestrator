@@ -7,12 +7,14 @@ keys and a mic underneath.
 
 ## 1. Install the Orchestrator on the PC
 
-1. Download `MindAttic.Orchestrator.Desktop.exe` from the repo's
-   [Releases](https://github.com/mindattic/MindAttic.Orchestrator/releases) and double-click it. It installs itself to
-   `C:\Apps\MindAttic.Orchestrator` and makes Start menu and desktop shortcuts. Nothing else is needed to run it.
+1. Download the newest `MindAttic.Orchestrator-<tag>.zip` from the repo's
+   [Releases](https://github.com/mindattic/MindAttic.Orchestrator/releases), unzip it anywhere and double-click
+   **Install.cmd**. It installs the Orchestrator and the MindAttic Launcher (which starts every CLI) into `C:\Apps`, puts
+   `tickets` on your PATH, and opens the dashboard.
 2. The **Welcome** window (M.ORCH-T1545) walks you through four steps, each one button:
-   - **Tools**: installs git, the GitHub CLI and Claude Code if they're missing.
-   - **GitHub**: signs you in to GitHub in your browser, so the repos clone and your CLIs can push.
+   - **Tools**: installs git, the GitHub CLI, Claude Code and the .NET 10 runtimes if they're missing.
+   - **GitHub**: signs you in to GitHub in your browser, so the repos clone and your CLIs can push. Your GitHub account
+     must be in the **mindattic** organization: the workspace's root repo is private, so ask the owner to invite you first.
    - **Workspace**: clones the MindAttic workspace into a folder (or points at one already there).
    - **Claude account**: type your Claude account's email and sign in. A seat in the MindAttic Claude Team works as is:
      sign in with that seat's email. More accounts can be added later from the dashboard's **Logins**.
