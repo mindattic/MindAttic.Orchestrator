@@ -99,9 +99,11 @@ $RunOnceKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce'
 $RunOnceName = 'MindAtticHostSetup'
 $MaxRestarts = 3
 $RestartExitCode = 3010
-# Microsoft's own bootstrappers (the installers winget's Microsoft.SQLServer.2022.Developer / .Express packages run).
-$SseiDevUrl = 'https://download.microsoft.com/download/c/c/9/cc9c6797-383c-4b24-8920-dc057c1de9d3/SQL2022-SSEI-Dev.exe'
-$SseiExprUrl = 'https://download.microsoft.com/download/29654887-7cde-4397-bba3-d7f087970845/SQL2022-SSEI-Expr.exe'
+# Microsoft's own SQL Server 2025 bootstrappers: the InstallerUrls of winget's Microsoft.SQLServer.2025.Developer (Standard
+# Developer) and .Express packages, 17.0.1000.7 (M.ORCH-T1576). These were the 2022 ones, whose Developer bootstrapper no longer
+# starts, and whose LocalDB (16.x) Ensure-LocalDb never takes as installed (it wants 17+), so every run tried it again.
+$SseiDevUrl = 'https://download.microsoft.com/download/77dc60d3-0139-4dad-83c8-bb52ab22db01/SQL2025-SSEI-StdDev.exe'
+$SseiExprUrl = 'https://download.microsoft.com/download/7ab8f535-7eb8-4b16-82eb-eca0fa2d38f3/SQL2025-SSEI-Expr.exe'
 
 function Say([string]$text, [string]$color = 'Gray') {
     $line = "[{0:HH:mm:ss}] {1}" -f (Get-Date), $text
