@@ -55,6 +55,7 @@ public partial class MainWindow : Window
         MenuBarTools.DataContext = model;
         // The phone layout's person picker (M.ORCH-T1568) is the person sidebar's stand-in: the global login's tab's too.
         PersonPicker.DataContext = model;
+        PhoneStatus.DataContext = model;
         Root.SizeChanged += (_, _) => SizeTerminalRow();
         TerminalFrame.IsVisibleChanged += (_, _) => SizeTerminalRow();
         // AgentsBody's own height can change without Root's (e.g. TerminalsPanel's tab strip showing or hiding above it),
@@ -793,22 +794,54 @@ public partial class MainWindow : Window
         {
             if (e.OriginalSource is not DependencyObject source
                 || ItemsControl.ContainerFromElement(TerminalTabs, source) is not FrameworkElement { DataContext: TerminalPaneViewModel pane } container) return;
-            var placement = e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint;
+            e.Handled = true;
+            await ShowTerminalMenuAsync(container, pane, e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint, withClose: false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Building the Move to menu failed; contained"); }
+    }
+
+    /// <summary>The phone layout's … button (M.ORCH-T1570): the shown CLI's tab menu, under the button, with Close in it too
+    /// since the phone layout hides the tab and its close X.</summary>
+    private async void CliMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (Shown.Terminals.SelectedStripItem is not TerminalPaneViewModel pane) return;
+            await ShowTerminalMenuAsync(CliMenuButton, pane, PlacementMode.Bottom, withClose: true);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Building the CLI menu failed; contained"); }
+    }
+
+    /// <summary>The phone layout's menu button (M.ORCH-T1570): shows or hides the sidebar (orgs, people, their tickets) as a
+    /// drawer. Choosing a person closes it again.</summary>
+    private void DrawerButton_Click(object sender, RoutedEventArgs e) =>
+        Sidebar.Visibility = Sidebar.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>A CLI tab's menu at <paramref name="container"/>: the right-click menu on the desktop, the … button's on the phone
+    /// (<paramref name="withClose"/>, which adds Close).</summary>
+    private async Task ShowTerminalMenuAsync(FrameworkElement container, TerminalPaneViewModel pane, PlacementMode placement, bool withClose)
+    {
+        {
             var undocked = await Task.Run(TerminalsViewModel.UndockedSessions);
             if (pane.Request.IsMenu)
             {
                 // The Launcher's tab has no CLI of its own; it's where an undocked CLI is docked back from (M.ORCH-T1448).
                 if (undocked.Count == 0) return;
-                e.Handled = true;
                 var dockMenu = DropdownMenu(container, "Dock a CLI", placement);
                 AddDockItems(dockMenu, undocked);
                 dockMenu.IsOpen = true;
                 return;
             }
-            e.Handled = true;
             var tab = Shown;
             var agent = pane.HostPid is { } host ? tab.AgentOfHost(host) : null;
             var menu = DropdownMenu(container, $"Move the {pane.Name} CLI to", placement);
+            if (withClose)
+            {
+                var close = DropdownItem("Close…");
+                close.ToolTip = "Close this terminal, ending its CLI (asks first)";
+                close.Click += (_, _) => { if (tab.Terminals.CloseCommand.CanExecute(pane)) tab.Terminals.CloseCommand.Execute(pane); };
+                menu.Items.Add(close);
+            }
             // Copy PID (M.ORCH-T1518): the CLI's own pid, which CLIs address each other by (MINDATTIC_CLI_PID, nudge-<pid>-*.txt).
             AddCopyPidItems(menu, agent?.CliPid, pane.HostPid);
             // Rename… (M.ORCH-T1509): a little modal for the tab's own name, kept across reattach, undock/dock and restarts.
@@ -861,7 +894,6 @@ public partial class MainWindow : Window
             }
             menu.IsOpen = true;
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Building the Move to menu failed; contained"); }
     }
 
     /// <summary>"Dock <title>" for each undocked hosted CLI (M.ORCH-T1448).</summary>

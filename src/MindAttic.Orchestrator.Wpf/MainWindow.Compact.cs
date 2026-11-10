@@ -37,6 +37,8 @@ public partial class MainWindow
 
     private void AttachCompactLayout()
     {
+        // The phone layout's drawer (the sidebar, M.ORCH-T1570) closes once a person is chosen in it.
+        model.SelectedTabChanged += (_, _) => { if (compact) Sidebar.Visibility = Visibility.Collapsed; };
         SizeChanged += (_, _) => ApplyCompact();
         // Reconnecting Remote Desktop from a phone shrinks the display under a window sized for the desk: it would hang off the
         // screen, so it's maximized to whatever the display is now.
@@ -65,6 +67,8 @@ public partial class MainWindow
         // Who and which CLI as two pickers at the top left (M.ORCH-T1568), in place of the sidebar and the CLI tab strip (its
         // Visibility is bound to whether there are any CLIs, so MaxHeight hides it instead).
         Hold(PhonePickers, VisibilityProperty, Visibility.Visible);
+        // The readouts and status bar it hides, as one wrapped line (M.ORCH-T1570).
+        Hold(PhoneStatus, VisibilityProperty, Visibility.Visible);
         Hold(TerminalTabStripRow, MaxHeightProperty, 0d);
         // MaxWidth, not Visibility: their Visibility is bound to whether they have anything to say.
         foreach (var readout in new FrameworkElement[] { AllocatePausedText, DiskFreeText, RamUtilizationText, RamWarnText, RamBadText })
