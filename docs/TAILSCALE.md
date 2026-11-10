@@ -9,18 +9,21 @@ keys and a mic underneath.
 
 1. Download the newest `MindAttic.Orchestrator-<tag>.zip` from the repo's
    [Releases](https://github.com/mindattic/MindAttic.Orchestrator/releases), unzip it anywhere and double-click
-   **Install.cmd**. It installs the Orchestrator and the MindAttic Launcher (which starts every CLI) into `C:\Apps`, puts
-   `tickets` on your PATH, and opens the dashboard.
-2. The **Welcome** window (M.ORCH-T1545) walks you through four steps, each one button:
-   - **Tools**: installs git, the GitHub CLI, Claude Code, Python (the pacing hooks run on it) and the .NET 10 runtimes if they're missing.
-   - **GitHub**: signs you in to GitHub in your browser, so your repos clone and your CLIs can push.
-   - **Workspace**: the folder your repos live in. **Start an empty one** and clone your own repos into it; that's all
-     anyone needs. Or clone MindAttic's own workspace, which needs its owner to add your GitHub account as a collaborator
-     on the private `mindattic/codex-standard` (`gh api -X PUT repos/mindattic/codex-standard/collaborators/<username>`),
-     or point at a folder of repos already on the PC.
-   - **Claude account**: type your Claude account's email and sign in. A seat in the MindAttic Claude Team works as is:
-     sign in with that seat's email. More accounts can be added later from the dashboard's **Logins**.
-3. **Open the dashboard.** Start a CLI in a repo from it, and you're running.
+   **Install.cmd**. It installs the Orchestrator, the MindAttic Launcher (which starts every CLI) and the Vault (the
+   settings the cog opens), puts `tickets` on your PATH, and opens the dashboard.
+2. The **Welcome** window (M.ORCH-T1545) takes you from there to your first commit:
+   1. **Tools** install on their own if they're missing: git, the GitHub CLI, Claude Code, Python (the pacing hooks run on
+      it) and the .NET 10 runtimes.
+   2. **Claude Team account**: type your Claude account's email and sign in. A seat in the MindAttic Claude Team works as
+      is. More accounts can be added later from the dashboard's **Logins**.
+   3. **GitHub**: signs you in to GitHub in your browser, so your repos clone and your CLIs can push.
+   4. **Workspace**: the folder all your projects live under. **Start an empty one** (pick any folder). Or clone MindAttic's
+      own workspace, which needs its owner to add your GitHub account as a collaborator on the private
+      `mindattic/codex-standard`, or point at a folder of repos already on the PC.
+   5. **Your first repo**: a name, Private or not, and an optional description, then **Create repo**. It's made on your
+      GitHub, cloned into the workspace with a Hello World first commit on `main`, and its folder opens.
+3. **Drag your code into that folder**, then **Open the dashboard**: a CLI is already running in your new repo. Type
+   `/commit` there, and you're all set. (Later repos: the Launcher's **Create Repo**.)
 
 ## 2. Make the PC reachable
 

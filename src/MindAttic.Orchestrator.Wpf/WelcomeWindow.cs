@@ -20,8 +20,13 @@ public sealed class WelcomeWindow : Window
 {
     private readonly Serilog.ILogger log;
     private readonly AccountDirs dirs = new();
-    private readonly Step tools, github, workspace, claude;
+    private readonly Step tools, github, workspace, claude, firstRepo;
     private readonly TextBox email = new() { Width = 170 };
+    private readonly TextBox repoName = new(), repoDescription = new();
+    private readonly CheckBox repoPrivate = new() { Content = "Private", IsChecked = true };
+
+    /// <summary>The repo the user made here (M.ORCH-T1559), which the dashboard opens a CLI in once it's up; null when none.</summary>
+    internal static string? CreatedRepo { get; private set; }
     private readonly Button open = new() { Content = "Open the dashboard" };
     private readonly TextBlock note = new() { TextWrapping = TextWrapping.Wrap };
     private bool busy;
@@ -47,17 +52,35 @@ public sealed class WelcomeWindow : Window
         SetResourceReference(ForegroundProperty, "MaText");
 
         tools = new Step("1. Tools", "Install missing tools", () => Busy(InstallToolsAsync));
-        github = new Step("2. GitHub", "Connect GitHub", () => Busy(ConnectGitHubAsync));
-        workspace = new Step("3. Workspace", "Start an empty one", () => Busy(StartEmptyWorkspaceAsync));
+        // The order a new user meets them (M.ORCH-T1558): the tools install themselves, then their Claude Team login, GitHub,
+        // and where their projects live.
+        claude = new Step("2. Claude Team account", "Sign in", () => Busy(SignInClaudeAsync));
+        github = new Step("3. GitHub", "Connect GitHub", () => Busy(ConnectGitHubAsync));
+        workspace = new Step("4. Workspace", "Start an empty one", () => Busy(StartEmptyWorkspaceAsync));
         var existing = new Button { Content = "MindAttic's, or one already here…" };
         existing.SetResourceReference(StyleProperty, "MaButton");
         existing.Click += (_, _) => Busy(ChooseWorkspaceAsync);
-        AutomationNames(existing, "3. Workspace: clone MindAttic's workspace or point at an existing one");
+        AutomationNames(existing, "4. Workspace: clone MindAttic's workspace or point at an existing one");
         existing.Margin = Step.Gap;
         workspace.Extra.Children.Add(existing);
-        claude = new Step("4. Claude account", "Sign in", () => Busy(SignInClaudeAsync));
+        firstRepo = new Step("5. Your first repo", "Create repo", () => Busy(CreateFirstRepoAsync));
+        foreach (var (box, hint, width) in new[] { (repoName, "Name", 170d), (repoDescription, "Description (optional)", 220d) })
+        {
+            box.SetResourceReference(StyleProperty, "MaTextBox");
+            MaTextBox.SetPlaceholder(box, hint);
+            AutomationNames(box, $"Your first repo's {hint.ToLowerInvariant()}");
+            box.Width = width;
+            box.Margin = Step.Gap;
+        }
+        repoPrivate.SetResourceReference(StyleProperty, "MaCheck");
+        repoPrivate.Margin = Step.Gap;
+        repoPrivate.VerticalAlignment = VerticalAlignment.Center;
+        firstRepo.Extra.Children.Insert(0, repoName);
+        firstRepo.Extra.Children.Insert(1, repoPrivate);
+        firstRepo.Extra.Children.Insert(2, repoDescription);
         email.SetResourceReference(StyleProperty, "MaTextBox");
         AutomationNames(email, "Your Claude account's email");
+        MaTextBox.SetPlaceholder(email, "you@company.com");
         email.Margin = Step.Gap;
         claude.Extra.Children.Insert(0, email);
 
@@ -66,7 +89,7 @@ public sealed class WelcomeWindow : Window
         var intro = new TextBlock
         {
             Text = "Orchestrator runs your Claude CLIs on this PC: its memory and CPU do the work, while you drive them from here or, " +
-                   "over Tailscale and Remote Desktop, from your phone (see docs/TAILSCALE.md). Four steps, each one button.",
+                   "over Tailscale and Remote Desktop, from your phone (see docs/TAILSCALE.md). Missing tools install on their own; the rest is one button each.",
             TextWrapping = TextWrapping.Wrap,
         };
         intro.SetResourceReference(StyleProperty, "MaMutedText");
@@ -84,13 +107,21 @@ public sealed class WelcomeWindow : Window
         buttons.SetResourceReference(MarginProperty, "SpaceTM");
 
         var steps = new MaStackPanel { Spacing = 10 };
-        foreach (var part in new UIElement[] { heading, intro, tools.Card, github.Card, workspace.Card, claude.Card, note, buttons }) steps.Children.Add(part);
+        foreach (var part in new UIElement[] { heading, intro, tools.Card, claude.Card, github.Card, workspace.Card, firstRepo.Card, note, buttons }) steps.Children.Add(part);
         steps.SetResourceReference(MarginProperty, "SpaceL");
         var scroll = new ScrollViewer { Content = steps, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, PanningMode = PanningMode.VerticalOnly };
         scroll.SetResourceReference(StyleProperty, "MaBodyScroll");
         Content = scroll;
-        Loaded += (_, _) => Refresh();
+        Loaded += (_, _) =>
+        {
+            Refresh();
+            // Whatever's missing installs as soon as the window opens, without waiting for a click.
+            if (AutoInstall && SetupTools.Missing().Count > 0) Busy(InstallToolsAsync);
+        };
     }
+
+    /// <summary>Off only for a render of the window, which must install nothing.</summary>
+    internal static bool AutoInstall { get; set; } = true;
 
     private static string WorkspaceRoot() => OrchestratorOptions.Load(new JsonStore()).WorkspaceRoot;
 
@@ -112,14 +143,69 @@ public sealed class WelcomeWindow : Window
         claude.Show(signedIn, signedIn ? "A Claude account is signed in. Add more from the dashboard's Logins."
             : "Your Claude account's email (a MindAttic Claude Team seat works as is), then Sign in: the browser asks you to confirm.");
         claude.Action.IsEnabled = !busy && missing.All(t => t.Exe != "claude");
+        var repo = CreatedRepo is { } made ? Path.Combine(root, made) : ws ? FirstRepoIn(root) : null;
+        firstRepo.Show(repo is not null, repo is not null
+            ? $"Your repo: {repo}. Drag your code into that folder, then type /commit in its CLI on the dashboard, and you're all set."
+            : "A repo on your GitHub, cloned into the workspace with a Hello World first commit on main. Then you drop your code into it.");
+        firstRepo.Action.IsEnabled = !busy && gh && ws;
         open.Content = ws && signedIn ? "Open the dashboard" : "Skip for now";
+    }
+
+    /// <summary>A git repo already in the workspace, or null.</summary>
+    private static string? FirstRepoIn(string root)
+    {
+        try { return Directory.EnumerateDirectories(root).FirstOrDefault(d => Directory.Exists(Path.Combine(d, ".git"))); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>GitHub's own rule for a repo's name: letters, digits, '.', '-', '_', at most 100.</summary>
+    internal static bool IsRepoName(string name) =>
+        name.Length is > 0 and <= 100 && name is not "." and not ".." && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_');
+
+    /// <summary>
+    /// The first repo (M.ORCH-T1559): made on the signed-in GitHub account (<c>gh repo create --clone</c>, in the workspace), with
+    /// a Hello World first commit (README.md and an empty .gitignore) pushed to main, then opened in Explorer for the user's code.
+    /// A PC with no git identity gets the GitHub account's name and its no-reply address, so the commit can be made.
+    /// </summary>
+    private async Task CreateFirstRepoAsync()
+    {
+        var name = repoName.Text.Trim();
+        if (!IsRepoName(name)) { note.Text = "A repo name is letters, digits, '.', '-' or '_' (no spaces)."; return; }
+        var root = WorkspaceRoot();
+        var dir = Path.Combine(root, name);
+        if (Directory.Exists(dir)) { note.Text = $"{dir} already exists: pick another name."; return; }
+        if (SetupTools.Find("gh") is not { } gh || SetupTools.Find("git") is not { } git) { note.Text = "git and the GitHub CLI are needed first (step 1)."; return; }
+        note.Text = $"Creating {name} on your GitHub…";
+        var create = new List<string> { "repo", "create", name, repoPrivate.IsChecked == true ? "--private" : "--public", "--clone" };
+        if (repoDescription.Text.Trim() is { Length: > 0 } description) { create.Add("--description"); create.Add(description); }
+        if (await SetupTools.RunAsync(gh, create, root) is { Code: not 0 } made) { note.Text = $"GitHub didn't create it: {made.Output.Trim()}"; return; }
+        if ((await SetupTools.RunAsync(git, ["config", "--global", "user.email"], root)).Output.Trim().Length == 0)
+        {
+            var login = (await SetupTools.RunAsync(gh, ["api", "user", "-q", ".login"], root)).Output.Trim();
+            var id = (await SetupTools.RunAsync(gh, ["api", "user", "-q", ".id"], root)).Output.Trim();
+            var fullName = (await SetupTools.RunAsync(gh, ["api", "user", "-q", ".name // .login"], root)).Output.Trim();
+            await SetupTools.RunAsync(git, ["config", "--global", "user.name", fullName.Length > 0 ? fullName : login], root);
+            await SetupTools.RunAsync(git, ["config", "--global", "user.email", $"{id}+{login}@users.noreply.github.com"], root);
+        }
+        File.WriteAllText(Path.Combine(dir, "README.md"), $"# {name}\n\nHello World\n");
+        File.WriteAllText(Path.Combine(dir, ".gitignore"), "");
+        foreach (var step in new[] { new[] { "checkout", "-B", "main" }, ["add", "-A"], ["commit", "-m", "Hello World"], ["push", "-u", "origin", "main"] })
+            if (await SetupTools.RunAsync(git, step, dir) is { Code: not 0 } failed)
+            {
+                note.Text = $"git {step[0]} failed: {failed.Output.Trim()}";
+                return;
+            }
+        CreatedRepo = name;
+        log.Information("Welcome created the first repo {Repo:l}", dir);
+        Process.Start(new ProcessStartInfo("explorer.exe", $"\"{dir}\"") { UseShellExecute = true })?.Dispose();
+        note.Text = $"{name} is on your GitHub and in {dir}, which just opened: drag your code into it. Then Open the dashboard, where a CLI starts in it: type /commit there.";
     }
 
     private async void Busy(Func<Task> work)
     {
         if (busy) return;
         busy = true;
-        foreach (var step in new[] { tools, github, workspace, claude }) step.Action.IsEnabled = false;
+        foreach (var step in new[] { tools, github, workspace, claude, firstRepo }) step.Action.IsEnabled = false;
         try { await work(); }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -129,7 +215,7 @@ public sealed class WelcomeWindow : Window
         finally
         {
             busy = false;
-            foreach (var step in new[] { tools, github, workspace, claude }) step.Action.IsEnabled = true;
+            foreach (var step in new[] { tools, github, workspace, claude, firstRepo }) step.Action.IsEnabled = true;
             Refresh();
         }
     }
@@ -295,6 +381,31 @@ internal static class SetupTools
             return p.ExitCode == 0;
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return false; }
+    }
+
+    /// <summary>Runs <paramref name="exe"/> with <paramref name="args"/> in <paramref name="directory"/>, windowless; its exit code
+    /// and everything it printed. Never longer than two minutes.</summary>
+    internal static async Task<(int Code, string Output)> RunAsync(string exe, IEnumerable<string> args, string directory)
+    {
+        var psi = new ProcessStartInfo(exe)
+        {
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
+            WorkingDirectory = directory,
+        };
+        foreach (var arg in args) psi.ArgumentList.Add(arg);
+        // gh would stop to ask in a terminal that isn't there.
+        psi.Environment["GH_PROMPT_DISABLED"] = "1";
+        try
+        {
+            using var p = Process.Start(psi) ?? throw new InvalidOperationException($"{exe} didn't start.");
+            var output = p.StandardOutput.ReadToEndAsync();
+            var error = p.StandardError.ReadToEndAsync();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            try { await p.WaitForExitAsync(timeout.Token); }
+            catch (OperationCanceledException) { try { p.Kill(true); } catch (InvalidOperationException) { } return (-1, "timed out"); }
+            return (p.ExitCode, await output + await error);
+        }
+        catch (System.ComponentModel.Win32Exception ex) { return (-1, ex.Message); }
     }
 
     /// <summary>Runs <paramref name="script"/> in a PowerShell window the user can watch (an installer's progress, a sign-in's

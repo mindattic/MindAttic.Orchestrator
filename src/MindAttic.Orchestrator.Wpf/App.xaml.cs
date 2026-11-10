@@ -223,7 +223,8 @@ public partial class App : Application
             if (window is MainWindow main && StartRequest.Repo(args) is { } repo) _ = main.StartRepoAsync(repo);
             if (window is MainWindow shown && DashboardRequest.ShowTarget(args) is { } target) _ = shown.ShowAsync(target);
         }));
-        if (startRepo is not null) _ = ((MainWindow)MainWindow).StartRepoAsync(startRepo);
+        // The repo a new user just made in the Welcome window (M.ORCH-T1559) opens with a CLI in it, ready for their /commit.
+        if ((startRepo ?? WelcomeWindow.CreatedRepo) is { } repoToStart) _ = ((MainWindow)MainWindow).StartRepoAsync(repoToStart);
         if (showTarget is not null) _ = ((MainWindow)MainWindow).ShowAsync(showTarget);
         // An upgrade asks this dashboard to exit here (it may be minimized, or behind other windows).
         exitSignal = new EventWaitHandle(false, EventResetMode.ManualReset, Installer.DashboardExitEvent(Environment.ProcessId));
