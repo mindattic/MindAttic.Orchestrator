@@ -24,6 +24,10 @@ public partial class MainWindow
     private readonly Dictionary<(DependencyObject, DependencyProperty), object> desktopValues = [];
     private bool compact;
 
+    /// <summary>The layout chosen with <see cref="LayoutToggle"/> (M.ORCH-T1560), null while the window's size decides. It holds
+    /// until a resize makes the size check agree with it; from then on the size decides again.</summary>
+    private bool? chosenCompact;
+
     /// <summary>Whether the window fits the phone layout at <paramref name="width"/> x <paramref name="height"/> (device-independent
     /// pixels), given whether it is in it <paramref name="now"/>.</summary>
     internal static bool WantsCompact(double width, double height, bool now)
@@ -54,9 +58,18 @@ public partial class MainWindow
             WindowState = WindowState.Maximized;
     }
 
+    private void LayoutToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        chosenCompact = LayoutToggle.IsChecked;
+        ApplyCompact();
+    }
+
     private void ApplyCompact()
     {
-        var want = WantsCompact(ActualWidth, ActualHeight, compact);
+        var bySize = WantsCompact(ActualWidth, ActualHeight, compact);
+        if (chosenCompact == bySize) chosenCompact = null;
+        var want = chosenCompact ?? bySize;
+        LayoutToggle.SetCurrentValue(Components.Wpf.Controls.MaToggleIcon.IsCheckedProperty, want);
         if (want == compact) return;
         compact = want;
         Hold(Sidebar, VisibilityProperty, Visibility.Collapsed);

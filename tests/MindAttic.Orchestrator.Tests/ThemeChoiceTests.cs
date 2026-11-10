@@ -14,7 +14,7 @@ namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>
 /// Dark mode by default with a sun/moon switch in the dashboard's upper-right corner (M.ORCH-T678): the dashboard opens dark
-/// unless light was chosen, the library's MaThemeToggle switches it live, and the choice is kept in the orchestrator's settings
+/// unless light was chosen, the library's MaToggleIcon theme switch switches it live, and the choice is kept in the orchestrator's settings
 /// so it holds across restarts. The state colours view models hand out follow a switch too, none left in the other theme's colour.
 /// </summary>
 [Apartment(ApartmentState.STA)]
@@ -72,14 +72,14 @@ public sealed class ThemeChoiceTests
         Assert.That(ThemeChoice.Apply(resources, store), Is.EqualTo(MaThemeMode.Light));
         Assert.That(MaTheme.Get(resources), Is.EqualTo(MaThemeMode.Light));
 
-        var toggle = new MaThemeToggle();
+        var toggle = new MaToggleIcon { IsThemeToggle = true };
         var window = OffScreenWindow.Create(content: toggle);
         window.Resources = resources;
         try
         {
             Assert.That(toggle.Theme, Is.EqualTo(MaThemeMode.Light), "the switch shows the saved theme");
-            Assert.That(toggle.Glyph, Is.EqualTo(MaThemeToggle.MoonGlyph));
-            Assert.That(toggle.SwitchText, Is.EqualTo("Switch to dark theme"));
+            Assert.That(toggle.Glyph, Is.EqualTo(MaToggleIcon.MoonGlyph));
+            Assert.That(toggle.Text, Is.EqualTo("Switch to dark theme"));
         }
         finally { window.Close(); }
     }
@@ -88,7 +88,7 @@ public sealed class ThemeChoiceTests
     public void The_toggle_switches_the_theme_and_saves_each_choice()
     {
         var store = Store();
-        var toggle = new MaThemeToggle();
+        var toggle = new MaToggleIcon { IsThemeToggle = true };
         var window = OffScreenWindow.Create(content: toggle);
         window.Resources = Themed();
         ThemeChoice.Apply(window.Resources, store);
@@ -158,7 +158,7 @@ public sealed class ThemeChoiceTests
 
         // M.ORCH-T1512: moved into MindAttic.Vault.Desktop's Orchestrator settings page -- not used often enough to earn its
         // own icon here any more, and this window no longer saves a switch of its own.
-        Assert.That(doc.Descendants(Mc + "MaThemeToggle"), Is.Empty);
+        Assert.That(doc.Descendants(Mc + "MaToggleIcon").Where(t => (string?)t.Attribute("IsThemeToggle") == "True"), Is.Empty);
         var windowCs = File.ReadAllText(Path.Combine(wpf, "MainWindow.xaml.cs"));
         Assert.That(windowCs, Does.Not.Contain("ThemeChoice.SaveSwitches(this,"));
         Assert.That(windowCs, Does.Contain("ThemeChoice.Follow("), "still picks up a change made in Vault live, no restart");

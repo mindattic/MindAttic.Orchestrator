@@ -11,7 +11,8 @@ namespace MindAttic.Orchestrator.Wpf;
 /// view following at once (each brush is the library theme's, as DynamicResource or through <see cref="ViewModels.Palette"/>).
 /// The dashboard's own window no longer carries a switch of its own (M.ORCH-T1512: it wasn't used often enough to earn a
 /// permanent icon); it is set instead from MindAttic.Vault.Desktop's Orchestrator settings page, and <see cref="Follow"/> picks
-/// up a change made there live, with no restart. <see cref="SaveSwitches"/> and the library's MaThemeToggle remain here as the
+/// up a change made there live, with no restart. <see cref="SaveSwitches"/> and the library's theme switch (MaToggleIcon with
+/// IsThemeToggle) remain here as the
 /// general wiring a switch saves through, for whatever UI hosts one.
 /// </summary>
 public static class ThemeChoice
@@ -59,7 +60,7 @@ public static class ThemeChoice
         }
     }
 
-    /// <summary>Saves every switch an MaThemeToggle under <paramref name="root"/> makes.</summary>
+    /// <summary>Saves every switch a theme MaToggleIcon under <paramref name="root"/> makes.</summary>
     public static void SaveSwitches(UIElement root, JsonStore store) =>
-        root.AddHandler(MaThemeToggle.ThemeChangedEvent, new EventHandler<MaThemeChangedEventArgs>((_, e) => Save(store, e.Theme)));
+        root.AddHandler(MaToggleIcon.ThemeChangedEvent, new EventHandler<MaThemeChangedEventArgs>((_, e) => Save(store, e.Theme)));
 }
