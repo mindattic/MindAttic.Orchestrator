@@ -21,7 +21,7 @@ public sealed class WelcomeWindow : Window
     private readonly Serilog.ILogger log;
     private readonly AccountDirs dirs = new();
     private readonly Step tools, github, workspace, claude;
-    private readonly TextBox email = new() { MinWidth = 220 };
+    private readonly TextBox email = new() { Width = 170 };
     private readonly Button open = new() { Content = "Open the dashboard" };
     private readonly TextBlock note = new() { TextWrapping = TextWrapping.Wrap };
     private bool busy;
@@ -52,7 +52,7 @@ public sealed class WelcomeWindow : Window
         claude = new Step("4. Claude account", "Sign in", () => Busy(SignInClaudeAsync));
         email.SetResourceReference(StyleProperty, "MaTextBox");
         AutomationNames(email, "Your Claude account's email");
-        claude.Extra.Children.Add(email);
+        claude.Extra.Children.Insert(0, email);
 
         var heading = new TextBlock { Text = "Let's get you set up", TextWrapping = TextWrapping.Wrap };
         heading.SetResourceReference(StyleProperty, "MaHeading");
@@ -97,7 +97,7 @@ public sealed class WelcomeWindow : Window
             : $"Missing: {string.Join(", ", missing.Select(t => t.Name))}. Installs them with winget and Claude Code's own installer.");
         var gh = missing.All(t => t.Exe != "gh") && SetupTools.GitHubSignedIn();
         github.Show(gh, gh ? "Signed in to GitHub: the workspace's repos clone and push as you."
-            : "Sign in to GitHub in your browser, so the repos clone and your CLIs can push.");
+            : "Sign in to GitHub in your browser with an account in the mindattic organization (its workspace repo is private), so the repos clone and your CLIs can push.");
         var root = WorkspaceRoot();
         var ws = !WorkspaceBootstrap.IsEmpty(root);
         workspace.Show(ws, ws ? $"Workspace: {root}" : "Clone the MindAttic workspace into a folder, or point at one already on this PC.");
@@ -198,7 +198,7 @@ public sealed class WelcomeWindow : Window
             light.Status = done ? MaStatus.Good : MaStatus.Warning;
             light.Label = done ? $"{title}: done" : $"{title}: to do";
             detail.Text = text;
-            Action.Visibility = done ? Visibility.Collapsed : Visibility.Visible;
+            Extra.Visibility = done ? Visibility.Collapsed : Visibility.Visible;
         }
     }
 }
