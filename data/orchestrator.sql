@@ -1971,12 +1971,12 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-09', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5906206);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-09', 'SpaceGod', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 412343);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-09', 'SpaceGod', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1107935);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1403794);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1474564);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 720393);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1337679);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1410690);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 163540);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'MindAttic.Orchestrator', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 765000);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'Mods.MechWarrior5.SaveEditor', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1248624);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'MindAttic.Orchestrator', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 852158);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'Mods.MechWarrior5.SaveEditor', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1250014);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-10', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 639450);
 
 -- ticket_costs
@@ -4662,7 +4662,7 @@ INSERT INTO settings (name, value) VALUES ('Gateway', '{"Enabled":false,"Bind":"
 INSERT INTO settings (name, value) VALUES ('GitHubIntake', 'false');
 INSERT INTO settings (name, value) VALUES ('GroomAfterDays', '30');
 INSERT INTO settings (name, value) VALUES ('KeepGoing', 'true');
-INSERT INTO settings (name, value) VALUES ('Layout', '"Phone"');
+INSERT INTO settings (name, value) VALUES ('Layout', '"Desktop"');
 INSERT INTO settings (name, value) VALUES ('MaxAgentDelaySeconds', '300');
 INSERT INTO settings (name, value) VALUES ('MaxConcurrentSessions', '6');
 INSERT INTO settings (name, value) VALUES ('MaxSessionsPerRepo', '2');
@@ -31943,8 +31943,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2bcb1d631d0830ce2942f2d3fb79db924dcdabb1"
   },
   "MindAttic.Tickets": {
-    "Tested": "27461294fbe32120d80e8b0edd0a37e40dcb3429",
-    "Green": "27461294fbe32120d80e8b0edd0a37e40dcb3429"
+    "Tested": "3afec00176163c793aef37ce46fa7772c2933dfb",
+    "Green": "3afec00176163c793aef37ce46fa7772c2933dfb"
   },
   "MindAttic.Vault": {
     "Tested": "5ad1233ce124f41734717ea8a7c6cced58f3ac92",
