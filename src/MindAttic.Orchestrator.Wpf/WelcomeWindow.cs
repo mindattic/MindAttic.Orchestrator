@@ -93,7 +93,7 @@ public sealed class WelcomeWindow : Window
     private void Refresh()
     {
         var missing = SetupTools.Missing();
-        tools.Show(missing.Count == 0, missing.Count == 0 ? "git, the GitHub CLI and Claude Code are installed."
+        tools.Show(missing.Count == 0, missing.Count == 0 ? "git, the GitHub CLI, Claude Code and the .NET 10 runtimes are installed."
             : $"Missing: {string.Join(", ", missing.Select(t => t.Name))}. Installs them with winget and Claude Code's own installer.");
         var gh = missing.All(t => t.Exe != "gh") && SetupTools.GitHubSignedIn();
         github.Show(gh, gh ? "Signed in to GitHub: the workspace's repos clone and push as you."
@@ -206,7 +206,8 @@ public sealed class WelcomeWindow : Window
 /// <summary>The tools a new user's PC needs (M.ORCH-T1545), how to find them and how to install them.</summary>
 internal static class SetupTools
 {
-    internal sealed record Tool(string Name, string Exe, string Install);
+    /// <param name="Present">How to tell it's installed when it isn't an exe on PATH (a .NET runtime).</param>
+    internal sealed record Tool(string Name, string Exe, string Install, Func<bool>? Present = null);
 
     private const string Winget = "--exact --source winget --accept-package-agreements --accept-source-agreements";
 
@@ -215,10 +216,20 @@ internal static class SetupTools
         new("git", "git", $"winget install --id Git.Git {Winget}"),
         new("the GitHub CLI", "gh", $"winget install --id GitHub.cli {Winget}"),
         new("Claude Code", "claude", "irm https://claude.ai/install.ps1 | iex"),
+        // The CLI, TermHost, Gateway and TermViewer beside the self-contained Desktop exe run on the shared runtimes (M.ORCH-T1547).
+        new("the .NET 10 Desktop Runtime", "", $"winget install --id Microsoft.DotNet.DesktopRuntime.10 {Winget}", () => HasRuntime("Microsoft.WindowsDesktop.App")),
+        new("the ASP.NET Core 10 Runtime", "", $"winget install --id Microsoft.DotNet.AspNetCore.10 {Winget}", () => HasRuntime("Microsoft.AspNetCore.App")),
     ];
 
-    /// <summary>The tools not on this user's PATH as it is now (read fresh from the registry, so an install just made counts).</summary>
-    internal static IReadOnlyList<Tool> Missing() => [.. All.Where(t => Find(t.Exe) is null)];
+    /// <summary>The tools not installed as things are now (PATH read fresh from the registry, so an install just made counts).</summary>
+    internal static IReadOnlyList<Tool> Missing() => [.. All.Where(t => !(t.Present is { } present ? present() : Find(t.Exe) is not null))];
+
+    private static bool HasRuntime(string framework)
+    {
+        var shared = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "shared", framework);
+        try { return Directory.Exists(shared) && Directory.EnumerateDirectories(shared, "10.*").Any(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+    }
 
     internal static string? Find(string exe)
     {
