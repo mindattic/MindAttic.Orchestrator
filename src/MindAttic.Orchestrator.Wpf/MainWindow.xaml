@@ -5,7 +5,7 @@
         xmlns:vm="clr-namespace:MindAttic.Orchestrator.Wpf.ViewModels"
         xmlns:local="clr-namespace:MindAttic.Orchestrator.Wpf"
         mc:MaWindow.ThemedTitleBar="True"
-        Title="MindAttic Orchestrator" Width="1480" Height="920" MinWidth="980" MinHeight="600"
+        Title="MindAttic Orchestrator" Width="1480" Height="920" MinWidth="320" MinHeight="400"
         WindowStartupLocation="CenterScreen" Icon="/logo.ico"
         Background="{DynamicResource MaChrome}" Foreground="{DynamicResource MaText}"
         FontFamily="Segoe UI" FontSize="13"
@@ -927,6 +927,32 @@
                     <Run Text="{Binding WarningsText, Mode=OneWay}" />
                 </TextBlock>
             </DockPanel>
+        </Border>
+
+        <!-- The phone layout's touch bar (M.ORCH-T1543, MainWindow.Compact.cs), in the status bar's place: the keys a phone
+             keyboard over Remote Desktop lacks, sent to the CLI on screen. Not focusable, so the terminal keeps the keyboard. -->
+        <Border x:Name="TouchBar" Grid.Row="4" Grid.ColumnSpan="2" Style="{StaticResource MaStatusBar}" Visibility="Collapsed"
+                AutomationProperties.Name="Touch keys for the CLI">
+            <WrapPanel x:Name="TouchKeysPanel" HorizontalAlignment="Center">
+                <WrapPanel.Resources>
+                    <Style TargetType="Button" BasedOn="{StaticResource MaButton}">
+                        <Setter Property="Focusable" Value="False" />
+                        <Setter Property="MinWidth" Value="48" />
+                        <Setter Property="MinHeight" Value="44" />
+                        <Setter Property="Margin" Value="3" />
+                        <EventSetter Event="Click" Handler="TouchKey_Click" />
+                    </Style>
+                </WrapPanel.Resources>
+                <Button Content="Esc" Tag="esc" AutomationProperties.Name="Escape" />
+                <Button Content="Tab" Tag="tab" AutomationProperties.Name="Tab" />
+                <Button Content="⇧Tab" Tag="shift-tab" ToolTip="Shift+Tab: Claude Code's mode switch" AutomationProperties.Name="Shift Tab" />
+                <Button Content="↑" Tag="up" AutomationProperties.Name="Up arrow" />
+                <Button Content="↓" Tag="down" AutomationProperties.Name="Down arrow" />
+                <Button Content="←" Tag="left" AutomationProperties.Name="Left arrow" />
+                <Button Content="→" Tag="right" AutomationProperties.Name="Right arrow" />
+                <Button Content="^C" Tag="ctrl-c" ToolTip="Ctrl+C: interrupt" AutomationProperties.Name="Control C" />
+                <Button Content="Enter" Tag="enter" AutomationProperties.Name="Enter" />
+            </WrapPanel>
         </Border>
 
         <!-- Covers every row until the first refresh lands (M.ORCH-T184). -->

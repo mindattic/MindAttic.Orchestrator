@@ -58,6 +58,7 @@ public partial class MainWindow : Window
         // AgentsBody's own height can change without Root's (e.g. TerminalsPanel's tab strip showing or hiding above it),
         // and TerminalFrame's size is now a share of AgentsBody's viewport, not Root's (M.ORCH-T1302).
         AgentsBody.SizeChanged += (_, _) => SizeTerminalRow();
+        AttachCompactLayout();
         // A person's current work (including, on the global login's tab, what fits on no person's page, M.ORCH-T825) is one
         // virtualized list (M.ORCH-T754): headings and notes, then the lists' items a row (or a line of cards) each, so a
         // switch of tab or org builds only what's on screen. AgentsBodyList, not AgentsBody's own direct content, is what's
@@ -487,7 +488,9 @@ public partial class MainWindow : Window
         {
             if (!TerminalFrame.IsVisible) return;
             var viewport = AgentsBody.ActualHeight;
-            if (viewport > 0) TerminalFrame.Height = Math.Max(TerminalRowMinHeight, viewport - AgentsBodyScrollHandle);
+            // The phone layout (M.ORCH-T1543) gives the CLI the whole first screen: a swipe still reaches the rest.
+            var below = compact ? TerminalFrame.Margin.Top : AgentsBodyScrollHandle;
+            if (viewport > 0) TerminalFrame.Height = Math.Max(TerminalRowMinHeight, viewport - below);
         }
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
     }
