@@ -219,9 +219,9 @@
                 <Button x:Name="DrawerButton" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE700;" Click="DrawerButton_Click"
                         Margin="{StaticResource SpaceRS}" ToolTip="People, organizations and their tickets" AutomationProperties.Name="Show people and tickets" />
                 <mc:MaPicker x:Name="PersonPicker" Grid.Column="1" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding StripSelection}"
-                             DisplayMemberPath="TabTitle" TrailingMemberPath="TabActivityWord" Margin="{StaticResource SpaceRS}" AutomationProperties.Name="Person" />
+                             DisplayMemberPath="TabTitle" StatusMemberPath="TabLightStatus" StatusLabelMemberPath="TabStatusWord" Margin="{StaticResource SpaceRS}" AutomationProperties.Name="Person" />
                 <mc:MaPicker x:Name="CliPicker" Grid.Column="2" ItemsSource="{Binding Terminals.StripItems}" SelectedItem="{Binding Terminals.SelectedStripItem}"
-                             DisplayMemberPath="Name" TrailingMemberPath="PaneActivityWord" Placeholder="No CLIs open" AutomationProperties.Name="CLI" />
+                             DisplayMemberPath="Name" Placeholder="No CLIs open" AutomationProperties.Name="CLI" />
                 <Button x:Name="CliMenuButton" Grid.Column="3" Style="{StaticResource MaToolButton}" Content="&#xE712;" Click="CliMenuButton_Click"
                         Margin="{StaticResource SpaceLXS}" ToolTip="This CLI's menu: rename, close, move, undock" AutomationProperties.Name="CLI menu" />
             </Grid>
