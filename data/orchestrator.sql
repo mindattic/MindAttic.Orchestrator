@@ -31915,32 +31915,32 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "f437d94be18f1a7788b03d9b32086a536d41bc54"
   },
   "MindAttic.Legion": {
-    "Tested": "9e0f9b14b5e7e3eaf08518decc7f0e23a4d94450",
-    "Green": "9e0f9b14b5e7e3eaf08518decc7f0e23a4d94450"
+    "Tested": "a253dc0d9e16853e50ef72dbf60720205ed97bdd",
+    "Green": "a253dc0d9e16853e50ef72dbf60720205ed97bdd"
   },
   "MindAttic.Log": {
-    "Tested": "cb4ba37752638a63e326d093b51aaa2a8686cda1",
-    "Green": "cb4ba37752638a63e326d093b51aaa2a8686cda1"
+    "Tested": "674c649db36723fb936d547031dab82504179ed9",
+    "Green": "674c649db36723fb936d547031dab82504179ed9"
   },
   "MindAttic.Media": {
-    "Tested": "fe7d3cbab30e11d98b08da3213a86a2f72f73216",
-    "Green": "fe7d3cbab30e11d98b08da3213a86a2f72f73216"
+    "Tested": "416c51c9eeeee3d2d322c99bd91c458aba5e1710",
+    "Green": "416c51c9eeeee3d2d322c99bd91c458aba5e1710"
   },
   "MindAttic.Orchestrator": {
     "Tested": "b6d4932ac9102c958d85e8e101985f9749de1552",
     "Green": "61956ccbf407b6c52357c55c226c40ee69d5cd59"
   },
   "MindAttic.Psst": {
-    "Tested": "725e9aac7e7ff60960620729f012250189a618b9",
-    "Green": "725e9aac7e7ff60960620729f012250189a618b9"
+    "Tested": "0a95c5bfa24f19920b62e86c29cbbb8123ae0afd",
+    "Green": "0a95c5bfa24f19920b62e86c29cbbb8123ae0afd"
   },
   "MindAttic.Telemetry": {
     "Tested": "bb9829c3b4bd5e1e047437b4c8c8e687b09ad07c",
     "Green": "bb9829c3b4bd5e1e047437b4c8c8e687b09ad07c"
   },
   "MindAttic.Tickets": {
-    "Tested": "64036af23a5119379255a59197f3455a841a28b1",
-    "Green": "64036af23a5119379255a59197f3455a841a28b1"
+    "Tested": "9f341b3c0307b92d90c95fbed21cd14ce70a9c66",
+    "Green": "9f341b3c0307b92d90c95fbed21cd14ce70a9c66"
   },
   "MindAttic.Vault": {
     "Tested": "5ad1233ce124f41734717ea8a7c6cced58f3ac92",
@@ -32109,7 +32109,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "c005e95af8d045aec4fc8bc0819d5f16eb7500f0"
   },
   "MindAttic.Relay": {
-    "Tested": "cd2e79ba66969f8d12c8c3aeec6e318f8f421841"
+    "Tested": "6a20da97ce971bb2c8e5cb81b49527710fb2ceb1"
   },
   "AutoGamePlay": {
     "Tested": "a337d992536a252efa4fabe00b0c012d48c2a287",
