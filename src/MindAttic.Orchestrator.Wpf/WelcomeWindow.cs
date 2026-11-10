@@ -48,10 +48,17 @@ public sealed class WelcomeWindow : Window
 
         tools = new Step("1. Tools", "Install missing tools", () => Busy(InstallToolsAsync));
         github = new Step("2. GitHub", "Connect GitHub", () => Busy(ConnectGitHubAsync));
-        workspace = new Step("3. Workspace", "Choose…", () => Busy(ChooseWorkspaceAsync));
+        workspace = new Step("3. Workspace", "Start an empty one", () => Busy(StartEmptyWorkspaceAsync));
+        var existing = new Button { Content = "MindAttic's, or one already here…" };
+        existing.SetResourceReference(StyleProperty, "MaButton");
+        existing.Click += (_, _) => Busy(ChooseWorkspaceAsync);
+        AutomationNames(existing, "3. Workspace: clone MindAttic's workspace or point at an existing one");
+        existing.Margin = Step.Gap;
+        workspace.Extra.Children.Add(existing);
         claude = new Step("4. Claude account", "Sign in", () => Busy(SignInClaudeAsync));
         email.SetResourceReference(StyleProperty, "MaTextBox");
         AutomationNames(email, "Your Claude account's email");
+        email.Margin = Step.Gap;
         claude.Extra.Children.Insert(0, email);
 
         var heading = new TextBlock { Text = "Let's get you set up", TextWrapping = TextWrapping.Wrap };
@@ -97,10 +104,10 @@ public sealed class WelcomeWindow : Window
             : $"Missing: {string.Join(", ", missing.Select(t => t.Name))}. Installs them with winget and Claude Code's own installer.");
         var gh = missing.All(t => t.Exe != "gh") && SetupTools.GitHubSignedIn();
         github.Show(gh, gh ? "Signed in to GitHub: the workspace's repos clone and push as you."
-            : "Sign in to GitHub in your browser with an account the owner added as a collaborator on mindattic/codex-standard (the workspace root is private), so the repos clone and your CLIs can push.");
+            : "Sign in to GitHub in your browser, so your repos clone and your CLIs can push.");
         var root = WorkspaceRoot();
         var ws = !WorkspaceBootstrap.IsEmpty(root);
-        workspace.Show(ws, ws ? $"Workspace: {root}" : "Clone the MindAttic workspace into a folder, or point at one already on this PC.");
+        workspace.Show(ws, ws ? $"Workspace: {root}" : "The folder your repos live in. Start an empty one and clone your own repos into it; or clone MindAttic's workspace (its owner must give your GitHub account access to the private mindattic/codex-standard), or point at a folder already on this PC.");
         var signedIn = dirs.AnySignedIn;
         claude.Show(signedIn, signedIn ? "A Claude account is signed in. Add more from the dashboard's Logins."
             : "Your Claude account's email (a MindAttic Claude Team seat works as is), then Sign in: the browser asks you to confirm.");
@@ -143,6 +150,20 @@ public sealed class WelcomeWindow : Window
         note.Text = code == 0 ? "GitHub connected." : "GitHub isn't connected yet: try again, or run gh auth login yourself.";
     }
 
+    /// <summary>A workspace of your own (M.ORCH-T1557): any folder, which your repos are cloned into; no MindAttic access needed.</summary>
+    private Task StartEmptyWorkspaceAsync()
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "MindAttic Orchestrator: choose or create a folder to hold your repos" };
+        if (dialog.ShowDialog(this) != true) return Task.CompletedTask;
+        var folder = dialog.FolderName;
+        if (WorkspaceBootstrap.IsEmpty(folder))
+            File.WriteAllText(Path.Combine(folder, "README.md"),
+                "# Workspace\n\nEach folder here is one repo the Orchestrator can run Claude CLIs in. Clone yours in:\n\n" +
+                "    git clone https://github.com/<you>/<repo>.git\n\nthen refresh the dashboard (F5).\n");
+        note.Text = App.SaveWorkspaceRoot(folder, log) ? $"Workspace: {folder}. Clone your repos into it, then refresh the dashboard." : "";
+        return Task.CompletedTask;
+    }
+
     private Task ChooseWorkspaceAsync()
     {
         note.Text = App.EnsureWorkspace(log) ? "" : "No workspace chosen yet.";
@@ -167,7 +188,11 @@ public sealed class WelcomeWindow : Window
     {
         public Border Card { get; } = new();
         public Button Action { get; } = new();
-        public MaStackPanel Extra { get; } = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
+        /// <summary>The step's controls, wrapping onto a second line in a phone-narrow window.</summary>
+        public WrapPanel Extra { get; } = new();
+
+        /// <summary>The gap after each of <see cref="Extra"/>'s controls, across and below.</summary>
+        public static readonly Thickness Gap = new(0, 0, 8, 6);
         private readonly MaStatusLight light = new() { VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock detail = new() { TextWrapping = TextWrapping.Wrap };
         private readonly string title;
@@ -185,6 +210,7 @@ public sealed class WelcomeWindow : Window
             var top = new MaStackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             top.Children.Add(light);
             top.Children.Add(name);
+            Action.Margin = Gap;
             Extra.Children.Add(Action);
             var body = new MaStackPanel { Spacing = 6 };
             body.Children.Add(top);

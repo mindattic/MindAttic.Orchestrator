@@ -441,17 +441,24 @@ public partial class App : Application
         };
         if (dialog.ShowDialog() != true) return false;
         if (build && !BuildWorkspaceWindow.Run(dialog.FolderName, log)) return false;
+        return SaveWorkspaceRoot(dialog.FolderName, log);
+    }
+
+    /// <summary>Makes <paramref name="folder"/> the workspace; false (said) when it couldn't be saved.</summary>
+    internal static bool SaveWorkspaceRoot(string folder, Serilog.ILogger log)
+    {
+        var store = new JsonStore();
         // Not LoadSettings: a settings.json that can't be read would be saved over with defaults, every budget, priority,
         // approval and reservation lost; and a save that fails is said, not a crash at startup (M.ORCH-T337).
         // Saved as the orchestrator's own override of Vault Global's workspace root (M.ORCH-T1328).
-        try { store.SaveSettings(OrchestratorVaultSettings.WithWorkspaceRoot(store.LoadSettingsToChange(), dialog.FolderName, store.LoadGlobal())); }
+        try { store.SaveSettings(OrchestratorVaultSettings.WithWorkspaceRoot(store.LoadSettingsToChange(), folder, store.LoadGlobal())); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             log.Error(ex, "Couldn't save the workspace folder");
             MaMessageBox.Show($"Couldn't save the workspace folder: {ex.Message}", "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
-        log.Information("Workspace set to {Root:l}", dialog.FolderName);
+        log.Information("Workspace set to {Root:l}", folder);
         return true;
     }
 }

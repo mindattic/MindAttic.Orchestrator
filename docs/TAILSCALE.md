@@ -13,11 +13,11 @@ keys and a mic underneath.
    `tickets` on your PATH, and opens the dashboard.
 2. The **Welcome** window (M.ORCH-T1545) walks you through four steps, each one button:
    - **Tools**: installs git, the GitHub CLI, Claude Code and the .NET 10 runtimes if they're missing.
-   - **GitHub**: signs you in to GitHub in your browser, so the repos clone and your CLIs can push. The workspace's root
-     repo, `mindattic/codex-standard`, is private: first send the owner your GitHub username, so they add you as a
-     collaborator on it (`gh api -X PUT repos/mindattic/codex-standard/collaborators/<your-username>`) and you accept the
-     invitation GitHub emails you. A few other private repos are skipped and listed when the workspace is built.
-   - **Workspace**: clones the MindAttic workspace into a folder (or points at one already there).
+   - **GitHub**: signs you in to GitHub in your browser, so your repos clone and your CLIs can push.
+   - **Workspace**: the folder your repos live in. **Start an empty one** and clone your own repos into it; that's all
+     anyone needs. Or clone MindAttic's own workspace, which needs its owner to add your GitHub account as a collaborator
+     on the private `mindattic/codex-standard` (`gh api -X PUT repos/mindattic/codex-standard/collaborators/<username>`),
+     or point at a folder of repos already on the PC.
    - **Claude account**: type your Claude account's email and sign in. A seat in the MindAttic Claude Team works as is:
      sign in with that seat's email. More accounts can be added later from the dashboard's **Logins**.
 3. **Open the dashboard.** Start a CLI in a repo from it, and you're running.

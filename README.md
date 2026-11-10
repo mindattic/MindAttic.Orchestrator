@@ -207,7 +207,7 @@ Setup, step by step: [docs/TAILSCALE.md](docs/TAILSCALE.md).
 There's no setup step. `MindAttic.Orchestrator.Desktop.exe` is one self-contained file: drop it anywhere and double-click it. The first run:
 
 1. copies itself to `C:\Apps\MindAttic.Orchestrator` (per-user `%LOCALAPPDATA%\Programs` if `C:\Apps` isn't writable) and hands over to that copy;
-2. if the workspace (default `D:\Projects\MindAttic`) is missing or empty, asks once: **build one** (pick an empty folder; it clones the workspace root repo, `mindattic/codex-standard`, then every repo listed in its `docs\workspace-repos.json`, four at a time, with a progress window) or **point at one that's already here**. Repos that fail (offline, no access) are listed with the `git clone` line that retries each;
+2. if the workspace (default `D:\Projects\MindAttic`) is missing or empty, the Welcome window (M.ORCH-T1545) offers **start an empty one** (any folder, for your own repos: no MindAttic access needed, M.ORCH-T1557), or asks: **build one** (pick an empty folder; it clones the workspace root repo, `mindattic/codex-standard`, then every repo listed in its `docs\workspace-repos.json`, four at a time, with a progress window) or **point at one that's already here**. Repos that fail (offline, no access) are listed with the `git clone` line that retries each;
 3. starts the daemon (the same exe with `--daemon`: headless, no window) if it isn't running. Starting it at logon and keeping it running is [MindAttic.Scheduler](../MindAttic.Scheduler)'s `Orchestrator.Daemon` job; the exe registers no scheduled task of its own (M.ORCH-T475);
 4. makes Start menu and desktop shortcuts, then opens the dashboard, which scans every repo and learns your limits from the last month of transcripts.
 
