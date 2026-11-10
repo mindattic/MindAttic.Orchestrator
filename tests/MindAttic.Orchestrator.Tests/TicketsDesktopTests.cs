@@ -62,8 +62,10 @@ public sealed class TicketsDesktopTests
             .Where(e => e.Parent?.Name != p + "Hyperlink")
             // The sidebar's ticket card (M.ORCH-T1439) is itself the link: one button opening it through the same command.
             .Where(e => !e.Ancestors(p + "Button").Any(b => ((string?)b.Attribute("Command"))?.Contains("OpenInTicketsCommand") == true))
-            // An organization's summary isn't a ticket's.
-            .Where(e => e.Ancestors(p + "DataTemplate").FirstOrDefault()?.Attribute("DataType")?.Value.Contains("OrgViewModel") != true);
+            // An organization's summary isn't a ticket's, nor is the "working, no ticket yet" card's (M.ORCH-T1519): it's the
+            // session's own Doing text, with no ticket to open (M.ORCH-T1580).
+            .Where(e => e.Ancestors(p + "DataTemplate").FirstOrDefault()?.Attribute("DataType")?.Value is not { } type
+                || !(type.Contains("OrgViewModel") || type.Contains("LiveActivityRowViewModel")));
         Assert.That(plain, Is.Empty, "no ticket id or title left as plain text");
         // Free text that names tickets (the dashboard's message, the queue's last line) links each id it names.
         Assert.That(doc.Descendants(p + "TextBlock").Count(e => e.Attribute(XName.Get("{clr-namespace:MindAttic.Orchestrator.Wpf}TicketText.Text")) is not null),
