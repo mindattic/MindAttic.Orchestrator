@@ -173,6 +173,7 @@ public sealed class VirtualizedBody
     private void Rebuild()
     {
         pending = false;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         var rows = new List<object>();
         var nested = new List<INotifyCollectionChanged>();
         foreach (var part in parts)
@@ -192,7 +193,17 @@ public sealed class VirtualizedBody
         }
         WatchNested(nested);
         Sync(rows);
+        // Timed (M.ORCH-T1537): a full Rebuild runs every time ANY watched section's items or Visibility change (not just the
+        // one that changed), and Sync below is an O(rows^2) worst case look-ahead diff - the admin/global tab's page carries
+        // several sections no other tab shows (reminders, finished work, the fleet-wide unassigned queue, warnings), so a
+        // tab switch there (which resets every bound list's ItemsSource at once via the DataContext change) is the one case
+        // most likely to pay for all of that in one synchronous UI-thread pass. Logged past 300ms with the row count.
+        if (clock.Elapsed > RebuildLogThreshold)
+            OrchestratorLog.For("Terminals").Warning("Rebuilding {Name:l}'s virtualized body ({Rows} rows) took {Ms}ms",
+                AutomationProperties.GetName(host), rows.Count, clock.ElapsedMilliseconds);
     }
+
+    private static readonly TimeSpan RebuildLogThreshold = TimeSpan.FromMilliseconds(300);
 
     /// <summary>A section's items as rows: one item a row, or for a tile list a line of tiles a row; the gap between two rows, the
     /// list's own margin above the first and below the last.</summary>
