@@ -67,9 +67,8 @@ public sealed class SettingsModalTests
         Assert.That(row, Is.EqualTo(new[] { "TeamWallButton", "TicketsButton", "LoginsButton", "SettingsButton", "WindDownButton" }));
         Assert.That(tools.Descendants(Mc + "MaToggleIcon").Where(t => (string?)t.Attribute("IsThemeToggle") == "True"), Is.Empty,
             "no theme toggle of its own any more");
-        // The phone/desktop layout switch (M.ORCH-T1560) leads the tools.
-        Assert.That((string?)tools.Elements().First(e => (string?)e.Attribute(X + "Name") is not null && e.Name.LocalName != "TextBlock").Attribute(X + "Name"),
-            Is.EqualTo("LayoutToggle"));
+        // No phone/desktop toggle (M.ORCH-T1560, removed by M.ORCH-T1567): the window's size alone switches the layout.
+        Assert.That(doc.Descendants().Any(e => (string?)e.Attribute(X + "Name") == "LayoutToggle"), Is.False);
         Assert.That((string?)Named(doc, "TicketsButton").Attribute("Command"), Is.EqualTo("{Binding OpenTicketsAppCommand}"));
         Assert.That((string?)Named(doc, "LoginsButton").Attribute("Command"), Is.EqualTo("{Binding ToggleLoginsCommand}"));
 

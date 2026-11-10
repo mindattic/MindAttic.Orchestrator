@@ -198,9 +198,8 @@ Wall. From then on, `orchestrator machine pull` brings the agents' newest code t
 ## From your phone
 
 Reach the PC from anywhere with Tailscale and Remote Desktop (Microsoft's **Windows App Mobile**, formerly Remote Desktop, microphone redirected; Tailscale only connects the phone to
-the PC, it doesn't show the screen). Resizing the
-window phone-narrow (M.ORCH-T1565), or the menu bar's phone/desktop toggle (M.ORCH-T1563), switches the dashboard to its phone
-layout (M.ORCH-T1543), remembered across restarts: the CLI fills the screen, with touch keys (Esc, Tab,
+the PC, it doesn't show the screen). On a narrow or
+portrait screen the dashboard switches to its phone layout (M.ORCH-T1543): the CLI fills the screen, with touch keys (Esc, Tab,
 Shift+Tab, arrows, Ctrl+C, Enter), a mic that opens Windows voice typing on a say box, Send, and `/voice` (M.ORCH-T1544).
 Setup, step by step: [docs/TAILSCALE.md](docs/TAILSCALE.md).
 

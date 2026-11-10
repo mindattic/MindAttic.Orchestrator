@@ -214,10 +214,6 @@
                 <TextBlock x:Name="RamBadText" Text="{Binding RamBadText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRL}"
                            ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
                            Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <!-- Phone/desktop layout by hand (M.ORCH-T1560), for when the size check guessed wrong; it shows the layout a
-                     click switches to. -->
-                <mc:MaToggleIcon x:Name="LayoutToggle" OffGlyph="&#xE8EA;" OnGlyph="&#xE7F4;" Toggled="LayoutToggle_Toggled"
-                                 OffText="Switch to phone layout" OnText="Switch to desktop layout" />
                 <Button x:Name="TeamWallButton" Style="{StaticResource MaToolButton}" Content="&#xE716;" Click="TeamWallButton_Click"
                         ToolTip="Team Wall: everyone's live CLIs" AutomationProperties.Name="Team Wall" />
                 <Button x:Name="TicketsButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Command="{Binding OpenTicketsAppCommand}"

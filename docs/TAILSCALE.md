@@ -3,8 +3,7 @@
 Your Windows PC does the work: its RAM and CPU run every Claude CLI. Your phone is just the remote. Tailscale gets the phone
 to the PC from anywhere, without port forwarding (it works on an apartment or HOA network). Remote Desktop shows you the PC.
 The Orchestrator's phone layout (M.ORCH-T1543) fills the phone's screen with the CLI, with touch keys and a mic underneath.
-It switches on by itself when the window gets phone-narrow (M.ORCH-T1565), or by hand with the phone icon at the left of
-the dashboard's menu bar (M.ORCH-T1563); the layout is remembered.
+It switches on by itself whenever the window is phone-narrow or portrait, and off again when it widens.
 
 ## 1. Install the Orchestrator on the PC
 
@@ -62,8 +61,8 @@ Do these once, at the PC.
 
 ## 4. In bed
 
-Connect from Windows App Mobile and open the Orchestrator (it's on the desktop). Tap the phone icon at the left of the menu bar:
-the window maximizes to the phone's screen and shows the phone layout:
+Connect from Windows App Mobile and open the Orchestrator (it's on the desktop). It's maximized to the phone's screen and shows the
+phone layout:
 
 | Control | What it does |
 | --- | --- |
@@ -74,8 +73,8 @@ the window maximizes to the phone's screen and shows the phone layout:
 | `/voice` | starts Claude Code's own voice mode in the CLI |
 | Esc, Tab, ⇧Tab, arrows, ^C, Enter | the keys a phone keyboard lacks: answer menus, switch mode (⇧Tab), interrupt (^C) |
 
-When you're done, close Windows App Mobile instead of signing out, so your CLIs keep running. Back at the desk, tap the monitor
-icon in the same spot for the full dashboard; the window goes back to the size it was. A window opened at desk size is
+When you're done, close Windows App Mobile instead of signing out, so your CLIs keep running. Back at the desk the window widens
+and the full dashboard returns. A window opened at desk size is
 maximized to fit when you reconnect from the phone.
 
 ## If something goes wrong
