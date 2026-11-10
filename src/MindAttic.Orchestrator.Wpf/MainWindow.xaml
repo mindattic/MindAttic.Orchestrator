@@ -193,7 +193,25 @@
              tick (5s). Bound to the global login's tab in code-behind (MenuBarTools.DataContext = model), like OrgStrip:
              these five tools and the two readouts are the same regardless of which login's tab is shown. -->
         <Border x:Name="MenuBar" Style="{StaticResource MaStatusBar}" Grid.Row="0" Grid.ColumnSpan="2" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,0,1" Padding="12,8,12,8">
-            <StackPanel x:Name="MenuBarTools" Orientation="Horizontal" HorizontalAlignment="Right" AutomationProperties.Name="Window tools and host status">
+            <Grid x:Name="MenuBarRow">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <!-- The phone layout's who and which CLI (M.ORCH-T1568), top left: it hides the person sidebar and the CLI tab strip,
+                 so a person picker (the global login's tab's, like the sidebar: PersonPicker.DataContext = model) and that
+                 person's CLIs (the shown tab's) take their place. Collapsed on the desktop (MainWindow.Compact.cs shows it). -->
+            <Grid x:Name="PhonePickers" Grid.Column="0" Visibility="Collapsed" Margin="{StaticResource SpaceRS}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MaxWidth="180" />
+                    <ColumnDefinition Width="*" MaxWidth="220" />
+                </Grid.ColumnDefinitions>
+                <mc:MaPicker x:Name="PersonPicker" Grid.Column="0" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding StripSelection}"
+                             DisplayMemberPath="TabTitle" Margin="{StaticResource SpaceRS}" AutomationProperties.Name="Person" />
+                <mc:MaPicker x:Name="CliPicker" Grid.Column="1" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
+                             DisplayMemberPath="Title" Placeholder="No CLIs open" AutomationProperties.Name="CLI" />
+            </Grid>
+            <StackPanel x:Name="MenuBarTools" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" AutomationProperties.Name="Window tools and host status">
                 <!-- Allocation paused globally (the orchestrator settings allocate switch off, M.ORCH-T1491): in MaWarn like the memory
                      guard's held readout, shown only while the master switch is off, so a CLI's /allocate handing out nothing
                      is never silent. -->
@@ -226,6 +244,7 @@
                         ToolTip="Wind down: /allocate off and pacing off for every CLI across every login, each finishing its own subagents first"
                         AutomationProperties.Name="Wind down every CLI" />
             </StackPanel>
+            </Grid>
         </Border>
 
         <!-- Top-aligned with a star middle row (M.ORCH-T1431): the tools sit right under the last login, and a list too long for

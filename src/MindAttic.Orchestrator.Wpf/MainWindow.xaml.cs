@@ -53,6 +53,8 @@ public partial class MainWindow : Window
         // the same Team Wall/Tickets/Logins/Settings/Wind down/theme toggle and the same C: free space and RAM reading,
         // regardless of which login's tab is shown.
         MenuBarTools.DataContext = model;
+        // The phone layout's person picker (M.ORCH-T1568) is the person sidebar's stand-in: the global login's tab's too.
+        PersonPicker.DataContext = model;
         Root.SizeChanged += (_, _) => SizeTerminalRow();
         TerminalFrame.IsVisibleChanged += (_, _) => SizeTerminalRow();
         // AgentsBody's own height can change without Root's (e.g. TerminalsPanel's tab strip showing or hiding above it),

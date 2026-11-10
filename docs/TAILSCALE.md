@@ -66,7 +66,7 @@ phone layout:
 
 | Control | What it does |
 | --- | --- |
-| CLI tabs (top) | switch between your CLIs |
+| Person and CLI dropdowns (top left) | pick whose CLIs you're looking at, then which of their CLIs |
 | The terminal | the CLI itself, full screen; scroll down for usage, the queue and the rest of the dashboard |
 | Mic | opens Windows voice typing on the say box: talk, and your words land in it |
 | Say box + **Send** | sends what's in the box to the CLI as one prompt and submits it (Enter does too) |
