@@ -470,30 +470,24 @@ public partial class MainWindow : Window
     // M.ORCH-T770/T775's glow-pulse animation (GlowColor/Pulse) was superseded by the boxed status badges (M.ORCH-T1173/T1270)
     // and had no caller left anywhere in the project; removed as dead code (M.ORCH-T1406).
 
-    /// <summary>How much of <see cref="AgentsBody"/>'s own viewport <see cref="SizeTerminalRow"/> leaves below
-    /// <see cref="TerminalFrame"/>, so it reads as a real, wheel-scrollable viewport rather than a terminal that exactly fills
-    /// the window with nothing suggesting there's more underneath (M.ORCH-T1268, M.ORCH-T1072, M.ORCH-T1166, M.ORCH-T1209 all
-    /// wrestled with sizing that sliver before M.ORCH-T1302 moved the terminal back into the scrolling body itself).</summary>
-    private const double AgentsBodyScrollHandle = 24;
-
     /// <summary>The terminal's floor while it shows: never shorter than this even in a short window.</summary>
     private const double TerminalRowMinHeight = 160;
 
-    /// <summary>Sizes <see cref="TerminalFrame"/>, now a plain part of <see cref="AgentsBody"/>'s scrolling content
-    /// (M.ORCH-T1302, the fixed rows being just the login tabs and the CLI tab bar above it), to about AgentsBody's own
-    /// viewport height so it still fills the window's first screen the way M.ORCH-T1268 wanted, leaving
-    /// <see cref="AgentsBodyScrollHandle"/> showing below it to invite a scroll down to the 5-hour chart, right after it
-    /// (M.ORCH-T1319), and Tickets; floored at <see cref="TerminalRowMinHeight"/> so it never pinches thin in a short window. Hidden (no terminals
-    /// open on this login), its height is left alone (Auto, via its own Visibility binding) and it takes no room.</summary>
+    /// <summary>Sizes <see cref="TerminalFrame"/>, a plain part of <see cref="AgentsBody"/>'s content (M.ORCH-T1302), to
+    /// AgentsBody's whole viewport: since the stats and tickets moved to the Usage tab (M.ORCH-T1572, ShowsBody) there's
+    /// nothing under a CLI's terminal to scroll to, so the body doesn't scroll while one shows (no scroll bar) and the
+    /// terminal fills it exactly; floored at <see cref="TerminalRowMinHeight"/> so it never pinches thin in a short window.
+    /// Hidden (the Usage tab, or no terminals open on this login), the body scrolls again, over the charts and tickets.</summary>
     private void SizeTerminalRow()
     {
         try
         {
-            if (!TerminalFrame.IsVisible) return;
+            var shows = TerminalFrame.IsVisible;
+            AgentsBody.VerticalScrollBarVisibility = shows ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
+            if (!shows) return;
+            AgentsBody.ScrollToTop();
             var viewport = AgentsBody.ActualHeight;
-            // The phone layout (M.ORCH-T1543) gives the CLI the whole first screen: a swipe still reaches the rest.
-            var below = compact ? TerminalFrame.Margin.Top : AgentsBodyScrollHandle;
-            if (viewport > 0) TerminalFrame.Height = Math.Max(TerminalRowMinHeight, viewport - below);
+            if (viewport > 0) TerminalFrame.Height = Math.Max(TerminalRowMinHeight, viewport - TerminalFrame.Margin.Top - TerminalFrame.Margin.Bottom);
         }
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
     }

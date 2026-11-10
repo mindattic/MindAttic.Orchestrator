@@ -1392,6 +1392,11 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     /// isn't chosen over it.</summary>
     public bool ShowsTerminal => HasPanes && !usageShown;
 
+    /// <summary>Whether the page under the terminal area (the stats, the toolbar, the tickets) shows (M.ORCH-T1572): on the
+    /// Usage tab, or with no CLI open at all (no tab strip, so no Usage tab to reach them by), never under a CLI's terminal,
+    /// which then fills the page with nothing to scroll to.</summary>
+    public bool ShowsBody => !ShowsTerminal;
+
     private ICommand? showUsageCommand;
 
     /// <summary>Choosing the pinned Usage tab (M.ORCH-T1446, now a real item of the shared strip, M.ORCH-T1555): shows
@@ -1401,7 +1406,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     {
         if (usageShown) return;
         usageShown = true;
-        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal)); Raise(nameof(SelectedStripItem));
+        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal)); Raise(nameof(ShowsBody)); Raise(nameof(SelectedStripItem));
         SelectionChanged?.Invoke();
     });
 
@@ -1411,7 +1416,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     {
         if (!usageShown) return;
         usageShown = false;
-        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal)); Raise(nameof(SelectedStripItem));
+        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal)); Raise(nameof(ShowsBody)); Raise(nameof(SelectedStripItem));
         SelectionChanged?.Invoke();
     }
 
@@ -1478,7 +1483,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         }
         else if (cleared) SelectionChanged?.Invoke();
         Raise(nameof(HasPanes));
-        Raise(nameof(ShowsTerminal));
+        Raise(nameof(ShowsTerminal)); Raise(nameof(ShowsBody));
         Raise(nameof(Summary));
     }
 

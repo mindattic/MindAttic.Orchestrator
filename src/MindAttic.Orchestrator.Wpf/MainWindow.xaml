@@ -769,7 +769,10 @@
                 </StackPanel>
                 </Grid>
 
-                <StackPanel x:Name="AgentsBodyList">
+                <!-- Only on the Usage tab (or with no CLI open), never under a CLI's terminal (M.ORCH-T1572, ShowsBody): the
+                     terminal fills the page then, with no scroll bar. VirtualizedBody carries this binding over to the list
+                     that takes this panel's place. -->
+                <StackPanel x:Name="AgentsBodyList" Visibility="{Binding Terminals.ShowsBody, Converter={StaticResource Visible}}">
                 <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom under their fixed person tab and
                      terminal tabs (M.ORCH-T1302): the terminal and the 5-hour chart above, then their stats (the 5-hour
                      window, the week, their cutoffs and when Claude's meter was last read), the toolbar, the 5-hour chart and

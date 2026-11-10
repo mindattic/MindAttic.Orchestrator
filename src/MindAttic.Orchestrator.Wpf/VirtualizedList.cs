@@ -117,6 +117,9 @@ public sealed class VirtualizedBody
             ownScroll: isBodysOwnContent);
         host.ItemTemplate = RowTemplate;
         host.Margin = content.Margin;
+        // Shown and hidden as the panel it replaces was (M.ORCH-T1572: a person's page under their CLI shows only on Usage).
+        if (BindingOperations.GetBindingBase(content, UIElement.VisibilityProperty) is { } shown) host.SetBinding(UIElement.VisibilityProperty, shown);
+        else host.Visibility = content.Visibility;
         AutomationProperties.SetName(host, AutomationProperties.GetName(body));
         Bodies.Add(host, this);
         if (isBodysOwnContent) body.Content = host;
