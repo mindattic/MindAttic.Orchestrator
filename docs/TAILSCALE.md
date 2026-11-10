@@ -2,8 +2,8 @@
 
 Your Windows PC does the work: its RAM and CPU run every Claude CLI. Your phone is just the remote. Tailscale gets the phone
 to the PC from anywhere, without port forwarding (it works on an apartment or HOA network). Remote Desktop shows you the PC.
-On a phone-sized screen the Orchestrator switches to its phone layout (M.ORCH-T1543): the CLI fills the screen, with touch
-keys and a mic underneath.
+The Orchestrator's phone layout (M.ORCH-T1543) fills the phone's screen with the CLI, with touch keys and a mic underneath.
+Switch to it with the phone icon at the left of the dashboard's menu bar (M.ORCH-T1563); the choice is remembered.
 
 ## 1. Install the Orchestrator on the PC
 
@@ -53,12 +53,15 @@ Do these once, at the PC.
 2. Install Microsoft's **Windows App** (iPhone, iPad, Android, Mac). Add a PC:
    - **PC name**: the Tailscale name, or the 100.x address.
    - **User**: `MicrosoftAccount\<your-email>`, and your Microsoft account password.
-   - **Display**: resolution matched to the device, so Windows is phone-sized and the Orchestrator pivots to its phone layout.
+   - **Display**: resolution matched to the device, so Windows itself is phone-sized. Tailscale only carries the
+     connection; this setting is what makes the desktop fit the phone. Without it the whole PC-sized desktop is shrunk
+     onto the phone and everything is tiny.
    - **Device & audio redirection**: turn on the **Microphone**, so the PC hears you.
 
 ## 4. In bed
 
-Connect from the Windows App and open the Orchestrator (it's on the desktop). Narrow or portrait, it shows the phone layout:
+Connect from the Windows App and open the Orchestrator (it's on the desktop). Tap the phone icon at the left of the menu bar:
+the window maximizes to the phone's screen and shows the phone layout:
 
 | Control | What it does |
 | --- | --- |
@@ -69,8 +72,9 @@ Connect from the Windows App and open the Orchestrator (it's on the desktop). Na
 | `/voice` | starts Claude Code's own voice mode in the CLI |
 | Esc, Tab, ⇧Tab, arrows, ^C, Enter | the keys a phone keyboard lacks: answer menus, switch mode (⇧Tab), interrupt (^C) |
 
-When you're done, close the Windows App instead of signing out, so your CLIs keep running. Back at the desk the window widens
-and the full dashboard returns. A window opened at desk size is maximized to fit when you reconnect from the phone.
+When you're done, close the Windows App instead of signing out, so your CLIs keep running. Back at the desk, tap the monitor
+icon in the same spot for the full dashboard; the window goes back to the size it was. A window opened at desk size is
+maximized to fit when you reconnect from the phone.
 
 ## If something goes wrong
 

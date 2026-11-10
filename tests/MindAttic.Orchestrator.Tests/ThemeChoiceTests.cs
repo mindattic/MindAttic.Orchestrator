@@ -126,17 +126,16 @@ public sealed class ThemeChoiceTests
     [Test]
     public void The_layout_toggles_choice_is_saved_and_keeps_every_other_setting()
     {
-        // M.ORCH-T1562: the menu bar's phone/desktop toggle (M.ORCH-T1560) holds across restarts.
+        // M.ORCH-T1562: the menu bar's phone/desktop toggle (M.ORCH-T1560) holds across restarts; since M.ORCH-T1563 it alone
+        // decides, the window's size no longer does.
         var store = Store();
         store.SaveSettings(store.LoadSettingsToChange() with { Theme = "Light", WarnPercent = 61 });
-        Assert.That(MainWindow.SavedLayout(store), Is.Null, "the size decides until it's toggled");
+        Assert.That(MainWindow.SavedLayout(store), Is.False, "the desktop layout until it's toggled");
 
         Assert.That(MainWindow.SaveLayout(store, true), Is.True);
         Assert.That(MainWindow.SavedLayout(Store()), Is.True);
         Assert.That(MainWindow.SaveLayout(store, false), Is.True);
         Assert.That(MainWindow.SavedLayout(Store()), Is.False);
-        Assert.That(MainWindow.SaveLayout(store, null), Is.True);
-        Assert.That(MainWindow.SavedLayout(Store()), Is.Null, "released once the size agrees");
 
         var s = store.LoadSettings();
         Assert.That((s.Theme, s.WarnPercent), Is.EqualTo(("Light", 61)));

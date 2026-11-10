@@ -7,48 +7,33 @@ using System.Windows.Threading;
 namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
-/// The phone layout (M.ORCH-T1543): a window narrower than <see cref="CompactBelow"/>, or portrait and narrower than
-/// <see cref="CompactPortraitBelow"/> (a Remote Desktop session sized to a phone, over Tailscale), drops the people sidebar,
-/// the status bar and the host readouts, lets the chosen CLI fill the first screen, and shows <see cref="TouchBar"/>'s keys a
-/// phone keyboard lacks. Widening the window puts the desktop layout back exactly as it was. Only properties the XAML doesn't
-/// bind are changed, and each one's own value is put back.
+/// The phone layout (M.ORCH-T1543), for a Remote Desktop session from a phone over Tailscale: drops the people sidebar, the
+/// status bar and the host readouts, maximizes the window so it fills the phone's screen, lets the chosen CLI fill the first
+/// screen, and shows <see cref="TouchBar"/>'s keys a phone keyboard lacks. Only the menu bar's <see cref="LayoutToggle"/>
+/// switches it (M.ORCH-T1563; no longer the window's size), and the choice is saved
+/// (<see cref="Settings.OrchestratorSettings.Layout"/>), so it holds across restarts. Leaving it puts the desktop layout back
+/// exactly as it was. Only properties the XAML doesn't bind are changed, and each one's own value is put back.
 /// </summary>
 public partial class MainWindow
 {
-    internal const double CompactBelow = 760;
-    internal const double CompactPortraitBelow = 1000;
-
-    /// <summary>How far past a breakpoint the window must widen to leave the phone layout, so a drag across it doesn't flicker.</summary>
-    internal const double CompactHysteresis = 40;
-
     private readonly Dictionary<(DependencyObject, DependencyProperty), object> desktopValues = [];
     private bool compact;
 
-    /// <summary>The layout chosen with <see cref="LayoutToggle"/> (M.ORCH-T1560), null while the window's size decides. It holds,
-    /// across restarts too (saved as <see cref="Settings.OrchestratorSettings.Layout"/>, M.ORCH-T1562), until a resize makes the
-    /// size check agree with it; from then on the size decides again.</summary>
-    private bool? chosenCompact;
+    /// <summary>The window's state before the phone layout maximized it, put back on leaving it.</summary>
+    private WindowState desktopState = WindowState.Normal;
 
-    /// <summary>The saved layout choice: true for the phone layout, false for the desktop's, null for none.</summary>
-    internal static bool? SavedLayout(Settings.JsonStore store)
+    /// <summary>The saved layout choice: true for the phone layout, false (the default) for the desktop's.</summary>
+    internal static bool SavedLayout(Settings.JsonStore store)
     {
-        try
-        {
-            return store.LoadSettings().Layout switch
-            {
-                "Phone" => true,
-                "Desktop" => false,
-                _ => null,
-            };
-        }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { return null; }
+        try { return store.LoadSettings().Layout == "Phone"; }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { return false; }
     }
 
-    /// <summary>Saves <paramref name="choice"/> as the layout choice; false when the settings can't be written (it still holds
+    /// <summary>Saves <paramref name="phone"/> as the layout choice; false when the settings can't be written (it still holds
     /// for this run).</summary>
-    internal static bool SaveLayout(Settings.JsonStore store, bool? choice)
+    internal static bool SaveLayout(Settings.JsonStore store, bool phone)
     {
-        var value = choice switch { true => "Phone", false => "Desktop", null => null };
+        var value = phone ? "Phone" : "Desktop";
         try
         {
             var settings = store.LoadSettingsToChange();
@@ -58,26 +43,16 @@ public partial class MainWindow
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException)
         {
-            OrchestratorLog.For("Dashboard").Warning(ex, "Couldn't save the {Layout} layout", value ?? "size-chosen");
+            OrchestratorLog.For("Dashboard").Warning(ex, "Couldn't save the {Layout} layout", value);
             return false;
         }
-    }
-
-    /// <summary>Whether the window fits the phone layout at <paramref name="width"/> x <paramref name="height"/> (device-independent
-    /// pixels), given whether it is in it <paramref name="now"/>.</summary>
-    internal static bool WantsCompact(double width, double height, bool now)
-    {
-        if (width <= 0 || height <= 0) return now;
-        var slack = now ? CompactHysteresis : 0;
-        return width < CompactBelow + slack || (height > width && width < CompactPortraitBelow + slack);
     }
 
     internal bool IsCompact => compact;
 
     private void AttachCompactLayout()
     {
-        chosenCompact = SavedLayout(model.Store);
-        SizeChanged += (_, _) => ApplyCompact();
+        Loaded += (_, _) => ApplyCompact(SavedLayout(model.Store));
         // Reconnecting Remote Desktop from a phone shrinks the display under a window sized for the desk: it would hang off the
         // screen, so it's maximized to whatever the display is now.
         Loaded += (_, _) => FitToScreen();
@@ -96,24 +71,21 @@ public partial class MainWindow
 
     private void LayoutToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        chosenCompact = LayoutToggle.IsChecked;
-        SaveLayout(model.Store, chosenCompact);
-        ApplyCompact();
+        SaveLayout(model.Store, LayoutToggle.IsChecked);
+        ApplyCompact(LayoutToggle.IsChecked);
     }
 
-    private void ApplyCompact()
+    private void ApplyCompact(bool want)
     {
-        var bySize = WantsCompact(ActualWidth, ActualHeight, compact);
-        // Only a real size releases the choice: a window not yet measured (0 x 0) says nothing about where it's shown.
-        if (chosenCompact == bySize && ActualWidth > 0 && ActualHeight > 0)
-        {
-            chosenCompact = null;
-            SaveLayout(model.Store, null);
-        }
-        var want = chosenCompact ?? bySize;
         LayoutToggle.SetCurrentValue(Components.Wpf.Controls.MaToggleIcon.IsCheckedProperty, want);
         if (want == compact) return;
         compact = want;
+        if (compact)
+        {
+            desktopState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
+            WindowState = WindowState.Maximized;
+        }
+        else WindowState = desktopState;
         Hold(Sidebar, VisibilityProperty, Visibility.Collapsed);
         Hold(StatusBar, VisibilityProperty, Visibility.Collapsed);
         Hold(TouchBar, VisibilityProperty, Visibility.Visible);
