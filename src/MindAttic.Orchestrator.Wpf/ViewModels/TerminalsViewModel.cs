@@ -1292,7 +1292,37 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     private TerminalPaneViewModel? selected;
     private bool usageShown;
 
-    public PersonTerminalsViewModel(TerminalsViewModel all) => this.all = all;
+    public PersonTerminalsViewModel(TerminalsViewModel all)
+    {
+        this.all = all;
+        Panes.CollectionChanged += (_, e) => MirrorStrip(e);
+    }
+
+    /// <summary>The CLI tab strip's items (M.ORCH-T1569): the pinned <see cref="UsageTab"/>, then <see cref="Panes"/>, kept in
+    /// step with them. A plain view-model list the strip binds to like any other, in place of a XAML CompositeCollection whose
+    /// <c>{Binding Terminals.Panes}</c> container had no data context of its own to inherit, so it could lose its panes (as
+    /// it did crossing into the phone layout and back), leaving only the Usage tab.</summary>
+    public ObservableCollection<object> StripItems { get; } = [UsageTab];
+
+    private void MirrorStrip(System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        switch (e.Action)
+        {
+            case System.Collections.Specialized.NotifyCollectionChangedAction.Add when e.NewItems is { Count: 1 }:
+                StripItems.Insert(e.NewStartingIndex + 1, e.NewItems[0]!);
+                break;
+            case System.Collections.Specialized.NotifyCollectionChangedAction.Remove when e.OldItems is { Count: 1 }:
+                StripItems.RemoveAt(e.OldStartingIndex + 1);
+                break;
+            case System.Collections.Specialized.NotifyCollectionChangedAction.Move when e.NewItems is { Count: 1 }:
+                StripItems.Move(e.OldStartingIndex + 1, e.NewStartingIndex + 1);
+                break;
+            default:
+                while (StripItems.Count > 1) StripItems.RemoveAt(StripItems.Count - 1);
+                foreach (var pane in Panes) StripItems.Add(pane);
+                break;
+        }
+    }
 
     /// <summary>The pinned Usage tab's identity in the shared strip (M.ORCH-T1555, <c>mc:MaTabControl</c>, the same
     /// library control the Launcher and CLI tabs already use): a single shared instance, never one of <see cref="Panes"/>,
@@ -1307,11 +1337,6 @@ public sealed class PersonTerminalsViewModel : ObservableObject
 
     /// <summary>The one shared Usage tab marker; see <see cref="UsageTabMarker"/>.</summary>
     public static readonly UsageTabMarker UsageTab = new();
-
-    /// <summary>What the strip's <c>ItemsSource</c> leads with (a <c>CompositeCollection</c> in XAML appends each
-    /// person's own <see cref="Panes"/> after this): a fixed single-item list, since the pinned Usage tab is shared,
-    /// never added to or removed from.</summary>
-    public static readonly IReadOnlyList<object> UsageItems = [UsageTab];
 
     /// <summary>This person's terminals, in the order they opened.</summary>
     public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];

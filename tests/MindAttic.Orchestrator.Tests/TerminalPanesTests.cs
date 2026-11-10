@@ -450,11 +450,9 @@ public sealed class TerminalPanesTests
         // No side margin of its own: the page body's 24px gutters place the CLI in line with the CLI tab bar (M.ORCH-T1326 keeps
         // those gutters on a person's page); a margin here would double them or push it off the page (M.ORCH-T1321).
         Assert.That((string?)Named("TerminalFrame").Attribute("Margin"), Is.EqualTo("{StaticResource SpaceTS}"));
-        // M.ORCH-T1555: ItemsSource is a CompositeCollection now (the pinned Usage tab leads Terminals.Panes), not a plain
-        // attribute binding; see The_pinned_Usage_tab_sits_first_inside_the_shared_tab_control for its own shape.
-        var itemsSource = Named("TerminalTabs").Elements().Single(e => e.Name.LocalName == "MaTabControl.ItemsSource");
-        var panesContainer = itemsSource.Descendants().Single(e => e.Name.LocalName == "CollectionContainer" && ((string?)e.Attribute("Collection"))?.Contains("Terminals.Panes") == true);
-        Assert.That((string?)panesContainer.Attribute("Collection"), Is.EqualTo("{Binding Terminals.Panes}"));
+        // M.ORCH-T1569: a plain binding to the view model's strip list (the pinned Usage tab, then Terminals.Panes); see
+        // The_pinned_Usage_tab_sits_first_inside_the_shared_tab_control for its own shape.
+        Assert.That((string?)Named("TerminalTabs").Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.StripItems}"));
         Assert.That(Named("TerminalPanesHost").Parent, Is.SameAs(Named("TerminalFrame")));
     }
 
@@ -475,12 +473,9 @@ public sealed class TerminalPanesTests
         XElement Named(string name) => xaml.Descendants().Single(e => (string?)e.Attribute(x + "Name") == name);
 
         var tabs = Named("TerminalTabs");
-        var itemsSource = tabs.Elements().Single(e => e.Name.LocalName == "MaTabControl.ItemsSource");
-        var composite = itemsSource.Elements().Single(e => e.Name.LocalName == "CompositeCollection");
-        var containers = composite.Elements().Where(e => e.Name.LocalName == "CollectionContainer").ToList();
-        Assert.That(containers, Has.Count.EqualTo(2));
-        Assert.That((string?)containers[0].Attribute("Collection"), Is.EqualTo("{x:Static vm:PersonTerminalsViewModel.UsageItems}"), "the pinned Usage tab leads the strip");
-        Assert.That((string?)containers[1].Attribute("Collection"), Is.EqualTo("{Binding Terminals.Panes}"), "the real CLI/Launcher tabs follow it");
+        // M.ORCH-T1569: no XAML CompositeCollection (its {Binding} container could lose its panes); the view model's own list.
+        Assert.That((string?)tabs.Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.StripItems}"));
+        Assert.That(tabs.Descendants().Any(e => e.Name.LocalName == "CompositeCollection"), Is.False);
 
         var containerStyle = tabs.Elements().Single(e => e.Name.LocalName == "MaTabControl.ItemContainerStyle").Elements().Single(e => e.Name.LocalName == "Style");
         var usageTrigger = containerStyle.Descendants().Single(e => e.Name.LocalName == "DataTrigger");

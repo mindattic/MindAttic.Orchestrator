@@ -444,8 +444,9 @@
                          (M.ORCH-T1555): Usage used to be a separate MaTabItem bolted on beside this ScrollViewer, unclosable
                          and titleless but otherwise not a real part of this control, wired with its own MouseLeftButtonDown/
                          KeyDown handlers (M.ORCH-T1446) - clicking it depended on those handlers firing instead of the
-                         control's own selection, which is what left it inert. It's now the first item of a CompositeCollection
-                         (PersonTerminalsViewModel.UsageItems, a fixed single-item list, ahead of Terminals.Panes), and
+                         control's own selection, which is what left it inert. It's now the first item of
+                         Terminals.StripItems (the Usage tab, then Terminals.Panes, kept in step in the view model, M.ORCH-T1569:
+                         the XAML CompositeCollection it replaced could lose its panes, leaving Usage alone in the strip), and
                          SelectedItem binds to SelectedStripItem (either UsageTab or a real pane) instead of SelectedPane
                          alone. Both the item container's own look (ItemContainerStyle below) and its header
                          (ItemTemplate below) are one shared, unkeyed Style/DataTemplate with a DataTrigger that switches
@@ -458,15 +459,9 @@
                          can never be dragged and nothing can be dropped before it. TerminalTabs_Reordered applies and
                          persists the move via PersonTerminalsViewModel.Reorder. -->
                     <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ContextMenuOpening="OnTerminalTabContextMenu"
-                                     SelectedItem="{Binding Terminals.SelectedStripItem}"
+                                     ItemsSource="{Binding Terminals.StripItems}" SelectedItem="{Binding Terminals.SelectedStripItem}"
                                      AllowReorder="True" Reordered="TerminalTabs_Reordered"
                                      AutomationProperties.Name="Terminals" AutomationProperties.HelpText="{Binding Terminals.Summary}">
-                        <mc:MaTabControl.ItemsSource>
-                            <CompositeCollection>
-                                <CollectionContainer Collection="{x:Static vm:PersonTerminalsViewModel.UsageItems}" />
-                                <CollectionContainer Collection="{Binding Terminals.Panes}" />
-                            </CompositeCollection>
-                        </mc:MaTabControl.ItemsSource>
                         <mc:MaTabControl.ItemContainerStyle>
                             <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
                                 <Setter Property="Accent" Value="{Binding TabBrush}" />
