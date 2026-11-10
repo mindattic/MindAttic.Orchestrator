@@ -64,13 +64,7 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
     public static AccountMove Default(AccountDirs? dirs = null, BillingSwitch? billing = null, Settings.JsonStore? store = null)
     {
         var d = dirs ?? new AccountDirs();
-        return new AccountMove(d, billing) { GlobalSignedIn = () => IsSignedIn(d.HomeConfigPath), Locks = new MoveLocks(store ?? new Settings.JsonStore()) };
-    }
-
-    private static bool IsSignedIn(string configPath)
-    {
-        try { return ClaudeAccount.Current(configPath) is { } a && a != ClaudeAccount.ApiKey; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return false; }
+        return new AccountMove(d, billing) { GlobalSignedIn = () => d.GlobalSignedIn, Locks = new MoveLocks(store ?? new Settings.JsonStore()) };
     }
 
     /// <summary>

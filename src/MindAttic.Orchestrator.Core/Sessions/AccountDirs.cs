@@ -132,6 +132,19 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
     /// <summary>The accounts a CLI can run on now: a Claude login is signed in to in its folder.</summary>
     public IReadOnlyList<AccountDir> SignedIn() => [.. All().Where(a => a.SignedIn)];
 
+    /// <summary>Whether the global login (<see cref="HomeConfigPath"/>) is signed in to a Claude account, not the API key.</summary>
+    public bool GlobalSignedIn
+    {
+        get
+        {
+            try { return ClaudeAccount.Current(HomeConfigPath) is { } a && a != ClaudeAccount.ApiKey; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return false; }
+        }
+    }
+
+    /// <summary>Whether any Claude account is signed in here at all, the global login or one of its own (M.ORCH-T1545).</summary>
+    public bool AnySignedIn => GlobalSignedIn || SignedIn().Count > 0;
+
     /// <summary>The account folder <paramref name="configDir"/> (a <c>CLAUDE_CONFIG_DIR</c>) is; null when it's unset, the global
     /// <c>~/.claude</c>, or anything that isn't one of these.</summary>
     public AccountDir? Of(string? configDir)

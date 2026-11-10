@@ -185,6 +185,8 @@ public partial class App : Application
         var retired = DashboardWindow.RetireHiddenCopies(self);
         if (retired > 0) log.Information("Asked {Count} dashboard(s) an older build left hidden in the tray to exit", retired);
 
+        // A new user's PC (M.ORCH-T1545): tools, GitHub, workspace and a Claude account, one button each, before the dashboard.
+        if (!MachineRole.Current.IsClient && WelcomeWindow.Needed()) WelcomeWindow.Run(log);
         if (!EnsureWorkspace(log)) { Shutdown(); return; }
 
         if (!dev) RepairSetup(installer, self, log);
@@ -419,7 +421,7 @@ public partial class App : Application
     /// The one question setup can't answer itself, asked only when the workspace folder is missing or
     /// empty: build one here (clone everything from GitHub), or point at one that already exists.
     /// </summary>
-    private static bool EnsureWorkspace(Serilog.ILogger log)
+    internal static bool EnsureWorkspace(Serilog.ILogger log)
     {
         var store = new JsonStore();
         var root = OrchestratorOptions.Load(store).WorkspaceRoot;
