@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
@@ -660,6 +661,10 @@ public sealed class TerminalsViewModel : ObservableObject
 
     public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];
 
+    /// <summary>How long showing a newly-chosen pane may take, past the click itself, before it's logged (M.ORCH-T1537):
+    /// generous, so only a real stall is noisy.</summary>
+    private static readonly TimeSpan SlowShowThreshold = TimeSpan.FromMilliseconds(300);
+
     /// <summary>The one terminal on screen, the shown person's chosen one; null shows none.</summary>
     public TerminalPaneViewModel? SelectedPane
     {
@@ -672,12 +677,24 @@ public sealed class TerminalsViewModel : ObservableObject
             selected = value;
             if (selected is not null)
             {
+                // Timed (M.ORCH-T1537): Select()'s own Stopwatch (MainViewModel.Tabs.cs) never fires, which clears the
+                // synchronous click path - raising IsSelected/Visibility is cheap, WPF just schedules a later layout/render
+                // pass for it. What that pass (or the GPU terminal control's own catch-up, Microsoft.Terminal.Wpf, after
+                // sitting Hidden) actually costs has no timing at all today. Queued at Render priority, after whatever
+                // layout/paint work the Visibility flip below just queued, as a best-effort proxy for "shown for real".
+                var clock = Stopwatch.StartNew();
+                var shown = selected;
                 selected.IsSelected = true;
                 // Switching tabs (or opening one) should hand the keyboard straight to the CLI now on screen, not
                 // leave it wherever it last was (e.g. the tab strip itself): queued past the Visibility flip
                 // above, since the terminal's native window isn't actually shown until that layout pass runs.
                 var pane = selected;
                 pane.Control.Dispatcher.InvokeAsync(() => { if (ReferenceEquals(selected, pane)) pane.Control.Focus(); }, DispatcherPriority.Input);
+                pane.Control.Dispatcher.InvokeAsync(() =>
+                {
+                    if (!ReferenceEquals(selected, shown) || clock.Elapsed <= SlowShowThreshold) return;
+                    OrchestratorLog.For("Terminals").Warning("Showing {Title:l}'s tab took {Ms}ms", shown.Title, clock.ElapsedMilliseconds);
+                }, DispatcherPriority.Render);
             }
             Raise();
         }
