@@ -70,8 +70,10 @@ A Windows daemon, dashboard and CLI that keeps Claude agents working the workspa
 
 You need Windows and Claude Code. The released exe is self-contained, so no .NET install is needed to run it.
 
-1. Double-click `MindAttic.Orchestrator.Desktop.exe`.
-2. If the workspace (default `D:\Projects\MindAttic`) is missing, pick **build one** or **point at one that's already here**.
+1. Download `MindAttic.Orchestrator.Desktop.exe` from [Releases](https://github.com/mindattic/MindAttic.Orchestrator/releases) and double-click it.
+2. On a new PC the **Welcome** window (M.ORCH-T1545) takes you through the rest, one button each: the tools (git, the GitHub
+   CLI, Claude Code), GitHub sign-in, the workspace (default `D:\Projects\MindAttic`: build one or point at one), and your
+   Claude account's sign-in.
 3. The dashboard opens, scans every repo and learns your limits from the last month of transcripts.
 4. In any Claude CLI inside a repo, type `/allocate` to have it work that repo's tickets.
 
@@ -192,6 +194,13 @@ To keep the daemon, the CLIs and their builds off your own PC, run them on a Win
 prints one `orchestrator machine connect ...` line. Run that line on the PC, and its dashboard becomes the VM's live Team
 Wall. From then on, `orchestrator machine pull` brings the agents' newest code to the PC. See
 [docs/REMOTE_HOST.md](docs/REMOTE_HOST.md).
+
+## From your phone
+
+Reach the PC from anywhere with Tailscale and Remote Desktop (Microsoft's Windows App, microphone redirected). On a narrow or
+portrait screen the dashboard switches to its phone layout (M.ORCH-T1543): the CLI fills the screen, with touch keys (Esc, Tab,
+Shift+Tab, arrows, Ctrl+C, Enter), a mic that opens Windows voice typing on a say box, Send, and `/voice` (M.ORCH-T1544).
+Setup, step by step: [docs/TAILSCALE.md](docs/TAILSCALE.md).
 
 ## Install
 
