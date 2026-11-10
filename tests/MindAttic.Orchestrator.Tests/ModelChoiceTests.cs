@@ -184,7 +184,8 @@ public sealed class ModelChoiceTests
             p => { prompts.Add(p); return (true, "LGTM"); }, _ => "main");
 
         Assert.That(done.Reviewed, Is.True, done.Text);
-        Assert.That(gitCalls, Does.Contain("log --format=%H --fixed-strings --grep=A-T1 origin/main..HEAD")
+        // The ticket id as a whole id (M.ORCH-T1573): a --fixed-strings grep for A-T1 also took A-T12's commits.
+        Assert.That(gitCalls, Does.Contain("log --format=%H --extended-regexp --grep=(^|[^A-Za-z0-9])A-T1([^0-9]|$) origin/main..HEAD")
             .And.Contain("show --format= --numstat aaa111 bbb222").And.Contain("show --format= aaa111 bbb222"));
         Assert.That(gitCalls, Has.None.Contains("origin/main...HEAD"), "never everything past origin/main");
         Assert.That(prompts.Single(), Does.Contain("+mine"));
