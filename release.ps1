@@ -81,6 +81,13 @@ Write-Host "Copying the tickets tool from $($tickets.DirectoryName)" -Foreground
 robocopy $tickets.DirectoryName (Join-Path $stage 'Tickets') /E /NFL /NDL /NJH /NJS /NP /XF *.pdb | Out-Null
 if ($LASTEXITCODE -ge 8) { throw 'Copying the tickets tool failed.' }
 
+# The settings cog opens MindAttic.Vault.Desktop (VaultDesktopContract.DefaultExePath: %LOCALAPPDATA%\MindAttic\Vault.Desktop).
+$vault = Join-Path $env:LOCALAPPDATA 'MindAttic\Vault.Desktop'
+if (-not (Test-Path (Join-Path $vault 'MindAttic.Vault.Desktop.Wpf.exe'))) { throw "No installed Vault.Desktop at $vault." }
+Write-Host "Copying Vault.Desktop from $vault" -ForegroundColor Cyan
+robocopy $vault (Join-Path $stage 'Vault.Desktop') /E /NFL /NDL /NJH /NJS /NP /XF *.pdb *.stale-* | Out-Null
+if ($LASTEXITCODE -ge 8) { throw 'Copying Vault.Desktop failed.' }
+
 # The installer a new user runs. The Orchestrator goes where its Desktop exe installs itself (Core's Installer: C:\Apps when
 # writable, else per-user Programs); the Launcher where the Orchestrator looks for it (OrchestratorOptions.LauncherExe); the
 # tickets tool beside the Orchestrator with a shim on the user's PATH. Then the dashboard opens on its Welcome window.
@@ -99,6 +106,11 @@ foreach ($name in 'MindAttic.Orchestrator', 'MindAttic.Launcher') {
     robocopy (Join-Path $here $name) (Join-Path $Apps $name) /E /NFL /NDL /NJH /NJS /NP | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "Copying $name failed." }
 }
+$vaultDir = if ($DryRun) { Join-Path $Apps 'Vault.Desktop' } else { Join-Path $env:LOCALAPPDATA 'MindAttic\Vault.Desktop' }
+Get-Process 'MindAttic.Vault.Desktop.Wpf' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$vaultDir\*" } | Stop-Process -Force
+Write-Host "Installing Vault.Desktop (settings) into $vaultDir" -ForegroundColor Cyan
+robocopy (Join-Path $here 'Vault.Desktop') $vaultDir /E /NFL /NDL /NJH /NJS /NP | Out-Null
+if ($LASTEXITCODE -ge 8) { throw 'Copying Vault.Desktop failed.' }
 $ticketsDir = Join-Path $orchestrator 'Tickets'
 robocopy (Join-Path $here 'Tickets') $ticketsDir /E /NFL /NDL /NJH /NJS /NP | Out-Null
 $bin = Join-Path $orchestrator 'bin'
