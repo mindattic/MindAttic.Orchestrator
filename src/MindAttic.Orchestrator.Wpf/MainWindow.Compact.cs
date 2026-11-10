@@ -64,12 +64,9 @@ public partial class MainWindow
         Hold(Sidebar, VisibilityProperty, Visibility.Collapsed);
         Hold(StatusBar, VisibilityProperty, Visibility.Collapsed);
         Hold(TouchBar, VisibilityProperty, Visibility.Visible);
-        // Who and which CLI as two pickers at the top left (M.ORCH-T1568), in place of the sidebar and the CLI tab strip (its
-        // Visibility is bound to whether there are any CLIs, so MaxHeight hides it instead).
+        // Who, as a picker at the top left in place of the sidebar (M.ORCH-T1568); the CLI tab strip stays, the row under it
+        // (M.ORCH-T1571). The readouts and status bar it hides are a wrapped line in the touch bar (PhoneStatus, M.ORCH-T1570).
         Hold(PhonePickers, VisibilityProperty, Visibility.Visible);
-        // The readouts and status bar it hides, as one wrapped line (M.ORCH-T1570).
-        Hold(PhoneStatus, VisibilityProperty, Visibility.Visible);
-        Hold(TerminalTabStripRow, MaxHeightProperty, 0d);
         // MaxWidth, not Visibility: their Visibility is bound to whether they have anything to say.
         foreach (var readout in new FrameworkElement[] { AllocatePausedText, DiskFreeText, RamUtilizationText, RamWarnText, RamBadText })
             Hold(readout, MaxWidthProperty, 0d);

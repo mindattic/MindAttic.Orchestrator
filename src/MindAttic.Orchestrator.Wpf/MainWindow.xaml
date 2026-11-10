@@ -198,56 +198,21 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <!-- The phone layout's who and which CLI (M.ORCH-T1568), top left: it hides the person sidebar and the CLI tab strip,
-                 so a person picker (the global login's tab's, like the sidebar: PersonPicker.DataContext = model) and that
-                 person's CLIs (the shown tab's) take their place. Collapsed on the desktop (MainWindow.Compact.cs shows it).
-                 Everything else those held stays in reach (M.ORCH-T1570): the menu button opens the sidebar itself as a drawer
-                 (orgs, every person with their badges and right-click menu, their ticket cards), the CLI list leads with the
-                 Usage tab, and the … button opens the CLI tab's own right-click menu (rename, close, move, undock and dock,
-                 copy PID, pop out, broadcast). -->
+            <!-- The phone layout's first row (M.ORCH-T1568, M.ORCH-T1571): who, top left, with the tools staying top right; the
+                 shown person's own CLI tab strip (scroll arrows and all) is the row under it, as on the desktop. The person
+                 picker is the global login's tab's, like the sidebar (PersonPicker.DataContext = model). The menu button opens
+                 the sidebar itself as a drawer (M.ORCH-T1570: orgs, every person with their badges and right-click menu, their
+                 ticket cards). Collapsed on the desktop (MainWindow.Compact.cs shows it). -->
             <Grid x:Name="PhonePickers" Grid.Column="0" Visibility="Collapsed" Margin="{StaticResource SpaceRS}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" MaxWidth="180" />
                     <ColumnDefinition Width="*" MaxWidth="220" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Button x:Name="DrawerButton" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE700;" Click="DrawerButton_Click"
                         Margin="{StaticResource SpaceRS}" ToolTip="People, organizations and their tickets" AutomationProperties.Name="Show people and tickets" />
                 <mc:MaPicker x:Name="PersonPicker" Grid.Column="1" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding StripSelection}"
-                             DisplayMemberPath="TabTitle" StatusMemberPath="TabLightStatus" StatusLabelMemberPath="TabStatusWord" Margin="{StaticResource SpaceRS}" AutomationProperties.Name="Person" />
-                <mc:MaPicker x:Name="CliPicker" Grid.Column="2" ItemsSource="{Binding Terminals.StripItems}" SelectedItem="{Binding Terminals.SelectedStripItem}"
-                             DisplayMemberPath="Name" Placeholder="No CLIs open" AutomationProperties.Name="CLI" />
-                <Button x:Name="CliMenuButton" Grid.Column="3" Style="{StaticResource MaToolButton}" Content="&#xE712;" Click="CliMenuButton_Click"
-                        Margin="{StaticResource SpaceLXS}" ToolTip="This CLI's menu: rename, close, move, undock" AutomationProperties.Name="CLI menu" />
+                             DisplayMemberPath="TabTitle" StatusMemberPath="TabLightStatus" StatusLabelMemberPath="TabStatusWord" AutomationProperties.Name="Person" />
             </Grid>
-            <!-- The phone layout's status line (M.ORCH-T1570): what the menu bar's readouts and the hidden status bar say, wrapped
-                 under the pickers. The global login's tab's (PhoneStatus.DataContext = model), like the readouts it repeats. -->
-            <WrapPanel x:Name="PhoneStatus" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed" Margin="{StaticResource SpaceTS}">
-                <TextBlock Text="{Binding AllocatePausedText}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRM}"
-                           ToolTip="{Binding AllocatePausedToolTip}" Visibility="{Binding AllocatePausedText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <TextBlock Text="{Binding RamBadText}" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRM}"
-                           ToolTip="{Binding RamToolTip}" Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <TextBlock Text="{Binding RamWarnText}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRM}"
-                           ToolTip="{Binding RamToolTip}" Visibility="{Binding RamWarnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <TextBlock Text="{Binding RamCalmText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
-                           ToolTip="{Binding RamToolTip}" Visibility="{Binding RamCalmText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <TextBlock Text="{Binding DiskFreeText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
-                           Visibility="{Binding DiskFreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <TextBlock Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRM}" Visibility="{Binding HasWarnings, Converter={StaticResource Visible}}">
-                    <TextBlock.ToolTip>
-                        <ItemsControl ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" />
-                    </TextBlock.ToolTip>
-                    <Run Text="{Binding WarningsText, Mode=OneWay}" />
-                </TextBlock>
-                <TextBlock Style="{StaticResource MaMutedText}">
-                    <Run Text="{Binding RepoCount, Mode=OneWay}" /><Run Text=" repos" />
-                </TextBlock>
-            </WrapPanel>
             <StackPanel x:Name="MenuBarTools" Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" HorizontalAlignment="Right" AutomationProperties.Name="Window tools and host status">
                 <!-- Allocation paused globally (the orchestrator settings allocate switch off, M.ORCH-T1491): in MaWarn like the memory
                      guard's held readout, shown only while the master switch is off, so a CLI's /allocate handing out nothing
@@ -1009,6 +974,29 @@
         <Border x:Name="TouchBar" Grid.Row="4" Grid.ColumnSpan="2" Style="{StaticResource MaStatusBar}" Visibility="Collapsed"
                 AutomationProperties.Name="Touch keys for the CLI">
           <DockPanel>
+            <!-- The phone layout's status line (M.ORCH-T1570), in its footer since M.ORCH-T1571: what the menu bar's readouts and
+                 the hidden status bar say, wrapped. The global login's tab's (PhoneStatus.DataContext = model), like the readouts. -->
+            <WrapPanel x:Name="PhoneStatus" DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="3,3,3,0">
+                <TextBlock Text="{Binding AllocatePausedText}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRM}"
+                           ToolTip="{Binding AllocatePausedToolTip}" Visibility="{Binding AllocatePausedText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock Text="{Binding RamBadText}" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRM}"
+                           ToolTip="{Binding RamToolTip}" Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock Text="{Binding RamWarnText}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRM}"
+                           ToolTip="{Binding RamToolTip}" Visibility="{Binding RamWarnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock Text="{Binding RamCalmText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
+                           ToolTip="{Binding RamToolTip}" Visibility="{Binding RamCalmText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock Text="{Binding DiskFreeText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
+                           Visibility="{Binding DiskFreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRM}" Visibility="{Binding HasWarnings, Converter={StaticResource Visible}}">
+                    <TextBlock.ToolTip>
+                        <ItemsControl ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" />
+                    </TextBlock.ToolTip>
+                    <Run Text="{Binding WarningsText, Mode=OneWay}" />
+                </TextBlock>
+                <TextBlock Style="{StaticResource MaMutedText}">
+                    <Run Text="{Binding RepoCount, Mode=OneWay}" /><Run Text=" repos" />
+                </TextBlock>
+            </WrapPanel>
             <!-- Talk to the CLI (M.ORCH-T1544): the mic opens Windows voice typing (Win+H) into the say box, which a phone
                  keyboard types into too; Send (or Enter) pastes it into the CLI on screen and submits it. -->
             <Grid x:Name="SayRow" DockPanel.Dock="Top" Margin="3,0,3,3">

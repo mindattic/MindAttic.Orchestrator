@@ -1333,9 +1333,6 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     public sealed class UsageTabMarker
     {
         internal UsageTabMarker() { }
-
-        /// <summary>Its name in the phone layout's CLI picker (M.ORCH-T1570), which lists the strip's items by Name.</summary>
-        public string Name => "Usage";
     }
 
     /// <summary>The one shared Usage tab marker; see <see cref="UsageTabMarker"/>.</summary>
