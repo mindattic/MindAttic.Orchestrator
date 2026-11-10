@@ -1253,6 +1253,25 @@ public sealed class PersonTerminalsViewModel : ObservableObject
 
     public PersonTerminalsViewModel(TerminalsViewModel all) => this.all = all;
 
+    /// <summary>The pinned Usage tab's identity in the shared strip (M.ORCH-T1555, <c>mc:MaTabControl</c>, the same
+    /// library control the Launcher and CLI tabs already use): a single shared instance, never one of <see cref="Panes"/>,
+    /// so <c>MainWindow.xaml</c>'s item template/style selectors can pick it out of the strip's items by reference.
+    /// Usage used to be a separate MaTabItem bolted on beside TerminalTabs (M.ORCH-T1446); now it's a real item of that
+    /// one control, so clicking or keying to it goes through the control's own selection instead of hand-wired
+    /// MouseLeftButtonDown/KeyDown handlers.</summary>
+    public sealed class UsageTabMarker
+    {
+        internal UsageTabMarker() { }
+    }
+
+    /// <summary>The one shared Usage tab marker; see <see cref="UsageTabMarker"/>.</summary>
+    public static readonly UsageTabMarker UsageTab = new();
+
+    /// <summary>What the strip's <c>ItemsSource</c> leads with (a <c>CompositeCollection</c> in XAML appends each
+    /// person's own <see cref="Panes"/> after this): a fixed single-item list, since the pinned Usage tab is shared,
+    /// never added to or removed from.</summary>
+    public static readonly IReadOnlyList<object> UsageItems = [UsageTab];
+
     /// <summary>This person's terminals, in the order they opened.</summary>
     public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];
 
@@ -1266,16 +1285,33 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         {
             if (value is null && Panes.Count > 0)
             {
-                if (selected is not null && Panes.Contains(selected)) SynchronizationContext.Current?.Post(_ => Raise(nameof(SelectedPane)), null);
+                if (selected is not null && Panes.Contains(selected)) SynchronizationContext.Current?.Post(_ => { Raise(nameof(SelectedPane)); Raise(nameof(SelectedStripItem)); }, null);
                 return;
             }
             if (value is not null && !Panes.Contains(value)) return;
             // A real CLI/Launcher tab taking the choice (M.ORCH-T1446) always leaves the pinned Usage tab, even choosing the
-            // one already chosen there (clicking the tab strip's own already-selected item raises no SelectedPane change to
-            // hook: MainWindow.xaml.cs's RealTerminalTabs_PreviewMouseLeftButtonDown calls ClearUsageShown for that case).
+            // one already chosen here before Usage was shown (M.ORCH-T1555: the shared strip's own SelectedItem really did
+            // change, from UsageTab to this pane, so SelectedStripItem's setter below still calls this with that pane even
+            // though `selected` itself doesn't move).
             if (value is not null) ClearUsageShown();
             if (!Set(ref selected, value)) return;
+            Raise(nameof(SelectedStripItem));
             SelectionChanged?.Invoke();
+        }
+    }
+
+    /// <summary>The shared strip's current selection (M.ORCH-T1555): <see cref="UsageTab"/> once the pinned Usage tab is
+    /// chosen, else whichever real pane <see cref="SelectedPane"/> is. The strip's own <c>mc:MaTabControl.SelectedItem</c>
+    /// binds to this two-way, since that one control now owns the Usage tab as well as the CLI/Launcher ones, so a
+    /// choice made through it (click, arrow keys, Home/End) has to flow through a property typed for either kind of
+    /// item rather than <see cref="SelectedPane"/> alone.</summary>
+    public object? SelectedStripItem
+    {
+        get => usageShown ? UsageTab : SelectedPane;
+        set
+        {
+            if (ReferenceEquals(value, UsageTab)) ShowUsageCommand.Execute(null);
+            else if (value is TerminalPaneViewModel pane) SelectedPane = pane;
         }
     }
 
@@ -1292,13 +1328,14 @@ public sealed class PersonTerminalsViewModel : ObservableObject
 
     private ICommand? showUsageCommand;
 
-    /// <summary>Clicking the pinned Usage tab (M.ORCH-T1446): shows this login's 5-hour/weekly charts where the chosen
-    /// terminal normally sits, instead of switching any CLI's terminal away.</summary>
+    /// <summary>Choosing the pinned Usage tab (M.ORCH-T1446, now a real item of the shared strip, M.ORCH-T1555): shows
+    /// this login's 5-hour/weekly charts where the chosen terminal normally sits, instead of switching any CLI's
+    /// terminal away.</summary>
     public ICommand ShowUsageCommand => showUsageCommand ??= new RelayCommand(() =>
     {
         if (usageShown) return;
         usageShown = true;
-        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal));
+        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal)); Raise(nameof(SelectedStripItem));
         SelectionChanged?.Invoke();
     });
 
@@ -1308,7 +1345,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     {
         if (!usageShown) return;
         usageShown = false;
-        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal));
+        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal)); Raise(nameof(SelectedStripItem));
         SelectionChanged?.Invoke();
     }
 
@@ -1357,7 +1394,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         if (cleared)
         {
             selected = null;
-            Raise(nameof(SelectedPane));
+            Raise(nameof(SelectedPane)); Raise(nameof(SelectedStripItem));
         }
         for (var i = Panes.Count - 1; i >= 0; i--)
             if (!mine.Contains(Panes[i])) Panes.RemoveAt(i);
@@ -1370,7 +1407,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         if (selected is null && Panes.Count > 0)
         {
             selected = Panes[cleared ? Math.Clamp(at, 0, Panes.Count - 1) : Panes.Count - 1];
-            Raise(nameof(SelectedPane));
+            Raise(nameof(SelectedPane)); Raise(nameof(SelectedStripItem));
             SelectionChanged?.Invoke();
         }
         else if (cleared) SelectionChanged?.Invoke();

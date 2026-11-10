@@ -736,23 +736,28 @@ public partial class MainWindow : Window
         TerminalTabScrollRight.IsEnabled = TerminalTabScroller.HorizontalOffset < TerminalTabScroller.ScrollableWidth - 0.5;
     }
 
-    /// <summary>Scrolls <see cref="TerminalTabScroller"/> to the shown tab's selected CLI once the strip has laid it out, the
-    /// same way <see cref="BringSelectedTabIntoView"/> does for the login tabs. Never throws.</summary>
+    /// <summary>Scrolls <see cref="TerminalTabScroller"/> to the shown tab's current selection (a real pane, or the pinned
+    /// Usage tab, M.ORCH-T1555) once the strip has laid it out, the same way <see cref="BringSelectedTabIntoView"/> does for
+    /// the login tabs; choosing Usage also scrolls <see cref="AgentsBody"/> back to its top, so its charts are there without
+    /// scrolling past where the terminal normally sits (replaces the old UsageTabItem click handler's own ScrollToTop, now
+    /// that choosing Usage flows through SelectedStripItem like any other tab). Never throws.</summary>
     private void BringSelectedTerminalTabIntoView() =>
         Dispatcher.BeginInvoke(() =>
         {
             try
             {
-                if (TerminalTabs.ItemContainerGenerator.ContainerFromItem(Shown.Terminals.SelectedPane) is FrameworkElement tab) tab.BringIntoView();
+                if (Shown.Terminals.IsUsageShown) AgentsBody.ScrollToTop();
+                if (TerminalTabs.ItemContainerGenerator.ContainerFromItem(Shown.Terminals.SelectedStripItem) is FrameworkElement tab) tab.BringIntoView();
             }
             catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Scrolling to the selected CLI tab failed; contained"); }
         }, DispatcherPriority.Loaded);
 
     private void OnTerminalPanesChanged(object? sender, NotifyCollectionChangedEventArgs e) => BringSelectedTerminalTabIntoView();
 
-    /// <summary>One CLI tab's width, what the strip's arrows scroll by.</summary>
+    /// <summary>One CLI tab's width, what the strip's arrows scroll by: the first real pane's (index 1, past the pinned
+    /// Usage tab at index 0, M.ORCH-T1555), which is narrower and would undersize the step if used instead.</summary>
     private double TerminalTabScrollStep =>
-        TerminalTabs.Items.Count > 0 && TerminalTabs.ItemContainerGenerator.ContainerFromIndex(0) is FrameworkElement { ActualWidth: > 0 } first
+        TerminalTabs.Items.Count > 1 && TerminalTabs.ItemContainerGenerator.ContainerFromIndex(1) is FrameworkElement { ActualWidth: > 0 } first
             ? first.ActualWidth : 200;
 
     private void TerminalTabScrollLeft_Click(object sender, RoutedEventArgs e) =>
@@ -761,35 +766,16 @@ public partial class MainWindow : Window
     private void TerminalTabScrollRight_Click(object sender, RoutedEventArgs e) =>
         TerminalTabScroller.ScrollToHorizontalOffset(TerminalTabScroller.HorizontalOffset + TerminalTabScrollStep);
 
-    /// <summary>The pinned Usage tab (M.ORCH-T1446, its own page M.ORCH-T1532): shows UsageFrame, holding this login's
-    /// 5-hour/weekly charts, in place of the terminal, scrolled to the top so they're there without scrolling past
-    /// where the terminal normally sits.</summary>
-    private void ShowUsageTab()
-    {
-        Shown.Terminals.ShowUsageCommand.Execute(null);
-        AgentsBody.ScrollToTop();
-    }
-
-    private void UsageTabItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) => ShowUsageTab();
-
-    private void UsageTabItem_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter && e.Key != Key.Space) return;
-        ShowUsageTab();
-        e.Handled = true;
-    }
-
-    /// <summary>Clicking anywhere in the real CLI tab strip (even the tab already chosen there, which raises no
-    /// SelectedPane change to hook) leaves the pinned Usage tab (M.ORCH-T1446).</summary>
-    private void RealTerminalTabs_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) => Shown.Terminals.ClearUsageShown();
-
-    /// <summary>A completed drag on the real CLI tab strip (M.ORCH-T1526, TerminalTabs.AllowReorder):
-    /// applies and persists the move via <see cref="PersonTerminalsViewModel.Reorder"/>. Silently ignores a
-    /// moved item that isn't one of this login's panes (shouldn't happen - TerminalTabs is only ever bound
-    /// to Terminals.Panes - but a stray event is a no-op here, not a crash).</summary>
+    /// <summary>A completed drag on the shared strip (M.ORCH-T1526, TerminalTabs.AllowReorder, M.ORCH-T1555 added the
+    /// pinned Usage tab to the same control): applies and persists the move via <see cref="PersonTerminalsViewModel.Reorder"/>.
+    /// The Usage tab is locked (MaTabItem.IsLocked, see its ItemContainerStyle) so it's never the moved item and nothing can
+    /// land before it, which is why <see cref="TabReorderEventArgs.NewIndex"/> - counted over the whole strip including that
+    /// locked slot 0 - is always at least 1; subtracting 1 gives the index <see cref="PersonTerminalsViewModel.Reorder"/>
+    /// expects, relative to Panes alone. Silently ignores a moved item that isn't a real pane (shouldn't happen, but a stray
+    /// event is a no-op here, not a crash).</summary>
     private void TerminalTabs_Reordered(object sender, TabReorderEventArgs e)
     {
-        if (e.MovedItem is TerminalPaneViewModel pane) Shown.Terminals.Reorder(pane, e.NewIndex);
+        if (e.MovedItem is TerminalPaneViewModel pane) Shown.Terminals.Reorder(pane, e.NewIndex - 1);
     }
 
     /// <summary>A CLI tab's right-click menu (M.ORCH-T883; Shift+F10 too): "Move to" each other signed-in login, read when it's

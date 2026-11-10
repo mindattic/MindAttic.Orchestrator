@@ -450,15 +450,23 @@ public sealed class TerminalPanesTests
         // No side margin of its own: the page body's 24px gutters place the CLI in line with the CLI tab bar (M.ORCH-T1326 keeps
         // those gutters on a person's page); a margin here would double them or push it off the page (M.ORCH-T1321).
         Assert.That((string?)Named("TerminalFrame").Attribute("Margin"), Is.EqualTo("{StaticResource SpaceTS}"));
-        Assert.That((string?)Named("TerminalTabs").Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.Panes}"));
+        // M.ORCH-T1555: ItemsSource is a CompositeCollection now (the pinned Usage tab leads Terminals.Panes), not a plain
+        // attribute binding; see The_pinned_Usage_tab_sits_first_inside_the_shared_tab_control for its own shape.
+        var itemsSource = Named("TerminalTabs").Elements().Single(e => e.Name.LocalName == "MaTabControl.ItemsSource");
+        var panesContainer = itemsSource.Descendants().Single(e => e.Name.LocalName == "CollectionContainer" && ((string?)e.Attribute("Collection"))?.Contains("Terminals.Panes") == true);
+        Assert.That((string?)panesContainer.Attribute("Collection"), Is.EqualTo("{Binding Terminals.Panes}"));
         Assert.That(Named("TerminalPanesHost").Parent, Is.SameAs(Named("TerminalFrame")));
     }
 
-    /// <summary>M.ORCH-T1446: the pinned Usage tab sits first in the strip, outside the scrollable, ItemsSource-bound real
-    /// CLI tab control (it isn't one of Terminals.Panes), and has no close button -- it can never be closed, dragged, or
-    /// scrolled away from index 0.</summary>
+    /// <summary>M.ORCH-T1555: the pinned Usage tab, the Launcher's own tab and every CLI tab share one mc:MaTabControl
+    /// (TerminalTabs) now -- Usage used to be a separate MaTabItem bolted on beside it (M.ORCH-T1446), wired with its own
+    /// MouseLeftButtonDown/KeyDown handlers instead of the control's own selection, which is what left it inert. It's the
+    /// first item of a CompositeCollection (PersonTerminalsViewModel.UsageItems ahead of Terminals.Panes). Its own look
+    /// (locked in place, no close button) comes from one shared, unkeyed ItemContainerStyle/ItemTemplate with a
+    /// DataTrigger that switches what's set for the shared UsageTab marker, not a DataTemplateSelector/StyleSelector of
+    /// the dashboard's own, which M.ORCH-T667's library-only rule (LibraryOnlyXamlTests) doesn't allow.</summary>
     [Test]
-    public void The_pinned_Usage_tab_sits_first_and_outside_the_real_CLI_tab_strip()
+    public void The_pinned_Usage_tab_sits_first_inside_the_shared_tab_control()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -466,15 +474,22 @@ public sealed class TerminalPanesTests
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
         XElement Named(string name) => xaml.Descendants().Single(e => (string?)e.Attribute(x + "Name") == name);
 
-        var strip = Named("TerminalTabStripRow");
-        var usage = Named("UsageTabItem");
-        var scroller = Named("TerminalTabScroller");
-        Assert.That(usage.Parent, Is.SameAs(strip), "pinned directly in the strip, not inside the scrollable area");
-        Assert.That((string?)usage.Attribute("Grid.Column"), Is.EqualTo("0"), "first, ahead of the scroll buttons and the real strip");
-        var order = strip.Elements().ToList();
-        Assert.That(order.IndexOf(usage), Is.LessThan(order.IndexOf(scroller)), "before the real CLI tabs");
-        Assert.That(usage.Ancestors().Contains(Named("TerminalTabs")), Is.False, "never one of the ItemsSource-bound CLI panes");
-        Assert.That(usage.Descendants().Any(e => e.Name.LocalName == "Button"), Is.False, "no close button: it can't be closed");
+        var tabs = Named("TerminalTabs");
+        var itemsSource = tabs.Elements().Single(e => e.Name.LocalName == "MaTabControl.ItemsSource");
+        var composite = itemsSource.Elements().Single(e => e.Name.LocalName == "CompositeCollection");
+        var containers = composite.Elements().Where(e => e.Name.LocalName == "CollectionContainer").ToList();
+        Assert.That(containers, Has.Count.EqualTo(2));
+        Assert.That((string?)containers[0].Attribute("Collection"), Is.EqualTo("{x:Static vm:PersonTerminalsViewModel.UsageItems}"), "the pinned Usage tab leads the strip");
+        Assert.That((string?)containers[1].Attribute("Collection"), Is.EqualTo("{Binding Terminals.Panes}"), "the real CLI/Launcher tabs follow it");
+
+        var containerStyle = tabs.Elements().Single(e => e.Name.LocalName == "MaTabControl.ItemContainerStyle").Elements().Single(e => e.Name.LocalName == "Style");
+        var usageTrigger = containerStyle.Descendants().Single(e => e.Name.LocalName == "DataTrigger");
+        Assert.That(usageTrigger.Elements().Any(s => (string?)s.Attribute("Property") == "IsLocked" && (string?)s.Attribute("Value") == "True"), Is.True,
+            "locked: drag-to-reorder can never move it or drop another tab before it");
+
+        var itemTemplate = tabs.Elements().Single(e => e.Name.LocalName == "MaTabControl.ItemTemplate").Elements().Single(e => e.Name.LocalName == "DataTemplate");
+        var usageHeader = itemTemplate.Descendants().Single(e => (string?)e.Attribute(x + "Name") == "UsageTabHeader");
+        Assert.That(usageHeader.Descendants().Any(e => e.Name.LocalName == "Button"), Is.False, "no close button: it can't be closed");
     }
 
     [Test, Apartment(ApartmentState.STA)]

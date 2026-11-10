@@ -412,132 +412,156 @@
             <Grid x:Name="TerminalTabStripRow" Margin="{StaticResource SpaceBS}" Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <!-- The pinned Usage tab (M.ORCH-T1446): unclosable and titleless, always first, outside the scrollable
-                     strip and Terminals.Panes (it isn't a CLI's pane, so it can never be closed, dragged, or scrolled away
-                     from index 0). Clicking it (UsageTabItem_MouseLeftButtonDown) shows its own page, UsageFrame, where the
-                     terminal normally sits (M.ORCH-T1532: its own frame holding the charts, in place of just hiding
-                     TerminalFrame and scrolling to where they used to sit inline in AgentsBodyList) instead of switching any
-                     CLI's terminal away (TerminalFrame's own Visibility below); choosing a real CLI/Launcher tab again (even
-                     the one already chosen, caught by RealTerminalTabs_PreviewMouseLeftButtonDown since that raises no
-                     SelectedPane change of its own) leaves it. -->
-                <mc:MaTabItem x:Name="UsageTabItem" Grid.Column="0" Accent="{Binding TabBrush}"
-                              IsSelected="{Binding Terminals.IsUsageShown, Mode=OneWay}"
-                              MouseLeftButtonDown="UsageTabItem_MouseLeftButtonDown" KeyDown="UsageTabItem_KeyDown"
-                              ToolTip="{Binding UsageTabTip}" AutomationProperties.Name="{Binding UsageTabTip}">
-                    <mc:MaTabItem.Header>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding UsageSigmaLabel}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
-                                         Margin="{StaticResource SpaceLXS}" Value="{Binding WeeklyLimitPercent, Mode=OneWay}"
-                                         Foreground="{Binding WeeklyLimitBrush}" />
-                            <!-- The lambda pair is a solo Ultra login's own 5-hour figure, which it doesn't have (M.ORCH-T1540,
-                                 ShowsFiveHourChart). -->
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}">
-                                <TextBlock Text="{Binding UsageLambdaLabel}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
-                                <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
-                                             Margin="{StaticResource SpaceLXS}" Value="{Binding FiveHourLimitPercent, Mode=OneWay}"
-                                             Foreground="{Binding FiveHourLimitBrush}" />
-                            </StackPanel>
-                        </StackPanel>
-                    </mc:MaTabItem.Header>
-                </mc:MaTabItem>
-                <Button x:Name="TerminalTabScrollLeft" Grid.Column="1" Style="{StaticResource MaToolButton}" Content="&#xE76B;"
+                <Button x:Name="TerminalTabScrollLeft" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE76B;"
                         Click="TerminalTabScrollLeft_Click" Margin="{StaticResource SpaceRXS}" Visibility="Collapsed"
                         ToolTip="Scroll the CLI tabs left" AutomationProperties.Name="Scroll the CLI tabs left" />
-                <ScrollViewer x:Name="TerminalTabScroller" Grid.Column="2" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
+                <ScrollViewer x:Name="TerminalTabScroller" Grid.Column="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                               HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
-                              ScrollChanged="TerminalTabScroller_ScrollChanged"
-                              PreviewMouseLeftButtonDown="RealTerminalTabs_PreviewMouseLeftButtonDown">
-                    <!-- Drag-and-drop reordering (M.ORCH-T1526, M.COMP-T168): the Launcher's own tab is an ordinary
-                         pane here like any other CLI session (no longer hard-pinned first - see SyncTerminals), so
-                         every tab in this strip is freely draggable. TerminalTabs_Reordered applies and persists the
-                         move via PersonTerminalsViewModel.Reorder. The pinned Usage tab above is unaffected - it was
-                         never part of Terminals.Panes/this control in the first place. -->
-                    <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ContextMenuOpening="OnTerminalTabContextMenu" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
+                              ScrollChanged="TerminalTabScroller_ScrollChanged">
+                    <!-- The pinned Usage tab, the Launcher's own tab, and every CLI tab now share this one mc:MaTabControl
+                         (M.ORCH-T1555): Usage used to be a separate MaTabItem bolted on beside this ScrollViewer, unclosable
+                         and titleless but otherwise not a real part of this control, wired with its own MouseLeftButtonDown/
+                         KeyDown handlers (M.ORCH-T1446) - clicking it depended on those handlers firing instead of the
+                         control's own selection, which is what left it inert. It's now the first item of a CompositeCollection
+                         (PersonTerminalsViewModel.UsageItems, a fixed single-item list, ahead of Terminals.Panes), and
+                         SelectedItem binds to SelectedStripItem (either UsageTab or a real pane) instead of SelectedPane
+                         alone. Both the item container's own look (ItemContainerStyle below) and its header
+                         (ItemTemplate below) are one shared, unkeyed Style/DataTemplate with a DataTrigger that switches
+                         what's set once the bound item is the shared UsageTab marker (ReferenceEquals via plain WPF
+                         equality, {x:Static vm:PersonTerminalsViewModel.UsageTab}) - not a DataTemplateSelector/
+                         StyleSelector of the dashboard's own, which M.ORCH-T667's library-only rule (LibraryOnlyXamlTests)
+                         doesn't allow. Drag-and-drop reordering (M.ORCH-T1526, M.COMP-T168): the Launcher's own tab is an
+                         ordinary pane here like any other CLI session, so every real tab in this strip is freely
+                         draggable, while the Usage tab is locked in place (MaTabItem.IsLocked, in the trigger below) so it
+                         can never be dragged and nothing can be dropped before it. TerminalTabs_Reordered applies and
+                         persists the move via PersonTerminalsViewModel.Reorder. -->
+                    <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ContextMenuOpening="OnTerminalTabContextMenu"
+                                     SelectedItem="{Binding Terminals.SelectedStripItem}"
                                      AllowReorder="True" Reordered="TerminalTabs_Reordered"
                                      AutomationProperties.Name="Terminals" AutomationProperties.HelpText="{Binding Terminals.Summary}">
+                        <mc:MaTabControl.ItemsSource>
+                            <CompositeCollection>
+                                <CollectionContainer Collection="{x:Static vm:PersonTerminalsViewModel.UsageItems}" />
+                                <CollectionContainer Collection="{Binding Terminals.Panes}" />
+                            </CompositeCollection>
+                        </mc:MaTabControl.ItemsSource>
                         <mc:MaTabControl.ItemContainerStyle>
                             <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
                                 <Setter Property="Accent" Value="{Binding TabBrush}" />
                                 <Setter Property="ToolTip" Value="{Binding Tooltip}" />
                                 <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                                <Style.Triggers>
+                                    <!-- The pinned Usage tab (M.ORCH-T1446): unclosable, titleless, locked at index 0. Its own
+                                         figures live on the shown login's MainViewModel, not on the UsageTabMarker item itself,
+                                         hence AncestorType=mc:MaTabControl to reach back to the control's own (inherited)
+                                         DataContext. -->
+                                    <DataTrigger Binding="{Binding}" Value="{x:Static vm:PersonTerminalsViewModel.UsageTab}">
+                                        <Setter Property="IsLocked" Value="True" />
+                                        <Setter Property="Accent" Value="{Binding DataContext.TabBrush, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
+                                        <Setter Property="ToolTip" Value="{Binding DataContext.UsageTabTip, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
+                                        <Setter Property="AutomationProperties.Name" Value="{Binding DataContext.UsageTabTip, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
                             </Style>
                         </mc:MaTabControl.ItemContainerStyle>
                         <mc:MaTabControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
-                                <!-- The close X docked at the tab's right edge (M.ORCH-T1437): SizeTerminalTabs stretches this header to the tab. -->
-                                <DockPanel x:Name="TerminalTab" Loaded="TerminalTabItem_Loaded">
-                                    <!-- 10px off the tab's right edge (M.ORCH-T1271); asks before closing (M.ORCH-T1437). -->
-                                    <Button x:Name="TerminalCloseButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-4,-2,-4"
-                                            Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
-                                            Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
-                                            CommandParameter="{Binding}"
-                                            AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
-                                            ToolTip="Close this terminal, ending its CLI" />
-                                <StackPanel x:Name="TerminalTabParts" Orientation="Horizontal" HorizontalAlignment="Left">
-                                    <!-- This one CLI's own status (M.ORCH-T1272): the same language as the login tab's aggregate
-                                         badge (M.ORCH-T1270) but scoped to this pane alone, from its matched AgentBoardRow
-                                         (TerminalsViewModel.Update, matched by SessionId) rather than the whole login's CLIs. -->
-                                    <Grid x:Name="TerminalTabStatusIcon" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
-                                        <mc:MaBadge x:Name="TerminalTabIdleBadge" Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
-                                                    Foreground="{DynamicResource MaOnAccent}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding PaneActivityWord}"
-                                                    Visibility="{Binding ShowsPaneIdleBadge, Converter={StaticResource Visible}}" />
-                                        <mc:MaBadge x:Name="TerminalTabBusyBadge" Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Background="{DynamicResource MaGood}"
-                                                    Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                    AutomationProperties.Name="{Binding PaneActivityWord}"
-                                                    Visibility="{Binding ShowsPaneBusyBadge, Converter={StaticResource Visible}}">
-                                            <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
-                                        </mc:MaBadge>
-                                        <mc:MaBadge x:Name="TerminalTabAskingBadge" Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="?" Background="{DynamicResource MaWarn}"
-                                                    Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                    AutomationProperties.Name="{Binding PaneActivityWord}"
-                                                    Visibility="{Binding ShowsPaneAskingBadge, Converter={StaticResource Visible}}" />
-                                        <!-- The Launcher's own tab (M.LNCH-T77's first-embedded pane): a little rocket, not a status badge, since
-                                             this pane has no CLI/AgentBoardRow of its own to light one for (ShowsPane*Badge all stay false).
-                                             Same Path as the removed standalone "Open Launcher" rocket button (M.ORCH-T805, Material's
-                                             rocket_launch, since no rocket glyph is confirmed in the icon font), muted so it reads as an
-                                             identity mark, not an alert. -->
-                                        <Viewbox x:Name="TerminalTabLauncherIcon" Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                 Visibility="{Binding Request.IsMenu, Converter={StaticResource Visible}}"
-                                                 ToolTip="The Launcher's own menu" AutomationProperties.Name="Launcher">
-                                            <Path Data="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12C4.42 15.34 5.17 15 6 15c1.66 0 3 1.34 3 3zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
-                                                  Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
-                                        </Viewbox>
-                                    </Grid>
-                                    <!-- Double-click the name to rename it in place (M.ORCH-T1432): the TextBox swaps in for the TextBlock in
-                                         the same cell; Enter keeps it, Esc or leaving it cancels (TerminalTabName_* in MainWindow.xaml.cs). -->
-                                    <Grid VerticalAlignment="Center">
-                                        <!-- A name too long for the tab scrolls across it, blinks 3 times, then starts over
-                                             (M.ORCH-T1509): a plain Canvas (library-only rule's own layout panel), scrolled
-                                             and clipped by the MarqueeBox attached behaviour, not a custom element. -->
-                                        <Canvas x:Name="TerminalTabNameMarquee" MaxWidth="180" VerticalAlignment="Center" local:MarqueeBox.Enabled="True">
-                                            <TextBlock x:Name="TerminalTabName" Text="{Binding Name}" VerticalAlignment="Center"
-                                                       MouseLeftButtonDown="TerminalTabName_MouseLeftButtonDown" />
-                                        </Canvas>
-                                        <TextBox x:Name="TerminalTabNameEdit" Style="{StaticResource MaTextBox}" Visibility="Collapsed" VerticalAlignment="Center" Padding="0" Margin="-2,-2,-2,-2"
-                                                 AutomationProperties.Name="{Binding Title, StringFormat='Rename {0}'}"
-                                                 KeyDown="TerminalTabNameEdit_KeyDown" LostKeyboardFocus="TerminalTabNameEdit_LostKeyboardFocus" />
-                                    </Grid>
-                                    <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" />
-                                    <!-- Shared with remote viewers (M.ORCH-T935), and an eye while someone watches it remotely. -->
-                                    <TextBlock x:Name="TerminalSharedGlyph" Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Style="{StaticResource MaMutedText}"
-                                               Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="Shared with remote viewers (right-click to change)" AutomationProperties.Name="Shared with remote viewers"
-                                               Visibility="{Binding IsShared, Converter={StaticResource Visible}}" />
-                                    <TextBlock x:Name="TerminalWatchedGlyph" Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource MaWarn}"
-                                               Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="{Binding BroadcastText}"
-                                               AutomationProperties.Name="Being watched remotely"
-                                               Visibility="{Binding IsWatched, Converter={StaticResource Visible}}" />
-                                </StackPanel>
-                                </DockPanel>
+                            <DataTemplate>
+                                <Grid>
+                                    <!-- The pinned Usage tab's own header; Collapsed except for the Usage item itself
+                                         (DataTemplate.Triggers below swaps which of these two is Visible). -->
+                                    <StackPanel x:Name="UsageTabHeader" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                                        <TextBlock Text="{Binding DataContext.UsageSigmaLabel, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
+                                                     Margin="{StaticResource SpaceLXS}" Value="{Binding DataContext.WeeklyLimitPercent, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}, Mode=OneWay}"
+                                                     Foreground="{Binding DataContext.WeeklyLimitBrush, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
+                                        <!-- The lambda pair is a solo Ultra login's own 5-hour figure, which it doesn't have
+                                             (M.ORCH-T1540, ShowsFiveHourChart). -->
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding DataContext.ShowsFiveHourChart, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}, Converter={StaticResource Visible}}">
+                                            <TextBlock Text="{Binding DataContext.UsageLambdaLabel, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
+                                            <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
+                                                         Margin="{StaticResource SpaceLXS}" Value="{Binding DataContext.FiveHourLimitPercent, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}, Mode=OneWay}"
+                                                         Foreground="{Binding DataContext.FiveHourLimitBrush, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <!-- The close X docked at the tab's right edge (M.ORCH-T1437): SizeTerminalTabs stretches this header to the tab. -->
+                                    <DockPanel x:Name="RealTabHeader" Loaded="TerminalTabItem_Loaded">
+                                        <!-- 10px off the tab's right edge (M.ORCH-T1271); asks before closing (M.ORCH-T1437). -->
+                                        <Button x:Name="TerminalCloseButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-4,-2,-4"
+                                                Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
+                                                Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
+                                                CommandParameter="{Binding}"
+                                                AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
+                                                ToolTip="Close this terminal, ending its CLI" />
+                                    <StackPanel x:Name="TerminalTabParts" Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <!-- This one CLI's own status (M.ORCH-T1272): the same language as the login tab's aggregate
+                                             badge (M.ORCH-T1270) but scoped to this pane alone, from its matched AgentBoardRow
+                                             (TerminalsViewModel.Update, matched by SessionId) rather than the whole login's CLIs. -->
+                                        <Grid x:Name="TerminalTabStatusIcon" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
+                                            <mc:MaBadge x:Name="TerminalTabIdleBadge" Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
+                                                        Foreground="{DynamicResource MaOnAccent}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding PaneActivityWord}"
+                                                        Visibility="{Binding ShowsPaneIdleBadge, Converter={StaticResource Visible}}" />
+                                            <mc:MaBadge x:Name="TerminalTabBusyBadge" Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Background="{DynamicResource MaGood}"
+                                                        Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        AutomationProperties.Name="{Binding PaneActivityWord}"
+                                                        Visibility="{Binding ShowsPaneBusyBadge, Converter={StaticResource Visible}}">
+                                                <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
+                                            </mc:MaBadge>
+                                            <mc:MaBadge x:Name="TerminalTabAskingBadge" Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="?" Background="{DynamicResource MaWarn}"
+                                                        Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        AutomationProperties.Name="{Binding PaneActivityWord}"
+                                                        Visibility="{Binding ShowsPaneAskingBadge, Converter={StaticResource Visible}}" />
+                                            <!-- The Launcher's own tab (M.LNCH-T77's first-embedded pane): a little rocket, not a status badge, since
+                                                 this pane has no CLI/AgentBoardRow of its own to light one for (ShowsPane*Badge all stay false).
+                                                 Same Path as the removed standalone "Open Launcher" rocket button (M.ORCH-T805, Material's
+                                                 rocket_launch, since no rocket glyph is confirmed in the icon font), muted so it reads as an
+                                                 identity mark, not an alert. -->
+                                            <Viewbox x:Name="TerminalTabLauncherIcon" Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                     Visibility="{Binding Request.IsMenu, Converter={StaticResource Visible}}"
+                                                     ToolTip="The Launcher's own menu" AutomationProperties.Name="Launcher">
+                                                <Path Data="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12C4.42 15.34 5.17 15 6 15c1.66 0 3 1.34 3 3zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
+                                                      Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
+                                            </Viewbox>
+                                        </Grid>
+                                        <!-- Double-click the name to rename it in place (M.ORCH-T1432): the TextBox swaps in for the TextBlock in
+                                             the same cell; Enter keeps it, Esc or leaving it cancels (TerminalTabName_* in MainWindow.xaml.cs). -->
+                                        <Grid VerticalAlignment="Center">
+                                            <!-- A name too long for the tab scrolls across it, blinks 3 times, then starts over
+                                                 (M.ORCH-T1509): a plain Canvas (library-only rule's own layout panel), scrolled
+                                                 and clipped by the MarqueeBox attached behaviour, not a custom element. -->
+                                            <Canvas x:Name="TerminalTabNameMarquee" MaxWidth="180" VerticalAlignment="Center" local:MarqueeBox.Enabled="True">
+                                                <TextBlock x:Name="TerminalTabName" Text="{Binding Name}" VerticalAlignment="Center"
+                                                           MouseLeftButtonDown="TerminalTabName_MouseLeftButtonDown" />
+                                            </Canvas>
+                                            <TextBox x:Name="TerminalTabNameEdit" Style="{StaticResource MaTextBox}" Visibility="Collapsed" VerticalAlignment="Center" Padding="0" Margin="-2,-2,-2,-2"
+                                                     AutomationProperties.Name="{Binding Title, StringFormat='Rename {0}'}"
+                                                     KeyDown="TerminalTabNameEdit_KeyDown" LostKeyboardFocus="TerminalTabNameEdit_LostKeyboardFocus" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" />
+                                        <!-- Shared with remote viewers (M.ORCH-T935), and an eye while someone watches it remotely. -->
+                                        <TextBlock x:Name="TerminalSharedGlyph" Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Style="{StaticResource MaMutedText}"
+                                                   Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="Shared with remote viewers (right-click to change)" AutomationProperties.Name="Shared with remote viewers"
+                                                   Visibility="{Binding IsShared, Converter={StaticResource Visible}}" />
+                                        <TextBlock x:Name="TerminalWatchedGlyph" Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource MaWarn}"
+                                                   Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="{Binding BroadcastText}"
+                                                   AutomationProperties.Name="Being watched remotely"
+                                                   Visibility="{Binding IsWatched, Converter={StaticResource Visible}}" />
+                                    </StackPanel>
+                                    </DockPanel>
+                                </Grid>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding}" Value="{x:Static vm:PersonTerminalsViewModel.UsageTab}">
+                                        <Setter TargetName="UsageTabHeader" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="RealTabHeader" Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </mc:MaTabControl.ItemTemplate>
                     </mc:MaTabControl>
                 </ScrollViewer>
-                <Button x:Name="TerminalTabScrollRight" Grid.Column="3" Style="{StaticResource MaToolButton}" Content="&#xE76C;"
+                <Button x:Name="TerminalTabScrollRight" Grid.Column="2" Style="{StaticResource MaToolButton}" Content="&#xE76C;"
                         Click="TerminalTabScrollRight_Click" Margin="{StaticResource SpaceLXS}" Visibility="Collapsed"
                         ToolTip="Scroll the CLI tabs right" AutomationProperties.Name="Scroll the CLI tabs right" />
             </Grid>
