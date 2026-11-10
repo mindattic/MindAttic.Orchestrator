@@ -546,15 +546,34 @@ public sealed partial class MainViewModel
         if (await SignInOwnAsync(email)) await RefreshAsync();
     }, () => !tab.SignedIn && !tab.IsApiKey && ScopeEmail is not null && !IsSigningIn);
 
-    /// <summary>Tags each new toast with this tab while there's more than one (toasts tagged by tab), and tells the window.</summary>
+    /// <summary>Tags each new toast with this tab while there's more than one (toasts tagged by tab), and tells the window. Every
+    /// tab's toasts are mirrored into <see cref="AllToasts"/> (M.ORCH-T1574), newest first, so the dots show them on every tab.</summary>
     private void OnToastsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        var all = Root.allToasts;
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            for (var i = all.Count - 1; i >= 0; i--)
+                if (!Root.loginTabs.Any(tab => tab.Toasts.Contains(all[i]))) all.RemoveAt(i);
+            return;
+        }
+        if (e.OldItems is not null && e.Action != NotifyCollectionChangedAction.Move)
+            foreach (var t in e.OldItems.OfType<ToastViewModel>()) all.Remove(t);
         if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems is null) return;
         foreach (var t in e.NewItems.OfType<ToastViewModel>())
         {
             if (Root.loginTabs.Count > 1) t.Tab ??= TabTitle;
+            if (!all.Contains(t)) all.Insert(0, t);
             Root.ToastRaised?.Invoke(this, t);
         }
+        PruneToasts(all, DateTime.UtcNow);
+    }
+
+    /// <summary>Takes <paramref name="toast"/> away everywhere: from whichever tab raised it and from <see cref="AllToasts"/>.</summary>
+    private void RemoveToast(ToastViewModel toast)
+    {
+        foreach (var tab in Root.loginTabs) tab.Toasts.Remove(toast);
+        Root.allToasts.Remove(toast);
     }
 
     private static readonly Dictionary<string, Brush> brushes = new(StringComparer.OrdinalIgnoreCase);

@@ -196,7 +196,8 @@ public sealed class LibraryControlsTests
         // DismissCommand binding to check for any more.
         var dots = Named(Window(), "ToastDots");
 
-        Assert.That((string?)dots.Attribute("ItemsSource"), Is.EqualTo("{Binding Toasts}"));
+        // Every tab's toasts, on every tab (M.ORCH-T1574): the menu bar's tools raise theirs on the global login's tab.
+        Assert.That((string?)dots.Attribute("ItemsSource"), Is.EqualTo("{Binding AllToasts}"));
 
         var button = dots.Descendants(P + "Button").Single();
         Assert.That((string?)button.Attribute("Style"), Is.EqualTo("{StaticResource MaToolButton}"));
@@ -205,8 +206,8 @@ public sealed class LibraryControlsTests
             Is.EqualTo("{Binding DataContext.OpenToastCommand, RelativeSource={RelativeSource AncestorType=Window}}"));
 
         var viewModel = File.ReadAllText(Wpf(Path.Combine("ViewModels", "MainViewModel.cs")));
-        Assert.That(Regex.IsMatch(viewModel, @"OpenToastCommand\s*=\s*new RelayCommand\(async p =>\s*\{\s*if \(p is not ToastViewModel t\) return;\s*Toasts\.Remove\(t\);"),
-            Is.True, "opening a toast still removes it from Toasts, like the old McToastHost's dismiss did");
+        Assert.That(Regex.IsMatch(viewModel, @"OpenToastCommand\s*=\s*new RelayCommand\(async p =>\s*\{\s*if \(p is not ToastViewModel t\) return;\s*(//[^\n]*\n\s*)?RemoveToast\(t\);"),
+            Is.True, "opening a toast still removes it (from every tab's list), like the old McToastHost's dismiss did");
     }
 
     [Test]

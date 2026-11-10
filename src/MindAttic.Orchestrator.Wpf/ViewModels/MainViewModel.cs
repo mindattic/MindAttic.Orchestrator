@@ -117,11 +117,12 @@ public sealed partial class MainViewModel : ObservableObject
         // Off for a ticket a CLI moving to another login holds (M.ORCH-T637): it's handed back to that CLI once it lands.
         UseTicketCommand = new RelayCommand(p => { if (p is TicketRowViewModel { IsMoving: false } t) Prompt = $"Work on ticket {t.Id}: {t.Summary}"; },
             p => p is not TicketRowViewModel { IsMoving: true });
-        DismissToastCommand = new RelayCommand(p => { if (p is ToastViewModel t) Toasts.Remove(t); });
+        DismissToastCommand = new RelayCommand(p => { if (p is ToastViewModel t) RemoveToast(t); });
         OpenToastCommand = new RelayCommand(async p =>
         {
             if (p is not ToastViewModel t) return;
-            Toasts.Remove(t);
+            // From every tab's view (M.ORCH-T1574): the dots show all tabs' toasts, so it may be another tab's.
+            RemoveToast(t);
             // To the CLI's own tab (M.ORCH-T619); failing that, the repo's detail, from whichever view: not Select, a
             // toggle that only shows in the Repos view.
             await OpenToastAsync(t);
@@ -142,7 +143,14 @@ public sealed partial class MainViewModel : ObservableObject
     public TileGroupViewModel Tickets { get; }
     public TileGroupViewModel Quiet { get; }
     public IReadOnlyList<TileGroupViewModel> Groups { get; }
+    /// <summary>This tab's own toasts: what it raised (a toast's tab tag and the window's notification come from here).</summary>
     public ObservableCollection<ToastViewModel> Toasts { get; } = [];
+
+    /// <summary>Every tab's toasts, newest first, capped like each tab's (M.ORCH-T1574): what the toast dots show, so one raised
+    /// on another tab (the menu bar's tools run on the global login's) is seen whichever tab is on screen. The same list on every tab.</summary>
+    public ObservableCollection<ToastViewModel> AllToasts => Root.allToasts;
+
+    private readonly ObservableCollection<ToastViewModel> allToasts = [];
 
     /// <summary>Drops this tab's subscription to the static <see cref="PendingMoves.Changed"/>, so a login tab removed on
     /// sign-out isn't kept alive handling every move (M.ORCH-T734).</summary>
