@@ -74,6 +74,25 @@ public sealed class ContextCyclerMarksTests
         Assert.That(new ContextCycler(dir).AllocateSince()[7], Is.EqualTo(on).Within(TimeSpan.FromSeconds(1)), "rewritten: still when it turned on");
     }
 
+    /// <summary>M.ORCH-T1575: wind down reaches a /allocate mark only a file holds (readers take it over the row), and counts
+    /// only the CLIs it turned off.</summary>
+    [Test]
+    public void Wind_down_turns_off_an_allocate_mark_only_a_file_holds()
+    {
+        CliMarks.Db().Open().Dispose();
+        File.WriteAllText(Path.Combine(dir, "allocate-7"), "Prose"); // written while the database was held
+        File.WriteAllText(Path.Combine(dir, "noallocate-7"), "off");
+        Assert.That(CliMarks.Read(dir, CliMarks.Allocate).ContainsKey(7), Is.True);
+
+        Assert.That(CliMarks.WindDownEverywhere(dir), Is.EqualTo(1));
+        Assert.That(CliMarks.Read(dir, CliMarks.Allocate).ContainsKey(7), Is.False, "the file no longer keeps /allocate on");
+        Assert.That(CliMarks.Read(dir, CliMarks.NoAllocate)[7], Is.EqualTo("wind"), "and its noallocate file says wind, not the old off");
+
+        CliMarks.ReadIn(dir);
+        Assert.That(CliMarks.Read(dir, CliMarks.Allocate).ContainsKey(7), Is.False, "still off once the files are read in");
+        Assert.That(CliMarks.WindDownEverywhere(dir), Is.Zero, "nothing left on to wind down");
+    }
+
     // ---- AllocateOrder ----
 
     [Test]

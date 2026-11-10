@@ -162,8 +162,10 @@ public static class CliMarks
     /// <summary>Winds every CLI with /allocate currently on down at once (M.ORCH-T1468): each gets <c>noallocate</c>="wind" (so
     /// its own turn quicksaves once its last subagent lands, the same as /allocate off always has) and its <c>allocate</c> mark
     /// cleared -- the per-CLI effect of a typed <c>/allocate off -target=all</c>, written here directly to the database instead
-    /// of through a CLI's own hook. Returns how many it reached. A mark only a file is holding (the database held elsewhere when
-    /// a hook wrote it) isn't cleared here; the next <see cref="ReadIn"/> picks it up as usual.</summary>
+    /// of through a CLI's own hook. Returns how many it reached. A mark a file holds (the database held elsewhere when a hook
+    /// wrote it), which every reader takes over the row, is turned off the way a hook does while the database is held
+    /// (M.ORCH-T1575): the file gives way to a <c>.cleared</c> one, and a <c>noallocate</c> file says "wind" too. Before, such a
+    /// CLI kept /allocate on yet was counted as reached; one whose file can't be changed now isn't counted.</summary>
     public static int WindDownEverywhere(string directory)
     {
         var on = Read(directory, Allocate).Keys.ToList();
@@ -182,7 +184,26 @@ public static class CliMarks
             }, dump: false);
         }
         catch (Exception ex) when (ex is System.Data.Common.DbException or IOException) { return 0; }
-        return on.Count;
+        return on.Count(pid => WindDownFiles(directory, pid));
+    }
+
+    /// <summary>Turns off the file marks that would override <paramref name="pid"/>'s rows just written: its <c>allocate</c> file
+    /// becomes <c>.cleared</c>, and a <c>noallocate</c> file of its own says "wind". True when nothing file-held keeps it on.</summary>
+    private static bool WindDownFiles(string directory, int pid)
+    {
+        var allocate = Path.Combine(directory, $"{Allocate}-{pid}");
+        var noAllocate = Path.Combine(directory, $"{NoAllocate}-{pid}");
+        try
+        {
+            if (File.Exists(noAllocate)) File.WriteAllText(noAllocate, "wind");
+            if (File.Exists(allocate))
+            {
+                File.WriteAllText(allocate + ClearedSuffix, "");
+                File.Delete(allocate);
+            }
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return !File.Exists(allocate); }
     }
 
     private static void Upsert(SqliteConnection connection, SqliteTransaction tx, string kind, int pid, string? value)
