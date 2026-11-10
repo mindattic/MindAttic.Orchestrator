@@ -36,14 +36,14 @@ if (Test-Path $source) { Remove-Item -Recurse -Force $source }
 New-Item -ItemType Directory -Force $source | Out-Null
 git -C $PSScriptRoot fetch --quiet origin main
 if ($LASTEXITCODE -ne 0) { throw 'git fetch failed.' }
-$commit = (git -C $PSScriptRoot rev-parse --short origin/main).Trim()
+$commit = (git -C $PSScriptRoot rev-parse origin/main).Trim()
 $tarball = Join-Path $out 'source.tar'
 git -C $PSScriptRoot archive --format=tar --output $tarball origin/main
 if ($LASTEXITCODE -ne 0) { throw 'git archive failed.' }
 & (Join-Path $env:SystemRoot 'System32\tar.exe') -xf $tarball -C $source
 if ($LASTEXITCODE -ne 0) { throw 'Extracting the source failed.' }
 Remove-Item -Force $tarball
-Write-Host "Building origin/main ($commit)" -ForegroundColor Cyan
+Write-Host "Building origin/main ($($commit.Substring(0, 8)))" -ForegroundColor Cyan
 $src = Join-Path $source 'src'
 $app = Join-Path $stage 'MindAttic.Orchestrator'
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
