@@ -24,9 +24,44 @@ public partial class MainWindow
     private readonly Dictionary<(DependencyObject, DependencyProperty), object> desktopValues = [];
     private bool compact;
 
-    /// <summary>The layout chosen with <see cref="LayoutToggle"/> (M.ORCH-T1560), null while the window's size decides. It holds
-    /// until a resize makes the size check agree with it; from then on the size decides again.</summary>
+    /// <summary>The layout chosen with <see cref="LayoutToggle"/> (M.ORCH-T1560), null while the window's size decides. It holds,
+    /// across restarts too (saved as <see cref="Settings.OrchestratorSettings.Layout"/>, M.ORCH-T1562), until a resize makes the
+    /// size check agree with it; from then on the size decides again.</summary>
     private bool? chosenCompact;
+
+    /// <summary>The saved layout choice: true for the phone layout, false for the desktop's, null for none.</summary>
+    internal static bool? SavedLayout(Settings.JsonStore store)
+    {
+        try
+        {
+            return store.LoadSettings().Layout switch
+            {
+                "Phone" => true,
+                "Desktop" => false,
+                _ => null,
+            };
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { return null; }
+    }
+
+    /// <summary>Saves <paramref name="choice"/> as the layout choice; false when the settings can't be written (it still holds
+    /// for this run).</summary>
+    internal static bool SaveLayout(Settings.JsonStore store, bool? choice)
+    {
+        var value = choice switch { true => "Phone", false => "Desktop", null => null };
+        try
+        {
+            var settings = store.LoadSettingsToChange();
+            if (settings.Layout == value) return true;
+            store.SaveSettings(settings with { Layout = value });
+            return true;
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException)
+        {
+            OrchestratorLog.For("Dashboard").Warning(ex, "Couldn't save the {Layout} layout", value ?? "size-chosen");
+            return false;
+        }
+    }
 
     /// <summary>Whether the window fits the phone layout at <paramref name="width"/> x <paramref name="height"/> (device-independent
     /// pixels), given whether it is in it <paramref name="now"/>.</summary>
@@ -41,6 +76,7 @@ public partial class MainWindow
 
     private void AttachCompactLayout()
     {
+        chosenCompact = SavedLayout(model.Store);
         SizeChanged += (_, _) => ApplyCompact();
         // Reconnecting Remote Desktop from a phone shrinks the display under a window sized for the desk: it would hang off the
         // screen, so it's maximized to whatever the display is now.
@@ -61,13 +97,19 @@ public partial class MainWindow
     private void LayoutToggle_Toggled(object sender, RoutedEventArgs e)
     {
         chosenCompact = LayoutToggle.IsChecked;
+        SaveLayout(model.Store, chosenCompact);
         ApplyCompact();
     }
 
     private void ApplyCompact()
     {
         var bySize = WantsCompact(ActualWidth, ActualHeight, compact);
-        if (chosenCompact == bySize) chosenCompact = null;
+        // Only a real size releases the choice: a window not yet measured (0 x 0) says nothing about where it's shown.
+        if (chosenCompact == bySize && ActualWidth > 0 && ActualHeight > 0)
+        {
+            chosenCompact = null;
+            SaveLayout(model.Store, null);
+        }
         var want = chosenCompact ?? bySize;
         LayoutToggle.SetCurrentValue(Components.Wpf.Controls.MaToggleIcon.IsCheckedProperty, want);
         if (want == compact) return;

@@ -303,6 +303,11 @@ public sealed record OrchestratorSettings
     /// or anything else, is dark, the default; the dashboard reads it at start and writes it at each switch.</summary>
     public string? Theme { get; init; }
 
+    /// <summary>The dashboard layout picked with its menu bar's phone/desktop toggle (M.ORCH-T1560, saved since M.ORCH-T1562):
+    /// "Phone" or "Desktop". Null (or anything else) lets the window's size decide. Cleared once a resize makes the size agree
+    /// with it. The dashboard's own, so it isn't one of the Vault's settings.</summary>
+    public string? Layout { get; init; }
+
     /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so allocate
     /// leaves the repo alone through the pauses between your prompts. 0 counts only a CLI that's mid-turn.</summary>
     public int AllocateHandMinutes { get; init; } = 15;
