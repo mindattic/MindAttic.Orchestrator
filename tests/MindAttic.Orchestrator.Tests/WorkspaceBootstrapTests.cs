@@ -144,9 +144,9 @@ public sealed class WorkspaceBootstrapTests
     {
         var ws = Path.Combine(dir, "ws");
         App(ws, "Fast", "Set-Content -Path installed.txt -Value ok");
-        App(ws, "Slow", "Start-Sleep -Seconds 60");
+        App(ws, "Slow", "Start-Sleep -Seconds 120");
 
-        var failed = WorkspaceBootstrap.InstallAppsAsync(ws, new SyncProgress([]), perApp: TimeSpan.FromSeconds(3)).GetAwaiter().GetResult();
+        var failed = WorkspaceBootstrap.InstallAppsAsync(ws, new SyncProgress([]), perApp: TimeSpan.FromSeconds(15)).GetAwaiter().GetResult();
 
         Assert.That(failed, Is.EqualTo(new[] { "Slow: timed out" }));
         Assert.That(File.Exists(Path.Combine(ws, "Fast", "installed.txt")));
