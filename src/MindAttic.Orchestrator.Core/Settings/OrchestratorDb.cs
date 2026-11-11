@@ -142,7 +142,7 @@ public sealed class OrchestratorDb(string path)
     /// it stayed busy past its timeout, and how long it waits before each retry (longer each time): many CLIs and subagents
     /// writing at once under heavy load is the normal case here (M.ORCH-T811), not a reason to fail the command outright over a
     /// lock another writer was about to release. Tests shorten both.</summary>
-    internal static int BusyRetries { get; set; } = 3;
+    internal static int BusyRetries { get; set; } = 6;
     internal static TimeSpan BusyRetryDelay { get; set; } = TimeSpan.FromMilliseconds(200);
 
     /// <summary>Runs <paramref name="attempt"/>, retrying it (waiting <see cref="BusyRetryDelay"/> longer each time) whenever it

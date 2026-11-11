@@ -117,12 +117,23 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
                 login: new Dispatcher.TabLogin(to.ConfigDir, to.Email));
             return r.Ok ? null : r.Message;
         }
-        var (all, why) = Allocate.Next(plan, orchestratorSettings, store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
-            unthrottled: unthrottled, self: self,
-            cli: cli, pilots: cycler.AllocateClis(), onSince: cycler.AllocateSince(), loginOf: cycler.LoginOfCli(),
-            login: login,
-            logins: logins, redelegate: Redelegate, canFallBack: own is not null && snapshot.Billing?.Mode == MindAttic.Orchestrator.Billing.BillingModes.Api,
-            orgs: MindAttic.Orchestrator.Sessions.OrgRouting.Load(store, orchestratorSettings, snapshot.GlobalEmail));
+        IReadOnlyList<Allocate.Handout> all;
+        string? why;
+        try
+        {
+            (all, why) = Allocate.Next(plan, orchestratorSettings, store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
+                unthrottled: unthrottled, self: self,
+                cli: cli, pilots: cycler.AllocateClis(), onSince: cycler.AllocateSince(), loginOf: cycler.LoginOfCli(),
+                login: login,
+                logins: logins, redelegate: Redelegate, canFallBack: own is not null && snapshot.Billing?.Mode == MindAttic.Orchestrator.Billing.BillingModes.Api,
+                orgs: MindAttic.Orchestrator.Sessions.OrgRouting.Load(store, orchestratorSettings, snapshot.GlobalEmail));
+        }
+        catch (IOException ex) when (ex.Message.Contains("stayed busy", StringComparison.Ordinal))
+        {
+            // M.ORCH-T1617: the database stayed busy past every retry; report it (nothing was claimed) so /allocate asks again.
+            Console.WriteLine($"Nothing handed out: the orchestrator's database is busy right now ({ex.Message}) - nothing was claimed; ask again shortly.");
+            return 0;
+        }
         foreach (var d in all.Where(h => h.DelegatedTo is not null))
             Console.WriteLine($"=== {d.Item.Id} ({d.Item.Repo}) {d.Delegated}. A tab opened on {d.DelegatedTo!.Label} works it: it isn't this CLI's to start.");
         var handed = all.Where(h => h.DelegatedTo is null).ToList();
