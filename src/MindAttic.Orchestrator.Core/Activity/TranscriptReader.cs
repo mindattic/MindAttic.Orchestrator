@@ -144,6 +144,16 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     }
                     state.Offset = 0;
                     state.Tools.Clear(); // read again from 0 when it's resumed: tool calls aren't de-duplicated like usage
+                    // Every line in it is older than the window, so ApplyLine returns before the de-dup lookup for each one: its
+                    // message ids are dead weight. Kept, they were most of the cache (15 of 24 MB) and of the reader's memory (M.ORCH-T1607).
+                    if (state.CountedMessages.Count > 0 || state.Events.Count > 0 || state.Hits.Count > 0)
+                    {
+                        state.CountedMessages.Clear();
+                        state.CountedMessages.TrimExcess();
+                        state.Events.Clear();
+                        state.Hits.Clear();
+                        dirty = changed = true;
+                    }
                     state.PendingFiles.Clear();
                     state.Filed.Clear();
                     state.LastWriteUtc = info.LastWriteTimeUtc;
