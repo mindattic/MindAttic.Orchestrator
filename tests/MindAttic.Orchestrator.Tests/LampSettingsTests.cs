@@ -186,6 +186,7 @@ public sealed class LampSettingsTests
         Case("sqlServerMaxMemoryMb", s => s with { SqlServerMaxMemoryMb = 0 }, 0d, v => v.SqlServerMaxMemoryMb = 8192, 8192d, s => s.SqlServerMaxMemoryMb),
         // Dashboard
         Case("theme", s => s with { Theme = "Light" }, "Light", v => v.Theme = "Dark", "Dark", s => s.Theme),
+        Case("font", s => s with { Font = "Outfit" }, "Outfit", v => v.Font = "Segoe UI", "Segoe UI", s => s.Font),
         Case("symbolTabLabels", s => s with { SymbolTabLabels = false }, false, v => v.SymbolTabLabels = true, true, s => s.SymbolTabLabels),
         Case("tabBlinkTokens", s => s with { TabBlinkTokens = 5000 }, 5000, v => v.TabBlinkTokens = 250, 250, s => s.TabBlinkTokens),
         Case("excludeLauncherFromTeamWall", s => s with { ExcludeLauncherFromTeamWall = true }, true, v => v.ExcludeLauncherFromTeamWall = false, false,

@@ -317,6 +317,12 @@ public sealed record OrchestratorSettings
     /// or anything else, is dark, the default; the dashboard reads it at start and writes it at each switch.</summary>
     public string? Theme { get; init; }
 
+    /// <summary>The dashboard's font (M.ORCH-T1274): "Segoe UI", the font it always had and the default, or "Outfit", bundled in
+    /// the dashboard (Fonts/). Every window, menu and tooltip follows it, live; the terminal panes keep their monospace font.</summary>
+    public string Font { get; init; } = DefaultFont;
+
+    public const string DefaultFont = "Segoe UI";
+
     /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so allocate
     /// leaves the repo alone through the pauses between your prompts. 0 counts only a CLI that's mid-turn.</summary>
     public int AllocateHandMinutes { get; init; } = 15;

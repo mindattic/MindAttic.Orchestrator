@@ -24,6 +24,8 @@
   <ItemGroup>
     <!-- The same icon for the window's title bar and taskbar button. -->
     <Resource Include="..\..\assets\logo.ico" Link="logo.ico" />
+    <!-- Outfit, Regular and Bold (M.ORCH-T1274): the Font setting's alternative to Segoe UI, loaded by FontChoice. -->
+    <Resource Include="Fonts\*.ttf" />
   </ItemGroup>
 
   <ItemGroup>

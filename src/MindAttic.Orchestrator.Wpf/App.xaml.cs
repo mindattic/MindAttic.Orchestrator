@@ -89,6 +89,8 @@ public partial class App : Application
         // Dark unless light was chosen (M.ORCH-T678): the saved choice, before any window (the first-run prompts and the
         // workspace builder too) opens. High contrast still wins over either.
         ThemeChoice.Apply(Resources, new JsonStore());
+        // The saved font (M.ORCH-T1274), Segoe UI unless Outfit was chosen, likewise before any window opens.
+        FontChoice.Apply(Resources, new JsonStore());
 
         var installer = new Installer();
         if (e.Args.Contains("--uninstall", StringComparer.OrdinalIgnoreCase))

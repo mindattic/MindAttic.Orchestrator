@@ -375,6 +375,8 @@ public partial class MainWindow : Window
             // LAMP (M.ORCH-T1308): the theme chosen in MindAttic.Vault.Desktop's Orchestrator settings page (M.ORCH-T1512) applies
             // here live, with no restart.
             if (payload is Status.SettingsPayload) ThemeChoice.Follow(Application.Current?.Resources, model.Store);
+            // The font chosen there too (M.ORCH-T1274), swapped in live the same way.
+            if (payload is Status.SettingsPayload) FontChoice.Follow(Application.Current?.Resources, model.Store);
             if (!model.ApplyPushedState(payload)) return;
             var read = await model.ReapplyStateAsync(Hidden || !IsLoaded);
             if (read && IsLoaded && !Hidden) await model.RefreshAsync();

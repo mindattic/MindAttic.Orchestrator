@@ -423,6 +423,11 @@ public sealed class OrchestratorVaultSettings
     [SettingChoices("Dark", "Light")]
     public string? Theme { get; set; }
 
+    [Setting("Font", Group = "Dashboard", Order = 24,
+        Help = "The dashboard's font in every window, menu and tooltip, changed live: Segoe UI (the default) or Outfit. The terminal panes keep their monospace font.")]
+    [SettingChoices("Segoe UI", "Outfit")]
+    public string Font { get; set; } = OrchestratorSettings.DefaultFont;
+
     [Setting("Symbols in tab labels (Σ/λ)", Group = "Dashboard", Order = 2,
         Help = "On: \"Σ: 15% | λ: 29%\". Off: \"wk: 15% | 5h: 29%\". Same figures either way.")]
     public bool SymbolTabLabels { get; set; } = true;
@@ -672,6 +677,7 @@ public sealed class OrchestratorVaultSettings
         SqlFreshnessCheck = s.SqlFreshnessCheck,
         SqlFreshnessCheckAt = s.SqlFreshnessCheckAt,
         Theme = s.Theme,
+        Font = s.Font,
         SymbolTabLabels = s.SymbolTabLabels,
         TabBlinkTokens = s.TabBlinkTokens,
         ExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall,
@@ -798,6 +804,7 @@ public sealed class OrchestratorVaultSettings
         SqlFreshnessCheck = SqlFreshnessCheck,
         SqlFreshnessCheckAt = string.IsNullOrWhiteSpace(SqlFreshnessCheckAt) ? OrchestratorSettings.DefaultSqlFreshnessCheckAt : SqlFreshnessCheckAt.Trim(),
         Theme = string.IsNullOrWhiteSpace(Theme) ? null : Theme,
+        Font = string.IsNullOrWhiteSpace(Font) ? OrchestratorSettings.DefaultFont : Font,
         SymbolTabLabels = SymbolTabLabels,
         TabBlinkTokens = TabBlinkTokens,
         ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall,
