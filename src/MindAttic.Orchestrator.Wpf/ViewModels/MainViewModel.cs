@@ -366,8 +366,10 @@ public sealed partial class MainViewModel : ObservableObject
                 var ramUtilizationPercent = MachineHealth.RamUtilizationPercent();
                 // The master switch for /allocate (M.ORCH-T1491): only a setting that was read and is off shows the banner.
                 var paused = store.TryLoadSettings(out var settingsNow) && !settingsNow.Allocate;
+                // Members whose until date has passed drop off the roster, so no CLI tab is started or respawned for them (M.ORCH-T1401).
+                var lapsed = MemberUntil.Lapsed(settingsNow?.MemberUntil, DateTime.Now);
                 planned = PlanOffUi(built);
-                return (built, LoginScope.Tabs(built, dirs, members, hasKey), orgDirectory, diskFreeGb, ramUtilizationPercent, paused);
+                return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, diskFreeGb, ramUtilizationPercent, paused);
             }), () => localChanges);
             precomputedPlan = planned;
             ApplyTabs(next, tabs, nextOrgs);

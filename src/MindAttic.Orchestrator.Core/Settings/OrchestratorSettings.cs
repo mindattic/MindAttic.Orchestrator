@@ -201,6 +201,12 @@ public sealed record OrchestratorSettings
     /// M.ORCH-T1122; now every ticket is worked in its repo's own checkout on main, and the sweep only tidies those old ones.</summary>
     public string WorktreeRoot { get; init; } = @"D:\Projects\MindAttic.worktrees";
 
+    /// <summary>Per-member "until" dates (M.ORCH-T1401): <c>email=date</c> entries joined by ";" (a date is yyyy-MM-dd, that day's end,
+    /// or yyyy-MM-ddTHH:mm, local). Once a member's date has passed the dashboard drops that member's tab from the roster, so none of
+    /// its CLI tabs are auto-started or respawned; the member, login folder, credentials and data stay, and clearing the entry brings
+    /// the tab back. See <see cref="Budget.MemberUntil"/>.</summary>
+    public string MemberUntil { get; init; } = Budget.MemberUntil.Default;
+
     /// <summary>Percent of the 5-hour limit one repo may spend in a block before it gets no new sessions
     /// (repo name → percent), so one greedy repo can't eat the block. Missing means no cap.</summary>
     public Dictionary<string, int> RepoBudgetPercent { get; init; } = [];

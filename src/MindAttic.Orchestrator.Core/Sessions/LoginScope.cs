@@ -108,18 +108,20 @@ public static class LoginScope
     /// @; any other login's by its login's name. The global one is its member's own seat, never marked a fallback (the API key tab is, while the key bills), each has its email in the tooltip and
     /// its terminal tabs' color as its accent. The global login's own account gets no second tab: the fallback one is its.
     /// </summary>
+    /// <para><paramref name="lapsed"/> (M.ORCH-T1401): logins whose <see cref="MemberUntil"/> date has passed, left out.</para>
     /// <para>The API key's person (M.ORCH-T906) has its tab after everyone's: <paramref name="apiKey"/> says whether the
     /// Vault holds a key for it (its "signed in"); null leaves it out.</para>
-    public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<Member>? members = null, bool? apiKey = null) =>
+    public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<Member>? members = null, bool? apiKey = null,
+        IReadOnlySet<string>? lapsed = null) =>
         Tabs(snapshot, email => LoginLook.For(dirs.For(email).Directory, email), LoginLook.For(dirs.ClaudeDir, snapshot.GlobalEmail), members, apiKey,
-            dirs.All().Select(d => (d.Email, d.SignedIn)));
+            dirs.All().Select(d => (d.Email, d.SignedIn)), lapsed);
 
     /// <summary><paramref name="knownLogins"/> (M.ORCH-T1254): every per-CLI login folder on this machine, signed in or not, so
     /// one a tick's <paramref name="snapshot"/> happens to carry no live session, agent or host for (a cutoff just set, a
     /// transient read, between CLIs) still keeps its tab rather than dropping out of the strip -- only a login this machine has
     /// never heard of (no folder, no roster row) goes without one.</summary>
     internal static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, Func<string, LoginLook> ownLook, LoginLook globalLook, IEnumerable<Member>? members = null,
-        bool? apiKey = null, IEnumerable<(string Email, bool SignedIn)>? knownLogins = null)
+        bool? apiKey = null, IEnumerable<(string Email, bool SignedIn)>? knownLogins = null, IReadOnlySet<string>? lapsed = null)
     {
         var byEmail = new Dictionary<string, Member>(StringComparer.Ordinal);
         foreach (var m in members ?? [])
@@ -148,7 +150,8 @@ public static class LoginScope
         var waiting = byEmail.Keys.Concat(knownSignedIn.Keys)
             .Where(e => !live.Contains(e) && e != globalEmail)
             .ToHashSet(StringComparer.Ordinal);
-        var own = live.Concat(waiting).Order(StringComparer.Ordinal).Select(e =>
+        // A member whose until date has passed (M.ORCH-T1401, MemberUntil) has no tab, so nothing opens or respawns for it; the global login's is never dropped.
+        var own = live.Concat(waiting).Where(e => lapsed is null || !lapsed.Contains(e)).Order(StringComparer.Ordinal).Select(e =>
         {
             var look = ownLook(e);
             var title = Title(e, look.Alias);

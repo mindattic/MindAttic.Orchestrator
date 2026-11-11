@@ -546,6 +546,10 @@ public sealed class OrchestratorVaultSettings
     [PathPicker(PathKind.Folder)]
     public string WorktreeRoot { get; set; } = @"D:\Projects\MindAttic.worktrees";
 
+    [Setting("Member until dates", Group = "Dashboard", Order = 23,
+        Help = "Entries email=date joined by ; (a date is yyyy-MM-dd, that day's end, or yyyy-MM-ddTHH:mm, local). After its date the dashboard drops that member's tab and stops auto-starting or respawning its CLI tabs; nothing of the member (login, credentials, data) is deleted. Clear the entry to bring the tab back.")]
+    public string MemberUntil { get; set; } = Budget.MemberUntil.Default;
+
     // ── Gateway ────────────────────────────────────────────────────────────
 
     [Setting("Team gateway", Group = "Gateway", Order = 1,
@@ -669,6 +673,7 @@ public sealed class OrchestratorVaultSettings
         EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
         WorkspaceRoot = WorkspaceOverrideOf(s),
         WorktreeRoot = s.WorktreeRoot,
+        MemberUntil = s.MemberUntil,
         Gateway = OrchestratorGatewayVaultSettings.From(s.Gateway ?? new GatewaySettings()),
     };
 
@@ -791,6 +796,7 @@ public sealed class OrchestratorVaultSettings
         MainTestsLockRetrySeconds = MainTestsLockRetrySeconds,
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,
         WorktreeRoot = string.IsNullOrWhiteSpace(WorktreeRoot) ? s.WorktreeRoot : WorktreeRoot,
+        MemberUntil = MemberUntil ?? "",
         Gateway = (Gateway ?? new()).ApplyTo(s.Gateway ?? new GatewaySettings()),
     };
 
