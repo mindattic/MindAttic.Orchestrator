@@ -588,6 +588,12 @@ public sealed class TerminalPanesTests
                 var paneB = terminalsB.Reattach(session, paneA.Request);
                 Assert.That(paneB, Is.Not.Null, "a second viewer can attach to the same host");
                 Assert.That(Pump(() => paneB!.Relay?.Connection is not null, TimeSpan.FromSeconds(10)), Is.True, "the second viewer attached");
+                // M.ORCH-T1653: Relay.Connection exists as soon as B's renderer loads, before its pipe has even connected, and
+                // RelayConnection.OwnsSize starts true until the host's first Size frame says otherwise. TakeSize() is a no-op
+                // while OwnsSize is true (and Send drops it while there's no link), so calling it right away was silently
+                // dropped whenever the attach took longer than one 50 ms pump (the whole suite on a loaded machine): A then
+                // never lost the size at all. Wait until the host has told B that A owns the size, so B's TakeSize is real.
+                Assert.That(Pump(() => paneB!.Relay!.Connection!.OwnsSize == false, TimeSpan.FromSeconds(10)), Is.True, "the host told B that A owns the size");
 
                 // M.ORCH-T1646: latch the loss from the connection's own event instead of polling OwnsSize, which a later
                 // frame could flip back before a slow poll (a starved machine) ever sampled it.
