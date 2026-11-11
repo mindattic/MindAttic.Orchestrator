@@ -2688,6 +2688,104 @@ public sealed class HookScriptTests
         File.WriteAllText(Path.Combine(folder, "rl-status.json"), body.ToJsonString());
     }
 
+    // ---- the API key person's credit (M.ORCH-T955): spent, its CLIs are stopped as a Claude login's are at its stop ----
+
+    /// <summary>The API key person's own login folder (M.ORCH-T906), whose CLIs bill the key, and the environment of one.</summary>
+    private Dictionary<string, string> ApiKeyLogin()
+    {
+        var folder = Path.Combine(dir, ".claude-accounts", Billing.ApiKeyPerson.Email);
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, ".claude.json"), """{"primaryApiKey":"sk-ant-x"}""");
+        return new() { ["CLAUDE_CONFIG_DIR"] = folder };
+    }
+
+    private string Store => Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator");
+
+    private string ApiLedger => Path.Combine(Store, Billing.ApiSpendLedger.FileName);
+
+    /// <summary>The key's starting credit, as <c>orchestrator billing credit</c> sets it (null: none set).</summary>
+    private void ApiCredit(double? usd, DateTime? since)
+    {
+        Directory.CreateDirectory(Store);
+        File.WriteAllText(Path.Combine(Store, "settings.json"), JsonSerializer.Serialize(new { WorkspaceRoot = ws, ApiCreditUsd = usd, ApiCreditSinceUtc = since }));
+    }
+
+    /// <summary>The daemon's spend ledger (api-spend.json) holding one session's dollars per hour.</summary>
+    private void ApiSpent(params (DateTime At, double Usd)[] hours)
+    {
+        Directory.CreateDirectory(Store);
+        var buckets = new System.Text.Json.Nodes.JsonObject();
+        foreach (var (at, usd) in hours)
+            buckets[((long)Math.Floor((at - DateTime.UnixEpoch).TotalHours) * 3600).ToString(System.Globalization.CultureInfo.InvariantCulture)] = usd;
+        File.WriteAllText(ApiLedger, new System.Text.Json.Nodes.JsonObject { ["sessions"] = new System.Text.Json.Nodes.JsonObject { ["s-key"] = buckets } }.ToJsonString());
+    }
+
+    private bool OutOfCredit(double credit, DateTime since) =>
+        new Billing.ApiSpendLedger(ApiLedger).Spend(credit, since, DateTime.UtcNow, DateTime.UtcNow.Date).OutOfCredit;
+
+    [Test]
+    public void The_api_key_persons_cli_is_refused_every_tool_call_once_its_credit_is_spent_and_only_then()
+    {
+        var key = ApiKeyLogin();
+        var since = DateTime.UtcNow.AddHours(-3); // fractional seconds, as .NET writes them (7 digits)
+        ApiCredit(5, since);
+        ApiSpent((since.AddHours(-2), 50), (since, 2), (since.AddHours(2), 2.5));
+        Assert.That(OutOfCredit(5, since), Is.False, "the ledger's own sum: $4.50 of $5, the hours before the credit not counted");
+        Assert.That(Gate(ReadCall, key).Output, Does.Not.Contain("\"deny\""), "credit left: it runs, as the dashboard sees it");
+
+        ApiSpent((since.AddHours(-2), 50), (since, 2), (since.AddHours(2), 3.25));
+        Assert.That(OutOfCredit(5, since), Is.True, "$5.25 of $5");
+        var (output, took) = Gate(ReadCall, key);
+        Assert.That(output, Does.Contain("\"deny\"").And.Contain("credit is spent").And.Contain("$5.25 spent of $5.00")
+            .And.Contain("orchestrator billing credit"), "spent: refused, saying why and how to give it more");
+        Assert.That(took, Is.LessThan(TimeSpan.FromSeconds(10)), "refused at once: no reset is coming to wait for");
+        Assert.That(Gate(new { tool_name = "Agent", tool_input = new { prompt = "x" }, agent_id = "sub-1", session_id = "s-key" }, key).Output,
+            Does.Contain("\"deny\"").And.Contain("credit is spent"), "its subagents too");
+
+        ApiCredit(20, since);
+        Assert.That(Gate(ReadCall, key).Output, Does.Not.Contain("\"deny\""), "a new credit lets it go on at once");
+    }
+
+    [Test]
+    public void The_api_key_credit_stop_fails_open_and_never_stops_another_login()
+    {
+        var key = ApiKeyLogin();
+        ApiSpent((DateTime.UtcNow, 80));
+        ApiCredit(null, null);
+        Assert.That(Gate(ReadCall, key).Output, Does.Not.Contain("\"deny\""), "no credit set: nothing to run out of");
+
+        ApiCredit(5, DateTime.UtcNow.AddHours(-1));
+        File.WriteAllText(ApiLedger, "{ torn");
+        Assert.That(Gate(ReadCall, key).Output, Does.Not.Contain("\"deny\""), "a ledger that can't be read refuses nothing");
+        File.Delete(ApiLedger);
+        Assert.That(Gate(ReadCall, key).Output, Does.Not.Contain("\"deny\""), "no ledger yet: nothing spent");
+
+        ApiSpent((DateTime.UtcNow, 80));
+        Assert.That(Gate(ReadCall, key).Output, Does.Contain("\"deny\""), "spent: refused");
+        var (other, otherEnv) = OwnLogin("c@example.com", "acct-c");
+        File.WriteAllText(Path.Combine(other, ".claude.json"), """{"primaryApiKey":"sk-ant-x"}""");
+        Assert.That(Gate(ReadCall, otherEnv).Output, Does.Not.Contain("\"deny\""), "another login on an API key isn't the API key person: the credit isn't its");
+        var (_, claudeLogin) = OwnLogin();
+        Assert.That(Gate(ReadCall, claudeLogin).Output, Does.Not.Contain("\"deny\""), "a Claude login's CLI is untouched");
+        Assert.That(Gate(ReadCall).Output, Does.Not.Contain("\"deny\""), "and so is the global login's");
+        Assert.That(PromptHeld(claudeLogin), Is.False, "nor is a Claude login's typed prompt held");
+    }
+
+    [Test]
+    public void The_api_key_persons_typed_prompt_is_answered_unsent_once_its_credit_is_spent()
+    {
+        var key = ApiKeyLogin();
+        ApiCredit(5, DateTime.UtcNow.AddHours(-1));
+        ApiSpent((DateTime.UtcNow, 6));
+        var prompt = Gate(new { hook_event_name = "UserPromptSubmit", session_id = "s-key", prompt = "hi", cwd = ws }, key, AgentGate.ContextScriptName).Output;
+        Assert.That(prompt, Does.Contain("\"block\"").And.Contain("Not sent").And.Contain("credit is spent"), "nothing is billed for it");
+        Assert.That(Gate(new { hook_event_name = "UserPromptSubmit", session_id = "s-key", prompt = "/pacing off", cwd = ws }, key, AgentGate.ContextScriptName).Output,
+            Does.Not.Contain("credit is spent"), "the orchestrator's control commands still go through");
+
+        ApiSpent((DateTime.UtcNow, 1));
+        Assert.That(PromptHeld(key), Is.False, "credit left: the prompt is sent");
+    }
+
     /// <summary>M.ORCH-T559: a CLI on its own login spends its account's pool, so the global login's stop isn't its stop, and
     /// its account's stop holds it while the global login runs on.</summary>
     [Test]

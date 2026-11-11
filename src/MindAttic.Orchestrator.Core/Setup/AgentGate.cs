@@ -104,6 +104,11 @@ public static class AgentGate
     /// left used to stay locked out at the old one's weekly stop until it reset; going back to it brings its stop back.</para>
     /// <para>A CLI billed elsewhere (an API key, a gateway, a cloud provider: <c>session_auth</c>) spends none of the
     /// subscription's windows, so no stop or pace holds it.</para>
+    /// <para>The one stop such a CLI has is money (M.ORCH-T955): a CLI on the API key person's own login
+    /// (<see cref="Billing.ApiKeyPerson"/>) is refused once its starting credit is spent (<c>api_credit_stop</c>, needs
+    /// <c>orch_settings</c> and <c>ORCH_DIR</c>), from the <c>ApiCreditUsd</c>/<c>ApiCreditSinceUtc</c> settings and the
+    /// daemon's spend ledger (<see cref="Billing.ApiSpendLedger"/>), summed as <see cref="Billing.ApiSpendLedger.Spend"/> does: a
+    /// settings read and one small file, no network call. No credit set, or either unreadable, refuses nothing (fail-open).</para>
     /// </summary>
     internal static string ClaudeUsagePython => $$"""
         {{ProfilePython}}
@@ -594,6 +599,47 @@ public static class AgentGate
                 return age if age > {{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}} else None
             except Exception:
                 return None
+        API_KEY_PERSON = "{{Billing.ApiKeyPerson.Email}}"
+        def api_credit_stop():
+            # (spent, credit) in dollars once the API key person's starting credit is spent (M.ORCH-T955), for a CLI on that
+            # person's own login folder; None for any other CLI, while credit is left, with no credit set, or when the settings or
+            # the daemon's spend ledger can't be read (fail-open). Summed as ApiSpendLedger.Spend does: every session's hours from
+            # the hour the credit was entered on. A settings read and one small file: no network call per tool call.
+            try:
+                if not PROFILE_DIR or PROFILE_DIR.name.strip().lower() != API_KEY_PERSON:
+                    return None
+                settings = orch_settings()
+                credit = settings.get("ApiCreditUsd")
+                if isinstance(credit, bool) or not isinstance(credit, (int, float)):
+                    return None
+                start = None
+                since = settings.get("ApiCreditSinceUtc")
+                if since:
+                    stamp = str(since).strip().replace("Z", "+00:00")
+                    if "." in stamp:
+                        # .NET writes up to 7 fractional digits; Python's fromisoformat takes at most 6 before 3.11.
+                        head, rest = stamp.split(".", 1)
+                        digits = len(rest) - len(rest.lstrip("0123456789"))
+                        stamp = head + ("." + rest[:min(digits, 6)] if digits else "") + rest[digits:]
+                    at = datetime.fromisoformat(stamp)
+                    if at.tzinfo is None:
+                        at = at.replace(tzinfo=__import__("datetime").timezone.utc)
+                    start = int(at.timestamp() // 3600) * 3600
+                ledger = read_json(ORCH_DIR / "{{Billing.ApiSpendLedger.FileName}}")
+                spent = 0.0
+                for hours in (ledger.get("sessions") or {}).values():
+                    if isinstance(hours, dict):
+                        for hour, usd in hours.items():
+                            if (start is None or int(hour) >= start) and isinstance(usd, (int, float)) and not isinstance(usd, bool):
+                                spent += float(usd)
+                return (spent, float(credit)) if float(credit) - spent <= 0 else None
+            except Exception:
+                return None
+        def api_money(usd):
+            return "$" + format(usd, ",.0f" if abs(usd) >= 100 else ",.2f")
+        def api_credit_note(stop):
+            return ("The API key's starting credit is spent (" + api_money(stop[0]) + " spent of " + api_money(stop[1]) + "), so tool calls "
+                    "are refused until a new credit is set (orchestrator billing credit <usd>). End your turn now.")
         """;
 
     /// <summary>The percent of the 5-hour window at which every tool call is refused when no status names the login's own
@@ -2187,8 +2233,12 @@ public static class AgentGate
             raise SystemExit(0)
 
         # A CLI billed to an API key, a gateway or a cloud provider spends none of the subscription's windows: no stop, latch,
-        # pace hold or subagent allowance is its to obey.
+        # pace hold or subagent allowance is its to obey. Only money stops one (M.ORCH-T955): a CLI on the API key person's own
+        # login is refused, as a Claude login is at its stop, once the key's starting credit is spent.
         if session_auth(data.get("cwd")) != "{{Sessions.ContextCycler.SubscriptionAuth}}":
+            spent = api_credit_stop()
+            if spent:
+                refuse(api_credit_note(spent))
             raise SystemExit(0)
 
         # Never past the limit, whatever else is set (/pacing off included): at the window's target a call is held as long
@@ -3749,6 +3799,15 @@ public static class AgentGate
                     "(MindAttic.Orchestrator never lets it pass the limit). Typing works again when it resets at " +
                     str(limits.get("reset_time") or "the end of the window") + ". /allocate, /pacing and /goal clear still go through."}))
                 sys.exit(0)
+        # The API key person's CLI once its credit is spent (M.ORCH-T955): its typed message is answered unsent the same way, as
+        # its every tool call is refused by the pace gate; nothing is billed for it.
+        credit_spent = None if paced or event not in ("UserPromptSubmit", "Stop") else api_credit_stop()
+        if event == "UserPromptSubmit" and credit_spent and not CONTROL.match((data.get("prompt") or "").strip()) and not exempt_prompt(data.get("prompt")):
+            activity_record("claude", data, "Stop")  # answered unsent: the turn never ran (M.ORCH-T961)
+            print(json.dumps({"decision": "block", "reason": "Not sent, so nothing was billed: the API key's starting credit is spent (" +
+                api_money(credit_spent[0]) + " spent of " + api_money(credit_spent[1]) + "). Typing works again once a new credit is set "
+                "(orchestrator billing credit <usd>). /allocate, /pacing and /goal clear still go through."}))
+            sys.exit(0)
         DIR.mkdir(parents=True, exist_ok=True)
         state_file = DIR / (sid + ".state.json")
         state = load(state_file)
@@ -3768,7 +3827,8 @@ public static class AgentGate
             limits = orchestrator_status()
             # At the window's target nothing more may run, so a stop is never pushed back to work: the orchestrator's stop,
             # latched or fresh, or Claude's own percent at the line with the daemon down, as a typed prompt is held to.
-            stopped = paced and (bool(limits.get("stop")) or orchestrator_stop(limits) is not None or claude_stop() is not None)
+            # The API key person's spent credit is its stop too (M.ORCH-T955): every tool call is refused, so it's never sent on.
+            stopped = (paced and (bool(limits.get("stop")) or orchestrator_stop(limits) is not None or claude_stop() is not None)) or bool(credit_spent)
             # /allocate off winds this CLI down (M.ORCH-T572): once none of its subagents is still working (they've landed and
             # closed), a turn that ends without its quicksave is told to make it, once.
             if winding_down(my_pid()) and not state.get("quicksave_told") and subagents_working(my_pid()) == 0:
@@ -3841,6 +3901,10 @@ public static class AgentGate
                 # /goal's own Stop hook sends the turn back while its condition isn't met, and at the stop every tool call is
                 # refused, so it never is: each round would spend a turn past the line. continue:false outranks its block.
                 save(state_file, state)
+                if credit_spent:
+                    print(json.dumps({"continue": False, "stopReason": "The API key's starting credit is spent, so /goal can't go on before a new "
+                        "one is set (orchestrator billing credit <usd>); the goal stays set (/goal clear drops it)."}))
+                    sys.exit(0)
                 # The stop's own window: a weekly wall says so, as the refusal of a typed prompt does.
                 own = None if limits.get("stop_window") else claude_stop()
                 window = limits.get("stop_window") or (latched("orchestrator") or {}).get("window") or (own[2] if own else None) or "5-hour"
