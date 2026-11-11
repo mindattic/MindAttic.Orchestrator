@@ -57,7 +57,7 @@ public partial class MainWindow
             item.Click += (_, e) => { e.Handled = true; apply(hex); };
             root.Items.Add(item);
         }
-        root.Items.Add(new Separator());
+        root.Items.Add(DropdownSeparator());
         var reset = DropdownItem(defaultHeader);
         reset.IsCheckable = true;
         reset.IsChecked = isDefault;
