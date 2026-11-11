@@ -1036,11 +1036,25 @@ public partial class MainWindow : Window
         else
             foreach (var node in tree) root.Items.Add(ProjectItem(node, tab, Open));
         root.Items.Add(new Separator());
+        var commit = DropdownItem("Commit and push projects…");
+        commit.ToolTip = "Pick projects in this tree and commit and push each one under one message (M.ORCH-T1589)";
+        commit.IsEnabled = MainViewModel.ProjectTree is { Count: > 0 };
+        commit.Click += (_, e) => { e.Handled = true; OpenCommitProjects(); };
+        root.Items.Add(commit);
         var refresh = DropdownItem("Refresh projects");
         refresh.ToolTip = "Read the Launcher's roster and GitHub's wip-tagged repos again";
         refresh.Click += (_, e) => { e.Handled = true; _ = tab.RefreshProjectListAsync(); };
         root.Items.Add(refresh);
         return root;
+    }
+
+    /// <summary>The picker tree (M.ORCH-T1589): a window of its own, since the terminals' native windows would draw over an
+    /// in-window modal.</summary>
+    private void OpenCommitProjects()
+    {
+        if (MainViewModel.ProjectTree is not { Count: > 0 } tree) return;
+        try { new CommitProjectsWindow(tree) { Owner = this }.Show(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Commit and push projects failed; contained"); }
     }
 
     private MenuItem ProjectItem(ProjectNode node, MainViewModel tab, Action<Func<Task>> open)
