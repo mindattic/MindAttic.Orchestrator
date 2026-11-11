@@ -175,6 +175,7 @@ public sealed class LampSettingsTests
         Case("memoryEmergencyCommitPercent", s => s with { MemoryEmergencyCommitPercent = 94 }, 94d, v => v.MemoryEmergencyCommitPercent = 96, 96d, s => s.MemoryEmergencyCommitPercent),
         Case("memoryResumeMarginGb", s => s with { MemoryResumeMarginGb = 2 }, 2d, v => v.MemoryResumeMarginGb = 0.3, 0.3, s => s.MemoryResumeMarginGb),
         Case("memoryResumeMarginCommit", s => s with { MemoryResumeMarginCommit = 5 }, 5d, v => v.MemoryResumeMarginCommit = 2, 2d, s => s.MemoryResumeMarginCommit),
+        Case("sqlServerMaxMemoryMb", s => s with { SqlServerMaxMemoryMb = 0 }, 0d, v => v.SqlServerMaxMemoryMb = 8192, 8192d, s => s.SqlServerMaxMemoryMb),
         // Dashboard
         Case("theme", s => s with { Theme = "Light" }, "Light", v => v.Theme = "Dark", "Dark", s => s.Theme),
         Case("symbolTabLabels", s => s with { SymbolTabLabels = false }, false, v => v.SymbolTabLabels = true, true, s => s.SymbolTabLabels),

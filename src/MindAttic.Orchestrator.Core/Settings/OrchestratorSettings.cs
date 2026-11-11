@@ -557,6 +557,16 @@ public sealed record OrchestratorSettings
 
     public const double DefaultMainTestsLockRetrySeconds = 30;
 
+    /// <summary>The max server memory (MB) the daemon keeps localhost's SQL Server at (M.ORCH-T1621): 0 (the default) leaves SQL
+    /// Server's own setting alone; any other value under <see cref="SqlServerMaxMemoryFloorMb"/> is raised to it, never applied
+    /// lower, since 1024 MB crashed the instance (error 17300) and only an admin restart in minimal mode recovered it.</summary>
+    public double SqlServerMaxMemoryMb { get; init; } = DefaultSqlServerMaxMemoryMb;
+
+    public const double DefaultSqlServerMaxMemoryMb = 0;
+
+    /// <summary>The least <see cref="SqlServerMaxMemoryMb"/> ever applied: a lower value set is raised to this.</summary>
+    public const int SqlServerMaxMemoryFloorMb = 4096;
+
     /// <summary>Minutes an ended Launcher menu tab stays (M.ORCH-T1599): 0 closes it at once, since it has nothing to read.</summary>
     public double EndedLauncherTabMinutes { get; init; }
 

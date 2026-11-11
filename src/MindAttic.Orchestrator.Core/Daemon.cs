@@ -173,6 +173,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 EnsureHooks(s);
                 WatchHealth(allocate);
                 WatchMemory(s);
+                CapSqlServerMemory(s);
                 WatchPagefile();
                 WatchDisk(s);
                 CleanDiskIfLow(s, DateTime.UtcNow, options.WorkspaceRoot);
@@ -1032,6 +1033,16 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var text = $"memory guard {m.Key}: {m.Why}; {what}";
         Say(m.Level >= Activity.MemoryLevel.Critical ? LogEventLevel.Error : m.Level == Activity.MemoryLevel.Tight ? LogEventLevel.Warning : LogEventLevel.Information, text);
         if (worse) Alert(m.Level == Activity.MemoryLevel.Tight ? "RAM low: holding new work" : "RAM critical", text, urgent: m.Level >= Activity.MemoryLevel.Critical);
+    }
+
+    private readonly Activity.SqlServerMemory sqlServerMemory = new();
+
+    /// <summary>When <see cref="OrchestratorSettings.SqlServerMaxMemoryMb"/> changes (and once at start), keeps localhost's SQL
+    /// Server at it (M.ORCH-T1621), never under the 4096 MB floor; 0 leaves it alone. A failure is logged, never thrown.</summary>
+    private void CapSqlServerMemory(OrchestratorSettings s)
+    {
+        if (sqlServerMemory.Observe(s) is { } said)
+            Say(said.StartsWith("couldn't", StringComparison.Ordinal) ? LogEventLevel.Warning : LogEventLevel.Information, said);
     }
 
     private DateTime pagefileCheckedUtc;

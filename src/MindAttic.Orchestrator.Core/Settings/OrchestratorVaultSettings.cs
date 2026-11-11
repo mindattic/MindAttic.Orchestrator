@@ -338,6 +338,11 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 3600)]
     public double MemorySettleSeconds { get; set; } = 60;
 
+    [Setting("SQL Server max memory (MB)", Group = "Memory", Order = 13,
+        Help = "The max server memory the daemon keeps localhost's SQL Server at, applied with sp_configure when it changes. 0 (the default) leaves SQL Server's own setting alone; any other value under 4096 is raised to 4096, since 1024 crashed it (error 17300).")]
+    [SettingRange(0, 1048576)]
+    public double SqlServerMaxMemoryMb { get; set; } = OrchestratorSettings.DefaultSqlServerMaxMemoryMb;
+
     [Setting("Sample machine health every (s)", Group = "Alerts", Order = 63,
         Help = "Seconds between the daemon's samples of handles, commit charge and free RAM for the machine-health alert.")]
     [SettingRange(1, 86400)]
@@ -603,6 +608,7 @@ public sealed class OrchestratorVaultSettings
         MemoryEmergencyCommitPercent = s.MemoryEmergencyCommitPercent,
         MemoryResumeMarginGb = s.MemoryResumeMarginGb,
         MemoryResumeMarginCommit = s.MemoryResumeMarginCommit,
+        SqlServerMaxMemoryMb = s.SqlServerMaxMemoryMb,
         AuditEveryHours = s.AuditEveryHours,
         GroomAfterDays = s.GroomAfterDays,
         LogKeepDays = s.LogKeepDays,
@@ -717,6 +723,7 @@ public sealed class OrchestratorVaultSettings
         MemoryEmergencyCommitPercent = MemoryEmergencyCommitPercent,
         MemoryResumeMarginGb = MemoryResumeMarginGb,
         MemoryResumeMarginCommit = MemoryResumeMarginCommit,
+        SqlServerMaxMemoryMb = SqlServerMaxMemoryMb,
         AuditEveryHours = AuditEveryHours,
         GroomAfterDays = GroomAfterDays,
         LogKeepDays = LogKeepDays,
