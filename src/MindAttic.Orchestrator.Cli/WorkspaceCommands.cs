@@ -17,6 +17,39 @@ internal sealed class WorkspaceExportCommand : Command
     }
 }
 
+/// <summary>Writes the generated context-gate.py over its version-controlled copies (M.ORCH-T1605): AgentGate's script is
+/// the one source, and these exports are made only on purpose, then committed in their own repos.</summary>
+internal sealed class WorkspaceExportContextGateCommand : Command<WorkspaceExportContextGateCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandOption("--check")]
+        [Description("Only compare: exit 1 when a copy differs from the generated script, writing nothing.")]
+        public bool Check { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        List<(string Path, bool Differed)> copies;
+        try { copies = AgentGate.ExportSharedContextGate(OrchestratorOptions.Load().WorkspaceRoot, settings.Check); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            AnsiConsole.MarkupLine($"[red]Couldn't export context-gate.py: {Markup.Escape(e.Message)}[/]");
+            return 1;
+        }
+        if (copies.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No shared copy of context-gate.py's folder is in the workspace.[/]");
+            return 1;
+        }
+        foreach (var (path, differed) in copies)
+            AnsiConsole.MarkupLine(Markup.Escape(path) + ": " + (!differed ? "up to date" : settings.Check ? "[yellow]differs[/]" : "[green]written[/]"));
+        if (!settings.Check && copies.Any(c => c.Differed))
+            AnsiConsole.MarkupLine("[grey]Commit each in its own repo (MindAttic.Agency, and the workspace root for the mirror).[/]");
+        return settings.Check && copies.Any(c => c.Differed) ? 1 : 0;
+    }
+}
+
 internal sealed class WorkspaceBuildCommand : AsyncCommand<WorkspaceBuildCommand.Settings>
 {
     public sealed class Settings : CommandSettings

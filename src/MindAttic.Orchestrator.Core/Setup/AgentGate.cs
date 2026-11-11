@@ -3602,30 +3602,41 @@ public static class AgentGate
             pass
         """.Replace("\r\n", "\n");
 
-    /// <summary>Rewrites each existing shared copy of context-gate.py under the workspace root to <paramref name="body"/>.
-    /// Best effort: a copy that can't be read or written is skipped, never failing the hook install.</summary>
-    private static List<string> SyncSharedContextGate(string body)
+    /// <summary>The version-controlled copies of context-gate.py, relative to the workspace root: MindAttic.Agency's
+    /// <c>shared/hooks</c> (what Codex, Kimi and agy are wired to, through the mirror) and the mindattic-agent-standard
+    /// mirror Agency's sync-workspace-copy.ps1 keeps byte-identical to it.</summary>
+    private static readonly string[] SharedContextGateDirs = [@"MindAttic.Agency\shared\hooks", @"mindattic-agent-standard\shared\hooks"];
+
+    /// <summary>The one source of context-gate.py is <see cref="ContextScript"/> here (M.ORCH-T1605): Claude runs what
+    /// <see cref="Ensure"/> generates from it, and the shared copies are exports of it, made on purpose by
+    /// <c>orchestrator workspace export-context-gate</c> and committed in their own repos. Nothing writes them on its own
+    /// (M.ORCH-T1529 rewrote them on every hook install, leaving uncommitted edits in two other repos). The export always
+    /// uses the default context percent and keep-going, never this machine's settings, so it's the same file wherever it's
+    /// made. Returns each copy's path and whether it differed (written, or with <paramref name="check"/> only compared);
+    /// a copy whose folder is missing is left out. Throws on an I/O error, so the caller says so.</summary>
+    public static List<(string Path, bool Differed)> ExportSharedContextGate(string workspaceRoot, bool check = false)
     {
-        var did = new List<string>();
-        try
+        var body = ContextScript(DefaultContextPercent, keepGoing: true);
+        var result = new List<(string, bool)>();
+        foreach (var rel in SharedContextGateDirs)
         {
-            var root = OrchestratorOptions.Load().WorkspaceRoot;
-            foreach (var rel in new[] { @"MindAttic.Agency\shared\hooks", @"mindattic-agent-standard\shared\hooks" })
-            {
-                var path = Path.Combine(root, rel, ContextScriptName);
-                if (!File.Exists(path) || File.ReadAllText(path) == body) continue;
-                WriteReplacing(path, body);
-                did.Add("synced " + rel + "\\" + ContextScriptName);
-            }
+            var dir = Path.Combine(workspaceRoot, rel);
+            if (!Directory.Exists(dir)) continue;
+            var path = Path.Combine(dir, ContextScriptName);
+            var differs = !File.Exists(path) || File.ReadAllText(path) != body;
+            if (differs && !check) WriteReplacing(path, body);
+            result.Add((path, differs));
         }
-        catch (Exception) { }
-        return did;
+        return result;
     }
+
+    /// <summary>The context percent <see cref="Ensure"/> and the shared export use when none is given.</summary>
+    public const int DefaultContextPercent = 80;
 
     /// <summary>Writes the scripts and registers their hooks when anything is missing or out of date.
     /// Returns what it did, or null when everything was already in place. Throws <see cref="IOException"/> when
     /// <c>settings.json</c> can't be read (it's left alone), so a caller tries again rather than taking the hooks as in place.</summary>
-    public static string? Ensure(string? claudeDir = null, int contextPercent = 80, bool keepGoing = true)
+    public static string? Ensure(string? claudeDir = null, int contextPercent = DefaultContextPercent, bool keepGoing = true)
     {
         var dir = claudeDir ?? ClaudeDir;
         Directory.CreateDirectory(dir);
@@ -3649,9 +3660,7 @@ public static class AgentGate
             did.Add("wrote " + Path.GetFileName(path));
         }
         did.AddRange(DeleteRetiredCommands(Path.Combine(dir, "commands")));
-        // The version-controlled copies of the context gate (MindAttic.Agency's shared/hooks and the mindattic-agent-standard
-        // mirror) are refreshed from the generated script, so a change made only here can't leave them behind (M.ORCH-T1529).
-        if (claudeDir is null) did.AddRange(SyncSharedContextGate(ContextScript(contextPercent, keepGoing)));
+        // The version-controlled copies in other repos are never written from here (M.ORCH-T1605): see ExportSharedContextGate.
 
         var settingsPath = Path.Combine(dir, "settings.json");
         JsonObject? root;

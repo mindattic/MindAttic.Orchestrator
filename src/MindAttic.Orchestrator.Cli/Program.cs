@@ -211,6 +211,7 @@ internal static class CliApp
             {
                 w.SetDescription("The workspace as a list of repos: export it, or build it on a new machine.");
                 w.AddCommand<WorkspaceExportCommand>("export").WithDescription("Write docs\\workspace-repos.json in the workspace root repo from the repos on disk.");
+                w.AddCommand<WorkspaceExportContextGateCommand>("export-context-gate").WithDescription("Write the generated context-gate.py (default settings) over MindAttic.Agency's shared/hooks copy and the mindattic-agent-standard mirror, to commit there; --check only compares (M.ORCH-T1605).");
                 w.AddCommand<WorkspaceInstallAppsCommand>("install-apps").WithDescription("Run every app's run.ps1 in the workspace (not the orchestrator's own).");
                 w.AddCommand<WorkspaceBuildCommand>("build").WithDescription("Clone the workspace root, then every repo it lists, into a folder.");
             });
