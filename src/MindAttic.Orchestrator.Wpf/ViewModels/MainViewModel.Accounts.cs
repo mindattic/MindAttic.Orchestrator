@@ -60,6 +60,9 @@ public sealed partial class MainViewModel
                 autoOpenLaunchers = settings.AutoOpenLaunchers;
                 AllTerminals.EndedLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedTabMinutes));
                 AllTerminals.EndedMenuLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedLauncherTabMinutes));
+                // The dashboard's intervals, live from the Vault (M.ORCH-T1595): the poll and resync timers read them at their next tick.
+                DashboardTimings.Apply(settings);
+                launcherRespawn.Spacing = DashboardTimings.LauncherSpacing;
             }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
             // Each login's own cutoffs and who's allowed past the weekly one, for the tabs' disabled icon (M.ORCH-T757); kept as
@@ -78,8 +81,9 @@ public sealed partial class MainViewModel
     private IReadOnlySet<string> signInAgain = new HashSet<string>();
     private DateTime meterStatesReadUtc;
 
-    /// <summary>How often <see cref="LoadMeterStates"/> rereads them: well inside <see cref="UsageReport.StaleAfter"/>.</summary>
-    private static readonly TimeSpan MeterStatesEvery = TimeSpan.FromSeconds(30);
+    /// <summary>How often <see cref="LoadMeterStates"/> rereads them: well inside <see cref="UsageReport.StaleAfter"/> (30s by
+    /// default, the Vault setting MeterStatesSeconds, M.ORCH-T1595).</summary>
+    private static TimeSpan MeterStatesEvery => DashboardTimings.MeterStates;
 
     private void LoadMeterStates(DateTime nowUtc)
     {

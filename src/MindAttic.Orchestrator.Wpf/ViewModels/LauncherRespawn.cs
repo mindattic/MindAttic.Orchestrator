@@ -28,8 +28,9 @@ public sealed class LauncherRespawn
 {
     private readonly Dictionary<string, DateTime> lastOpened = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>The least time between two Launchers opened for one person.</summary>
-    public TimeSpan Spacing { get; init; } = TimeSpan.FromSeconds(30);
+    /// <summary>The least time between two Launchers opened for one person: 30s by default, live from the Vault setting
+    /// <see cref="Settings.OrchestratorSettings.LauncherRespawnSeconds"/> (M.ORCH-T1595), set at each refresh.</summary>
+    public TimeSpan Spacing { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>Whether a Launcher may open for <paramref name="key"/> now (its last one opened at least <see cref="Spacing"/>
     /// ago, or never); a yes records it as opened at <paramref name="nowUtc"/>.</summary>

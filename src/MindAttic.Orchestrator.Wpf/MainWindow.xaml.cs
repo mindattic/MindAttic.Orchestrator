@@ -18,16 +18,19 @@ namespace MindAttic.Orchestrator.Wpf;
 
 public partial class MainWindow : Window
 {
-    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
+    // Each a Vault setting, live-dialed (M.ORCH-T1595, DashboardTimings); the comments give their defaults.
 
-    /// <summary>Minimized while the daemon builds the snapshots: nobody is looking, so just enough to stay roughly current.</summary>
-    private static readonly TimeSpan HiddenInterval = TimeSpan.FromSeconds(60);
+    /// <summary>Shown and polling: 5s by default.</summary>
+    private static TimeSpan PollInterval => DashboardTimings.Poll;
 
-    /// <summary>Hidden but holding the lease (no daemon running): the daemon's own pace, since rl-status.json and allocate depend on it.</summary>
-    private static readonly TimeSpan HiddenHolderInterval = TimeSpan.FromSeconds(15);
+    /// <summary>Minimized while the daemon builds the snapshots: nobody is looking, so just enough to stay roughly current (60s).</summary>
+    private static TimeSpan HiddenInterval => DashboardTimings.HiddenPoll;
 
-    /// <summary>How often the hosted-session registry is read again for a host whose bus announcement was lost (M.ORCH-T1001).</summary>
-    private static readonly TimeSpan TermResyncInterval = TimeSpan.FromSeconds(45);
+    /// <summary>Hidden but holding the lease (no daemon running): the daemon's own pace, since rl-status.json and allocate depend on it (15s).</summary>
+    private static TimeSpan HiddenHolderInterval => DashboardTimings.HiddenHolderPoll;
+
+    /// <summary>How often the hosted-session registry is read again for a host whose bus announcement was lost (M.ORCH-T1001; 45s).</summary>
+    private static TimeSpan TermResyncInterval => DashboardTimings.TermResync;
 
     /// <summary>The global login's tab, which owns the refresh and every login's tab (M.ORCH-T613).</summary>
     private readonly MainViewModel model = new();
@@ -173,7 +176,11 @@ public partial class MainWindow : Window
             if (restoreOnLoad)
             {
                 var resync = new DispatcherTimer(DispatcherPriority.Background) { Interval = TermResyncInterval };
-                resync.Tick += async (_, _) => await model.AllTerminals.ResyncAsync();
+                resync.Tick += async (_, _) =>
+                {
+                    await model.AllTerminals.ResyncAsync();
+                    if (resync.Interval != TermResyncInterval) resync.Interval = TermResyncInterval; // dialed live in the Vault
+                };
                 resync.Start();
                 Closed += (_, _) => resync.Stop();
             }

@@ -403,6 +403,36 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 10080)]
     public double EndedLauncherTabMinutes { get; set; }
 
+    [Setting("Refresh every (s)", Group = "Dashboard", Order = 8,
+        Help = "Seconds between the dashboard's refreshes while it's shown and polling: no daemon status stream up, or it holds the status lease itself.")]
+    [SettingRange(1, 3600)]
+    public double DashboardPollSeconds { get; set; } = 5;
+
+    [Setting("Refresh while minimized every (s)", Group = "Dashboard", Order = 9,
+        Help = "Seconds between refreshes while the dashboard is minimized with no daemon status stream: nobody is looking.")]
+    [SettingRange(1, 86400)]
+    public double DashboardHiddenPollSeconds { get; set; } = 60;
+
+    [Setting("Refresh while minimized, no daemon, every (s)", Group = "Dashboard", Order = 10,
+        Help = "Seconds between refreshes while minimized but holding the status lease (no daemon running): rl-status.json and allocate depend on it.")]
+    [SettingRange(1, 3600)]
+    public double DashboardHiddenHolderPollSeconds { get; set; } = 15;
+
+    [Setting("Recheck hosted CLIs every (s)", Group = "Dashboard", Order = 11,
+        Help = "Seconds between rereads of the hosted-session registry, so a CLI whose announcement was lost still gets its tab.")]
+    [SettingRange(5, 86400)]
+    public double TermResyncSeconds { get; set; } = 45;
+
+    [Setting("Launcher respawn spacing (s)", Group = "Dashboard", Order = 12,
+        Help = "The least seconds between two Launchers opened for one person, so one that exits at once can't loop.")]
+    [SettingRange(1, 3600)]
+    public double LauncherRespawnSeconds { get; set; } = 30;
+
+    [Setting("Reread login meters every (s)", Group = "Dashboard", Order = 13,
+        Help = "Seconds between the dashboard's rereads of each login's meter state: when it was last read and who must sign in again.")]
+    [SettingRange(1, 3600)]
+    public double MeterStatesSeconds { get; set; } = 30;
+
     // ── Folders ────────────────────────────────────────────────────────────
 
     [Setting("Workspace root", Group = "Folders", Order = 1,
@@ -486,6 +516,12 @@ public sealed class OrchestratorVaultSettings
         LogPruneMinutes = s.LogPruneMinutes,
         DiskCleanupEveryMinutes = s.DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = s.GitHubIntakeMinutes,
+        DashboardPollSeconds = s.DashboardPollSeconds,
+        DashboardHiddenPollSeconds = s.DashboardHiddenPollSeconds,
+        DashboardHiddenHolderPollSeconds = s.DashboardHiddenHolderPollSeconds,
+        TermResyncSeconds = s.TermResyncSeconds,
+        LauncherRespawnSeconds = s.LauncherRespawnSeconds,
+        MeterStatesSeconds = s.MeterStatesSeconds,
         MemoryGuard = s.MemoryGuard,
         MemoryGuardStartPercent = s.MemoryGuardStartPercent,
         MemoryTightGb = s.MemoryTightGb,
@@ -582,6 +618,12 @@ public sealed class OrchestratorVaultSettings
         LogPruneMinutes = LogPruneMinutes,
         DiskCleanupEveryMinutes = DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = GitHubIntakeMinutes,
+        DashboardPollSeconds = DashboardPollSeconds,
+        DashboardHiddenPollSeconds = DashboardHiddenPollSeconds,
+        DashboardHiddenHolderPollSeconds = DashboardHiddenHolderPollSeconds,
+        TermResyncSeconds = TermResyncSeconds,
+        LauncherRespawnSeconds = LauncherRespawnSeconds,
+        MeterStatesSeconds = MeterStatesSeconds,
         MemoryGuard = MemoryGuard,
         MemoryGuardStartPercent = MemoryGuardStartPercent,
         MemoryTightGb = MemoryTightGb,

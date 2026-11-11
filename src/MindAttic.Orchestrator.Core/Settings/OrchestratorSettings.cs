@@ -465,6 +465,27 @@ public sealed record OrchestratorSettings
     /// <summary>Minutes between GitHub intakes while <see cref="GitHubIntake"/> is on.</summary>
     public double GitHubIntakeMinutes { get; init; } = 60;
 
+    /// <summary>Seconds between the dashboard's refreshes while it's shown and polling (no daemon status stream up, or it holds
+    /// the status lease itself).</summary>
+    public double DashboardPollSeconds { get; init; } = 5;
+
+    /// <summary>Seconds between the dashboard's refreshes while minimized with no daemon status stream: nobody is looking.</summary>
+    public double DashboardHiddenPollSeconds { get; init; } = 60;
+
+    /// <summary>Seconds between the dashboard's refreshes while minimized but holding the status lease (no daemon running): the
+    /// daemon's own pace, since rl-status.json and allocate depend on it.</summary>
+    public double DashboardHiddenHolderPollSeconds { get; init; } = 15;
+
+    /// <summary>Seconds between the dashboard's rereads of the hosted-session registry, for a host whose bus announcement was
+    /// lost (M.ORCH-T1001).</summary>
+    public double TermResyncSeconds { get; init; } = 45;
+
+    /// <summary>The least seconds between two Launchers opened for one person (M.ORCH-T1150), so one that exits at once can't loop.</summary>
+    public double LauncherRespawnSeconds { get; init; } = 30;
+
+    /// <summary>Seconds between the dashboard's rereads of each login's meter state (when it was last read, who must sign in again).</summary>
+    public double MeterStatesSeconds { get; init; } = 30;
+
     /// <summary>A setting's seconds as a <see cref="TimeSpan"/>, kept finite and at least <paramref name="minSeconds"/>, so a hand
     /// edit (negative, NaN, huge) can't throw or spin a timer. No allocation: read it straight off the settings each time.</summary>
     public static TimeSpan SecondsSpan(double seconds, double minSeconds = 0) =>
