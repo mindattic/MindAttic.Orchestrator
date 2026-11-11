@@ -36,7 +36,7 @@ public sealed record WallSession
     /// <summary>The host's pipe, for this machine's own sessions only.</summary>
     public string? Pipe { get; init; }
 
-    /// <summary>The Launcher's own menu, not a CLI it opened (M.ORCH-T1256): <see cref="Merge"/> leaves it out of the tiles
+    /// <summary>The Launcher's own menu, not a CLI it opened (M.ORCH-T1256): <see cref="TeamWall.Merge"/> leaves it out of the tiles
     /// per the ExcludeLauncherFromTeamWall setting.</summary>
     public bool IsMenu { get; init; }
 

@@ -10,7 +10,7 @@ namespace MindAttic.Orchestrator.Term;
 /// written atomically (a temporary file renamed over it), so a reader never sees half a record. The files are the truth:
 /// discovery works with no daemon running, and the <c>term-session</c> bus kind (<see cref="TermBus"/>) is only the fast path.
 /// <para>Writers: the host itself (<see cref="Write"/> and <see cref="Delete"/>). Readers: the dashboard on start and anyone
-/// listing sessions (<see cref="Enumerate()"/>, <see cref="Get(string)"/>). A reader prunes what a crashed host left behind.
+/// listing sessions (<see cref="Enumerate()"/>, <see cref="Get(string, string)"/>). A reader prunes what a crashed host left behind.
 /// Nothing here throws on an I/O failure: a write that fails returns false, a file that can't be read is skipped.</para>
 /// </summary>
 public static class TermSessions

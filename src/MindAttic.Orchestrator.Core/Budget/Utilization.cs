@@ -48,7 +48,7 @@ public static class UtilizationSeries
     /// The current window's line from Claude's own reports (<paramref name="samples"/> of that window, only ever rising:
     /// a lower one is a stale report from an idle session) and the budget's figure now. With a window running but no real
     /// 5-hour limit learned yet (peak-relative or none, M.ORCH-T835), still drawn flat against <see cref="BudgetStatus.BlockPercent"/>
-    /// (the same fallback <see cref="MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.IdleUtilization"/> uses while idle) rather
+    /// (the same fallback <c>MainViewModel.IdleUtilization</c> uses while idle) rather
     /// than nothing, since there's no rate to project without a known limit (M.ORCH-T629: every tab always shows its chart). With
     /// none running, the last window as it ended (or an empty axis). Never null.
     /// </summary>

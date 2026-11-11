@@ -264,7 +264,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     }
 
     /// <summary>The seam <see cref="MintFor"/> runs <c>claude setup-token</c> through: under the account's folder, its sign-in
-    /// opening through <paramref name="opener"/> (its private browser window, <see cref="LoginBrowser"/>) when there is one,
+    /// opening through <c>opener</c> (its private browser window, <see cref="LoginBrowser"/>) when there is one,
     /// with every variable that would pick another account removed. Returns what it printed. Tests replace it, so no test opens a
     /// browser or mints a token.</summary>
     internal static TimeSpan MintTimeout { get; set; } = TimeSpan.FromMinutes(10);
@@ -289,7 +289,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         return output;
     };
 
-    /// <summary>The seam that asks Claude Code who <paramref name="token"/> signs in as (<c>claude auth status --json</c> with
+    /// <summary>The seam that asks Claude Code who <c>token</c> signs in as (<c>claude auth status --json</c> with
     /// it set under the account's folder): the email, or null when it can't say (the token's scope is inference only).</summary>
     public static Func<AccountDir, string, string?> StatusEmail { get; set; } = (dir, token) =>
     {

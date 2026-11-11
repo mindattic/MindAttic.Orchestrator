@@ -7,7 +7,7 @@ namespace MindAttic.Orchestrator.Term;
 /// The side-by-side TermHost installs (M.ORCH-T932, spike docs/spikes/cli-host-viewer.md section 7): each build lives in its own
 /// folder, <c>&lt;install dir&gt;\TermHost\&lt;version&gt;\</c>, and an install or redeploy never stops or overwrites a folder.
 /// Running CLIs keep the host binary they started on; new sessions start on the newest (<see cref="Newest"/>); a folder older
-/// than the newest is deleted once no process runs from it (<see cref="Cleanup(string)"/>).
+/// than the newest is deleted once no process runs from it (<see cref="Cleanup(string, string)"/>).
 /// <para>A folder is named <c>&lt;major&gt;.&lt;minor&gt;.&lt;patch&gt;-&lt;yyyyMMddHHmmss&gt;</c>: the assembly version, then the exe's
 /// build time (UTC), so two builds of one version still order. The stamp is optional, <c>1.0.0</c> alone is valid.</para>
 /// </summary>

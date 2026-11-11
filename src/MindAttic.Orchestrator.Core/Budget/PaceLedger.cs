@@ -230,7 +230,7 @@ public static class PaceLedger
         return events;
     }
 
-    /// <summary>Drops events older than <paramref name="keep"/> once they're counted into the ledger. A hook appending in
+    /// <summary>Drops events older than <paramref name="keepFromUtc"/> once they're counted into the ledger. A hook appending in
     /// the moment between the read and the swap loses that one line, which only shortens one count.</summary>
     public static void TrimEvents(string path, DateTime keepFromUtc)
     {
