@@ -589,8 +589,12 @@ public sealed class TerminalPanesTests
                 Assert.That(paneB, Is.Not.Null, "a second viewer can attach to the same host");
                 Assert.That(Pump(() => paneB!.Relay?.Connection is not null, TimeSpan.FromSeconds(10)), Is.True, "the second viewer attached");
 
+                // M.ORCH-T1646: latch the loss from the connection's own event instead of polling OwnsSize, which a later
+                // frame could flip back before a slow poll (a starved machine) ever sampled it.
+                var lostSize = false;
+                paneA.Relay!.Connection!.SizeChanged += (_, _, owned) => { if (!owned) lostSize = true; };
                 paneB!.Relay!.Connection!.TakeSize();
-                Assert.That(Pump(() => paneA.Relay!.Connection!.OwnsSize == false, TimeSpan.FromSeconds(10)), Is.True, "A letterboxes once B takes the size");
+                Assert.That(Pump(() => lostSize || paneA.Relay!.Connection!.OwnsSize == false, TimeSpan.FromSeconds(10)), Is.True, "A letterboxes once B takes the size");
                 Assert.That(Pump(() => paneA.Relay!.Terminal.AutoResize == false, TimeSpan.FromSeconds(10)), Is.True, "AutoResize off while letterboxed");
 
                 // The hosting row growing, never a click into the pane: no focus call anywhere in this test.

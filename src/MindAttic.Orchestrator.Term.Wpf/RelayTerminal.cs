@@ -31,6 +31,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
     private string? viewerId;
     private short fontPoints = FontSizePoints;
     private Size? letterboxedAt;
+    private int sizeGeneration;
 
     public RelayTerminal(TerminalTheme theme)
     {
@@ -202,6 +203,9 @@ public sealed class RelayTerminal : UserControl, IDisposable
             if (disposed || !ReferenceEquals(connection, Connection) || cols == 0 || rows == 0) return;
             SessionSizeChanged?.Invoke(cols, rows);
             if (!TerminalWindows.AreLive(Terminal)) return;
+            // M.ORCH-T1646: calls overlap (each awaits the renderer's resize); an older one finishing last used to set AutoResize
+            // from its stale 'owned', undoing a newer loss/gain. Only the newest call applies the final AutoResize.
+            var generation = ++sizeGeneration;
             letterboxedAt = owned ? null : new Size(Terminal.ActualWidth, Terminal.ActualHeight);
             if (owned && Terminal.AutoResize) return;
             if (Terminal.Rows != rows || Terminal.Columns != cols || owned)
@@ -217,7 +221,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
                 catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Following the session's size failed; contained"); }
                 finally { connection.SuppressResize = false; }
             }
-            Terminal.AutoResize = owned;
+            if (generation == sizeGeneration) Terminal.AutoResize = owned;
         }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Following the session's size failed; contained"); }
     }
