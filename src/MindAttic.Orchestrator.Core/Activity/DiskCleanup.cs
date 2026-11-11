@@ -32,12 +32,16 @@ public static class DiskCleanup
         Run(liveness, dryRun, logPath, tempDir, out _);
 
     /// <inheritdoc cref="Run(SessionLiveness, bool, string?, string?)"/>
-    public static CleanupResult Run(SessionLiveness liveness, bool dryRun, string? logPath, string? tempDir, out TempPruneResult prune)
+    /// <remarks><paramref name="retentionHours"/> over 0 adds the age rule (<see cref="Settings.OrchestratorSettings.TempRetentionHours"/>,
+    /// M.ORCH-T1466): see <see cref="SessionTempPruner.PlanAge"/>.</remarks>
+    public static CleanupResult Run(SessionLiveness liveness, bool dryRun, string? logPath, string? tempDir, out TempPruneResult prune,
+        double retentionHours = 0)
     {
         var temp = tempDir ?? Path.GetTempPath();
         var freeGb = FreeGb(temp);
-        var p = prune = SessionTempPruner.Prune(Path.Combine(temp, "claude"), liveness, dryRun, logPath);
+        var p = prune = SessionTempPruner.Prune(Path.Combine(temp, "claude"), liveness, dryRun, logPath, retentionHours);
         var went = p.Folders.Where(f => f.Delete && (dryRun || !p.Errors.Any(e => e.StartsWith(f.Path, StringComparison.OrdinalIgnoreCase))))
+            .Concat(p.Scratch)
             .Select(f => new CleanupItem(f.Path, f.Bytes, f.Why)).ToList();
         var hogs = NotOurs(temp).Concat(LiveScratch(p.Folders)).ToList();
         return new CleanupResult(freeGb, dryRun ? went.Sum(w => w.Bytes) : p.Bytes, went, p.Errors, hogs);

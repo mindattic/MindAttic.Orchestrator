@@ -208,6 +208,11 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 100000)]
     public double DiskCleanupGb { get; set; } = 30;
 
+    [Setting("Keep session temp (hours)", Group = "Alerts", Order = 10,
+        Help = "Hours a %TEMP%\\claude session folder is kept whatever the free space: older, with nothing in it written for as long, it goes once its session isn't running; a running session keeps its folder and loses only scratchpad entries that old and that quiet. 0 turns it off.")]
+    [SettingRange(0, 8760)]
+    public double TempRetentionHours { get; set; } = OrchestratorSettings.DefaultTempRetentionHours;
+
     [Setting("Daemon restart wait (s)", Group = "Scheduler", Order = 90, Help = "Seconds the background daemon waits before starting its loop again after it died; doubles with each consecutive failure up to the cap below.")]
     [SettingRange(1, 3600)]
     public double DaemonRestartSeconds { get; set; } = 15;
@@ -596,6 +601,7 @@ public sealed class OrchestratorVaultSettings
         ReapSearchMaxMinutes = s.ReapSearchMaxMinutes,
         TermHostCleanupMinutes = s.TermHostCleanupMinutes,
         TermHostCleanupRetryMinutes = s.TermHostCleanupRetryMinutes,
+        TempRetentionHours = s.TempRetentionHours,
         CliMarksPruneHours = s.CliMarksPruneHours,
         SessionTempPruneMinutes = s.SessionTempPruneMinutes,
         MirrorSeconds = s.MirrorSeconds,
@@ -719,6 +725,7 @@ public sealed class OrchestratorVaultSettings
         TermHostCleanupRetryMinutes = TermHostCleanupRetryMinutes,
         CliMarksPruneHours = CliMarksPruneHours,
         SessionTempPruneMinutes = SessionTempPruneMinutes,
+        TempRetentionHours = TempRetentionHours,
         MirrorSeconds = MirrorSeconds,
         TicketsDbSyncMinutes = TicketsDbSyncMinutes,
         OrchestratorDbSyncMinutes = OrchestratorDbSyncMinutes,

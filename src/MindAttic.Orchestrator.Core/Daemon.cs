@@ -988,14 +988,17 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     /// <summary>On start and every <see cref="SessionTempPruner.Every"/> after, deletes the %TEMP%\claude folders of sessions
     /// that have ended (M.ORCH-T473): Claude Code leaves each one's scratchpad and background-command logs there for good. Judged
-    /// by liveness, never age (M.ORCH-T1467): see <see cref="SessionLiveness"/>; each deletion goes in the disk-cleanup log.</summary>
+    /// by liveness (M.ORCH-T1467, see <see cref="SessionLiveness"/>), plus the age rule of <see cref="OrchestratorSettings.TempRetentionHours"/>
+    /// for sessions not running (M.ORCH-T1466); each deletion goes in the disk-cleanup log.</summary>
     private void PruneSessionTempIfDue(string workspaceRoot)
     {
         if (sessionTempPrunedUtc is { } at && DateTime.UtcNow - at < OrchestratorSettings.SecondsSpan(tunables.SessionTempPruneMinutes * 60)) return;
         sessionTempPrunedUtc = DateTime.UtcNow;
         var dir = Path.Combine(TempDir, "claude");
-        var r = SessionTempPruner.Prune(dir, SessionLiveness.Current(workspaceRoot), dryRun: false, Activity.DiskCleanup.LogPath);
-        if (r.Deleted > 0) Say(LogEventLevel.Information, $"deleted {r.Deleted} ended sessions' folders under {dir} ({r.Bytes / 1048576.0:0.#} MB)");
+        // With the age rule (TempRetentionHours, M.ORCH-T1466): sessions not running and past it go too, whatever the free space.
+        var r = SessionTempPruner.Prune(dir, SessionLiveness.Current(workspaceRoot), dryRun: false, Activity.DiskCleanup.LogPath, tunables.TempRetentionHours);
+        if (r.Deleted > 0 || r.Scratch.Count > 0)
+            Say(LogEventLevel.Information, $"deleted {r.Deleted} ended or aged sessions' folders and {r.Scratch.Count} aged scratch entries under {dir} ({r.Bytes / 1048576.0:0.#} MB)");
         // An ended session's folder kept because something still uses it: said when that set changes, not every look.
         var held = string.Join("; ", r.Folders.Where(f => !f.Delete && f.Why.StartsWith("kept: ended", StringComparison.Ordinal))
             .Select(f => $"{f.Path} ({Activity.DiskWatch.Size(f.Bytes)}): {f.Why}"));
@@ -1140,7 +1143,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         {
             try
             {
-                var r = Activity.DiskCleanup.Run(SessionLiveness.Current(workspaceRoot), dryRun: false, Activity.DiskCleanup.LogPath, TempDir);
+                var r = Activity.DiskCleanup.Run(SessionLiveness.Current(workspaceRoot), dryRun: false, Activity.DiskCleanup.LogPath, TempDir, out _, s.TempRetentionHours);
                 var text = Activity.DiskCleanup.Describe(r);
                 Say(r.FreedBytes > 0 ? LogEventLevel.Warning : LogEventLevel.Information, $"disk self-cleanup: {text}");
                 if (r.FreedBytes > 0 || r.NotOurs.Count > 0) Alert("Disk self-cleanup", text, urgent: false);

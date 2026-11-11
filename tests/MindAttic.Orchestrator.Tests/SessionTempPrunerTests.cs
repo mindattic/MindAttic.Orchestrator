@@ -174,6 +174,63 @@ public sealed class SessionTempPrunerTests
             Is.EqualTo(new[] { "d47bcc9f-306d-4c94-94db-b128810b563c", "8e6b88c0-5c42-417b-ae3c-a490b4ec4acc" }));
 
     [Test]
+    public void The_age_rule_keeps_young_folders_lets_old_quiet_ones_go_trims_only_a_running_sessions_scratch_and_zero_is_off()
+    {
+        // M.ORCH-T1466: H = 48.
+        var now = new DateTime(2026, 11, 11, 12, 0, 0, DateTimeKind.Utc);
+        DateTime Ago(double hours) => now.AddHours(-hours);
+
+        Assert.That(SessionTempPruner.PlanAge(null, Ago(47), Ago(47), now, 48), Is.EqualTo(TempAge.Keep), "at H-1h it's kept");
+        Assert.That(SessionTempPruner.PlanAge(false, Ago(49), Ago(49), now, 48), Is.EqualTo(TempAge.MayGo), "at H+1h and not live it may go");
+        Assert.That(SessionTempPruner.PlanAge(null, Ago(49), Ago(49), now, 48), Is.EqualTo(TempAge.MayGo));
+        Assert.That(SessionTempPruner.PlanAge(null, Ago(49), Ago(1), now, 48), Is.EqualTo(TempAge.Keep), "something written within H keeps it");
+        Assert.That(SessionTempPruner.PlanAge(true, Ago(49), Ago(0), now, 48), Is.EqualTo(TempAge.TrimScratch), "at H+1h and live only old scratch goes");
+        Assert.That(SessionTempPruner.Stale(Ago(49), Ago(49), now, 48), Is.True);
+        Assert.That(SessionTempPruner.Stale(Ago(49), Ago(2), now, 48), Is.False, "scratch written lately stays");
+        Assert.That(SessionTempPruner.Stale(Ago(2), Ago(49), now, 48), Is.False, "scratch copied in lately stays");
+        Assert.That(SessionTempPruner.PlanAge(null, Ago(500), Ago(500), now, 0), Is.EqualTo(TempAge.Off), "H = 0 turns it off");
+        Assert.That(SessionTempPruner.Stale(Ago(500), Ago(500), now, 0), Is.False);
+    }
+
+    [Test]
+    public void Past_the_retention_an_unknown_quiet_session_goes_and_a_running_one_keeps_its_folder_and_recent_scratch()
+    {
+        var now = DateTime.UtcNow;
+        var old = now.AddHours(-72);
+        void Age(string path, DateTime at)
+        {
+            if (File.Exists(path)) { File.SetCreationTimeUtc(path, at); File.SetLastWriteTimeUtc(path, at); }
+            else { Directory.SetCreationTimeUtc(path, at); Directory.SetLastWriteTimeUtc(path, at); }
+        }
+        var unknownQuiet = Session("D--Projects-A", "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", 10);
+        var unknownBusy = Session("D--Projects-A", "cccccccc-cccc-cccc-cccc-cccccccccccc", 10);
+        var running = Session("D--Projects-A", "dddddddd-dddd-dddd-dddd-dddddddddddd", 10);
+        var oldScratch = Path.Combine(running, "scratchpad", "old-build");
+        Directory.CreateDirectory(oldScratch);
+        File.WriteAllBytes(Path.Combine(oldScratch, "a.bin"), new byte[5]);
+        var newScratch = Path.Combine(running, "scratchpad", "new.txt");
+        File.WriteAllText(newScratch, "x");
+        foreach (var dir in new[] { unknownQuiet, unknownBusy, running })
+            foreach (var p in Directory.GetFileSystemEntries(dir, "*", SearchOption.AllDirectories).Where(p => p != newScratch).Append(dir)) Age(p, old);
+        File.WriteAllText(Path.Combine(unknownBusy, "tasks", "b2.output"), "still writing");
+        var liveness = SessionLiveness.From(id => id.StartsWith("dddd", StringComparison.Ordinal) ? true : null);
+
+        var dry = SessionTempPruner.Prune(root, liveness, dryRun: true, retentionHours: 48, nowUtc: now);
+        Assert.That(Directory.Exists(unknownQuiet) && Directory.Exists(oldScratch), Is.True, "a dry run deletes nothing");
+        Assert.That(dry.Scratch.Select(s => s.Path), Is.EqualTo(new[] { oldScratch }));
+
+        var r = SessionTempPruner.Prune(root, liveness, retentionHours: 48, nowUtc: now);
+        Assert.That(Directory.Exists(unknownQuiet), Is.False, "not running, past H and quiet: it goes");
+        Assert.That(Directory.Exists(unknownBusy), Is.True, "a file written within H keeps it");
+        Assert.That(Directory.Exists(running) && File.Exists(newScratch), Is.True, "a running session keeps its folder and fresh scratch");
+        Assert.That(Directory.Exists(oldScratch), Is.False, "its old quiet scratch goes");
+        Assert.That(r.Bytes, Is.EqualTo(15L));
+
+        Assert.That(SessionTempPruner.Prune(root, SessionLiveness.From(_ => null), retentionHours: 0, nowUtc: now.AddDays(30)).Deleted,
+            Is.Zero, "H = 0: age deletes nothing");
+    }
+
+    [Test]
     public void No_claude_temp_folder_prunes_nothing() =>
         Assert.That(SessionTempPruner.Prune(Path.Combine(root, "missing"), _ => false), Is.EqualTo((0, 0L)));
 }

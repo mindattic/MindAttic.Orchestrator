@@ -115,6 +115,7 @@ public sealed class LampSettingsTests
         Case("diskWarnGb", s => s with { DiskWarnGb = 30 }, 30d, v => v.DiskWarnGb = 0, 0d, s => s.DiskWarnGb),
         Case("diskCriticalGb", s => s with { DiskCriticalGb = 2 }, 2d, v => v.DiskCriticalGb = 8.5, 8.5, s => s.DiskCriticalGb),
         Case("diskCleanupGb", s => s with { DiskCleanupGb = 30 }, 30d, v => v.DiskCleanupGb = 0, 0d, s => s.DiskCleanupGb),
+        Case("tempRetentionHours", s => s with { TempRetentionHours = 48 }, 48d, v => v.TempRetentionHours = 72, 72d, s => s.TempRetentionHours),
         Case("daemonRestartSeconds", s => s with { DaemonRestartSeconds = 15 }, 15d, v => v.DaemonRestartSeconds = 30, 30d, s => s.DaemonRestartSeconds),
         Case("daemonRestartMaxSeconds", s => s with { DaemonRestartMaxSeconds = 300 }, 300d, v => v.DaemonRestartMaxSeconds = 600, 600d, s => s.DaemonRestartMaxSeconds),
         // The live-dialed intervals and caps (M.ORCH-T1595)

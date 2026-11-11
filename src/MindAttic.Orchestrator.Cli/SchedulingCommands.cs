@@ -446,6 +446,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Free GB on the temp drive under which agent-made temp (ended sessions' folders, stale scratch builds) is deleted, oldest first (default 30; 0 turns it off).")]
         public double? DiskCleanupGb { get; init; }
 
+        [CommandOption("--temp-retention-hours <H>")]
+        [Description("Hours a %TEMP%\\claude session folder is kept whatever the free space: older, and quiet as long, it goes once its session isn't running; a running session loses only scratchpad entries that old and quiet (default 48; 0 turns it off).")]
+        public double? TempRetentionHours { get; init; }
+
         [CommandOption("--memory-guard <ON>")]
         [Description("true (the default): when RAM runs low, hold new subagents, CLIs and test runs and let running work finish; lower still, shed the newest subagent, then refuse tool calls. false turns it off.")]
         public bool? MemoryGuard { get; init; }
@@ -557,6 +561,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             if (!(cg >= 0)) { AnsiConsole.MarkupLine("[red]--disk-cleanup-gb can't be negative.[/]"); return 1; }
             s = s with { DiskCleanupGb = cg };
         }
+        if (settings.TempRetentionHours is { } rh)
+        {
+            if (!(rh >= 0 && rh <= 8760)) { AnsiConsole.MarkupLine("[red]--temp-retention-hours is 0 to 8760.[/]"); return 1; }
+            s = s with { TempRetentionHours = rh };
+        }
         var memoryChanged = settings.MemoryGuard is not null || settings.MemoryTightGb is not null || settings.MemoryCriticalGb is not null
             || settings.MemoryEmergencyGb is not null || settings.MemoryPerSubagentGb is not null
             || settings.MemoryTightCommitPercent is not null || settings.MemoryCriticalCommitPercent is not null || settings.MemoryEmergencyCommitPercent is not null
@@ -590,7 +599,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             { AnsiConsole.MarkupLine("[red]--memory-resume-margin-gb and --memory-resume-margin-commit can't be negative.[/]"); return 1; }
         }
         var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
-            || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null || memoryChanged;
+            || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null
+            || settings.TempRetentionHours is not null || memoryChanged;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
         if (settings.Notify is { } notify)
         {
@@ -811,7 +821,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         AnsiConsole.MarkupLine($"  tickets worked in each repo's own checkout on main; tool worktrees under {Markup.Escape(s.WorktreeRoot)} · " +
             (s.StaleAfterHours > 0 ? $"assignments go stale after {s.StaleAfterHours}h quiet" : "assignments never go stale") + " · " +
             (s.DiskWarnGb > 0 ? $"alerts under {s.DiskWarnGb:0.#} GB free disk (urgent under {Math.Min(s.DiskCriticalGb, s.DiskWarnGb):0.#} GB)" : "disk space not watched") + " · " +
-            (s.DiskCleanupGb > 0 ? $"agent temp cleaned up under {s.DiskCleanupGb:0.#} GB free" : "no disk self-cleanup"));
+            (s.DiskCleanupGb > 0 ? $"agent temp cleaned up under {s.DiskCleanupGb:0.#} GB free" : "no disk self-cleanup") + " · " +
+            (s.TempRetentionHours > 0 ? $"session temp kept {s.TempRetentionHours:0.#}h" : "session temp kept until its session ends"));
         AnsiConsole.MarkupLine("  memory guard " + (s.MemoryGuard
             ? $"on from {s.MemoryGuardStartPercent:0.#}% RAM used: new work holds under {s.MemoryTightGb:0.#} GB free RAM or past {s.MemoryTightCommitPercent:0.#}% commit, " +
               $"the newest subagent is shed under {s.MemoryCriticalGb:0.#} GB or past {s.MemoryCriticalCommitPercent:0.#}% commit, " +

@@ -356,6 +356,14 @@ public sealed record OrchestratorSettings
     /// named. 0 turns it off.</summary>
     public double DiskCleanupGb { get; init; } = 30;
 
+    /// <summary>Hours a %TEMP%\claude session folder is kept, whatever the free space (M.ORCH-T1466): one created longer ago than
+    /// this, with nothing in it created or written for as long, goes once its session isn't running (an ended one goes anyway, see
+    /// <see cref="Sessions.SessionTempPruner"/>); a running session keeps its folder and only its scratchpad entries that old and
+    /// that quiet go. 0 turns it off.</summary>
+    public double TempRetentionHours { get; init; } = DefaultTempRetentionHours;
+
+    public const double DefaultTempRetentionHours = 48;
+
     /// <summary>Seconds the background daemon waits before starting its loop again after it died (M.ORCH-T1615); doubles with each
     /// consecutive failure up to <see cref="DaemonRestartMaxSeconds"/> (M.ORCH-T1619).</summary>
     public double DaemonRestartSeconds { get; init; } = 15;
