@@ -1957,6 +1957,18 @@ public static class AgentGate
         import fnmatch, os, re, sqlite3
         {{WorkspacePython}}
         {{EditClaimsPython}}
+        {{ActivityPython}}
+
+        # The activity feed (M.ORCH-T961): a Claude session's record shows this call as its tool before the call runs, held while
+        # the pace, the stop, RAM or the subagent allowance holds it (once each way), and working again once it's let through. Only a
+        # session the context gate already recorded as Claude's: the same script runs unnamed under Codex's, Gemini's and Kimi's
+        # pre-tool hooks. One small read and one replace; any error writes nothing and never holds or refuses the call.
+        ACTIVITY_HELD = [False]
+        def activity_hold(on=True):
+            if ACTIVITY_HELD[0] != on:
+                ACTIVITY_HELD[0] = on
+                activity_record("claude", data, "PreToolUse", state="held" if on else None, require="claude")
+        activity_record("claude", data, "PreToolUse", require="claude")
 
         def ticket_repo(ticket_id):
             try:
@@ -2303,6 +2315,7 @@ public static class AgentGate
                 return
             while time.monotonic() - start < MAX_HOLD and stop_note() is not None:
                 touch_slot()  # still held: other gates drop a slot past its life, and the call would go through uncounted
+                activity_hold()
                 time.sleep(5)
             note = stop_note()
             if note is not None:
@@ -2370,6 +2383,7 @@ public static class AgentGate
                     gate_log("refused", time.monotonic() - start)
                     refuse(why[:1].upper() + why[1:] + ", so this subagent wasn't started: the machine would page itself to a full disk. "
                            "Don't start it now: finish this turn's work yourself, or end the turn, and try again once memory recovers.")
+                activity_hold()
                 time.sleep(5)
                 hold_at_stop()
 
@@ -2647,6 +2661,7 @@ public static class AgentGate
                     refuse("The subagent allowance is full (" + str(busy) + " running or starting, " + str(allowed) + " allowed across every CLI), "
                            "so this subagent wasn't started. Don't start it now: work on in this turn, or end it, and try again after one "
                            "of the running subagents finishes and a slot frees.")
+                activity_hold()
                 time.sleep(5)
                 try:
                     hold_at_stop()
@@ -2661,12 +2676,15 @@ public static class AgentGate
                 if left <= 0:
                     break
                 touch_slot()  # still held, not abandoned: other gates drop a slot past its life
+                if left >= 1:
+                    activity_hold()
                 time.sleep(min(left, 5))
             hold_at_stop()  # the last word before the call runs
         except BaseException:
             release()  # killed, failed or refused while held: the call doesn't run
             raise
         touch_slot()  # its life starts when the call is let through, not when the slot was taken
+        activity_hold(False)
         if time.monotonic() - start >= 1:
             gate_log("held", time.monotonic() - start)
         """.Replace("\r\n", "\n");
@@ -2902,8 +2920,9 @@ public static class AgentGate
 
     public const string ContextScriptName = "context-gate.py";
 
-    /// <summary>The folder in <c>~/.claude/session-context</c> holding one activity record per Codex or Gemini session,
-    /// <c>&lt;session&gt;.json</c>, kept by the context gate on their prompt, tool and end-of-turn hooks (M.ORCH-T964).</summary>
+    /// <summary>The folder in <c>~/.claude/session-context</c> holding one activity record per CLI session,
+    /// <c>&lt;session&gt;.json</c>, kept by the context gate on their prompt, tool and end-of-turn hooks (Codex and Gemini,
+    /// M.ORCH-T964; Claude, M.ORCH-T961, whose tool calls the pace gate also records before they run). See <see cref="ActivityPython"/>.</summary>
     public const string ActivityDirName = "activity";
 
     /// <summary>The Codex and Gemini hook events the context gate runs on, with the provider argument it's passed: Codex's and
@@ -2911,6 +2930,161 @@ public static class AgentGate
     /// finished tool call (PostToolUse, AfterTool) (M.ORCH-T964).</summary>
     internal static readonly string[] CodexContextEvents = ["Stop", "UserPromptSubmit", "PostToolUse"];
     internal static readonly string[] GeminiContextEvents = ["AfterAgent", "BeforeAgent", "AfterTool"];
+
+    /// <summary>
+    /// Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>re</c>, <c>Path</c>, <see cref="WorkspacePython"/>'s
+    /// <c>repo_of</c> and <see cref="CliPid"/>): the activity feed's per-session record (docs/spikes/activity-feed.md section 5),
+    /// <c>session-context/activity/&lt;session&gt;.json</c>, and the redacting target extractor that fills it. The context gate keeps
+    /// it on every provider's prompt, finished-tool and end-of-turn hooks (Codex and Gemini since M.ORCH-T964; Claude since
+    /// M.ORCH-T961, with its permission prompts and AskUserQuestion as <c>asking</c>), and the pace gate on each Claude tool call
+    /// before it runs (<c>working</c> with that tool, <c>held</c> while the pace or the subagent allowance holds it). Masked by
+    /// <see cref="MindAttic.Orchestrator.Term.SecretShapes"/> (M.ORCH-T963). Any error writes nothing and never fails the hook.
+    /// </summary>
+    internal static string ActivityPython => $$"""
+        # The activity feed (the record of docs/spikes/activity-feed.md section 5): one small record per CLI session,
+        # session-context\{{ActivityDirName}}\<session>.json: provider, repo, state (working, idle, asking, held or ended), the last tool
+        # with a verb and a short redacted target, the ticket, the CLI's pid, a seq and when. Kept by the context gate on every
+        # provider's prompt, tool and end-of-turn hooks (Codex UserPromptSubmit, PostToolUse, Stop and Gemini BeforeAgent, AfterTool,
+        # AfterAgent since M.ORCH-T964; Claude's UserPromptSubmit, PostToolUse, Stop, SessionStart, permission prompts and
+        # AskUserQuestion since M.ORCH-T961), and by the pace gate on each Claude tool call before it runs (M.ORCH-T961). Never a
+        # raw tool input: a file's base name, a pattern, a host, a subagent's description, a shell command's description or else
+        # its program name only, with token-shaped strings masked. Cheap (one small read and one replace; no database, no other
+        # process) and fail-open: any error writes nothing, and the hook goes on as if it weren't here.
+        ACTIVITY = Path.home() / ".claude" / "session-context" / "{{ActivityDirName}}"
+        ACTIVITY_EVENTS = {"userpromptsubmit": "start", "beforeagent": "start", "pretooluse": "tool", "posttooluse": "tool",
+                           "aftertool": "tool", "stop": "end", "afteragent": "end", "sessionstart": "end", "sessionend": "ended"}
+        ACTIVITY_CLI = {"codex": ("codex",), "gemini": ("gemini", "node.exe"), "claude": ("claude.exe",)}
+        ACTIVITY_TICKET = r"((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)"
+        ACTIVITY_SHELLS = ("bash", "shell", "local_shell", "exec_command", "unified_exec", "run_shell_command", "powershell")
+        ACTIVITY_FILES = {"read": "Reading", "read_file": "Reading", "read_many_files": "Reading", "write": "Writing",
+                          "write_file": "Writing", "edit": "Editing", "multiedit": "Editing", "replace": "Editing",
+                          "notebookedit": "Editing", "list_directory": "Listing", "ls": "Listing"}
+        def activity_short(text, limit=80):
+            text = re.sub(r"\s+", " ", str(text or "")).strip()
+            # A token-shaped run (an API key, a JWT, a value after key=/token=/Bearer, a long hex or base64 string) never leaves,
+            # whatever field carried it. The pattern is SecretShapes.ActivityPattern, the same shapes the gateway's broadcast masker
+            # and the dashboard's ToolCallText use (M.ORCH-T963); group 1 is a name before a value, kept (token=***).
+            text = re.sub({{MindAttic.Orchestrator.Term.SecretShapes.PythonLiteral(MindAttic.Orchestrator.Term.SecretShapes.ActivityPattern)}},
+                          lambda m: (m.group(1) or "") + "{{MindAttic.Orchestrator.Term.SecretShapes.ActivityMask}}", text)
+            return text if len(text) <= limit else text[:limit - 1].rstrip() + "…"
+        def activity_base(path):
+            p = str(path or "").strip().strip("\"'").rstrip("/\\")
+            return re.split(r"[/\\]", p)[-1] if p else ""
+        def activity_command(args):
+            cmd = args.get("command", args.get("cmd"))
+            return " ".join(str(w) for w in cmd) if isinstance(cmd, list) else str(cmd or "")
+        def activity_target(tool, args):
+            # (tool, verb, target) for one tool call, Claude's, Codex's and Gemini's tool names all.
+            name = str(tool or "")
+            low = name.lower()
+            args = args if isinstance(args, dict) else {}
+            def s(*keys):
+                for k in keys:
+                    v = args.get(k)
+                    if isinstance(v, str) and v.strip():
+                        return v
+                return ""
+            if low.startswith("mcp_"):
+                return "mcp", "Using", activity_short(name.split("__")[-1], 40)
+            if low in ACTIVITY_SHELLS:
+                said = s("description", "justification")
+                if said:
+                    return name, "", activity_short(said.strip().splitlines()[0])
+                cmd = args.get("command", args.get("cmd"))
+                words = [str(w) for w in cmd] if isinstance(cmd, list) else str(cmd or "").split()
+                # ["bash", "-lc", "<script>"] runs the script: its own first word is the program.
+                if len(words) >= 3 and words[1].lower() in ("-lc", "-c", "/c", "-command"):
+                    words = words[2].split()
+                return name, "Running", activity_short(activity_base(words[0].lstrip("&")) if words else "", 40)
+            if low == "apply_patch":
+                m = re.search(r"\*\*\* (?:Update|Add|Delete) File: ([^\r\n]+)", s("input", "patch", "command") or activity_command(args))
+                return name, "Editing", activity_short(activity_base(m.group(1)) if m else "")
+            if low in ACTIVITY_FILES:
+                p = s("file_path", "absolute_path", "notebook_path", "path", "dir_path")
+                if not p and isinstance(args.get("paths"), list) and args["paths"]:
+                    p = str(args["paths"][0])
+                return name, ACTIVITY_FILES[low], activity_short(activity_base(p))
+            if low in ("grep", "glob", "search_file_content", "grep_search", "file_search"):
+                return name, "Finding" if "glob" in low else "Searching for", activity_short(s("pattern", "query"))
+            if low in ("web_fetch", "webfetch"):
+                # The host only, never a user name or password before it, a path or a query.
+                m = re.search(r"https?://(?:[^/\s?#@]*@)?([^/\s:?#@]+)", s("url", "prompt"))
+                return name, "Reading", activity_short(m.group(1) if m else "")
+            if low in ("google_web_search", "web_search", "websearch"):
+                return name, "Searching the web for", activity_short(s("query"))
+            # Claude's subagent (its task's description, never its prompt) and skill (its name, never its arguments).
+            if low in ("agent", "task"):
+                said = s("description", "subagent_type")
+                return name, "Starting a subagent:", activity_short(said.strip().splitlines()[0] if said else "")
+            if low == "skill":
+                skill = s("skill").strip().lstrip("/")
+                return name, "Using", activity_short("/" + skill, 40) if skill else ""
+            return name, "Using", ""
+        def activity_record(provider, data, event, state=None, require=None):
+            # One hook event's picture of its session, replacing the last. state overrides the event's own (asking, held, or
+            # working for a Stop sent back to work); require writes only over a record already that provider's: the pace gate
+            # runs unnamed under every provider's pre-tool hook, and only a session the context gate recorded as Claude's is.
+            try:
+                kind = ACTIVITY_EVENTS.get(str(event or "").lower())
+                sid = str(data.get("session_id") or "")
+                if not (kind or state) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", sid):
+                    return
+                # A compaction starts the session again mid-turn: it isn't a turn ending.
+                if str(event or "").lower() == "sessionstart" and str(data.get("source") or "") == "compact":
+                    return
+                f = ACTIVITY / (sid + ".json")
+                try:
+                    rec = json.loads(f.read_text(encoding="utf-8"))
+                    rec = rec if isinstance(rec, dict) else {}
+                except Exception:
+                    rec = {}
+                who = str(provider or "").lower()
+                if require and rec.get("provider") != require:
+                    return
+                from datetime import datetime as _at, timezone as _utc
+                now = _at.now(_utc.utc)
+                rec.update(session=sid, provider=who, seq=int(rec.get("seq") or 0) + 1,
+                           atUtc=now.strftime("%Y-%m-%dT%H:%M:%S.") + "%03dZ" % (now.microsecond // 1000))
+                repo = repo_of(data.get("cwd")) if data.get("cwd") else None
+                if repo:
+                    rec["repo"] = repo
+                if not rec.get("pid"):
+                    # A Claude CLI by MINDATTIC_CLI_PID first, as the hooks name it everywhere; else the CLI's own exe this runs under.
+                    pid = (os.environ.get("MINDATTIC_CLI_PID") if who == "claude" else None) or cli_pid(ACTIVITY_CLI.get(who, (who,)))
+                    if str(pid or "").isdigit() and int(pid) > 0:
+                        rec["pid"] = int(pid)
+                for k in ("tool", "verb", "target"):
+                    rec.pop(k, None)
+                if kind == "start":
+                    rec["state"] = "working"
+                    m = re.search(r"\b" + ACTIVITY_TICKET + r"\b", str(data.get("prompt") or ""))
+                    if m:
+                        rec["ticket"] = m.group(1)
+                elif kind == "tool":
+                    args = data.get("tool_input")
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except Exception:
+                            args = {"command": args}
+                    args = args if isinstance(args, dict) else {}
+                    tool, verb, target = activity_target(data.get("tool_name"), args)
+                    rec["state"] = "working"
+                    rec.update({k: v for k, v in (("tool", tool), ("verb", verb), ("target", target)) if v})
+                    m = re.search(r"\b(?:tickets|workflow)(?:\.exe)?['\"]?\s+ticket\s+working\s+['\"]?" + ACTIVITY_TICKET, activity_command(args))
+                    if m:
+                        rec["ticket"] = m.group(1)
+                elif kind:
+                    rec["state"] = "idle" if kind == "end" else "ended"
+                if state:
+                    rec["state"] = state
+                ACTIVITY.mkdir(parents=True, exist_ok=True)
+                tmp = f.with_name(f.name + "." + str(os.getpid()) + ".tmp")
+                tmp.write_text(json.dumps(rec), encoding="utf-8")
+                os.replace(tmp, f)
+            except Exception:
+                pass
+        """.Replace("\r\n", "\n");
 
     /// <summary>
     /// The context gate: records each session's turn (busy on a prompt, idle on Stop) next to the
@@ -3389,126 +3563,7 @@ public static class AgentGate
                 pass
             return out
 
-        # The activity feed for Codex and Gemini CLIs (M.ORCH-T964; the record of docs/spikes/activity-feed.md section 5): their
-        # prompt, tool and end-of-turn hooks (Codex UserPromptSubmit, PostToolUse, Stop; Gemini BeforeAgent, AfterTool, AfterAgent)
-        # keep one small record per session, session-context\{{{ActivityDirName}}}\<session>.json: provider, repo, state (working or idle),
-        # the last tool with a verb and a short redacted target, the ticket, the CLI's pid, a seq and when. Never a raw tool input:
-        # a file's base name, a pattern, a host, a shell command's description or else its program name only, with token-shaped
-        # strings masked. Cheap (one small read and one replace; no database, no other process) and fail-open: any error writes
-        # nothing, and the hook still exits 0 with nothing said, so the CLI goes on.
-        ACTIVITY = DIR / "{{{ActivityDirName}}}"
-        ACTIVITY_EVENTS = {"userpromptsubmit": "start", "beforeagent": "start", "posttooluse": "tool", "aftertool": "tool",
-                           "stop": "end", "afteragent": "end", "sessionend": "ended"}
-        ACTIVITY_CLI = {"codex": ("codex",), "gemini": ("gemini", "node.exe")}
-        ACTIVITY_TICKET = r"((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)"
-        ACTIVITY_SHELLS = ("bash", "shell", "local_shell", "exec_command", "unified_exec", "run_shell_command", "powershell")
-        ACTIVITY_FILES = {"read": "Reading", "read_file": "Reading", "read_many_files": "Reading", "write": "Writing",
-                          "write_file": "Writing", "edit": "Editing", "multiedit": "Editing", "replace": "Editing",
-                          "notebookedit": "Editing", "list_directory": "Listing", "ls": "Listing"}
-        def activity_short(text, limit=80):
-            text = re.sub(r"\s+", " ", str(text or "")).strip()
-            # A token-shaped run (an API key, a JWT, a value after key=/token=/Bearer, a long hex or base64 string) never leaves,
-            # whatever field carried it. The pattern is SecretShapes.ActivityPattern, the same shapes the gateway's broadcast masker
-            # and the dashboard's ToolCallText use (M.ORCH-T963); group 1 is a name before a value, kept (token=***).
-            text = re.sub({{{MindAttic.Orchestrator.Term.SecretShapes.PythonLiteral(MindAttic.Orchestrator.Term.SecretShapes.ActivityPattern)}}},
-                          lambda m: (m.group(1) or "") + "{{{MindAttic.Orchestrator.Term.SecretShapes.ActivityMask}}}", text)
-            return text if len(text) <= limit else text[:limit - 1].rstrip() + "…"
-        def activity_base(path):
-            p = str(path or "").strip().strip("\"'").rstrip("/\\")
-            return re.split(r"[/\\]", p)[-1] if p else ""
-        def activity_command(args):
-            cmd = args.get("command", args.get("cmd"))
-            return " ".join(str(w) for w in cmd) if isinstance(cmd, list) else str(cmd or "")
-        def activity_target(tool, args):
-            # (tool, verb, target) for one finished tool call, Codex's and Gemini's tool names both.
-            name = str(tool or "")
-            low = name.lower()
-            def s(*keys):
-                for k in keys:
-                    v = args.get(k)
-                    if isinstance(v, str) and v.strip():
-                        return v
-                return ""
-            if low.startswith("mcp_"):
-                return "mcp", "Using", activity_short(name.split("__")[-1], 40)
-            if low in ACTIVITY_SHELLS:
-                said = s("description", "justification")
-                if said:
-                    return name, "", activity_short(said.strip().splitlines()[0])
-                cmd = args.get("command", args.get("cmd"))
-                words = [str(w) for w in cmd] if isinstance(cmd, list) else str(cmd or "").split()
-                # ["bash", "-lc", "<script>"] runs the script: its own first word is the program.
-                if len(words) >= 3 and words[1].lower() in ("-lc", "-c", "/c", "-command"):
-                    words = words[2].split()
-                return name, "Running", activity_short(activity_base(words[0].lstrip("&")) if words else "", 40)
-            if low == "apply_patch":
-                m = re.search(r"\*\*\* (?:Update|Add|Delete) File: ([^\r\n]+)", s("input", "patch", "command") or activity_command(args))
-                return name, "Editing", activity_short(activity_base(m.group(1)) if m else "")
-            if low in ACTIVITY_FILES:
-                p = s("file_path", "absolute_path", "notebook_path", "path", "dir_path")
-                if not p and isinstance(args.get("paths"), list) and args["paths"]:
-                    p = str(args["paths"][0])
-                return name, ACTIVITY_FILES[low], activity_short(activity_base(p))
-            if low in ("grep", "glob", "search_file_content", "grep_search", "file_search"):
-                return name, "Finding" if "glob" in low else "Searching for", activity_short(s("pattern", "query"))
-            if low in ("web_fetch", "webfetch"):
-                m = re.search(r"https?://([^/\s:?#]+)", s("url", "prompt"))
-                return name, "Reading", activity_short(m.group(1) if m else "")
-            if low in ("google_web_search", "web_search", "websearch"):
-                return name, "Searching the web for", activity_short(s("query"))
-            return name, "Using", ""
-        def other_activity(provider, data, event):
-            try:
-                kind = ACTIVITY_EVENTS.get(str(event or "").lower())
-                sid = str(data.get("session_id") or "")
-                if not kind or not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", sid):
-                    return
-                ACTIVITY.mkdir(parents=True, exist_ok=True)
-                f = ACTIVITY / (sid + ".json")
-                try:
-                    rec = json.loads(f.read_text(encoding="utf-8"))
-                    rec = rec if isinstance(rec, dict) else {}
-                except Exception:
-                    rec = {}
-                who = provider.lower()
-                now = datetime.now(timezone.utc)
-                rec.update(session=sid, provider=who, seq=int(rec.get("seq") or 0) + 1,
-                           atUtc=now.strftime("%Y-%m-%dT%H:%M:%S.") + "%03dZ" % (now.microsecond // 1000))
-                repo = repo_of(data.get("cwd")) if data.get("cwd") else None
-                if repo:
-                    rec["repo"] = repo
-                if not rec.get("pid"):
-                    pid = cli_pid(ACTIVITY_CLI.get(who, (who,)))
-                    if pid:
-                        rec["pid"] = pid
-                for k in ("tool", "verb", "target"):
-                    rec.pop(k, None)
-                if kind == "start":
-                    rec["state"] = "working"
-                    m = re.search(r"\b" + ACTIVITY_TICKET + r"\b", str(data.get("prompt") or ""))
-                    if m:
-                        rec["ticket"] = m.group(1)
-                elif kind == "tool":
-                    args = data.get("tool_input")
-                    if isinstance(args, str):
-                        try:
-                            args = json.loads(args)
-                        except Exception:
-                            args = {"command": args}
-                    args = args if isinstance(args, dict) else {}
-                    tool, verb, target = activity_target(data.get("tool_name"), args)
-                    rec["state"] = "working"
-                    rec.update({k: v for k, v in (("tool", tool), ("verb", verb), ("target", target)) if v})
-                    m = re.search(r"\b(?:tickets|workflow)(?:\.exe)?['\"]?\s+ticket\s+working\s+['\"]?" + ACTIVITY_TICKET, activity_command(args))
-                    if m:
-                        rec["ticket"] = m.group(1)
-                else:
-                    rec["state"] = "idle" if kind == "end" else "ended"
-                tmp = f.with_name(f.name + "." + str(os.getpid()) + ".tmp")
-                tmp.write_text(json.dumps(rec), encoding="utf-8")
-                os.replace(tmp, f)
-            except Exception:
-                pass
+        {{{ActivityPython}}}
 
         try:
             # UTF-8 as Claude Code writes it, not the ANSI code page Python reads a pipe in on Windows (M.ORCH-T392).
@@ -3523,8 +3578,17 @@ public static class AgentGate
         # sessions aren't Claude's to cycle, and only a Claude CLI that typed /allocate is kept going).
         provider = sys.argv[1].capitalize() if len(sys.argv) > 1 else "Claude"
         if provider != "Claude":
-            other_activity(provider, data, event)
+            activity_record(provider, data, event)
             sys.exit(0)  # /allocate runs in a Claude CLI; a Codex or Gemini CLI is never pushed onto tickets
+        # Claude's activity record (M.ORCH-T961), in the same format: working on a prompt and on a finished tool call (a subagent's
+        # too: its session is its parent's), idle at a turn's end and at a session's start, asking on a permission prompt or an
+        # AskUserQuestion (the reason never kept). The pace gate adds each tool call before it runs, and held while it waits.
+        # A prompt answered unsent, or a Stop sent back to work, is put right where that's decided below. Never fails the hook.
+        if event in ("UserPromptSubmit", "PostToolUse", "SessionStart") or (event == "Stop" and not data.get("agent_id")):
+            activity_record("claude", data, event)
+        elif event == "PreToolUse" or (event == "Notification" and (str(data.get("notification_type") or "") in ("permission_prompt", "elicitation_dialog")
+                or (not data.get("notification_type") and "permission" in str(data.get("message") or "").lower()))):
+            activity_record("claude", data, event, state="asking")
         # Disk self-cleanup (M.ORCH-T1449): one free-space read at most once a minute; under the --disk-cleanup-gb line it
         # starts `orchestrator disk-cleanup --quiet` detached, which deletes agent-made temp only (one run at a time).
         def disk_check():
@@ -3680,6 +3744,7 @@ public static class AgentGate
             # So do the exempt commands (M.ORCH-T198): their turns skip every Orchestrator gate.
             if limits.get("stop") and not CONTROL.match((data.get("prompt") or "").strip()) and not exempt_prompt(data.get("prompt")):
                 log_gate_event(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "prompt-answered", 0, None, limits.get("percent_used"), account_tag())
+                activity_record("claude", data, "Stop")  # answered unsent: the turn never ran (M.ORCH-T961)
                 print(json.dumps({"decision": "block", "reason": "Not sent, so no tokens were spent: the " + str(limits.get("stop_window") or "5-hour") + " window is at its target "
                     "(MindAttic.Orchestrator never lets it pass the limit). Typing works again when it resets at " +
                     str(limits.get("reset_time") or "the end of the window") + ". /allocate, /pacing and /goal clear still go through."}))
@@ -3709,6 +3774,7 @@ public static class AgentGate
             if winding_down(my_pid()) and not state.get("quicksave_told") and subagents_working(my_pid()) == 0:
                 state["quicksave_told"] = True
                 save(state_file, state)
+                activity_record("claude", data, event, state="working")  # sent back to work (M.ORCH-T961)
                 print(json.dumps({"decision": "block", "reason": wind_down_told(repo_of(data.get("cwd") or "") or Path(str(data.get("cwd") or ".")).name)}))
                 sys.exit(0)
             # Saved as still busy, deciding since now, before anything slow is asked (M.ORCH-T1036): saved idle here (M.ORCH-T1005),
@@ -3756,6 +3822,7 @@ public static class AgentGate
                 state.pop("closed", None)
                 state.pop("deciding", None)
                 save(state_file, state)
+                activity_record("claude", data, event, state="working")  # sent back to work (M.ORCH-T961)
                 print(json.dumps({"decision": "block", "reason": reason}))
                 sys.exit(0)
             for k in ("nudged", "worked", "closed", "deciding"):
@@ -3816,6 +3883,7 @@ public static class AgentGate
             if command:
                 why = set_allocate(my_pid(), typed[len(command):].strip(), data.get("cwd") or "")
                 if why:
+                    activity_record("claude", data, "Stop")  # answered unsent (M.ORCH-T961)
                     print(json.dumps({"decision": "block", "reason": why}))
                     sys.exit(0)
             # /goal <condition> runs turn after turn until its condition holds; cycling would end it, so the session is
@@ -3853,6 +3921,7 @@ public static class AgentGate
                         why = "Pacing is on in this CLI (the default): its tool calls are held to the pace. /pacing off lifts the holds until it closes."
                     if arg:
                         why = "/pacing takes on or off; nothing changed. " + why
+                    activity_record("claude", data, "Stop")  # answered unsent (M.ORCH-T961)
                     print(json.dumps({"decision": "block", "reason": why}))
                     sys.exit(0)
             # Each turn starts knowing how many subagents the pace allows right now, and whether the window is at its stop.
