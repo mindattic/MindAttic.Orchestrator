@@ -356,6 +356,13 @@ public sealed record OrchestratorSettings
     /// named. 0 turns it off.</summary>
     public double DiskCleanupGb { get; init; } = 30;
 
+    /// <summary>Seconds the background daemon waits before starting its loop again after it died (M.ORCH-T1615); doubles with each
+    /// consecutive failure up to <see cref="DaemonRestartMaxSeconds"/> (M.ORCH-T1619).</summary>
+    public double DaemonRestartSeconds { get; init; } = 15;
+
+    /// <summary>The longest the daemon waits between restarts of its loop (seconds).</summary>
+    public double DaemonRestartMaxSeconds { get; init; } = 300;
+
     /// <summary>The memory guard (M.ORCH-T1494): when RAM runs low, new work stops (subagents, CLIs, main-line tests) and running
     /// work finishes, the way the 5-hour and weekly stops scale back; past <see cref="MemoryCriticalGb"/> the newest subagent is
     /// shed, past <see cref="MemoryEmergencyGb"/> tool calls are refused. /pacing off doesn't turn it off; only this does.</summary>

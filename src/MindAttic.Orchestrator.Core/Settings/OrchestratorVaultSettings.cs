@@ -208,6 +208,14 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 100000)]
     public double DiskCleanupGb { get; set; } = 30;
 
+    [Setting("Daemon restart wait (s)", Group = "Scheduler", Order = 90, Help = "Seconds the background daemon waits before starting its loop again after it died; doubles with each consecutive failure up to the cap below.")]
+    [SettingRange(1, 3600)]
+    public double DaemonRestartSeconds { get; set; } = 15;
+
+    [Setting("Daemon restart wait cap (s)", Group = "Scheduler", Order = 91, Help = "The longest the daemon waits between restarts of its loop.")]
+    [SettingRange(1, 86400)]
+    public double DaemonRestartMaxSeconds { get; set; } = 300;
+
     [Setting("Memory guard", Group = "Memory", Order = 1,
         Help = "When RAM runs low, no new subagents, CLIs or test runs start and running work finishes; lower still, the newest subagent is shed, then tool calls are refused until memory recovers. /pacing off doesn't turn it off.")]
     public bool MemoryGuard { get; set; } = true;
@@ -369,6 +377,8 @@ public sealed class OrchestratorVaultSettings
         DiskWarnGb = s.DiskWarnGb,
         DiskCriticalGb = s.DiskCriticalGb,
         DiskCleanupGb = s.DiskCleanupGb,
+        DaemonRestartSeconds = s.DaemonRestartSeconds,
+        DaemonRestartMaxSeconds = s.DaemonRestartMaxSeconds,
         MemoryGuard = s.MemoryGuard,
         MemoryGuardStartPercent = s.MemoryGuardStartPercent,
         MemoryTightGb = s.MemoryTightGb,
@@ -444,6 +454,8 @@ public sealed class OrchestratorVaultSettings
         DiskWarnGb = DiskWarnGb,
         DiskCriticalGb = DiskCriticalGb,
         DiskCleanupGb = DiskCleanupGb,
+        DaemonRestartSeconds = DaemonRestartSeconds,
+        DaemonRestartMaxSeconds = DaemonRestartMaxSeconds,
         MemoryGuard = MemoryGuard,
         MemoryGuardStartPercent = MemoryGuardStartPercent,
         MemoryTightGb = MemoryTightGb,

@@ -282,7 +282,10 @@ public partial class App : Application
                 }
                 catch (Exception ex) when (ex is not OutOfMemoryException)
                 {
-                    var pause = TimeSpan.FromSeconds(Math.Min(300, 15 << Math.Min(failures, 5)));
+                    // Both numbers are Vault settings (M.ORCH-T1619); defaults when settings can't be read.
+                    var cs = new JsonStore().TryLoadSettings(out var loaded) ? loaded : new OrchestratorSettings();
+                    var cap = Math.Max(1, cs.DaemonRestartMaxSeconds);
+                    var pause = TimeSpan.FromSeconds(Math.Min(cap, Math.Max(1, cs.DaemonRestartSeconds) * Math.Pow(2, Math.Min(failures, 10))));
                     OrchestratorLog.For("Daemon").Error(ex, "The daemon loop died; starting it again in {Seconds:0}s", pause.TotalSeconds);
                     Thread.Sleep(pause);
                 }
