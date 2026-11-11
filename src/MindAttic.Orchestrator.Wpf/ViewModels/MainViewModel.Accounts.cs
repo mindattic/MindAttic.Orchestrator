@@ -58,6 +58,8 @@ public sealed partial class MainViewModel
                 tabBlinkTokens = settings.TabBlinkTokens;
                 symbolTabLabels = settings.SymbolTabLabels;
                 autoOpenLaunchers = settings.AutoOpenLaunchers;
+                AllTerminals.EndedLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedTabMinutes));
+                AllTerminals.EndedMenuLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedLauncherTabMinutes));
             }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
             // Each login's own cutoffs and who's allowed past the weekly one, for the tabs' disabled icon (M.ORCH-T757); kept as

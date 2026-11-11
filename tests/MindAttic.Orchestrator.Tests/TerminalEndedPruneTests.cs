@@ -49,10 +49,28 @@ public sealed class TerminalEndedPruneTests
         Assert.That(terminals.Panes, Is.EqualTo(new[] { stale, fresh, live }));
 
         // Past the lifetime: only the ended tabs go; the still-live one stays whatever its age.
-        var later = DateTime.UtcNow + TerminalsViewModel.EndedLifetime + TimeSpan.FromSeconds(1);
+        var later = DateTime.UtcNow + terminals.EndedLifetime + TimeSpan.FromSeconds(1);
         terminals.PruneEnded(later);
         Assert.That(terminals.Panes, Is.EqualTo(new[] { live }));
 
         live.DisposeControl();
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void An_ended_launcher_menu_goes_at_once_and_a_cli_tab_waits_its_vault_set_lifetime()
+    {
+        // M.ORCH-T1599: an ended tab holds its native renderer, so a Launcher menu (nothing to read) is closed straight away.
+        var terminals = new TerminalsViewModel { EndedLifetime = TimeSpan.FromMinutes(15) };
+        var menuSession = new Term.TermSessionRecord { Id = "menu1", HostPid = 999999, Pipe = "mindattic-term-nobody-menu1", Cwd = temp.New(), CommandLine = "cmd.exe" };
+        var menu = terminals.Reattach(menuSession, new PaneRequest("T: Launcher", menuSession.Cwd!) { CommandLine = "cmd.exe", IsMenu = true })!;
+        var cli = Reattach(terminals, "cli1");
+        menu.Ended = true;
+        cli.Ended = true;
+
+        terminals.PruneEnded(DateTime.UtcNow);
+        Assert.That(terminals.Panes, Is.EqualTo(new[] { cli }));
+
+        terminals.PruneEnded(DateTime.UtcNow + TimeSpan.FromMinutes(16));
+        Assert.That(terminals.Panes, Is.Empty);
     }
 }

@@ -50,7 +50,7 @@ public sealed class TerminalCloseConfirmTests
 
         var stale = Reattach(terminals, "stale1");
         stale.Ended = true;
-        terminals.PruneEnded(DateTime.UtcNow + TerminalsViewModel.EndedLifetime + TimeSpan.FromSeconds(1));
+        terminals.PruneEnded(DateTime.UtcNow + terminals.EndedLifetime + TimeSpan.FromSeconds(1));
         Assert.That(terminals.Panes, Is.Empty);
         Assert.That(asked, Is.Zero);
     }

@@ -1004,13 +1004,19 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <see cref="PruneEnded"/> closes it unasked (M.ORCH-T1177): without this, a member who stops coming back to the
     /// dashboard (on leave, between projects) never closes theirs, and every CLI that ends on their page piles up a tab,
     /// forever, for no one to see.</summary>
-    internal static readonly TimeSpan EndedLifetime = TimeSpan.FromHours(24);
+    /// <para>An ended tab still holds its native terminal renderer (~50 MB), so it's short (M.ORCH-T1599): the Vault's
+    /// EndedTabMinutes, set by the root tab each refresh.</para>
+    internal TimeSpan EndedLifetime { get; set; } = TimeSpan.FromMinutes(Settings.OrchestratorSettings.DefaultEndedTabMinutes);
 
-    /// <summary>Closes every tab that's sat <see cref="Ended"/> longer than <see cref="EndedLifetime"/>, as <see cref="Close"/>
-    /// would by hand (M.ORCH-T1177). Run each refresh, from <see cref="Update"/>; never throws.</summary>
+    /// <summary>The same for an ended Launcher menu tab, which has nothing to read: the Vault's EndedLauncherTabMinutes (0, at once).</summary>
+    internal TimeSpan EndedMenuLifetime { get; set; } = TimeSpan.Zero;
+
+    /// <summary>Closes every tab that's sat <see cref="Ended"/> past its lifetime (<see cref="EndedLifetime"/>, or
+    /// <see cref="EndedMenuLifetime"/> for a Launcher's), as <see cref="Close"/> would by hand (M.ORCH-T1177). Run each
+    /// refresh, from <see cref="Update"/>; never throws.</summary>
     internal void PruneEnded(DateTime nowUtc)
     {
-        foreach (var pane in Panes.Where(p => p.Ended && p.EndedAtUtc is { } at && nowUtc - at > EndedLifetime).ToList())
+        foreach (var pane in Panes.Where(p => p.Ended && p.EndedAtUtc is { } at && nowUtc - at >= (p.Request.IsMenu ? EndedMenuLifetime : EndedLifetime)).ToList())
         {
             try { Close(pane); }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Pruning {Title:l}'s long-ended tab failed; contained", pane.Title); }
