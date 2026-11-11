@@ -261,6 +261,14 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 100000)]
     public int GroomAfterDays { get; set; } = 30;
 
+    [Setting("Keep log entries (days)", Group = "Alerts", Order = 61, Help = "Days the Orchestrator's MindAttic.Log database keeps its entries before the daemon deletes older ones. 0 keeps them for good.")]
+    [SettingRange(0, 100000)]
+    public int LogKeepDays { get; set; } = 30;
+
+    [Setting("Keep terminal host logs (days)", Group = "Alerts", Order = 62, Help = "Days a finished terminal host's own log file is kept before the daemon deletes it. 0 keeps them for good.")]
+    [SettingRange(0, 100000)]
+    public int TermLogKeepDays { get; set; } = 7;
+
     [Setting("GitHub intake", Group = "Alerts", Order = 7,
         Help = "Hourly, file GitHub issues labelled \"orchestrator\" and CI runs that failed on main as tickets.")]
     public bool GitHubIntake { get; set; }
@@ -374,6 +382,8 @@ public sealed class OrchestratorVaultSettings
         MemoryResumeMarginCommit = s.MemoryResumeMarginCommit,
         AuditEveryHours = s.AuditEveryHours,
         GroomAfterDays = s.GroomAfterDays,
+        LogKeepDays = s.LogKeepDays,
+        TermLogKeepDays = s.TermLogKeepDays,
         GitHubIntake = s.GitHubIntake,
         Theme = s.Theme,
         SymbolTabLabels = s.SymbolTabLabels,
@@ -447,6 +457,8 @@ public sealed class OrchestratorVaultSettings
         MemoryResumeMarginCommit = MemoryResumeMarginCommit,
         AuditEveryHours = AuditEveryHours,
         GroomAfterDays = GroomAfterDays,
+        LogKeepDays = LogKeepDays,
+        TermLogKeepDays = TermLogKeepDays,
         GitHubIntake = GitHubIntake,
         Theme = string.IsNullOrWhiteSpace(Theme) ? null : Theme,
         SymbolTabLabels = SymbolTabLabels,

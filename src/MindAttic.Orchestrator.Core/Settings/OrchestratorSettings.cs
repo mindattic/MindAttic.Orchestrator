@@ -330,6 +330,13 @@ public sealed record OrchestratorSettings
     /// <summary>Open tickets older than this many days with nobody on them are listed for grooming. 0 means never.</summary>
     public int GroomAfterDays { get; init; } = 30;
 
+    /// <summary>Days the shared MindAttic.Log database keeps this app's entries (M.ORCH-T1611: the library's own default is 365,
+    /// ~3,500 rows a day). 0 keeps them for good.</summary>
+    public int LogKeepDays { get; init; } = 30;
+
+    /// <summary>Days a finished terminal host's own log file (terms\&lt;id&gt;.log) is kept (M.ORCH-T1611). 0 keeps them for good.</summary>
+    public int TermLogKeepDays { get; init; } = 7;
+
     /// <summary>Where alerts go off the desktop: a URL that takes a plain-text POST, like an ntfy.sh topic
     /// (https://ntfy.sh/your-topic) for phone pushes. Null sends nothing.</summary>
     public string? NotifyUrl { get; init; }

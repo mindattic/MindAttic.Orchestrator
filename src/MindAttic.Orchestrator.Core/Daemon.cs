@@ -185,6 +185,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 tick.Lap("process reaper");
                 PruneSessionTempIfDue(options.WorkspaceRoot);
                 tick.Lap("ended sessions' temp folders");
+                logPruner.RunIfDue(s, msg => Say(LogEventLevel.Information, msg));
+                tick.Lap("old logs");
                 // Old side-by-side TermHost versions, once the CLIs still running on them have ended (M.ORCH-T932).
                 // Each in its own try (M.ORCH-T1009), as the gateway's is: one that throws no longer skips the rest of the tick
                 // (allocate, reminders, orphans, keep-going), and a failed one is tried again in 5 minutes, not 30.
@@ -939,6 +941,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private string sessionTempHeld = "";
+
+    private readonly LogPruner logPruner = new();
 
     private Activity.HealthLevel healthLevel;
     private DateTime healthSampledUtc;
