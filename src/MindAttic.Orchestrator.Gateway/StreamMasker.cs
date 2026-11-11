@@ -394,6 +394,9 @@ internal sealed class StreamMasker
         new("ASIA", c => char.IsAsciiLetterUpper(c) || char.IsAsciiDigit(c), MaxBody: 15),
         new("eyJ", c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-' or '.'),
         .. "abposr".Select(k => new ShapeStart($"xox{k}-", c => char.IsAsciiLetterOrDigit(c) || c == '-')),
+        // SecretShapes' Google and Stripe keys (M.ORCH-T963).
+        new("AIza", c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-', MaxBody: 34, NeedsGenerated: true),
+        .. "spr".SelectMany(k => new[] { "live", "test" }.Select(m => new ShapeStart($"{k}k_{m}_", char.IsAsciiLetterOrDigit, NeedsGenerated: true))),
     ];
 
     /// <summary>A value after a secret-sounding name, at the very end of the text.</summary>

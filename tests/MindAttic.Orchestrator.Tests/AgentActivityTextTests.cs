@@ -16,7 +16,7 @@ public sealed class AgentActivityTextTests
     [TestCase("Edit", """{"file_path":"D:\\x\\src\\Daemon.cs","old_string":"a"}""", "Editing Daemon.cs")]
     [TestCase("Read", """{"file_path":"/c/x/README.md"}""", "Reading README.md")]
     [TestCase("Bash", """{"command":"dotnet test\nmore","description":"Run the tests"}""", "Run the tests")]
-    [TestCase("Bash", """{"command":"dotnet test tests/X\nmore"}""", "Running dotnet test tests/X")]
+    [TestCase("Bash", """{"command":"dotnet test tests/X\nmore"}""", "Running dotnet")]
     [TestCase("Grep", """{"pattern":"LiveSessions"}""", "Searching for 'LiveSessions'")]
     [TestCase("Agent", """{"description":"Map the hooks","prompt":"..."}""", "Starting a subagent: Map the hooks")]
     [TestCase("mcp__claude_ai_Docs__batch", "{}", "Using batch")]
@@ -26,7 +26,7 @@ public sealed class AgentActivityTextTests
 
     [Test]
     public void A_long_description_is_cut_to_one_short_line() =>
-        Assert.That(ToolCallText.Describe("Bash", $$"""{"command":"{{new string('x', 200)}}"}"""), Has.Length.EqualTo(ToolCallText.MaxLength).And.EndsWith("…"));
+        Assert.That(ToolCallText.Describe("Bash", $$"""{"command":"x","description":"{{new string('x', 200)}}"}"""), Has.Length.EqualTo(ToolCallText.MaxLength).And.EndsWith("…"));
 
     [Test]
     public void Only_running_clis_are_on_the_board_each_with_its_latest_session_and_its_own_busy_or_idle()

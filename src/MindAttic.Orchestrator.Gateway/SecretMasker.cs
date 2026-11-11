@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using MindAttic.Orchestrator.Term;
 
 namespace MindAttic.Orchestrator.Gateway;
 
@@ -9,7 +10,8 @@ namespace MindAttic.Orchestrator.Gateway;
 /// those characters are and replaces them. The literal values live in memory only and are never logged.
 /// <para>Shapes: <c>sk-ant-…</c>, <c>sk-…</c> (OpenAI), <c>ghp_</c>/<c>gho_</c>/<c>ghu_</c>/<c>ghs_</c>/<c>ghr_</c> and
 /// <c>github_pat_…</c>, AWS access key ids (<c>AKIA…</c>, <c>ASIA…</c>), JWTs (three base64url segments, the first <c>eyJ</c>),
-/// Slack <c>xox[abposr]-</c> tokens, and long high-entropy hex or base64 after <c>key=</c>, <c>token=</c>, <c>secret=</c>,
+/// Slack <c>xox[abposr]-</c> tokens, Google <c>AIza…</c> and Stripe <c>sk_live_…</c> keys (all from <see cref="SecretShapes"/>),
+/// and long high-entropy hex or base64 after <c>key=</c>, <c>token=</c>, <c>secret=</c>,
 /// <c>password=</c> (also <c>:</c>, quoted, any prefix such as <c>API_KEY</c>) or <c>Bearer</c>. PEM private-key blocks are
 /// stateful across chunks, so <see cref="StreamMasker"/> handles them with <see cref="PemBegin"/> and <see cref="PemEnd"/>.</para>
 /// <para>False positives are guarded: a token must start at a word boundary, the bare <c>sk-</c> shape needs digits and letters
@@ -27,27 +29,27 @@ internal sealed class SecretMasker
     private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(500);
     private const RegexOptions Options = RegexOptions.CultureInvariant | RegexOptions.Compiled;
 
-    // A token starts where no token character comes before it.
-    private const string Start = @"(?<![A-Za-z0-9_\-])";
-
     private sealed record Shape(Regex Pattern, Func<string, bool>? Valid = null);
+
+    // The shapes themselves are SecretShapes' (M.ORCH-T963), shared with the activity feed; the checks that keep a whole
+    // terminal screen's prose and identifiers unmasked stay here.
+    private static Regex Compile(string pattern) => new(pattern, Options, RegexTimeout);
 
     private static readonly Shape[] Shapes =
     [
-        new(new($@"{Start}sk-ant-[A-Za-z0-9_\-]{{20,}}", Options, RegexTimeout), v => HasDigit(v) && HasLetter(v)),
-        new(new($@"{Start}sk-(?:proj-|svcacct-|admin-)?[A-Za-z0-9_\-]{{20,}}", Options, RegexTimeout),
-            v => HasDigit(v[3..]) && HasLetter(v[3..]) && Entropy(v[3..]) >= 3.5),
-        new(new($@"{Start}gh[pousr]_[A-Za-z0-9]{{30,}}", Options, RegexTimeout), v => HasDigit(v)),
-        new(new($@"{Start}github_pat_[A-Za-z0-9_]{{40,}}", Options, RegexTimeout)),
-        new(new($@"{Start}(?:AKIA|ASIA)[A-Z0-9]{{16}}(?![A-Za-z0-9])", Options, RegexTimeout)),
-        new(new($@"{Start}eyJ[A-Za-z0-9_\-]{{5,}}\.[A-Za-z0-9_\-]{{5,}}\.[A-Za-z0-9_\-]{{10,}}", Options, RegexTimeout)),
-        new(new($@"{Start}xox[abposr]-[A-Za-z0-9\-]{{10,}}", Options, RegexTimeout), v => HasDigit(v)),
+        new(Compile(SecretShapes.Anthropic), v => HasDigit(v) && HasLetter(v)),
+        new(Compile(SecretShapes.OpenAi), v => HasDigit(v[3..]) && HasLetter(v[3..]) && Entropy(v[3..]) >= 3.5),
+        new(Compile(SecretShapes.GitHub), v => HasDigit(v)),
+        new(Compile(SecretShapes.GitHubPat)),
+        new(Compile(SecretShapes.AwsKeyId)),
+        new(Compile(SecretShapes.Jwt)),
+        new(Compile(SecretShapes.Slack), v => HasDigit(v)),
+        new(Compile(SecretShapes.Google), v => HasDigit(v)),
+        new(Compile(SecretShapes.Stripe), v => HasDigit(v)),
     ];
 
-    /// <summary>The value after a secret-sounding name: <c>API_KEY=</c>, <c>token: "</c>, <c>"password":"</c>, <c>Bearer </c>.</summary>
-    private static readonly Regex Assigned = new(
-        @"(?:(?:key|token|secret|password|passwd|pwd)[""']?[ \t]*[:=][ \t]*[""']?|\b[Bb]earer[ \t]+)(?<v>[A-Za-z0-9+/_\-.~]{16,}={0,2})",
-        Options | RegexOptions.IgnoreCase, RegexTimeout);
+    /// <summary>The value after a secret-sounding name (<see cref="SecretShapes.Assigned"/>; group 2 is the value).</summary>
+    private static readonly Regex Assigned = Compile(SecretShapes.Assigned);
 
     /// <summary>The line that opens a PEM private key block.</summary>
     internal static readonly Regex PemBegin = new(@"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----", Options, RegexTimeout);
@@ -90,7 +92,7 @@ internal sealed class SecretMasker
         }
         foreach (Match m in SafeMatches(Assigned, text))
         {
-            var v = m.Groups["v"];
+            var v = m.Groups[2];
             if (LooksRandom(v.Value)) yield return (v.Index, v.Index + v.Length);
         }
         foreach (var literal in literals)

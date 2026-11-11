@@ -3407,9 +3407,11 @@ public static class AgentGate
                           "notebookedit": "Editing", "list_directory": "Listing", "ls": "Listing"}
         def activity_short(text, limit=80):
             text = re.sub(r"\s+", " ", str(text or "")).strip()
-            # A token-shaped run (an API key, a JWT, a long hex or base64 string) never leaves, whatever field carried it.
-            text = re.sub(r"\b(?:sk|pk|rk|ghp|gho|ghs|github_pat|xox[abprs]|AKIA|AIza)[-_A-Za-z0-9]{8,}|\beyJ[-_A-Za-z0-9.]{20,}"
-                          r"|[A-Za-z0-9+/=_-]{32,}", "***", text)
+            # A token-shaped run (an API key, a JWT, a value after key=/token=/Bearer, a long hex or base64 string) never leaves,
+            # whatever field carried it. The pattern is SecretShapes.ActivityPattern, the same shapes the gateway's broadcast masker
+            # and the dashboard's ToolCallText use (M.ORCH-T963); group 1 is a name before a value, kept (token=***).
+            text = re.sub({{{MindAttic.Orchestrator.Term.SecretShapes.PythonLiteral(MindAttic.Orchestrator.Term.SecretShapes.ActivityPattern)}}},
+                          lambda m: (m.group(1) or "") + "{{{MindAttic.Orchestrator.Term.SecretShapes.ActivityMask}}}", text)
             return text if len(text) <= limit else text[:limit - 1].rstrip() + "…"
         def activity_base(path):
             p = str(path or "").strip().strip("\"'").rstrip("/\\")
