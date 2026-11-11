@@ -19,11 +19,14 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class ProcessReaper
 {
+    /// <summary>The default handle cap; live, <see cref="Settings.OrchestratorSettings.ReapMaxHandles"/> (M.ORCH-T1595).</summary>
     public const long MaxHandleCount = 50_000;
+
+    /// <summary>The default runaway-search age; live, <see cref="Settings.OrchestratorSettings.ReapSearchMaxMinutes"/>.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromMinutes(30);
 
-    /// <summary>How often the daemon scans: a leak takes minutes to matter, and each scan is a WMI query that
-    /// WmiPrvSE pays for (M.ORCH-T117: every 15s it was a steady CPU cost of its own).</summary>
+    /// <summary>The default scan interval; live, <see cref="Settings.OrchestratorSettings.ReapEverySeconds"/>: a leak takes
+    /// minutes to matter, and each scan is a WMI query that WmiPrvSE pays for (M.ORCH-T117: every 15s it was a steady CPU cost of its own).</summary>
     public static readonly TimeSpan Every = TimeSpan.FromSeconds(60);
 
     /// <summary>Ancestor hops to walk looking for a live Claude CLI before giving up on telling either way.</summary>
@@ -46,9 +49,12 @@ public static class ProcessReaper
     /// one but has grown past <see cref="MaxHandleCount"/> handles or <see cref="MaxAge"/> old. Anything never
     /// seen under an agent (a dev server or script you started yourself, from a terminal since closed) is left
     /// alone. <paramref name="underAgent"/> is what earlier scans saw under a CLI; this one's are added to it.
+    /// <paramref name="maxHandles"/> and <paramref name="maxAge"/> are the live settings' caps (defaults when not given).
     /// </summary>
-    public static IReadOnlyList<Reaped> Select(IReadOnlyList<ProcessInfo> processes, DateTime nowUtc, ISet<(int Pid, DateTime Start)> underAgent)
+    public static IReadOnlyList<Reaped> Select(IReadOnlyList<ProcessInfo> processes, DateTime nowUtc, ISet<(int Pid, DateTime Start)> underAgent,
+        long maxHandles = MaxHandleCount, TimeSpan? maxAge = null)
     {
+        var ageCap = maxAge ?? MaxAge;
         var byPid = processes.GroupBy(p => p.Pid).ToDictionary(g => g.Key, g => g.First());
         var reaped = new List<Reaped>();
         foreach (var p in processes)
@@ -64,10 +70,10 @@ public static class ProcessReaper
                 continue; // never seen under an agent: not ours to kill
             }
             if (!foundClaude) continue; // ancestry reaches no agent at all: a plain dev process, leave it alone
-            if (p.HandleCount > MaxHandleCount) reaped.Add(new Reaped(p, $"over {MaxHandleCount:N0} handles ({p.HandleCount:N0})"));
+            if (p.HandleCount > maxHandles) reaped.Add(new Reaped(p, $"over {maxHandles:N0} handles ({p.HandleCount:N0})"));
             // Age only marks a runaway search: a test suite, build or dev server under an agent may rightly run longer
             // (found live: an agent's 30-minute python test run was killed).
-            else if (IsSearch(p.Name) && p.StartUtc != Unknown && nowUtc - p.StartUtc > MaxAge) reaped.Add(new Reaped(p, $"running {MindAttic.Orchestrator.Formatting.Ago(p.StartUtc, nowUtc)}, over {MaxAge.TotalMinutes:0} min"));
+            else if (IsSearch(p.Name) && p.StartUtc != Unknown && nowUtc - p.StartUtc > ageCap) reaped.Add(new Reaped(p, $"running {MindAttic.Orchestrator.Formatting.Ago(p.StartUtc, nowUtc)}, over {ageCap.TotalMinutes:0} min"));
         }
         return reaped;
     }
@@ -105,12 +111,12 @@ public static class ProcessReaper
     /// <summary>Snapshots every process via WMI, kills the ones <see cref="Select"/> flags (the whole tree under
     /// each, so an orphaned shell takes its own still-running children with it), and returns what it killed.
     /// Best effort: a process that exits mid-kill, or WMI being unavailable, is swallowed rather than thrown.</summary>
-    public static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc)
+    public static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc, long maxHandles = MaxHandleCount, TimeSpan? maxAge = null)
     {
         lock (SeenUnderAgent)
         {
             if (SeenUnderAgent.Count > 50_000) SeenUnderAgent.Clear(); // every process ever seen under an agent, for the whole run (M.ORCH-T1607)
-            return ReapOnce(nowUtc, Snapshot, CommandLineOf, Kill, SeenUnderAgent);
+            return ReapOnce(nowUtc, Snapshot, CommandLineOf, Kill, SeenUnderAgent, maxHandles, maxAge);
         }
     }
 
@@ -118,11 +124,11 @@ public static class ProcessReaper
     /// its memory, the costly part of a WMI process query); only the ones about to be killed have theirs fetched,
     /// for the log, before they go. <paramref name="underAgent"/> is kept to processes still alive.</summary>
     internal static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc, Func<IReadOnlyList<ProcessInfo>> snapshot, Func<int, string?> commandLine, Action<ProcessInfo> kill,
-        ISet<(int Pid, DateTime Start)> underAgent)
+        ISet<(int Pid, DateTime Start)> underAgent, long maxHandles = MaxHandleCount, TimeSpan? maxAge = null)
     {
         var processes = snapshot();
         if (processes.Count == 0) return []; // WMI failed: forget nothing, kill nothing
-        var reaped = Select(processes, nowUtc, underAgent)
+        var reaped = Select(processes, nowUtc, underAgent, maxHandles, maxAge)
             .Select(r => r with { Process = r.Process with { CommandLine = commandLine(r.Process.Pid) } })
             .ToList();
         foreach (var r in reaped) kill(r.Process);

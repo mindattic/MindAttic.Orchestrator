@@ -406,6 +406,70 @@ public sealed record OrchestratorSettings
     /// down from it.</summary>
     public double MemoryResumeMarginCommit { get; init; } = 5;
 
+    // ── Live-dialed intervals, caps and thresholds (M.ORCH-T1595): each was a constant; its value then is its default ──
+
+    /// <summary>How often the memory guard reads the machine (seconds); readings in between reuse the last
+    /// (was <see cref="Activity.MemoryGuard.SampleEvery"/>).</summary>
+    public double MemorySampleSeconds { get; init; } = 5;
+
+    /// <summary>How long a reading must stay clear of a level's line before the guard steps down from it (seconds; was
+    /// <see cref="Activity.MemoryGuard.SettleFor"/>).</summary>
+    public double MemorySettleSeconds { get; init; } = 60;
+
+    /// <summary>How often the daemon scans for tool processes dead agents left behind (seconds; was
+    /// <see cref="Sessions.ProcessReaper.Every"/>): each scan is a WMI query WmiPrvSE pays for (M.ORCH-T117).</summary>
+    public double ReapEverySeconds { get; init; } = 60;
+
+    /// <summary>Handles past which a tool process under a live agent is reaped as runaway (was
+    /// <see cref="Sessions.ProcessReaper.MaxHandleCount"/>).</summary>
+    public int ReapMaxHandles { get; init; } = (int)Sessions.ProcessReaper.MaxHandleCount;
+
+    /// <summary>Minutes past which a search (find, rg, grep) under a live agent is reaped as runaway (was
+    /// <see cref="Sessions.ProcessReaper.MaxAge"/>).</summary>
+    public double ReapSearchMaxMinutes { get; init; } = 30;
+
+    /// <summary>Minutes between the daemon's cleanups of unused side-by-side TermHost, Gateway and TermViewer versions.</summary>
+    public double TermHostCleanupMinutes { get; init; } = 30;
+
+    /// <summary>Minutes until a failed cleanup of old side-by-side versions is tried again.</summary>
+    public double TermHostCleanupRetryMinutes { get; init; } = 5;
+
+    /// <summary>Hours between prunes of the CLI cycler's old marks (the logon daemon runs for weeks, M.ORCH-T330).</summary>
+    public double CliMarksPruneHours { get; init; } = 24;
+
+    /// <summary>Minutes between looks for ended sessions' %TEMP%\claude folders to delete (was
+    /// <see cref="Sessions.SessionTempPruner.Every"/>).</summary>
+    public double SessionTempPruneMinutes { get; init; } = 10;
+
+    /// <summary>The least minutes between two disk self-cleanups while %TEMP%'s drive is under <see cref="DiskCleanupGb"/>.</summary>
+    public double DiskCleanupEveryMinutes { get; init; } = 5;
+
+    /// <summary>Seconds between the daemon's machine-health samples (handles, commit charge, free RAM).</summary>
+    public double HealthSampleSeconds { get; init; } = 30;
+
+    /// <summary>Hours between the daemon's checks for a system-managed pagefile (M.ORCH-T1493).</summary>
+    public double PagefileCheckHours { get; init; } = 24;
+
+    /// <summary>Minutes between prunes of old log entries and finished terminal hosts' logs (was <see cref="LogPruner.Every"/>).</summary>
+    public double LogPruneMinutes { get; init; } = 60;
+
+    /// <summary>Seconds between the daemon's copies of SQL Server's settings, assignments and state into data/orchestrator.db.</summary>
+    public double MirrorSeconds { get; init; } = 60;
+
+    /// <summary>Minutes between tries of <c>tickets db sync</c> when the ticket database has changed.</summary>
+    public double TicketsDbSyncMinutes { get; init; } = 10;
+
+    /// <summary>Minutes between commits of data/orchestrator.db (and its dump) when it has changed (M.ORCH-T490).</summary>
+    public double OrchestratorDbSyncMinutes { get; init; } = 10;
+
+    /// <summary>Minutes between GitHub intakes while <see cref="GitHubIntake"/> is on.</summary>
+    public double GitHubIntakeMinutes { get; init; } = 60;
+
+    /// <summary>A setting's seconds as a <see cref="TimeSpan"/>, kept finite and at least <paramref name="minSeconds"/>, so a hand
+    /// edit (negative, NaN, huge) can't throw or spin a timer. No allocation: read it straight off the settings each time.</summary>
+    public static TimeSpan SecondsSpan(double seconds, double minSeconds = 0) =>
+        TimeSpan.FromSeconds(double.IsFinite(seconds) ? Math.Clamp(seconds, minSeconds, 1e9) : minSeconds);
+
     /// <summary>Off by default (M.ORCH-T1585): open a MindAttic.Launcher (a process of its own, ~80 MB) for every signed-in login,
     /// and again when its last tab closes. The tab right-click's Open Project lists the same projects in-app; Run Launcher still
     /// opens one by hand.</summary>

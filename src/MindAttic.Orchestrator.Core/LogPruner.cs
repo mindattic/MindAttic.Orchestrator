@@ -17,7 +17,7 @@ public sealed class LogPruner
 
     internal void RunIfDue(OrchestratorSettings s, Action<string> say, DateTime now, string termsDir)
     {
-        if (lastUtc is { } at && now - at < Every) return;
+        if (lastUtc is { } at && now - at < OrchestratorSettings.SecondsSpan(s.LogPruneMinutes * 60)) return; // live (M.ORCH-T1595); Every is its default
         lastUtc = now;
         try
         {

@@ -63,10 +63,12 @@ public sealed record MemoryLines(double TightGb, double CriticalGb, double Emerg
 /// </summary>
 public sealed class MemoryGuard
 {
-    /// <summary>How long a reading must stay clear before each step down.</summary>
+    /// <summary>How long a reading must stay clear before each step down, by default; live,
+    /// <see cref="OrchestratorSettings.MemorySettleSeconds"/> (M.ORCH-T1595).</summary>
     public static readonly TimeSpan SettleFor = TimeSpan.FromSeconds(60);
 
-    /// <summary>How often the machine is read; readings in between reuse the last.</summary>
+    /// <summary>How often the machine is read, by default (readings in between reuse the last); live,
+    /// <see cref="OrchestratorSettings.MemorySampleSeconds"/> (M.ORCH-T1595).</summary>
     public static readonly TimeSpan SampleEvery = TimeSpan.FromSeconds(5);
 
     /// <summary>A simulated free-RAM figure (GB) in this file stands in for the real one while the file is under
@@ -93,7 +95,7 @@ public sealed class MemoryGuard
         if (!s.MemoryGuard) return null;
         lock (gate)
         {
-            if (last is not null && nowUtc - sampledUtc < SampleEvery && nowUtc >= sampledUtc) return last;
+            if (last is not null && nowUtc - sampledUtc < OrchestratorSettings.SecondsSpan(s.MemorySampleSeconds) && nowUtc >= sampledUtc) return last;
             if (Read() is not { } reading) return last;
             sampledUtc = nowUtc;
             return last = Step(last?.Level ?? MemoryLevel.Ok, reading, s, nowUtc) with { Lines = MemoryLines.Of(s) };
@@ -120,7 +122,7 @@ public sealed class MemoryGuard
             return new(previous, r, $"recovering, not yet clear: {heldWhy}");
         }
         clearSinceUtc ??= nowUtc;
-        if (nowUtc - clearSinceUtc < SettleFor) return new(previous, r, $"recovering: {r.Describe()}");
+        if (nowUtc - clearSinceUtc < OrchestratorSettings.SecondsSpan(s.MemorySettleSeconds)) return new(previous, r, $"recovering: {r.Describe()}");
         var next = (MemoryLevel)Math.Max((int)held, (int)previous - 1);
         // Each further step down waits its own settle.
         clearSinceUtc = next == MemoryLevel.Ok ? null : nowUtc;

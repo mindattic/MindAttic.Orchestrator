@@ -216,6 +216,55 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 86400)]
     public double DaemonRestartMaxSeconds { get; set; } = 300;
 
+    [Setting("Reap leaked tool processes every (s)", Group = "Scheduler", Order = 93,
+        Help = "Seconds between the daemon's scans for tool processes (find, git, node, dotnet...) that dead agents left behind. Each scan is a WMI query.")]
+    [SettingRange(1, 86400)]
+    public double ReapEverySeconds { get; set; } = 60;
+
+    [Setting("Reap a tool process past (handles)", Group = "Scheduler", Order = 94,
+        Help = "Handles past which a tool process under a live agent is killed as runaway.")]
+    [SettingRange(1000, 10000000)]
+    public int ReapMaxHandles { get; set; } = (int)Sessions.ProcessReaper.MaxHandleCount;
+
+    [Setting("Reap a search running past (minutes)", Group = "Scheduler", Order = 95,
+        Help = "Minutes past which a find, rg or grep under a live agent is killed as runaway. Builds and tests are never killed for age.")]
+    [SettingRange(1, 10080)]
+    public double ReapSearchMaxMinutes { get; set; } = 30;
+
+    [Setting("Remove old TermHost versions every (minutes)", Group = "Scheduler", Order = 96,
+        Help = "Minutes between cleanups of unused side-by-side TermHost, Gateway and TermViewer versions.")]
+    [SettingRange(1, 10080)]
+    public double TermHostCleanupMinutes { get; set; } = 30;
+
+    [Setting("Retry a failed version cleanup after (minutes)", Group = "Scheduler", Order = 97,
+        Help = "Minutes until a cleanup of old side-by-side versions that failed is tried again.")]
+    [SettingRange(1, 10080)]
+    public double TermHostCleanupRetryMinutes { get; set; } = 5;
+
+    [Setting("Prune old CLI marks every (hours)", Group = "Scheduler", Order = 98, Help = "Hours between prunes of the CLI cycler's old marks.")]
+    [SettingRange(1, 8760)]
+    public double CliMarksPruneHours { get; set; } = 24;
+
+    [Setting("Delete ended sessions' temp every (minutes)", Group = "Scheduler", Order = 99,
+        Help = "Minutes between looks for ended sessions' %TEMP%\\claude folders to delete.")]
+    [SettingRange(1, 10080)]
+    public double SessionTempPruneMinutes { get; set; } = 10;
+
+    [Setting("Mirror SQL Server into orchestrator.db every (s)", Group = "Scheduler", Order = 100,
+        Help = "Seconds between copies of the settings, assignments and state into data/orchestrator.db, where the hooks read them.")]
+    [SettingRange(5, 86400)]
+    public double MirrorSeconds { get; set; } = 60;
+
+    [Setting("Sync the ticket database every (minutes)", Group = "Scheduler", Order = 101,
+        Help = "Minutes between tries of tickets db sync while the ticket database has changed.")]
+    [SettingRange(1, 10080)]
+    public double TicketsDbSyncMinutes { get; set; } = 10;
+
+    [Setting("Commit orchestrator.db every (minutes)", Group = "Scheduler", Order = 102,
+        Help = "Minutes between commits of data/orchestrator.db and its dump while it has changed.")]
+    [SettingRange(1, 10080)]
+    public double OrchestratorDbSyncMinutes { get; set; } = 10;
+
     [Setting("Database busy retries", Group = "Scheduler", Order = 92, Help = "How many extra times a write retries taking SQL Server's write lock after it stayed busy past its timeout (each wait longer than the last) before the command fails. Raise it when many CLIs and subagents write at once.")]
     [SettingRange(0, 100)]
     public int DbBusyRetries { get; set; } = 6;
@@ -264,6 +313,37 @@ public sealed class OrchestratorVaultSettings
     [Setting("Resume margin (commit points)", Group = "Memory", Order = 10, Help = "How far clear of a level's commit-percent line a reading must be before the guard steps back down from it.")]
     [SettingRange(0, 100)]
     public double MemoryResumeMarginCommit { get; set; } = 5;
+
+    [Setting("Read RAM every (s)", Group = "Memory", Order = 11, Help = "Seconds between the guard's reads of free RAM and commit charge; readings in between reuse the last.")]
+    [SettingRange(1, 3600)]
+    public double MemorySampleSeconds { get; set; } = 5;
+
+    [Setting("Step down after clear for (s)", Group = "Memory", Order = 12,
+        Help = "Seconds a reading must stay clear of a level's line (by the resume margins) before the guard steps down a level.")]
+    [SettingRange(0, 3600)]
+    public double MemorySettleSeconds { get; set; } = 60;
+
+    [Setting("Sample machine health every (s)", Group = "Alerts", Order = 63,
+        Help = "Seconds between the daemon's samples of handles, commit charge and free RAM for the machine-health alert.")]
+    [SettingRange(1, 86400)]
+    public double HealthSampleSeconds { get; set; } = 30;
+
+    [Setting("Check the pagefile every (hours)", Group = "Alerts", Order = 64, Help = "Hours between the daemon's checks for a system-managed pagefile, which can fill the disk.")]
+    [SettingRange(1, 8760)]
+    public double PagefileCheckHours { get; set; } = 24;
+
+    [Setting("Prune old logs every (minutes)", Group = "Alerts", Order = 65, Help = "Minutes between prunes of old log entries and finished terminal hosts' log files.")]
+    [SettingRange(1, 10080)]
+    public double LogPruneMinutes { get; set; } = 60;
+
+    [Setting("Disk self-cleanup at most every (minutes)", Group = "Alerts", Order = 66,
+        Help = "The least minutes between two disk self-cleanups while the temp drive stays under its free-GB line.")]
+    [SettingRange(1, 10080)]
+    public double DiskCleanupEveryMinutes { get; set; } = 5;
+
+    [Setting("GitHub intake every (minutes)", Group = "Alerts", Order = 67, Help = "Minutes between GitHub intakes while GitHub intake is on.")]
+    [SettingRange(5, 10080)]
+    public double GitHubIntakeMinutes { get; set; } = 60;
 
     [Setting("Audit every (hours)", Group = "Alerts", Order = 5, Help = "Hours between the audits the daemon runs by itself. 0 means only on demand.")]
     [SettingRange(0, 100000)]
@@ -389,6 +469,23 @@ public sealed class OrchestratorVaultSettings
         DaemonRestartSeconds = s.DaemonRestartSeconds,
         DaemonRestartMaxSeconds = s.DaemonRestartMaxSeconds,
         DbBusyRetries = s.DbBusyRetries,
+        ReapEverySeconds = s.ReapEverySeconds,
+        ReapMaxHandles = s.ReapMaxHandles,
+        ReapSearchMaxMinutes = s.ReapSearchMaxMinutes,
+        TermHostCleanupMinutes = s.TermHostCleanupMinutes,
+        TermHostCleanupRetryMinutes = s.TermHostCleanupRetryMinutes,
+        CliMarksPruneHours = s.CliMarksPruneHours,
+        SessionTempPruneMinutes = s.SessionTempPruneMinutes,
+        MirrorSeconds = s.MirrorSeconds,
+        TicketsDbSyncMinutes = s.TicketsDbSyncMinutes,
+        OrchestratorDbSyncMinutes = s.OrchestratorDbSyncMinutes,
+        MemorySampleSeconds = s.MemorySampleSeconds,
+        MemorySettleSeconds = s.MemorySettleSeconds,
+        HealthSampleSeconds = s.HealthSampleSeconds,
+        PagefileCheckHours = s.PagefileCheckHours,
+        LogPruneMinutes = s.LogPruneMinutes,
+        DiskCleanupEveryMinutes = s.DiskCleanupEveryMinutes,
+        GitHubIntakeMinutes = s.GitHubIntakeMinutes,
         MemoryGuard = s.MemoryGuard,
         MemoryGuardStartPercent = s.MemoryGuardStartPercent,
         MemoryTightGb = s.MemoryTightGb,
@@ -468,6 +565,23 @@ public sealed class OrchestratorVaultSettings
         DaemonRestartSeconds = DaemonRestartSeconds,
         DaemonRestartMaxSeconds = DaemonRestartMaxSeconds,
         DbBusyRetries = DbBusyRetries,
+        ReapEverySeconds = ReapEverySeconds,
+        ReapMaxHandles = ReapMaxHandles,
+        ReapSearchMaxMinutes = ReapSearchMaxMinutes,
+        TermHostCleanupMinutes = TermHostCleanupMinutes,
+        TermHostCleanupRetryMinutes = TermHostCleanupRetryMinutes,
+        CliMarksPruneHours = CliMarksPruneHours,
+        SessionTempPruneMinutes = SessionTempPruneMinutes,
+        MirrorSeconds = MirrorSeconds,
+        TicketsDbSyncMinutes = TicketsDbSyncMinutes,
+        OrchestratorDbSyncMinutes = OrchestratorDbSyncMinutes,
+        MemorySampleSeconds = MemorySampleSeconds,
+        MemorySettleSeconds = MemorySettleSeconds,
+        HealthSampleSeconds = HealthSampleSeconds,
+        PagefileCheckHours = PagefileCheckHours,
+        LogPruneMinutes = LogPruneMinutes,
+        DiskCleanupEveryMinutes = DiskCleanupEveryMinutes,
+        GitHubIntakeMinutes = GitHubIntakeMinutes,
         MemoryGuard = MemoryGuard,
         MemoryGuardStartPercent = MemoryGuardStartPercent,
         MemoryTightGb = MemoryTightGb,

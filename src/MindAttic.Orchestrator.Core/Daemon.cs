@@ -161,6 +161,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // Only from settings that could be read: defaults would run allocate, keep-going and the subagent cap on
                 // nothing anyone set and rewrite the hooks with them, every tick a bad row stays (M.ORCH-T720).
                 if (!store.TryLoadSettings(out var s)) throw new SettingsUnreadableException(store.Describe(JsonStore.SettingsName));
+                tunables = s; // the live intervals and caps the helpers below read (M.ORCH-T1595): one reference, no copy
                 if (settingsUnreadable)
                 {
                     settingsUnreadable = false;
@@ -193,7 +194,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // Old side-by-side TermHost versions, once the CLIs still running on them have ended (M.ORCH-T932).
                 // Each in its own try (M.ORCH-T1009), as the gateway's is: one that throws no longer skips the rest of the tick
                 // (allocate, reminders, orphans, keep-going), and a failed one is tried again in 5 minutes, not 30.
-                if (DateTime.UtcNow - termHostsCleanedUtc >= TimeSpan.FromMinutes(30))
+                if (DateTime.UtcNow - termHostsCleanedUtc >= OrchestratorSettings.SecondsSpan(s.TermHostCleanupMinutes * 60))
                 {
                     termHostsCleanedUtc = DateTime.UtcNow;
                     string? installDir = null;
@@ -215,9 +216,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                             catch (Exception ex)
                             {
                                 failed = true;
-                                Say(LogEventLevel.Warning, $"old {part} versions: couldn't clean them up (trying again in 5 minutes): {ex.Message}");
+                                Say(LogEventLevel.Warning, $"old {part} versions: couldn't clean them up (trying again in {Math.Min(s.TermHostCleanupRetryMinutes, s.TermHostCleanupMinutes):0.#} minutes): {ex.Message}");
                             }
-                    if (failed) termHostsCleanedUtc = DateTime.UtcNow - TimeSpan.FromMinutes(25);
+                    if (failed) termHostsCleanedUtc = DateTime.UtcNow - OrchestratorSettings.SecondsSpan((s.TermHostCleanupMinutes - Math.Min(s.TermHostCleanupRetryMinutes, s.TermHostCleanupMinutes)) * 60);
                 }
                 // The team gateway (M.ORCH-T933), off unless turned on: started, restarted or stopped to match the settings. Its
                 // trouble is contained here: it only ever costs remote viewers, never a tick or a TermHost.
@@ -238,7 +239,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 try { CliRoster.Write(store.Db, roster, DateTime.UtcNow, cycler.Directory); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"CLI roster: couldn't write it: {ex.Message}"); }
                 // Not only at start: the logon daemon runs for weeks (M.ORCH-T330).
-                if (DateTime.UtcNow - prunedUtc >= TimeSpan.FromDays(1))
+                if (DateTime.UtcNow - prunedUtc >= OrchestratorSettings.SecondsSpan(s.CliMarksPruneHours * 3600))
                 {
                     cycler.Prune(DateTime.UtcNow);
                     prunedUtc = DateTime.UtcNow;
@@ -418,7 +419,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     MirrorIfDue(DateTime.UtcNow);
                 }
                 tick.Lap("tickets db sync");
-                if (gitChores && s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
+                if (gitChores && s.GitHubIntake && DateTime.UtcNow - intakeUtc >= OrchestratorSettings.SecondsSpan(s.GitHubIntakeMinutes * 60))
                 {
                     intakeUtc = DateTime.UtcNow;
                     // One repo's malformed story file or a locked database ends the intake, not the tick: allocate's reap
@@ -916,12 +917,17 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     private DateTime reapedUtc;
 
-    /// <summary>Every <see cref="Sessions.ProcessReaper.Every"/>, kills the tool processes dead agents left behind.</summary>
+    /// <summary>The settings this tick read (M.ORCH-T1595): the live intervals and caps of the helpers that aren't handed the
+    /// settings; defaults until the first tick, and in a test that calls a helper straight.</summary>
+    private OrchestratorSettings tunables = new();
+
+    /// <summary>Every <see cref="OrchestratorSettings.ReapEverySeconds"/>, kills the tool processes dead agents left behind.</summary>
     private IReadOnlyList<Sessions.ProcessReaper.Reaped> ReapIfDue()
     {
-        if (DateTime.UtcNow - reapedUtc < Sessions.ProcessReaper.Every) return [];
+        var t = tunables;
+        if (DateTime.UtcNow - reapedUtc < OrchestratorSettings.SecondsSpan(t.ReapEverySeconds)) return [];
         reapedUtc = DateTime.UtcNow;
-        return Sessions.ProcessReaper.ReapOnce(reapedUtc);
+        return Sessions.ProcessReaper.ReapOnce(reapedUtc, Math.Max(1, t.ReapMaxHandles), OrchestratorSettings.SecondsSpan(t.ReapSearchMaxMinutes * 60, 60));
     }
 
     private DateTime testHostsReapedUtc;
@@ -941,7 +947,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// by liveness, never age (M.ORCH-T1467): see <see cref="SessionLiveness"/>; each deletion goes in the disk-cleanup log.</summary>
     private void PruneSessionTempIfDue(string workspaceRoot)
     {
-        if (sessionTempPrunedUtc is { } at && DateTime.UtcNow - at < SessionTempPruner.Every) return;
+        if (sessionTempPrunedUtc is { } at && DateTime.UtcNow - at < OrchestratorSettings.SecondsSpan(tunables.SessionTempPruneMinutes * 60)) return;
         sessionTempPrunedUtc = DateTime.UtcNow;
         var dir = Path.Combine(TempDir, "claude");
         var r = SessionTempPruner.Prune(dir, SessionLiveness.Current(workspaceRoot), dryRun: false, Activity.DiskCleanup.LogPath);
@@ -967,7 +973,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// </summary>
     private void WatchHealth(Allocate allocate)
     {
-        if (DateTime.UtcNow - healthSampledUtc < TimeSpan.FromSeconds(30)) return;
+        if (DateTime.UtcNow - healthSampledUtc < OrchestratorSettings.SecondsSpan(tunables.HealthSampleSeconds)) return;
         healthSampledUtc = DateTime.UtcNow;
         var sample = Activity.MachineHealth.Sample();
         // Judged against the last level, so it only comes down once clearly clear of the line, a step at a time.
@@ -1022,7 +1028,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// hard restart recovers (M.ORCH-T1493). set-pagefile.ps1 at the repo root fixes its size.</summary>
     private void WatchPagefile()
     {
-        if (DateTime.UtcNow - pagefileCheckedUtc < TimeSpan.FromDays(1)) return;
+        if (DateTime.UtcNow - pagefileCheckedUtc < OrchestratorSettings.SecondsSpan(tunables.PagefileCheckHours * 3600)) return;
         pagefileCheckedUtc = DateTime.UtcNow;
         if (!Activity.MachineHealth.PagefileUnbounded()) return;
         const string text = "The pagefile is system-managed, so when RAM runs out it grows until the disk is full. "
@@ -1072,7 +1078,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// </summary>
     internal void CleanDiskIfLow(OrchestratorSettings s, DateTime nowUtc, string? workspaceRoot = null)
     {
-        if (s.DiskCleanupGb <= 0 || nowUtc - cleanedUtc < TimeSpan.FromMinutes(5)) return;
+        if (s.DiskCleanupGb <= 0 || nowUtc - cleanedUtc < OrchestratorSettings.SecondsSpan(s.DiskCleanupEveryMinutes * 60)) return;
         if (Activity.DiskCleanup.FreeGb(TempDir) >= s.DiskCleanupGb) return;
         if (Interlocked.Exchange(ref cleaning, 1) == 1) return;
         cleanedUtc = nowUtc;
@@ -1110,7 +1116,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// a copy that couldn't be made then (the file held past its timeout).</summary>
     private void MirrorIfDue(DateTime nowUtc)
     {
-        if (nowUtc - mirroredUtc < TimeSpan.FromMinutes(1)) return;
+        if (nowUtc - mirroredUtc < OrchestratorSettings.SecondsSpan(tunables.MirrorSeconds)) return;
         mirroredUtc = nowUtc;
         try { new Settings.OrchestratorDb(Settings.OrchestratorDb.LivePath).SyncMirror(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
@@ -1127,7 +1133,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// <paramref name="root"/>, the workspace the database was checked in: the tickets CLI's own default is D:\Projects\MindAttic (M.ORCH-T402).</summary>
     internal void SyncTicketsDbIfDue(string path, DateTime nowUtc, string? root = null)
     {
-        if (!File.Exists(path) || nowUtc - syncTriedUtc < TimeSpan.FromMinutes(10)) return;
+        if (!File.Exists(path) || nowUtc - syncTriedUtc < OrchestratorSettings.SecondsSpan(tunables.TicketsDbSyncMinutes * 60)) return;
         var written = File.GetLastWriteTimeUtc(path);
         if (written == syncedDbWriteUtc) return;
         syncTriedUtc = nowUtc;
@@ -1138,7 +1144,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             // The tickets CLI; the legacy workflow shim where only that is installed yet (M.ORCH-T564).
             try { r = Runner.Run(TicketsCli, args, SyncTimeout); }
             catch (System.ComponentModel.Win32Exception) { r = Runner.Run(LegacyTicketsCli, args, SyncTimeout); }
-            if (r.TimedOut) { Say(LogEventLevel.Warning, $"tickets db sync took over {SyncTimeout.TotalSeconds:0}s; stopped it (retrying in 10 minutes)"); return; }
+            if (r.TimedOut) { Say(LogEventLevel.Warning, $"tickets db sync took over {SyncTimeout.TotalSeconds:0}s; stopped it (retrying in {tunables.TicketsDbSyncMinutes:0.#} minutes)"); return; }
             if (r.ExitCode == 0) syncedDbWriteUtc = written;
             Say(r.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning, $"tickets db sync: {(r.Output + r.Error).Trim()}");
         }
@@ -1164,7 +1170,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     {
         var db = Path.Combine(repo, Settings.OrchestratorDb.RelativePath.Replace('/', Path.DirectorySeparatorChar));
         var sql = Path.Combine(repo, Settings.OrchestratorDb.DumpRelativePath.Replace('/', Path.DirectorySeparatorChar));
-        if (nowUtc - orchestratorDbTriedUtc < TimeSpan.FromMinutes(10) || !File.Exists(db) || !File.Exists(sql)) return;
+        if (nowUtc - orchestratorDbTriedUtc < OrchestratorSettings.SecondsSpan(tunables.OrchestratorDbSyncMinutes * 60) || !File.Exists(db) || !File.Exists(sql)) return;
         if (!string.Equals(Path.GetFullPath(dbPath), Path.GetFullPath(db), StringComparison.OrdinalIgnoreCase)) return;
         string dump;
         try { dump = File.ReadAllText(sql); }
