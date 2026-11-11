@@ -3618,7 +3618,7 @@ public static class AgentGate
                 did.Add("synced " + rel + "\\" + ContextScriptName);
             }
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { }
+        catch (Exception) { }
         return did;
     }
 
