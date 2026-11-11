@@ -88,7 +88,6 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         if (ShowFallbackViewers) StartFallbackViewers(cancel);
         void OnReading(ClaudeMeterProbe probe, ReportedUsage reading) =>
             status?.PublishReadings([Status.MeterReading.Of(probe.Label, reading, signedIn: null, "probe")]);
-        ClaudeMeterProbe.ReadingLanded += OnReading;
         var cycler = new ContextCycler();
         var allocate = new Allocate(store, cycler, lease) { WaitingPath = Allocate.DefaultWaitingPath };
         var waker = new LimitWaker(cycler, store);
@@ -137,6 +136,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             return snapshot;
         }
         var beside = StartOffTickRefresh(refresher, () => RefreshNow(), cancel);
+        // Subscribed only once setup can no longer throw (every tick below is caught), so a Run that fails and is restarted
+        // (M.ORCH-T1615) never leaves a handler on a disposed status stream behind.
+        ClaudeMeterProbe.ReadingLanded += OnReading;
         while (!cancel.IsCancellationRequested)
         {
             tick.Start();

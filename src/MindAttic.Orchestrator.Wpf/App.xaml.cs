@@ -269,10 +269,24 @@ public partial class App : Application
             Shutdown();
             return;
         }
+        // This process holds the daemon mutex for good, so a loop that dies must start again here (M.ORCH-T1615): left dead, no
+        // daemon would run (no pacing, wakes or fallback viewers) until someone restarted it by hand.
         new Thread(() =>
         {
-            try { new Daemon(new JsonStore()).Run(TimeSpan.FromSeconds(15), CancellationToken.None); }
-            catch (Exception ex) { OrchestratorLog.For("Daemon").Error(ex, "The daemon loop died"); }
+            for (var failures = 0; ; failures++)
+            {
+                try
+                {
+                    new Daemon(new JsonStore()).Run(TimeSpan.FromSeconds(15), CancellationToken.None);
+                    return;
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException)
+                {
+                    var pause = TimeSpan.FromSeconds(Math.Min(300, 15 << Math.Min(failures, 5)));
+                    OrchestratorLog.For("Daemon").Error(ex, "The daemon loop died; starting it again in {Seconds:0}s", pause.TotalSeconds);
+                    Thread.Sleep(pause);
+                }
+            }
         })
         {
             IsBackground = true, Name = "Daemon",
