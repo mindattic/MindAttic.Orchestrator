@@ -30,9 +30,10 @@ public static class AgentGate
     public static string ClaudeDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
 
     /// <summary>Python shared by both hooks: the claude.exe process the hook runs under (through the
-    /// shell between), so a CLI can be typed into or exempted by process, not by session.</summary>
+    /// shell between), so a CLI can be typed into or exempted by process, not by session. Another CLI's process is found by
+    /// passing its exe name prefixes as <c>names</c> (Codex's or Gemini's, for their activity records, M.ORCH-T964).</summary>
     private const string CliPid = """
-        def cli_pid():
+        def cli_pid(names=("claude.exe",)):
             try:
                 import ctypes, os
                 from ctypes import wintypes
@@ -56,7 +57,7 @@ public static class AgentGate
                     pid = procs.get(pid, (0, ""))[0]
                     if not pid:
                         return None
-                    if procs.get(pid, (0, ""))[1].startswith("claude.exe"):  # or claude.exe.old.N, once the updater renames it
+                    if procs.get(pid, (0, ""))[1].startswith(names):  # or claude.exe.old.N, once the updater renames it
                         return pid
             except Exception:
                 pass
@@ -2901,6 +2902,16 @@ public static class AgentGate
 
     public const string ContextScriptName = "context-gate.py";
 
+    /// <summary>The folder in <c>~/.claude/session-context</c> holding one activity record per Codex or Gemini session,
+    /// <c>&lt;session&gt;.json</c>, kept by the context gate on their prompt, tool and end-of-turn hooks (M.ORCH-T964).</summary>
+    public const string ActivityDirName = "activity";
+
+    /// <summary>The Codex and Gemini hook events the context gate runs on, with the provider argument it's passed: Codex's and
+    /// Gemini's end of turn (Stop, AfterAgent), and for their activity records their prompt (UserPromptSubmit, BeforeAgent) and
+    /// finished tool call (PostToolUse, AfterTool) (M.ORCH-T964).</summary>
+    internal static readonly string[] CodexContextEvents = ["Stop", "UserPromptSubmit", "PostToolUse"];
+    internal static readonly string[] GeminiContextEvents = ["AfterAgent", "BeforeAgent", "AfterTool"];
+
     /// <summary>
     /// The context gate: records each session's turn (busy on a prompt, idle on Stop) next to the
     /// context fill the statusline saves, so the orchestrator can cycle a session past <paramref name="percent"/>
@@ -3378,6 +3389,125 @@ public static class AgentGate
                 pass
             return out
 
+        # The activity feed for Codex and Gemini CLIs (M.ORCH-T964; the record of docs/spikes/activity-feed.md section 5): their
+        # prompt, tool and end-of-turn hooks (Codex UserPromptSubmit, PostToolUse, Stop; Gemini BeforeAgent, AfterTool, AfterAgent)
+        # keep one small record per session, session-context\{{{ActivityDirName}}}\<session>.json: provider, repo, state (working or idle),
+        # the last tool with a verb and a short redacted target, the ticket, the CLI's pid, a seq and when. Never a raw tool input:
+        # a file's base name, a pattern, a host, a shell command's description or else its program name only, with token-shaped
+        # strings masked. Cheap (one small read and one replace; no database, no other process) and fail-open: any error writes
+        # nothing, and the hook still exits 0 with nothing said, so the CLI goes on.
+        ACTIVITY = DIR / "{{{ActivityDirName}}}"
+        ACTIVITY_EVENTS = {"userpromptsubmit": "start", "beforeagent": "start", "posttooluse": "tool", "aftertool": "tool",
+                           "stop": "end", "afteragent": "end", "sessionend": "ended"}
+        ACTIVITY_CLI = {"codex": ("codex",), "gemini": ("gemini", "node.exe")}
+        ACTIVITY_TICKET = r"((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)"
+        ACTIVITY_SHELLS = ("bash", "shell", "local_shell", "exec_command", "unified_exec", "run_shell_command", "powershell")
+        ACTIVITY_FILES = {"read": "Reading", "read_file": "Reading", "read_many_files": "Reading", "write": "Writing",
+                          "write_file": "Writing", "edit": "Editing", "multiedit": "Editing", "replace": "Editing",
+                          "notebookedit": "Editing", "list_directory": "Listing", "ls": "Listing"}
+        def activity_short(text, limit=80):
+            text = re.sub(r"\s+", " ", str(text or "")).strip()
+            # A token-shaped run (an API key, a JWT, a long hex or base64 string) never leaves, whatever field carried it.
+            text = re.sub(r"\b(?:sk|pk|rk|ghp|gho|ghs|github_pat|xox[abprs]|AKIA|AIza)[-_A-Za-z0-9]{8,}|\beyJ[-_A-Za-z0-9.]{20,}"
+                          r"|[A-Za-z0-9+/=_-]{32,}", "***", text)
+            return text if len(text) <= limit else text[:limit - 1].rstrip() + "…"
+        def activity_base(path):
+            p = str(path or "").strip().strip("\"'").rstrip("/\\")
+            return re.split(r"[/\\]", p)[-1] if p else ""
+        def activity_command(args):
+            cmd = args.get("command", args.get("cmd"))
+            return " ".join(str(w) for w in cmd) if isinstance(cmd, list) else str(cmd or "")
+        def activity_target(tool, args):
+            # (tool, verb, target) for one finished tool call, Codex's and Gemini's tool names both.
+            name = str(tool or "")
+            low = name.lower()
+            def s(*keys):
+                for k in keys:
+                    v = args.get(k)
+                    if isinstance(v, str) and v.strip():
+                        return v
+                return ""
+            if low.startswith("mcp_"):
+                return "mcp", "Using", activity_short(name.split("__")[-1], 40)
+            if low in ACTIVITY_SHELLS:
+                said = s("description", "justification")
+                if said:
+                    return name, "", activity_short(said.strip().splitlines()[0])
+                cmd = args.get("command", args.get("cmd"))
+                words = [str(w) for w in cmd] if isinstance(cmd, list) else str(cmd or "").split()
+                # ["bash", "-lc", "<script>"] runs the script: its own first word is the program.
+                if len(words) >= 3 and words[1].lower() in ("-lc", "-c", "/c", "-command"):
+                    words = words[2].split()
+                return name, "Running", activity_short(activity_base(words[0].lstrip("&")) if words else "", 40)
+            if low == "apply_patch":
+                m = re.search(r"\*\*\* (?:Update|Add|Delete) File: ([^\r\n]+)", s("input", "patch", "command") or activity_command(args))
+                return name, "Editing", activity_short(activity_base(m.group(1)) if m else "")
+            if low in ACTIVITY_FILES:
+                p = s("file_path", "absolute_path", "notebook_path", "path", "dir_path")
+                if not p and isinstance(args.get("paths"), list) and args["paths"]:
+                    p = str(args["paths"][0])
+                return name, ACTIVITY_FILES[low], activity_short(activity_base(p))
+            if low in ("grep", "glob", "search_file_content", "grep_search", "file_search"):
+                return name, "Finding" if "glob" in low else "Searching for", activity_short(s("pattern", "query"))
+            if low in ("web_fetch", "webfetch"):
+                m = re.search(r"https?://([^/\s:?#]+)", s("url", "prompt"))
+                return name, "Reading", activity_short(m.group(1) if m else "")
+            if low in ("google_web_search", "web_search", "websearch"):
+                return name, "Searching the web for", activity_short(s("query"))
+            return name, "Using", ""
+        def other_activity(provider, data, event):
+            try:
+                kind = ACTIVITY_EVENTS.get(str(event or "").lower())
+                sid = str(data.get("session_id") or "")
+                if not kind or not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", sid):
+                    return
+                ACTIVITY.mkdir(parents=True, exist_ok=True)
+                f = ACTIVITY / (sid + ".json")
+                try:
+                    rec = json.loads(f.read_text(encoding="utf-8"))
+                    rec = rec if isinstance(rec, dict) else {}
+                except Exception:
+                    rec = {}
+                who = provider.lower()
+                now = datetime.now(timezone.utc)
+                rec.update(session=sid, provider=who, seq=int(rec.get("seq") or 0) + 1,
+                           atUtc=now.strftime("%Y-%m-%dT%H:%M:%S.") + "%03dZ" % (now.microsecond // 1000))
+                repo = repo_of(data.get("cwd")) if data.get("cwd") else None
+                if repo:
+                    rec["repo"] = repo
+                if not rec.get("pid"):
+                    pid = cli_pid(ACTIVITY_CLI.get(who, (who,)))
+                    if pid:
+                        rec["pid"] = pid
+                for k in ("tool", "verb", "target"):
+                    rec.pop(k, None)
+                if kind == "start":
+                    rec["state"] = "working"
+                    m = re.search(r"\b" + ACTIVITY_TICKET + r"\b", str(data.get("prompt") or ""))
+                    if m:
+                        rec["ticket"] = m.group(1)
+                elif kind == "tool":
+                    args = data.get("tool_input")
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except Exception:
+                            args = {"command": args}
+                    args = args if isinstance(args, dict) else {}
+                    tool, verb, target = activity_target(data.get("tool_name"), args)
+                    rec["state"] = "working"
+                    rec.update({k: v for k, v in (("tool", tool), ("verb", verb), ("target", target)) if v})
+                    m = re.search(r"\b(?:tickets|workflow)(?:\.exe)?['\"]?\s+ticket\s+working\s+['\"]?" + ACTIVITY_TICKET, activity_command(args))
+                    if m:
+                        rec["ticket"] = m.group(1)
+                else:
+                    rec["state"] = "idle" if kind == "end" else "ended"
+                tmp = f.with_name(f.name + "." + str(os.getpid()) + ".tmp")
+                tmp.write_text(json.dumps(rec), encoding="utf-8")
+                os.replace(tmp, f)
+            except Exception:
+                pass
+
         try:
             # UTF-8 as Claude Code writes it, not the ANSI code page Python reads a pipe in on Windows (M.ORCH-T392).
             data = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
@@ -3386,10 +3516,12 @@ public static class AgentGate
         if not isinstance(data, dict):
             sys.exit(0)
         sid, event = data.get("session_id"), data.get("hook_event_name")
-        # Codex (its Stop hook) and Gemini (AfterAgent) run this too, named on the command line: nothing here applies to
-        # them (their sessions aren't Claude's to cycle, and only a Claude CLI that typed /allocate is kept going).
+        # Codex (its UserPromptSubmit, PostToolUse and Stop hooks) and Gemini (BeforeAgent, AfterTool, AfterAgent) run this too,
+        # named on the command line: they get only their activity record (M.ORCH-T964). Nothing else here applies to them (their
+        # sessions aren't Claude's to cycle, and only a Claude CLI that typed /allocate is kept going).
         provider = sys.argv[1].capitalize() if len(sys.argv) > 1 else "Claude"
         if provider != "Claude":
+            other_activity(provider, data, event)
             sys.exit(0)  # /allocate runs in a Claude CLI; a Codex or Gemini CLI is never pushed onto tickets
         # Disk self-cleanup (M.ORCH-T1449): one free-space read at most once a minute; under the --disk-cleanup-gb line it
         # starts `orchestrator disk-cleanup --quiet` detached, which deletes agent-made temp only (one run at a time).
@@ -3959,12 +4091,15 @@ public static class AgentGate
         if (MergeJsonHook(geminiSettings, "BeforeTool", ScriptName, command, HookTimeoutSeconds * 1000) is { } g) did.Add("Gemini: " + g);
         if (AppendKimiHook(kimiConfigPath ?? KimiConfigPath, command, HookTimeoutSeconds)) did.Add("Kimi: wired PreToolUse into config.toml");
         // Codex's Stop and Gemini's AfterAgent run the context gate too, but it leaves them be: only a Claude CLI that typed
-        // /allocate is kept going. Kimi has no end-of-turn hook at all.
+        // /allocate is kept going. With their prompt and finished-tool hooks they keep only an activity record per session
+        // (M.ORCH-T964), each a quick write that never fails the CLI. Kimi has no end-of-turn hook at all.
         var contextScript = Path.Combine(claudeDir ?? ClaudeDir, ContextScriptName);
         if (File.Exists(contextScript))
         {
-            if (MergeJsonHook(codexHooks, "Stop", ContextScriptName, Command(contextScript) + " codex", 10) is { } cs) did.Add("Codex: " + cs);
-            if (MergeJsonHook(geminiSettings, "AfterAgent", ContextScriptName, Command(contextScript) + " gemini", 10_000) is { } ga) did.Add("Gemini: " + ga);
+            foreach (var hookEvent in CodexContextEvents)
+                if (MergeJsonHook(codexHooks, hookEvent, ContextScriptName, Command(contextScript) + " codex", 10) is { } cs) did.Add("Codex: " + cs);
+            foreach (var hookEvent in GeminiContextEvents)
+                if (MergeJsonHook(geminiSettings, hookEvent, ContextScriptName, Command(contextScript) + " gemini", 10_000) is { } ga) did.Add("Gemini: " + ga);
         }
 
         return did.Count > 0 ? string.Join(", ", did) : null;
