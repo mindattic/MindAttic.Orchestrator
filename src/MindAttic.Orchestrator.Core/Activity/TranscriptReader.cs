@@ -481,7 +481,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             // A rate-limit wall is a synthetic message with zero usage: record the hit, not a response.
             if (Str(root, "error") == "rate_limit")
             {
-                if (LimitHitParser.TryParse(Text(message), at, out var hit)) sink.Hits.Add(hit);
+                if (LimitHitParser.TryParse(Text(message), at, out var hit) && !sink.Hits.Contains(hit)) sink.Hits.Add(hit); // a reread from 0 meets the hits it already holds: each counts once (M.ORCH-T1629); Hits is trimmed to the window, so this needs no ids of its own
                 return;
             }
 

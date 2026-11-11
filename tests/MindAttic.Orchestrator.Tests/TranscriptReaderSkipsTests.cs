@@ -133,6 +133,35 @@ public sealed class TranscriptReaderSkipsTests
     }
 
     [Test]
+    public void An_out_of_window_file_read_again_from_0_counts_an_in_window_limit_hit_once()
+    {
+        // M.ORCH-T1629: usage events are de-duplicated by message id; limit hits had nothing, so a reread from 0 added them again.
+        var wall = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "assistant", timestamp = "2026-10-14T12:30:00Z", sessionId = "s1", cwd = @"D:\Projects\X", error = "rate_limit",
+            message = new
+            {
+                id = "w1", model = "<synthetic>", usage = new { input_tokens = 0, output_tokens = 0 },
+                content = new object[] { new { type = "text", text = "You've hit your session limit · resets 2pm (America/Chicago)" } },
+            },
+        });
+        System.IO.File.WriteAllLines(Transcript(), [Line("m1", "2026-10-13T12:00:00Z", 1), Line("m2", "2026-10-14T12:00:00Z", 10), wall]);
+        System.IO.File.SetLastWriteTimeUtc(Transcript(), new DateTime(2026, 10, 14, 12, 0, 0, DateTimeKind.Utc));
+        var reader = Reader();
+        Assert.That(reader.Poll(Since).Single().Hits, Has.Count.EqualTo(1));
+
+        // The window moves past the file's timestamp (so it's read again from 0 when resumed) but the hit is still inside it.
+        System.IO.File.SetLastWriteTimeUtc(Transcript(), new DateTime(2026, 10, 14, 0, 0, 0, DateTimeKind.Utc));
+        var later = new DateTime(2026, 10, 14, 6, 0, 0, DateTimeKind.Utc);
+        Assert.That(reader.Poll(later).Single().Hits, Has.Count.EqualTo(1), "kept: it's in the window");
+
+        System.IO.File.AppendAllLines(Transcript(), [Line("m3", "2026-10-14T13:00:00Z", 100)]);
+        var s = reader.Poll(later).Single();
+        Assert.That(s.Hits, Has.Count.EqualTo(1), "the reread from 0 doesn't add the hit again");
+        Assert.That(s.UsageSince(later).Output, Is.EqualTo(110));
+    }
+
+    [Test]
     public void The_cache_is_saved_at_most_once_a_minute()
     {
         System.IO.File.WriteAllLines(Transcript(), [Line("m1", "2026-10-13T12:00:00Z", 10)]);
