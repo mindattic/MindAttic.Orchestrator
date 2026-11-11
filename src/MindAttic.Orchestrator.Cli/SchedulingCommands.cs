@@ -209,14 +209,21 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var store = Ctx.Store();
-        if (settings.WaitingOnOwner)
+        var code = Release(settings);
+        // Parked only once the release went through, so a failed one leaves no hidden park behind (M.ORCH-T1425).
+        if (code != 0 || !settings.WaitingOnOwner) return code;
         {
             using var tdb = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(OrchestratorOptions.Load().WorkspaceRoot);
             if (tdb is null || tdb.Ticket(settings.Ticket) is null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(settings.Ticket)} isn't in the ticket database, so it can't be parked.[/]"); return 1; }
             tdb.AddLabels(settings.Ticket, [MindAttic.Orchestrator.Tickets.OpenTicketSource.WaitingOnOwnerLabel]);
             AnsiConsole.MarkupLine($"{Markup.Escape(settings.Ticket)} is parked as waiting on the owner; nothing hands it out until that label is removed.");
         }
+        return 0;
+    }
+
+    private static int Release(Settings settings)
+    {
+        var store = Ctx.Store();
         var a = store.LoadAssignments().FirstOrDefault(x => x.TicketId.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase));
         // An orphaned ticket released is yours (M.ORCH-T748): the daemon no longer redispatches or holds it back.
         var wasOrphan = OrphanWatch.Forget(store, settings.Ticket);
