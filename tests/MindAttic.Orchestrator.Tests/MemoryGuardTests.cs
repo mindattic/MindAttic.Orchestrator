@@ -31,7 +31,7 @@ public sealed class MemoryGuardTests
         Assert.That(MemoryGuard.Judge(calm, S, margin: false).Level, Is.EqualTo(MemoryLevel.Ok));
         var pace = Allowing(8, running: 3);
         Assert.That(Pacer.CapByMemory(pace, new MemoryState(MemoryLevel.Ok, new MemoryReading(2, 50, true, UsedPercent: 60), ""), S).SubagentAllowance, Is.EqualTo(8));
-        Assert.That(MemoryGuard.Judge(calm with { UsedPercent = 80 }, S, margin: false).Level, Is.EqualTo(MemoryLevel.Emergency), "past the line it's awake");
+        Assert.That(MemoryGuard.Judge(calm with { UsedPercent = 95 }, S, margin: false).Level, Is.EqualTo(MemoryLevel.Emergency), "past the line it's awake");
         Assert.That(MemoryGuard.Judge(calm, S with { MemoryGuardStartPercent = 50 }, margin: false).Level, Is.EqualTo(MemoryLevel.Emergency), "the line is a setting");
     }
 

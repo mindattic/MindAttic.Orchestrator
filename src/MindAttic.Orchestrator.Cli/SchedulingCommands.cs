@@ -429,7 +429,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public bool? MemoryGuard { get; init; }
 
         [CommandOption("--memory-start-percent <PERCENT>")]
-        [Description("Physical RAM in use under which the memory guard does nothing: no holds, no subagent cap by free RAM (default 75).")]
+        [Description("Physical RAM in use under which the memory guard does nothing: no holds, no subagent cap by free RAM (default 90).")]
         public double? MemoryGuardStartPercent { get; init; }
 
         [CommandOption("--memory-tight-gb <GB>")]

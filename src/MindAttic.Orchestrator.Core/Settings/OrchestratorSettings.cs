@@ -348,7 +348,7 @@ public sealed record OrchestratorSettings
 
     /// <summary>Physical RAM in use (percent) under which the guard is dormant (M.ORCH-T1591): no holds and no subagent cap by
     /// free RAM, so everything runs full speed until the machine is near the edge.</summary>
-    public double MemoryGuardStartPercent { get; init; } = 75;
+    public double MemoryGuardStartPercent { get; init; } = 90;
 
     /// <summary>Free RAM (GB) under which no new work starts (<see cref="Activity.MemoryLevel.Tight"/>).</summary>
     public double MemoryTightGb { get; init; } = 4;

@@ -210,7 +210,7 @@ public sealed class OrchestratorVaultSettings
     [Setting("Guard starts at (RAM used %)", Group = "Memory", Order = 1,
         Help = "Physical RAM in use under which the guard does nothing: no holds and no subagent cap by free RAM. Work runs full speed until the machine nears the edge.")]
     [SettingRange(0, 100)]
-    public double MemoryGuardStartPercent { get; set; } = 75;
+    public double MemoryGuardStartPercent { get; set; } = 90;
 
     [Setting("Hold new work under (free GB)", Group = "Memory", Order = 2, Help = "Free RAM under which nothing new starts; running work finishes.")]
     [SettingRange(0.5, 1024)]
