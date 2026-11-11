@@ -428,6 +428,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("true (the default): when RAM runs low, hold new subagents, CLIs and test runs and let running work finish; lower still, shed the newest subagent, then refuse tool calls. false turns it off.")]
         public bool? MemoryGuard { get; init; }
 
+        [CommandOption("--memory-start-percent <PERCENT>")]
+        [Description("Physical RAM in use under which the memory guard does nothing: no holds, no subagent cap by free RAM (default 75).")]
+        public double? MemoryGuardStartPercent { get; init; }
+
         [CommandOption("--memory-tight-gb <GB>")]
         [Description("Free RAM under which nothing new starts (default 4).")]
         public double? MemoryTightGb { get; init; }
@@ -534,7 +538,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         var memoryChanged = settings.MemoryGuard is not null || settings.MemoryTightGb is not null || settings.MemoryCriticalGb is not null
             || settings.MemoryEmergencyGb is not null || settings.MemoryPerSubagentGb is not null
             || settings.MemoryTightCommitPercent is not null || settings.MemoryCriticalCommitPercent is not null || settings.MemoryEmergencyCommitPercent is not null
-            || settings.MemoryResumeMarginGb is not null || settings.MemoryResumeMarginCommit is not null;
+            || settings.MemoryResumeMarginGb is not null || settings.MemoryResumeMarginCommit is not null
+            || settings.MemoryGuardStartPercent is not null;
         if (memoryChanged)
         {
             s = s with
@@ -549,7 +554,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
                 MemoryEmergencyCommitPercent = settings.MemoryEmergencyCommitPercent ?? s.MemoryEmergencyCommitPercent,
                 MemoryResumeMarginGb = settings.MemoryResumeMarginGb ?? s.MemoryResumeMarginGb,
                 MemoryResumeMarginCommit = settings.MemoryResumeMarginCommit ?? s.MemoryResumeMarginCommit,
+                MemoryGuardStartPercent = settings.MemoryGuardStartPercent ?? s.MemoryGuardStartPercent,
             };
+            if (!(s.MemoryGuardStartPercent >= 0 && s.MemoryGuardStartPercent <= 100))
+            { AnsiConsole.MarkupLine("[red]--memory-start-percent is 0 to 100.[/]"); return 1; }
             if (!(s.MemoryEmergencyGb > 0 && s.MemoryEmergencyGb <= s.MemoryCriticalGb && s.MemoryCriticalGb <= s.MemoryTightGb))
             { AnsiConsole.MarkupLine("[red]The memory lines go 0 < --memory-emergency-gb <= --memory-critical-gb <= --memory-tight-gb.[/]"); return 1; }
             if (!(s.MemoryPerSubagentGb > 0)) { AnsiConsole.MarkupLine("[red]--memory-per-subagent-gb is more than 0.[/]"); return 1; }
@@ -777,7 +785,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.DiskWarnGb > 0 ? $"alerts under {s.DiskWarnGb:0.#} GB free disk (urgent under {Math.Min(s.DiskCriticalGb, s.DiskWarnGb):0.#} GB)" : "disk space not watched") + " · " +
             (s.DiskCleanupGb > 0 ? $"agent temp cleaned up under {s.DiskCleanupGb:0.#} GB free" : "no disk self-cleanup"));
         AnsiConsole.MarkupLine("  memory guard " + (s.MemoryGuard
-            ? $"on: new work holds under {s.MemoryTightGb:0.#} GB free RAM or past {s.MemoryTightCommitPercent:0.#}% commit, " +
+            ? $"on from {s.MemoryGuardStartPercent:0.#}% RAM used: new work holds under {s.MemoryTightGb:0.#} GB free RAM or past {s.MemoryTightCommitPercent:0.#}% commit, " +
               $"the newest subagent is shed under {s.MemoryCriticalGb:0.#} GB or past {s.MemoryCriticalCommitPercent:0.#}% commit, " +
               $"tool calls are refused under {s.MemoryEmergencyGb:0.#} GB or past {s.MemoryEmergencyCommitPercent:0.#}% commit; " +
               $"{s.MemoryPerSubagentGb:0.#} GB assumed per subagent; resumes {s.MemoryResumeMarginGb:0.#} GB / {s.MemoryResumeMarginCommit:0.#} points clear"

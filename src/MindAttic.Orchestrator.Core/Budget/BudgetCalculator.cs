@@ -504,6 +504,7 @@ public sealed class RateLimitStatusWriter(string? path = null)
             {
                 ["tight_gb"] = memory.Lines.TightGb, ["critical_gb"] = memory.Lines.CriticalGb,
                 ["emergency_gb"] = memory.Lines.EmergencyGb, ["per_subagent_gb"] = memory.Lines.PerSubagentGb,
+                ["start_percent"] = memory.Lines.StartPercent,
             };
         }
         // pace-gate.py holds each tool call this long; the average is what the next refresh corrects the

@@ -207,6 +207,11 @@ public sealed class OrchestratorVaultSettings
         Help = "When RAM runs low, no new subagents, CLIs or test runs start and running work finishes; lower still, the newest subagent is shed, then tool calls are refused until memory recovers. /pacing off doesn't turn it off.")]
     public bool MemoryGuard { get; set; } = true;
 
+    [Setting("Guard starts at (RAM used %)", Group = "Memory", Order = 1,
+        Help = "Physical RAM in use under which the guard does nothing: no holds and no subagent cap by free RAM. Work runs full speed until the machine nears the edge.")]
+    [SettingRange(0, 100)]
+    public double MemoryGuardStartPercent { get; set; } = 75;
+
     [Setting("Hold new work under (free GB)", Group = "Memory", Order = 2, Help = "Free RAM under which nothing new starts; running work finishes.")]
     [SettingRange(0.5, 1024)]
     public double MemoryTightGb { get; set; } = 4;
@@ -341,6 +346,7 @@ public sealed class OrchestratorVaultSettings
         DiskCriticalGb = s.DiskCriticalGb,
         DiskCleanupGb = s.DiskCleanupGb,
         MemoryGuard = s.MemoryGuard,
+        MemoryGuardStartPercent = s.MemoryGuardStartPercent,
         MemoryTightGb = s.MemoryTightGb,
         MemoryCriticalGb = s.MemoryCriticalGb,
         MemoryEmergencyGb = s.MemoryEmergencyGb,
@@ -410,6 +416,7 @@ public sealed class OrchestratorVaultSettings
         DiskCriticalGb = DiskCriticalGb,
         DiskCleanupGb = DiskCleanupGb,
         MemoryGuard = MemoryGuard,
+        MemoryGuardStartPercent = MemoryGuardStartPercent,
         MemoryTightGb = MemoryTightGb,
         MemoryCriticalGb = MemoryCriticalGb,
         MemoryEmergencyGb = MemoryEmergencyGb,

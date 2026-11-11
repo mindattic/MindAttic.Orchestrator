@@ -16,9 +16,14 @@ public enum MemoryLevel
 }
 
 /// <summary>Free physical RAM, and commit charge as a percent of the commit limit; the commit is only
-/// <paramref name="CommitCounted"/> while the pagefile has a fixed size (a system-managed one moves the limit as it grows).</summary>
-public sealed record MemoryReading(double FreeGb, double CommitPercent, bool CommitCounted, bool Simulated = false)
+/// <paramref name="CommitCounted"/> while the pagefile has a fixed size (a system-managed one moves the limit as it grows).
+/// <paramref name="UsedPercent"/> is physical RAM in use (Windows' memory load); unknown reads as 100, so the guard stays awake.</summary>
+public sealed record MemoryReading(double FreeGb, double CommitPercent, bool CommitCounted, bool Simulated = false, double UsedPercent = 100)
 {
+    /// <summary>Under <see cref="OrchestratorSettings.MemoryGuardStartPercent"/> of RAM in use the guard is dormant (M.ORCH-T1591):
+    /// no level, no subagent cap; it only scales work back near the edge.</summary>
+    public bool Dormant(OrchestratorSettings s) => UsedPercent < s.MemoryGuardStartPercent;
+
     public string Describe() =>
         $"{FreeGb.ToString("0.0", CultureInfo.InvariantCulture)} GB RAM free" +
         (CommitCounted ? $", commit {CommitPercent.ToString("0", CultureInfo.InvariantCulture)}%" : "") +
@@ -38,11 +43,11 @@ public sealed record MemoryState(MemoryLevel Level, MemoryReading Reading, strin
 /// percent lines, and the margin a reading must clear by (GB and commit points) before stepping back down.</summary>
 public sealed record MemoryLines(double TightGb, double CriticalGb, double EmergencyGb, double PerSubagentGb,
     double TightCommitPercent, double CriticalCommitPercent, double EmergencyCommitPercent,
-    double ResumeMarginGb, double ResumeMarginCommit)
+    double ResumeMarginGb, double ResumeMarginCommit, double StartPercent)
 {
     public static MemoryLines Of(OrchestratorSettings s) => new(s.MemoryTightGb, s.MemoryCriticalGb, s.MemoryEmergencyGb, s.MemoryPerSubagentGb,
         s.MemoryTightCommitPercent, s.MemoryCriticalCommitPercent, s.MemoryEmergencyCommitPercent,
-        s.MemoryResumeMarginGb, s.MemoryResumeMarginCommit);
+        s.MemoryResumeMarginGb, s.MemoryResumeMarginCommit, s.MemoryGuardStartPercent);
 }
 
 /// <summary>
@@ -125,6 +130,7 @@ public sealed class MemoryGuard
     /// <summary>The level <paramref name="r"/> reads at on its own, with the step-down margin or without.</summary>
     public static (MemoryLevel Level, string Why) Judge(MemoryReading r, OrchestratorSettings s, bool margin)
     {
+        if (r.Dormant(s)) return (MemoryLevel.Ok, r.Describe());
         var (gb, pts) = margin ? (s.MemoryResumeMarginGb, s.MemoryResumeMarginCommit) : (0.0, 0.0);
         bool Under(double line, double commitLine) => r.FreeGb < line + gb || (r.CommitCounted && r.CommitPercent >= commitLine - pts);
         var level = Under(s.MemoryEmergencyGb, s.MemoryEmergencyCommitPercent) ? MemoryLevel.Emergency
@@ -169,7 +175,7 @@ public sealed class MemoryGuard
             unboundedReadUtc = now;
         }
         if (Simulated(now) is { } fake) return new MemoryReading(fake, 0, CommitCounted: false, Simulated: true);
-        return MachineHealth.Memory() is { } m ? new MemoryReading(m.FreeGb, m.CommitPercent, CommitCounted: !unbounded) : null;
+        return MachineHealth.Memory() is { } m ? new MemoryReading(m.FreeGb, m.CommitPercent, CommitCounted: !unbounded, UsedPercent: m.UsedPercent) : null;
     }
 
     /// <summary>The simulated free RAM in <see cref="SimulatePath"/>, while it's fresh; null otherwise.</summary>

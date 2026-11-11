@@ -24,6 +24,18 @@ public sealed class MemoryGuardTests
         Assert.That(MemoryGuard.Judge(Free(free, commit), S, margin: false).Level, Is.EqualTo(level));
 
     [Test]
+    public void Below_the_start_line_of_ram_used_the_guard_is_dormant_and_caps_nothing()
+    {
+        // M.ORCH-T1591: full speed until near the edge; the start line is a Vault setting.
+        var calm = new MemoryReading(0.5, 99, true, UsedPercent: 60);
+        Assert.That(MemoryGuard.Judge(calm, S, margin: false).Level, Is.EqualTo(MemoryLevel.Ok));
+        var pace = Allowing(8, running: 3);
+        Assert.That(Pacer.CapByMemory(pace, new MemoryState(MemoryLevel.Ok, new MemoryReading(2, 50, true, UsedPercent: 60), ""), S).SubagentAllowance, Is.EqualTo(8));
+        Assert.That(MemoryGuard.Judge(calm with { UsedPercent = 80 }, S, margin: false).Level, Is.EqualTo(MemoryLevel.Emergency), "past the line it's awake");
+        Assert.That(MemoryGuard.Judge(calm, S with { MemoryGuardStartPercent = 50 }, margin: false).Level, Is.EqualTo(MemoryLevel.Emergency), "the line is a setting");
+    }
+
+    [Test]
     public void A_system_managed_pagefiles_commit_is_not_counted()
     {
         // Its limit grows with the pagefile, so 106% of RAM committed with 6 GB free is fine (seen live 2026-11-06).

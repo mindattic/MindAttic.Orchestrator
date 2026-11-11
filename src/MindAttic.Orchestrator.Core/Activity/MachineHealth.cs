@@ -120,12 +120,12 @@ public static partial class MachineHealth
 
     /// <summary>Free physical RAM (GB) and commit charge (% of the commit limit) alone, without walking every process:
     /// cheap enough for <see cref="MemoryGuard"/> to read every few seconds. Null when Windows can't say.</summary>
-    internal static (double FreeGb, double CommitPercent)? Memory()
+    internal static (double FreeGb, double CommitPercent, double UsedPercent)? Memory()
     {
         var mem = new MEMORYSTATUSEX { dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>() };
         if (!GlobalMemoryStatusEx(ref mem)) return null;
         var commit = mem.ullTotalPageFile == 0 ? 0 : 100.0 * (mem.ullTotalPageFile - mem.ullAvailPageFile) / mem.ullTotalPageFile;
-        return (mem.ullAvailPhys / (1024.0 * 1024 * 1024), commit);
+        return (mem.ullAvailPhys / (1024.0 * 1024 * 1024), commit, mem.dwMemoryLoad);
     }
 
     /// <summary>Physical RAM in use, as Windows itself reports it (dwMemoryLoad): the percent of total physical memory

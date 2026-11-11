@@ -2223,19 +2223,46 @@ public static class AgentGate
             except Exception:
                 pass
             return None
+        def ram_load_percent():
+            # Physical RAM in use, as Windows reports it; None when faked or unreadable (the guard then stays awake).
+            if os.environ.get("MINDATTIC_FAKE_FREE_RAM_GB"):
+                return None
+            try:
+                sim = Path(os.environ.get("LOCALAPPDATA") or "") / "MindAttic" / "Orchestrator" / "memory-simulate.txt"
+                if time.time() - sim.stat().st_mtime < {{(int)Activity.MemoryGuard.SimulateFor.TotalSeconds}}:
+                    return None
+            except Exception:
+                pass
+            try:
+                import ctypes
+                class MEMORYSTATUSEX(ctypes.Structure):
+                    _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong)] + [(n, ctypes.c_ulonglong) for n in (
+                        "ullTotalPhys", "ullAvailPhys", "ullTotalPageFile", "ullAvailPageFile", "ullTotalVirtual", "ullAvailVirtual", "ullAvailExtendedVirtual")]
+                m = MEMORYSTATUSEX()
+                m.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+                if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)):
+                    return float(m.dwMemoryLoad)
+            except Exception:
+                pass
+            return None
         def memory_now(s):
             # (level, free GB or None, the lines) now: the worse of the daemon's level and the live reading's. A fresh status
             # without the guard's lines is a daemon with the guard off (or from before it): nothing is held for memory then.
             if s and not isinstance(s.get("memory_lines"), dict):
                 return "ok", None, None
             lines = dict(tight_gb={{MemoryDefault(s => s.MemoryTightGb)}}, critical_gb={{MemoryDefault(s => s.MemoryCriticalGb)}},
-                         emergency_gb={{MemoryDefault(s => s.MemoryEmergencyGb)}}, per_subagent_gb={{MemoryDefault(s => s.MemoryPerSubagentGb)}})
+                         emergency_gb={{MemoryDefault(s => s.MemoryEmergencyGb)}}, per_subagent_gb={{MemoryDefault(s => s.MemoryPerSubagentGb)}},
+                         start_percent={{MemoryDefault(s => s.MemoryGuardStartPercent)}})
             if s:
                 try:
                     lines.update({str(k): float(v) for k, v in s["memory_lines"].items()})
                 except Exception:
                     pass
             free = free_ram_gb()
+            # Dormant under the start line of RAM in use (M.ORCH-T1591): full speed until near the edge.
+            load = ram_load_percent()
+            if load is not None and load < lines.get("start_percent", 0):
+                free = None
             live = ("ok" if free is None else "emergency" if free < lines["emergency_gb"] else "critical" if free < lines["critical_gb"]
                     else "tight" if free < lines["tight_gb"] else "ok")
             daemon = s.get("memory_level") if s and s.get("memory_level") in MEMORY_LEVELS else "ok"

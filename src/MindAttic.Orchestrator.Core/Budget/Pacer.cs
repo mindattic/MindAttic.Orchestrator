@@ -383,6 +383,8 @@ public static class Pacer
     {
         if (memory is null || !s.MemoryGuard) return pace;
         pace = pace with { Memory = memory };
+        // Below the guard's start line (M.ORCH-T1591) free RAM caps nothing: full speed until near the edge.
+        if (memory.Level == Activity.MemoryLevel.Ok && memory.Reading.Dormant(s)) return pace;
         var cap = memory.Level > Activity.MemoryLevel.Ok ? pace.Subagents
             : pace.Subagents + Activity.MemoryGuard.Fits(memory.Reading, s);
         if (pace.SubagentAllowance is { } allowed && allowed <= cap) return pace;
