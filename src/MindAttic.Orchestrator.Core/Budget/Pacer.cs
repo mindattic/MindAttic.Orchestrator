@@ -129,11 +129,16 @@ public sealed record Pace(
         var a => $"Subagents: {a} at once across all agents ({Subagents} running now). Usage is ahead of the 5-hour pace, so don't start extra subagents; a new one waits for a free slot.",
     };
 
+    /// <summary>Less room under the 5-hour stop than one subagent's burn (<see cref="Pacer.HeadroomPerSubagentPercent"/>), so even the
+    /// running session can spend past the stop before the next reading (M.ORCH-T1426: told to keep working at 96%, refused minutes
+    /// later); <see cref="AgentNote"/> then says to wrap up instead.</summary>
+    public bool WindDown { get; init; }
+
     public string Key => Mode.ToString().ToLowerInvariant();
 
     /// <summary>Running agents should conserve: past a limit, out of room, or burning faster than fits.
     /// Coasting only means no room for another session; the ones running are told nothing.</summary>
-    public bool Advise => Mode is PaceMode.Over || (IsPaced && !GuardsDormant &&(SustainablePerHour <= 0 || RecentPerHour > SustainablePerHour));
+    public bool Advise => Mode is PaceMode.Over || WindDown || (IsPaced && !GuardsDormant &&(SustainablePerHour <= 0 || RecentPerHour > SustainablePerHour));
 }
 
 /// <summary>
@@ -373,6 +378,13 @@ public static class Pacer
     /// </summary>
     public static Pace CapByStopHeadroom(Pace pace, double? percent, double stopPercent)
     {
+        if (percent is { } near && pace is { Stop: false, IsPaced: true, WindDown: false } && !pace.GuardsDormant && stopPercent - near < HeadroomPerSubagentPercent)
+            pace = pace with
+            {
+                WindDown = true,
+                AgentNote = $"Claude reports the 5-hour window at {near:0.#}%, under {Math.Max(0, stopPercent - near):0.#} points from its {stopPercent:0.#}% stop, where every tool call is refused until the reset. " +
+                            "Wind down now: start no new work or subagents, finish the current step, commit what is done, and end your turn at a clean point rather than being cut off mid-step.",
+            };
         if (percent is not { } p || pace is not { Stop: false, SubagentAllowance: { } allowed and > 0 }) return pace;
         var fits = (int)Math.Floor(Math.Max(0, stopPercent - p) / HeadroomPerSubagentPercent);
         // With no room for even one more, none start (a new one spends ~3 points before the stop reaches it); the running ones continue.
