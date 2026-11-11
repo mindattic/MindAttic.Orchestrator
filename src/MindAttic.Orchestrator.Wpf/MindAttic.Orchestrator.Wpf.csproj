@@ -15,6 +15,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- M.ORCH-T1597: the dashboard and its daemon both run this exe; transcript reads leave the large-object heap
+         fragmented (57 MB seen live, 357 MB committed for a 186 MB live heap). ConserveMemory has the GC compact it
+         back. DOTNET_GCConserveMemory overrides it per process. -->
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="7" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The same icon for the window's title bar and taskbar button. -->
     <Resource Include="..\..\assets\logo.ico" Link="logo.ico" />
   </ItemGroup>
