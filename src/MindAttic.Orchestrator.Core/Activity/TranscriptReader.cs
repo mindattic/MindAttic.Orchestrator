@@ -144,14 +144,15 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     }
                     state.Offset = 0;
                     state.Tools.Clear(); // read again from 0 when it's resumed: tool calls aren't de-duplicated like usage
-                    // Every line in it is older than the window, so ApplyLine returns before the de-dup lookup for each one: its
-                    // message ids are dead weight. Kept, they were most of the cache (15 of 24 MB) and of the reader's memory (M.ORCH-T1607).
-                    if (state.CountedMessages.Count > 0 || state.Events.Count > 0 || state.Hits.Count > 0)
+                    // With nothing left in the window (Events and Hits are trimmed to it), every line it counted is older than the
+                    // window, so on a reread ApplyLine returns before the de-dup lookup for each one: its message ids are dead weight.
+                    // Kept, they were most of the cache (15 of 24 MB) and of the reader's memory (M.ORCH-T1607). But a file Claude Code
+                    // holds open can list a stale timestamp: one still holding in-window events keeps them and the ids that stop the
+                    // reread from 0 counting them twice, or its usage vanishes until it's written again (M.ORCH-T1628).
+                    if (state.CountedMessages.Count > 0 && state.Events.Count == 0 && state.Hits.Count == 0)
                     {
                         state.CountedMessages.Clear();
                         state.CountedMessages.TrimExcess();
-                        state.Events.Clear();
-                        state.Hits.Clear();
                         dirty = changed = true;
                     }
                     state.PendingFiles.Clear();
