@@ -514,7 +514,10 @@
                         <mc:MaTabControl.ItemContainerStyle>
                             <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
                                 <Setter Property="Accent" Value="{Binding TabBrush}" />
-                                <Setter Property="ToolTip" Value="{Binding Tooltip}" />
+                                <!-- The library's callout under the tab (M.ORCH-T1553, M.ORCH-T1552): its name, title, directory and
+                                     login, then the CLI's live figures (state, subagents, tokens this session, uptime, PIDs). -->
+                                <Setter Property="mc:MaCallout.ToolTip" Value="{Binding TabHoverTip}" />
+                                <Setter Property="mc:MaCallout.Placement" Value="Bottom" />
                                 <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
                                 <Style.Triggers>
                                     <!-- The pinned Usage tab (M.ORCH-T1446): unclosable, titleless, locked at index 0. Its own
@@ -524,7 +527,7 @@
                                     <DataTrigger Binding="{Binding}" Value="{x:Static vm:PersonTerminalsViewModel.UsageTab}">
                                         <Setter Property="IsLocked" Value="True" />
                                         <Setter Property="Accent" Value="{Binding DataContext.TabBrush, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
-                                        <Setter Property="ToolTip" Value="{Binding DataContext.UsageTabTip, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
+                                        <Setter Property="mc:MaCallout.ToolTip" Value="{Binding DataContext.UsageTabTip, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
                                         <Setter Property="AutomationProperties.Name" Value="{Binding DataContext.UsageTabTip, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
                                     </DataTrigger>
                                 </Style.Triggers>

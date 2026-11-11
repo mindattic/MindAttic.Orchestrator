@@ -115,6 +115,67 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public string Tooltip => (Request.CustomName is { Length: > 0 } custom ? $"{custom}\n{Request.Title}" : Request.Title)
         + $"\n{Request.Directory}\n{Request.Alias ?? Login ?? "global login"}";
 
+    /// <summary>The CLI tab's callout (M.ORCH-T1553, mc:MaCallout.ToolTip as M.ORCH-T1552 has every tooltip): <see cref="Tooltip"/>
+    /// plus this CLI's live figures from the agent row its status read already matched (<see cref="ApplyAgentStatus"/>): its state
+    /// and subagents, tokens spent this session, uptime, and its Launcher/claude.exe PIDs. Nothing is read to build it; the
+    /// text is built only when WPF reads it, which <see cref="ApplyAgentStatus"/> asks for only once a shown figure changes.</summary>
+    public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow);
+
+    private AgentBoardRow? statusRow;
+    private (bool Known, AgentState State, bool Asking, int Subagents, int Jobs, long TokenStep, long Tokens, long UpStep, long Up, int? Cli, int? Host) tipKey;
+
+    /// <summary><see cref="TabHoverTip"/>'s text for <paramref name="row"/> (null while its agent isn't known: the plain lines,
+    /// and the Launcher PID once found).</summary>
+    internal static string TabHoverTipOf(string tooltip, AgentBoardRow? row, int? hostPid, DateTime nowUtc)
+    {
+        var text = new System.Text.StringBuilder(tooltip);
+        if (row is not null)
+        {
+            var state = row.Asking ? "Blocked waiting on you" : row.State switch
+            {
+                AgentState.Working => "Working",
+                AgentState.HeldByPace => "Held by pace",
+                _ => row.BackgroundJobs > 0 ? row.BackgroundJobs == 1 ? "1 background job running" : $"{row.BackgroundJobs} background jobs running" : "Waiting for you",
+            };
+            text.Append("\n\n").Append(state);
+            if (row.Subagents.Count > 0) text.Append(" · ").Append(row.Subagents.Count).Append(row.Subagents.Count == 1 ? " subagent" : " subagents");
+            text.Append("\nTokens this session: ").Append(Formatting.Tokens(row.Tokens.Total))
+                .Append(" (").Append(Formatting.Tokens(row.Tokens.Fresh)).Append(" uncached)");
+            var up = nowUtc - row.StartedUtc;
+            text.Append("\nUp ").Append(up.TotalMinutes < 1 ? "under a minute" : Formatting.Span(up))
+                .Append(" (since ").Append(Formatting.ResetTime(row.StartedUtc, nowUtc)).Append(')');
+        }
+        if (hostPid is not null || row?.CliPid is not null)
+        {
+            text.Append('\n');
+            if (hostPid is { } host) text.Append("Launcher PID ").Append(host);
+            if (hostPid is not null && row?.CliPid is not null) text.Append(" · ");
+            if (row?.CliPid is { } cli) text.Append("claude.exe PID ").Append(cli);
+        }
+        return text.ToString();
+    }
+
+    /// <summary>The coarse step a shown figure moves in: <see cref="Formatting.Tokens"/>' last digit, or
+    /// <see cref="Formatting.Span"/>'s unit (minutes as a count of minutes), so a raise happens only when the text would change.</summary>
+    private static long TokenStepOf(long n) => n >= 999_950_000 ? 10_000_000 : n >= 999_950 ? 100_000 : n >= 1_000 ? 100 : 1;
+
+    private static long UpStepOf(TimeSpan d) => d.TotalHours < 1 ? 1 : d.TotalDays < 1 ? 60 : 1_440;
+
+    /// <summary>Raises <see cref="TabHoverTip"/> only when one of its figures, at the precision shown, moved (no string per read).</summary>
+    private void UpdateHoverTip(AgentBoardRow? row, DateTime takenUtc)
+    {
+        statusRow = row;
+        var tokens = row?.Tokens.Total ?? 0;
+        var tokenStep = TokenStepOf(tokens);
+        var up = row is null ? TimeSpan.Zero : takenUtc - row.StartedUtc;
+        var upStep = UpStepOf(up);
+        var key = (row is not null, row?.State ?? AgentState.Waiting, row?.Asking == true, row?.Subagents.Count ?? 0, row?.BackgroundJobs ?? 0,
+            tokenStep, tokens / tokenStep, upStep, (long)up.TotalMinutes / upStep, row?.CliPid, HostPid);
+        if (key == tipKey) return;
+        tipKey = key;
+        Raise(nameof(TabHoverTip));
+    }
+
     /// <summary>Renames the tab in place (M.ORCH-T1432): <paramref name="text"/>, trimmed, becomes its name; empty or blank keeps
     /// the name it had (false), and its own default name clears the custom one. Its id and session are untouched. Raised for the
     /// tab, its tooltip and automation name; the caller persists it (<see cref="TerminalsViewModel.Rename"/>).</summary>
@@ -126,7 +187,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         if (custom == Request.CustomName) return false;
         Request = Request with { CustomName = custom };
         System.Windows.Automation.AutomationProperties.SetName(Control, Title);
-        Raise(nameof(Request)); Raise(nameof(Name)); Raise(nameof(Title)); Raise(nameof(Tooltip));
+        Raise(nameof(Request)); Raise(nameof(Name)); Raise(nameof(Title)); Raise(nameof(Tooltip)); Raise(nameof(TabHoverTip));
         return true;
     }
 
@@ -139,7 +200,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         if (look is null || Request.WithLook(look) is var now && ReferenceEquals(now, Request)) return false;
         Request = now;
         System.Windows.Automation.AutomationProperties.SetName(Control, Title);
-        Raise(nameof(Request)); Raise(nameof(Name)); Raise(nameof(Title)); Raise(nameof(Tooltip));
+        Raise(nameof(Request)); Raise(nameof(Name)); Raise(nameof(Title)); Raise(nameof(Tooltip)); Raise(nameof(TabHoverTip));
         TabBrush = BrushFor(Request);
         return true;
     }
@@ -331,6 +392,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         var busy = row?.IsBusy == true;
         var asking = row?.Asking == true;
         if (presumedSinceUtc is { } since && known && EndsPresumption(since, busy, takenUtc)) SetPresumed(null);
+        UpdateHoverTip(row, takenUtc);
         if (known == paneKnown && busy == paneBusy && asking == paneAsking) return;
         paneKnown = known; paneBusy = busy; paneAsking = asking;
         RaiseBadges();
