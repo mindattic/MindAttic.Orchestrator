@@ -332,6 +332,56 @@ public sealed class SessionControl(OrchestratorOptions options)
             string.Equals(Path.GetFullPath(d).TrimEnd('\\', '/'), target, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary><c>MindAttic.Launcher.exe commit</c>'s arguments: every project on its roster, under <paramref name="message"/>
+    /// (blank: the Launcher writes one per project from its status).</summary>
+    internal static IReadOnlyList<string> CommitAllArguments(string? message) =>
+        string.IsNullOrWhiteSpace(message) ? ["commit"] : ["commit", "--message", message.Trim()];
+
+    /// <summary>
+    /// Commit + push every dirty project (M.ORCH-T1590), from the project tree's root: runs the Launcher's own
+    /// <c>commit</c> command, hidden, so its roster (the wip-tagged repos), its "nothing to commit" skip for a clean repo and
+    /// its ticket alignment for each commit are the same as its Commit and sync menu's All Projects. Each line it prints goes
+    /// to <paramref name="line"/>; returns its exit code (0: every project committed or had nothing to), or -1 when it couldn't
+    /// be started (said on <paramref name="line"/>).
+    /// </summary>
+    public async Task<int> CommitAllAsync(string? message, Action<string> line, CancellationToken ct = default)
+    {
+        if (!File.Exists(options.LauncherExe))
+        {
+            line($"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1).");
+            return -1;
+        }
+        var psi = new ProcessStartInfo(options.LauncherExe)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+            WorkingDirectory = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".",
+        };
+        foreach (var a in CommitAllArguments(message)) psi.ArgumentList.Add(a);
+        // Wide enough that Spectre doesn't wrap a project's one result line at its redirected default of 80 columns.
+        psi.Environment["COLUMNS"] = "240";
+        try
+        {
+            using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            process.OutputDataReceived += (_, e) => { if (e.Data is { } d) line(d); };
+            process.ErrorDataReceived += (_, e) => { if (e.Data is { } d) line(d); };
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            return process.ExitCode;
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            line($"Couldn't start the Launcher: {ex.Message}");
+            return -1;
+        }
+    }
+
     public static void OpenFolder(string directory)
     {
         if (Directory.Exists(directory))

@@ -1016,9 +1016,17 @@ public partial class MainWindow : Window
     {
         _ = MainViewModel.RefreshProjectsAsync(TimeSpan.FromMinutes(10));
         var root = DropdownItem("Open Project");
-        root.ToolTip = "Open a CLI for a project on this login (the Launcher's Open Project Tab, in-app)";
+        root.ToolTip = "Open a CLI for a project on this login (the Launcher's Open Project Tab, in-app). Right-click: commit + push every dirty project under one message";
         root.IsEnabled = tab.IsTabSignedIn;
         ToolTipService.SetShowOnDisabled(root, true);
+        // Right-click the tree's root (M.ORCH-T1590): commit + push every dirty project under one message.
+        // Only on the root's own row: a right-click on a project in its submenu routes through the root too.
+        root.PreviewMouseRightButtonUp += (_, e) =>
+        {
+            if (!ReferenceEquals(OwningMenuItem(e.OriginalSource as DependencyObject), root)) return;
+            e.Handled = true;
+            CommitAllProjects(root, tab);
+        };
         void Open(Func<Task> start)
         {
             model.SelectedTab = tab;
@@ -1045,7 +1053,31 @@ public partial class MainWindow : Window
         refresh.ToolTip = "Read the Launcher's roster and GitHub's wip-tagged repos again";
         refresh.Click += (_, e) => { e.Handled = true; _ = tab.RefreshProjectListAsync(); };
         root.Items.Add(refresh);
+        var commitAll = DropdownItem("Commit + push all dirty projects…");
+        commitAll.ToolTip = "One commit message for every project with changes, each pushed (also: right-click Open Project)";
+        commitAll.Click += (_, e) => { e.Handled = true; CommitAllProjects(root, tab); };
+        root.Items.Add(commitAll);
         return root;
+    }
+
+    /// <summary>The nearest MenuItem at or above <paramref name="source"/> (visual tree, then logical across a popup).</summary>
+    private static MenuItem? OwningMenuItem(DependencyObject? source)
+    {
+        for (var up = source; up is not null; up = up is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(up) ?? LogicalTreeHelper.GetParent(up) : LogicalTreeHelper.GetParent(up))
+            if (up is MenuItem item) return item;
+        return null;
+    }
+
+    /// <summary>Closes the menu <paramref name="from"/> is in and opens <see cref="CommitAllWindow"/> (M.ORCH-T1590).</summary>
+    private void CommitAllProjects(MenuItem from, MainViewModel tab)
+    {
+        try
+        {
+            for (DependencyObject? up = from; up is not null; up = LogicalTreeHelper.GetParent(up))
+                if (up is ContextMenu menu) { menu.IsOpen = false; break; }
+            CommitAllWindow.Show(this, tab.CommitAllProjectsAsync);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Commit + push all failed; contained"); }
     }
 
     /// <summary>The picker tree (M.ORCH-T1589): a window of its own, since the terminals' native windows would draw over an

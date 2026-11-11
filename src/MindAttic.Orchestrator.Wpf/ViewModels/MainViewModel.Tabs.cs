@@ -549,6 +549,10 @@ public sealed partial class MainViewModel
     /// <summary>Opens a CLI at the workspace root (the Launcher's "General Prompt"), on this tab's login.</summary>
     internal Task OpenGeneralPromptAsync() => StartSessionAsync("General", WorkspaceRoot, "Claude", AutoLogin, null);
 
+    /// <summary>Commit + push every dirty project under one message (M.ORCH-T1590), the project tree root's right-click:
+    /// the Launcher's own <c>commit</c>, its lines to <paramref name="line"/>; its exit code (0: all fine).</summary>
+    internal Task<int> CommitAllProjectsAsync(string? message, Action<string> line) => control.CommitAllAsync(message, line);
+
     private void Retitle(LoginTab next)
     {
         if (next == tab) return;
