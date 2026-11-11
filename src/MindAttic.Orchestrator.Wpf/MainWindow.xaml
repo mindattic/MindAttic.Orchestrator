@@ -389,7 +389,15 @@
                                         Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                         AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsBusyBadge, Converter={StaticResource Visible}}">
-                                <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
+                                <!-- Inside the ring, how many of this person's CLIs are thinking plus their running subagents
+                                     (M.ORCH-T1447), so handing them more work is an informed choice; hidden while nothing thinks.
+                                     The count comes from the agent board the refresh already reads, in words for screen readers. -->
+                                <Grid>
+                                    <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
+                                    <TextBlock x:Name="TabThinkingCount" Text="{Binding TabThinkingCountText}" FontSize="7" FontWeight="Bold" Foreground="{DynamicResource MaOnAccent}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabThinkingWord}"
+                                               Visibility="{Binding ShowsTabThinkingCount, Converter={StaticResource Visible}}" />
+                                </Grid>
                             </mc:MaBadge>
                             <!-- One of this person's CLIs is genuinely blocked on them (a permission prompt, a question, or a
                                  /crossrepo or /allocate only they may type, M.ORCH-T790): an orange box, over the idle or busy box

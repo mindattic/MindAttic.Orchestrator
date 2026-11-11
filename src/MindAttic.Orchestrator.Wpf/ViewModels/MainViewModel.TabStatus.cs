@@ -294,6 +294,44 @@ public sealed partial class MainViewModel
 
     internal static int CliCountOf(IEnumerable<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents) => agents?.Count() ?? 0;
 
+    /// <summary>How many of this login's CLIs are thinking right now (their own turn running, or held by the pace gate while
+    /// working) and how many subagents its CLIs have running (M.ORCH-T1447): read from the agent board the refresh already
+    /// built, an indexed walk with no allocation, so the busy spinner can say how loaded this person already is.</summary>
+    private (int Clis, int Subagents) TabThinking => IsPersonTab ? ThinkingOf(snapshot?.Agents) : default;
+
+    internal static (int Clis, int Subagents) ThinkingOf(IReadOnlyList<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents)
+    {
+        if (agents is null) return default;
+        int clis = 0, subagents = 0;
+        for (var i = 0; i < agents.Count; i++)
+        {
+            var a = agents[i];
+            if (a.State is MindAttic.Orchestrator.Activity.AgentState.Working or MindAttic.Orchestrator.Activity.AgentState.HeldByPace) clis++;
+            subagents += a.Subagents.Count;
+        }
+        return (clis, subagents);
+    }
+
+    /// <summary>The number inside the busy spinner (M.ORCH-T1447): thinking CLIs plus their running subagents.</summary>
+    public int TabThinkingCount => TabThinking is var (clis, subagents) ? clis + subagents : 0;
+
+    /// <summary>Whether the busy spinner shows its count: only once something is actually thinking.</summary>
+    public bool ShowsTabThinkingCount => TabThinkingCount > 0;
+
+    /// <summary>The spinner's count as text, from a cached table so a refresh never formats a new string for it.</summary>
+    public string TabThinkingCountText => CountText(TabThinkingCount);
+
+    private static readonly string[] CountTexts = [.. Enumerable.Range(0, 100).Select(n => n.ToString(System.Globalization.CultureInfo.InvariantCulture))];
+
+    internal static string CountText(int n) => n is >= 0 and < 100 ? CountTexts[n] : "99+";
+
+    /// <summary>The count in words, for its accessible name and tooltip: "3 thinking: 1 CLI plus 2 subagents".</summary>
+    public string TabThinkingWord => ThinkingWordOf(TabThinking.Clis, TabThinking.Subagents);
+
+    internal static string ThinkingWordOf(int clis, int subagents) =>
+        clis + subagents == 0 ? "Nothing thinking"
+        : $"{clis + subagents} thinking: {clis} CLI{(clis == 1 ? "" : "s")} plus {subagents} subagent{(subagents == 1 ? "" : "s")}";
+
     /// <summary>How many CLIs are open on this login when every one of them is idle; 0 when none is open or any is busy.</summary>
     private int StoppedCliCount
     {
@@ -328,7 +366,8 @@ public sealed partial class MainViewModel
         TabActivity.Disabled => tab.IsApiKey ? tab.SignedIn ? "Disabled: its API credit is spent" : "Disabled: no key in the Vault"
             : tab.SignedIn ? "Disabled: past its cutoff" : "Disabled: signed out",
         _ when IsPersonTab && StoppedCliCount is > 0 and var n => n == 1 ? "Stopped: its one open CLI is idle" : $"Stopped: all {n} open CLIs are idle",
-        TabActivity.Busy when TabCliCount > 0 => TabCliCount == 1 ? "Busy: one CLI open" : $"Busy: {TabCliCount} CLIs open",
+        TabActivity.Busy when TabCliCount > 0 => (TabCliCount == 1 ? "Busy: one CLI open" : $"Busy: {TabCliCount} CLIs open") +
+            (ShowsTabThinkingCount ? $", {TabThinkingWord}" : ""),
         TabActivity.Busy => "Busy",
         _ => "Idle",
     };
@@ -436,7 +475,7 @@ public sealed partial class MainViewModel
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabUsageLine), nameof(TabTip), nameof(TabHoverTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge), nameof(TabActivityWord),
-                                     nameof(TabCliCount),
+                                     nameof(TabCliCount), nameof(TabThinkingCount), nameof(ShowsTabThinkingCount), nameof(TabThinkingCountText), nameof(TabThinkingWord),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
                                      nameof(ApiBurnText), nameof(ShowsClaudeMeters),
