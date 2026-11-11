@@ -76,7 +76,7 @@ public sealed class ModelChoiceTests
         Assert.That(ModelChoice.Line(byId["A-T1"].Model!), Is.EqualTo("model: sonnet (claude-sonnet-5-5): a fix"));
         Assert.That(byId["A-T1"].Prompt, Does.Contain("orchestrator review A-T1").And.Contain("Work on ticket A-T1 (fix)"));
         Assert.That(byId["A-T1"].Prompt!.IndexOf("orchestrator review", StringComparison.Ordinal),
-            Is.GreaterThan(byId["A-T1"].Prompt!.IndexOf("/commit", StringComparison.Ordinal)).And.LessThan(byId["A-T1"].Prompt!.IndexOf("git pull --rebase --autostash", StringComparison.Ordinal)),
+            Is.GreaterThan(byId["A-T1"].Prompt!.IndexOf("/commit", StringComparison.Ordinal)).And.LessThan(byId["A-T1"].Prompt!.IndexOf("git merge --no-edit", StringComparison.Ordinal)),
             "reviewed after its commit, before it lands");
         Assert.That(byId["A-T2"].Prompt, Does.Not.Contain("orchestrator review"), "an Opus ticket isn't reviewed");
         Assert.That(store.LoadAssignments().ToDictionary(a => a.TicketId, a => a.Model), Is.EqualTo(new Dictionary<string, string?> { ["A-T1"] = "sonnet", ["A-T2"] = "opus" }),

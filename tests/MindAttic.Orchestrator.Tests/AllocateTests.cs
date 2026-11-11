@@ -98,7 +98,7 @@ public sealed class AllocateTests
             MainlineOf = _ => "master",
             Start = (d, prompt, log) => { started.Add((d, prompt, log, 1)); return 1; },
         }.Tick(Paced(snap, 1), snap, new() { WorktreeRoot = Path.Combine(dir, "wt") }, Now);
-        Assert.That(started.Single().Prompt, Does.Contain("git pull --rebase --autostash origin master").And.Contain("git push origin HEAD:master").And.Not.Contain("HEAD:main "));
+        Assert.That(started.Single().Prompt, Does.Contain("git merge --no-edit origin/master").And.Contain("git push origin HEAD:master").And.Not.Contain("HEAD:main "));
         Assert.That(started.Single().Prompt, Does.Contain("never in the background"), "a -p run ends with its last turn and cuts off background subagents");
     }
 
@@ -241,7 +241,7 @@ public sealed class AllocateTests
         Assert.That(why, Is.Null);
         Assert.That(handed.Select(h => h.Directory), Is.EqualTo(new[] { @"D:\W\A", @"D:\W\A" }), "both in A's one checkout, newest first (M.ORCH-T863)");
         Assert.That(handed[1].Prompt, Does.Contain("Work on ticket A-T1").And.Contain(@"Work in A's own checkout (D:\W\A) on master").And.Contain("cd there first")
-            .And.Contain("never git add -A").And.Contain("naming every file you changed").And.Contain("git commit -m \"<subject>\" -- <path>").And.Contain("git pull --rebase --autostash origin master")
+            .And.Contain("never git add -A").And.Contain("naming every file you changed").And.Contain("git commit -m \"<subject>\" -- <path>").And.Contain("git merge --no-edit origin/master")
             .And.Contain("HEAD:master").And.Contain("tickets ticket close A-T1").And.Not.Contain("orch/"));
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(new[] { "A-T1", "A-T2" }), "claimed, so not handed out twice");
         Assert.That(store.LoadAssignments().Select(a => (a.Directory, a.IsClaim, a.InOwnWorktree(@"D:\W\A"))), Has.All.EqualTo((@"D:\W\A", true, false)),
@@ -844,7 +844,7 @@ public sealed class AllocateTests
         var prompt = Allocate.PromptFor(item, @"D:\W\A", "master");
 
         var push = prompt.IndexOf("git push origin HEAD:master", StringComparison.Ordinal);
-        var retry = prompt.IndexOf("If the push is rejected because master moved, pull --rebase --autostash and push again", StringComparison.Ordinal);
+        var retry = prompt.IndexOf("If the push is rejected because master moved, fetch and merge again (still no stash) and push again", StringComparison.Ordinal);
         var onlyOnce = prompt.IndexOf("Only once the push has succeeded, as its own step", StringComparison.Ordinal);
         var close = prompt.IndexOf("tickets ticket close A-T1 --ref", StringComparison.Ordinal);
         Assert.That(new[] { push, retry, onlyOnce, close }, Has.All.GreaterThanOrEqualTo(0), prompt);
@@ -893,7 +893,7 @@ public sealed class AllocateTests
         }), "with room, all of A's stories run at once, sharing A's own checkout on main (M.ORCH-T1122); C has no CLI open");
         // Newest first (M.ORCH-T863): A-T3 starts first.
         Assert.That(started[0].Prompt, Does.Contain(@"Work in A's own checkout (D:\W\A) on main, never a separate branch or worktree")
-            .And.Contains("touch only the files this ticket needs").And.Contains("/commit").And.Contains("git pull --rebase --autostash origin main")
+            .And.Contains("touch only the files this ticket needs").And.Contains("/commit").And.Contains("git merge --no-edit origin/main")
             .And.Contains("git push origin HEAD:main").And.Contains("tickets ticket close A-T3 --ref").And.Not.Contains("orch/"));
         Assert.That(started[0].Log, Does.StartWith(Path.Combine(dir, "logs")).And.Contains("T3-"));
         Assert.That(said, Has.Some.Contains("in the background"));

@@ -265,10 +265,12 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         $"(not /commit, whose gate runs the test suite), with {item.Id} at the end of the subject; no push yet, the steps below do that, so keep going. " +
         // M.ORCH-T563: a Sonnet ticket's big or risky diff gets one Opus review of the diff alone before it lands.
         (model is { IsSonnet: true } ? "3. " + ReviewStep(item.Id) : "") +
-        $"{(model is { IsSonnet: true } ? 4 : 3)}. Land it on {item.Repo}'s main line, {mainline}: git pull --rebase --autostash origin {mainline} " +
-        $"(resolve any conflicts in your own files, then rebuild), then git push origin HEAD:{mainline}. " +
+        $"{(model is { IsSonnet: true } ? 4 : 3)}. Land it on {item.Repo}'s main line, {mainline}: git fetch origin {mainline}, then git merge --no-edit origin/{mainline} " +
+        // M.ORCH-T1482: --autostash stashes EVERY agent's uncommitted work in the shared checkout and, when its reset --hard hit a locked file, left 34 files of others' work reverted.
+        "(never git pull --rebase --autostash, git stash or git reset here: they sweep other agents' uncommitted work; a merge leaves it alone and git refuses it safely if incoming changes touch a file someone has dirty, so wait a moment and retry; resolve any conflicts in your own files, then rebuild), " +
+        $"then git push origin HEAD:{mainline}. " +
         // Found live (M.ORCH-T178): chained after the push, a rejected push (main moved) still closed the ticket, unlanded, on a pre-rebase hash.
-        $"If the push is rejected because {mainline} moved, pull --rebase --autostash and push again. " +
+        $"If the push is rejected because {mainline} moved, fetch and merge again (still no stash) and push again. " +
         $"{(model is { IsSonnet: true } ? 5 : 4)}. Only once the push has succeeded, as its own step, " +
         $"mark it finished: tickets ticket close {item.Id} --ref <the commit hash as it landed on {mainline}>. " +
         "You are done only when the push has succeeded and the ticket is closed. " +
