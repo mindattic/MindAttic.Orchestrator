@@ -187,7 +187,7 @@ public sealed class AccountPacer
         };
         // A window the week caps is on course for its ceiling, not the 5-hour target: under it, more subagents start only as far as the cap allows.
         var utilization = UtilizationSeries.Build(samples, budget, week is { Capped: true, CeilingPercent: { } ceiling } ? ceiling : settings.PaceTargetPercent,
-            now, settings.PaceExponent);
+            now, settings.PaceExponent, settings.UtilizationMinSpacingSeconds);
         pace = Pacer.UnderTarget(pace, utilization, settings.MaxSubagents);
         // Split across many CLIs whose live trend together crossed the pace line: new subagents start slower until it bends back (M.ORCH-T785).
         pace = Pacer.CoolOff(pace, utilization, Math.Max(active, pace.SubagentsByCli.Count));

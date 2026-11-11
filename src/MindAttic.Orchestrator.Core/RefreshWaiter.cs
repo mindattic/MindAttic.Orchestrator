@@ -11,14 +11,17 @@ internal enum RefreshWake { Interval, Signal, Cancelled }
 internal sealed class RefreshWaiter
 {
     private readonly string[] paths;
-    private readonly TimeSpan minGap;
     private readonly TimeSpan poll;
     private DateTime lastSignal;
+
+    /// <summary>The floor between refreshes a routine signal can bring; settable so the daemon can live-dial it (M.ORCH-T1624),
+    /// read at the start of each <see cref="Wait"/>.</summary>
+    public TimeSpan MinGap { get; set; }
 
     public RefreshWaiter(string[] paths, TimeSpan minGap, TimeSpan? poll = null)
     {
         this.paths = paths;
-        this.minGap = minGap;
+        MinGap = minGap;
         this.poll = poll ?? TimeSpan.FromMilliseconds(500);
         lastSignal = Stamp();
     }
@@ -38,7 +41,7 @@ internal sealed class RefreshWaiter
     public RefreshWake Wait(TimeSpan interval, CancellationToken cancel)
     {
         var until = DateTime.UtcNow + interval;
-        var earliest = DateTime.UtcNow + minGap;
+        var earliest = DateTime.UtcNow + MinGap;
         while (DateTime.UtcNow < until)
         {
             var left = until - DateTime.UtcNow;

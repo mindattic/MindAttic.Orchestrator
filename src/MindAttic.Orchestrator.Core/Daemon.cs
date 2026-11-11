@@ -816,8 +816,15 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// <summary>Runs <c>tickets db sync</c> and <c>gh</c>; a test's stands in for the real one.</summary>
     internal IProcessRunner Runner { get; init; } = ProcessRunner.Default;
 
-    /// <summary>How long <c>tickets db sync</c> may run before it's killed, so a hung push can't stall the loop.</summary>
-    internal TimeSpan SyncTimeout { get; init; } = TimeSpan.FromMinutes(2);
+    /// <summary>How long <c>tickets db sync</c> may run before it's killed, so a hung push can't stall the loop: the live
+    /// <see cref="OrchestratorSettings.SyncTimeoutSeconds"/> (M.ORCH-T1624), unless a test sets one.</summary>
+    internal TimeSpan SyncTimeout
+    {
+        get => syncTimeout ?? OrchestratorSettings.SecondsSpan(tunables.SyncTimeoutSeconds, 1);
+        init => syncTimeout = value;
+    }
+
+    private readonly TimeSpan? syncTimeout;
 
     /// <summary>Where alerts go; null sends them through the <see cref="Notifier"/>. A test's records them.</summary>
     internal Action<string, string, bool>? AlertSink { get; init; }
@@ -855,12 +862,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// <summary>Touched by the context gate whenever a turn or a subagent ends (its reply's tokens are then in its transcript).</summary>
     public static string RefreshSignal { get; } = Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", "refresh.now");
 
-    /// <summary>The soonest a signal brings the next refresh forward after the last one.</summary>
-    // Each refresh runs the whole tick (a WMI process query for the Launcher's tabs among it), and with a dozen agents a
-    // turn ends every second or two: 10s keeps typed turns counted well inside the 15s tick without refreshing nonstop.
-    internal static readonly TimeSpan MinGap = TimeSpan.FromSeconds(10);
-
-    private readonly RefreshWaiter waiter = new([RefreshSignal, ReportedUsage.DefaultPath, new ClaudeAccount().ConfigPath, new ClaudeAccount().StatePath], MinGap);
+    // The soonest a signal brings the next refresh forward after the last one: the live RefreshMinGapSeconds (M.ORCH-T1624),
+    // set before each wait. Each refresh runs the whole tick (a WMI process query for the Launcher's tabs among it), and with a
+    // dozen agents a turn ends every second or two: the default 10s keeps typed turns counted well inside the 15s tick without
+    // refreshing nonstop.
+    private readonly RefreshWaiter waiter = new([RefreshSignal, ReportedUsage.DefaultPath, new ClaudeAccount().ConfigPath, new ClaudeAccount().StatePath], TimeSpan.FromSeconds(10));
 
     /// <summary>
     /// Waits out <paramref name="interval"/>, but refreshes early when a turn ends anywhere (the context gate's
@@ -868,7 +874,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// tool calls or not, is in the pace within a couple of seconds rather than at the next tick; and when Claude Code's config
     /// or the sign-in record changes, so a /login is seen (and the new account's meter read) at once (M.ORCH-T486).
     /// </summary>
-    private void WaitForNextRefresh(TimeSpan interval, CancellationToken cancel) => waiter.Wait(interval, cancel);
+    private void WaitForNextRefresh(TimeSpan interval, CancellationToken cancel)
+    {
+        waiter.MinGap = OrchestratorSettings.SecondsSpan(tunables.RefreshMinGapSeconds, 1);
+        waiter.Wait(interval, cancel);
+    }
 
     /// <summary>The scheduled audit: when the last one is older than <see cref="OrchestratorSettings.AuditEveryHours"/>, run it and report what's new.</summary>
     private DateTime auditTriedUtc;
@@ -932,10 +942,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     private DateTime testHostsReapedUtc;
 
-    /// <summary>Every <see cref="Sessions.TestTermHostReaper.Every"/>, ends TermHosts a test run leaked (M.ORCH-T1623).</summary>
+    /// <summary>Every <see cref="OrchestratorSettings.TestTermHostSweepMinutes"/> (M.ORCH-T1624), ends TermHosts a test run leaked (M.ORCH-T1623).</summary>
     private IReadOnlyList<Sessions.TestTermHostReaper.Ended> ReapTestHostsIfDue(OrchestratorSettings s)
     {
-        if (DateTime.UtcNow - testHostsReapedUtc < Sessions.TestTermHostReaper.Every) return [];
+        if (DateTime.UtcNow - testHostsReapedUtc < OrchestratorSettings.SecondsSpan(s.TestTermHostSweepMinutes * 60, 60)) return [];
         testHostsReapedUtc = DateTime.UtcNow;
         return Sessions.TestTermHostReaper.ReapOnce(testHostsReapedUtc, TimeSpan.FromMinutes(Math.Max(1, s.TestTermHostMaxMinutes)));
     }

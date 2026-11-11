@@ -8,7 +8,8 @@ namespace MindAttic.Orchestrator.Sessions;
 /// <summary>
 /// Ends TermHosts a test run left behind (M.ORCH-T1623): a test that opens a real hosted tab starts a TermHost (with its
 /// powershell and conhost) whose <c>--cwd</c> is an <c>orch-test-*</c> temp folder; one a failed test never closed lived on
-/// all night (6 found 2026-11-11, the oldest 22:59 the night before). The daemon sweeps for them as a safety net, and the test
+/// all night (6 found 2026-11-11, the oldest 22:59 the night before). The daemon sweeps for them as a safety net (every
+/// <see cref="Settings.OrchestratorSettings.TestTermHostSweepMinutes"/>, M.ORCH-T1624), and the test
 /// suite's own teardown ends the ones it started (<see cref="EndIn"/>). Only a host whose folder is an <c>orch-test-*</c> folder
 /// directly under the temp folder, or inside one, is ever touched: any other host is left alone.
 /// </summary>
@@ -19,9 +20,6 @@ public static class TestTermHostReaper
 
     /// <summary>The host's process name, as WMI lists it.</summary>
     private const string HostProcessName = "MindAttic.Orchestrator.TermHost.exe";
-
-    /// <summary>How often the daemon sweeps.</summary>
-    public static readonly TimeSpan Every = TimeSpan.FromMinutes(5);
 
     public sealed record HostInfo(int Pid, DateTime StartUtc, string? CommandLine);
 

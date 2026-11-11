@@ -265,6 +265,21 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 10080)]
     public double OrchestratorDbSyncMinutes { get; set; } = 10;
 
+    [Setting("Org reach: one tab per org every (minutes)", Group = "Scheduler", Order = 103,
+        Help = "The least minutes between two tabs opened for the same org when none of its members runs /allocate.")]
+    [SettingRange(1, 10080)]
+    public double OrgReachSpacingMinutes { get; set; } = 5;
+
+    [Setting("Stop a ticket db sync after (s)", Group = "Scheduler", Order = 104,
+        Help = "Seconds tickets db sync, and the git calls that commit orchestrator.db, may run before they're killed, so a hung push can't stall the daemon.")]
+    [SettingRange(5, 3600)]
+    public double SyncTimeoutSeconds { get; set; } = 120;
+
+    [Setting("Early refresh at most every (s)", Group = "Scheduler", Order = 105,
+        Help = "The soonest a signal (a turn ending, a usage report rewritten) brings the daemon's next refresh forward after the last one.")]
+    [SettingRange(1, 3600)]
+    public double RefreshMinGapSeconds { get; set; } = 10;
+
     [Setting("Database busy retries", Group = "Scheduler", Order = 92, Help = "How many extra times a write retries taking SQL Server's write lock after it stayed busy past its timeout (each wait longer than the last) before the command fails. Raise it when many CLIs and subagents write at once.")]
     [SettingRange(0, 100)]
     public int DbBusyRetries { get; set; } = 6;
@@ -433,6 +448,41 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 3600)]
     public double MeterStatesSeconds { get; set; } = 30;
 
+    [Setting("Blink spacing at least (ms)", Group = "Dashboard", Order = 14,
+        Help = "The shortest gap in milliseconds from one tab blink to the next, so each still reads as a blink; it also caps how many blinks one refresh queues.")]
+    [SettingRange(50, 5000)]
+    public double TabBlinkMinSpacingMs { get; set; } = 320;
+
+    [Setting("5-hour chart point spacing (s)", Group = "Dashboard", Order = 15,
+        Help = "Readings of the 5-hour chart closer together than this many seconds are thinned to one point.")]
+    [SettingRange(1, 3600)]
+    public double UtilizationMinSpacingSeconds { get; set; } = 60;
+
+    [Setting("Reread the project roster after (minutes)", Group = "Dashboard", Order = 16,
+        Help = "Minutes a read of the Open Project menu's roster (and GitHub's wip topic) is kept before opening the menu reads it again.")]
+    [SettingRange(1, 10080)]
+    public double ProjectsRefreshMinutes { get; set; } = 10;
+
+    [Setting("Recount project changes after (s)", Group = "Dashboard", Order = 17,
+        Help = "Seconds a read of each project's uncommitted file count is kept before opening the Open Project menu reads them again.")]
+    [SettingRange(1, 86400)]
+    public double ProjectChangesRefreshSeconds { get; set; } = 30;
+
+    [Setting("Reread closed tickets every (s)", Group = "Dashboard", Order = 18,
+        Help = "Seconds between rereads of the recently closed tickets while ticket changes aren't pushed by the status stream.")]
+    [SettingRange(5, 86400)]
+    public double ClosedTicketsReadSeconds { get; set; } = 60;
+
+    [Setting("Reread closed tickets, stream up, every (minutes)", Group = "Dashboard", Order = 19,
+        Help = "Minutes between the same rereads while the status stream is up and ticket changes are pushed: a safety net only.")]
+    [SettingRange(1, 10080)]
+    public double ClosedTicketsReadLiveMinutes { get; set; } = 15;
+
+    [Setting("Sweep for leaked test TermHosts every (minutes)", Group = "Dashboard", Order = 91,
+        Help = "Minutes between the daemon's sweeps for TermHosts left running in orch-test-* temp folders. Each sweep is a WMI query.")]
+    [SettingRange(1, 10080)]
+    public double TestTermHostSweepMinutes { get; set; } = 5;
+
     // ── Folders ────────────────────────────────────────────────────────────
 
     [Setting("Workspace root", Group = "Folders", Order = 1,
@@ -522,6 +572,16 @@ public sealed class OrchestratorVaultSettings
         TermResyncSeconds = s.TermResyncSeconds,
         LauncherRespawnSeconds = s.LauncherRespawnSeconds,
         MeterStatesSeconds = s.MeterStatesSeconds,
+        TestTermHostSweepMinutes = s.TestTermHostSweepMinutes,
+        OrgReachSpacingMinutes = s.OrgReachSpacingMinutes,
+        UtilizationMinSpacingSeconds = s.UtilizationMinSpacingSeconds,
+        SyncTimeoutSeconds = s.SyncTimeoutSeconds,
+        RefreshMinGapSeconds = s.RefreshMinGapSeconds,
+        TabBlinkMinSpacingMs = s.TabBlinkMinSpacingMs,
+        ProjectsRefreshMinutes = s.ProjectsRefreshMinutes,
+        ProjectChangesRefreshSeconds = s.ProjectChangesRefreshSeconds,
+        ClosedTicketsReadSeconds = s.ClosedTicketsReadSeconds,
+        ClosedTicketsReadLiveMinutes = s.ClosedTicketsReadLiveMinutes,
         MemoryGuard = s.MemoryGuard,
         MemoryGuardStartPercent = s.MemoryGuardStartPercent,
         MemoryTightGb = s.MemoryTightGb,
@@ -624,6 +684,16 @@ public sealed class OrchestratorVaultSettings
         TermResyncSeconds = TermResyncSeconds,
         LauncherRespawnSeconds = LauncherRespawnSeconds,
         MeterStatesSeconds = MeterStatesSeconds,
+        TestTermHostSweepMinutes = TestTermHostSweepMinutes,
+        OrgReachSpacingMinutes = OrgReachSpacingMinutes,
+        UtilizationMinSpacingSeconds = UtilizationMinSpacingSeconds,
+        SyncTimeoutSeconds = SyncTimeoutSeconds,
+        RefreshMinGapSeconds = RefreshMinGapSeconds,
+        TabBlinkMinSpacingMs = TabBlinkMinSpacingMs,
+        ProjectsRefreshMinutes = ProjectsRefreshMinutes,
+        ProjectChangesRefreshSeconds = ProjectChangesRefreshSeconds,
+        ClosedTicketsReadSeconds = ClosedTicketsReadSeconds,
+        ClosedTicketsReadLiveMinutes = ClosedTicketsReadLiveMinutes,
         MemoryGuard = MemoryGuard,
         MemoryGuardStartPercent = MemoryGuardStartPercent,
         MemoryTightGb = MemoryTightGb,

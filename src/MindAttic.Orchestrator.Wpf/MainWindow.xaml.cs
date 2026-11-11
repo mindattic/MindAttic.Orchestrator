@@ -1024,7 +1024,7 @@ public partial class MainWindow : Window
     /// </summary>
     private MenuItem ProjectsMenu(MainViewModel tab)
     {
-        _ = MainViewModel.RefreshProjectsAsync(TimeSpan.FromMinutes(10));
+        _ = MainViewModel.RefreshProjectsAsync(DashboardTimings.ProjectsRefresh); // 10 minutes by default (M.ORCH-T1624)
         var root = DropdownItem("Open Project");
         root.ToolTip = "Open a CLI for a project on this login (the Launcher's Open Project Tab, in-app). Right-click: commit + push every dirty project under one message";
         root.IsEnabled = tab.IsTabSignedIn;
@@ -1058,7 +1058,7 @@ public partial class MainWindow : Window
             // Each project's uncommitted file count (M.ORCH-T1587): the last read now, the fresh one once git status is read.
             void ShowChanges() { foreach (var (item, node) in labels) item.Header = ProjectHeader(node); }
             ShowChanges();
-            _ = MainViewModel.RefreshProjectChangesAsync(TimeSpan.FromSeconds(30)).ContinueWith(
+            _ = MainViewModel.RefreshProjectChangesAsync(DashboardTimings.ProjectChangesRefresh).ContinueWith(
                 _ => Dispatcher.BeginInvoke(ShowChanges), TaskScheduler.Default);
         }
         root.Items.Add(DropdownSeparator());

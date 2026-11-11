@@ -486,6 +486,43 @@ public sealed record OrchestratorSettings
     /// <summary>Seconds between the dashboard's rereads of each login's meter state (when it was last read, who must sign in again).</summary>
     public double MeterStatesSeconds { get; init; } = 30;
 
+    // ── The rest of the sweep (M.ORCH-T1624): each was a constant; its value then is its default ──
+
+    /// <summary>Minutes between the daemon's sweeps for TermHosts a test run leaked (M.ORCH-T1623; was
+    /// TestTermHostReaper.Every).</summary>
+    public double TestTermHostSweepMinutes { get; init; } = 5;
+
+    /// <summary>The least minutes between two tabs org-reach opens for the same org (was <see cref="Scheduling.OrgReach"/>'s Spacing).</summary>
+    public double OrgReachSpacingMinutes { get; init; } = 5;
+
+    /// <summary>Readings of the 5-hour chart closer together than this many seconds are thinned to one point (was
+    /// UtilizationSeries.MinSpacing).</summary>
+    public double UtilizationMinSpacingSeconds { get; init; } = 60;
+
+    /// <summary>Seconds <c>tickets db sync</c> and the orchestrator.db commit's git calls may run before they're killed, so a
+    /// hung push can't stall the daemon's loop (was Daemon.SyncTimeout).</summary>
+    public double SyncTimeoutSeconds { get; init; } = 120;
+
+    /// <summary>The soonest (seconds) a signal (a turn ending, a usage report rewritten) brings the daemon's next refresh forward
+    /// after the last one (was Daemon.MinGap).</summary>
+    public double RefreshMinGapSeconds { get; init; } = 10;
+
+    /// <summary>The shortest gap (milliseconds) from one tab blink to the next, so each still reads as a blink (was
+    /// TabBlinker.MinSpacing).</summary>
+    public double TabBlinkMinSpacingMs { get; init; } = 320;
+
+    /// <summary>Minutes a read of the Open Project menu's roster is kept before opening the menu reads it again.</summary>
+    public double ProjectsRefreshMinutes { get; init; } = 10;
+
+    /// <summary>Seconds a read of the projects' uncommitted file counts is kept before opening the Open Project menu reads them again.</summary>
+    public double ProjectChangesRefreshSeconds { get; init; } = 30;
+
+    /// <summary>Seconds between the dashboard's rereads of the recently closed tickets while ticket changes aren't pushed.</summary>
+    public double ClosedTicketsReadSeconds { get; init; } = 60;
+
+    /// <summary>Minutes between the same rereads while the status stream is up and ticket changes are pushed (a safety net only).</summary>
+    public double ClosedTicketsReadLiveMinutes { get; init; } = 15;
+
     /// <summary>A setting's seconds as a <see cref="TimeSpan"/>, kept finite and at least <paramref name="minSeconds"/>, so a hand
     /// edit (negative, NaN, huge) can't throw or spin a timer. No allocation: read it straight off the settings each time.</summary>
     public static TimeSpan SecondsSpan(double seconds, double minSeconds = 0) =>

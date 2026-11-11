@@ -234,11 +234,12 @@ public sealed partial class MainViewModel
 
     // The Queue's tabs (M.ORCH-T849).
 
-    /// <summary>How often a refresh re-reads the recently closed tickets; a push (<see cref="ReloadTicketQueues"/>) reads at once.</summary>
-    private static readonly TimeSpan ClosedReadEvery = TimeSpan.FromMinutes(1);
+    /// <summary>How often a refresh re-reads the recently closed tickets; a push (<see cref="ReloadTicketQueues"/>) reads at once.
+    /// 1 minute by default, live from the Vault (M.ORCH-T1624, <see cref="DashboardTimings.ClosedRead"/>).</summary>
+    private static TimeSpan ClosedReadEvery => DashboardTimings.ClosedRead;
 
-    /// <summary>The same while the status stream is up and ticket changes are pushed (M.ORCH-T879): a safety net only.</summary>
-    private static readonly TimeSpan ClosedReadEveryLive = TimeSpan.FromMinutes(15);
+    /// <summary>The same while the status stream is up and ticket changes are pushed (M.ORCH-T879): a safety net only (15 minutes).</summary>
+    private static TimeSpan ClosedReadEveryLive => DashboardTimings.ClosedReadLive;
 
     private readonly ClosedTicketSource closedSource = new();
     private IReadOnlyList<ClosedTicket> closedTickets = [];

@@ -7,16 +7,13 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// An org's tickets reach its members when none of them runs /allocate (M.ORCH-T758, after M.ORCH-T753). Org dispatch hands an
 /// /allocate CLI only its login's org's tickets, so a ticket in a repo an /allocate CLI works, but of an org none of the
 /// /allocate CLIs' logins is in, waited for one of its members to turn /allocate on. Each tick, for each such org (one ticket
-/// per org per tick, and none sooner than <see cref="Spacing"/> after its last), the next workable one is started in a new
+/// per org per tick, and none sooner than <see cref="OrchestratorSettings.OrgReachSpacingMinutes"/> after its last), the next workable one is started in a new
 /// Launcher tab in its repo's checkout on main (<see cref="Dispatcher"/>: only on a login of its org with room under its
 /// cutoffs, the API key only while API billing is on), as an orphaned ticket is. Only where you turned /allocate on for its
 /// repo, never while allocate is paused, quiet hours run or the window is at its stop; with one org it does nothing.
 /// </summary>
 public sealed class OrgReach(JsonStore store)
 {
-    /// <summary>The least time between two tabs opened for the same org.</summary>
-    public static readonly TimeSpan Spacing = TimeSpan.FromMinutes(5);
-
     /// <summary>Opens a new tab on a ticket in its repo's checkout with the prompt given (seam); null opens none.</summary>
     internal Func<QueueItem, string, Dispatcher.Result>? OpenTab { get; init; }
 
@@ -49,12 +46,14 @@ public sealed class OrgReach(JsonStore store)
             !settings.AllocateSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) && !plan.OverRepoCap.Contains(q.Repo) &&
             Allocate.Named(named, q.Repo) && !withCli.Contains(orgs.OrgOf(q)));
 
+        // The least time between two tabs opened for the same org: live from the Vault (M.ORCH-T1624; 5 minutes by default).
+        var spacing = OrchestratorSettings.SecondsSpan(settings.OrgReachSpacingMinutes * 60);
         var done = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var q in waiting)
         {
             var org = orgs.OrgOf(q);
             if (!done.Add(org)) continue; // one per org per tick
-            if (openedUtc.TryGetValue(org, out var last) && nowUtc - last < Spacing) continue;
+            if (openedUtc.TryGetValue(org, out var last) && nowUtc - last < spacing) continue;
             // With Auto login off a new tab opens on the global login, which is only right when that's a login of the org.
             if (!settings.AutoLogin && orgs.OrgOfLogin(null) != org)
             {

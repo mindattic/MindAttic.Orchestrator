@@ -458,7 +458,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                 .Where(x => x.Cli is not null).GroupBy(x => x.Cli!.Value).ToDictionary(g => g.Key, g => g.Count()),
         };
         if (allowedWhy is not null) pace = pace with { Note = $"{pace.Note} {allowedWhy}" };
-        var utilization = UtilizationSeries.Build(mine, budget, paceSettings.PaceTargetPercent, now, settings.PaceExponent);
+        var utilization = UtilizationSeries.Build(mine, budget, paceSettings.PaceTargetPercent, now, settings.PaceExponent, settings.UtilizationMinSpacingSeconds);
         // The weekly chart (M.ORCH-T1403), for the global login the same way each per-CLI login gets its own (AccountPacer.Pace).
         var weeklyUtilization = WeeklyUtilizationSeries.Build(mine, budget, paceSettings.WeeklyStopPercent, now);
         // On course to end under its target: the allowance shown to the CLIs (and held to by the pace gate) says to start more (M.ORCH-T529).

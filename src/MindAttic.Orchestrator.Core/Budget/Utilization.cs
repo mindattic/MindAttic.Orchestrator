@@ -40,8 +40,9 @@ public sealed record Utilization(DateTime StartUtc, DateTime EndUtc, DateTime No
 
 public static class UtilizationSeries
 {
-    /// <summary>The most points kept for the line; readings closer together than this are thinned.</summary>
-    private static readonly TimeSpan MinSpacing = TimeSpan.FromMinutes(1);
+    /// <summary>The default spacing of the line's points; readings closer together are thinned. Live from the Vault setting
+    /// <see cref="Settings.OrchestratorSettings.UtilizationMinSpacingSeconds"/> (M.ORCH-T1624), passed to <see cref="Build"/>.</summary>
+    private const double DefaultMinSpacingSeconds = 60;
 
     /// <summary>
     /// The current window's line from Claude's own reports (<paramref name="samples"/> of that window, only ever rising:
@@ -52,12 +53,16 @@ public static class UtilizationSeries
     /// none running, the last window as it ended (or an empty axis). Never null.
     /// </summary>
     /// <param name="exponent">The pace curve's exponent (<see cref="Settings.OrchestratorSettings.PaceExponent"/>): 1 draws the straight line.</param>
-    public static Utilization Build(IReadOnlyList<UsageSample> samples, BudgetStatus b, double targetPercent, DateTime nowUtc, double exponent = 1)
+    /// <param name="minSpacingSeconds">Readings closer together than this are thinned to one point
+    /// (<see cref="Settings.OrchestratorSettings.UtilizationMinSpacingSeconds"/>).</param>
+    public static Utilization Build(IReadOnlyList<UsageSample> samples, BudgetStatus b, double targetPercent, DateTime nowUtc, double exponent = 1,
+        double minSpacingSeconds = DefaultMinSpacingSeconds)
     {
+        var minSpacing = Settings.OrchestratorSettings.SecondsSpan(minSpacingSeconds);
         // Between windows the graph stays up with the last one as it ended (M.ORCH-T502): Claude's own percents, so no
         // token limit is needed to draw it.
-        if (b.CurrentBlock is not { } block) return LastWindow(samples, targetPercent, nowUtc, exponent);
-        var points = Line(samples, block.StartUtc, block.EndUtc, nowUtc);
+        if (b.CurrentBlock is not { } block) return LastWindow(samples, targetPercent, nowUtc, exponent, minSpacing);
+        var points = Line(samples, block.StartUtc, block.EndUtc, nowUtc, minSpacing);
         var now = Math.Max(points[^1].Percent, b.BlockPercent);
         if (nowUtc > points[^1].AtUtc) points.Add(new(nowUtc, now));
 
@@ -86,14 +91,14 @@ public static class UtilizationSeries
     /// <summary>The window from <paramref name="startUtc"/> to <paramref name="endUtc"/> from 0 at its start through its readings
     /// up to <paramref name="nowUtc"/>, only ever rising. Behind a wall the block ends at the limit message's reset (whole minutes,
     /// local clock), not Claude's resets_at to the second: the same window when within 10 minutes, as the pace ledger takes it.</summary>
-    private static List<UtilizationPoint> Line(IReadOnlyList<UsageSample> samples, DateTime startUtc, DateTime endUtc, DateTime nowUtc)
+    private static List<UtilizationPoint> Line(IReadOnlyList<UsageSample> samples, DateTime startUtc, DateTime endUtc, DateTime nowUtc, TimeSpan minSpacing)
     {
         var points = new List<UtilizationPoint> { new(startUtc, 0) };
         foreach (var s in samples.Where(s => Math.Abs((s.ResetUtc - endUtc).TotalMinutes) <= 10 && s.AtUtc <= nowUtc &&
                                              s.AtUtc >= startUtc).OrderBy(s => s.AtUtc))
         {
             if (s.Percent < points[^1].Percent) continue;
-            if (s.AtUtc - points[^1].AtUtc < MinSpacing && points.Count > 1) points[^1] = new(s.AtUtc, s.Percent);
+            if (s.AtUtc - points[^1].AtUtc < minSpacing && points.Count > 1) points[^1] = new(s.AtUtc, s.Percent);
             else points.Add(new(s.AtUtc, s.Percent));
         }
         return points;
@@ -104,13 +109,13 @@ public static class UtilizationSeries
     /// <see cref="Utilization.NowPercent"/> its last reading). With none on record, an empty 5-hour axis from now. Never null,
     /// so the card stays up between windows.
     /// </summary>
-    private static Utilization LastWindow(IReadOnlyList<UsageSample> samples, double targetPercent, DateTime nowUtc, double exponent)
+    private static Utilization LastWindow(IReadOnlyList<UsageSample> samples, double targetPercent, DateTime nowUtc, double exponent, TimeSpan minSpacing)
     {
         var last = samples.Where(s => s.ResetUtc <= nowUtc && s.AtUtc <= nowUtc).OrderByDescending(s => s.ResetUtc).FirstOrDefault();
         if (last is null)
             return new Utilization(nowUtc, nowUtc + BudgetCalculator.BlockLength, nowUtc, targetPercent, [], 0, 0, 0, TimeSpan.Zero, exponent, Ended: true);
         var (start, end) = (last.ResetUtc - BudgetCalculator.BlockLength, last.ResetUtc);
-        var points = Line(samples, start, end, nowUtc);
+        var points = Line(samples, start, end, nowUtc, minSpacing);
         var ended = points[^1];
         var series = new Utilization(start, end, ended.AtUtc, targetPercent, points, ended.Percent, 0, ended.Percent, TimeSpan.Zero, exponent, Ended: true);
         return series with { OverPace = OverPace(series, points) };

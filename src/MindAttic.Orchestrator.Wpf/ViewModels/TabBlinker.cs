@@ -22,14 +22,15 @@ public sealed class TabBlinker(string key)
     /// <summary>How long a blink keeps the icon dimmed.</summary>
     public static readonly TimeSpan Flash = TimeSpan.FromMilliseconds(140);
 
-    /// <summary>The shortest gap from one blink to the next, so each one still reads as a blink.</summary>
-    public static readonly TimeSpan MinSpacing = TimeSpan.FromMilliseconds(320);
+    /// <summary>The shortest gap from one blink to the next, so each one still reads as a blink: 320ms by default, live from the
+    /// Vault setting TabBlinkMinSpacingMs (M.ORCH-T1624, <see cref="DashboardTimings.TabBlinkMinSpacing"/>).</summary>
+    public static TimeSpan MinSpacing => DashboardTimings.TabBlinkMinSpacing;
 
     /// <summary>The span a refresh's blinks are spread over: the dashboard's refresh interval.</summary>
     public static readonly TimeSpan Spread = TimeSpan.FromSeconds(5);
 
-    /// <summary>The most blinks one refresh can queue: as many as fit in <see cref="Spread"/>. Past that the rate is pegged.</summary>
-    public static int MaxQueued => (int)(Spread.Ticks / MinSpacing.Ticks);
+    /// <summary>The most blinks one refresh can queue: as many as fit in <see cref="Spread"/> (at least one). Past that the rate is pegged.</summary>
+    public static int MaxQueued => (int)Math.Max(1, Spread.Ticks / Math.Max(1, MinSpacing.Ticks));
 
     /// <summary>This tab's own phase: where in a blink gap its first blink falls, so tabs at one rate never line up.</summary>
     private readonly double phase = PhaseOf(key);
