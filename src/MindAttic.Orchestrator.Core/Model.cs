@@ -2,6 +2,7 @@ using MindAttic.Tickets.Log;
 
 namespace MindAttic.Orchestrator;
 
+/// <summary>What a repo's agents are doing right now, from its transcripts and hosted tabs.</summary>
 public enum RepoState
 {
     /// <summary>No session and no recent activity.</summary>
@@ -33,11 +34,13 @@ public sealed record HostSession(string Provider, int ProcessId, string PipeName
 /// <summary>Token counts as the API reports them.</summary>
 public readonly record struct TokenUsage(long Input, long CacheCreation, long CacheRead, long Output)
 {
+    /// <summary>Every token counted: input, both cache kinds and output.</summary>
     public long Total => Input + CacheCreation + CacheRead + Output;
 
     /// <summary>Tokens that weren't served from cache: the part that drives rate limits hardest.</summary>
     public long Fresh => Input + CacheCreation + Output;
 
+    /// <summary>The field-by-field sum of two usages.</summary>
     public static TokenUsage operator +(TokenUsage a, TokenUsage b) =>
         new(a.Input + b.Input, a.CacheCreation + b.CacheCreation, a.CacheRead + b.CacheRead, a.Output + b.Output);
 }
@@ -45,10 +48,14 @@ public readonly record struct TokenUsage(long Input, long CacheCreation, long Ca
 /// <summary>One API response's token usage.</summary>
 public readonly record struct UsageEvent(DateTime AtUtc, TokenUsage Usage);
 
+/// <summary>The agent providers whose sessions are read, as the names that tag <see cref="TranscriptSession.Provider"/>.</summary>
 public static class Providers
 {
+    /// <summary>Claude Code: the provider budgets and pacing are about.</summary>
     public const string Claude = "Claude";
+    /// <summary>OpenAI's Codex CLI.</summary>
     public const string Codex = "Codex";
+    /// <summary>Google's Gemini CLI.</summary>
     public const string Gemini = "Gemini";
 
     /// <summary>The Claude CLI's process name: <c>claude</c>, or <c>claude.exe.old.…</c> once its auto-updater has renamed the
@@ -63,7 +70,14 @@ public sealed record ProviderLimit(string Provider, string Window, double UsedPe
 /// <summary>One provider's uncached usage today and over the last 7 days, plus any limits it reports.</summary>
 public sealed record ProviderUsage(string Provider, TokenUsage Today, TokenUsage Week, IReadOnlyList<ProviderLimit> Limits);
 
-public enum LimitKind { Session, Weekly }
+/// <summary>Which of Claude's two limits a <see cref="LimitHit"/> ran into: the rolling 5-hour session, or the weekly one.</summary>
+public enum LimitKind
+{
+    /// <summary>The rolling 5-hour window's limit.</summary>
+    Session,
+    /// <summary>The weekly limit.</summary>
+    Weekly,
+}
 
 /// <summary>A "You've hit your session/weekly limit · resets …" message Claude Code wrote to a transcript.</summary>
 public readonly record struct LimitHit(DateTime AtUtc, LimitKind Kind, DateTime ResetUtc);
@@ -77,6 +91,7 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
 
     /// <summary>The ticket this session was dispatched for (from its opening prompt or its worktree), if any.</summary>
     public string? TicketId { get; init; }
+    /// <summary>The type (fix, feature, chore...) of <see cref="TicketId"/>'s ticket, if any.</summary>
     public string? TicketType { get; init; }
 
     /// <summary>Its subagents that were handed a ticket of their own (an /allocate handout, M.ORCH-T252): their responses
@@ -90,6 +105,7 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
 
     /// <summary>Its latest tool call in plain words ("Editing Daemon.cs") and when it was made; null before its first.</summary>
     public string? Doing { get; init; }
+    /// <summary>When <see cref="Doing"/>'s tool call was made.</summary>
     public DateTime? DoingAtUtc { get; init; }
 
     /// <summary>Set when the session keeps repeating the same tool call: likely stuck in a loop.</summary>
@@ -102,6 +118,7 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
     [System.Text.Json.Serialization.JsonIgnore]
     public IReadOnlyList<LimitHit> Hits { get; init; } = [];
 
+    /// <summary>The usage of every response at or after <paramref name="utc"/>, from <see cref="Events"/>.</summary>
     public TokenUsage UsageSince(DateTime utc) =>
         Events.Where(e => e.AtUtc >= utc).Aggregate(default(TokenUsage), (sum, e) => sum + e.Usage);
 }
@@ -114,6 +131,10 @@ public sealed record FiledTicket(string TicketId, string? AgentId, DateTime Last
 /// model it ran on as its transcript names it (M.ORCH-T563), null when it names none.</summary>
 public sealed record TicketedSubagent(string AgentId, string TicketId, string? TicketType, string Cwd, IReadOnlyList<UsageEvent> Events, string? Model = null);
 
+/// <summary>One repo as the dashboard shows it: its state, hosted tabs, transcript sessions, open tickets and today's usage.
+/// <c>Name</c> and <c>Path</c> identify the repo; <c>Hosts</c> are its Launcher tabs, <c>Sessions</c> its transcript sessions,
+/// <c>OpenTickets</c> the tickets still open in it, <c>LastActivityUtc</c> its latest write (null when none) and <c>UsageToday</c>
+/// the tokens used today.</summary>
 public sealed record RepoStatus(
     string Name,
     string Path,
@@ -124,10 +145,15 @@ public sealed record RepoStatus(
     DateTime? LastActivityUtc,
     TokenUsage UsageToday);
 
+/// <summary>One look at every repo and the budget around them: what the daemon publishes, and the dashboard and
+/// scheduler read. <c>TakenUtc</c> is when it was taken, <c>Repos</c> each repo's status and <c>Warnings</c> anything that
+/// went wrong building it.</summary>
 public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos, IReadOnlyList<string> Warnings)
 {
+    /// <summary>The Claude budget: the limit learned, what's used and what's left; null before one is known.</summary>
     public Budget.BudgetStatus? Budget { get; init; }
 
+    /// <summary>Where the budget's use stands against its pace line; null when there's no budget to pace.</summary>
     public Budget.Pace? Pace { get; init; }
 
     /// <summary>This 5-hour window's utilization against its pace, for the dashboard's graph; null without a real limit.</summary>
@@ -227,9 +253,14 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>The API key person's money (M.ORCH-T906): its credit, what its CLIs spent and the burndown; null when unread.</summary>
     public Billing.ApiSpend? ApiSpend { get; init; }
 
+    /// <summary>Today's token usage across every repo.</summary>
     public TokenUsage UsageToday => Repos.Aggregate(default(TokenUsage), (sum, r) => sum + r.UsageToday);
+    /// <summary>How many repos are <see cref="RepoState.Working"/>.</summary>
     public int Working => Repos.Count(r => r.State == RepoState.Working);
+    /// <summary>How many repos are <see cref="RepoState.Waiting"/> on you.</summary>
     public int Waiting => Repos.Count(r => r.State == RepoState.Waiting);
+    /// <summary>How many Launcher-hosted tabs are open across every repo.</summary>
     public int LiveHosts => Repos.Sum(r => r.Hosts.Count);
+    /// <summary>How many tickets are open across every repo.</summary>
     public int OpenTickets => Repos.Sum(r => r.OpenTickets.Count);
 }

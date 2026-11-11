@@ -17,7 +17,9 @@ namespace MindAttic.Orchestrator.Status;
 /// </summary>
 public sealed record SnapshotFigures
 {
+    /// <summary>The status stream's message kind these ride on.</summary>
     public const string Kind = "figures";
+    /// <summary>The shape's version, for a subscriber to refuse figures it doesn't understand.</summary>
     public const int Version = 1;
 
     /// <summary>When the snapshot these came from was taken.</summary>
@@ -27,18 +29,43 @@ public sealed record SnapshotFigures
     /// published file has nothing new beyond these figures.</summary>
     public string Rest { get; init; } = "";
 
+    /// <summary><see cref="Snapshot.Budget"/>.</summary>
     public BudgetStatus? Budget { get; init; }
+
+    /// <summary><see cref="Snapshot.Pace"/>.</summary>
     public Pace? Pace { get; init; }
+
+    /// <summary><see cref="Snapshot.Utilization"/>, the 5-hour graph.</summary>
     public Utilization? Utilization { get; init; }
+
+    /// <summary><see cref="Snapshot.ProviderUsage"/>.</summary>
     public IReadOnlyList<ProviderUsage> ProviderUsage { get; init; } = [];
+
+    /// <summary><see cref="Snapshot.Accounts"/>: each per-CLI login's budget and pace.</summary>
     public IReadOnlyList<AccountPace> Accounts { get; init; } = [];
+
+    /// <summary><see cref="Snapshot.Agents"/>: the agents board.</summary>
     public IReadOnlyList<AgentBoardRow> Agents { get; init; } = [];
+
+    /// <summary><see cref="Snapshot.Moves"/>: the moves in flight.</summary>
     public IReadOnlyList<MoveLock> Moves { get; init; } = [];
+
+    /// <summary><see cref="Snapshot.Billing"/>.</summary>
     public BillingStatus? Billing { get; init; }
+
+    /// <summary><see cref="Snapshot.Account"/>.</summary>
     public string? Account { get; init; }
+
+    /// <summary><see cref="Snapshot.GlobalEmail"/>.</summary>
     public string? GlobalEmail { get; init; }
+
+    /// <summary><see cref="Snapshot.OwnLogins"/>.</summary>
     public IReadOnlyDictionary<string, string> OwnLogins { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary><see cref="Snapshot.Warnings"/>.</summary>
     public IReadOnlyList<string> Warnings { get; init; } = [];
+
+    /// <summary>The snapshot's counts, for tiles that show them without the repos.</summary>
     public FigureCounts Counts { get; init; } = new();
 
     /// <summary><paramref name="s"/>'s figures, with the digest of the rest.</summary>
@@ -80,12 +107,18 @@ public sealed record SnapshotFigures
 /// <summary>The snapshot's counts (M.ORCH-T872), for a subscriber that shows them without the repos behind them.</summary>
 public sealed record FigureCounts
 {
+    /// <summary>The repos shown (placeholder entries whose name starts with <c>(</c> don't count).</summary>
     public int Repos { get; init; }
+
+    /// <summary><see cref="Snapshot.Working"/>.</summary>
     public int Working { get; init; }
+
+    /// <summary><see cref="Snapshot.Waiting"/>.</summary>
     public int Waiting { get; init; }
 
     /// <summary>The Launcher tabs open (sessions' slots).</summary>
     public int LiveHosts { get; init; }
+    /// <summary>The tickets open across the repos.</summary>
     public int OpenTickets { get; init; }
 
     /// <summary>The live Claude sessions and allocate background agents on the agents board.</summary>
@@ -94,6 +127,7 @@ public sealed record FigureCounts
     /// <summary>The subagents running under them.</summary>
     public int Subagents { get; init; }
 
+    /// <summary><paramref name="s"/>'s counts.</summary>
     public static FigureCounts Of(Snapshot s) => new()
     {
         Repos = s.Repos.Count(r => !r.Name.StartsWith('(')), Working = s.Working, Waiting = s.Waiting, LiveHosts = s.LiveHosts,

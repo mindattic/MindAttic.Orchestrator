@@ -5,11 +5,30 @@ using Microsoft.Data.Sqlite;
 
 namespace MindAttic.Orchestrator.Budget;
 
-public enum BudgetLevel { Ok, Warn, Over }
+/// <summary>How close a budget's use is to its limit: under the warning line, past it, or at the limit.</summary>
+public enum BudgetLevel
+{
+    /// <summary>Under the warning percent.</summary>
+    Ok,
+    /// <summary>At or past the warning percent, short of the limit.</summary>
+    Warn,
+    /// <summary>At or past the limit itself.</summary>
+    Over,
+}
 
-/// <summary>Where a limit came from: you set it, it was learned from your limit hits, or (5-hour
+/// <summary>Where a limit came from: you set it, it was learned from your limit hits, Claude reported it, or (5-hour
 /// block only) there is none and the block is compared to your busiest one as context.</summary>
-public enum LimitSource { Peak, Learned, Manual, Reported }
+public enum LimitSource
+{
+    /// <summary>No real limit: the 5-hour block is compared to your busiest one, as context only.</summary>
+    Peak,
+    /// <summary>Learned from the tokens used when a limit was actually hit.</summary>
+    Learned,
+    /// <summary>Set by you.</summary>
+    Manual,
+    /// <summary>Sized from the percent Claude itself reports for the window.</summary>
+    Reported,
+}
 
 /// <summary>
 /// A 5-hour usage block, the unit Claude's subscription limits reset on: it starts at the first
@@ -17,9 +36,16 @@ public enum LimitSource { Peak, Learned, Manual, Reported }
 /// </summary>
 public sealed record UsageBlock(DateTime StartUtc, DateTime EndUtc, TokenUsage Usage, DateTime LastActivityUtc)
 {
+    /// <summary>Whether the block is still running at <paramref name="nowUtc"/> (its five hours haven't ended).</summary>
     public bool IsActive(DateTime nowUtc) => nowUtc < EndUtc;
 }
 
+/// <summary>Where usage stands against the 5-hour and weekly budgets. <c>CurrentBlock</c> is the running 5-hour block (null
+/// when none), <c>BlockLimit</c> its limit in uncached tokens (<c>BlockLimitIsPeak</c> when that is only your busiest block, not a
+/// real limit) and <c>BlockPercent</c> the share used. <c>Today</c> and <c>Week</c> are the usage since midnight and since the week
+/// began; <c>WeeklyLimit</c> and <c>WeeklyPercent</c> are the week's limit and share (null when none is known). <c>FreshPerHour</c> is
+/// the block's average burn, <c>ProjectedLimitUtc</c> when that burn reaches the limit (null when it won't) and <c>WarnPercent</c>
+/// the percent the budget warns at.</summary>
 public sealed record BudgetStatus(
     UsageBlock? CurrentBlock,
     long BlockLimit,
@@ -46,6 +72,7 @@ public sealed record BudgetStatus(
     /// <summary>The same, for the 5-hour window.</summary>
     public int FiveHourWarnPercent { get; init; } = WarnPercent;
 
+    /// <summary>Over at a real limit, Warn at a warning line, else Ok; <see cref="WorstPercent"/> and the warn percents decide.</summary>
     public BudgetLevel Level =>
         WorstPercent >= 100 ? BudgetLevel.Over
         : (!BlockLimitIsPeak && BlockPercent >= FiveHourWarnPercent) || (WeeklyPercent ?? 0) >= WeeklyWarnPercent ? BudgetLevel.Warn
@@ -55,7 +82,10 @@ public sealed record BudgetStatus(
     /// quote: the week's own line once the week is the one at or past it, else the 5-hour window's.</summary>
     public int ActiveWarnPercent => (WeeklyPercent ?? 0) >= WeeklyWarnPercent ? WeeklyWarnPercent : FiveHourWarnPercent;
 
+    /// <summary>Where the 5-hour limit came from.</summary>
     public LimitSource BlockLimitSource { get; init; } = LimitSource.Peak;
+
+    /// <summary>Where the weekly limit came from; null when there is none.</summary>
     public LimitSource? WeeklyLimitSource { get; init; }
 
     /// <summary>The 5-hour percent the stop is judged by (M.ORCH-T1110, <see cref="BudgetCalculator.StopPercent"/>): Claude's
@@ -74,6 +104,7 @@ public sealed record BudgetStatus(
 
     /// <summary>Set while you're behind a limit Claude Code actually reported hitting.</summary>
     public DateTime? AtLimitUntilUtc { get; init; }
+    /// <summary>Which limit <see cref="AtLimitUntilUtc"/> is behind; null when not at one.</summary>
     public LimitKind? AtLimitKind { get; init; }
 
     /// <summary>Claude's own weekly report while it's at or past <see cref="WeeklyStopPercent"/>, until its reset:
@@ -91,17 +122,21 @@ public sealed record BudgetStatus(
     /// <summary>Whether Claude's reported week is at the stop line as of <paramref name="nowUtc"/> (its reset not passed).</summary>
     public bool WeeklyStopped(DateTime nowUtc) => WeeklyStop is { } w && w.ResetUtc > nowUtc;
 
+    /// <summary>How the learned limits were worked out (the hits they came from); null when none were learned.</summary>
     public LimitCalibration? Calibration { get; init; }
 
     /// <summary>This window already spent more than the learned limit without hitting a wall, so the
     /// learned value is stale and isn't used until the next hit relearns it.</summary>
     public bool BlockLimitOutdated { get; init; }
+
+    /// <summary>The same for the weekly limit.</summary>
     public bool WeeklyLimitOutdated { get; init; }
 
     /// <summary>Claude reported the week's percent, but the token ledger starts part way through that week (it restarts at a
     /// /login account switch), so no weekly limit was sized from it: the percent stands alone (M.ORCH-T485).</summary>
     public bool WeeklyLedgerPartial { get; init; }
 
+    /// <summary>Uncached tokens left in the 5-hour block before <see cref="BlockLimit"/>; 0 once past it.</summary>
     public long BlockRemaining => Math.Max(0, BlockLimit - (CurrentBlock?.Usage.Fresh ?? 0));
 
     /// <summary>Where <see cref="Week"/> starts counting: the last weekly reset, or 7 days ago.</summary>
@@ -110,6 +145,7 @@ public sealed record BudgetStatus(
     /// <summary>The next weekly reset; null when the week is a rolling 7 days.</summary>
     public DateTime? WeekResetUtc { get; init; }
 
+    /// <summary>Whether no weekly reset is known, so <see cref="Week"/> is a rolling 7 days.</summary>
     public bool WeekIsRolling => WeekResetUtc is null;
 }
 
@@ -121,14 +157,19 @@ public sealed record BudgetStatus(
 /// </summary>
 public static class BudgetCalculator
 {
+    /// <summary>How long a usage block lasts: the 5-hour window.</summary>
     public static readonly TimeSpan BlockLength = TimeSpan.FromHours(5);
+    /// <summary>The span <see cref="BudgetStatus.RecentFreshPerHour"/> averages over.</summary>
     public static readonly TimeSpan RecentWindow = TimeSpan.FromMinutes(30);
+    /// <summary>The span <see cref="BudgetStatus.ControlFreshPerHour"/> averages over.</summary>
     public static readonly TimeSpan ControlWindow = TimeSpan.FromMinutes(10);
 
     // Claude Code's own reset times land on 10-minute marks just before the window's first message
     // (checked against 20 recorded session-limit hits); flooring to the hour put resets up to 50 minutes early.
     private static readonly long BlockGrain = TimeSpan.FromMinutes(10).Ticks;
 
+    /// <summary>Groups <paramref name="events"/> into 5-hour usage blocks, oldest first: each starts at the first response after
+    /// the last block ended, rounded down to 10 minutes.</summary>
     public static IReadOnlyList<UsageBlock> Blocks(IEnumerable<UsageEvent> events)
     {
         var blocks = new List<UsageBlock>();
@@ -380,6 +421,7 @@ public sealed class RateLimitStatusWriter(string? path = null)
     /// <summary>The status's row in <c>state</c>.</summary>
     public const string StateName = "rl-status";
 
+    /// <summary>The status file's path: the one given, else <c>rl-status.json</c> in the user's <c>.claude</c> folder.</summary>
     public string Path { get; } = path ?? System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "rl-status.json");
 
