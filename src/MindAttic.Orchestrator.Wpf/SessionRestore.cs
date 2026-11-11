@@ -152,7 +152,7 @@ internal static class SessionRestore
             if (!frozen && dispatcher is { } d && d.CheckAccess()) Write(reason, clean: false);
             else WriteLast(reason, clean: false);
         }
-        catch (Exception) { }
+        catch (Exception ex) { Log.Warning(ex, "The crash-time session-restore write failed; contained"); }
     }
 
     private static void Write(string reason, bool clean)
@@ -174,7 +174,7 @@ internal static class SessionRestore
             if (last is null) return;
             Store.Save(last with { Reason = reason, Clean = clean, SavedUtc = DateTime.UtcNow });
         }
-        catch (Exception) { }
+        catch (Exception ex) { Log.Warning(ex, "Rewriting the last session-restore state failed; contained"); }
     }
 
     /// <summary>

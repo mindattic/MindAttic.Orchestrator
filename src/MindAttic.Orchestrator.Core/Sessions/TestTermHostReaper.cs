@@ -132,8 +132,8 @@ public static class TestTermHostReaper
                     result.Add(new HostInfo((int)pid, started, o["CommandLine"] as string));
                 }
         }
-        catch (ManagementException) { }
-        catch (COMException) { }
+        catch (ManagementException ex) { OrchestratorLog.For("TestTermHostReaper").Warning(ex, "The WMI TermHost scan failed; contained"); }
+        catch (COMException ex) { OrchestratorLog.For("TestTermHostReaper").Warning(ex, "The WMI TermHost scan failed; contained"); }
         return result;
     }
 }

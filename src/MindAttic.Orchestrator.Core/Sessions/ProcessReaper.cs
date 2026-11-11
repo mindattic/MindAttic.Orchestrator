@@ -169,8 +169,8 @@ public static class ProcessReaper
                 }
             }
         }
-        catch (ManagementException) { }
-        catch (COMException) { }
+        catch (ManagementException ex) { OrchestratorLog.For("ProcessReaper").Warning(ex, "The WMI process snapshot failed; contained"); }
+        catch (COMException ex) { OrchestratorLog.For("ProcessReaper").Warning(ex, "The WMI process snapshot failed; contained"); }
         return result;
     }
 

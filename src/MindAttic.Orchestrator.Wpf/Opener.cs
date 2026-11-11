@@ -65,6 +65,6 @@ public static class Opener
     private static void Start(string exe, string args)
     {
         try { Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = false })?.Dispose(); }
-        catch (Win32Exception) { }
+        catch (Win32Exception ex) { OrchestratorLog.For("Opener").Warning(ex, "Starting {Exe} failed; contained", exe); }
     }
 }

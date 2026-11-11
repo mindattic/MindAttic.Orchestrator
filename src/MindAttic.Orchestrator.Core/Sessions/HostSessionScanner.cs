@@ -100,8 +100,8 @@ public sealed partial class HostSessionScanner(OrchestratorOptions options)
                 }
             }
         }
-        catch (ManagementException) { }
-        catch (COMException) { }
+        catch (ManagementException ex) { OrchestratorLog.For("HostSessionScanner").Warning(ex, "The WMI Launcher command-line scan failed; contained"); }
+        catch (COMException ex) { OrchestratorLog.For("HostSessionScanner").Warning(ex, "The WMI Launcher command-line scan failed; contained"); }
         catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
         return result;
     }
