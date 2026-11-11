@@ -109,16 +109,34 @@ public sealed class ProviderLogReader(string codexSessionsDir, string geminiTmpD
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         if (stream.Length < state.Offset) { state.Offset = 0; state.Events.Clear(); state.Seen.Clear(); state.LastTotal = 0; }
         if (stream.Length == state.Offset) return;
-        stream.Seek(state.Offset, SeekOrigin.Begin);
-        var buffer = new byte[stream.Length - state.Offset];
-        var total = 0;
-        while (total < buffer.Length) { var n = stream.Read(buffer, total, buffer.Length - total); if (n == 0) break; total += n; }
-        var end = buffer.AsSpan(0, total).LastIndexOf((byte)'\n');
-        if (end < 0) return;
-        foreach (var line in Encoding.UTF8.GetString(buffer, 0, end).Split('\n'))
-            if (line.Length > 0) ApplyLine(line, state, sinceUtc, limits);
-        state.Offset += end + 1;
+        // A log can be hundreds of MB the first time it is seen: read it in bounded chunks (M.ORCH-T1607), never one buffer
+        // the size of everything unread plus its decoded string and split lines.
+        var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(ReadChunk);
+        try
+        {
+            while (stream.Length > state.Offset)
+            {
+                stream.Seek(state.Offset, SeekOrigin.Begin);
+                var want = (int)Math.Min(stream.Length - state.Offset, ReadChunk);
+                var total = 0;
+                while (total < want) { var n = stream.Read(buffer, total, want - total); if (n == 0) break; total += n; }
+                var end = buffer.AsSpan(0, total).LastIndexOf((byte)'\n');
+                if (end < 0)
+                {
+                    // A line longer than a whole chunk can't be read whole: skip it rather than stall on it forever.
+                    if (total == ReadChunk) { state.Offset += total; continue; }
+                    return;
+                }
+                foreach (var line in Encoding.UTF8.GetString(buffer, 0, end).Split('\n'))
+                    if (line.Length > 0) ApplyLine(line, state, sinceUtc, limits);
+                state.Offset += end + 1;
+            }
+        }
+        finally { System.Buffers.ArrayPool<byte>.Shared.Return(buffer); }
     }
+
+    /// <summary>The most bytes of a log read and parsed at once (M.ORCH-T1607).</summary>
+    private const int ReadChunk = 4 << 20;
 
     private static void ApplyLine(string line, FileState state, DateTime sinceUtc, Dictionary<(string, string), ProviderLimit> limits)
     {

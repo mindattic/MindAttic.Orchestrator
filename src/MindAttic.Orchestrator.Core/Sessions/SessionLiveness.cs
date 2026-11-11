@@ -239,7 +239,7 @@ public sealed class SessionLiveness(
                     var start = Math.Max(0, seen.Read - 256);
                     stream.Seek(start, SeekOrigin.Begin);
                     using var reader = new StreamReader(stream);
-                    var buffer = new char[1 << 20];
+                    var buffer = new char[1 << 15]; // not 1M chars (2 MB, LOH) per look at every transcript (M.ORCH-T1607)
                     var carry = "";
                     int n;
                     while ((n = reader.Read(buffer, 0, buffer.Length)) > 0)
@@ -248,6 +248,7 @@ public sealed class SessionLiveness(
                         seen.Ids.UnionWith(SessionIdsIn(text));
                         carry = text.Length > 256 ? text[^256..] : text;
                     }
+                    if (Seen.Count > 256 && !Seen.ContainsKey(transcript)) Seen.Clear(); // transcripts of ended sessions never come back (M.ORCH-T1607)
                     Seen[transcript] = (stream.Position, seen.Ids);
                     return seen.Ids;
                 }

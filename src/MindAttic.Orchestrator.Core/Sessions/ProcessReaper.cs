@@ -107,7 +107,11 @@ public static class ProcessReaper
     /// Best effort: a process that exits mid-kill, or WMI being unavailable, is swallowed rather than thrown.</summary>
     public static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc)
     {
-        lock (SeenUnderAgent) return ReapOnce(nowUtc, Snapshot, CommandLineOf, Kill, SeenUnderAgent);
+        lock (SeenUnderAgent)
+        {
+            if (SeenUnderAgent.Count > 50_000) SeenUnderAgent.Clear(); // every process ever seen under an agent, for the whole run (M.ORCH-T1607)
+            return ReapOnce(nowUtc, Snapshot, CommandLineOf, Kill, SeenUnderAgent);
+        }
     }
 
     /// <summary>The scan lists processes without their command lines (reading one means opening the process and
