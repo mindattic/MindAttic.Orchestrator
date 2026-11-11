@@ -19,6 +19,23 @@ public static class TerminalWindows
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Releasing a terminal's windows failed; contained"); }
     }
 
+    /// <summary>Whether <paramref name="root"/> is in a window and every native renderer window under it still exists. Calling
+    /// into a renderer whose window is gone is a native access violation no catch can contain (M.ORCH-T1613).</summary>
+    public static bool AreLive(FrameworkElement root)
+    {
+        try
+        {
+            if (!root.IsLoaded || PresentationSource.FromVisual(root) is null) return false;
+            var hosts = Descendants<HwndHost>(root).ToList();
+            return hosts.Count > 0 && hosts.All(h => h.Handle != IntPtr.Zero);
+        }
+        catch (Exception ex)
+        {
+            OrchestratorLog.For("Terminals").Error(ex, "Checking a terminal's windows failed; contained");
+            return false;
+        }
+    }
+
     private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
     {
         var count = parent is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetChildrenCount(parent) : 0;

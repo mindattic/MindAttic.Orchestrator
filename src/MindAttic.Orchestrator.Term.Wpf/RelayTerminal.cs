@@ -148,7 +148,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
             var points = Math.Clamp(value, (short)3, (short)72);
             if (points == fontPoints) return;
             fontPoints = points;
-            if (!loaded || disposed) return;
+            if (!loaded || disposed || !TerminalWindows.AreLive(Terminal)) return;
             try { Terminal.SetTheme(Theme, FontFamilyName, fontPoints); }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Setting a relay terminal's font failed; contained"); }
         }
@@ -199,6 +199,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
         {
             if (disposed || !ReferenceEquals(connection, Connection) || cols == 0 || rows == 0) return;
             SessionSizeChanged?.Invoke(cols, rows);
+            if (!TerminalWindows.AreLive(Terminal)) return;
             letterboxedAt = owned ? null : new Size(Terminal.ActualWidth, Terminal.ActualHeight);
             if (owned && Terminal.AutoResize) return;
             if (Terminal.Rows != rows || Terminal.Columns != cols || owned)
