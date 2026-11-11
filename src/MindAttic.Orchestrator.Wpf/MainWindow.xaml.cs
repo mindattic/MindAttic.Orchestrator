@@ -850,6 +850,7 @@ public partial class MainWindow : Window
             rename.ToolTip = "Give this tab a name of your own (double-clicking its name does too)";
             rename.Click += (_, _) => OpenRenameTab(pane);
             menu.Items.Add(rename);
+            menu.Items.Add(PaneColorMenu(pane)); // Change Color (M.ORCH-T1594)
             if (pane.IsHosted)
             {
                 var undock = DropdownItem("Undock");
@@ -1003,6 +1004,7 @@ public partial class MainWindow : Window
             tab.RunLauncherCommand);
         Add("User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
             tab.UserSettingsCommand);
+        menu.Items.Add(LoginColorMenu(tab)); // Change Color (M.ORCH-T1594)
         menu.IsOpen = true;
     }
 

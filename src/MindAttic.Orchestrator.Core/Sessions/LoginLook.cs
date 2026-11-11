@@ -74,7 +74,7 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
         // A user CLI's name (M.ORCH-T1257): the name it was given, else the email's part before the @, else, with neither
         // known, its initials badge rather than the literal word "claude".
         var name = alias ?? local ?? badge;
-        var tab = color is { Length: 7 } c && c[0] == '#' && c[1..].All(Uri.IsHexDigit) ? c.ToUpperInvariant() : Palette[Hash(email ?? folder) % Palette.Length];
+        var tab = CleanColor(color) ?? Palette[Hash(email ?? folder) % Palette.Length];
         return new LoginLook(WindowName(name), badge, tab) { Alias = name };
 
         // "Amy Reed" -> "AR"; one word ("Jordan") gives its own first two letters instead.
@@ -129,8 +129,15 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
         {
             if (initials.Trim() is { Length: > 0 } i) file["initials"] = i; else file.Remove("initials");
         }
+        Save(folder, path, file);
+        return For(folder, e).Alias;
+    }
+
+    /// <summary>Writes <paramref name="file"/> to <paramref name="path"/> in <paramref name="folder"/> through a temp of its own
+    /// (M.ORCH-T1155: two writes at once shared one and raced on File.Move). Never throws on an I/O failure.</summary>
+    private static void Save(string folder, string path, JsonObject file)
+    {
         Directory.CreateDirectory(folder);
-        // A temp of its own (M.ORCH-T1155): two SetAlias calls at once shared one and raced on File.Move.
         var temp = $"{path}.{Guid.NewGuid():N}.tmp";
         try
         {
@@ -141,7 +148,62 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
         {
             try { File.Delete(temp); } catch (Exception delEx) when (delEx is IOException or UnauthorizedAccessException) { }
         }
-        return For(folder, e).Alias;
+    }
+
+    /// <summary>The colours Change Color offers (M.ORCH-T1594), each a name and its "#RRGGBB": the logins' own default palette
+    /// first, then a few more.</summary>
+    public static IReadOnlyList<(string Name, string Hex)> Swatches { get; } =
+    [
+        ("Green", "#2E7D32"), ("Blue", "#1565C0"), ("Pink", "#AD1457"), ("Orange", "#EF6C00"), ("Purple", "#6A1B9A"),
+        ("Teal", "#00838F"), ("Red", "#C62828"), ("Olive", "#558B2F"), ("Amber", "#F9A825"), ("Indigo", "#283593"),
+        ("Brown", "#5D4037"), ("Slate", "#455A64"),
+    ];
+
+    /// <summary><paramref name="color"/> as "#RRGGBB" upper-cased; null when it isn't one.</summary>
+    public static string? CleanColor(string? color) =>
+        color?.Trim() is { Length: 7 } c && c[0] == '#' && c[1..].All(Uri.IsHexDigit) ? c.ToUpperInvariant() : null;
+
+    /// <summary>
+    /// Change Color on a person's tab (M.ORCH-T1594): <paramref name="email"/>'s tab colour in <paramref name="folder"/>'s
+    /// <see cref="FileName"/> is <paramref name="color"/> from now on ("#RRGGBB"; null or anything else goes back to the
+    /// colour picked from the email). The file is stamped with the email and keeps everything else it holds, but drops another
+    /// email's look, as <see cref="SetAlias(string, string, string?, string?)"/> does. Returns the colour in force.
+    /// </summary>
+    public static string SetTabColor(string folder, string email, string? color)
+    {
+        var e = email.Trim().ToLowerInvariant();
+        var path = Path.Combine(folder, FileName);
+        JsonObject file;
+        try { file = File.Exists(path) && JsonNode.Parse(File.ReadAllText(path)) is JsonObject o ? o : []; }
+        catch (JsonException) { file = []; }
+        var stored = file["email"] is JsonValue sv && sv.TryGetValue<string>(out var se) && se.Trim().Length > 0 ? se.Trim() : null;
+        if (!Belongs(stored, folder, e))
+        {
+            file.Remove("alias"); file.Remove("initials"); file.Remove("tabColor");
+        }
+        file["email"] = e;
+        if (CleanColor(color) is { } c) file["tabColor"] = c; else file.Remove("tabColor");
+        Save(folder, path, file);
+        return For(folder, e).TabColor;
+    }
+
+    /// <summary>
+    /// <see cref="SetTabColor(string, string, string?)"/> in every folder that's <paramref name="email"/>'s login (its per-CLI
+    /// one, and the global login when that's signed in as it) and in <paramref name="folder"/>; said on the status bus as a roster
+    /// change when <paramref name="db"/> is given, so the daemon and every dashboard re-read their logins' tabs at once, as a
+    /// rename does (M.ORCH-T1438). Returns the folders written.
+    /// </summary>
+    public static IReadOnlyList<string> SetTabColor(AccountDirs dirs, string folder, string email, string? color, Settings.OrchestratorDb? db = null)
+    {
+        var e = AccountDirs.Normalize(email) ?? throw new ArgumentException($"\"{email}\" isn't an email address.", nameof(email));
+        var folders = new List<string>();
+        var own = dirs.For(e);
+        if (Directory.Exists(own.Directory)) folders.Add(own.Directory);
+        if (GlobalEmail(dirs) is { } g && string.Equals(g, e, StringComparison.OrdinalIgnoreCase)) folders.Add(dirs.ClaudeDir);
+        if (!folders.Any(f => string.Equals(Path.GetFullPath(f), Path.GetFullPath(folder), StringComparison.OrdinalIgnoreCase))) folders.Add(folder);
+        foreach (var f in folders) SetTabColor(f, e, color);
+        if (db is not null) Settings.StoreChanges.Note(db, Settings.StoreChanges.Members);
+        return folders;
     }
 
     /// <summary>

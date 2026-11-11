@@ -71,17 +71,29 @@ public sealed record PaneRequest(string Title, string Directory)
     /// so a renamed CLI keeps its name across a pop-out window, reattach and a dashboard restart.</summary>
     public string? CustomName { get; init; }
 
+    /// <summary>The colour the person chose for this one tab with Change Color (M.ORCH-T1594), "#RRGGBB"; null follows its
+    /// login's <see cref="TabColor"/>. Rides in the request like <see cref="CustomName"/>, so it's kept across reattach, a
+    /// pop-out window and a dashboard restart.</summary>
+    public string? CustomColor { get; init; }
+
+    /// <summary>The colour the tab is drawn in: <see cref="CustomColor"/>, else its login's <see cref="TabColor"/>.</summary>
+    [JsonIgnore]
+    public string? EffectiveColor => CustomColor is { Length: > 0 } custom ? custom : TabColor;
+
     /// <summary>This request with its login's name and badge as <paramref name="look"/> has them now (M.ORCH-T1440): a login
     /// renamed, or given a new Prefix, in User Settings after its CLI opened. <see cref="Initials"/> and <see cref="Alias"/> take
     /// the new ones, and <see cref="Title"/>'s badge ("RD: Repo") the new badge; everything else, <see cref="CustomName"/> and
     /// the session it runs included, is kept. The same instance when nothing changes, or when it had no badge to begin with (a
-    /// tab opened without a login's look, another provider's).</summary>
+    /// tab opened without a login's look, another provider's).
+    /// <para>A tab opened in its login's colour takes the login's new one too (M.ORCH-T1594, Change Color on the person's tab);
+    /// one opened with no colour isn't given one, and a <see cref="CustomColor"/> still wins where it's drawn.</para></summary>
     public PaneRequest WithLook(LoginLook look)
     {
-        if (Initials is not { Length: > 0 } was) return this;
+        var color = TabColor is { Length: > 0 } && !string.Equals(TabColor, look.TabColor, StringComparison.OrdinalIgnoreCase) ? look.TabColor : TabColor;
+        if (Initials is not { Length: > 0 } was) return color == TabColor ? this : this with { TabColor = color };
         var title = Rebadged(Title, [was], look.Initials);
-        if (title == Title && look.Initials == Initials && look.Alias == Alias) return this;
-        return this with { Title = title, Initials = look.Initials, Alias = look.Alias };
+        if (title == Title && look.Initials == Initials && look.Alias == Alias && color == TabColor) return this;
+        return this with { Title = title, Initials = look.Initials, Alias = look.Alias, TabColor = color };
     }
 
     /// <summary><paramref name="title"/> with a leading badge from <paramref name="stale"/> ("RD: Repo") swapped for

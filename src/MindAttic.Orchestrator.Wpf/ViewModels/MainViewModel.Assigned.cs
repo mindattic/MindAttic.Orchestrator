@@ -76,6 +76,13 @@ public sealed class UserTicketRowViewModel : ObservableObject
     /// <c>tickets ticket names</c> backfills): what the sidebar card's bold line shows instead of a bare, unlabeled id.</summary>
     public string Caption => TicketsDb.Caption(Id, owner.FriendlyNameOf(Id), Summary);
 
+    /// <summary>The Task List colour (M.ORCH-T1594): the CLI working it, when that tab has a colour of its own, else its person's
+    /// (<see cref="MainViewModel.TaskAccent"/>), both set with Change Color.</summary>
+    public System.Windows.Media.Brush Accent => owner.TaskAccent(Id, null);
+
+    /// <summary>Reads <see cref="Accent"/> again (a Change Color).</summary>
+    internal void RaiseAccent() => Raise(nameof(Accent));
+
     /// <summary>Who it's assigned to ("Unassigned" for nobody), with their room as a status light.</summary>
     public PersonOptionViewModel Assignee => assignee;
 

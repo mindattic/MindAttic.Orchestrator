@@ -90,6 +90,11 @@
             <Button x:Name="SidebarTicketCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="10,8" HorizontalContentAlignment="Stretch"
                     Command="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}"
                     ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
+                <!-- Its Task List colour (M.ORCH-T1594): a bar down its leading edge in the colour of the CLI working it, else
+                     its person's, both set with Change Color on their tab's right-click menu. -->
+                <DockPanel>
+                <mc:MaBadge x:Name="SidebarTicketAccent" DockPanel.Dock="Left" Style="{StaticResource MaTag}" Width="4" MinWidth="0" Padding="0" BorderThickness="0"
+                            Background="{Binding Accent}" VerticalAlignment="Stretch" Margin="{StaticResource SpaceRS}" Focusable="False" />
                 <StackPanel>
                     <TextBlock Text="{Binding Caption}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <DockPanel>
@@ -107,6 +112,7 @@
                                    Visibility="{Binding IsWaiting, Converter={StaticResource Visible}}" />
                     </Grid>
                 </StackPanel>
+                </DockPanel>
             </Button>
         </DataTemplate>
 
@@ -117,6 +123,10 @@
         <DataTemplate x:Key="SidebarActivityTemplate" DataType="{x:Type vm:LiveActivityRowViewModel}">
             <Button x:Name="SidebarActivityCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="10,8" HorizontalContentAlignment="Stretch"
                     Focusable="False" ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
+                <!-- Its CLI's Task List colour (M.ORCH-T1594), as on a ticket card. -->
+                <DockPanel>
+                <mc:MaBadge x:Name="SidebarActivityAccent" DockPanel.Dock="Left" Style="{StaticResource MaTag}" Width="4" MinWidth="0" Padding="0" BorderThickness="0"
+                            Background="{Binding Accent}" VerticalAlignment="Stretch" Margin="{StaticResource SpaceRS}" Focusable="False" />
                 <StackPanel>
                     <TextBlock Text="{Binding Repo}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Summary}" FontSize="12.5" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Margin="{StaticResource RowGutter}"
@@ -125,6 +135,7 @@
                     <TextBlock Text="{Binding OverdueText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}"
                                TextWrapping="Wrap" Margin="{StaticResource RowGutter}" Visibility="{Binding IsOverdue, Converter={StaticResource Visible}}" />
                 </StackPanel>
+                </DockPanel>
             </Button>
         </DataTemplate>
 

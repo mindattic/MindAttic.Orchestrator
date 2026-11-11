@@ -9,9 +9,15 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// same look as a real ticket card, except its title is the session's current "Doing" text instead of a ticket summary and
 /// it has no ticket id to open, so a busy member never reads as having "no active or pending tickets" just because nothing's
 /// been attributed to a ticket yet (the companion M.ORCH-T1520 covers making that attribution a hard requirement instead).</summary>
-public sealed class LiveActivityRowViewModel(AgentBoardRow row) : ObservableObject
+public sealed class LiveActivityRowViewModel(AgentBoardRow row, MainViewModel? owner = null) : ObservableObject
 {
     private AgentBoardRow row = row;
+
+    /// <summary>The Task List colour (M.ORCH-T1594): its CLI's own, else its person's (<see cref="MainViewModel.TaskAccent"/>).</summary>
+    public System.Windows.Media.Brush Accent => owner?.TaskAccent(null, row.SessionId) ?? Palette.Quiet;
+
+    /// <summary>Reads <see cref="Accent"/> again (a Change Color).</summary>
+    internal void RaiseAccent() => Raise(nameof(Accent));
 
     /// <summary>Its live session, the sync key: one card per running session, not per repo (two ticket-less sessions on the
     /// same repo each get their own).</summary>
@@ -67,7 +73,7 @@ public sealed partial class MainViewModel
     {
         var untracked = next.Agents.Where(a => a.TicketId is null && a.State is AgentState.Working or AgentState.HeldByPace).ToList();
         LiveActivity.SyncBy(untracked, a => a.SessionId, r => r.SessionId,
-            a => new LiveActivityRowViewModel(a), (r, a) => r.Update(a));
+            a => new LiveActivityRowViewModel(a, this), (r, a) => r.Update(a));
         Raise(nameof(HasLiveActivity));
         Raise(nameof(HasOpenTickets));
 

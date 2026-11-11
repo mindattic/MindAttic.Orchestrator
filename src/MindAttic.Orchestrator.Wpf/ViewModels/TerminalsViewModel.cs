@@ -40,7 +40,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         Control = new TerminalView { Visibility = Visibility.Hidden };
         ByControl.AddOrUpdate(Control, this);
         System.Windows.Automation.AutomationProperties.SetName(Control, Title);
-        TabBrush = request.TabColor is { } hex && TryBrush(hex) is { } brush ? brush : Brushes.Gray;
+        tabBrush = BrushFor(request);
         Login = request.Login;
         if (hosted) UseRelay();
         else UseLocal();
@@ -140,8 +140,27 @@ public sealed class TerminalPaneViewModel : ObservableObject
         Request = now;
         System.Windows.Automation.AutomationProperties.SetName(Control, Title);
         Raise(nameof(Request)); Raise(nameof(Name)); Raise(nameof(Title)); Raise(nameof(Tooltip));
+        TabBrush = BrushFor(Request);
         return true;
     }
+
+    /// <summary>Change Color on this tab (M.ORCH-T1594): <paramref name="color"/> ("#RRGGBB") is its own colour from now on, or
+    /// null to follow its login's again. Its tab's accent and its Task List rows take it; its id and session are untouched.
+    /// False when nothing changed (the same colour, or not a colour); the caller persists it
+    /// (<see cref="TerminalsViewModel.Recolor"/>).</summary>
+    internal bool Recolor(string? color)
+    {
+        var custom = color is null ? null : LoginLook.CleanColor(color);
+        if (color is not null && custom is null) return false;
+        if (string.Equals(custom, Request.CustomColor, StringComparison.OrdinalIgnoreCase)) return false;
+        Request = Request with { CustomColor = custom };
+        Raise(nameof(Request));
+        TabBrush = BrushFor(Request);
+        return true;
+    }
+
+    private static Brush BrushFor(PaneRequest request) =>
+        request.EffectiveColor is { } hex && TryBrush(hex) is { } brush ? brush : Brushes.Gray;
 
     /// <summary>Gives this tab a fresh position stamp (M.ORCH-T1526, a tab-strip drag): its id and session are
     /// untouched, same as <see cref="Rename"/>/<see cref="ApplyLook"/>; the caller persists it
@@ -152,7 +171,12 @@ public sealed class TerminalPaneViewModel : ObservableObject
         Raise(nameof(Request));
     }
 
-    public Brush TabBrush { get; }
+    /// <summary>The tab's accent: its own Change Color pick, else its login's colour (M.ORCH-T1594, <see cref="PaneRequest.EffectiveColor"/>).</summary>
+    public Brush TabBrush { get => tabBrush; private set => Set(ref tabBrush, value); }
+    private Brush tabBrush;
+
+    /// <summary>The person picked a colour for this tab itself (Change Color), rather than following its login's.</summary>
+    public bool HasCustomColor => Request.CustomColor is { Length: > 0 };
 
     /// <summary>Black on a light <paramref name="background"/>, white on a dark one (by relative luminance).</summary>
     internal static Brush ReadableOn(Brush background)
@@ -1124,6 +1148,26 @@ public sealed class TerminalsViewModel : ObservableObject
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Renaming {Title:l} failed; contained", pane.Title); return false; }
     }
 
+    /// <summary>Change Color on <paramref name="pane"/> (M.ORCH-T1594, <see cref="TerminalPaneViewModel.Recolor"/>): kept by its
+    /// identity as <see cref="Rename"/> keeps a name, in its <see cref="TermPaneFile"/> and the session-restore file
+    /// (<see cref="Changed"/>). False when the colour didn't change. Never throws.</summary>
+    public bool Recolor(TerminalPaneViewModel pane, string? color)
+    {
+        try
+        {
+            if (!pane.Recolor(color)) return false;
+            if (pane.TermId is { Length: > 0 } id && !TermPaneFile.Write(id, pane.Request, PaneDirectory))
+                OrchestratorLog.For("Terminals").Warning("Couldn't save {Title:l}'s new colour to its tab file {Id:l}", pane.Title, id);
+            Changed?.Invoke();
+            Recolored?.Invoke();
+            return true;
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Recolouring {Title:l} failed; contained", pane.Title); return false; }
+    }
+
+    /// <summary>Raised when a tab's colour changed (Change Color, M.ORCH-T1594), so the Task List rows drawn in it follow at once.</summary>
+    public event Action? Recolored;
+
     /// <summary>Its login's look as it is now, for a tab's request (M.ORCH-T1440); null leaves the tab as it is. Reads files, so
     /// <see cref="RefreshLooksAsync"/> calls it off the UI thread. Tests replace it.</summary>
     internal Func<PaneRequest, LoginLook?> LookOf { get; init; } = request => request.CurrentLook();
@@ -1175,7 +1219,7 @@ public sealed class TerminalsViewModel : ObservableObject
             if (pane.TermId is { Length: > 0 } id && !TermPaneFile.Write(id, pane.Request, PaneDirectory))
                 OrchestratorLog.For("Terminals").Warning("Couldn't save {Title:l}'s login look to its tab file {Id:l}", pane.Title, id);
         }
-        if (changed > 0) Changed?.Invoke();
+        if (changed > 0) { Changed?.Invoke(); Recolored?.Invoke(); }
         return changed;
     }
 
