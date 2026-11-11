@@ -216,6 +216,10 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 86400)]
     public double DaemonRestartMaxSeconds { get; set; } = 300;
 
+    [Setting("Database busy retries", Group = "Scheduler", Order = 92, Help = "How many extra times a write retries taking SQL Server's write lock after it stayed busy past its timeout (each wait longer than the last) before the command fails. Raise it when many CLIs and subagents write at once.")]
+    [SettingRange(0, 100)]
+    public int DbBusyRetries { get; set; } = 6;
+
     [Setting("Memory guard", Group = "Memory", Order = 1,
         Help = "When RAM runs low, no new subagents, CLIs or test runs start and running work finishes; lower still, the newest subagent is shed, then tool calls are refused until memory recovers. /pacing off doesn't turn it off.")]
     public bool MemoryGuard { get; set; } = true;
@@ -379,6 +383,7 @@ public sealed class OrchestratorVaultSettings
         DiskCleanupGb = s.DiskCleanupGb,
         DaemonRestartSeconds = s.DaemonRestartSeconds,
         DaemonRestartMaxSeconds = s.DaemonRestartMaxSeconds,
+        DbBusyRetries = s.DbBusyRetries,
         MemoryGuard = s.MemoryGuard,
         MemoryGuardStartPercent = s.MemoryGuardStartPercent,
         MemoryTightGb = s.MemoryTightGb,
@@ -456,6 +461,7 @@ public sealed class OrchestratorVaultSettings
         DiskCleanupGb = DiskCleanupGb,
         DaemonRestartSeconds = DaemonRestartSeconds,
         DaemonRestartMaxSeconds = DaemonRestartMaxSeconds,
+        DbBusyRetries = DbBusyRetries,
         MemoryGuard = MemoryGuard,
         MemoryGuardStartPercent = MemoryGuardStartPercent,
         MemoryTightGb = MemoryTightGb,

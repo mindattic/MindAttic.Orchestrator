@@ -363,6 +363,10 @@ public sealed record OrchestratorSettings
     /// <summary>The longest the daemon waits between restarts of its loop (seconds).</summary>
     public double DaemonRestartMaxSeconds { get; init; } = 300;
 
+    /// <summary>How many extra times a database write retries after SQL Server's write lock stayed busy (M.ORCH-T1620; was the
+    /// const <see cref="OrchestratorDb.BusyRetries"/>, 3 then 6 under M.ORCH-T1617). A live store pushes it into that static.</summary>
+    public int DbBusyRetries { get; init; } = 6;
+
     /// <summary>The memory guard (M.ORCH-T1494): when RAM runs low, new work stops (subagents, CLIs, main-line tests) and running
     /// work finishes, the way the 5-hour and weekly stops scale back; past <see cref="MemoryCriticalGb"/> the newest subagent is
     /// shed, past <see cref="MemoryEmergencyGb"/> tool calls are refused. /pacing off doesn't turn it off; only this does.</summary>

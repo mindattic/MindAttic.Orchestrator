@@ -78,6 +78,7 @@ public sealed class JsonStore
     {
         var readable = TryLoadGlobal(out var g);
         var resolved = OrchestratorVaultSettings.FromJson(merged).ApplyTo(row, g);
+        if (Vault is not null) OrchestratorDb.BusyRetries = Math.Max(0, resolved.DbBusyRetries); // M.ORCH-T1620: the live store's Vault value drives the retry count
         return readable ? resolved : resolved with
         {
             PsstAlertTo = row.PsstAlertTo, PsstAlertToOverride = row.PsstAlertToOverride,
