@@ -194,21 +194,33 @@ internal sealed class CommitProjectsWindow : Window
         UpdateCommit();
         Say($"Committing and pushing {picked.Count} project(s)…");
         int pushed = 0, nothing = 0, failed = 0;
-        foreach (var project in picked)
+        try
         {
-            var r = await Task.Run(() => ProjectCommit.CommitAndPush(project, text));
-            switch (r.Outcome)
+            foreach (var project in picked)
             {
-                case ProjectCommitOutcome.Pushed: pushed++; break;
-                case ProjectCommitOutcome.NothingToDo: nothing++; break;
-                default: failed++; break;
+                ProjectCommitResult r;
+                try { r = await Task.Run(() => ProjectCommit.CommitAndPush(project, text)); }
+                catch (Exception ex) when (ex is not OutOfMemoryException)
+                {
+                    OrchestratorLog.For("Dashboard").Error(ex, "Commit and push {Project:l} failed; contained", project.Name);
+                    r = new(project, ProjectCommitOutcome.Failed, ex.Message);
+                }
+                switch (r.Outcome)
+                {
+                    case ProjectCommitOutcome.Pushed: pushed++; break;
+                    case ProjectCommitOutcome.NothingToDo: nothing++; break;
+                    default: failed++; break;
+                }
+                Say($"  {project.Name}: {r.Detail}");
+                OrchestratorLog.For("Dashboard").Information("Commit and push {Project:l}: {Outcome} {Detail:l}", project.Name, r.Outcome, r.Detail);
             }
-            Say($"  {project.Name}: {r.Detail}");
-            OrchestratorLog.For("Dashboard").Information("Commit and push {Project:l}: {Outcome} {Detail:l}", project.Name, r.Outcome, r.Detail);
+            Say($"Done: {pushed} pushed, {nothing} with nothing to do, {failed} failed.");
         }
-        Say($"Done: {pushed} pushed, {nothing} with nothing to do, {failed} failed.");
-        busy = false;
-        UpdateCommit();
+        finally
+        {
+            busy = false;
+            UpdateCommit();
+        }
         await ReadChangesAfterRunAsync();
     }
 
