@@ -343,6 +343,7 @@ public sealed partial class MainViewModel : ObservableObject
             var clock = Stopwatch.StartNew();
             var dirs = OwnLoginDirs();
             IReadOnlyList<Member> readMembers = [];
+            (Snapshot, SchedulePlan, IReadOnlyDictionary<string, string>)? planned = null;
             var (next, tabs, nextOrgs, diskFree, ramPercent, allocatePausedNow) = await BuiltAfterChanges(() => Task.Run(() =>
             {
                 var built = aggregator.Refresh();
@@ -365,8 +366,10 @@ public sealed partial class MainViewModel : ObservableObject
                 var ramUtilizationPercent = MachineHealth.RamUtilizationPercent();
                 // The master switch for /allocate (M.ORCH-T1491): only a setting that was read and is off shows the banner.
                 var paused = store.TryLoadSettings(out var settingsNow) && !settingsNow.Allocate;
+                planned = PlanOffUi(built);
                 return (built, LoginScope.Tabs(built, dirs, members, hasKey), orgDirectory, diskFreeGb, ramUtilizationPercent, paused);
             }), () => localChanges);
+            precomputedPlan = planned;
             ApplyTabs(next, tabs, nextOrgs);
             // The memory guard's level (M.ORCH-T1498): the daemon's, stepped, as the snapshot's pace carries it; else this process's own.
             SetHostStats(diskFree, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow);

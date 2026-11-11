@@ -674,8 +674,8 @@ public sealed partial class MainViewModel
     {
         if (plan is { } current)
         {
-            var settings = store.LoadSettings();
-            foreach (var line in await Task.Run(() => allocate.Tick(current, next, settings, DateTime.UtcNow)))
+            // The settings read is off the UI thread too (M.ORCH-T1596).
+            foreach (var line in await Task.Run(() => allocate.Tick(current, next, store.LoadSettings(), DateTime.UtcNow)))
             {
                 QueueMessage = line;
                 queueLog.Information("{Line:l}", line);
@@ -704,15 +704,31 @@ public sealed partial class MainViewModel
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { }
     }
 
+    /// <summary>The plan a refresh built off the UI thread for <c>Snapshot</c> (M.ORCH-T1596), used once by <see cref="ApplyPlan"/>.</summary>
+    private (Snapshot Snapshot, SchedulePlan Plan, IReadOnlyDictionary<string, string> Delegations)? precomputedPlan;
+
+    /// <summary>Plans <paramref name="snapshot"/> and reads the re-delegations: the disk reads and the scheduling pass that
+    /// <see cref="ApplyPlan"/> would otherwise do on the UI thread. Runs on the pool; null if anything fails (ApplyPlan then plans itself).</summary>
+    private (Snapshot, SchedulePlan, IReadOnlyDictionary<string, string>)? PlanOffUi(Snapshot snapshot)
+    {
+        try { return (snapshot, Scheduler.Plan(snapshot, store.LoadSettings(), store.LoadAssignments()), Redelegation.Load(store)); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { return null; }
+    }
+
     private void ApplyPlan(Snapshot next)
     {
         if (!IsGlobalTab) { Root.ApplyPlan(next); return; }
         // Planned from the whole workspace, every org's (M.ORCH-T655), with any priority just bumped on the tab's own view.
         if (workspace is { } w) next = workspace = ReferenceEquals(w.Priorities, next.Priorities) ? w : w with { Priorities = next.Priorities };
-        plan = Scheduler.Plan(next, store.LoadSettings(), store.LoadAssignments());
+        // Typing in a CLI tab lagged (M.ORCH-T1596): the plan and the two state reads under it ran here, on the UI thread, on
+        // every refresh. The refresh now plans off the UI thread (PlanOffUi) and hands the result over; a snapshot it didn't
+        // plan (a click's replan) is planned here as before.
+        var (planned, delegations) = precomputedPlan is { } pre && ReferenceEquals(pre.Snapshot, next)
+            ? (pre.Plan, pre.Delegations)
+            : (Scheduler.Plan(next, store.LoadSettings(), store.LoadAssignments()), Redelegation.Load(store));
+        precomputedPlan = null;
+        plan = planned;
         var proposals = plan.Proposals.ToDictionary(p => p.Item.Id, StringComparer.Ordinal);
-        // Which tickets weekly-aware pacing sent to another login, and why (M.ORCH-T666).
-        var delegations = Redelegation.Load(store);
         // Each org's queue: every unclaimed ticket, and only its own CLIs' claims; each row keeps its rank in the whole queue.
         var all = next;
         var ranks = new Dictionary<string, int>(StringComparer.Ordinal);
