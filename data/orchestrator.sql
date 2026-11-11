@@ -8,7 +8,7 @@ INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, 
 
 -- members
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('honey@mindattic.com', 'Honey', 'member', 'premium', 'active', 1792771886.805, 1793634549.737462);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1794418878.2423313);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'member', 'premium', 'active', 1792771886.302, 1794421918.6545963);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1794418324.7070315);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1794418299.1328259);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'member', 'premium', 'active', 1792771885.882, 1794418324.7070315);
@@ -31857,32 +31857,32 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3b5866ab9797423f1ef2f64bb121fa20b8c87b6c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "4cce0af30c2cbc07a4c72ad79eb53952d3e220e2",
+    "Tested": "2357537eb351710949cd293dd9c5c6f27727402c",
     "Green": "679864e916d178065864b925544b5a6cc5631c04"
   },
   "MindAttic.Psst": {
-    "Tested": "0a95c5bfa24f19920b62e86c29cbbb8123ae0afd",
-    "Green": "0a95c5bfa24f19920b62e86c29cbbb8123ae0afd"
+    "Tested": "e648834540cd961887caf282a46179ddc1699593",
+    "Green": "e648834540cd961887caf282a46179ddc1699593"
   },
   "MindAttic.Telemetry": {
-    "Tested": "2bcb1d631d0830ce2942f2d3fb79db924dcdabb1",
-    "Green": "2bcb1d631d0830ce2942f2d3fb79db924dcdabb1"
+    "Tested": "d9290cf7a7c919b1832fdb6012c26379cdcd2d7b",
+    "Green": "d9290cf7a7c919b1832fdb6012c26379cdcd2d7b"
   },
   "MindAttic.Tickets": {
-    "Tested": "a4b035cbb4cca870691c43afd8526d3d84424764",
-    "Green": "a4b035cbb4cca870691c43afd8526d3d84424764"
+    "Tested": "b74fbd393fd19b98e64e39a70f2bfc985489117f",
+    "Green": "b74fbd393fd19b98e64e39a70f2bfc985489117f"
   },
   "MindAttic.Vault": {
-    "Tested": "5ad1233ce124f41734717ea8a7c6cced58f3ac92",
+    "Tested": "7fb310038a28c4101d366b04a3faa0d1476830c0",
     "Green": "8111a0ea2faf68b1576f27ab083f1a30991d8b62"
   },
   "OpenCredentials": {
-    "Tested": "60d29520ff660bba8a68f27d694e2a0be5ed81cb",
-    "Green": "60d29520ff660bba8a68f27d694e2a0be5ed81cb"
+    "Tested": "8e363a3263fe7c2465a1a5b817ce00d2c659c0e0",
+    "Green": "8e363a3263fe7c2465a1a5b817ce00d2c659c0e0"
   },
   "ProcessLogger": {
-    "Tested": "b91bc6f58444d74fbe0c7a9e2aaf3b262776694d",
-    "Green": "b91bc6f58444d74fbe0c7a9e2aaf3b262776694d"
+    "Tested": "dec97397e443629f1dc8f3a3f936606f5a003739",
+    "Green": "dec97397e443629f1dc8f3a3f936606f5a003739"
   },
   "TaxRateCollector": {
     "Tested": "349e7b99c37e42fabdfc2384ca8bcc140bde04ef",
@@ -32132,7 +32132,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "94807c45a60b2f5183cf9725120bcd84828abf39",
+    "Tested": "2357537eb351710949cd293dd9c5c6f27727402c",
     "Green": "62cae9a6f534ec6d4b0b0113cc92c35d3731117d"
   },
   "ipt392tmp": {
