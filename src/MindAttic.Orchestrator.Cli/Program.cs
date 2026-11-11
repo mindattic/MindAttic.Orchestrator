@@ -228,6 +228,7 @@ internal static class CliApp
                 m.AddCommand<MachineKitCommand>("kit").WithDescription("Write only the host kit to <folder>.");
                 m.AddCommand<MachineTicketsCommand>("tickets").WithDescription("On a client: run a tickets command on the host (tickets -- <args>); the tickets shim on this PC does it for you.");
             });
+            config.AddCommand<BranchesCommand>("branches").WithDescription("On the remote host: each origin/work/* branch and its isolated build (M.ORCH-T1501, off unless the Vault's RemoteBranchBuilds); --ready lists the ones built clean and waiting for a local test run, --json as data.");
             // Let crashes reach the catch below so they're logged, not just printed.
             config.PropagateExceptions();
         });

@@ -151,6 +151,11 @@ public sealed class LampSettingsTests
             s => s.UtilizationMinSpacingSeconds),
         Case("syncTimeoutSeconds", s => s with { SyncTimeoutSeconds = 120 }, 120d, v => v.SyncTimeoutSeconds = 300, 300d, s => s.SyncTimeoutSeconds),
         Case("refreshMinGapSeconds", s => s with { RefreshMinGapSeconds = 10 }, 10d, v => v.RefreshMinGapSeconds = 5, 5d, s => s.RefreshMinGapSeconds),
+        // The remote host's work-branch builds (M.ORCH-T1501)
+        Case("remoteBranchBuilds", s => s with { RemoteBranchBuilds = true }, true, v => v.RemoteBranchBuilds = false, false, s => s.RemoteBranchBuilds),
+        Case("branchBuildsMaxRunning", s => s with { BranchBuildsMaxRunning = 2 }, 2d, v => v.BranchBuildsMaxRunning = 4, 4d, s => s.BranchBuildsMaxRunning),
+        Case("branchBuildsTimeoutMinutes", s => s with { BranchBuildsTimeoutMinutes = 30 }, 30d, v => v.BranchBuildsTimeoutMinutes = 45, 45d, s => s.BranchBuildsTimeoutMinutes),
+        Case("branchBuildsCheckSeconds", s => s with { BranchBuildsCheckSeconds = 60 }, 60d, v => v.BranchBuildsCheckSeconds = 120, 120d, s => s.BranchBuildsCheckSeconds),
         Case("tabBlinkMinSpacingMs", s => s with { TabBlinkMinSpacingMs = 320 }, 320d, v => v.TabBlinkMinSpacingMs = 500, 500d, s => s.TabBlinkMinSpacingMs),
         Case("projectsRefreshMinutes", s => s with { ProjectsRefreshMinutes = 10 }, 10d, v => v.ProjectsRefreshMinutes = 30, 30d, s => s.ProjectsRefreshMinutes),
         Case("projectChangesRefreshSeconds", s => s with { ProjectChangesRefreshSeconds = 30 }, 30d, v => v.ProjectChangesRefreshSeconds = 60, 60d,

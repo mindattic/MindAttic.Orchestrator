@@ -107,6 +107,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             MaxRunning = 1,
             Held = () => Activity.MemoryGuard.Shared.Last is { Level: > Activity.MemoryLevel.Ok } m ? $"RAM is low ({m.Reading.Describe()})" : null,
         };
+        // The remote host's work-branch builds (M.ORCH-T1501), off unless RemoteBranchBuilds; one daemon builds them.
+        using var branchLease = new DispatchLease(store.Directory, BranchBuilds.LeaseName, store.Db);
+        var branchBuilds = new BranchBuilds(store)
+        {
+            Held = () => Activity.MemoryGuard.Shared.Last is { Level: > Activity.MemoryLevel.Ok } m ? $"RAM is low ({m.Reading.Describe()})" : null,
+        };
         var reminders = new Reminders.ReminderSender(store, new Reminders.PsstClient(Runner), (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent));
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
@@ -447,6 +453,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 tick.Lap("who works the tickets");
                 RunMainlineTests(mainTests, testsLease, snapshot, s, options.WorkspaceRoot);
                 tick.Lap("main-line tests");
+                // Off (the default): nothing; turned off mid-build, the builds running are still recorded, none start.
+                if (s.RemoteBranchBuilds || branchBuilds.Running.Count > 0)
+                    RunBranchBuilds(branchBuilds, s.RemoteBranchBuilds && branchLease.TryAcquire(), snapshot, s);
+                tick.Lap("branch builds");
                 // Keyed without its numbers: a hold whose percent ticks 93 → 94 is the same hold, not a new line (found live: 46 lines in 2h).
                 var pausedKey = allocate.Paused is null ? null : Digits().Replace(allocate.Paused, "#");
                 if (allocate.On && pausedKey != lastPaused)
@@ -551,6 +561,26 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException)
         {
             Say(LogEventLevel.Warning, $"main tests: {ex.Message}");
+        }
+    }
+
+    /// <summary>Builds each repo's <c>origin/work/*</c> branches that moved, each in its own worktree, and records the builds that
+    /// finished (<see cref="BranchBuilds"/>, M.ORCH-T1501). Only <paramref name="mayStart"/> (setting on, lease held) starts one.</summary>
+    private void RunBranchBuilds(BranchBuilds builds, bool mayStart, Snapshot snapshot, OrchestratorSettings s)
+    {
+        try
+        {
+            var repos = snapshot.Repos.Where(r => r.Path.Length > 0 && !r.Name.StartsWith('('))
+                .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase).Select(g => (g.Key, g.First().Path));
+            builds.MaxRunning = (int)Math.Clamp(double.IsFinite(s.BranchBuildsMaxRunning) ? s.BranchBuildsMaxRunning : 1, 1, 32);
+            builds.Timeout = OrchestratorSettings.SecondsSpan(s.BranchBuildsTimeoutMinutes * 60, 60);
+            builds.CheckEvery = OrchestratorSettings.SecondsSpan(s.BranchBuildsCheckSeconds, 5);
+            foreach (var line in builds.Tick(repos, s.WorktreeRoot, DateTime.UtcNow, mayStart))
+                Say(line.Warn ? LogEventLevel.Warning : LogEventLevel.Information, line.Text);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException)
+        {
+            Say(LogEventLevel.Warning, $"branch builds: {ex.Message}");
         }
     }
 

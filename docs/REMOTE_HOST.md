@@ -102,6 +102,11 @@ or a local Claude CLI file on the PC lands in the host's database at once, and e
 - **Work:** type `/allocate` in a CLI on the host (through the Team Wall or Remote Desktop).
 - **Restarts:** the VM signs itself in, and Scheduler starts the daemon, which starts the gateway. Your PC reconnects on its
   own.
+- **Work branches (in progress, off by default; M.ORCH-T1501):** with the Vault setting *Build work branches (remote host)*
+  on, the host's daemon builds each `origin/work/*` branch in a worktree of its own (at most *Work-branch builds at once*),
+  apart from the others and from main, and `orchestrator branches` shows each one; `--ready` lists the ones built clean and
+  waiting for a local test run (`--json` for scripts). Branches exist only on the host: your PC stays on main. The local
+  test run, its sign-off and the merge to main are still to come.
 - **Back to one machine:** `orchestrator machine standalone` (and `orchestrator db migrate` to go back to SQL Server).
 
 ## Limits

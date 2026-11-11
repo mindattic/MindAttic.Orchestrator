@@ -557,6 +557,26 @@ public sealed record OrchestratorSettings
 
     public const double DefaultMainTestsLockRetrySeconds = 30;
 
+    /// <summary>Off by default (M.ORCH-T1501): on the remote host, build each <c>origin/work/*</c> branch in a worktree of its own
+    /// and queue the ones that build for the user's local test run (<see cref="Scheduling.BranchBuilds"/>). Off, nothing changes:
+    /// work lands on main as it always has.</summary>
+    public bool RemoteBranchBuilds { get; init; }
+
+    /// <summary>Work-branch builds at once across every repo (M.ORCH-T1501): the host's extra RAM decides it.</summary>
+    public double BranchBuildsMaxRunning { get; init; } = DefaultBranchBuildsMaxRunning;
+
+    public const double DefaultBranchBuildsMaxRunning = 2;
+
+    /// <summary>Minutes one work-branch build may run before it's stopped and recorded failed (M.ORCH-T1501).</summary>
+    public double BranchBuildsTimeoutMinutes { get; init; } = DefaultBranchBuildsTimeoutMinutes;
+
+    public const double DefaultBranchBuildsTimeoutMinutes = 30;
+
+    /// <summary>Seconds between the daemon's looks at the work branches for heads that moved (M.ORCH-T1501).</summary>
+    public double BranchBuildsCheckSeconds { get; init; } = DefaultBranchBuildsCheckSeconds;
+
+    public const double DefaultBranchBuildsCheckSeconds = 60;
+
     /// <summary>The max server memory (MB) the daemon keeps localhost's SQL Server at (M.ORCH-T1621): 0 (the default) leaves SQL
     /// Server's own setting alone; any other value under <see cref="SqlServerMaxMemoryFloorMb"/> is raised to it, never applied
     /// lower, since 1024 MB crashed the instance (error 17300) and only an admin restart in minimal mode recovered it.</summary>

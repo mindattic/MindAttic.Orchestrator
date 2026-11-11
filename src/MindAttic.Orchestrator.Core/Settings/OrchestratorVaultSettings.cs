@@ -280,6 +280,25 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 3600)]
     public double RefreshMinGapSeconds { get; set; } = 10;
 
+    [Setting("Build work branches (remote host)", Group = "Scheduler", Order = 110,
+        Help = "Off (the default): work lands on main as always. On, for the remote host: each origin/work/* branch is built in a worktree of its own, apart from the others, and one that builds is queued for your PC's local test run (orchestrator branches). Your PC never sees a branch.")]
+    public bool RemoteBranchBuilds { get; set; }
+
+    [Setting("Work-branch builds at once", Group = "Scheduler", Order = 111,
+        Help = "How many work branches the host builds at the same time, across every repo. Each is a dotnet build of its own.")]
+    [SettingRange(1, 32)]
+    public double BranchBuildsMaxRunning { get; set; } = OrchestratorSettings.DefaultBranchBuildsMaxRunning;
+
+    [Setting("Work-branch build timeout (minutes)", Group = "Scheduler", Order = 112,
+        Help = "Minutes one work-branch build may run before it's stopped and recorded as failed; the branch's next push builds it again.")]
+    [SettingRange(1, 1440)]
+    public double BranchBuildsTimeoutMinutes { get; set; } = OrchestratorSettings.DefaultBranchBuildsTimeoutMinutes;
+
+    [Setting("Look for moved work branches every (s)", Group = "Scheduler", Order = 113,
+        Help = "Seconds between the daemon's looks at each repo's work branches for a head that moved since its last build.")]
+    [SettingRange(5, 86400)]
+    public double BranchBuildsCheckSeconds { get; set; } = OrchestratorSettings.DefaultBranchBuildsCheckSeconds;
+
     [Setting("Database busy retries", Group = "Scheduler", Order = 92, Help = "How many extra times a write retries taking SQL Server's write lock after it stayed busy past its timeout (each wait longer than the last) before the command fails. Raise it when many CLIs and subagents write at once.")]
     [SettingRange(0, 100)]
     public int DbBusyRetries { get; set; } = 6;
@@ -592,6 +611,10 @@ public sealed class OrchestratorVaultSettings
         UtilizationMinSpacingSeconds = s.UtilizationMinSpacingSeconds,
         SyncTimeoutSeconds = s.SyncTimeoutSeconds,
         RefreshMinGapSeconds = s.RefreshMinGapSeconds,
+        RemoteBranchBuilds = s.RemoteBranchBuilds,
+        BranchBuildsMaxRunning = s.BranchBuildsMaxRunning,
+        BranchBuildsTimeoutMinutes = s.BranchBuildsTimeoutMinutes,
+        BranchBuildsCheckSeconds = s.BranchBuildsCheckSeconds,
         TabBlinkMinSpacingMs = s.TabBlinkMinSpacingMs,
         ProjectsRefreshMinutes = s.ProjectsRefreshMinutes,
         ProjectChangesRefreshSeconds = s.ProjectChangesRefreshSeconds,
@@ -707,6 +730,10 @@ public sealed class OrchestratorVaultSettings
         UtilizationMinSpacingSeconds = UtilizationMinSpacingSeconds,
         SyncTimeoutSeconds = SyncTimeoutSeconds,
         RefreshMinGapSeconds = RefreshMinGapSeconds,
+        RemoteBranchBuilds = RemoteBranchBuilds,
+        BranchBuildsMaxRunning = BranchBuildsMaxRunning,
+        BranchBuildsTimeoutMinutes = BranchBuildsTimeoutMinutes,
+        BranchBuildsCheckSeconds = BranchBuildsCheckSeconds,
         TabBlinkMinSpacingMs = TabBlinkMinSpacingMs,
         ProjectsRefreshMinutes = ProjectsRefreshMinutes,
         ProjectChangesRefreshSeconds = ProjectChangesRefreshSeconds,
