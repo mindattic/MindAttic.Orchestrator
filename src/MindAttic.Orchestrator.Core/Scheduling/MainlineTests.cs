@@ -65,7 +65,41 @@ public sealed partial class MainlineTests(JsonStore store)
     internal Func<string, string> MainlineOf { get; init; } = Dispatcher.Mainline;
 
     /// <summary>Runs the suite of the solution at the given path; a test's stands in for <c>dotnet test</c>.</summary>
-    internal Func<string, SuiteResult> RunSuite { get; init; } = solution => Dotnet(ProcessRunner.Default, solution, SuiteTimeout);
+    internal Func<string, SuiteResult>? RunSuite { get; init; }
+
+    /// <summary>Retries after a build fails on a file another process held, and the wait before each (Vault settings, M.ORCH-T1632;
+    /// the daemon sets them from its settings before each tick).</summary>
+    internal int LockRetries { get; set; } = (int)OrchestratorSettings.DefaultMainTestsLockRetries;
+
+    internal TimeSpan LockRetryDelay { get; set; } = TimeSpan.FromSeconds(OrchestratorSettings.DefaultMainTestsLockRetrySeconds);
+
+    private SuiteResult DefaultRunSuite(string solution) =>
+        Dotnet(ProcessRunner.Default, solution, SuiteTimeout, LockRetryDelay, LockRetries, EndLeftoverProcesses);
+
+    /// <summary>Ends processes whose program file lives under <paramref name="tree"/> (a testhost or TermHost a previous run left, which
+    /// holds the DLLs the build copies over); every other process, and this one, is left alone (M.ORCH-T1632).</summary>
+    internal static int EndLeftoverProcesses(string tree)
+    {
+        string root;
+        try { root = Path.GetFullPath(tree).TrimEnd('\\', '/') + Path.DirectorySeparatorChar; }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return 0; }
+        var ended = 0;
+        foreach (var p in System.Diagnostics.Process.GetProcesses())
+            using (p)
+            {
+                try
+                {
+                    if (p.Id == Environment.ProcessId) continue;
+                    var image = p.MainModule?.FileName;
+                    if (image is null || !image.StartsWith(root, StringComparison.OrdinalIgnoreCase)) continue;
+                    p.Kill(true);
+                    p.WaitForExit(5000);
+                    ended++;
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+            }
+        return ended;
+    }
 
     /// <summary>Where a run goes: its own long-running task; a test's runs it inline.</summary>
     internal Func<Func<SuiteResult>, Task<SuiteResult>> Spawn { get; init; } =
@@ -177,7 +211,7 @@ public sealed partial class MainlineTests(JsonStore store)
                 var tree = Path.Combine(worktreeRoot, name, WorktreeName);
                 running[name] = new Run(name, path, mainline, head, since, Spawn(() =>
                     Prepare(path, tree, head) is { } error ? new SuiteResult(false, [], new HashSet<string>(), error)
-                        : RunSuite(Path.Combine(tree, solution))));
+                        : (RunSuite ?? DefaultRunSuite)(Path.Combine(tree, solution))));
                 lines.Add(new Line(false, $"main tests: running {name}'s full suite on {mainline} at {Short(head)}"));
             }
         }
@@ -437,22 +471,22 @@ public sealed partial class MainlineTests(JsonStore store)
     /// <c>dotnet test</c> on <paramref name="solution"/>, read from its TRX results. Build servers are off: one left running
     /// would hold the output pipes open (and the run "timed out"). No results and a failed exit is a build that failed.
     /// </summary>
-    internal static SuiteResult Dotnet(IProcessRunner runner, string solution, TimeSpan timeout, TimeSpan? retryDelay = null)
+    internal static SuiteResult Dotnet(IProcessRunner runner, string solution, TimeSpan timeout, TimeSpan? retryDelay = null, int retries = 2, Func<string, int>? endLeftovers = null)
     {
         // A copy that fails because another process holds the file (MSB3027/MSB3021: a leftover testhost, antivirus, an
         // overlapping build) is the machine, not main: retried, and if it persists the run isn't completed, so no
         // "Fails on main: the build" ticket is filed for it (M.ORCH-T600).
         SuiteResult result = null!;
-        for (var attempt = 0; attempt <= FileLockRetries; attempt++)
+        var tree = Path.GetDirectoryName(Path.GetFullPath(solution))!;
+        for (var attempt = 0; attempt <= retries; attempt++)
         {
             if (attempt > 0) Thread.Sleep(retryDelay ?? TimeSpan.FromSeconds(30));
+            endLeftovers?.Invoke(tree);
             result = DotnetOnce(runner, solution, timeout);
             if (!(result.Completed && result.Failed.Count == 1 && result.Failed[0].Test == BuildName && IsFileLock(result.Failed[0].Message))) return result;
         }
-        return new SuiteResult(false, [], new HashSet<string>(), $"the build couldn't copy a file another process held, after {FileLockRetries + 1} tries: {result.Failed[0].Message}");
+        return new SuiteResult(false, [], new HashSet<string>(), $"the build couldn't copy a file another process held, after {retries + 1} tries: {result.Failed[0].Message}");
     }
-
-    internal const int FileLockRetries = 2;
 
     /// <summary>Whether a build's errors are a file another process holds, not a fault in the code.</summary>
     internal static bool IsFileLock(string errors) =>

@@ -143,6 +143,8 @@ public sealed class LampSettingsTests
         Case("launcherRespawnSeconds", s => s with { LauncherRespawnSeconds = 30 }, 30d, v => v.LauncherRespawnSeconds = 60, 60d, s => s.LauncherRespawnSeconds),
         Case("meterStatesSeconds", s => s with { MeterStatesSeconds = 30 }, 30d, v => v.MeterStatesSeconds = 15, 15d, s => s.MeterStatesSeconds),
         // The rest of the sweep (M.ORCH-T1624)
+        Case("mainTestsLockRetries", s => s with { MainTestsLockRetries = 2 }, 2d, v => v.MainTestsLockRetries = 4, 4d, s => s.MainTestsLockRetries),
+        Case("mainTestsLockRetrySeconds", s => s with { MainTestsLockRetrySeconds = 30 }, 30d, v => v.MainTestsLockRetrySeconds = 10, 10d, s => s.MainTestsLockRetrySeconds),
         Case("testTermHostSweepMinutes", s => s with { TestTermHostSweepMinutes = 5 }, 5d, v => v.TestTermHostSweepMinutes = 10, 10d, s => s.TestTermHostSweepMinutes),
         Case("orgReachSpacingMinutes", s => s with { OrgReachSpacingMinutes = 5 }, 5d, v => v.OrgReachSpacingMinutes = 15, 15d, s => s.OrgReachSpacingMinutes),
         Case("utilizationMinSpacingSeconds", s => s with { UtilizationMinSpacingSeconds = 60 }, 60d, v => v.UtilizationMinSpacingSeconds = 30, 30d,

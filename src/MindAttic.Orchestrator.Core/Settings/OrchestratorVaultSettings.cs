@@ -413,6 +413,16 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 10080)]
     public double TestTermHostMaxMinutes { get; set; } = OrchestratorSettings.DefaultTestTermHostMaxMinutes;
 
+    [Setting("Main-line test build lock retries", Group = "Dashboard", Order = 92,
+        Help = "How many more times a main-line suite's build is tried when it fails copying a file another process held (MSB3027). Before each try, leftover test processes running from that worktree are ended; nothing outside it is touched.")]
+    [SettingRange(0, 10)]
+    public double MainTestsLockRetries { get; set; } = OrchestratorSettings.DefaultMainTestsLockRetries;
+
+    [Setting("Main-line test build lock retry wait (seconds)", Group = "Dashboard", Order = 93,
+        Help = "Seconds waited before each retry of a main-line suite's build that failed on a locked file.")]
+    [SettingRange(0, 600)]
+    public double MainTestsLockRetrySeconds { get; set; } = OrchestratorSettings.DefaultMainTestsLockRetrySeconds;
+
     [Setting("Ended Launcher tab lifetime (minutes)", Group = "Dashboard", Order = 7,
         Help = "How long an ended Launcher menu tab stays; 0 (the default) closes it at once.")]
     [SettingRange(0, 10080)]
@@ -605,6 +615,8 @@ public sealed class OrchestratorVaultSettings
         AutoOpenLaunchers = s.AutoOpenLaunchers,
         EndedTabMinutes = s.EndedTabMinutes,
         TestTermHostMaxMinutes = s.TestTermHostMaxMinutes,
+        MainTestsLockRetries = s.MainTestsLockRetries,
+        MainTestsLockRetrySeconds = s.MainTestsLockRetrySeconds,
         EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
         WorkspaceRoot = WorkspaceOverrideOf(s),
         WorktreeRoot = s.WorktreeRoot,
@@ -717,6 +729,8 @@ public sealed class OrchestratorVaultSettings
         AutoOpenLaunchers = AutoOpenLaunchers,
         EndedTabMinutes = EndedTabMinutes,
         TestTermHostMaxMinutes = TestTermHostMaxMinutes,
+        MainTestsLockRetries = MainTestsLockRetries,
+        MainTestsLockRetrySeconds = MainTestsLockRetrySeconds,
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,
         WorktreeRoot = string.IsNullOrWhiteSpace(WorktreeRoot) ? s.WorktreeRoot : WorktreeRoot,
         Gateway = (Gateway ?? new()).ApplyTo(s.Gateway ?? new GatewaySettings()),

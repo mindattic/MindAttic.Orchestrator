@@ -546,6 +546,17 @@ public sealed record OrchestratorSettings
 
     public const double DefaultTestTermHostMaxMinutes = 60;
 
+    /// <summary>How many more times a main-line suite's build is tried when it fails copying a file another process held (MSB3027/MSB3021),
+    /// ending that worktree's own leftover test processes first (M.ORCH-T1632; was MainlineTests.FileLockRetries).</summary>
+    public double MainTestsLockRetries { get; init; } = DefaultMainTestsLockRetries;
+
+    public const double DefaultMainTestsLockRetries = 2;
+
+    /// <summary>Seconds waited before each such retry (M.ORCH-T1632; was a fixed 30).</summary>
+    public double MainTestsLockRetrySeconds { get; init; } = DefaultMainTestsLockRetrySeconds;
+
+    public const double DefaultMainTestsLockRetrySeconds = 30;
+
     /// <summary>Minutes an ended Launcher menu tab stays (M.ORCH-T1599): 0 closes it at once, since it has nothing to read.</summary>
     public double EndedLauncherTabMinutes { get; init; }
 
