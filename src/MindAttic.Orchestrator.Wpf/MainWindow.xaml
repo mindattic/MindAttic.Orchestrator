@@ -139,6 +139,39 @@
             </Button>
         </DataTemplate>
 
+        <!-- A Task List row in the sidebar (M.ORCH-T1593): one process spending tokens right now (a working CLI, or one of its
+             subagents, indented under it), its owner's name in their tab colour and the same colour as its left stripe (so
+             colour is never the only cue: the name is there too), then its ticket ("ID · name", or "No ticket") and what it's
+             doing. The whole row is one button that opens the detail modal. -->
+        <DataTemplate x:Key="SidebarTaskTemplate" DataType="{x:Type vm:TaskRowViewModel}">
+            <Button x:Name="SidebarTaskCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="0" HorizontalContentAlignment="Stretch"
+                    Command="{Binding DataContext.OpenTaskDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                    ToolTip="{Binding OpenName}" AutomationProperties.Name="{Binding OpenName}">
+                <Border BorderBrush="{Binding OwnerBrush}" BorderThickness="3,0,0,0" Padding="8,6,8,6">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSubagent}" Value="True">
+                                    <Setter Property="Margin" Value="12,0,0,0" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding Tokens}" Style="{StaticResource MaTileSubtitle}" Margin="{StaticResource SpaceLS}" />
+                            <TextBlock FontSize="12" TextTrimming="CharacterEllipsis">
+                                <Run Text="{Binding Owner, Mode=OneWay}" Foreground="{Binding OwnerBrush, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" · " /><Run Text="{Binding Kind, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
+                            </TextBlock>
+                        </DockPanel>
+                        <TextBlock Text="{Binding TicketText}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="{StaticResource RowGutter}" />
+                        <TextBlock Text="{Binding Repo}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Doing}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+            </Button>
+        </DataTemplate>
+
         <!-- The login tab strip's own sigma/lambda bars (M.ORCH-T1536), the same pair as the pinned Usage tab's own header,
              but in MaTabItem.TrailingContent rather than the Header (M.COMP-T172): Trailing/TrailingContent dock to the
              strip's trailing edge in TabStripPlacement="Left" the way the header never does, so this is what actually gets
@@ -391,6 +424,16 @@
                       Width="{Binding ActualWidth, ElementName=SidebarTicketArea}" Height="{Binding ActualHeight, ElementName=SidebarTicketArea}">
         <StackPanel x:Name="SidebarTickets" KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Contained"
                     AutomationProperties.Name="Tickets: active, then pending. Each opens in Tickets">
+            <!-- The Task List (M.ORCH-T1593): every process spending tokens right now across every login (the global login's
+                 tab's list, which every tab proxies), each with its owner and ticket, colour-coded by owner; clicking one opens
+                 TaskDetailModal. Hidden while nothing is spending. -->
+            <StackPanel x:Name="SidebarTaskList" Margin="{StaticResource SpaceBS}" Visibility="{Binding HasTaskList, Converter={StaticResource Visible}}">
+                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="Task List: every process spending tokens now">
+                    <Run Text="Task List" /><Run Text="  " /><Run Text="{Binding TaskListCount, Mode=OneWay}" />
+                </TextBlock>
+                <ItemsControl x:Name="SidebarTasks" Style="{StaticResource MaRowList}" ItemsSource="{Binding TaskList}"
+                              ItemTemplate="{StaticResource SidebarTaskTemplate}" AutomationProperties.Name="Every process spending tokens now, with its owner and ticket" />
+            </StackPanel>
             <TextBlock Text="No active or pending tickets" Style="{StaticResource MaMutedText}"
                        Visibility="{Binding HasOpenTickets, Converter={x:Static vm:Converters.FalseToVisible}}" />
             <StackPanel Visibility="{Binding HasOpenTickets, Converter={StaticResource Visible}}">
@@ -1162,6 +1205,41 @@
                             ToolTip="Go back to the name built from its repo" />
                     <Button Style="{StaticResource MaButton}" Content="Cancel" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Click="RenameTabCancel_Click" />
                     <Button Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="{StaticResource SpaceHLVS}" Click="RenameTabSave_Click" />
+                </StackPanel>
+            </mc:MaModal.Footer>
+        </mc:MaModal>
+
+        <!-- A Task List row's details (M.ORCH-T1593): the full ticket the process works (id, repo, type, status, priority,
+             approval, assignee, who's working it, prerequisites, estimate, opened, ref), or with no ticket the CLI's own
+             description, then who it bills and what it's doing. Esc, its close button and the backdrop close it; Open in
+             Tickets opens the ticket there. -->
+        <mc:MaModal x:Name="TaskDetailModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="{Binding TaskDetailTitle}" AutomationProperties.Name="Task details" DialogWidth="560"
+                    IsOpen="{Binding IsTaskDetailOpen}" CloseCommand="{Binding CloseTaskDetailCommand}">
+            <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,0,12,0" MaxHeight="520">
+                <StackPanel>
+                    <TextBlock Text="{Binding TaskDetailDescription}" TextWrapping="Wrap" Margin="{StaticResource SpaceBS}" />
+                    <ItemsControl x:Name="TaskDetailFields" ItemsSource="{Binding TaskDetailLines}" Focusable="False" AutomationProperties.Name="Details">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:TaskDetailLine}">
+                                <Grid Margin="{StaticResource RowGutter}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Label}" Style="{StaticResource MaMutedText}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+            <mc:MaModal.Footer>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource MaButton}" Content="Open in Tickets" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}"
+                            Command="{Binding OpenInTicketsCommand}" CommandParameter="{Binding TaskDetailTicketId}"
+                            Visibility="{Binding HasTaskDetailTicket, Converter={StaticResource Visible}}" />
+                    <Button Style="{StaticResource MaPrimaryButton}" Content="Close" Padding="{StaticResource SpaceHLVS}" Command="{Binding CloseTaskDetailCommand}" />
                 </StackPanel>
             </mc:MaModal.Footer>
         </mc:MaModal>

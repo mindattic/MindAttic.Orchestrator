@@ -465,6 +465,8 @@ public sealed partial class MainViewModel : ObservableObject
         if (IsGlobalTab) ApplyUserTickets();
         // Each terminal learns its CLI and follows it to the login it runs on (M.ORCH-T810).
         if (IsGlobalTab) AllTerminals.Update(all);
+        // The sidebar's Task List (M.ORCH-T1593): every process spending tokens across the whole workspace, not only this org's.
+        if (IsGlobalTab) SyncTaskList(workspace ?? all);
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).
         PruneToasts(Toasts, DateTime.UtcNow);
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));
