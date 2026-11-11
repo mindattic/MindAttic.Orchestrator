@@ -30,7 +30,8 @@ This:
 - copies the orchestrator's and the ticket database's data out of SQL Server into the committed SQLite files
   (`orchestrator db back`, `tickets db server back`) and pushes them, so the host starts from everything your PC knew;
 - writes the **host kit**: `C:\LocalNuGet`'s packages (every MindAttic app restores from them, and they exist only on your
-  PC), your app settings without secrets, `setup-host.ps1` and `kit.json` (your git identity, the workspace);
+  PC), your app settings without secrets, `setup-host.ps1`, `dev-environment.json` (the curated dev tools, M.ORCH-T1489),
+  `Set up this machine.cmd` (double-click it on the new machine) and `kit.json` (your git identity, the workspace);
 - makes your PC a client: stops the daemon, dashboard and gateway (CLIs already running keep going), takes the pace hooks
   out of `~/.claude/settings.json`, and points the ticket tools at a machine-local mirror of the host's ticket database
   (`MINDATTIC_TICKETS_DB`).
@@ -42,7 +43,8 @@ commits would conflict.
 
 Create a Windows 11 VM (Pro, so Remote Desktop works; a local account is simplest; 16 GB of RAM or more and a disk with room
 for every repo). Adding a second virtual disk for `D:` is best, but not required. Copy the kit folder onto it (the Hyper-V
-enhanced session pastes files), then from a **normal** PowerShell (not administrator):
+enhanced session pastes files), then double-click `Set up this machine.cmd` in it, or from a **normal** PowerShell (not
+administrator):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File E:\MindAttic-HostKit\setup-host.ps1 -Kit E:\MindAttic-HostKit
@@ -61,13 +63,17 @@ as an LSA secret by Sysinternals Autologon), and the Claude sign-ins. Then it:
   a backup only restores onto the same version or newer;
 - restarts Windows by itself when SQL Server setup needs it (at most 3 times) and carries on after the automatic sign-in,
   with no second UAC prompt;
+- installs the dev environment in `dev-environment.json` (M.ORCH-T1489): Visual Studio 2026 and 2022 with their workloads,
+  Unity Hub and the Unity 6 editor, the Epic launcher, Notepad++, VS Code, ArtCraft, the .NET/Node/Python/Rust/Java SDKs,
+  the database tools, DirectX and the redistributables (`-SkipDevEnvironment` skips it; edit the file to change the list);
 - fills `C:\LocalNuGet` from the kit, turns sleep off and Remote Desktop on, and opens the gateway's port (TCP 7443);
 - clones the workspace and every repo, builds and installs Vault, Tickets, Launcher, Orchestrator and Scheduler, and
   installs the agent standard's global commands and commit hooks;
 - runs `orchestrator machine host`, which makes it the host and prints one line for your PC (also saved on the VM's desktop
   as `Connect your PC to this host.txt`).
 
-Every step checks first, so running it again repairs a half-finished host. The log is `C:\MindAttic-Setup\setup-host.log`.
+Every step checks first, so running it again repairs a half-finished host: the desktop icon it leaves,
+`Rebuild MindAttic dev environment`, runs it again with one double-click. The log is `C:\MindAttic-Setup\setup-host.log`.
 
 ### 3. On your PC: connect
 

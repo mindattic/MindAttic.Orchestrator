@@ -25,6 +25,12 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
     /// <summary>The kit's manifest file.</summary>
     public const string KitManifest = "kit.json";
 
+    /// <summary>The curated dev-environment manifest (in the repo root and the kit) that setup-host installs (M.ORCH-T1489).</summary>
+    public const string DevEnvironmentManifest = "dev-environment.json";
+
+    /// <summary>The kit's double-click launcher for setup-host.ps1.</summary>
+    public const string SetupLauncher = "Set up this machine.cmd";
+
     /// <summary>The commit subject the daemon's database sync uses, so a handoff's commit passes the commit-msg hook.</summary>
     public const string OrchestratorDbSyncSubject = "Sync data/orchestrator.db: the orchestrator's settings, state and history (M.ORCH-T524)";
 
@@ -213,7 +219,8 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
     /// <summary>
     /// Writes the host kit to <paramref name="folder"/>: <c>C:\LocalNuGet</c> (the packages only this machine has, which every
     /// MindAttic app restores from), the app-level settings with no secrets (Vault Global and the Orchestrator's Vault tab),
-    /// <c>setup-host.ps1</c>, and <see cref="KitManifest"/> (where it came from, the workspace, the git identity).
+    /// <c>setup-host.ps1</c> with <see cref="DevEnvironmentManifest"/> and its double-click <see cref="SetupLauncher"/>, and
+    /// <see cref="KitManifest"/> (where it came from, the workspace, the git identity).
     /// </summary>
     public void WriteKit(string folder)
     {
@@ -235,6 +242,12 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
 
         var script = Path.Combine(OrchestratorRepo, "setup-host.ps1");
         CopyIfExists(script, Path.Combine(folder, "setup-host.ps1"));
+        // The dev environment setup-host installs (M.ORCH-T1489), and the one file to double-click on the new machine.
+        CopyIfExists(Path.Combine(OrchestratorRepo, DevEnvironmentManifest), Path.Combine(folder, DevEnvironmentManifest));
+        File.WriteAllText(Path.Combine(folder, SetupLauncher),
+            "@echo off\r\nrem Sets this machine up as the MindAttic dev environment and Orchestrator host (M.ORCH-T1489). Double-click it; don't run it as administrator.\r\n" +
+            "powershell.exe -NoProfile -NoExit -ExecutionPolicy Bypass -File \"%~dp0setup-host.ps1\" -Kit \"%~dp0.\"\r\n",
+            new UTF8Encoding(false));
 
         var manifest = new
         {
@@ -247,7 +260,7 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
             GitUserEmail = GitConfig("user.email"),
         };
         File.WriteAllText(Path.Combine(folder, KitManifest), JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
-        say($"Kit written to {folder}. Copy the folder to the VM and run there, from a normal (not administrator) PowerShell: powershell -ExecutionPolicy Bypass -File \"<kit>\\setup-host.ps1\" -Kit \"<kit>\"");
+        say($"Kit written to {folder}. Copy the folder to the new machine and double-click {SetupLauncher} there (as a normal user, not administrator); or, from a normal PowerShell: powershell -ExecutionPolicy Bypass -File \"<kit>\\setup-host.ps1\" -Kit \"<kit>\"");
     }
 
     // ---- the pieces ----

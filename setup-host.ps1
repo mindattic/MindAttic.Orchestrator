@@ -25,6 +25,8 @@
         5. Automatic sign-in at boot (Sysinternals Autologon keeps the password as an LSA secret, never in plain text).
         6. SQL Server 2022 Developer (the localhost instance, you and Administrators as sysadmin), SQL Server LocalDB and
            SQL Server Management Studio, each only if missing (M.ORCH-T1486).
+        6a. The dev environment: every package in dev-environment.json (Visual Studio with its workloads, Unity Hub and the
+           editor, Notepad++, ArtCraft, the SDKs, runtimes, DirectX and redistributables; M.ORCH-T1489), each only if missing.
       Restarts: when Windows or SQL Server setup needs a restart, setup restarts the machine itself and carries on after
       the automatic sign-in (a RunOnce entry starts it again; the administrator part re-runs through an elevated
       scheduled task, \MindAttic\Setup\Admin, so no second UAC prompt). At most 3 restarts; all of it is removed when done.
@@ -35,7 +37,8 @@
         6c. git identity from the kit, GitHub sign-in, Claude Code.
         7. The workspace: the root repo and the core apps' repos cloned (or pulled), your settings restored.
         8. MindAttic.Vault, Tickets, Launcher, Orchestrator and Scheduler built and installed, the agent standard's global
-           commands and commit hooks installed.
+           commands and commit hooks installed, and a desktop icon, "Rebuild MindAttic dev environment", that runs this
+           setup again (the workspace's copy, with this run's options) to repair or update the machine with one double-click.
         9. Every other repo in the workspace cloned (orchestrator workspace build).
        10. `orchestrator machine host`: the gateway on for the network and the daemon started. It prints the one line to
            run on your PC (`orchestrator machine connect ...`), also saved on this machine's desktop.
@@ -60,6 +63,11 @@
     The folder of database backups to restore (localhost\*.bak, localdb\*.bak). Default: "databases" beside the kit folder.
 .PARAMETER SkipSql
     Don't install SQL Server, LocalDB or SSMS, and don't restore backups.
+.PARAMETER DevEnvironment
+    The dev-environment manifest to install. Default: the dev-environment.json beside this script (the workspace's newest
+    when run from the desktop icon), else the kit's.
+.PARAMETER SkipDevEnvironment
+    Don't install the dev environment (Visual Studio, Unity, editors, SDKs, redistributables).
 #>
 [CmdletBinding()]
 param(
@@ -72,6 +80,8 @@ param(
     [switch]$CoreOnly,
     [string]$Databases,
     [switch]$SkipSql,
+    [string]$DevEnvironment,
+    [switch]$SkipDevEnvironment,
     # Internal: the elevated half this script starts for itself, and the run that resumes after a restart.
     [switch]$AdminPhase,
     [string]$ForUser,
@@ -152,7 +162,9 @@ function Get-ScriptArgs {
     if ($Workspace -ne 'D:\Projects\MindAttic') { $a += "-Workspace `"$Workspace`"" }
     if ($RootRemote) { $a += "-RootRemote `"$RootRemote`"" }
     if ($Bind -ne '0.0.0.0') { $a += "-Bind `"$Bind`"" }
-    foreach ($s in @(@('SkipAutoLogon', $SkipAutoLogon), @('SkipLogins', $SkipLogins), @('CoreOnly', $CoreOnly), @('SkipSql', $SkipSql))) {
+    # Only one given on the command line: the default is resolved afresh by each run (the desktop icon's takes the workspace's).
+    if ($script:DevEnvironmentArg) { $a += "-DevEnvironment `"$script:DevEnvironmentArg`"" }
+    foreach ($s in @(@('SkipAutoLogon', $SkipAutoLogon), @('SkipLogins', $SkipLogins), @('CoreOnly', $CoreOnly), @('SkipSql', $SkipSql), @('SkipDevEnvironment', $SkipDevEnvironment))) {
         if ($s[1]) { $a += "-$($s[0])" }
     }
     $a -join ' '
@@ -394,6 +406,22 @@ function Ensure-Sql {
     if ($Databases -and (Test-Path $Databases)) { & icacls $Databases /grant 'NT SERVICE\MSSQLSERVER:(OI)(CI)RX' /T /C /Q | Out-Null }
 }
 
+# The dev environment (M.ORCH-T1489): every package in the manifest, each only if missing. Visual Studio's workloads go in
+# through its Override (the installer's own --add arguments).
+function Ensure-DevEnvironment {
+    if ($SkipDevEnvironment) { return }
+    Step 'Dev environment'
+    if (-not $DevEnvironment -or -not (Test-Path $DevEnvironment)) { Say 'No dev-environment.json (in the kit or beside this script); the dev environment is skipped.' 'Yellow'; return }
+    $packages = @((Get-Content $DevEnvironment -Raw | ConvertFrom-Json).Packages | Where-Object { $_.Id })
+    Say "$($packages.Count) package(s) from $DevEnvironment (Visual Studio alone can take an hour)."
+    foreach ($p in $packages) {
+        $name = if ($p.Name) { $p.Name } else { $p.Id }
+        Install-Package $p.Id $name $p.Override
+    }
+    Update-PathFromRegistry
+    if (Test-RestartPending) { $null = Request-Restart 'The dev environment''s installers ask for a restart.' }
+}
+
 function Invoke-AdminPhase {
     Step 'Administrator part'
     Ensure-DDrive
@@ -470,6 +498,8 @@ function Invoke-AdminPhase {
     }
 
     Ensure-Sql
+    if ($script:RestartNeeded) { Register-AdminTask; return }
+    Ensure-DevEnvironment
     if ($script:RestartNeeded) { Register-AdminTask; return }
     Unregister-AdminTask
     Say 'Administrator part done.' 'Green'
@@ -650,6 +680,24 @@ function Ensure-Apps {
     }
 }
 
+# The desktop icon that runs this setup again (M.ORCH-T1489): the workspace's copy of this script, which pulls bring up to
+# date, with this run's options. Every step checks first, so a double-click repairs or updates the dev environment.
+function Ensure-DesktopIcon {
+    $script = Join-Path $Workspace 'MindAttic.Orchestrator\setup-host.ps1'
+    if (-not (Test-Path $script)) { $script = $script:SelfPath }
+    $desktop = [Environment]::GetFolderPath('Desktop')
+    $link = Join-Path $desktop 'Rebuild MindAttic dev environment.lnk'
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($link)
+    $shortcut.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    $shortcut.Arguments = "-NoProfile -NoExit -ExecutionPolicy Bypass -File `"$script`" $(Get-ScriptArgs)".TrimEnd()
+    $shortcut.WorkingDirectory = Split-Path $script -Parent
+    $shortcut.Description = 'Installs or repairs the MindAttic development environment and host (setup-host.ps1).'
+    $shortcut.IconLocation = if (Test-Path $OrchestratorExe) { "$OrchestratorExe,0" } else { "$($shortcut.TargetPath),0" }
+    $shortcut.Save()
+    Say "Desktop icon: $link" 'Green'
+}
+
 function Ensure-AllRepos {
     if ($CoreOnly) { return }
     Step 'Every other repo (orchestrator workspace build)'
@@ -702,6 +750,12 @@ if (-not $Databases -and $Kit) {
     if (Test-Path $beside) { $Databases = $beside }
 }
 if ($Databases) { $Databases = (Resolve-Path $Databases).Path }
+if ($DevEnvironment -and (Test-Path $DevEnvironment)) { $DevEnvironment = (Resolve-Path $DevEnvironment).Path }
+$script:DevEnvironmentArg = $DevEnvironment
+if (-not $DevEnvironment) {
+    $DevEnvironment = @((Join-Path $PSScriptRoot 'dev-environment.json'), $(if ($Kit) { Join-Path $Kit 'dev-environment.json' })) |
+        Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+}
 
 if ($AdminPhase) {
     try {
@@ -740,6 +794,7 @@ Ensure-Identity $manifest
 Ensure-Claude
 Ensure-Workspace $manifest
 Ensure-Apps
+Ensure-DesktopIcon
 Ensure-AllRepos
 Become-Host
 Ensure-Logins
