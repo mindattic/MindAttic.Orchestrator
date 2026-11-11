@@ -191,6 +191,8 @@ public sealed class AccountPacer
         pace = Pacer.UnderTarget(pace, utilization, settings.MaxSubagents);
         // Split across many CLIs whose live trend together crossed the pace line: new subagents start slower until it bends back (M.ORCH-T785).
         pace = Pacer.CoolOff(pace, utilization, Math.Max(active, pace.SubagentsByCli.Count));
+        // Under the pace guards' start line on both windows, none of the above holds anything: full speed (M.ORCH-T1592).
+        pace = Pacer.Dormant(pace, budget, settings, active);
         // A login with no limit learned yet is Unpaced with SubagentAllowance null, which otherwise falls back (Allocate.More)
         // to MaxConcurrentSessions minus every busy ticket across the whole workspace, leaving a fresh account no room of its
         // own (M.ORCH-T660). Its room is its own: the session setting, bounded by MaxSubagents, counted against its own marks.

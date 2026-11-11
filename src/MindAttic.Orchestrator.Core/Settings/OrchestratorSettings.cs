@@ -54,6 +54,14 @@ public sealed record OrchestratorSettings
     /// the orchestrator can't see (claude.ai, other machines).</summary>
     public int PaceTargetPercent { get; init; } = 96;
 
+    /// <summary>A login's 5-hour or weekly use (percent) under which the pace guards are dormant (M.ORCH-T1592): no pace holds,
+    /// no subagent allowance cap and no cool-off, so work runs full speed until either window reaches it. The hard stops
+    /// (the pace target, the weekly stop, a wall Claude reports) and the memory guard are untouched.</summary>
+    public double PaceGuardStartPercent { get; init; } = DefaultPaceGuardStartPercent;
+
+    /// <summary>The default <see cref="PaceGuardStartPercent"/>.</summary>
+    public const double DefaultPaceGuardStartPercent = 90;
+
     /// <summary>The share of each account's week kept back (M.ORCH-T609): every CLI on an account stops at
     /// <see cref="WeeklyStopPercent"/> (100 minus this) of that account's week instead of burning it all. 0 to
     /// <see cref="MaxWeeklyReservePercent"/>; applies to each login on its own.</summary>
@@ -384,6 +392,15 @@ public sealed record OrchestratorSettings
     /// and again when its last tab closes. The tab right-click's Open Project lists the same projects in-app; Run Launcher still
     /// opens one by hand.</summary>
     public bool AutoOpenLaunchers { get; init; }
+
+    /// <summary>Minutes an ended terminal tab stays, for its last lines, before it's closed unasked (M.ORCH-T1599; was a fixed
+    /// 24 hours, M.ORCH-T1177): each holds its native renderer (~50 MB) until then.</summary>
+    public double EndedTabMinutes { get; init; } = DefaultEndedTabMinutes;
+
+    public const double DefaultEndedTabMinutes = 60;
+
+    /// <summary>Minutes an ended Launcher menu tab stays (M.ORCH-T1599): 0 closes it at once, since it has nothing to read.</summary>
+    public double EndedLauncherTabMinutes { get; init; }
 
     /// <summary>Off by default, since it writes tickets into every repo's log: hourly, file GitHub issues
     /// labelled "orchestrator" and CI runs that failed on main as tickets (see <see cref="Tickets.GitHubIntake"/>).</summary>

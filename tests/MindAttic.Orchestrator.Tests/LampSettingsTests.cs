@@ -74,6 +74,7 @@ public sealed class LampSettingsTests
         // Pacing
         Case("pacing", s => s with { Pacing = false }, false, v => v.Pacing = true, true, s => s.Pacing),
         Case("paceTargetPercent", s => s with { PaceTargetPercent = 90 }, 90, v => v.PaceTargetPercent = 95, 95, s => s.PaceTargetPercent),
+        Case("paceGuardStartPercent", s => s with { PaceGuardStartPercent = 80 }, 80d, v => v.PaceGuardStartPercent = 85, 85d, s => s.PaceGuardStartPercent),
         Case("exemptCommands", s => s with { ExemptCommands = ["/pacing", "/deploy", "/run"] }, new[] { "/pacing", "/deploy", "/run" },
             v => v.ExemptCommands = ["/commit"], new[] { "/commit" }, s => s.ExemptCommands),
         Case("reportFreshMinutes", s => s with { ReportFreshMinutes = 5 }, 5, v => v.ReportFreshMinutes = 9, 9, s => s.ReportFreshMinutes),
@@ -134,6 +135,8 @@ public sealed class LampSettingsTests
         Case("tabBlinkTokens", s => s with { TabBlinkTokens = 5000 }, 5000, v => v.TabBlinkTokens = 250, 250, s => s.TabBlinkTokens),
         Case("excludeLauncherFromTeamWall", s => s with { ExcludeLauncherFromTeamWall = true }, true, v => v.ExcludeLauncherFromTeamWall = false, false,
             s => s.ExcludeLauncherFromTeamWall),
+        Case("endedTabMinutes", s => s with { EndedTabMinutes = 60 }, 60d, v => v.EndedTabMinutes = 15, 15d, s => s.EndedTabMinutes),
+        Case("endedLauncherTabMinutes", s => s with { EndedLauncherTabMinutes = 0 }, 0d, v => v.EndedLauncherTabMinutes = 5, 5d, s => s.EndedLauncherTabMinutes),
         Case("autoOpenLaunchers", s => s with { AutoOpenLaunchers = true }, true, v => v.AutoOpenLaunchers = false, false, s => s.AutoOpenLaunchers),
         // Folders
         Case("workspaceRoot", s => s with { WorkspaceRoot = @"E:\Work" }, @"E:\Work", v => v.WorkspaceRoot = @"F:\Repos", @"F:\Repos", s => s.WorkspaceRoot),

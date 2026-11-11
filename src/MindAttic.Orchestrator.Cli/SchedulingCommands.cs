@@ -291,6 +291,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The most subagents running at once across every CLI; under it the pace decides, live (0 holds every new one).")]
         public int? MaxSubagents { get; init; }
 
+        [CommandOption("--pace-start-percent <PERCENT>")]
+        [Description("A login's 5-hour or weekly use under which no pace guard is considered: no pace holds, no subagent allowance cap, no cool-off (default 90).")]
+        public double? PaceGuardStartPercent { get; init; }
+
         [CommandOption("--agent-abort <ON>")]
         [Description("true (default): when a login's live 5-hour trend stays past its pace line with new subagents already slowed for --agent-abort-after minutes, the orchestrator aborts just enough of that login's ticket subagents to bend it back under, releasing their claims and putting their tickets first in the queue; false leaves the cool-off to slow new starts only.")]
         public bool? AgentAbort { get; init; }
@@ -584,6 +588,12 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { QuietHours = windows };
             changed = true;
         }
+        if (settings.PaceGuardStartPercent is { } guardStart)
+        {
+            if (!(guardStart >= 0 && guardStart <= 100)) { AnsiConsole.MarkupLine("[red]--pace-start-percent is 0 to 100.[/]"); return 1; }
+            s = s with { PaceGuardStartPercent = guardStart };
+            changed = true;
+        }
         if (settings.HandMinutes is { } hand)
         {
             if (hand < 0) { AnsiConsole.MarkupLine("[red]--hand-minutes can't be negative.[/]"); return 1; }
@@ -764,7 +774,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             $" · Team Wall: {(s.ExcludeLauncherFromTeamWall ? "excludes" : "includes")} the Launcher's menu pane");
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%" +
             $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · no weekly-aware pacing, ever");
-        AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
+        AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset, full speed until the 5-hour or weekly use reaches {s.PaceGuardStartPercent:0.#}%" :"off: the warn line holds new work")}" +
             " · running agents never held" +
             $" · subagents: as many as the pace allows, at most {s.MaxSubagents}" +
             (s.AgentAbort ? $" · cool-off abort [green]on[/]: {s.AgentAbortAfterMinutes} min past the line before aborting subagents to bend it back under"

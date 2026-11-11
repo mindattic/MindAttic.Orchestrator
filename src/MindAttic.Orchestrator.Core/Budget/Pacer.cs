@@ -69,6 +69,16 @@ public sealed record Pace(
     /// <summary>The CLIs spending on the login when <see cref="Pacer.CoolOff"/> slowed it; 0 when it didn't.</summary>
     public int CoolOffClis { get; init; }
 
+    /// <summary>The higher of the login's 5-hour and weekly use when <see cref="Pacer.Dormant"/> lifted every pace guard for being
+    /// under <see cref="GuardStartPercent"/> (M.ORCH-T1592); null when the guards are awake.</summary>
+    public double? DormantPercent { get; init; }
+
+    /// <summary>The use line the pace guards start at (<see cref="OrchestratorSettings.PaceGuardStartPercent"/>), when dormant.</summary>
+    public double GuardStartPercent { get; init; }
+
+    /// <summary>The pace guards are dormant: full speed, nothing held, no agent asked to conserve.</summary>
+    public bool GuardsDormant => DormantPercent is not null;
+
     /// <summary>The window is at its target or a limit: nothing more may be spent before the reset. The pace gate then
     /// refuses tool calls (every CLI, /pacing off included) rather than letting a held call through, so usage never
     /// passes the limit, whatever the hold settings.</summary>
@@ -102,6 +112,9 @@ public sealed record Pace(
     {
         _ when Memory is { Level: > Activity.MemoryLevel.Ok } m => Activity.MemoryGuard.Note(m, Subagents),
         null => "",
+        var a when DormantPercent is { } used => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). Usage is at " +
+            $"{used:0}%, under the {GuardStartPercent:0}% line where pacing starts, so run at full speed: a subagent on every ticket you've claimed " +
+            "or been handed, and parallel subagents for independent pieces.",
         0 => $"Subagents: none new right now ({Note}). Finish with the {Subagents} running; a new one waits until there's room.",
         var a when CoolOffPercent is { } hot => $"Subagents: {a} at once across all agents ({Subagents} running now). Cooling off: this login's " +
             $"{CoolOffClis} CLIs together are on course to end the 5-hour window near {hot:0}%, past its {TargetPercent:0}% pace line, so new " +
@@ -120,7 +133,7 @@ public sealed record Pace(
 
     /// <summary>Running agents should conserve: past a limit, out of room, or burning faster than fits.
     /// Coasting only means no room for another session; the ones running are told nothing.</summary>
-    public bool Advise => Mode is PaceMode.Over || (IsPaced && (SustainablePerHour <= 0 || RecentPerHour > SustainablePerHour));
+    public bool Advise => Mode is PaceMode.Over || (IsPaced && !GuardsDormant &&(SustainablePerHour <= 0 || RecentPerHour > SustainablePerHour));
 }
 
 /// <summary>
@@ -416,6 +429,39 @@ public static class Pacer
         var note = $"{pace.Note} Cooling off: {clis} CLIs on this login are on course for {u.ProjectedEndPercent:0}% of the 5-hour window, " +
                    $"past its {u.TargetPercent:0}% pace line, so new subagents start slower ({slowed} at once) until it bends back under.";
         return pace with { SubagentAllowance = slowed, CoolOffPercent = u.ProjectedEndPercent, CoolOffClis = clis, TargetPercent = u.TargetPercent, Note = note };
+    }
+
+    /// <summary>
+    /// The pace guards' start line (M.ORCH-T1592: a CLI was told it was paced at 6% of its 5-hour window and 1% of its week). While
+    /// both the login's 5-hour use (<see cref="StopPercentOf"/>, the figure the stop goes by) and its weekly use are under
+    /// <see cref="OrchestratorSettings.PaceGuardStartPercent"/>, no pace guard is considered: no hold on tool calls, no subagent
+    /// allowance under <see cref="OrchestratorSettings.MaxSubagents"/>, no cool-off, no coasting, and every session slot open
+    /// (<paramref name="active"/> sessions running). Left as it is at the stop, past a limit, unpaced, while the week caps the
+    /// window, and once either window reaches the line, from where the guards work as before. Run before
+    /// <see cref="CapByStopHeadroom"/> and <see cref="CapByMemory"/>, which guard the hard stop and the machine, not the pace.
+    /// </summary>
+    public static Pace Dormant(Pace pace, BudgetStatus b, OrchestratorSettings s, int active)
+    {
+        if (pace is not { IsPaced: true, Stop: false } || pace.Mode == PaceMode.Over || pace.Weekly is { Capped: true }) return pace;
+        // A wall Claude reported, or the week at its stop line, already made the pace Over; a peak-relative window has no real percent.
+        if (b.BlockLimitIsPeak || b.AtLimitUntilUtc is not null) return pace;
+        var line = Math.Clamp(s.PaceGuardStartPercent, 0, 100);
+        var five = StopPercentOf(b);
+        var week = b.WeeklyPercent ?? 0;
+        if (five >= line || week >= line) return pace;
+        var used = Math.Max(five, week);
+        var max = s.MaxConcurrentSessions;
+        return pace with
+        {
+            Mode = PaceMode.Open,
+            SessionCap = max,
+            AgentDelaySeconds = 0,
+            SubagentAllowance = s.MaxSubagents > 0 ? s.MaxSubagents : pace.SubagentAllowance,
+            SpareSessions = Math.Max(pace.SpareSessions, max - Math.Max(0, active)),
+            CoolOffPercent = null, CoolOffClis = 0, UnderTargetPercent = null,
+            DormantPercent = used, GuardStartPercent = line,
+            Note = $"Full speed: the 5-hour window is at {five:0.#}% and the week at {week:0.#}%, under the {line:0.#}% line where pacing starts.",
+        };
     }
 
     /// <summary>

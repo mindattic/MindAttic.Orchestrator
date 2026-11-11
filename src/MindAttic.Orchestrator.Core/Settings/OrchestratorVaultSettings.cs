@@ -61,6 +61,11 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 100)]
     public int PaceTargetPercent { get; set; } = 96;
 
+    [Setting("Pace guards start at (% used)", Group = "Pacing", Order = 2,
+        Help = "A login's 5-hour or weekly use under which no pace guard is considered: no pace holds, no subagent allowance cap, no cool-off. Work runs full speed until either window reaches it.")]
+    [SettingRange(0, 100)]
+    public double PaceGuardStartPercent { get; set; } = OrchestratorSettings.DefaultPaceGuardStartPercent;
+
     [Setting("Exempt from pacing", Group = "Pacing", Order = 3,
         Help = "Slash commands whose turns skip every pace gate (no hold, no subagent wait, no stop); their spend still counts. Empty exempts none.")]
     public List<string> ExemptCommands { get; set; } = [.. OrchestratorSettings.DefaultExemptCommands];
@@ -283,6 +288,16 @@ public sealed class OrchestratorVaultSettings
         Help = "Off (the default): no MindAttic.Launcher process (~80 MB each) is started for every signed-in login or when its last tab closes; a login tab's right-click Open Project lists the same projects in-app, and Run Launcher still opens one by hand.")]
     public bool AutoOpenLaunchers { get; set; }
 
+    [Setting("Ended tab lifetime (minutes)", Group = "Dashboard", Order = 6,
+        Help = "How long a CLI tab whose CLI has ended stays for its last lines before it's closed unasked. Each holds its terminal renderer (~50 MB) until then.")]
+    [SettingRange(0, 10080)]
+    public double EndedTabMinutes { get; set; } = OrchestratorSettings.DefaultEndedTabMinutes;
+
+    [Setting("Ended Launcher tab lifetime (minutes)", Group = "Dashboard", Order = 7,
+        Help = "How long an ended Launcher menu tab stays; 0 (the default) closes it at once.")]
+    [SettingRange(0, 10080)]
+    public double EndedLauncherTabMinutes { get; set; }
+
     // ── Folders ────────────────────────────────────────────────────────────
 
     [Setting("Workspace root", Group = "Folders", Order = 1,
@@ -313,6 +328,7 @@ public sealed class OrchestratorVaultSettings
         WeeklyReservePercent = s.WeeklyReservePercent,
         Pacing = s.Pacing,
         PaceTargetPercent = s.PaceTargetPercent,
+        PaceGuardStartPercent = s.PaceGuardStartPercent,
         ExemptCommands = [.. s.ExemptCommands],
         ReportFreshMinutes = s.ReportFreshMinutes,
         ProviderCapPercent = s.ProviderCapPercent,
@@ -364,6 +380,8 @@ public sealed class OrchestratorVaultSettings
         TabBlinkTokens = s.TabBlinkTokens,
         ExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = s.AutoOpenLaunchers,
+        EndedTabMinutes = s.EndedTabMinutes,
+        EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
         WorkspaceRoot = WorkspaceOverrideOf(s),
         WorktreeRoot = s.WorktreeRoot,
         Gateway = OrchestratorGatewayVaultSettings.From(s.Gateway ?? new GatewaySettings()),
@@ -385,6 +403,7 @@ public sealed class OrchestratorVaultSettings
         WeeklyReservePercent = WeeklyReservePercent,
         Pacing = Pacing,
         PaceTargetPercent = PaceTargetPercent,
+        PaceGuardStartPercent = PaceGuardStartPercent,
         ExemptCommands = [.. ExemptCommands ?? []],
         ReportFreshMinutes = ReportFreshMinutes,
         ProviderCapPercent = ProviderCapPercent,
@@ -434,6 +453,8 @@ public sealed class OrchestratorVaultSettings
         TabBlinkTokens = TabBlinkTokens,
         ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = AutoOpenLaunchers,
+        EndedTabMinutes = EndedTabMinutes,
+        EndedLauncherTabMinutes = EndedLauncherTabMinutes,
         WorktreeRoot = string.IsNullOrWhiteSpace(WorktreeRoot) ? s.WorktreeRoot : WorktreeRoot,
         Gateway = (Gateway ?? new()).ApplyTo(s.Gateway ?? new GatewaySettings()),
     };
