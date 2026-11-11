@@ -137,6 +137,108 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     /// <summary>The key a presence is kept under on the stream: one per app.</summary>
     public static string PresenceKey(string app) => AppBus.Presence + ":" + app.Trim().ToLowerInvariant();
 
+    /// <summary>The key a session's latest activity is kept under on the stream (M.ORCH-T962): one per session, all of them handed
+    /// to each subscriber as it connects (the activity snapshot).</summary>
+    public static string ActivityKey(string session) => AppBus.Activity + ":" + session.Trim();
+
+    /// <summary>The per-session coalescing of the activity kind (M.ORCH-T962): at most one message per session per its
+    /// <see cref="ActivityCoalescer.Every"/>, the latest kept per session.</summary>
+    public ActivityCoalescer Activity { get; } = new();
+
+    /// <summary>
+    /// The masking every activity text field (target, verb, summary) passes before it's published (M.ORCH-T962): the shared activity
+    /// masker (<see cref="Term.SecretShapes.MaskActivity"/>, M.ORCH-T963), a second layer over the hooks' records, which are masked
+    /// as they're written (M.ORCH-T964), and the only one over a line a hook wrote to the inbox. Tests swap it.
+    /// </summary>
+    public Func<string, string> MaskActivityText { get; init; } = Term.SecretShapes.MaskActivity;
+
+    /// <summary>
+    /// Takes <paramref name="activity"/>, the newest picture of its session (from its activity record or the inbox), masked and cut
+    /// (<see cref="CleanActivity"/>), and publishes it now or holds it for <see cref="FlushActivity"/> (<see cref="ActivityCoalescer.Offer"/>).
+    /// <paramref name="cliPid"/> is its CLI's process, when known, by which a silent session is judged gone. Never throws.
+    /// </summary>
+    public void OfferActivity(ActivityPayload activity, DateTime now, int? cliPid = null)
+    {
+        try
+        {
+            if (Activity.Offer(CleanActivity(activity), now, cliPid) is { } send) SendActivity(send);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            log.Warning(ex, "Couldn't publish a session's activity");
+        }
+    }
+
+    /// <summary>Publishes each held activity message whose session's gap has passed by <paramref name="now"/>. Never throws.</summary>
+    public void FlushActivity(DateTime now)
+    {
+        try
+        {
+            foreach (var due in Activity.Due(now)) SendActivity(due);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            log.Warning(ex, "Couldn't publish the held activity");
+        }
+    }
+
+    /// <summary>Ends, once, each session silent for <paramref name="silentFor"/> whose CLI is gone (<see cref="ActivityCoalescer.Expire"/>),
+    /// and stops keeping it for connecting subscribers. Never throws.</summary>
+    public void ExpireActivity(DateTime now, TimeSpan silentFor, Func<int, bool> alive)
+    {
+        try
+        {
+            foreach (var ended in Activity.Expire(now, silentFor, alive)) SendActivity(ended);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            log.Warning(ex, "Couldn't end the silent sessions' activity");
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="activity"/> fit to publish: its text fields masked (<see cref="MaskActivityText"/>) and cut to their lengths
+    /// (<see cref="ActivityPayload.MaxTarget"/>, <see cref="ActivityPayload.MaxSummary"/>), an MCP tool collapsed to <c>mcp</c>, and
+    /// blank fields left out. Only <see cref="ActivityPayload"/>'s own fields ever go out, whatever its writer put beside them.
+    /// </summary>
+    public ActivityPayload CleanActivity(ActivityPayload activity)
+    {
+        var tool = Blank(activity.Tool);
+        if (tool is not null && (tool.StartsWith("mcp__", StringComparison.OrdinalIgnoreCase) || tool.StartsWith("mcp_", StringComparison.OrdinalIgnoreCase))) tool = "mcp";
+        return activity with
+        {
+            Session = activity.Session.Trim(),
+            Provider = Blank(activity.Provider)?.ToLowerInvariant(),
+            Repo = Blank(activity.Repo),
+            Login = Blank(activity.Login),
+            State = Blank(activity.State)?.ToLowerInvariant() ?? "",
+            Tool = Cut(tool, 40),
+            Target = Cut(Masked(activity.Target), ActivityPayload.MaxTarget),
+            Verb = Cut(Masked(activity.Verb), 40),
+            Ticket = Cut(Blank(activity.Ticket), 40),
+            Summary = Cut(Masked(activity.Summary), ActivityPayload.MaxSummary),
+            Subagents = activity.Subagents is > 0 ? activity.Subagents : null,
+        };
+
+        string? Masked(string? text) => Blank(text) is { } t ? Blank(MaskActivityText(t)) : null;
+        static string? Blank(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+        static string? Cut(string? text, int max) => text is null || text.Length <= max ? text : text[..(max - 1)].TrimEnd() + "…";
+    }
+
+    /// <summary>One activity message out: kept per session for connecting subscribers, or, for its end, sent once and no longer kept.</summary>
+    private void SendActivity(ActivityPayload activity)
+    {
+        var envelope = StatusEnvelope.Of(AppBus.Activity, activity, AppBus.ActivityVersion);
+        var key = ActivityKey(activity.Session);
+        if (activity.State == ActivityStates.Ended)
+        {
+            stream.Forget(key);
+            stream.Publish(envelope);
+            return;
+        }
+        stream.Publish(envelope, key);
+    }
+
     /// <summary>Sends <paramref name="envelope"/> on, by its kind.</summary>
     public void Take(StatusEnvelope envelope)
     {
@@ -153,6 +255,17 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                 case AppBus.Presence:
                     if (envelope.PayloadAs<AppPresence>() is not { App.Length: > 0 } presence) return;
                     stream.Publish(envelope, PresenceKey(presence.App));
+                    return;
+                case AppBus.Activity:
+                    // A hook's own line on the inbox (M.ORCH-T962): through the same coalescing as the activity records. A version
+                    // past this daemon's is relayed unread, as any kind it doesn't know.
+                    if (envelope.V > AppBus.ActivityVersion)
+                    {
+                        stream.Publish(envelope);
+                        return;
+                    }
+                    if (envelope.PayloadAs<ActivityPayload>() is not { Session.Length: > 0 } activity) return;
+                    OfferActivity(activity, DateTime.UtcNow);
                     return;
                 case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Reminders or StateBus.Cutoffs or StateBus.Allowances:
                     // The whole of its kind each time: the latest is kept, so a dashboard connecting gets it after the state.

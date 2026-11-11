@@ -368,6 +368,13 @@ public sealed class StatusStreamServer : IDisposable
         }
     }
 
+    /// <summary>Stops keeping the message kept under <paramref name="retainAs"/> for connecting subscribers (M.ORCH-T962: an ended
+    /// CLI's activity), so the kept set doesn't grow with every session ever seen. Never throws.</summary>
+    public void Forget(string retainAs)
+    {
+        lock (gate) retained.Remove(retainAs);
+    }
+
     /// <summary>The latest message of <paramref name="kind"/> kept for connecting dashboards; null when none is.</summary>
     public string? Retained(string kind)
     {

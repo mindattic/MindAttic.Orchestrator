@@ -480,6 +480,21 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 1440)]
     public double ActivityStaleMinutes { get; set; } = OrchestratorSettings.DefaultActivityStaleMinutes;
 
+    [Setting("Activity feed gap per CLI (seconds)", Group = "Dashboard", Order = 26,
+        Help = "The least time between two activity bus messages for one CLI session. A busy CLI's newer pictures inside the gap are held, and the latest goes out when it passes. 0 sends each at once.")]
+    [SettingRange(0, 60)]
+    public double ActivityCoalesceSeconds { get; set; } = OrchestratorSettings.DefaultActivityCoalesceSeconds;
+
+    [Setting("Activity feed rescan (seconds)", Group = "Dashboard", Order = 27,
+        Help = "How often the daemon reads the activity records folder again, for a change its file watcher missed, and checks silent sessions for an end.")]
+    [SettingRange(1, 3600)]
+    public double ActivityRescanSeconds { get; set; } = OrchestratorSettings.DefaultActivityRescanSeconds;
+
+    [Setting("Activity ended after (minutes)", Group = "Dashboard", Order = 28,
+        Help = "A CLI session that sends no activity this long, with its process gone, is said to have ended on the bus and no longer kept for apps that connect.")]
+    [SettingRange(0, 1440)]
+    public double ActivityEndedMinutes { get; set; } = OrchestratorSettings.DefaultActivityEndedMinutes;
+
     [Setting("Main-line test build lock retries", Group = "Dashboard", Order = 92,
         Help = "How many more times a main-line suite's build is tried when it fails copying a file another process held (MSB3027). Before each try, leftover test processes running from that worktree are ended; nothing outside it is touched.")]
     [SettingRange(0, 10)]
@@ -705,6 +720,9 @@ public sealed class OrchestratorVaultSettings
         PresumeBusyConfirmSeconds = s.PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = s.PresumeBusyMaxSeconds,
         ActivityStaleMinutes = s.ActivityStaleMinutes,
+        ActivityCoalesceSeconds = s.ActivityCoalesceSeconds,
+        ActivityRescanSeconds = s.ActivityRescanSeconds,
+        ActivityEndedMinutes = s.ActivityEndedMinutes,
         MainTestsLockRetries = s.MainTestsLockRetries,
         MainTestsLockRetrySeconds = s.MainTestsLockRetrySeconds,
         EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
@@ -835,6 +853,9 @@ public sealed class OrchestratorVaultSettings
         PresumeBusyConfirmSeconds = PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = PresumeBusyMaxSeconds,
         ActivityStaleMinutes = ActivityStaleMinutes,
+        ActivityCoalesceSeconds = ActivityCoalesceSeconds,
+        ActivityRescanSeconds = ActivityRescanSeconds,
+        ActivityEndedMinutes = ActivityEndedMinutes,
         MainTestsLockRetries = MainTestsLockRetries,
         MainTestsLockRetrySeconds = MainTestsLockRetrySeconds,
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,

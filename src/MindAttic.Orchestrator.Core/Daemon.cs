@@ -78,6 +78,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             // stands now is kept for the dashboards that connect, whatever changed while no daemon ran (M.ORCH-T891).
             Status.StateBus.Enable(background: false);
             Status.StateBus.PublishAll(store);
+            // The activity feed (M.ORCH-T962): each CLI session's activity record put on the bus as it changes, coalesced per
+            // session, the latest per session kept for every app that connects. Its gap, rescan and end times are Vault settings.
+            var activityFeed = new Status.ActivityFeedPublisher(hub, Status.ActivityFeedPublisher.DefaultFolder) { Settings = store.LoadSettings };
+            _ = Task.Run(() => activityFeed.RunAsync(cancel));
         }
         // LAMP (M.ORCH-T1308): the app-level settings live in MindAttic Vault. A Save in Vault.Desktop is copied into the settings
         // row the hooks read, and pushed to every dashboard, as it lands (and by every tick, should the watcher miss one).

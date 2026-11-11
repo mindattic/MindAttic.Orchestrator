@@ -35,6 +35,16 @@ public static class AppBus
     /// a request will be heard (and, if not, starts the app instead). A presence whose process has exited is stale.</summary>
     public const string Presence = "app-present";
 
+    /// <summary>What one CLI session is doing now (<see cref="ActivityPayload"/>, M.ORCH-T962; docs/spikes/activity-feed.md section 5):
+    /// the current picture of one session, not a log, so the latest for a <see cref="ActivityPayload.Session"/> replaces the last. The
+    /// daemon publishes it from the hooks' per-session activity records, at most one per session per coalescing interval, keeps the
+    /// latest per session and hands them all to each subscriber as it connects (the activity snapshot). Version
+    /// <see cref="ActivityVersion"/>.</summary>
+    public const string Activity = "activity";
+
+    /// <summary>The version of the <see cref="Activity"/> payload.</summary>
+    public const int ActivityVersion = 1;
+
     /// <summary>The version of each of these kinds' payloads.</summary>
     public const int Version = 1;
 
@@ -45,7 +55,59 @@ public static class AppBus
     public const string TicketsDesktop = "tickets-desktop";
 
     /// <summary>Every kind of this bus.</summary>
-    public static bool IsAppKind(string? kind) => kind is Ticket or OpenTicket or ShowWorker or Presence;
+    public static bool IsAppKind(string? kind) => kind is Ticket or OpenTicket or ShowWorker or Presence or Activity;
+}
+
+/// <summary>A session's state in an <see cref="AppBus.Activity"/> message: <see cref="ActivityPayload.State"/>'s values.</summary>
+public static class ActivityStates
+{
+    /// <summary>A tool call or turn is in progress.</summary>
+    public const string Working = "working";
+    /// <summary>Its turn ended; it waits for you.</summary>
+    public const string Idle = "idle";
+    /// <summary>Blocked on a permission prompt or a question (the reason is never sent).</summary>
+    public const string Asking = "asking";
+    /// <summary>The pace gate is holding it.</summary>
+    public const string Held = "held";
+    /// <summary>The CLI exited (or went silent with its process gone): sent once, then the session is dropped.</summary>
+    public const string Ended = "ended";
+}
+
+/// <summary>
+/// The <see cref="AppBus.Activity"/> payload (v1): one session's current picture. Never a raw tool input, a prompt or a result:
+/// <see cref="Target"/> is a short masked target (a file's base name, a host, a pattern, a shell command's description or its
+/// program name), at most <see cref="MaxTarget"/> characters.
+/// </summary>
+public sealed record ActivityPayload
+{
+    /// <summary>The longest <see cref="Target"/> sent.</summary>
+    public const int MaxTarget = 80;
+
+    /// <summary>The longest <see cref="Summary"/> sent.</summary>
+    public const int MaxSummary = 120;
+
+    /// <summary>The CLI's session id: the key, a newer message replaces the older.</summary>
+    [JsonPropertyName("session")] public string Session { get; init; } = "";
+    /// <summary><c>claude</c>, <c>codex</c>, <c>gemini</c> or <c>kimi</c>.</summary>
+    [JsonPropertyName("provider")] public string? Provider { get; init; }
+    [JsonPropertyName("repo")] public string? Repo { get; init; }
+    /// <summary>The login's email; left out when the session is private or unknown.</summary>
+    [JsonPropertyName("login")] public string? Login { get; init; }
+    /// <summary>One of <see cref="ActivityStates"/>.</summary>
+    [JsonPropertyName("state")] public string State { get; init; } = "";
+    /// <summary>The tool name (<c>Edit</c>, <c>Bash</c>, ...); MCP tools collapse to <c>mcp</c>. Absent when idle.</summary>
+    [JsonPropertyName("tool")] public string? Tool { get; init; }
+    [JsonPropertyName("target")] public string? Target { get; init; }
+    /// <summary>A human phrase (<c>Editing</c>).</summary>
+    [JsonPropertyName("verb")] public string? Verb { get; init; }
+    [JsonPropertyName("ticket")] public string? Ticket { get; init; }
+    [JsonPropertyName("subagents")] public int? Subagents { get; init; }
+    /// <summary>The masked last-message summary, on idle only and only when enabled; off in v1.</summary>
+    [JsonPropertyName("summary")] public string? Summary { get; init; }
+    /// <summary>A per-session counter, so a consumer can drop a reordered message.</summary>
+    [JsonPropertyName("seq")] public long? Seq { get; init; }
+    /// <summary>When the hook saw it (UTC).</summary>
+    [JsonPropertyName("atUtc")] public DateTime? AtUtc { get; init; }
 }
 
 /// <summary>What happened to a ticket: <see cref="TicketBusEvent.Event"/>'s values.</summary>

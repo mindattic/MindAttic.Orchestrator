@@ -602,6 +602,24 @@ public sealed record OrchestratorSettings
 
     public const double DefaultActivityStaleMinutes = 20;
 
+    /// <summary>The least seconds between two activity bus messages for one CLI session (M.ORCH-T962): a busy CLI's newer pictures
+    /// inside the gap are held and the latest goes out when it passes. 0 sends each at once.</summary>
+    public double ActivityCoalesceSeconds { get; init; } = DefaultActivityCoalesceSeconds;
+
+    public const double DefaultActivityCoalesceSeconds = 0.5;
+
+    /// <summary>Seconds between the daemon's slow rescans of the activity records folder (M.ORCH-T962): a change its file watcher
+    /// missed is read then, and silent sessions are checked for an end.</summary>
+    public double ActivityRescanSeconds { get; init; } = DefaultActivityRescanSeconds;
+
+    public const double DefaultActivityRescanSeconds = 30;
+
+    /// <summary>Minutes a CLI session may send no activity, with its process gone, before the bus says it ended and stops keeping it
+    /// (M.ORCH-T962).</summary>
+    public double ActivityEndedMinutes { get; init; } = DefaultActivityEndedMinutes;
+
+    public const double DefaultActivityEndedMinutes = 10;
+
     /// <summary>How many more times a main-line suite's build is tried when it fails copying a file another process held (MSB3027/MSB3021),
     /// ending that worktree's own leftover test processes first (M.ORCH-T1632; was MainlineTests.FileLockRetries).</summary>
     public double MainTestsLockRetries { get; init; } = DefaultMainTestsLockRetries;

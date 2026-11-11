@@ -26,8 +26,8 @@ can carry a copy of it.
 ## Behaviour on connect and reconnect
 
 - When an app connects, the daemon first sends the full status state (`state`), then the messages it keeps: the last
-  snapshot's figures, every app's latest `app-present`, and the latest `members`, `orgs`, `settings`, `pause` and
-  `reminders` of its own store. After that it sends each message as it happens. A heartbeat
+  snapshot's figures, every app's latest `app-present`, every live CLI session's latest `activity` (the activity
+  snapshot), and the latest `members`, `orgs`, `settings`, `pause` and `reminders` of its own store. After that it sends each message as it happens. A heartbeat
   arrives every 20 seconds. If the stream is silent for 65 seconds, treat it as dead and reconnect.
 - When the daemon is down, the pipe doesn't exist. Keep working without it and retry the connection with a backoff
   (1 second, doubling up to 10 seconds). Send `app-present` again after every connect, because the daemon forgets
@@ -145,6 +145,50 @@ It never carries a token, a key or a byte of terminal output. The bus is only th
 subscriber reads `TermWatchersBus.Current()` on start and after a reconnect. That method returns nothing unless the
 gateway runs. The contract is `src/MindAttic.Orchestrator.Term/TermWatchers.cs`. In .NET, read it with
 `bus.On<TermWatchersEvent>(TermWatchersBus.Kind, handler, TermWatchersBus.Version)`.
+
+### `activity` (v1): what one CLI session is doing now (M.ORCH-T962)
+
+The current picture of one session, not a log: the latest message for a `session` replaces the last, so a missed message
+loses nothing. Designed in `docs/spikes/activity-feed.md` (section 5).
+
+```json
+{"kind":"activity","v":1,"at":"2026-10-26T12:00:00Z","pid":1234,"payload":{
+  "session":"6f1c...","provider":"codex","repo":"MindAttic.Orchestrator",
+  "state":"working","tool":"apply_patch","target":"AppBus.cs","verb":"Editing",
+  "ticket":"M.ORCH-T962","seq":412,"atUtc":"2026-10-26T12:00:00.120Z"}}
+```
+
+| Field | Meaning |
+|---|---|
+| `session` | The CLI's session id (the key; a newer message replaces the older) |
+| `provider` | `claude`, `codex`, `gemini` or `kimi` |
+| `repo`, `login` | The repo, and the login's email. `login` is left out when unknown or the session is private. |
+| `state` | `working`, `idle`, `asking` (the reason is never sent), `held` (by the pace gate), or `ended` (the CLI exited) |
+| `tool` | The tool name. MCP tools collapse to `mcp`. Absent when idle. |
+| `target` | Short and masked, at most 80 characters: a file's base name, a host, a pattern, or a shell command's description or program name. Never a raw command or tool input. |
+| `verb` | An optional human phrase (`Editing`) |
+| `ticket` | The ticket the session works, when known |
+| `subagents` | How many subagents it runs, when known |
+| `summary` | Reserved: a masked last-message summary of at most 120 characters. v1 never sends it. |
+| `seq` | A per-session counter. Drop a message with a lower `seq` than one already shown for that session. |
+| `atUtc` | When the hook saw it |
+
+Where it comes from: the hooks keep one record per session in `~/.claude/session-context/activity/<session>.json`
+(the context gate writes them for Codex and Gemini, M.ORCH-T964). The daemon watches that folder
+(`ActivityFeedPublisher`: a file watcher, plus a slow rescan every `ActivityRescanSeconds`) and publishes each changed
+record. A hook may also write an `activity` line to the inbox, and it takes the same path.
+
+Coalescing: the daemon sends at most one message per session per `ActivityCoalesceSeconds` (0.5 by default, so two a
+second). A newer picture inside the gap is held, and the latest goes out when the gap passes. A picture that differs from
+the last one sent only in `seq` and `atUtc` isn't sent. Every text field (`target`, `verb`, `summary`) passes the shared
+activity masker (`SecretShapes.MaskActivity`, M.ORCH-T963) and is cut to its length, and only the fields above ever go
+out, whatever else the record holds.
+
+Snapshot and end: the daemon keeps the latest message per session and hands them all to each subscriber as it connects,
+so a late viewer is complete at once. A session whose record says `ended`, or that sends nothing for
+`ActivityEndedMinutes` (10 by default) while its CLI's process is gone, is sent once as `ended` and no longer kept. The
+three times are Vault settings. The contract is `ActivityPayload` in `src/MindAttic.Orchestrator.Core/Status/AppBus.cs`.
+In .NET, read it with `bus.On<ActivityPayload>(AppBus.Activity, handler, AppBus.ActivityVersion)`.
 
 ## Fallback viewers (M.ORCH-T960)
 
