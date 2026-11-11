@@ -85,6 +85,46 @@ public sealed class MemberRosterTests
     }
 
     [Test]
+    public void Add_refuses_a_name_initials_or_email_another_member_already_answers_to()
+    {
+        // M.ORCH-T1445: /<member> commands and /org <who> stay unique.
+        var db = Scratch();
+        MemberRoster.Add(db, "ryandebraal@example.com", "Ryan DeBraal", "owner", "premium", null, Now);
+        MemberRoster.Add(db, "ohleo199@example.com", "Erin", "member", "premium", null, Now);
+
+        var name = Assert.Throws<InvalidOperationException>(() => MemberRoster.Add(db, "other@example.com", "ryan  debraal", "member", "standard", null, Now))!;
+        Assert.That(name.Message, Does.Contain("Ryan DeBraal (ryandebraal@example.com)").And.Contain("name"), "the same name, any case and spacing");
+        var initials = Assert.Throws<InvalidOperationException>(() => MemberRoster.Add(db, "rd@example.com", "Rachel Doe", "member", "standard", null, Now))!;
+        Assert.That(initials.Message, Does.Contain("initials").And.Contain("\"RD\"").And.Contain("Ryan DeBraal"));
+        Assert.Throws<InvalidOperationException>(() => MemberRoster.Add(db, "erin@example.com", null, "member", "standard", null, Now), "the part before the @ is Erin's first name");
+        Assert.Throws<InvalidOperationException>(() => MemberRoster.Add(db, "x@example.com", "Ohleo199", "member", "standard", null, Now), "a name that is Erin's email's part before the @");
+        Assert.Throws<InvalidOperationException>(() => MemberRoster.Add(db, "x@example.com", "Ryan-DeBraal", "member", "standard", null, Now), "the same /ryandebraal command");
+
+        Assert.That(MemberRoster.Add(db, "amy@example.com", "Amy Reed", "member", "standard", null, Now).Name, Is.EqualTo("Amy Reed"), "nothing clashes");
+        Assert.That(MemberRoster.Load(db).Select(m => m.Email), Is.EqualTo(new[] { "amy@example.com", "ohleo199@example.com", "ryandebraal@example.com" }), "nothing refused was written");
+    }
+
+    [Test]
+    public void Set_with_unique_refuses_a_clashing_name_but_keeps_its_own_values()
+    {
+        var db = Scratch();
+        MemberRoster.Add(db, "ryandebraal@example.com", "Ryan DeBraal", "owner", "premium", null, Now);
+        MemberRoster.Add(db, "amy@example.com", "Amy Reed", "member", "standard", null, Now);
+        var later = Now.AddHours(1);
+
+        var clash = Assert.Throws<InvalidOperationException>(() => MemberRoster.Set(db, "amy@example.com", "RyanDeBraal", null, null, null, later, unique: true))!;
+        Assert.That(clash.Message, Does.Contain("Ryan DeBraal (ryandebraal@example.com)"));
+        Assert.Throws<InvalidOperationException>(() => MemberRoster.Set(db, "amy@example.com", "Rita Dove", null, null, null, later, unique: true), "RD is Ryan's initials");
+        Assert.That(MemberRoster.Find(db, "amy@example.com")!.Name, Is.EqualTo("Amy Reed"), "not written");
+
+        Assert.That(MemberRoster.Set(db, "ryandebraal@example.com", "Ryan DeBraal", null, null, null, later, unique: true).Name, Is.EqualTo("Ryan DeBraal"), "its own name");
+        Assert.That(MemberRoster.Set(db, "ryandebraal@example.com", "ryan debraal", null, null, null, later, unique: true).Name, Is.EqualTo("ryan debraal"), "its own name, another case");
+        Assert.That(MemberRoster.Set(db, "ryandebraal@example.com", "Ryan DeBraal", "admin", null, null, later, unique: true).Role, Is.EqualTo("admin"), "only its role");
+        Assert.That(MemberRoster.Set(db, "amy@example.com", "Amy R", null, null, null, later, unique: true).Name, Is.EqualTo("Amy R"), "a name nobody else answers to");
+        Assert.That(MemberRoster.Set(db, "amy@example.com", "RyanDeBraal", null, null, null, later).Name, Is.EqualTo("RyanDeBraal"), "without unique (the dashboard's Rename) nothing is refused");
+    }
+
+    [Test]
     public void The_members_command_adds_sets_lists_and_removes_members_in_the_live_database()
     {
         // The per-test scratch database (OrchestratorDbPerTest) is the live one here: never the repo's.

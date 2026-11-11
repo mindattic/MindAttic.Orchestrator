@@ -206,7 +206,7 @@ internal sealed class MembersSetCommand : Command<MembersSetCommand.Settings>
         }
         if (OrgChoice.Resolve(settings.Org) is not { } scope || !MembersCommand.InScope(scope, settings.Email)) return 1;
         return MembersCommand.Change(() => MembersCommand.Describe(
-            MemberRoster.Set(MembersCommand.Db(), settings.Email, settings.Name, settings.Role, settings.Tier, settings.Status, DateTime.UtcNow)) + ".");
+            MemberRoster.Set(MembersCommand.Db(), settings.Email, settings.Name, settings.Role, settings.Tier, settings.Status, DateTime.UtcNow, unique: true)) + ".");
     }
 }
 

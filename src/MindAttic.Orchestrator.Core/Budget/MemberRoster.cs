@@ -63,16 +63,19 @@ public static class MemberRoster
         return key is null ? null : Load(db).FirstOrDefault(m => m.Email == key);
     }
 
-    /// <summary>Adds a member, checked first (<see cref="Check"/>); fails when <paramref name="email"/> already is one.</summary>
+    /// <summary>Adds a member, checked first (<see cref="Check"/>); fails when <paramref name="email"/> already is one, or when
+    /// its name, initials or email is one another member already answers to (<see cref="Clash"/>, M.ORCH-T1445).</summary>
     /// <exception cref="ArgumentException">An email, role, tier or status that isn't valid.</exception>
-    /// <exception cref="InvalidOperationException">Already a member.</exception>
+    /// <exception cref="InvalidOperationException">Already a member, or another member already answers to its name, initials or email.</exception>
     public static Member Add(OrchestratorDb db, string email, string? name, string role, string tier, string? status, DateTime nowUtc)
     {
         var member = Check(email, name, role, tier, status ?? Statuses[0]) with { JoinedUtc = nowUtc, UpdatedUtc = nowUtc };
         db.WriteData((connection, tx) =>
         {
-            if (Rows(connection, tx).Any(m => m.Email == member.Email))
+            var rows = Rows(connection, tx);
+            if (rows.Any(m => m.Email == member.Email))
                 throw new InvalidOperationException($"{member.Email} is already a member (orchestrator members set changes it).");
+            if (Clash(rows, member) is { } clash) throw new InvalidOperationException(clash);
             Upsert(connection, tx, member);
         });
         StoreChanges.Note(db, StoreChanges.Members);
@@ -80,21 +83,26 @@ public static class MemberRoster
     }
 
     /// <summary>Changes what's given of a member (null leaves it; an empty <paramref name="name"/> clears it); fails when
-    /// <paramref name="email"/> isn't one. Written only when something changed.</summary>
+    /// <paramref name="email"/> isn't one. Written only when something changed. With <paramref name="unique"/> (<c>orchestrator
+    /// members set</c>, M.ORCH-T1445), a new name another member already answers to is refused (<see cref="Clash"/>); keeping its
+    /// own name, or changing only its role, tier or status, never is.</summary>
     /// <exception cref="ArgumentException">An email, role, tier or status that isn't valid.</exception>
-    /// <exception cref="InvalidOperationException">Not a member.</exception>
-    public static Member Set(OrchestratorDb db, string email, string? name, string? role, string? tier, string? status, DateTime nowUtc)
+    /// <exception cref="InvalidOperationException">Not a member, or (with <paramref name="unique"/>) a name another member answers to.</exception>
+    public static Member Set(OrchestratorDb db, string email, string? name, string? role, string? tier, string? status, DateTime nowUtc, bool unique = false)
     {
         var key = Key(email);
         Member? result = null;
         var changed = false;
         db.WriteDataIf((connection, tx) =>
         {
-            var was = Rows(connection, tx).FirstOrDefault(m => m.Email == key)
+            var rows = Rows(connection, tx);
+            var was = rows.FirstOrDefault(m => m.Email == key)
                 ?? throw new InvalidOperationException($"{key} isn't a member (orchestrator members add adds one).");
             var next = Check(key, name is null ? was.Name : name, role ?? was.Role, tier ?? was.Tier, status ?? was.Status)
                 with { JoinedUtc = was.JoinedUtc, UpdatedUtc = was.UpdatedUtc };
             if (next == was) { result = was; return false; }
+            if (unique && !string.Equals(next.Name, was.Name, StringComparison.OrdinalIgnoreCase) && Clash(rows, next, nameOnly: true) is { } clash)
+                throw new InvalidOperationException(clash);
             result = next with { UpdatedUtc = nowUtc };
             Upsert(connection, tx, result);
             return changed = true;
@@ -149,6 +157,57 @@ public static class MemberRoster
         Tier = Canonical(tier, Tiers) ?? throw new ArgumentException($"\"{tier}\" isn't a tier: one of {string.Join(", ", Tiers)}."),
         Status = Canonical(status, Statuses) ?? throw new ArgumentException($"\"{status}\" isn't a status: one of {string.Join(", ", Statuses)}."),
     };
+
+    /// <summary>What <paramref name="member"/> answers to (M.ORCH-T1445), each with what it is: the email, the part before the
+    /// @, the name, and the name's initials when it has two or more words: the ways <c>/org &lt;who&gt;</c>
+    /// (<see cref="OrgPerson.Keys"/>) and the generated <c>/&lt;member&gt;</c> commands (MindAttic.Agency's
+    /// shared/member-commands.ps1) name a member.</summary>
+    public static IEnumerable<(string Value, string What)> AnswersTo(Member member, bool nameOnly = false)
+    {
+        if (!nameOnly)
+        {
+            yield return (member.Email, "email");
+            if (LoginLook.DefaultAlias(member.Email) is { } local) yield return (local, "email's part before the @");
+        }
+        if (Collapse(member.Name) is not { Length: > 0 } name) yield break;
+        yield return (name, "name");
+        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length >= 2) yield return (string.Concat(words.Select(w => char.ToUpperInvariant(w[0]))), "initials");
+    }
+
+    /// <summary>Why <paramref name="candidate"/> can't be added or renamed (M.ORCH-T1445): the first of its name, initials or
+    /// email (only its name and initials with <paramref name="nameOnly"/>) that another of <paramref name="members"/> already
+    /// answers to, naming that member; null when none clashes. Two values clash when they're equal ignoring case and spacing, as
+    /// <see cref="MemberLookup.Match"/> compares them, or when they make the same <c>/&lt;member&gt;</c> command (their letters and
+    /// digits, lowercased). The candidate's own row (same email) is never a clash.</summary>
+    public static string? Clash(IEnumerable<Member> members, Member candidate, bool nameOnly = false)
+    {
+        var mine = AnswersTo(candidate, nameOnly).ToList();
+        foreach (var other in members)
+        {
+            if (string.Equals(other.Email, candidate.Email, StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (var (theirs, theirWhat) in AnswersTo(other))
+                foreach (var (value, what) in mine)
+                    if (Same(value, theirs))
+                        return $"The {what} \"{value}\" clashes with {other.Name ?? other.Email} ({other.Email}), who already answers to " +
+                            $"\"{theirs}\" (their {theirWhat}): /<member> commands and /org <who> need every member's name, initials and " +
+                            $"email to be unique, so give {(what.StartsWith("email", StringComparison.Ordinal) ? "another email" : "another --name")}.";
+        }
+        return null;
+    }
+
+    private static bool Same(string a, string b)
+    {
+        if (string.Equals(Collapse(a), Collapse(b), StringComparison.OrdinalIgnoreCase)) return true;
+        var sa = Slug(a);
+        return sa.Length > 0 && sa == Slug(b);
+    }
+
+    /// <summary>Trimmed, with each run of spaces made one, as <see cref="MemberLookup.Match"/> reads a &lt;who&gt;.</summary>
+    private static string? Collapse(string? s) => s is null ? null : string.Join(' ', s.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+    /// <summary>The <c>/&lt;member&gt;</c> command a value makes: its ASCII letters and digits, lowercased (member-commands.ps1's Slug).</summary>
+    private static string Slug(string s) => string.Concat(s.ToLowerInvariant().Where(c => c is >= 'a' and <= 'z' or >= '0' and <= '9'));
 
     private static string Key(string email) =>
         AccountDirs.Normalize(email) ?? throw new ArgumentException($"\"{email}\" isn't an email address.");
