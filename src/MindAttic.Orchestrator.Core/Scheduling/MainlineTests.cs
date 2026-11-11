@@ -407,6 +407,7 @@ public sealed partial class MainlineTests(JsonStore store)
         {
             // Untracked files a test left behind go; ignored ones (bin, obj) stay, so the build is incremental.
             Git(tree, ["clean", "-fdq"]);
+            InitSubmodules(tree);
             return null;
         }
         try
@@ -417,7 +418,17 @@ public sealed partial class MainlineTests(JsonStore store)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return $"couldn't make {tree}: {ex.Message}"; }
         Git(repo, ["worktree", "prune"]);
         var (code, output) = Git(repo, ["worktree", "add", "--detach", tree, head]);
-        return code == 0 ? null : $"git worktree add failed: {output.Trim()}";
+        if (code != 0) return $"git worktree add failed: {output.Trim()}";
+        InitSubmodules(tree);
+        return null;
+    }
+
+    /// <summary>A checkout leaves submodule folders empty, so a repo with submodules fails to build there (MSB3202); best effort,
+    /// a repo without any, or a failed update, just carries on (M.ORCH-T1541).</summary>
+    private void InitSubmodules(string tree)
+    {
+        if (System.IO.File.Exists(Path.Combine(tree, ".gitmodules")))
+            Git(tree, ["submodule", "update", "--init", "--recursive"]);
     }
 
     private static string Short(string sha) => sha.Length > 7 ? sha[..7] : sha;
