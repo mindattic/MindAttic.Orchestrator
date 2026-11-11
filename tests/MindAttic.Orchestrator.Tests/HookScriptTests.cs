@@ -7,8 +7,10 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>Runs the generated pace-gate.py and context-gate.py the way Claude Code does: JSON on stdin, a scratch profile.</summary>
+[NonParallelizable] // times spawned python gates: other suites' load stretches them past their margins (M.ORCH-T1312)
 public sealed class HookScriptTests
 {
+    private readonly List<int> spawned = []; // pids: the tests dispose their Process handles while a gate may still run
     private string dir = "";
     private string ws = "";
     private string Claude => Path.Combine(dir, ".claude");
@@ -25,7 +27,28 @@ public sealed class HookScriptTests
     }
 
     [TearDown]
-    public void TearDown() => Directory.Delete(dir, recursive: true);
+    public void TearDown()
+    {
+        // A gate still running holds Tickets.db / pace-gate.jsonl open: wait for each to exit (bounded), then kill it, before deleting.
+        foreach (var pid in spawned)
+        {
+            try
+            {
+                using var p = Process.GetProcessById(pid);
+                if (!p.WaitForExit(15_000)) { p.Kill(entireProcessTree: true); p.WaitForExit(10_000); }
+            }
+            catch (ArgumentException) { } // already gone
+            catch (InvalidOperationException) { }
+            catch (System.ComponentModel.Win32Exception) { }
+        }
+        spawned.Clear();
+        for (var attempt = 0; ; attempt++)
+        {
+            try { Directory.Delete(dir, recursive: true); return; }
+            catch (IOException) when (attempt < 10) { Thread.Sleep(500); }
+            catch (UnauthorizedAccessException) when (attempt < 10) { Thread.Sleep(500); }
+        }
+    }
 
     private Process Run(string script, object input, params string[] args) => Run(script, input, null, args);
 
@@ -56,6 +79,7 @@ public sealed class HookScriptTests
         psi.Environment["LOCALAPPDATA"] = dir;
         foreach (var (k, v) in env ?? new Dictionary<string, string>()) psi.Environment[k] = v;
         var p = Process.Start(psi)!;
+        spawned.Add(p.Id);
         // Raw UTF-8, non-ASCII unescaped, as Claude Code writes it (M.ORCH-T392).
         p.StandardInput.BaseStream.Write(JsonSerializer.SerializeToUtf8Bytes(input, Utf8Input));
         p.StandardInput.Close();
