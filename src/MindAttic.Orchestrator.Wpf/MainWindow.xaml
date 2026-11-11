@@ -835,6 +835,36 @@
                             <TextBlock Text="{Binding ApiBurnText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
+                    <!-- Its starting credit, set here (M.ORCH-T954) as well as with orchestrator billing credit <usd>: both write
+                         through ApiCredit.Set, so spend counts against it from now; 0 clears it. Only the credit changes, never the
+                         key's credentials. -->
+                    <Border x:Name="ApiCreditCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch" Margin="{StaticResource SpaceTS}"
+                            AutomationProperties.Name="API starting credit">
+                        <StackPanel>
+                            <TextBlock Text="Starting credit" Style="{StaticResource MaSectionLabel}" />
+                            <StackPanel Orientation="Horizontal" Margin="{StaticResource SpaceTS}">
+                                <TextBox x:Name="ApiCreditBox" Style="{StaticResource MaTextBox}" Width="160" Height="32" VerticalAlignment="Center"
+                                         Text="{Binding ApiCreditText, UpdateSourceTrigger=PropertyChanged}"
+                                         mc:MaTextBox.Placeholder="{Binding ApiCreditPlaceholder}"
+                                         AutomationProperties.Name="Starting credit in US dollars">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Enter" Command="{Binding SetApiCreditCommand}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
+                                <Button x:Name="SetApiCreditButton" Style="{StaticResource MaButton}" Content="Set" Padding="{StaticResource SpaceHMVXS}" Margin="{StaticResource SpaceLS}"
+                                        Command="{Binding SetApiCreditCommand}" VerticalAlignment="Center"
+                                        mc:MaCallout.ToolTip="Set the API key's starting credit in US dollars (as orchestrator billing credit &lt;usd&gt; does): what its CLIs spend from now on counts against it. 0 clears it." />
+                            </StackPanel>
+                            <TextBlock Text="US dollars, 0 or more: what its CLIs spend from now on counts against it; 0 clears it."
+                                       Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}" />
+                            <TextBlock Text="{Binding ApiCreditMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}"
+                                       AutomationProperties.LiveSetting="Polite"
+                                       Visibility="{Binding ApiCreditMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                            <TextBlock Text="{Binding ApiCreditError}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}"
+                                       AutomationProperties.LiveSetting="Assertive"
+                                       Visibility="{Binding ApiCreditError, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
                 </StackPanel>
                 </Grid>
@@ -856,7 +886,7 @@
                     <!-- The API key's person (M.ORCH-T906) has no 5-hour or weekly window: money instead. What's left of its
                          starting credit, what it has spent (today and lately), and when it runs out at the recent rate. -->
                     <Button x:Name="ApiLeftTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
-                            mc:MaCallout.ToolTip="What's left of the API key's starting credit (orchestrator billing credit &lt;usd&gt; sets it): an estimate from the transcripts' tokens at Anthropic's list prices."
+                            mc:MaCallout.ToolTip="What's left of the API key's starting credit (its Starting credit field, or orchestrator billing credit &lt;usd&gt;, sets it): an estimate from the transcripts' tokens at Anthropic's list prices."
                             AutomationProperties.Name="{Binding ApiLeftHeadline, StringFormat='API credit left: {0}'}">
                         <StackPanel>
                             <TextBlock Text="Credit Left" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />

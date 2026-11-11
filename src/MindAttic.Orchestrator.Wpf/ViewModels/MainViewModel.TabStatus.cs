@@ -471,7 +471,7 @@ public sealed partial class MainViewModel
     /// <summary>"of $50.00 since Oct 26", or how to set a starting credit.</summary>
     public string ApiLeftCaption => Spend is { CreditUsd: { } c } s
         ? $"of {ApiSpend.Usd(c)}{(s.SinceUtc is { } at ? $" since {at.ToLocalTime():MMM d}" : "")}"
-        : "no starting credit: orchestrator billing credit <usd>";
+        : "no starting credit: set one below";
 
     /// <summary>"$12.34", spent since the credit started (or everything on record).</summary>
     public string ApiSpentHeadline => Spend is { } s ? ApiSpend.Usd(s.SpentUsd) : "—";
@@ -508,7 +508,7 @@ public sealed partial class MainViewModel
                                      nameof(TabCliCount), nameof(TabThinkingCount), nameof(ShowsTabThinkingCount), nameof(TabThinkingCountText), nameof(TabThinkingWord),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
-                                     nameof(ApiBurnText), nameof(ShowsClaudeMeters),
+                                     nameof(ApiBurnText), nameof(ShowsClaudeMeters), nameof(ApiCreditPlaceholder),
                                      nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip) })
             Raise(name);
     }

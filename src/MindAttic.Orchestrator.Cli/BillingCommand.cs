@@ -65,22 +65,14 @@ internal sealed class BillingCommand : Command<BillingCommand.Settings>
     {
         if (amount is not null)
         {
-            if (!double.TryParse(amount.Trim().TrimStart('$'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var usd) ||
-                usd < 0 || double.IsNaN(usd) || double.IsInfinity(usd))
+            if (!ApiCredit.TryParse(amount, out var usd))
             {
                 AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(amount)}\" isn't an amount of US dollars: e.g. orchestrator billing credit 50.[/]");
                 return 1;
             }
-            var store = Ctx.Store();
-            // LoadSettingsToChange: a settings row that can't be read is never saved over with defaults (bughunt 2026-10-27).
-            store.SaveSettings(store.LoadSettingsToChange() with
-            {
-                ApiCreditUsd = usd > 0 ? usd : null,
-                ApiCreditSinceUtc = usd > 0 ? nowUtc : null,
-            });
-            AnsiConsole.MarkupLine(usd > 0
-                ? Markup.Escape($"The API key's starting credit is {ApiSpend.Usd(usd)}: what its CLIs spend from now on counts against it.")
-                : "The API key's starting credit is cleared: its page shows only what it spends.");
+            // The same code path the dashboard's field on the API key's page writes through (M.ORCH-T954).
+            ApiCredit.Set(Ctx.Store(), usd, nowUtc);
+            AnsiConsole.MarkupLine(Markup.Escape(ApiCredit.Said(usd)));
         }
         WriteApiKeyPerson(nowUtc);
         return 0;
