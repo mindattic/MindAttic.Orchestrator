@@ -1124,11 +1124,31 @@ public partial class MainWindow : Window
                 foreach (var child in branch.Children) item.Items.Add(ProjectItem(child, tab, open, labels));
                 break;
             case ProjectLeaf leaf:
-                item.ToolTip = leaf.Project.Path;
+                item.ToolTip = $"{leaf.Project.Path}\nRight-click: commit and push it under a message you write";
                 item.Click += (_, e) => { e.Handled = true; open(() => tab.OpenProjectAsync(leaf.Project)); };
+                // Right-click a project (M.ORCH-T1588): a commit-message modal (Save/Cancel) that commits and pushes it.
+                item.PreviewMouseRightButtonUp += (_, e) =>
+                {
+                    if (!ReferenceEquals(OwningMenuItem(e.OriginalSource as DependencyObject), item)) return;
+                    e.Handled = true;
+                    CommitProject(item, leaf.Project);
+                };
                 break;
         }
         return item;
+    }
+
+    /// <summary>Closes the menu <paramref name="from"/> is in and opens <see cref="CommitProjectWindow"/> on
+    /// <paramref name="project"/> (M.ORCH-T1588).</summary>
+    private void CommitProject(MenuItem from, RosterProject project)
+    {
+        try
+        {
+            for (DependencyObject? up = from; up is not null; up = LogicalTreeHelper.GetParent(up))
+                if (up is ContextMenu menu) { menu.IsOpen = false; break; }
+            CommitProjectWindow.Show(this, project);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Commit {Project:l} failed; contained", project.Name); }
     }
 
     private static MenuItem Disabled(string header)
