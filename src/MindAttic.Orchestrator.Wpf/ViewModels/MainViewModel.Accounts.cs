@@ -10,8 +10,8 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// The account roster the daemon keeps (every Claude account signed in to here, how much of its week and 5-hour window it
 /// has left and when each resets). There's no account menu any more (M.ORCH-T628): every person is signed in at once, each
 /// with a tab of their own (M.ORCH-T613) whose stat tiles carry that login's own numbers (<see cref="OwnRow"/>), and what
-/// only the menu did moved to the Accounts view: billing the API key for emergencies and back to Claude Team
-/// (<see cref="ToggleBillingCommand"/>, M.ORCH-T436).
+/// only the menu did moved to the Accounts view (the API key's billing switch there is gone: it's a person of its own,
+/// M.ORCH-T906, and <c>orchestrator billing</c> is the command-line tool, M.ORCH-T956).
 /// </summary>
 public sealed partial class MainViewModel
 {
@@ -101,38 +101,8 @@ public sealed partial class MainViewModel
         signInAgain = UsageReport.NeedingSignIn(ReportedUsage.DefaultDb);
     }
 
-    private ICommand? toggleBillingCommand;
-
-    /// <summary>The Accounts view's billing button: "Use API key (emergencies)" while Claude Team bills, "Back to Claude Team"
-    /// while the Vault's key does (M.ORCH-T436). Switching every open CLI onto the organization's key is a break-glass action
-    /// (M.ORCH-T773), so it asks first - one stray click on the corner icon must never flip billing by accident. Switching
-    /// back to Claude Team doesn't ask: that direction is always the safe one, and it's often clicked in a hurry once the
-    /// emergency that justified the key is over.</summary>
-    public ICommand ToggleBillingCommand => toggleBillingCommand ??= new RelayCommand(async () =>
-    {
-        if (switchingBilling) return;
-        if (IsOnApiKey) { await SwitchBillingAsync(BillingModes.Team); return; }
-        var confirmed = MindAttic.Components.Wpf.Controls.MaMessageBox.Show(
-            System.Windows.Application.Current?.MainWindow,
-            "This bills every open CLI to the MindAttic Vault's organization API key instead of anyone's personal Claude Team seat, "
-            + "until you switch it back. Use it only for an emergency (a seat out of room, pacing gone wrong).",
-            "Bill every CLI to the API key?",
-            System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning, System.Windows.MessageBoxResult.No)
-            == System.Windows.MessageBoxResult.Yes;
-        if (!confirmed) return;
-        await SwitchBillingAsync(BillingModes.Api);
-    }, () => !switchingBilling);
-
     /// <summary>Whether the Vault's API key bills every CLI right now.</summary>
     public bool IsOnApiKey => billing?.Mode == BillingModes.Api;
-
-    /// <summary>The billing button's label.</summary>
-    public string BillingToggleText => IsOnApiKey ? "Back to Claude Team" : "Use API key (emergencies)";
-
-    /// <summary>The emergency billing toggle's key glyph (M.ORCH-T770): MaText while Claude Team bills, MaGood while the API
-    /// key does, as a view model's own live brush (<see cref="Palette"/>) rather than a Style's DataTrigger, so the icon needs
-    /// no style of its own (M.ORCH-T775).</summary>
-    public System.Windows.Media.Brush EmergencyKeyBrush => IsOnApiKey ? Palette.Working : Palette.Text;
 
     private bool signingInAll;
     private RelayCommand? signInAllCommand;

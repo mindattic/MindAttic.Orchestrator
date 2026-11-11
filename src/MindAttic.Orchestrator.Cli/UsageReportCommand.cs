@@ -101,7 +101,9 @@ internal sealed class UsageReportCommand : Command<UsageReportCommand.Settings>
         OrchestratorSettings settings;
         try { settings = store.LoadSettings(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { settings = new OrchestratorSettings(); }
-        return UsageReport.Gather(new OrchestratorDb(OrchestratorDb.LivePath), snapshot, new AccountDirs(), settings, now, since,
+        var db = new OrchestratorDb(OrchestratorDb.LivePath);
+        MemberRoster.EnsureApiKey(db, now); // a real member, so its row isn't "(not a member)" (M.ORCH-T956)
+        return UsageReport.Gather(db, snapshot, new AccountDirs(), settings, now, since,
             ReportedUsage.Load(now), ReportedUsage.DefaultDb,
             WeeklyAllowances.Active(store, now), UsageCutoffs.Load(store));
     }

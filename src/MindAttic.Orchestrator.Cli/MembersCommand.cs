@@ -32,6 +32,8 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
     {
         if (OrgChoice.Resolve(settings.Org) is not { } scope) return 1;
         var db = Db();
+        // The API key is a member of its own (M.ORCH-T956), in the default org: a real row, so it shows below and in --json.
+        MemberRoster.EnsureApiKey(db, DateTime.UtcNow);
         var members = scope.Keep(MemberRoster.Load(db), m => m.Email);
         var accounts = AccountRoster.Load(db).Where(a => a.Email is not null)
             .GroupBy(a => AccountDirs.Normalize(a.Email) ?? a.Email!, StringComparer.Ordinal)
@@ -71,10 +73,6 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
                 m.Status == "active" ? m.Status : $"[yellow]{Markup.Escape(m.Status)}[/]",
                 SignedInCell(own.Contains(m.Email), accounts.TryGetValue(m.Email, out var at), at, now));
         AnsiConsole.Write(table);
-        // The API key is a member of its own too (M.ORCH-T906): no row of the table (it has no seat), but tickets are assigned to
-        // it by its email like anyone's, and orchestrator billing shows its money.
-        AnsiConsole.MarkupLine(Markup.Escape($"Also: {MindAttic.Orchestrator.Billing.ApiKeyPerson.Name} ({MindAttic.Orchestrator.Billing.ApiKeyPerson.Email}), " +
-            "the Vault's API key as a person: assign it tickets by that email; its CLIs bill API credits (orchestrator billing)."));
         return 0;
     }
 

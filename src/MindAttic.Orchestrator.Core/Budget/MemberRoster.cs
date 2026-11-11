@@ -82,6 +82,23 @@ public static class MemberRoster
         return member;
     }
 
+    /// <summary>Makes sure the Vault's API key (<see cref="Billing.ApiKeyPerson"/>, M.ORCH-T906) is a real member (M.ORCH-T956): a
+    /// <c>members</c> row like anyone's (named for the key, a standard-tier member, active) and a login in the default org, the one
+    /// the API key's tab is always in, so <c>org members</c>, <c>org usage</c> and their <c>--json</c> list it under that org only
+    /// (<see cref="OrgDirectory.OrgOfClaude"/>). Nothing about its credentials or sign-in is touched. A row it already has, or a
+    /// login already placed in an org, is left as it is, so it's safe to call on every read. Null when another member already
+    /// answers to its name or initials (<see cref="Clash"/>, M.ORCH-T1445): then it's left out rather than renaming anyone.</summary>
+    public static Member? EnsureApiKey(OrchestratorDb db, DateTime nowUtc)
+    {
+        var email = Billing.ApiKeyPerson.Email;
+        Member? member;
+        try { member = Find(db, email) ?? Add(db, email, Billing.ApiKeyPerson.Name, Roles[^1], Tiers[^1], null, nowUtc); }
+        catch (InvalidOperationException) { return Find(db, email); }
+        if (!db.LoadOrgs().Members.Any(m => m.IsClaude && m.Login == email))
+            db.SetMember(new OrgMember(Organization.DefaultId, Billing.ApiKeyPerson.Name, email));
+        return member;
+    }
+
     /// <summary>Changes what's given of a member (null leaves it; an empty <paramref name="name"/> clears it); fails when
     /// <paramref name="email"/> isn't one. Written only when something changed. With <paramref name="unique"/> (<c>orchestrator
     /// members set</c>, M.ORCH-T1445), a new name another member already answers to is refused (<see cref="Clash"/>); keeping its

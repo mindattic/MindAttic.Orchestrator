@@ -48,6 +48,36 @@ public sealed class MemberRosterTests
     }
 
     [Test]
+    public void The_API_key_is_a_real_member_in_the_default_org_and_only_there()
+    {
+        var db = Scratch();
+        db.SaveOrg(new Organization("sales", "Sales", 1));
+
+        var member = MemberRoster.EnsureApiKey(db, Now)!;
+        Assert.That((member.Email, member.Name, member.Role, member.Tier, member.Status),
+            Is.EqualTo((Billing.ApiKeyPerson.Email, Billing.ApiKeyPerson.Name, "member", "standard", "active")));
+        Assert.That(MemberRoster.Find(db, Billing.ApiKeyPerson.Email), Is.EqualTo(member));
+        var orgs = db.LoadOrgs();
+        Assert.That(orgs.OrgOfClaude(Billing.ApiKeyPerson.Email), Is.EqualTo(Organization.DefaultId));
+        Assert.That(orgs.MembersOf(Organization.DefaultId).Select(m => m.Login), Does.Contain(Billing.ApiKeyPerson.Email));
+        Assert.That(orgs.MembersOf("sales").Select(m => m.Login), Does.Not.Contain(Billing.ApiKeyPerson.Email), "per-org scoping");
+
+        // Safe to repeat: nothing changes, and a name someone gave it is kept.
+        MemberRoster.Set(db, Billing.ApiKeyPerson.Email, "The Key", null, null, null, Now.AddHours(1));
+        Assert.That(MemberRoster.EnsureApiKey(db, Now.AddDays(1))!.Name, Is.EqualTo("The Key"));
+        Assert.That(MemberRoster.Load(db), Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void The_API_key_is_left_out_rather_than_renaming_a_member_whose_name_clashes()
+    {
+        var db = Scratch();
+        MemberRoster.Add(db, "ak@example.com", "API key", "member", "standard", null, Now);
+        Assert.That(MemberRoster.EnsureApiKey(db, Now), Is.Null);
+        Assert.That(MemberRoster.Load(db).Select(m => m.Email), Is.EqualTo(new[] { "ak@example.com" }));
+    }
+
+    [Test]
     public void Add_set_and_remove_round_trip_through_the_database_and_the_dump()
     {
         var db = Scratch();
@@ -204,7 +234,7 @@ public sealed class MemberRosterTests
 
             Assert.That(Run("members", "remove", "invited@example.com"), Is.Zero, output.ToString());
             Assert.That(Run("members", "remove", "invited@example.com"), Is.EqualTo(1));
-            Assert.That(MemberRoster.Load(db).Select(m => m.Email), Is.EqualTo(new[] { "signed@example.com" }));
+            Assert.That(MemberRoster.Load(db).Select(m => m.Email), Is.EqualTo(new[] { Billing.ApiKeyPerson.Email, "signed@example.com" }), "the API key is a member too (M.ORCH-T956)");
             Assert.That(File.ReadAllText(db.DumpPath), Does.Contain("'signed@example.com', 'Sig Ned', 'owner', 'premium', 'active'"));
             Assert.That(Run("members", "--help"), Is.Zero, output.ToString());
             Assert.That(Run("members", "add", "--help"), Is.Zero, output.ToString());
