@@ -105,12 +105,6 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     /// <summary>Who the global login is signed in to, keyed as <see cref="ClaudeAccount.Current"/> keys it; null: nobody (seam).</summary>
     internal Func<string?> GlobalAccount { get; init; } = () => ClaudeAccount.Current(mover.Dirs.HomeConfigPath);
 
-    private static string? AccountOf(AccountDir dir)
-    {
-        try { return dir.Account; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { return null; }
-    }
-
     /// <summary>The logins the user let past their weekly target (M.ORCH-T694), in place of <see cref="Store"/>'s (seam).</summary>
     internal Func<IReadOnlyList<WeeklyAllowance>>? AllowancesOverride { get; init; }
 

@@ -13,7 +13,6 @@ public sealed partial class MainViewModel
     private BillingStatus? billing;
     private string billingMessage = "";
     private DateTime billingMessageUtc;
-    private bool switchingBilling;
 
     /// <summary>"Billing: Claude Team: pdftransferjr@mindattic.com (MindAttic)" or "Billing: API KEY: sk-ant-...WXYZ".</summary>
     public string BillingHeadline => billing is null ? "" : $"Billing: {billing.Headline}";
@@ -49,42 +48,8 @@ public sealed partial class MainViewModel
     {
         billing = next.Billing;
         // What the last switch did stays up for a couple of minutes, as a toast would.
-        if (!switchingBilling && DateTime.UtcNow - billingMessageUtc > TimeSpan.FromMinutes(2)) billingMessage = "";
+        if (DateTime.UtcNow - billingMessageUtc > TimeSpan.FromMinutes(2)) billingMessage = "";
         Raise(nameof(IsOnApiKey)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
         RaiseTabStatus();
-    }
-
-    private async Task SwitchBillingAsync(string mode)
-    {
-        switchingBilling = true;
-        System.Windows.Input.CommandManager.InvalidateRequerySuggested();
-        billingMessage = $"Switching every CLI to {BillingModes.Name(mode)}…";
-        Raise(nameof(BillingDetail));
-        try
-        {
-            var hosts = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
-            var result = await Task.Run(() => aggregator.BillingSwitch.Switch(mode, "dashboard", hosts, DateTime.UtcNow));
-            billing = result.Status;
-            billingMessage = result.Error ?? string.Join(" ", result.Lines.Take(1));
-            billingMessageUtc = DateTime.UtcNow;
-            if (result.Error is not null)
-                Toasts.Insert(0, new ToastViewModel("Billing not switched", result.Error, Palette.Over, null));
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            billingMessage = $"Couldn't switch billing: {ex.Message}";
-            billingMessageUtc = DateTime.UtcNow;
-            OrchestratorLog.For("Dashboard").Error(ex, "billing switch failed");
-        }
-        finally
-        {
-            // A refresh built while it was switching read the old mode: it's built again, not applied (M.ORCH-T462).
-            NoteLocalChange();
-            switchingBilling = false;
-            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
-            Raise(nameof(IsOnApiKey)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
-        RaiseTabStatus();
-        }
-        await RefreshAsync();
     }
 }

@@ -60,7 +60,6 @@ internal static class SessionRestore
     }
 
     private static Window? window;
-    private static DispatcherTimer? moved;
 
     /// <summary>
     /// The dashboard's window back where it was at the last run's end (M.ORCH-T1510), before it's shown: its normal bounds, then
@@ -83,7 +82,6 @@ internal static class SessionRestore
                 if (was.Maximized) main.WindowState = WindowState.Maximized;
             }
             var settle = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
-            moved = settle;
             settle.Tick += (_, _) => { settle.Stop(); Changed(); };
             void Settle() { settle.Stop(); settle.Start(); }
             main.LocationChanged += (_, _) => Settle();

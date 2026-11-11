@@ -369,16 +369,6 @@ public static class OrchestratorHistory
         }
     }
 
-    private static List<T> Read<T>(SqliteConnection connection, string sql, Func<SqliteDataReader, T> row)
-    {
-        using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        using var r = command.ExecuteReader();
-        var rows = new List<T>();
-        while (r.Read()) rows.Add(row(r));
-        return rows;
-    }
-
     private static void Run(SqliteConnection connection, SqliteTransaction tx, string sql, params (string Name, object? Value)[] parameters)
     {
         using var command = connection.CreateCommand();
