@@ -1,3 +1,5 @@
+using System.Windows.Input;
+using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Budget;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
@@ -18,6 +20,41 @@ public sealed partial class MainViewModel
     /// <summary>Whether this plan's own weekly chart shows: every signed-in Claude login, Team seat or solo Ultra alike -- only
     /// the API key's person (no weekly window of its own) has none.</summary>
     public bool ShowsWeeklyChart => ShowsClaudeMeters;
+
+    // ── which chart the utilization panel draws (M.ORCH-T1395) ────────────
+
+    /// <summary>The 5hr/Weekly limit boxes are toggles picking the one chart the panel draws: 5hr by default, remembered per
+    /// tab for the dashboard's run. Both series are already in the snapshot, so a switch only swaps which card shows.</summary>
+    private bool weeklyChartSelected;
+
+    /// <summary>The Weekly box reads as selected: picked, or the plan has no 5-hour chart (solo Ultra, whose 5hr box is
+    /// hidden, so the week is all there is to draw).</summary>
+    public bool WeeklyChartSelected => weeklyChartSelected || !ShowsFiveHourChart;
+
+    /// <summary>The 5hr box reads as selected.</summary>
+    public bool FiveHourChartSelected => !WeeklyChartSelected;
+
+    /// <summary>The 5-hour chart shows: the plan has one (<see cref="ShowsFiveHourChart"/>) and its box is selected.</summary>
+    public bool ShowsFiveHourSection => ShowsFiveHourChart && !weeklyChartSelected;
+
+    /// <summary>The weekly chart shows: the login has a week (<see cref="ShowsWeeklyChart"/>) and its box is selected.</summary>
+    public bool ShowsWeeklySection => ShowsWeeklyChart && WeeklyChartSelected;
+
+    private ICommand? showFiveHourChartCommand, showWeeklyChartCommand;
+
+    /// <summary>The 5hr box: draw the 5-hour chart.</summary>
+    public ICommand ShowFiveHourChartCommand => showFiveHourChartCommand ??= new RelayCommand(() => SelectWeeklyChart(false));
+
+    /// <summary>The Weekly box: draw the weekly chart.</summary>
+    public ICommand ShowWeeklyChartCommand => showWeeklyChartCommand ??= new RelayCommand(() => SelectWeeklyChart(true));
+
+    internal void SelectWeeklyChart(bool weekly)
+    {
+        if (weeklyChartSelected == weekly) return;
+        weeklyChartSelected = weekly;
+        foreach (var name in new[] { nameof(FiveHourChartSelected), nameof(WeeklyChartSelected), nameof(ShowsFiveHourSection), nameof(ShowsWeeklySection) })
+            Raise(name);
+    }
 
     /// <summary>The current week against its pace, for the weekly graph; null before the first snapshot or without a weekly
     /// reset known yet (<see cref="WeeklyUtilizationSeries"/>, built the same way for every login, Team seat or solo Ultra).</summary>

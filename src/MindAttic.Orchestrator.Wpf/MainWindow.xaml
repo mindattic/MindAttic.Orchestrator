@@ -758,30 +758,39 @@
                                     </ItemsControl>
                                 </ScrollViewer>
                                 <!-- A solo Ultra login has no 5-hour window to show here (M.ORCH-T1540, ShowsFiveHourChart,
-                                     the same condition FiveHourSection's chart below already collapses on). -->
-                                <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" Margin="{StaticResource SpaceLS}" MinWidth="104"
-                                        AutomationProperties.Name="{Binding FiveHourLimitText}"
-                                        Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}">
+                                     the same condition FiveHourSection's chart below already collapses on).
+                                     The two boxes pick the chart below (M.ORCH-T1395): each is the library's one MaButton dressed as
+                                     the MaCard it was (MaSurface on MaChromeBorder, 1px, radius 6; Padding is SpaceHSVXS plus the 1px a
+                                     Border's own thickness adds), checked while its chart shows, which outlines it in MaFocus. -->
+                                <mc:MaButton Shape="Rounded" CornerRadius="5.5" StrokeThickness="1" Padding="9,5,9,5" Margin="{StaticResource SpaceLS}" MinWidth="104"
+                                             Background="{DynamicResource MaSurface}" BorderBrush="{DynamicResource MaChromeBorder}" CheckedBorderBrush="{DynamicResource MaFocus}"
+                                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" FocusVisualStyle="{StaticResource MaFocusRing}"
+                                             IsChecked="{Binding FiveHourChartSelected, Mode=OneWay}" Command="{Binding ShowFiveHourChartCommand}"
+                                             AutomationProperties.Name="{Binding FiveHourLimitText, StringFormat='{}{0}, show the 5-hour chart'}"
+                                             Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}">
                                     <StackPanel>
                                         <TextBlock Text="{Binding FiveHourLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding FiveHourLimitBrush}" />
                                         <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
                                                      Value="{Binding FiveHourLimitPercent, Mode=OneWay}" Foreground="{Binding FiveHourLimitBrush}" />
                                     </StackPanel>
-                                </Border>
-                                <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" Margin="{StaticResource SpaceLS}" MinWidth="104"
-                                        AutomationProperties.Name="{Binding WeeklyLimitText}">
+                                </mc:MaButton>
+                                <mc:MaButton Shape="Rounded" CornerRadius="5.5" StrokeThickness="1" Padding="9,5,9,5" Margin="{StaticResource SpaceLS}" MinWidth="104"
+                                             Background="{DynamicResource MaSurface}" BorderBrush="{DynamicResource MaChromeBorder}" CheckedBorderBrush="{DynamicResource MaFocus}"
+                                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" FocusVisualStyle="{StaticResource MaFocusRing}"
+                                             IsChecked="{Binding WeeklyChartSelected, Mode=OneWay}" Command="{Binding ShowWeeklyChartCommand}"
+                                             AutomationProperties.Name="{Binding WeeklyLimitText, StringFormat='{}{0}, show the weekly chart'}">
                                     <StackPanel>
                                         <TextBlock Text="{Binding WeeklyLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding WeeklyLimitBrush}" />
                                         <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
                                                      Value="{Binding WeeklyLimitPercent, Mode=OneWay}" Foreground="{Binding WeeklyLimitBrush}" />
                                     </StackPanel>
-                                </Border>
+                                </mc:MaButton>
                             </StackPanel>
                     </StackPanel>
 
                     <!-- The 5-hour chart (M.ORCH-T191): every plan but a solo Ultra account, which has no 5-hour limit worth
                          charting on its own page (M.ORCH-T1403, ShowsFiveHourChart). -->
-                    <StackPanel x:Name="FiveHourSection" Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}">
+                    <StackPanel x:Name="FiveHourSection" Visibility="{Binding ShowsFiveHourSection, Converter={StaticResource Visible}}">
                         <Border x:Name="UtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
                                 AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
                                 Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
@@ -795,9 +804,11 @@
                     </StackPanel>
 
                     <!-- The weekly chart (M.ORCH-T1403): every Claude login, Team seat or solo Ultra alike (ShowsWeeklyChart) -
-                         the same pace-curve drawing as the 5-hour chart, over the week instead (WeeklyUtilizationChartData). -->
-                    <StackPanel x:Name="WeeklySection" Visibility="{Binding ShowsWeeklyChart, Converter={StaticResource Visible}}">
-                        <Border x:Name="WeeklyUtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch" Margin="{StaticResource SpaceTS}"
+                         the same pace-curve drawing as the 5-hour chart, over the week instead (WeeklyUtilizationChartData).
+                         One of the two shows at a time, picked by the 5hr/Weekly boxes above (M.ORCH-T1395, ShowsWeeklySection),
+                         so it sits exactly where the 5-hour card does. -->
+                    <StackPanel x:Name="WeeklySection" Visibility="{Binding ShowsWeeklySection, Converter={StaticResource Visible}}">
+                        <Border x:Name="WeeklyUtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
                                 AutomationProperties.Name="{Binding WeeklyUtilizationText, StringFormat='Weekly utilization: {0}'}"
                                 Visibility="{Binding WeeklyUtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
                             <StackPanel>

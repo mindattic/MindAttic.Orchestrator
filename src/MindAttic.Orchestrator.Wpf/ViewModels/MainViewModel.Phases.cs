@@ -422,6 +422,7 @@ public sealed partial class MainViewModel
                                      nameof(WeeklyHeadline), nameof(WeeklyCaption), nameof(WeeklyAccountLine),
                                      nameof(Utilization), nameof(UtilizationText),
                                      nameof(WeeklyUtilization), nameof(WeeklyUtilizationText), nameof(ShowsFiveHourChart), nameof(ShowsWeeklyChart),
+                                     nameof(ShowsFiveHourSection), nameof(ShowsWeeklySection), nameof(FiveHourChartSelected), nameof(WeeklyChartSelected),
                                      nameof(FiveHourLimitPercent), nameof(FiveHourLimitText), nameof(FiveHourLimitBrush),
                                      nameof(WeeklyLimitPercent), nameof(WeeklyLimitText), nameof(WeeklyLimitBrush),
                                      nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip),
