@@ -508,7 +508,15 @@ public sealed partial class MainViewModel
     /// tabs and the automatic one (<see cref="OpenLaunchers"/>, the last-tab respawn) didn't fire or failed quietly.</summary>
     public ICommand RunLauncherCommand => runLauncherCommand ??= new RelayCommand(async () =>
     {
-        var (error, status) = await OpenLauncherPaneAsync(ScopeEmail, TabTitle);
+        // An async void handler: anything thrown here (WMI, wt.exe, the pane host) would reach the dispatcher and crash the
+        // dashboard, so it's caught and shown as the toast instead (M.ORCH-T1392).
+        string? error, status;
+        try { (error, status) = await OpenLauncherPaneAsync(ScopeEmail, TabTitle); }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Launcher").Error(ex, "Run Launcher for {Login:l} failed", TabTitle);
+            (error, status) = (ex.Message, $"Couldn't run {TabTitle}'s Launcher: {ex.Message}");
+        }
         if (error is { } e) Toasts.Insert(0, new ToastViewModel($"Couldn't run {TabTitle}'s Launcher", e, Palette.Over, null));
         AccountsMessage = status;
     }, () => IsTabSignedIn);

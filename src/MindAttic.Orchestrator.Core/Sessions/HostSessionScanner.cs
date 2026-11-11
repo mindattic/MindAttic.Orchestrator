@@ -102,6 +102,7 @@ public sealed partial class HostSessionScanner(OrchestratorOptions options)
         }
         catch (ManagementException) { }
         catch (COMException) { }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
         return result;
     }
 
