@@ -231,20 +231,19 @@ public sealed class VirtualizedBody
         var wanted = new HashSet<object>(rows);
         for (var i = items.Count - 1; i >= 0; i--)
             if (!wanted.Contains(items[i])) items.RemoveAt(i);
+        // One linear pass (M.ORCH-T1537): the rows kept are almost always still in order (a tab switch drops one tab's rows and adds
+        // another's around the shared ones), so they're only walked and the new ones inserted between. The old look-ahead search
+        // per row was O(rows^2) value comparisons on the UI thread, which one login's large page paid in seconds. If the kept rows
+        // turn out reordered, the list is rebuilt whole instead, still linear.
+        var p = 0;
         for (var i = 0; i < rows.Count; i++)
         {
-            if (i < items.Count && Equals(items[i], rows[i])) continue;
-            var at = -1;
-            for (var j = i + 1; j < items.Count; j++) if (Equals(items[j], rows[i])) { at = j; break; }
-            if (at >= 0)
-            {
-                var kept = items[at];
-                items.RemoveAt(at);
-                items.Insert(i, kept);
-            }
-            else items.Insert(i, rows[i]);
+            if (p < items.Count && Equals(items[p], rows[i])) p++;
+            else items.Insert(p++, rows[i]);
         }
-        while (items.Count > rows.Count) items.RemoveAt(items.Count - 1);
+        if (items.Count == rows.Count) return;
+        items.Clear();
+        foreach (var row in rows) items.Add(row);
     }
 
     /// <summary>A nested list's own collection and its groups' changes (a group shown or hidden) rebuild the rows too.</summary>
