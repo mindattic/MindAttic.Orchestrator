@@ -164,7 +164,7 @@ public sealed partial class MainViewModel
             var email = AccountDirs.Normalize(cli.OwnLogin) ?? ownerTab.PersonEmail;
             var ticket = sub is { } s ? TicketIdIn(s.Task) ?? cli.TicketId ?? cli.Claims.FirstOrDefault() : cli.TicketId ?? cli.Claims.FirstOrDefault();
             var caption = ticket is null ? null : TicketsDb.Caption(ticket, FriendlyNameOf(ticket), SummaryOf(ticket) ?? "");
-            view.Update(cli, sub, ownerTab.TabTitle, email, ownerTab.TabBrush, caption);
+            view.Update(cli, sub, ownerTab.TabTitle, email, CliAccentOr(cli.SessionId, ownerTab.TabBrush), caption);
         }
         RaiseOnEveryTab(nameof(HasTaskList));
         RaiseOnEveryTab(nameof(TaskListCount));
