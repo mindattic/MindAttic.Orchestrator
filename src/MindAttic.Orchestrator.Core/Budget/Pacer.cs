@@ -368,6 +368,10 @@ public static class Pacer
     /// four subagents started together at 88% burned the window to Claude's 100% in the 7 minutes the 99% stop needed to land).</summary>
     public const double HeadroomPerSubagentPercent = 3;
 
+    /// <summary>The points the 96% default stop already keeps under the old 98% one for a burst (M.ORCH-T1462); the subagent
+    /// headroom counts them as room, not a second margin (M.ORCH-T1608).</summary>
+    public const double StopBurstMarginPercent = 2;
+
     /// <summary>
     /// The room under the 5-hour stop limits how many subagents run at once (M.ORCH-T959). The stop is only read at tool calls, and
     /// a subagent mid-turn spends past it, so a burst started with little room left overshoots the stop and reaches the limit. With
@@ -378,7 +382,7 @@ public static class Pacer
     /// </summary>
     public static Pace CapByStopHeadroom(Pace pace, double? percent, double stopPercent)
     {
-        if (percent is { } near && pace is { Stop: false, IsPaced: true, WindDown: false } && !pace.GuardsDormant && stopPercent - near < HeadroomPerSubagentPercent)
+        if (percent is { } near && pace is { Stop: false, WindDown: false } && stopPercent - near < HeadroomPerSubagentPercent)
             pace = pace with
             {
                 WindDown = true,
@@ -386,7 +390,7 @@ public static class Pacer
                             "Wind down now: start no new work or subagents, finish the current step, commit what is done, and end your turn at a clean point rather than being cut off mid-step.",
             };
         if (percent is not { } p || pace is not { Stop: false, SubagentAllowance: { } allowed and > 0 }) return pace;
-        var fits = (int)Math.Floor(Math.Max(0, stopPercent - p) / HeadroomPerSubagentPercent);
+        var fits = (int)Math.Floor(Math.Max(0, room - p) / HeadroomPerSubagentPercent);
         // With no room for even one more, none start (a new one spends ~3 points before the stop reaches it); the running ones continue.
         var capped = Math.Min(allowed, Math.Max(pace.Subagents, fits));
         if (capped >= allowed) return pace;
