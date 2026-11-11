@@ -450,6 +450,16 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 10080)]
     public double TestTermHostMaxMinutes { get; set; } = OrchestratorSettings.DefaultTestTermHostMaxMinutes;
 
+    [Setting("Presumed busy confirm after (seconds)", Group = "Dashboard", Order = 21,
+        Help = "After an Enter in a CLI tab lights it and its person's tab busy at once, a status read taken this many seconds or more later that still says idle ends it (nothing started).")]
+    [SettingRange(1, 600)]
+    public double PresumeBusyConfirmSeconds { get; set; } = OrchestratorSettings.DefaultPresumeBusyConfirmSeconds;
+
+    [Setting("Presumed busy grace period (seconds)", Group = "Dashboard", Order = 22,
+        Help = "The longest an Enter in a CLI tab keeps it and its person's tab presumed busy when no status read comes at all.")]
+    [SettingRange(1, 3600)]
+    public double PresumeBusyMaxSeconds { get; set; } = OrchestratorSettings.DefaultPresumeBusyMaxSeconds;
+
     [Setting("Main-line test build lock retries", Group = "Dashboard", Order = 92,
         Help = "How many more times a main-line suite's build is tried when it fails copying a file another process held (MSB3027). Before each try, leftover test processes running from that worktree are ended; nothing outside it is touched.")]
     [SettingRange(0, 10)]
@@ -668,6 +678,8 @@ public sealed class OrchestratorVaultSettings
         AutoOpenLaunchers = s.AutoOpenLaunchers,
         EndedTabMinutes = s.EndedTabMinutes,
         TestTermHostMaxMinutes = s.TestTermHostMaxMinutes,
+        PresumeBusyConfirmSeconds = s.PresumeBusyConfirmSeconds,
+        PresumeBusyMaxSeconds = s.PresumeBusyMaxSeconds,
         MainTestsLockRetries = s.MainTestsLockRetries,
         MainTestsLockRetrySeconds = s.MainTestsLockRetrySeconds,
         EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
@@ -792,6 +804,8 @@ public sealed class OrchestratorVaultSettings
         AutoOpenLaunchers = AutoOpenLaunchers,
         EndedTabMinutes = EndedTabMinutes,
         TestTermHostMaxMinutes = TestTermHostMaxMinutes,
+        PresumeBusyConfirmSeconds = PresumeBusyConfirmSeconds,
+        PresumeBusyMaxSeconds = PresumeBusyMaxSeconds,
         MainTestsLockRetries = MainTestsLockRetries,
         MainTestsLockRetrySeconds = MainTestsLockRetrySeconds,
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,

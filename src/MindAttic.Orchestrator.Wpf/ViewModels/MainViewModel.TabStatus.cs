@@ -296,8 +296,38 @@ public sealed partial class MainViewModel
 
     /// <summary>How many of this login's CLIs are thinking right now (their own turn running, or held by the pace gate while
     /// working) and how many subagents its CLIs have running (M.ORCH-T1447): read from the agent board the refresh already
-    /// built, an indexed walk with no allocation, so the busy spinner can say how loaded this person already is.</summary>
-    private (int Clis, int Subagents) TabThinking => IsPersonTab ? ThinkingOf(snapshot?.Agents) : default;
+    /// built, an indexed walk with no allocation, so the busy spinner can say how loaded this person already is.
+    /// A CLI tab presumed busy by an Enter (M.ORCH-T1413) counts as thinking too until a status read speaks, so the count lights
+    /// with the spinner at once.</summary>
+    private (int Clis, int Subagents) TabThinking
+    {
+        get
+        {
+            if (!IsPersonTab) return default;
+            var (clis, subagents) = ThinkingOf(snapshot?.Agents);
+            return (clis + PresumedNotThinkingOf(Terminals?.Panes, snapshot?.Agents), subagents);
+        }
+    }
+
+    /// <summary>How many CLI tabs are presumed busy (M.ORCH-T1413) whose CLI the agent board doesn't already read as thinking, so
+    /// <see cref="TabThinking"/> never counts one CLI twice. An indexed walk, no allocation.</summary>
+    internal static int PresumedNotThinkingOf(IReadOnlyList<TerminalPaneViewModel>? panes, IReadOnlyList<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents)
+    {
+        if (panes is null) return 0;
+        var n = 0;
+        for (var i = 0; i < panes.Count; i++)
+        {
+            var p = panes[i];
+            if (!p.IsPresumedBusy) continue;
+            var thinking = false;
+            if (p.SessionId is { } sid && agents is not null)
+                for (var j = 0; j < agents.Count && !thinking; j++)
+                    thinking = agents[j].SessionId == sid
+                        && agents[j].State is MindAttic.Orchestrator.Activity.AgentState.Working or MindAttic.Orchestrator.Activity.AgentState.HeldByPace;
+            if (!thinking) n++;
+        }
+        return n;
+    }
 
     internal static (int Clis, int Subagents) ThinkingOf(IReadOnlyList<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents)
     {

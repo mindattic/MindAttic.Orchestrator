@@ -192,6 +192,8 @@ public sealed class LampSettingsTests
             s => s.ExcludeLauncherFromTeamWall),
         Case("endedTabMinutes", s => s with { EndedTabMinutes = 60 }, 60d, v => v.EndedTabMinutes = 15, 15d, s => s.EndedTabMinutes),
         Case("testTermHostMaxMinutes", s => s with { TestTermHostMaxMinutes = 60 }, 60d, v => v.TestTermHostMaxMinutes = 30, 30d, s => s.TestTermHostMaxMinutes),
+        Case("presumeBusyConfirmSeconds", s => s with { PresumeBusyConfirmSeconds = 12 }, 12d, v => v.PresumeBusyConfirmSeconds = 5, 5d, s => s.PresumeBusyConfirmSeconds),
+        Case("presumeBusyMaxSeconds", s => s with { PresumeBusyMaxSeconds = 90 }, 90d, v => v.PresumeBusyMaxSeconds = 30, 30d, s => s.PresumeBusyMaxSeconds),
         Case("endedLauncherTabMinutes", s => s with { EndedLauncherTabMinutes = 0 }, 0d, v => v.EndedLauncherTabMinutes = 5, 5d, s => s.EndedLauncherTabMinutes),
         Case("autoOpenLaunchers", s => s with { AutoOpenLaunchers = true }, true, v => v.AutoOpenLaunchers = false, false, s => s.AutoOpenLaunchers),
         // Folders

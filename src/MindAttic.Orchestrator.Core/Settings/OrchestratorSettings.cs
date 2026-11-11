@@ -564,6 +564,18 @@ public sealed record OrchestratorSettings
 
     public const double DefaultTestTermHostMaxMinutes = 60;
 
+    /// <summary>Seconds after an Enter typed in a CLI tab that a status read still saying idle ends its presumed busy (M.ORCH-T1413):
+    /// the context gate marks a submitted prompt busy within a hook's first moments, so a read this much later that says idle is real.</summary>
+    public double PresumeBusyConfirmSeconds { get; init; } = DefaultPresumeBusyConfirmSeconds;
+
+    public const double DefaultPresumeBusyConfirmSeconds = 8;
+
+    /// <summary>The grace period (M.ORCH-T1413): the longest, in seconds, an Enter typed in a CLI tab keeps it and its person's tab
+    /// presumed busy with no status read at all.</summary>
+    public double PresumeBusyMaxSeconds { get; init; } = DefaultPresumeBusyMaxSeconds;
+
+    public const double DefaultPresumeBusyMaxSeconds = 60;
+
     /// <summary>How many more times a main-line suite's build is tried when it fails copying a file another process held (MSB3027/MSB3021),
     /// ending that worktree's own leftover test processes first (M.ORCH-T1632; was MainlineTests.FileLockRetries).</summary>
     public double MainTestsLockRetries { get; init; } = DefaultMainTestsLockRetries;

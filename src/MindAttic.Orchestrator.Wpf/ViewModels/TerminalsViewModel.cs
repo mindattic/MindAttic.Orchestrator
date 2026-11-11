@@ -327,11 +327,13 @@ public sealed class TerminalPaneViewModel : ObservableObject
     private System.Windows.Threading.DispatcherTimer? presumeTimer;
 
     /// <summary>How long after an Enter a status read must be taken before its "idle" ends the presumption: the context gate
-    /// marks a submitted prompt busy within a hook's first moments, so a read this much later that still says idle is real.</summary>
-    internal static readonly TimeSpan PresumeConfirmAfter = TimeSpan.FromSeconds(8);
+    /// marks a submitted prompt busy within a hook's first moments, so a read this much later that still says idle is real. The
+    /// PresumeBusyConfirmSeconds Vault setting, as of the last refresh.</summary>
+    internal static TimeSpan PresumeConfirmAfter => DashboardTimings.PresumeConfirmAfter;
 
-    /// <summary>The longest a presumption lasts with no status read at all.</summary>
-    internal static readonly TimeSpan PresumeLife = TimeSpan.FromSeconds(60);
+    /// <summary>The longest a presumption lasts with no status read at all: the PresumeBusyMaxSeconds Vault setting (the grace
+    /// period), as of the last refresh.</summary>
+    internal static TimeSpan PresumeLife => DashboardTimings.PresumeLife;
 
     /// <summary>An Enter was just typed into this CLI and no status read has spoken since.</summary>
     public bool IsPresumedBusy => presumedSinceUtc is not null;
@@ -352,6 +354,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         if (Request.IsMenu || Ended) return;
         presumeTimer ??= NewPresumeTimer();
         presumeTimer.Stop();
+        presumeTimer.Interval = PresumeLife;
         presumeTimer.Start();
         SetPresumed(nowUtc);
     }

@@ -45,6 +45,14 @@ internal static class DashboardTimings
     /// <summary>The same while ticket changes are pushed: <see cref="OrchestratorSettings.ClosedTicketsReadLiveMinutes"/>.</summary>
     public static TimeSpan ClosedReadLive { get; private set; } = TimeSpan.FromMinutes(15);
 
+    /// <summary>How long after an Enter a status read still saying idle ends a CLI tab's presumed busy (M.ORCH-T1413):
+    /// <see cref="OrchestratorSettings.PresumeBusyConfirmSeconds"/>.</summary>
+    public static TimeSpan PresumeConfirmAfter { get; private set; } = TimeSpan.FromSeconds(OrchestratorSettings.DefaultPresumeBusyConfirmSeconds);
+
+    /// <summary>The longest a presumed busy lasts with no status read at all, the grace period (M.ORCH-T1413):
+    /// <see cref="OrchestratorSettings.PresumeBusyMaxSeconds"/>.</summary>
+    public static TimeSpan PresumeLife { get; private set; } = TimeSpan.FromSeconds(OrchestratorSettings.DefaultPresumeBusyMaxSeconds);
+
     /// <summary>Takes the intervals from <paramref name="s"/>, each kept to at least a second so no timer spins.</summary>
     public static void Apply(OrchestratorSettings s)
     {
@@ -60,5 +68,7 @@ internal static class DashboardTimings
         ProjectChangesRefresh = OrchestratorSettings.SecondsSpan(s.ProjectChangesRefreshSeconds, 1);
         ClosedRead = OrchestratorSettings.SecondsSpan(s.ClosedTicketsReadSeconds, 1);
         ClosedReadLive = OrchestratorSettings.SecondsSpan(s.ClosedTicketsReadLiveMinutes * 60, 1);
+        PresumeConfirmAfter = OrchestratorSettings.SecondsSpan(s.PresumeBusyConfirmSeconds, 1);
+        PresumeLife = OrchestratorSettings.SecondsSpan(s.PresumeBusyMaxSeconds, 1);
     }
 }
