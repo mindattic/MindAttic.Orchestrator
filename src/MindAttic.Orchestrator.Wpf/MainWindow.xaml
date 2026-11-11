@@ -33,8 +33,11 @@
              so it reads as a link without colour), plus the command and tooltip. -->
         <Style x:Key="TicketLink" TargetType="Hyperlink" BasedOn="{StaticResource MaHyperlink}">
             <Setter Property="Command" Value="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-            <Setter Property="ToolTip" Value="Open it in Tickets Desktop to view, approve, prioritize, assign, block or close it" />
+            <Setter Property="ToolTip" Value="{DynamicResource TicketLinkCallout}" />
         </Style>
+        <!-- The TicketLink's tooltip as the library's callout (M.ORCH-T1552). A Hyperlink isn't a FrameworkElement, so
+             mc:MaCallout.ToolTip can't reach it: the callout itself is its ToolTip, a fresh one per link (x:Shared). -->
+        <mc:MaCalloutToolTip x:Key="TicketLinkCallout" x:Shared="False" Content="Open it in Tickets Desktop to view, approve, prioritize, assign, block or close it" />
 
 
         <!-- A ticket on a person's Tickets view (M.ORCH-T668): who it's assigned to, with their status light; while its user is out
@@ -47,11 +50,10 @@
                         <mc:MaStatusLight x:Name="AssigneeLight" Status="{Binding Assignee.Status, TargetNullValue={x:Static mc:MaStatus.Other}}" Label="{Binding Assignee.StatusLabel}" Margin="{StaticResource SpaceRS}"
                                           VerticalAlignment="Center" Visibility="{Binding IsPinned, Converter={StaticResource Visible}}" />
                         <TextBlock x:Name="AssigneeText" Text="{Binding AssigneeText}" VerticalAlignment="Center" Margin="{StaticResource SpaceRM}"
-                                   ToolTip="Who it's assigned to: it's dispatched only on their login, and waits for them while they're out of room" />
+                                   mc:MaCallout.ToolTip="Who it's assigned to: it's dispatched only on their login, and waits for them while they're out of room" />
                         <TextBlock VerticalAlignment="Center">
                             <Hyperlink x:Name="AssignInTickets" Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
-                                       ToolTip="Assign, reassign or redelegate it in Tickets Desktop"
-                                       AutomationProperties.Name="{Binding Id, StringFormat='Assign {0} in Tickets Desktop'}"><Run Text="Assign in Tickets" /></Hyperlink>
+                                       AutomationProperties.Name="{Binding Id, StringFormat='Assign {0} in Tickets Desktop'}"><Hyperlink.ToolTip><mc:MaCalloutToolTip Content="Assign, reassign or redelegate it in Tickets Desktop" /></Hyperlink.ToolTip><Run Text="Assign in Tickets" /></Hyperlink>
                         </TextBlock>
                     </StackPanel>
                     <StackPanel>
@@ -62,7 +64,7 @@
                             <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
                             <Run Text="{Binding Priority, Mode=OneWay}" Foreground="{DynamicResource MaWarn}" FontWeight="SemiBold" />
                         </TextBlock>
-                        <TextBlock TextTrimming="CharacterEllipsis" ToolTip="{Binding Summary}" Margin="{StaticResource RowGutter}">
+                        <TextBlock TextTrimming="CharacterEllipsis" mc:MaCallout.ToolTip="{Binding Summary}" Margin="{StaticResource RowGutter}">
                             <!-- The title opens it too (M.ORCH-T762: every ticket id or title the dashboard shows links there). -->
                             <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
                                        AutomationProperties.Name="{Binding Summary, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Summary, Mode=OneWay}" /></Hyperlink>
@@ -89,7 +91,7 @@
         <DataTemplate x:Key="SidebarTicketTemplate" DataType="{x:Type vm:UserTicketRowViewModel}">
             <Button x:Name="SidebarTicketCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="10,8" HorizontalContentAlignment="Stretch"
                     Command="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}"
-                    ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
+                    mc:MaCallout.ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
                 <!-- Its Task List colour (M.ORCH-T1594): a bar down its leading edge in the colour of the CLI working it, else
                      its person's, both set with Change Color on their tab's right-click menu. -->
                 <DockPanel>
@@ -122,7 +124,7 @@
              nothing's been attributed to a ticket yet. -->
         <DataTemplate x:Key="SidebarActivityTemplate" DataType="{x:Type vm:LiveActivityRowViewModel}">
             <Button x:Name="SidebarActivityCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="10,8" HorizontalContentAlignment="Stretch"
-                    Focusable="False" ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
+                    Focusable="False" mc:MaCallout.ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
                 <!-- Its CLI's Task List colour (M.ORCH-T1594), as on a ticket card. -->
                 <DockPanel>
                 <mc:MaBadge x:Name="SidebarActivityAccent" DockPanel.Dock="Left" Style="{StaticResource MaTag}" Width="4" MinWidth="0" Padding="0" BorderThickness="0"
@@ -146,7 +148,7 @@
         <DataTemplate x:Key="SidebarTaskTemplate" DataType="{x:Type vm:TaskRowViewModel}">
             <Button x:Name="SidebarTaskCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="0" HorizontalContentAlignment="Stretch"
                     Command="{Binding DataContext.OpenTaskDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
-                    ToolTip="{Binding OpenName}" AutomationProperties.Name="{Binding OpenName}">
+                    mc:MaCallout.ToolTip="{Binding OpenName}" AutomationProperties.Name="{Binding OpenName}">
                 <DockPanel Margin="{Binding Indent}">
                     <!-- The owner's-colour stripe (M.ORCH-T1626): the library's MaAccentBar, 3px and square to keep the row's look. -->
                     <Border Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding OwnerBrush}" />
@@ -246,7 +248,7 @@
                     <ColumnDefinition Width="*" MaxWidth="220" />
                 </Grid.ColumnDefinitions>
                 <Button x:Name="DrawerButton" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE700;" Click="DrawerButton_Click"
-                        Margin="{StaticResource SpaceRS}" ToolTip="People, organizations and their tickets" AutomationProperties.Name="Show people and tickets" />
+                        Margin="{StaticResource SpaceRS}" mc:MaCallout.ToolTip="People, organizations and their tickets" AutomationProperties.Name="Show people and tickets" />
                 <mc:MaPicker x:Name="PersonPicker" Grid.Column="1" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding StripSelection}"
                              DisplayMemberPath="TabTitle" StatusMemberPath="TabLightStatus" StatusLabelMemberPath="TabStatusWord" AutomationProperties.Name="Person" />
             </Grid>
@@ -255,32 +257,32 @@
                      guard's held readout, shown only while the master switch is off, so a CLI's /allocate handing out nothing
                      is never silent. -->
                 <TextBlock x:Name="AllocatePausedText" Text="{Binding AllocatePausedText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRL}"
-                           ToolTip="{Binding AllocatePausedToolTip}" AutomationProperties.Name="{Binding AllocatePausedText}"
+                           mc:MaCallout.ToolTip="{Binding AllocatePausedToolTip}" AutomationProperties.Name="{Binding AllocatePausedText}"
                            Visibility="{Binding AllocatePausedText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock x:Name="DiskFreeText" Text="{Binding DiskFreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
-                           ToolTip="Free space on the system drive" AutomationProperties.Name="{Binding DiskFreeText}"
+                           mc:MaCallout.ToolTip="Free space on the system drive" AutomationProperties.Name="{Binding DiskFreeText}"
                            Visibility="{Binding DiskFreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <!-- The memory guard's level (M.ORCH-T1498): muted while ok, MaWarn while it holds new work, MaBad once it sheds
                      subagents or refuses tool calls; one of the three shows, the tooltip says what's held. -->
                 <TextBlock x:Name="RamUtilizationText" Text="{Binding RamCalmText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRL}"
-                           ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamCalmText}"
+                           mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamCalmText}"
                            Visibility="{Binding RamCalmText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock x:Name="RamWarnText" Text="{Binding RamWarnText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRL}"
-                           ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
+                           mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
                            Visibility="{Binding RamWarnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock x:Name="RamBadText" Text="{Binding RamBadText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRL}"
-                           ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
+                           mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
                            Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <Button x:Name="TeamWallButton" Style="{StaticResource MaToolButton}" Content="&#xE716;" Click="TeamWallButton_Click"
-                        ToolTip="Team Wall: everyone's live CLIs" AutomationProperties.Name="Team Wall" />
+                        mc:MaCallout.ToolTip="Team Wall: everyone's live CLIs" AutomationProperties.Name="Team Wall" />
                 <Button x:Name="TicketsButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Command="{Binding OpenTicketsAppCommand}"
-                        ToolTip="Open Tickets" AutomationProperties.Name="Open Tickets" />
+                        mc:MaCallout.ToolTip="Open Tickets" AutomationProperties.Name="Open Tickets" />
                 <Button x:Name="LoginsButton" Style="{StaticResource MaToolButton}" Content="&#xE77B;" Command="{Binding ToggleLoginsCommand}"
-                        ToolTip="Logins" AutomationProperties.Name="Logins" />
+                        mc:MaCallout.ToolTip="Logins" AutomationProperties.Name="Logins" />
                 <Button x:Name="SettingsButton" Style="{StaticResource MaToolButton}" Content="&#xE713;" Command="{Binding OpenSettingsCommand}"
-                        ToolTip="Settings (opens MindAttic Vault)" AutomationProperties.Name="Settings" />
+                        mc:MaCallout.ToolTip="Settings (opens MindAttic Vault)" AutomationProperties.Name="Settings" />
                 <Button x:Name="WindDownButton" Style="{StaticResource MaToolButton}" Content="&#xE769;" Command="{Binding WindDownCommand}"
-                        ToolTip="Wind down: /allocate off and pacing off for every CLI across every login, each finishing its own subagents first"
+                        mc:MaCallout.ToolTip="Wind down: /allocate off and pacing off for every CLI across every login, each finishing its own subagents first"
                         AutomationProperties.Name="Wind down every CLI" />
             </StackPanel>
             </Grid>
@@ -307,7 +309,7 @@
                  Visibility="{Binding HasOrgs, Converter={StaticResource Visible}}">
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:OrgViewModel}">
-                    <StackPanel x:Name="OrgItem" Orientation="Horizontal" ToolTip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
+                    <StackPanel x:Name="OrgItem" Orientation="Horizontal" mc:MaCallout.ToolTip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding Summary}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
                         <TextBlock VerticalAlignment="Center" Margin="{StaticResource SpaceLS}"
@@ -394,7 +396,7 @@
                                  above while it's true, a plain "?" (M.ORCH-T1270, in place of the M.ORCH-T1261 count/? flash). -->
                             <mc:MaBadge x:Name="TabAskingBadge" Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="?" Background="{DynamicResource MaWarn}"
                                         Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                        ToolTip="{Binding TabNeedsYouTip}" AutomationProperties.Name="Blocked waiting on you"
+                                        mc:MaCallout.ToolTip="{Binding TabNeedsYouTip}" AutomationProperties.Name="Blocked waiting on you"
                                         Visibility="{Binding TabNeedsYou, Converter={StaticResource Visible}}" />
                             <TextBlock x:Name="TabDisabledIcon" Text="{Binding TabDisabledGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                                        Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
@@ -485,7 +487,7 @@
                 </Grid.ColumnDefinitions>
                 <Button x:Name="TerminalTabScrollLeft" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE76B;"
                         Click="TerminalTabScrollLeft_Click" Margin="{StaticResource SpaceRXS}" Visibility="Collapsed"
-                        ToolTip="Scroll the CLI tabs left" AutomationProperties.Name="Scroll the CLI tabs left" />
+                        mc:MaCallout.ToolTip="Scroll the CLI tabs left" AutomationProperties.Name="Scroll the CLI tabs left" />
                 <ScrollViewer x:Name="TerminalTabScroller" Grid.Column="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                               HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
                               ScrollChanged="TerminalTabScroller_ScrollChanged">
@@ -560,7 +562,7 @@
                                                 Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
                                                 CommandParameter="{Binding}"
                                                 AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
-                                                ToolTip="Close this terminal, ending its CLI" />
+                                                mc:MaCallout.ToolTip="Close this terminal, ending its CLI" />
                                     <StackPanel x:Name="TerminalTabParts" Orientation="Horizontal" HorizontalAlignment="Left">
                                         <!-- This one CLI's own status (M.ORCH-T1272): the same language as the login tab's aggregate
                                              badge (M.ORCH-T1270) but scoped to this pane alone, from its matched AgentBoardRow
@@ -586,7 +588,7 @@
                                                  identity mark, not an alert. -->
                                             <Viewbox x:Name="TerminalTabLauncherIcon" Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                      Visibility="{Binding Request.IsMenu, Converter={StaticResource Visible}}"
-                                                     ToolTip="The Launcher's own menu" AutomationProperties.Name="Launcher">
+                                                     mc:MaCallout.ToolTip="The Launcher's own menu" AutomationProperties.Name="Launcher">
                                                 <Path Data="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12C4.42 15.34 5.17 15 6 15c1.66 0 3 1.34 3 3zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
                                                       Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
                                             </Viewbox>
@@ -608,10 +610,10 @@
                                         <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" />
                                         <!-- Shared with remote viewers (M.ORCH-T935), and an eye while someone watches it remotely. -->
                                         <TextBlock x:Name="TerminalSharedGlyph" Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Style="{StaticResource MaMutedText}"
-                                                   Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="Shared with remote viewers (right-click to change)" AutomationProperties.Name="Shared with remote viewers"
+                                                   Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" mc:MaCallout.ToolTip="Shared with remote viewers (right-click to change)" AutomationProperties.Name="Shared with remote viewers"
                                                    Visibility="{Binding IsShared, Converter={StaticResource Visible}}" />
                                         <TextBlock x:Name="TerminalWatchedGlyph" Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource MaWarn}"
-                                                   Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="{Binding BroadcastText}"
+                                                   Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" mc:MaCallout.ToolTip="{Binding BroadcastText}"
                                                    AutomationProperties.Name="Being watched remotely"
                                                    Visibility="{Binding IsWatched, Converter={StaticResource Visible}}" />
                                     </StackPanel>
@@ -629,7 +631,7 @@
                 </ScrollViewer>
                 <Button x:Name="TerminalTabScrollRight" Grid.Column="2" Style="{StaticResource MaToolButton}" Content="&#xE76C;"
                         Click="TerminalTabScrollRight_Click" Margin="{StaticResource SpaceLXS}" Visibility="Collapsed"
-                        ToolTip="Scroll the CLI tabs right" AutomationProperties.Name="Scroll the CLI tabs right" />
+                        mc:MaCallout.ToolTip="Scroll the CLI tabs right" AutomationProperties.Name="Scroll the CLI tabs right" />
             </Grid>
             <!-- "Being watched" (M.ORCH-T935): while a remote viewer is attached to the shown CLI through the team gateway, or its
                  broadcast is paused, who is watching and how, with Pause broadcast (Ctrl+Shift+B, even while the terminal holds
@@ -643,11 +645,11 @@
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="BroadcastPauseButton" Style="{StaticResource MaButton}" Content="{Binding PauseButtonText}"
                                 Command="{Binding DataContext.AllTerminals.TogglePauseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                CommandParameter="{Binding}" ToolTip="Pause or resume what remote viewers see of this CLI (Ctrl+Shift+B)" />
+                                CommandParameter="{Binding}" mc:MaCallout.ToolTip="Pause or resume what remote viewers see of this CLI (Ctrl+Shift+B)" />
                         <Button x:Name="BroadcastPauseAllButton" Style="{StaticResource MaButton}" Margin="{StaticResource SpaceLS}"
                                 Content="{Binding DataContext.AllTerminals.PauseAllText, RelativeSource={RelativeSource AncestorType=Window}}"
                                 Command="{Binding DataContext.AllTerminals.PauseAllCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                ToolTip="Pause or resume what remote viewers see of every CLI" />
+                                mc:MaCallout.ToolTip="Pause or resume what remote viewers see of every CLI" />
                     </StackPanel>
                     <TextBlock Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource MaWarn}" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
                     <TextBlock x:Name="BroadcastText" Text="{Binding BroadcastText}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource MaWarn}" />
@@ -734,13 +736,13 @@
                                                         CommandParameter="{Binding}" AutomationProperties.Name="{Binding Title}">
                                                     <mc:MaStatusLight Width="12" Height="12" Foreground="{Binding Accent}" />
                                                     <Button.ToolTip>
-                                                        <ToolTip>
+                                                        <mc:MaCalloutToolTip>
                                                             <StackPanel MaxWidth="320">
                                                                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
                                                                 <TextBlock Text="{Binding Body}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
                                                                            Visibility="{Binding Body, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                                                             </StackPanel>
-                                                        </ToolTip>
+                                                        </mc:MaCalloutToolTip>
                                                     </Button.ToolTip>
                                                 </Button>
                                             </DataTemplate>
@@ -835,7 +837,7 @@
                     <!-- The API key's person (M.ORCH-T906) has no 5-hour or weekly window: money instead. What's left of its
                          starting credit, what it has spent (today and lately), and when it runs out at the recent rate. -->
                     <Button x:Name="ApiLeftTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
-                            ToolTip="What's left of the API key's starting credit (orchestrator billing credit &lt;usd&gt; sets it): an estimate from the transcripts' tokens at Anthropic's list prices."
+                            mc:MaCallout.ToolTip="What's left of the API key's starting credit (orchestrator billing credit &lt;usd&gt; sets it): an estimate from the transcripts' tokens at Anthropic's list prices."
                             AutomationProperties.Name="{Binding ApiLeftHeadline, StringFormat='API credit left: {0}'}">
                         <StackPanel>
                             <TextBlock Text="Credit Left" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
@@ -844,7 +846,7 @@
                         </StackPanel>
                     </Button>
                     <Button x:Name="ApiSpentTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
-                            ToolTip="What the API key's CLIs have spent since its starting credit was set, today, and the rate over the last 24 hours."
+                            mc:MaCallout.ToolTip="What the API key's CLIs have spent since its starting credit was set, today, and the rate over the last 24 hours."
                             AutomationProperties.Name="{Binding ApiSpentHeadline, StringFormat='API spend: {0}'}">
                         <StackPanel>
                             <TextBlock Text="Spent" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
@@ -853,7 +855,7 @@
                         </StackPanel>
                     </Button>
                     <Button x:Name="ApiRunsOutTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
-                            ToolTip="When the starting credit runs out at the last 24 hours' rate."
+                            mc:MaCallout.ToolTip="When the starting credit runs out at the last 24 hours' rate."
                             AutomationProperties.Name="{Binding ApiRunsOutHeadline, StringFormat='API credit runs out: {0}'}">
                         <StackPanel>
                             <TextBlock Text="Runs Out" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
@@ -885,7 +887,7 @@
                                Visibility="{Binding StatusMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceTS}">
                         <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}"
-                                   ToolTip="Ctrl+0 resets the zoom" />
+                                   mc:MaCallout.ToolTip="Ctrl+0 resets the zoom" />
                     </StackPanel>
                 </Grid>
 
@@ -968,10 +970,10 @@
                                 <DockPanel>
                                     <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="{StaticResource SpaceHMVXS}"
                                             Content="{Binding ActionLabel}" Command="{Binding ActionCommand}"
-                                            ToolTip="git keeps the worktree if it has uncommitted changes; the branch is never deleted" />
+                                            mc:MaCallout.ToolTip="git keeps the worktree if it has uncommitted changes; the branch is never deleted" />
                                     <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="{StaticResource SpaceHMVXS}" Margin="{StaticResource SpaceRS}"
                                             Content="Details" Command="{Binding DetailsCommand}"
-                                            ToolTip="The sessions that worked on it (its commits and history: open it in Tickets Desktop)" />
+                                            mc:MaCallout.ToolTip="The sessions that worked on it (its commits and history: open it in Tickets Desktop)" />
                                     <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Margin="{StaticResource SpaceRM}">
                                         <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
                                                    AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding TicketId, Mode=OneWay}" /></Hyperlink><Run Text="{Binding TextAfterId, Mode=OneWay}" />
@@ -1014,7 +1016,7 @@
                 <TextBlock x:Name="Announcer" DockPanel.Dock="Left" Width="0" Height="0" Opacity="0" AutomationProperties.LiveSetting="Polite" />
                 <TextBlock Foreground="{DynamicResource MaBad}" Visibility="{Binding HasWarnings, Converter={StaticResource Visible}}">
                     <TextBlock.ToolTip>
-                        <ItemsControl ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" />
+                        <mc:MaCalloutToolTip><ItemsControl ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" /></mc:MaCalloutToolTip>
                     </TextBlock.ToolTip>
                     <Run Text="{Binding WarningsText, Mode=OneWay}" />
                 </TextBlock>
@@ -1030,18 +1032,18 @@
                  the hidden status bar say, wrapped. The global login's tab's (PhoneStatus.DataContext = model), like the readouts. -->
             <WrapPanel x:Name="PhoneStatus" DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="3,3,3,0">
                 <TextBlock Text="{Binding AllocatePausedText}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRM}"
-                           ToolTip="{Binding AllocatePausedToolTip}" Visibility="{Binding AllocatePausedText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                           mc:MaCallout.ToolTip="{Binding AllocatePausedToolTip}" Visibility="{Binding AllocatePausedText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock Text="{Binding RamBadText}" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRM}"
-                           ToolTip="{Binding RamToolTip}" Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                           mc:MaCallout.ToolTip="{Binding RamToolTip}" Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock Text="{Binding RamWarnText}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRM}"
-                           ToolTip="{Binding RamToolTip}" Visibility="{Binding RamWarnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                           mc:MaCallout.ToolTip="{Binding RamToolTip}" Visibility="{Binding RamWarnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock Text="{Binding RamCalmText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
-                           ToolTip="{Binding RamToolTip}" Visibility="{Binding RamCalmText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                           mc:MaCallout.ToolTip="{Binding RamToolTip}" Visibility="{Binding RamCalmText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock Text="{Binding DiskFreeText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
                            Visibility="{Binding DiskFreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRM}" Visibility="{Binding HasWarnings, Converter={StaticResource Visible}}">
                     <TextBlock.ToolTip>
-                        <ItemsControl ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" />
+                        <mc:MaCalloutToolTip><ItemsControl ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" /></mc:MaCalloutToolTip>
                     </TextBlock.ToolTip>
                     <Run Text="{Binding WarningsText, Mode=OneWay}" />
                 </TextBlock>
@@ -1059,7 +1061,7 @@
                 </Grid.ColumnDefinitions>
                 <Button x:Name="MicButton" Grid.Column="0" Style="{StaticResource MaPrimaryButton}" Content="&#xE720;"
                         FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" MinWidth="48" MinHeight="44" Margin="0,0,6,0"
-                        Click="MicButton_Click" ToolTip="Talk: Windows voice typing into the box (Win+H)" AutomationProperties.Name="Talk to the CLI" />
+                        Click="MicButton_Click" mc:MaCallout.ToolTip="Talk: Windows voice typing into the box (Win+H)" AutomationProperties.Name="Talk to the CLI" />
                 <TextBox x:Name="SayBox" Grid.Column="1" Style="{StaticResource MaTextBox}" MinHeight="44" FontSize="15"
                          VerticalContentAlignment="Center" KeyDown="SayBox_KeyDown" AutomationProperties.Name="Say to the CLI" />
                 <Button x:Name="SayButton" Grid.Column="2" Style="{StaticResource MaButton}" Content="Send" MinWidth="64" MinHeight="44" Margin="6,0,0,0"
@@ -1070,14 +1072,14 @@
                      focusable so the terminal keeps the keyboard, at a finger's size. -->
                 <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="Esc" Tag="esc" AutomationProperties.Name="Escape" />
                 <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="Tab" Tag="tab" AutomationProperties.Name="Tab" />
-                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="⇧Tab" Tag="shift-tab" ToolTip="Shift+Tab: Claude Code's mode switch" AutomationProperties.Name="Shift Tab" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="⇧Tab" Tag="shift-tab" mc:MaCallout.ToolTip="Shift+Tab: Claude Code's mode switch" AutomationProperties.Name="Shift Tab" />
                 <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="↑" Tag="up" AutomationProperties.Name="Up arrow" />
                 <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="↓" Tag="down" AutomationProperties.Name="Down arrow" />
                 <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="←" Tag="left" AutomationProperties.Name="Left arrow" />
                 <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="→" Tag="right" AutomationProperties.Name="Right arrow" />
-                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="^C" Tag="ctrl-c" ToolTip="Ctrl+C: interrupt" AutomationProperties.Name="Control C" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="^C" Tag="ctrl-c" mc:MaCallout.ToolTip="Ctrl+C: interrupt" AutomationProperties.Name="Control C" />
                 <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="Enter" Tag="enter" AutomationProperties.Name="Enter" />
-                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="/voice" Tag="voice" ToolTip="Claude Code's own voice mode" AutomationProperties.Name="Claude voice mode" />
+                <Button Style="{StaticResource MaButton}" Focusable="False" MinWidth="48" MinHeight="44" Margin="3" Click="TouchKey_Click" Content="/voice" Tag="voice" mc:MaCallout.ToolTip="Claude Code's own voice mode" AutomationProperties.Name="Claude voice mode" />
             </WrapPanel>
           </DockPanel>
         </Border>
@@ -1117,15 +1119,15 @@
                                  AutomationProperties.Name="Email of the login to add" />
                         <Button x:Name="AddLoginButton" Style="{StaticResource MaButton}" Content="Add login" Padding="{StaticResource SpaceHMVXS}" Margin="{StaticResource SpaceLS}"
                                 Command="{Binding AddAccountCommand}" VerticalAlignment="Center"
-                                ToolTip="Sign in a per-CLI login of its own for this email (orchestrator login --account), opening its login in the browser. The global login is left as it is." />
+                                mc:MaCallout.ToolTip="Sign in a per-CLI login of its own for this email (orchestrator login --account), opening its login in the browser. The global login is left as it is." />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="{StaticResource SpaceTS}">
                         <Button x:Name="SignInAllButton" Style="{StaticResource MaButton}" Content="Sign in all" Padding="{StaticResource SpaceHMVXS}"
                                 Command="{Binding SignInAllCommand}" VerticalAlignment="Center"
-                                ToolTip="Give every account in the roster with no per-CLI login yet its own (~/.claude-accounts), opening each one's login in the browser in turn, so every Claude Team seat stays signed in side by side. The global login stays the default." />
+                                mc:MaCallout.ToolTip="Give every account in the roster with no per-CLI login yet its own (~/.claude-accounts), opening each one's login in the browser in turn, so every Claude Team seat stays signed in side by side. The global login stays the default." />
                         <Button x:Name="UsageReportButton" Style="{StaticResource MaButton}" Content="Report" Padding="{StaticResource SpaceHMVXS}" Margin="{StaticResource SpaceLS}"
                                 Command="{Binding UsageReportCommand}" VerticalAlignment="Center"
-                                ToolTip="Write the usage report (every member's 5-hour and weekly use, resets, points left to the weekly target, how fresh each reading is, the CLIs' spend and the API key's) as an HTML page and a Markdown file to share, and open the page (orchestrator report)." />
+                                mc:MaCallout.ToolTip="Write the usage report (every member's 5-hour and weekly use, resets, points left to the weekly target, how fresh each reading is, the CLIs' spend and the API key's) as an HTML page and a Markdown file to share, and open the page (orchestrator report)." />
                     </StackPanel>
                     <TextBlock x:Name="OrgActionsMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTM}"
                                AutomationProperties.LiveSetting="Polite"
@@ -1148,7 +1150,7 @@
             <StackPanel>
                 <TextBlock Text="Email" Margin="{StaticResource SpaceBXS}" />
                 <TextBox x:Name="UserSettingsEmailBox" Style="{StaticResource MaTextBox}" Height="32" IsReadOnly="True" Text="{Binding RenameEmail, Mode=OneWay}"
-                         AutomationProperties.Name="Email" ToolTip="The account's ID: it can't be changed" />
+                         AutomationProperties.Name="Email" mc:MaCallout.ToolTip="The account's ID: it can't be changed" />
                 <StackPanel x:Name="RenameSection" Visibility="{Binding HasRenameSection, Converter={StaticResource Visible}}">
                     <TextBlock Text="Name" Margin="{StaticResource SpaceTSBXS}" />
                     <TextBox x:Name="RenameNameBox" Style="{StaticResource MaTextBox}" Height="32" Text="{Binding RenameName, UpdateSourceTrigger=PropertyChanged}"
@@ -1177,7 +1179,7 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource MaButton}" Content="Defaults" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Command="{Binding ResetLimitCommand}"
                             Visibility="{Binding HasLimitSection, Converter={StaticResource Visible}}"
-                            ToolTip="Fill in the default cutoffs, 98% of the 5-hour window and 90% of the week; Save keeps them" />
+                            mc:MaCallout.ToolTip="Fill in the default cutoffs, 98% of the 5-hour window and 90% of the week; Save keeps them" />
                     <Button Style="{StaticResource MaButton}" Content="Cancel" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Command="{Binding CancelUserSettingsCommand}" />
                     <Button Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="{StaticResource SpaceHLVS}" Command="{Binding SaveUserSettingsCommand}" />
                 </StackPanel>
@@ -1198,7 +1200,7 @@
             <mc:MaModal.Footer>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource MaButton}" Content="Reset" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Click="RenameTabReset_Click"
-                            ToolTip="Go back to the name built from its repo" />
+                            mc:MaCallout.ToolTip="Go back to the name built from its repo" />
                     <Button Style="{StaticResource MaButton}" Content="Cancel" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Click="RenameTabCancel_Click" />
                     <Button Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="{StaticResource SpaceHLVS}" Click="RenameTabSave_Click" />
                 </StackPanel>
