@@ -147,16 +147,7 @@
             <Button x:Name="SidebarTaskCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="0" HorizontalContentAlignment="Stretch"
                     Command="{Binding DataContext.OpenTaskDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                     ToolTip="{Binding OpenName}" AutomationProperties.Name="{Binding OpenName}">
-                <Border BorderBrush="{Binding OwnerBrush}" BorderThickness="3,0,0,0" Padding="8,6,8,6">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsSubagent}" Value="True">
-                                    <Setter Property="Margin" Value="12,0,0,0" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
+                <Border BorderBrush="{Binding OwnerBrush}" BorderThickness="3,0,0,0" Padding="8,6,8,6" Margin="{Binding Indent}">
                     <StackPanel>
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="{Binding Tokens}" Style="{StaticResource MaTileSubtitle}" Margin="{StaticResource SpaceLS}" />
@@ -1218,7 +1209,7 @@
             <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,0,12,0" MaxHeight="520">
                 <StackPanel>
                     <TextBlock Text="{Binding TaskDetailDescription}" TextWrapping="Wrap" Margin="{StaticResource SpaceBS}" />
-                    <ItemsControl x:Name="TaskDetailFields" ItemsSource="{Binding TaskDetailLines}" Focusable="False" AutomationProperties.Name="Details">
+                    <ItemsControl x:Name="TaskDetailFields" Style="{StaticResource MaList}" ItemsSource="{Binding TaskDetailLines}" Focusable="False" AutomationProperties.Name="Details">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:TaskDetailLine}">
                                 <Grid Margin="{StaticResource RowGutter}">

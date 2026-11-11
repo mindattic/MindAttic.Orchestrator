@@ -39,6 +39,8 @@ public sealed class TaskRowViewModel : ObservableObject
     public AgentBoardRow Cli => cli;
     public SubagentActivity? Subagent => subagent;
     public bool IsSubagent => subagent is not null;
+    /// <summary>A subagent row sits indented under its owner (the border margin the card binds).</summary>
+    public System.Windows.Thickness Indent => IsSubagent ? new System.Windows.Thickness(12, 0, 0, 0) : new System.Windows.Thickness(0);
 
     public string Repo => cli.Repo;
 
