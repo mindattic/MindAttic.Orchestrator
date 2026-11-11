@@ -1830,7 +1830,7 @@ public static class AgentGate
 
         Otherwise you work the tickets yourself, through subagents, now:
         1. Run `orchestrator next --repos "<repos>" --claim`, where <repos> is the -repo list as typed (wildcards included), * for all, or this CLI's own repo when none are named; keep the quotes so no shell expands a wildcard. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), records each as this CLI's, and prints each ticket's id, its `model:` line and a full prompt. Every ticket is worked in its repo's own checkout on main: no worktree or branch is made.
-        2. Start one subagent per ticket it printed, every one of them at once, all in one message, each with exactly the prompt printed for it and on the model its `model:` line names (the Agent tool's model: sonnet or opus; a general-purpose subagent, in the foreground). Don't hold a claimed ticket back because its files overlap another's: they share the checkout, and each touches only its own ticket's files, stages them by explicit path (never git add -A), commits one ticket per commit naming its paths (git commit -m ... -- <path> ..., so another agent's staged files never ride along, M.ORCH-T1149), pulls with --rebase --autostash, pushes to main, and closes its ticket with --ref.
+        2. Start one subagent per ticket it printed, every one of them at once, all in one message, each with exactly the prompt printed for it and on the model its `model:` line names (the Agent tool's model: sonnet or opus; a general-purpose subagent, in the foreground). Don't hold a claimed ticket back because its files overlap another's: they share the checkout, and each touches only its own ticket's files, stages them by explicit path (never git add -A), commits one ticket per commit naming its paths (git commit -m ... -- <path> ..., so another agent's staged files never ride along, M.ORCH-T1149), lands with git fetch + git merge --no-edit origin/main (never a stash, M.ORCH-T1417), pushes to main, and closes its ticket with --ref.
         3. When they've returned, say in one line per ticket what happened, and go back to step 1.
         4. Stop when `orchestrator next` hands out nothing (it says why: none left, waiting for approval, or the pace), and say so in one short line. Don't start anything else on your own. Nothing works these tickets in the background: it's this CLI's own subagents or nobody. /allocate stays on here, so when this turn ends while the repos still have workable tickets and the pace has room, the orchestrator sends this CLI back to step 1; /allocate off stops that.
         5. When it says the repos ran dry (no open tickets left at all, none waiting or being worked), and no subagent of yours is still working, offer a bug hunt and only offer it: ask the user in one line whether to run /bughunt on those repos, then end your turn. Never start a hunt unasked. Hunt only if the user's reply is an explicit yes (anything else, silence included, is a no; after a no, don't ask again until a ticket has been worked there since). On a yes, hunt those repos for real bugs as /bughunt does, but fix nothing yourself: file each confirmed bug as its own fix ticket in its repo (`tickets ticket new --repo <repo> --type fix --summary '<the bug and where> (found by bughunt)'`), say in one line how many you filed, and go back to step 1 so /allocate's subagents work them.
@@ -2840,6 +2840,11 @@ public static class AgentGate
                     epics = {e.upper() for (e,) in db.execute("SELECT ticket_id FROM ticket_labels WHERE label = 'epic'").fetchall()}
                 except Exception:
                     epics = set()
+                # A ticket released as waiting on the owner (label waiting-on-owner, M.ORCH-T1425) isn't work until the owner clears it.
+                try:
+                    parked = {e.upper() for (e,) in db.execute("SELECT ticket_id FROM ticket_labels WHERE label = 'waiting-on-owner'").fetchall()}
+                except Exception:
+                    parked = set()
                 db.close()
                 settings = orch_settings()
                 def blocked(r):
@@ -2872,7 +2877,7 @@ public static class AgentGate
                 claimed |= held
                 named = {r.lower() for r in repos}
                 return [r[0] for r in rows if any(fnmatch.fnmatchcase((r[2] or "").lower(), n) for n in named) and (r[2] or "").lower() not in skip and
-                        ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed and r[0].upper() not in epics and not blocked(r)]
+                        ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed and r[0].upper() not in epics and r[0].upper() not in parked and not blocked(r)]
             except Exception:
                 return None
 

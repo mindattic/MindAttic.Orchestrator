@@ -21,11 +21,18 @@ public sealed class OpenTicketSource
     /// <summary>The label that makes a ticket an epic (M.ORCH-T1146).</summary>
     public const string EpicLabel = "epic";
 
+    /// <summary>The label that parks a ticket as waiting on the owner (M.ORCH-T1425): <c>orchestrator release --waiting-on-owner</c>
+    /// adds it; nothing hands the ticket out or counts it as work until the owner removes it.</summary>
+    public const string WaitingOnOwnerLabel = "waiting-on-owner";
+
     private DateTime dbReadUtc;
 
     private (string Path, DateTime WriteUtc, ILookup<string, Ticket> Open, HashSet<string> Repos, IReadOnlyDictionary<string, IReadOnlyList<string>> Requires,
         IReadOnlySet<string> Approved, IReadOnlySet<string> Epics, IReadOnlyDictionary<string, long> Priorities, WorkState Work,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> PartOf)? fromDb;
+        IReadOnlyDictionary<string, IReadOnlyList<string>> PartOf, IReadOnlySet<string> OwnerWaiting)? fromDb;
+
+    /// <summary>Tickets labelled <see cref="WaitingOnOwnerLabel"/>: held back from work until the owner acts (M.ORCH-T1425).</summary>
+    public IReadOnlySet<string> OwnerWaiting => fromDb?.OwnerWaiting ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Ticket → the tickets it requires (prerequisite links in the database: <c>tickets ticket block</c> writes them).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires => fromDb?.Requires ?? new Dictionary<string, IReadOnlyList<string>>();
@@ -130,7 +137,8 @@ public sealed class OpenTicketSource
                     queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     db.AllLabels().Where(l => l.Value.Contains(EpicLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
-                    WorkState.Of(db), partOf);
+                    WorkState.Of(db), partOf,
+                    db.AllLabels().Where(l => l.Value.Contains(WaitingOnOwnerLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase));
                 dbReadUtc = DateTime.UtcNow;
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)

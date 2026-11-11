@@ -201,11 +201,22 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
         [CommandOption("--remove-worktree")]
         [Description("Also remove its old worktree (one made before M.ORCH-T1122; nothing makes one now).")]
         public bool RemoveWorktree { get; init; }
+
+        [CommandOption("--waiting-on-owner")]
+        [Description("Also park it as waiting on the owner (label waiting-on-owner): allocate, next and the Stop hook skip it until the label is removed (tickets ticket label remove <ID> waiting-on-owner).")]
+        public bool WaitingOnOwner { get; init; }
     }
 
     public override int Execute(CommandContext context, Settings settings)
     {
         var store = Ctx.Store();
+        if (settings.WaitingOnOwner)
+        {
+            using var tdb = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(OrchestratorOptions.Load().WorkspaceRoot);
+            if (tdb is null || tdb.Ticket(settings.Ticket) is null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(settings.Ticket)} isn't in the ticket database, so it can't be parked.[/]"); return 1; }
+            tdb.AddLabels(settings.Ticket, [MindAttic.Orchestrator.Tickets.OpenTicketSource.WaitingOnOwnerLabel]);
+            AnsiConsole.MarkupLine($"{Markup.Escape(settings.Ticket)} is parked as waiting on the owner; nothing hands it out until that label is removed.");
+        }
         var a = store.LoadAssignments().FirstOrDefault(x => x.TicketId.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase));
         // An orphaned ticket released is yours (M.ORCH-T748): the daemon no longer redispatches or holds it back.
         var wasOrphan = OrphanWatch.Forget(store, settings.Ticket);

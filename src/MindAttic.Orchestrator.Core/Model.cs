@@ -179,6 +179,9 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// 'requires' link to one is satisfied once it's <see cref="Approved"/> (started), not only once it closes.</summary>
     public IReadOnlySet<string> Epics { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Tickets parked as waiting on the owner (label <c>waiting-on-owner</c>, M.ORCH-T1425): never handed out as work until the label is removed.</summary>
+    public IReadOnlySet<string> OwnerWaiting { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Ticket → the tickets it's <c>part-of</c> (prerequisite-free grouping links in the ticket database). An epic
     /// among them gates it exactly as an explicit 'requires' link to that epic would (M.ORCH-T1210): nobody has to remember
     /// to also write a 'requires' link for an epic's children to be held back while the epic itself isn't approved.</summary>
@@ -201,7 +204,7 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one approved in the database's queue; never an epic
     /// (M.ORCH-T1146), and never one that's part-of an epic that isn't itself approved yet (M.ORCH-T1210) — a fix is no
     /// exception to that part: nothing in an unapproved epic has started, so there's nothing in it to fix yet either.</summary>
-    public bool MayWork(Ticket ticket) => !Epics.Contains(ticket.Id) &&
+    public bool MayWork(Ticket ticket) => !Epics.Contains(ticket.Id) && !OwnerWaiting.Contains(ticket.Id) &&
         (PartOf.GetValueOrDefault(ticket.Id) ?? []).All(parent => !Epics.Contains(parent) || Approved.Contains(parent)) &&
         (ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id));
 

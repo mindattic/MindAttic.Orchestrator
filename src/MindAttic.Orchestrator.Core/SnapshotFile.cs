@@ -102,6 +102,7 @@ public sealed class SnapshotFile(string path)
             PartOf = (s.PartOf ?? new Dictionary<string, IReadOnlyList<string>>()).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             Approved = new HashSet<string>(s.Approved, StringComparer.OrdinalIgnoreCase),
             Epics = new HashSet<string>(s.Epics ?? new HashSet<string>(), StringComparer.OrdinalIgnoreCase),
+            OwnerWaiting = new HashSet<string>(s.OwnerWaiting ?? new HashSet<string>(), StringComparer.OrdinalIgnoreCase),
             Priorities = s.Priorities.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             Assignees = s.Assignees.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             Reservations = s.Reservations.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
