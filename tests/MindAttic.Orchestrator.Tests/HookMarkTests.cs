@@ -345,7 +345,10 @@ public sealed class HookMarkTests
             output = Hook(AgentGate.MarksPython + "\n" + """print(set_cli_mark("crossrepo", 5, None) is not False, set_allocate(5, "-repo=B", ""))""");
             OrchestratorDb.Execute(connection, "ROLLBACK;");
         }
-        Assert.That(output, Does.StartWith("True ").And.Contain("couldn't be recorded"));
+        // Reported, not raised. Which refusal it is depends on timing: the held database's 3s wait budget can be spent
+        // on the first write under load, leaving the read unreadable ("couldn't be read") instead of the write
+        // unrecordable ("couldn't be recorded"); either way nothing changed (M.ORCH-T1602).
+        Assert.That(output, Does.StartWith("True ").And.Contain("couldn't be ").And.Contain("Nothing changed"));
         Assert.That(File.ReadAllText(file), Is.EqualTo("A"));
     }
 
