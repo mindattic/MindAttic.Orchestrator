@@ -1044,7 +1044,15 @@ public partial class MainWindow : Window
         else if (tree.Count == 0)
             root.Items.Add(Disabled("No projects on the Launcher's roster"));
         else
-            foreach (var node in tree) root.Items.Add(ProjectItem(node, tab, Open));
+        {
+            var labels = new List<(MenuItem Item, ProjectNode Node)>();
+            foreach (var node in tree) root.Items.Add(ProjectItem(node, tab, Open, labels));
+            // Each project's uncommitted file count (M.ORCH-T1587): the last read now, the fresh one once git status is read.
+            void ShowChanges() { foreach (var (item, node) in labels) item.Header = ProjectHeader(node); }
+            ShowChanges();
+            _ = MainViewModel.RefreshProjectChangesAsync(TimeSpan.FromSeconds(30)).ContinueWith(
+                _ => Dispatcher.BeginInvoke(ShowChanges), TaskScheduler.Default);
+        }
         root.Items.Add(new Separator());
         var commit = DropdownItem("Commit and push projects…");
         commit.ToolTip = "Pick projects in this tree and commit and push each one under one message (M.ORCH-T1589)";
@@ -1091,13 +1099,29 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Commit and push projects failed; contained"); }
     }
 
-    private MenuItem ProjectItem(ProjectNode node, MainViewModel tab, Action<Func<Task>> open)
+    /// <summary>A project row's label with its uncommitted file count (M.ORCH-T1587) when it has changes; a branch's shows the
+    /// total of the projects under it, so a dirty project can be found without opening every branch.</summary>
+    internal static string ProjectHeader(ProjectNode node)
+    {
+        var changed = ChangedUnder(node);
+        return changed > 0 ? $"{node.Label}  ({changed})" : node.Label;
+    }
+
+    private static int ChangedUnder(ProjectNode node) => node switch
+    {
+        ProjectLeaf leaf => MainViewModel.ProjectChanges.TryGetValue(leaf.Project.Path, out var n) && n is > 0 ? n.Value : 0,
+        ProjectBranch branch => branch.Children.Sum(ChangedUnder),
+        _ => 0,
+    };
+
+    private MenuItem ProjectItem(ProjectNode node, MainViewModel tab, Action<Func<Task>> open, List<(MenuItem Item, ProjectNode Node)> labels)
     {
         var item = DropdownItem(node.Label);
+        labels.Add((item, node));
         switch (node)
         {
             case ProjectBranch branch:
-                foreach (var child in branch.Children) item.Items.Add(ProjectItem(child, tab, open));
+                foreach (var child in branch.Children) item.Items.Add(ProjectItem(child, tab, open, labels));
                 break;
             case ProjectLeaf leaf:
                 item.ToolTip = leaf.Project.Path;

@@ -538,10 +538,37 @@ public sealed partial class MainViewModel
     {
         AccountsMessage = "Refreshing the project list…";
         await RefreshProjectsAsync();
+        await RefreshProjectChangesAsync();
         AccountsMessage = $"Project list refreshed: {ProjectTree?.Sum(CountProjects) ?? 0} projects.";
     }
 
     private static int CountProjects(ProjectNode node) => node is ProjectBranch b ? b.Children.Sum(CountProjects) : 1;
+
+    /// <summary>Each project folder's uncommitted file count (M.ORCH-T1587), as the picker tree shows it beside the project:
+    /// null for a folder git can't read; a folder not read yet isn't in it.</summary>
+    internal static System.Collections.Concurrent.ConcurrentDictionary<string, int?> ProjectChanges { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    private static Task? changesLoading;
+    private static DateTime changesReadUtc;
+
+    /// <summary>Reads every project's git status again (off the UI thread, a few at a time) unless a read is already running;
+    /// <paramref name="ifOlderThan"/> skips it while the last read is fresher than that. Waits for a running roster read first.</summary>
+    internal static Task RefreshProjectChangesAsync(TimeSpan? ifOlderThan = null)
+    {
+        if (changesLoading is { IsCompleted: false } running) return running;
+        if (ifOlderThan is { } age && DateTime.UtcNow - changesReadUtc < age) return Task.CompletedTask;
+        return changesLoading = Task.Run(async () =>
+        {
+            if (projectsLoading is { } roster) { try { await roster; } catch (Exception ex) when (ex is not OutOfMemoryException) { } }
+            if (ProjectTree is not { } tree) return;
+            var paths = Leaves(tree).Select(p => p.Path).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            Parallel.ForEach(paths, new ParallelOptions { MaxDegreeOfParallelism = 6 }, p => ProjectChanges[p] = ProjectCommit.ChangedFiles(p));
+            changesReadUtc = DateTime.UtcNow;
+        });
+    }
+
+    private static IEnumerable<RosterProject> Leaves(IEnumerable<ProjectNode> nodes) =>
+        nodes.SelectMany<ProjectNode, RosterProject>(n => n switch { ProjectLeaf l => [l.Project], ProjectBranch b => Leaves(b.Children), _ => [] });
 
     /// <summary>Opens a CLI for <paramref name="project"/> on this tab's login, as the tile grid's Start does.</summary>
     internal Task OpenProjectAsync(RosterProject project) => StartSessionAsync(project.Name, project.Path, "Claude", AutoLogin, null);
