@@ -53,6 +53,12 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// <summary>Whether it's assigned to a user (<see cref="Assignee"/>): see <see cref="TicketPins"/>.</summary>
     public bool IsPinned => Assignee is not null;
 
+    /// <summary>Its graph weight in the ticket database (<see cref="Snapshot.GraphWeights"/>, M.TIX-T316): after explicit priority,
+    /// the heavier runs sooner (M.ORCH-T1457).</summary>
+    public long GraphWeight { get; init; }
+
+    /// <summary>Its friendly name in the ticket database (<see cref="Snapshot.Names"/>, M.TIX-T313); null while it has none.</summary>
+    public string? Name { get; init; }
 }
 
 /// <summary>An open ticket a live agent is working though no assignment says so (M.ORCH-T255): the session (and subagent,
@@ -187,6 +193,8 @@ public static partial class Scheduler
                     Approved = IsApproved(t.Id),
                     Moving = MovingOf(t.Id),
                     Assignee = assignees.GetValueOrDefault(t.Id),
+                    GraphWeight = snapshot.GraphWeights?.GetValueOrDefault(t.Id) ?? 0,
+                    Name = snapshot.Names?.GetValueOrDefault(t.Id),
                 }))
             .OrderBy(q => q.IsAssigned)
             // A ticket the last-resort cool-off aborted mid-run goes back at the front for the next round (M.ORCH-T786).
@@ -195,6 +203,9 @@ public static partial class Scheduler
             // An explicit priority (tickets ticket bump/priority, or the daemon lifting a failing-test fix above the rest,
             // M.ORCH-T562) still outranks recency (M.ORCH-T863).
             .ThenByDescending(q => q.Priority)
+            // Then the Tickets graph weight, heaviest first (GraphWeight.Order's rule, M.TIX-T316, M.ORCH-T1457): what most other
+            // open work leans on goes first; today's order breaks ties.
+            .ThenByDescending(q => q.GraphWeight)
             .ThenBy(q => q, Newest)
             .ToList();
         // Then each ticket's open prerequisites ('requires' links) are pulled ahead of it, transitively (M.ORCH-T863).

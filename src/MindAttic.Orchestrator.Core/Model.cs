@@ -190,6 +190,13 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Ticket → its manual priority in the ticket database's queue; higher runs sooner, missing means 0.</summary>
     public IReadOnlyDictionary<string, long> Priorities { get; init; } = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Open ticket → its graph weight in the ticket database (<c>TicketsDb.GraphWeights</c>, M.TIX-T316): how much other
+    /// open work leans on it. Dispatch orders by it after explicit priority (M.ORCH-T1457); missing means 0.</summary>
+    public IReadOnlyDictionary<string, long>? GraphWeights { get; init; }
+
+    /// <summary>Ticket → its friendly name in the ticket database (<c>TicketsDb.Names</c>, M.TIX-T313); missing means none.</summary>
+    public IReadOnlyDictionary<string, string>? Names { get; init; }
+
     /// <summary>Ticket → the member it's assigned to, by login email (the ticket database's <c>ticket_work</c>, written by
     /// <c>tickets ticket assign</c> and Tickets Desktop, read through the engine, M.ORCH-T762); missing means unassigned.</summary>
     public IReadOnlyDictionary<string, string> Assignees { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

@@ -139,7 +139,9 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         var handed = all.Where(h => h.DelegatedTo is null).ToList();
         foreach (var h in handed)
         {
-            Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}): {h.Item.Ticket.Summary}");
+            // M.ORCH-T1457: the ticket's friendly name (M.TIX-T313) when it has one, after the "=== ID (" the context gate reads.
+            var named = string.IsNullOrWhiteSpace(h.Item.Name) ? "" : $" · {h.Item.Name}";
+            Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}){named}: {h.Item.Ticket.Summary}");
             // M.ORCH-T563: the model /allocate starts this ticket's subagent on (the Agent tool's model).
             if (h.Model is { } model) Console.WriteLine(ModelChoice.Line(model));
             if (h.Directory is not null) Console.WriteLine($"checkout: {h.Directory} (on main, shared with this repo's other agents)");
