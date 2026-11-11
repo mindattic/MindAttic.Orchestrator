@@ -407,7 +407,7 @@ if (Test-Stale $artifact @($wpfDir, $coreDir, $termWpfDir, $termDir)) {
     # exe. A bigger exe for less RAM in two always-running processes.
     dotnet publish (Join-Path $wpfDir 'MindAttic.Orchestrator.Wpf.csproj') --configuration Release --runtime win-x64 `
         --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true `
-        /p:PublishReadyToRun=true /p:DebugType=None --output (Split-Path $artifact) | Out-Host
+        /p:DebugType=None --output (Split-Path $artifact) | Out-Host
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $artifact)) { Write-Host 'Publishing the app FAILED.' -ForegroundColor Red; $failed = $true }
     else { $built = $true; Write-Host ("Built {0} ({1:N0} MB)" -f $artifact, ((Get-Item $artifact).Length / 1MB)) -ForegroundColor Green }
 }
