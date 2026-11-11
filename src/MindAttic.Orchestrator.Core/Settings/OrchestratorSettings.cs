@@ -179,6 +179,20 @@ public sealed record OrchestratorSettings
     /// <summary>How long the new-start cool-off gets to bend a login's trend back under before <see cref="AgentAbort"/> steps in (0-60).</summary>
     public int AgentAbortAfterMinutes { get; init; } = 3;
 
+    /// <summary>Advisory per-path edit claims (M.ORCH-T1193, <see cref="Setup.AgentGate.EditClaimsPython"/>): two agents editing the
+    /// same file in a shared checkout. "Warn" (the default) tells the second who else has the file; "Block" also refuses a subagent's
+    /// edit of a file another live agent claimed (a CLI's own main thread is only ever warned, so the user's edits can't deadlock);
+    /// "Off" records nothing.</summary>
+    public string EditClaims { get; init; } = DefaultEditClaims;
+
+    public const string DefaultEditClaims = "Warn";
+
+    /// <summary>Minutes a file's edit claim stands after its agent's last edit of it (M.ORCH-T1193), so a crashed agent's claim lapses;
+    /// a commit naming the file, the subagent's stop or its CLI's exit releases it sooner.</summary>
+    public double EditClaimMinutes { get; init; } = DefaultEditClaimMinutes;
+
+    public const double DefaultEditClaimMinutes = 30;
+
     /// <summary>Context fill at which a session is wrapped up and cycled; high enough to use most of the
     /// window, low enough that the wrap-up turn fits before Claude Code compacts on its own.</summary>
     public int ContextCyclePercent { get; init; } = 80;

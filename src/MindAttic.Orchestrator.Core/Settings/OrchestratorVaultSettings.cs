@@ -165,6 +165,16 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 1440)]
     public int OrphanQuietMinutes { get; set; } = 10;
 
+    [Setting("Same-file edit claims", Group = "Scheduler", Order = 15,
+        Help = "Two agents editing the same file in a shared checkout. Warn (the default) tells the second who else has it; Block also refuses a subagent's edit of a file another live agent claimed (a CLI's own main thread is only warned, so your edits never deadlock); Off records nothing.")]
+    [SettingChoices("Off", "Warn", "Block")]
+    public string EditClaims { get; set; } = OrchestratorSettings.DefaultEditClaims;
+
+    [Setting("Edit claim lasts (minutes)", Group = "Scheduler", Order = 16,
+        Help = "Minutes a file's edit claim stands after its agent's last edit of it, so a crashed agent's claim lapses. A commit naming the file, a finished subagent or a closed CLI releases it sooner.")]
+    [SettingRange(1, 1440)]
+    public double EditClaimMinutes { get; set; } = OrchestratorSettings.DefaultEditClaimMinutes;
+
     // ── Logins ─────────────────────────────────────────────────────────────
 
     [Setting("One CLI per account (Auto login)", Group = "Logins", Order = 1,
@@ -606,6 +616,8 @@ public sealed class OrchestratorVaultSettings
         ContextCyclePercent = s.ContextCyclePercent,
         OrphanRedispatches = s.OrphanRedispatches,
         OrphanQuietMinutes = s.OrphanQuietMinutes,
+        EditClaims = s.EditClaims,
+        EditClaimMinutes = s.EditClaimMinutes,
         AutoLogin = s.AutoLogin,
         RebalanceLogins = s.RebalanceLogins,
         ReviewDiffLines = s.ReviewDiffLines,
@@ -735,6 +747,8 @@ public sealed class OrchestratorVaultSettings
         ContextCyclePercent = ContextCyclePercent,
         OrphanRedispatches = OrphanRedispatches,
         OrphanQuietMinutes = OrphanQuietMinutes,
+        EditClaims = string.IsNullOrWhiteSpace(EditClaims) ? s.EditClaims : EditClaims,
+        EditClaimMinutes = EditClaimMinutes,
         AutoLogin = AutoLogin,
         RebalanceLogins = RebalanceLogins,
         ReviewDiffLines = ReviewDiffLines,

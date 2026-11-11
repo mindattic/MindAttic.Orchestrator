@@ -1955,6 +1955,7 @@ public static class AgentGate
         # repo's files and tickets belong to that repo's window, /allocate, or the General (workspace-root) session.
         import fnmatch, os, re, sqlite3
         {{WorkspacePython}}
+        {{EditClaimsPython}}
 
         def ticket_repo(ticket_id):
             try:
@@ -2097,6 +2098,13 @@ public static class AgentGate
                 if re.match(r"\s*(?:&\s*)?['\"]?git(?:\.exe)?['\"]?(?:\s+(?:-C\s+(?:\"[^\"]*\"|'[^']*'|\S+)|-c\s+\S+|--?[\w-]+(?:=\S+)?))*\s+push\b", segment) and re.search(r"(?:\s|:|\+|refs/heads/|['\"])master(?![\w./-])", segment) and not re.search(r"--delete\b", segment):
                     refuse("Every MindAttic repo's main line is main now (renamed from master 2026-10-16); pushing master would "
                            "recreate a stray branch. Push main instead: git push origin HEAD:main.")
+
+        # Advisory edit claims (M.ORCH-T1193): with EditClaims "Block", a subagent's edit of a file another live agent has claimed
+        # in a shared checkout is refused, naming the holder. Warn (the default) and Off refuse nothing here; the context gate warns.
+        if tool in EDIT_TOOLS:
+            claimed = edit_claim_refusal(data)
+            if claimed:
+                refuse(claimed)
 
         # A search of a whole drive never finishes in time and, orphaned when its agent stops, leaks handles until
         # Windows can't draw (found live: two `find /` held 660k handles and froze the desktop). Refuse it up front.
@@ -2681,6 +2689,213 @@ public static class AgentGate
     /// refreshes its own every 5 seconds.</summary>
     public const int WantLifeSeconds = 20;
 
+    /// <summary>Where the hooks keep the advisory per-path edit claims (in <c>~/.claude/session-context</c>, shared by every
+    /// login on the machine, as the checkouts are): one <c>&lt;hash of the path&gt;.json</c> per claimed file (M.ORCH-T1193).</summary>
+    public const string EditClaimDirName = "edit-claims";
+
+    /// <summary>
+    /// Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>re</c>, <c>time</c>, <c>Path</c>, <see cref="WorkspacePython"/>'s
+    /// <c>orch_rows</c>/<c>orch_settings</c>/<c>repo_of</c>, <see cref="CliPid"/> and <see cref="ClaudeUsagePython"/>'s
+    /// <c>process_started</c>): advisory per-path edit claims (M.ORCH-T1193, the follow-up to M.ORCH-T1178, which only made a
+    /// same-file collision loud at commit time). The context gate's PostToolUse records a claim when an agent edits a file in
+    /// a repo checkout and releases it when that agent commits it, when the subagent stops, or once its CLI is gone; a claim
+    /// not refreshed by an edit for <see cref="Settings.OrchestratorSettings.EditClaimMinutes"/> lapses (a crashed agent's).
+    /// Another agent editing a claimed file is warned who holds it, or, with <see cref="Settings.OrchestratorSettings.EditClaims"/>
+    /// "Block", refused by the pace gate's PreToolUse when it's a subagent. A CLI's own main thread is never refused, so the
+    /// user's own direct edits can't deadlock on a claim. One small file per claimed path: the check is a single read.
+    /// </summary>
+    internal static string EditClaimsPython => $$"""
+        EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
+        EDIT_CLAIMS = Path.home() / ".claude" / "session-context" / "{{EditClaimDirName}}"
+        def edit_claim_settings():
+            # (mode, seconds a claim lasts): just the two settings' rows, or the settings file when the database can't be read.
+            rows = orch_rows("SELECT name, value FROM settings WHERE name IN ('EditClaims', 'EditClaimMinutes')", timeout=1)
+            s = {}
+            if rows is None:
+                s = orch_settings()
+            else:
+                for name, value in rows:
+                    try:
+                        s[name] = json.loads(value)
+                    except Exception:
+                        pass
+            mode = str(s.get("EditClaims") or "{{Settings.OrchestratorSettings.DefaultEditClaims}}").strip().lower()
+            if mode not in ("off", "warn", "block"):
+                mode = "{{Settings.OrchestratorSettings.DefaultEditClaims.ToLowerInvariant()}}"
+            try:
+                minutes = float(s.get("EditClaimMinutes"))
+            except Exception:
+                minutes = {{Settings.OrchestratorSettings.DefaultEditClaimMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture)}}
+            return mode, max(1.0, minutes) * 60
+        def edit_claim_path(path, cwd=None):
+            # The file as claims name it (absolute, case-folded; Git Bash's /d/... read as D:/...), or None outside a repo checkout.
+            try:
+                p = re.sub(r"^/([a-zA-Z])(?=/|$)", r"\1:", str(path or "").strip())
+                if not p:
+                    return None
+                if not os.path.isabs(p):
+                    if not cwd:
+                        return None
+                    p = os.path.join(re.sub(r"^/([a-zA-Z])(?=/|$)", r"\1:", str(cwd)), p)
+                p = os.path.normcase(os.path.abspath(p))
+                return p if repo_of(p) else None
+            except Exception:
+                return None
+        def edit_claim_file(p):
+            import hashlib
+            return EDIT_CLAIMS / (hashlib.sha1(p.encode("utf-8")).hexdigest()[:32] + ".json")
+        def edit_claim_read(f):
+            try:
+                c = json.loads(f.read_text(encoding="utf-8"))
+                return c if isinstance(c, dict) else None
+            except Exception:
+                return None
+        def edit_claim_mine(c, data):
+            return c.get("session") == str(data.get("session_id") or "") and c.get("agent") == str(data.get("agent_id") or "")
+        def edit_claim_live(c, now, life):
+            # Still standing: edited within its life, and its CLI still running (the same process, not a reused pid).
+            try:
+                if now - float(c.get("at") or 0) > life:
+                    return False
+                pid = c.get("cli")
+                if pid:
+                    started = process_started(pid)
+                    if started is None:
+                        return False
+                    if c.get("cli_started") and abs(started - float(c["cli_started"])) > 2:
+                        return False
+                return True
+            except Exception:
+                return False
+        def edit_claim_other(p, data, life):
+            # The live claim another agent holds on file p, or None.
+            c = edit_claim_read(edit_claim_file(p))
+            if not c or edit_claim_mine(c, data) or not edit_claim_live(c, time.time(), life):
+                return None
+            return c
+        def edit_claim_holder(c):
+            who = str(c.get("who") or "")
+            agent = str(c.get("agent") or "")
+            text = (who + "'s " if who else "") + ("subagent " + agent[:8] if agent else "main session")
+            if c.get("cli"):
+                text += " in CLI " + str(c["cli"])
+            if c.get("session"):
+                text += " (session " + str(c["session"])[:8] + ")"
+            try:
+                text += ", claimed " + str(max(0, int((time.time() - float(c.get("at") or 0)) // 60))) + " min ago"
+            except Exception:
+                pass
+            return text
+        def edit_claim_take(p, data):
+            # Records (or refreshes) this agent's claim on file p, replaced whole so a reader never sees half of it.
+            try:
+                pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
+                pid = int(pid) if str(pid or "").isdigit() else None
+                claim = {"path": p, "session": str(data.get("session_id") or ""), "agent": str(data.get("agent_id") or ""),
+                         "cli": pid, "cli_started": process_started(pid) if pid else None, "at": time.time(),
+                         "who": Path(os.environ.get("CLAUDE_CONFIG_DIR") or "").name}
+                EDIT_CLAIMS.mkdir(parents=True, exist_ok=True)
+                f = edit_claim_file(p)
+                tmp = f.with_name(f.name + "." + str(os.getpid()) + ".tmp")
+                tmp.write_text(json.dumps(claim), encoding="utf-8")
+                os.replace(tmp, f)
+            except Exception:
+                pass
+        def edit_claims_release(keep):
+            # Drops every claim keep(claim) says to let go, and any claim met on the way that has lapsed; never raises.
+            try:
+                if not EDIT_CLAIMS.is_dir():
+                    return
+                now = time.time()
+                life = None
+                for f in EDIT_CLAIMS.glob("*.json"):
+                    c = edit_claim_read(f)
+                    try:
+                        if c is None:
+                            if now - f.stat().st_mtime > 60:
+                                f.unlink()  # unreadable for a minute: not one being replaced
+                            continue
+                        if not keep(c):
+                            f.unlink()
+                            continue
+                        if life is None:
+                            life = edit_claim_settings()[1]
+                        if not edit_claim_live(c, now, life):
+                            f.unlink()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        GIT_COMMIT = re.compile(r"(?:^|[;&|(\n])\s*(?:&\s*)?['\"]?git(?:\.exe)?['\"]?(?:\s+(?:-C\s+(?:\"[^\"]*\"|'[^']*'|\S+)|-c\s+\S+|--?[\w-]+(?:=\S+)?))*\s+commit\b")
+        def edit_claims_committed(data, command, cwd):
+            # A git commit by this agent releases its claims on the paths it names after " -- "; with none named (or none of
+            # them claimed by it), all of its claims, so a commit never leaves its own claims standing.
+            m = GIT_COMMIT.search(command)
+            if not m:
+                return
+            tail = re.split(r"&&|\|\||[;\n|]", command[m.end():].split(" -- ", 1)[1], maxsplit=1)[0] if " -- " in command[m.end():] else ""
+            named = [t[1:-1] if len(t) > 1 and t[0] == t[-1] and t[0] in "\"'" else t for t in re.findall(r"\"[^\"]*\"|'[^']*'|\S+", tail)]
+            named = [os.path.normcase(n.replace("/", os.sep).strip()) for n in named if n and not n.startswith("-")]
+            def named_it(c):
+                p = str(c.get("path") or "")
+                for n in named:
+                    full = edit_claim_path(n, cwd)
+                    if (full and full == p) or p.endswith(os.sep + re.sub(r"^(?:\.[\\/])+", "", n)):
+                        return True
+                return False
+            mine = [c for c in (edit_claim_read(f) for f in (EDIT_CLAIMS.glob("*.json") if EDIT_CLAIMS.is_dir() else [])) if c and edit_claim_mine(c, data)]
+            precise = bool(named) and any(named_it(c) for c in mine)
+            edit_claims_release(lambda c: not (edit_claim_mine(c, data) and (not precise or named_it(c))))
+        def edit_claims_after_tool(data):
+            # The context gate's PostToolUse: an edit claims its file (and warns when another agent already holds it); a git
+            # commit releases the committing agent's claims. Returns the warning to give the agent, or None. Never raises.
+            try:
+                tool = str(data.get("tool_name") or "")
+                args = data.get("tool_input") if isinstance(data.get("tool_input"), dict) else {}
+                if tool in EDIT_TOOLS:
+                    p = edit_claim_path(args.get("file_path") or args.get("notebook_path"), data.get("cwd"))
+                    if not p:
+                        return None
+                    mode, life = edit_claim_settings()
+                    if mode == "off":
+                        return None
+                    held = edit_claim_other(p, data, life)
+                    if held is None:
+                        edit_claim_take(p, data)
+                        return None
+                    return ("[Edit claim] " + str(args.get("file_path") or args.get("notebook_path")) + " is also being edited by another agent: " + edit_claim_holder(held) + " (M.ORCH-T1193). "
+                            "You both have uncommitted changes in it now: re-read it right before you commit and commit only your own "
+                            "hunks (a private index and git apply --cached), or leave the file to them. Their claim lapses when they "
+                            "commit it, their subagent finishes or their CLI closes, or after " + str(int(life // 60)) + " min without an edit.")
+                if tool in ("Bash", "PowerShell"):
+                    command = str(args.get("command") or "")
+                    if "commit" in command and "fatal:" not in str(data.get("tool_response") or ""):
+                        edit_claims_committed(data, command, data.get("cwd"))
+            except Exception:
+                pass
+            return None
+        def edit_claim_refusal(data):
+            # The pace gate's PreToolUse: with EditClaims "Block", a subagent's edit of a file another live agent holds is
+            # refused (the reason), else None. A CLI's main thread is never refused (the user's own edits can't deadlock).
+            try:
+                if not data.get("agent_id") or data.get("tool_name") not in EDIT_TOOLS:
+                    return None
+                args = data.get("tool_input") if isinstance(data.get("tool_input"), dict) else {}
+                p = edit_claim_path(args.get("file_path") or args.get("notebook_path"), data.get("cwd"))
+                if not p or not edit_claim_file(p).exists():
+                    return None
+                mode, life = edit_claim_settings()
+                held = edit_claim_other(p, data, life) if mode == "block" else None
+                if held is None:
+                    return None
+                return (str(args.get("file_path") or args.get("notebook_path")) + " is being edited by another agent: " + edit_claim_holder(held) + ". EditClaims is set to Block "
+                        "(M.ORCH-T1193), so this edit was refused. Work on your other files first and try again later (the claim "
+                        "lapses when they commit it, their subagent finishes or their CLI closes, or after " + str(int(life // 60)) +
+                        " min without an edit), or end your turn reporting the overlap if you can't go on without this file.")
+            except Exception:
+                return None
+        """;
+
     /// <summary>The pace gate's event log in <c>~/.claude/session-context</c>: one JSON line per hold or refusal.</summary>
     public const string GateLogName = "pace-gate.jsonl";
 
@@ -2721,6 +2936,7 @@ public static class AgentGate
         {{{WorkspacePython}}}
         {{{MarksPython}}}
         {{{StatusInboxPython}}}
+        {{{EditClaimsPython}}}
 
         def pacing_off(pid):
             # /pacing off's mark on this CLI (see the /pacing command below): no pace holds until it closes or /pacing on.
@@ -3221,6 +3437,9 @@ public static class AgentGate
                     release_oldest_slot(my_pid() or 0, SUBAGENT_MARKS)
                 elif mark.exists():
                     mark.unlink()
+                if event == "SubagentStop":
+                    # A finished subagent's edit claims go with it (M.ORCH-T1193).
+                    edit_claims_release(lambda c: c.get("agent") != str(data["agent_id"]))
             sys.exit(0)
         # A background shell (M.ORCH-T1528): a Bash or PowerShell call run in the background goes on after the turn ends, so it is marked
         # (its task id, this CLI, when) and the dashboard counts the CLI busy while that CLI has a shell started about then still running.
@@ -3250,6 +3469,9 @@ public static class AgentGate
                         mark.unlink()
             except Exception:
                 pass
+        # Advisory edit claims (M.ORCH-T1193): an edit claims its file, a commit releases the committer's claims, and an edit of a
+        # file another live agent holds is told so (said with this tool call's other context, a subagent's included).
+        claim_note = edit_claims_after_tool(data) if event == "PostToolUse" else None
         if event == "Stop":
             poke()
         # Blocked on you (M.ORCH-T790): a permission prompt (a subagent's holds its parent's turn too) or an AskUserQuestion is
@@ -3280,6 +3502,8 @@ public static class AgentGate
             except Exception:
                 pass
         if not sid or data.get("agent_id"):
+            if claim_note:
+                print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": claim_note}}))
             sys.exit(0)  # subagents finish inside their parent's turn
         if event == "SessionStart":
             # Every CLI is told at its start what it bills (M.ORCH-T434), as Prose checks its hub first; recorded in the session's
@@ -3592,7 +3816,7 @@ public static class AgentGate
                 except Exception:
                     pass
             # A busy turn (an /allocate run never submits a prompt) takes its nudges here, as the old typed prompt waited in its box.
-            said = take_nudges(paced)
+            said = ([claim_note] if claim_note else []) + take_nudges(paced)
             # No context warning any more: nothing quicksaves, clears or reloads a session for it (2026-10-16), so a turn
             # is never told to stop for its context; Claude's own compaction handles a full one.
             if not said:

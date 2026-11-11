@@ -100,6 +100,8 @@ public sealed class LampSettingsTests
         Case("contextCyclePercent", s => s with { ContextCyclePercent = 70 }, 70, v => v.ContextCyclePercent = 90, 90, s => s.ContextCyclePercent),
         Case("orphanRedispatches", s => s with { OrphanRedispatches = 0 }, 0, v => v.OrphanRedispatches = 5, 5, s => s.OrphanRedispatches),
         Case("orphanQuietMinutes", s => s with { OrphanQuietMinutes = 30 }, 30, v => v.OrphanQuietMinutes = 45, 45, s => s.OrphanQuietMinutes),
+        Case("editClaims", s => s with { EditClaims = "Off" }, "Off", v => v.EditClaims = "Block", "Block", s => s.EditClaims),
+        Case("editClaimMinutes", s => s with { EditClaimMinutes = 45 }, 45d, v => v.EditClaimMinutes = 10, 10d, s => s.EditClaimMinutes),
         Case("dbBusyRetries", s => s with { DbBusyRetries = 3 }, 3, v => v.DbBusyRetries = 10, 10, s => s.DbBusyRetries),
         // Logins
         Case("autoLogin", s => s with { AutoLogin = false }, false, v => v.AutoLogin = true, true, s => s.AutoLogin),
