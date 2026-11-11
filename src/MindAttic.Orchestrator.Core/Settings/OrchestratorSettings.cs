@@ -557,6 +557,18 @@ public sealed record OrchestratorSettings
 
     public const double DefaultMainTestsLockRetrySeconds = 30;
 
+    /// <summary>Off by default, since it commits setup-host.ps1 and texts the admin (M.ORCH-T1488): once a day at
+    /// <see cref="SqlFreshnessCheckAt"/>, the daemon asks winget for the newest SQL Server Developer and Express (LocalDB) packages,
+    /// writes a newer version or bootstrapper URL into setup-host.ps1, commits and pushes it, and texts
+    /// <see cref="PsstAlertTo"/> that the host stack's dependencies changed (see <see cref="Setup.SqlServerFreshness"/>).</summary>
+    public bool SqlFreshnessCheck { get; init; }
+
+    /// <summary>The local time of day (HH:mm) the daily SQL Server check runs; a day the daemon was off at that time runs it at
+    /// its next tick that day.</summary>
+    public string SqlFreshnessCheckAt { get; init; } = DefaultSqlFreshnessCheckAt;
+
+    public const string DefaultSqlFreshnessCheckAt = "04:00";
+
     /// <summary>Off by default (M.ORCH-T1501): on the remote host, build each <c>origin/work/*</c> branch in a worktree of its own
     /// and queue the ones that build for the user's local test run (<see cref="Scheduling.BranchBuilds"/>). Off, nothing changes:
     /// work lands on main as it always has.</summary>

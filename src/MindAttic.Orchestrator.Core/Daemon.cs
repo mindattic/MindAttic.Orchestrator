@@ -424,6 +424,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     if (Settings.OrchestratorDb.LivePath is var live && Settings.OrchestratorDb.RepoOf(live) is { } dbRepo)
                         SyncOrchestratorDbIfDue(dbRepo, live, DateTime.UtcNow);
                     MirrorIfDue(DateTime.UtcNow);
+                    RunSqlFreshnessIfDue(s);
                 }
                 tick.Lap("tickets db sync");
                 if (gitChores && s.GitHubIntake && DateTime.UtcNow - intakeUtc >= OrchestratorSettings.SecondsSpan(s.GitHubIntakeMinutes * 60))
@@ -1308,6 +1309,40 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
         // git may hand the committed text back with CRLF (core.autocrlf).
         static bool Same(string a, string b) => a.ReplaceLineEndings("\n") == b.ReplaceLineEndings("\n");
+    }
+
+    private Task? sqlFreshnessRun;
+
+    /// <summary>
+    /// Once a day at <see cref="OrchestratorSettings.SqlFreshnessCheckAt"/>, while <see cref="OrchestratorSettings.SqlFreshnessCheck"/>
+    /// is on (M.ORCH-T1488): <see cref="Setup.SqlServerFreshness"/> on the main checkout's setup-host.ps1, on its own thread (winget
+    /// can take minutes). What changed is texted through Psst to <see cref="OrchestratorSettings.PsstAlertTo"/>, as a cutoff alert
+    /// is, and raised as an alert (the dashboard and the push URL).
+    /// </summary>
+    private void RunSqlFreshnessIfDue(OrchestratorSettings s)
+    {
+        if (!s.SqlFreshnessCheck || sqlFreshnessRun is { IsCompleted: false }) return;
+        if (Settings.OrchestratorDb.RepoOf(Settings.OrchestratorDb.LivePath) is not { } repo) return;
+        var check = new Setup.SqlServerFreshness(Runner, store);
+        if (!check.Due(s.SqlFreshnessCheckAt, DateTime.Now)) return;
+        var to = s.PsstAlertTo;
+        sqlFreshnessRun = Task.Run(() =>
+        {
+            try
+            {
+                foreach (var (warn, text) in check.Run(repo, DateTime.Now, (key, message) =>
+                {
+                    Alert("Host stack changed", message);
+                    if (to is { Length: > 0 } && !string.IsNullOrWhiteSpace(to))
+                    {
+                        psstAlerts ??= new Reminders.PsstAlerts(new Reminders.PsstClient(Runner), (level, line) => Say(level, line));
+                        psstAlerts.Send(key, to, $"Orchestrator: {message}", "the host stack's dependencies changed");
+                    }
+                }))
+                    Say(warn ? LogEventLevel.Warning : LogEventLevel.Information, text);
+            }
+            catch (Exception ex) { Say(LogEventLevel.Warning, $"sql check: {ex.Message}", ex); }
+        });
     }
 
     /// <summary>True while the checkout is mid-merge, rebase, cherry-pick or revert, which a daemon merge or abort must not touch.</summary>

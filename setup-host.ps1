@@ -112,7 +112,14 @@ $RestartExitCode = 3010
 # Microsoft's own SQL Server 2025 bootstrappers: the InstallerUrls of winget's Microsoft.SQLServer.2025.Developer (Standard
 # Developer) and .Express packages, 17.0.1000.7 (M.ORCH-T1576). These were the 2022 ones, whose Developer bootstrapper no longer
 # starts, and whose LocalDB (16.x) Ensure-LocalDb never takes as installed (it wants 17+), so every run tried it again.
+# The Orchestrator daemon's daily SQL Server check (M.ORCH-T1488) keeps the six lines below fresh from winget: a newer version or
+# bootstrapper URL of the same package is written here, committed and pushed, and the admin is texted. A newer major (another
+# year's package) is only told, never written: the rest of this script's SQL Server steps name 2025 and its 170 folder.
+$SseiDevPackage = 'Microsoft.SQLServer.2025.Developer'
+$SseiDevVersion = '17.0.1000.7'
 $SseiDevUrl = 'https://download.microsoft.com/download/77dc60d3-0139-4dad-83c8-bb52ab22db01/SQL2025-SSEI-StdDev.exe'
+$SseiExprPackage = 'Microsoft.SQLServer.2025.Express'
+$SseiExprVersion = '17.0.1000.7'
 $SseiExprUrl = 'https://download.microsoft.com/download/7ab8f535-7eb8-4b16-82eb-eca0fa2d38f3/SQL2025-SSEI-Expr.exe'
 
 function Say([string]$text, [string]$color = 'Gray') {

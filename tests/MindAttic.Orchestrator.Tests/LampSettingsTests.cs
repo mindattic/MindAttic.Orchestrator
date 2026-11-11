@@ -168,6 +168,8 @@ public sealed class LampSettingsTests
         Case("logKeepDays", s => s with { LogKeepDays = 90 }, 90, v => v.LogKeepDays = 14, 14, s => s.LogKeepDays),
         Case("termLogKeepDays", s => s with { TermLogKeepDays = 3 }, 3, v => v.TermLogKeepDays = 0, 0, s => s.TermLogKeepDays),
         Case("gitHubIntake", s => s with { GitHubIntake = true }, true, v => v.GitHubIntake = false, false, s => s.GitHubIntake),
+        Case("sqlFreshnessCheck", s => s with { SqlFreshnessCheck = true }, true, v => v.SqlFreshnessCheck = false, false, s => s.SqlFreshnessCheck),
+        Case("sqlFreshnessCheckAt", s => s with { SqlFreshnessCheckAt = "05:30" }, "05:30", v => v.SqlFreshnessCheckAt = "03:15", "03:15", s => s.SqlFreshnessCheckAt),
         // Memory
         Case("memoryGuard", s => s with { MemoryGuard = false }, false, v => v.MemoryGuard = true, true, s => s.MemoryGuard),
         Case("memoryGuardStartPercent", s => s with { MemoryGuardStartPercent = 90 }, 90d, v => v.MemoryGuardStartPercent = 85, 85d, s => s.MemoryGuardStartPercent),

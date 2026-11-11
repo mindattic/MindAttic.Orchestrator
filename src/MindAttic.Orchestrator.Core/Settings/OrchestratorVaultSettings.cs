@@ -404,6 +404,14 @@ public sealed class OrchestratorVaultSettings
         Help = "Hourly, file GitHub issues labelled \"orchestrator\" and CI runs that failed on main as tickets.")]
     public bool GitHubIntake { get; set; }
 
+    [Setting("Daily SQL Server check", Group = "Alerts", Order = 8,
+        Help = "Once a day, ask winget for a newer SQL Server Developer or Express (LocalDB) bootstrapper; a newer one is written into setup-host.ps1, committed and pushed, and the alert recipient is texted. A newer major is only texted.")]
+    public bool SqlFreshnessCheck { get; set; }
+
+    [Setting("Daily SQL Server check at", Group = "Alerts", Order = 9,
+        Help = "Local time of day (HH:mm) the daily SQL Server check runs; a day the daemon was off then runs it at its next tick.")]
+    public string SqlFreshnessCheckAt { get; set; } = OrchestratorSettings.DefaultSqlFreshnessCheckAt;
+
     // ── Dashboard ──────────────────────────────────────────────────────────
 
     [Setting("Theme", Group = "Dashboard", Order = 1, Help = "The dashboard's theme; its sun/moon switch changes this too. Empty is dark.")]
@@ -637,6 +645,8 @@ public sealed class OrchestratorVaultSettings
         LogKeepDays = s.LogKeepDays,
         TermLogKeepDays = s.TermLogKeepDays,
         GitHubIntake = s.GitHubIntake,
+        SqlFreshnessCheck = s.SqlFreshnessCheck,
+        SqlFreshnessCheckAt = s.SqlFreshnessCheckAt,
         Theme = s.Theme,
         SymbolTabLabels = s.SymbolTabLabels,
         TabBlinkTokens = s.TabBlinkTokens,
@@ -756,6 +766,8 @@ public sealed class OrchestratorVaultSettings
         LogKeepDays = LogKeepDays,
         TermLogKeepDays = TermLogKeepDays,
         GitHubIntake = GitHubIntake,
+        SqlFreshnessCheck = SqlFreshnessCheck,
+        SqlFreshnessCheckAt = string.IsNullOrWhiteSpace(SqlFreshnessCheckAt) ? OrchestratorSettings.DefaultSqlFreshnessCheckAt : SqlFreshnessCheckAt.Trim(),
         Theme = string.IsNullOrWhiteSpace(Theme) ? null : Theme,
         SymbolTabLabels = SymbolTabLabels,
         TabBlinkTokens = TabBlinkTokens,
