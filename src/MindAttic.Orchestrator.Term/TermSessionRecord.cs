@@ -92,6 +92,10 @@ public static class TermSessionEvents
     /// <summary>Drop its tab but leave the host and CLI running (M.ORCH-T1448, <c>orchestrator undock</c>); <see cref="Started"/>
     /// re-sent docks it again.</summary>
     public const string Undock = "undock";
+
+    /// <summary>Bring up the next of <see cref="TermSessionRecord.Login"/>'s Launcher tabs, or open one when it has none
+    /// (M.ORCH-T1487, <c>orchestrator launcher</c>, the <c>/launcher</c> skill); its tab is untouched.</summary>
+    public const string Launcher = "launcher";
 }
 
 /// <summary>The <c>term-session</c> bus payload (<see cref="TermBus.Kind"/>, v1): the session's record as it stands, plus
@@ -102,8 +106,8 @@ public sealed record TermSessionEvent : TermSessionRecord
 
     public TermSessionEvent(TermSessionRecord session, string sessionEvent) : base(session) => Event = sessionEvent;
 
-    /// <summary><see cref="TermSessionEvents.Started"/>, <see cref="TermSessionEvents.Changed"/>, <see cref="TermSessionEvents.Ended"/>
-    /// or <see cref="TermSessionEvents.Undock"/>.</summary>
+    /// <summary><see cref="TermSessionEvents.Started"/>, <see cref="TermSessionEvents.Changed"/>, <see cref="TermSessionEvents.Ended"/>,
+    /// <see cref="TermSessionEvents.Undock"/> or <see cref="TermSessionEvents.Launcher"/>.</summary>
     [JsonPropertyName("event")] public string Event { get; init; } = "";
 
     /// <summary>The record alone, without the event.</summary>

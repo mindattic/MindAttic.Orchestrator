@@ -468,11 +468,12 @@ public sealed partial class MainViewModel
     /// brought up rather than getting a second, and so is a standalone one already running outside the dashboard (from
     /// before this, or started by hand) -- off the UI thread, since finding it asks WMI. Embedding failing (rare) falls back
     /// to the login's own Windows Terminal window, as every Launcher tab opened before M.LNCH-T77. Returns an error for a
-    /// toast (null on success, embedded or not) and a status line either way.</summary>
-    private async Task<(string? Error, string Status)> OpenLauncherPaneAsync(string? email, string tabTitle, bool embedOnly = false)
+    /// toast (null on success, embedded or not) and a status line either way. <paramref name="alwaysNew"/> (New Launcher,
+    /// M.ORCH-T1487) opens another tab even with one open already.</summary>
+    private async Task<(string? Error, string Status)> OpenLauncherPaneAsync(string? email, string tabTitle, bool embedOnly = false, bool alwaysNew = false)
     {
         var normalized = AccountDirs.Normalize(email);
-        if (Root.AllTerminals.Panes.FirstOrDefault(p => p.Request.IsMenu && !p.Ended &&
+        if (!alwaysNew && Root.AllTerminals.Panes.FirstOrDefault(p => p.Request.IsMenu && !p.Ended &&
                 string.Equals(p.Login, normalized, StringComparison.OrdinalIgnoreCase)) is { } open)
         {
             Root.ShowPane(open);
@@ -520,6 +521,60 @@ public sealed partial class MainViewModel
         if (error is { } e) Toasts.Insert(0, new ToastViewModel($"Couldn't run {TabTitle}'s Launcher", e, Palette.Over, null));
         AccountsMessage = status;
     }, () => IsTabSignedIn);
+
+    private ICommand? newLauncherCommand;
+
+    /// <summary>New Launcher (M.ORCH-T1487), from this tab's right-click menu: another Launcher tab for this login, appended
+    /// after its other tabs even with one open already (the same open as <see cref="RunLauncherCommand"/>'s, embedded).</summary>
+    public ICommand NewLauncherCommand => newLauncherCommand ??= new RelayCommand(() => _ = NewLauncherAsync(), () => IsTabSignedIn);
+
+    /// <summary>Opens a new Launcher tab for this login; a failure is a toast, never thrown (M.ORCH-T1392).</summary>
+    private async Task NewLauncherAsync()
+    {
+        string? error, status;
+        try { (error, status) = await OpenLauncherPaneAsync(ScopeEmail, TabTitle, embedOnly: true, alwaysNew: true); }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Launcher").Error(ex, "New Launcher for {Login:l} failed", TabTitle);
+            (error, status) = (ex.Message, $"Couldn't open a new Launcher for {TabTitle}: {ex.Message}");
+        }
+        if (error is { } e) Toasts.Insert(0, new ToastViewModel($"Couldn't open a new Launcher for {TabTitle}", e, Palette.Over, null));
+        AccountsMessage = status;
+    }
+
+    /// <summary>
+    /// /launcher (M.ORCH-T1487, <c>orchestrator launcher</c> over the bus; UI thread): brings up the next of
+    /// <paramref name="login"/>'s live Launcher tabs after the one shown, in tab order and wrapping round, or opens one (as New
+    /// Launcher does) when they have none. Null is the global login. Never throws.
+    /// </summary>
+    public void CycleLauncher(string? login)
+    {
+        if (!IsGlobalTab) { Root.CycleLauncher(login); return; }
+        try
+        {
+            var global = workspace?.GlobalEmail;
+            var wanted = AccountDirs.Normalize(login ?? global);
+            var person = loginTabs.FirstOrDefault(t => t.IsPersonTab &&
+                string.Equals(AccountDirs.Normalize(t.ScopeEmail ?? global), wanted, StringComparison.OrdinalIgnoreCase));
+            if (person is null)
+            {
+                OrchestratorLog.For("Launcher").Warning("/launcher for {Login:l}: no tab for that login here", login ?? "the global login");
+                return;
+            }
+            SyncTerminals();
+            var launchers = person.Terminals.Panes.Where(p => p.Request.IsMenu && !p.Ended).ToList();
+            if (launchers.Count == 0)
+            {
+                if (person.NewLauncherCommand.CanExecute(null)) person.NewLauncherCommand.Execute(null);
+                return;
+            }
+            // From another person's page, their first Launcher; from theirs, the one after the tab shown (-1 + 1: the first).
+            var shown = ReferenceEquals(SelectedTab, person) ? person.Terminals.SelectedPane : null;
+            var index = shown is null ? -1 : launchers.IndexOf(shown);
+            ShowPane(launchers[(index + 1) % launchers.Count]);
+        }
+        catch (Exception ex) { OrchestratorLog.For("Launcher").Error(ex, "/launcher for {Login:l} failed; contained", login ?? "the global login"); }
+    }
 
     /// <summary>The Launcher's project tree (M.ORCH-T1585), shared by every tab's right-click menu: null until the first read.</summary>
     internal static IReadOnlyList<ProjectNode>? ProjectTree { get; private set; }

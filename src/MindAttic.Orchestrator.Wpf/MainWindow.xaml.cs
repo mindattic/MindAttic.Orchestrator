@@ -261,7 +261,12 @@ public partial class MainWindow : Window
             .On<Status.AppPresence>(Status.AppBus.Presence, (_, presence) => model.Presences.Note(presence), Status.AppBus.Version)
             .On<Status.ShowWorkerRequest>(Status.AppBus.ShowWorker, (_, request) => OnShowWorker(request), Status.AppBus.Version);
         // Hosted CLIs (M.ORCH-T926): one started elsewhere (the Launcher, M.LNCH-T82) gets a tab, one that ended is marked ended.
-        bus.On<Term.TermSessionEvent>(Term.TermBus.Kind, (_, session) => model.AllTerminals.OnTermSession(session), Term.TermBus.Version);
+        // /launcher (M.ORCH-T1487) rides the same message: cycle that login's Launcher tabs, or open one.
+        bus.On<Term.TermSessionEvent>(Term.TermBus.Kind, (_, session) =>
+        {
+            if (session.Event == Term.TermSessionEvents.Launcher) model.CycleLauncher(session.Login);
+            else model.AllTerminals.OnTermSession(session);
+        }, Term.TermBus.Version);
         // Remote viewers attaching and detaching through the team gateway (M.ORCH-T935): the "being watched" banner.
         bus.On<Term.TermWatchersEvent>(Term.TermWatchersBus.Kind, (_, watchers) => model.AllTerminals.OnWatchers(watchers), Term.TermWatchersBus.Version);
         // The roster, the orgs, the settings and the reminders (M.ORCH-T891), pushed by whoever changed them: with
@@ -1010,6 +1015,8 @@ public partial class MainWindow : Window
         menu.Items.Add(DropdownSeparator());
         Add("Run Launcher", "Opens this login's standalone Launcher (its own process): the project menu above does the same in-app",
             tab.RunLauncherCommand);
+        Add("New Launcher", "Opens another Launcher tab for this login, after its other tabs, even with one open already; /launcher cycles through them (M.ORCH-T1487)",
+            tab.NewLauncherCommand);
         Add("User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
             tab.UserSettingsCommand);
         menu.Items.Add(LoginColorMenu(tab)); // Change Color (M.ORCH-T1594)

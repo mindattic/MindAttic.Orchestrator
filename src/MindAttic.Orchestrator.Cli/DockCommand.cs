@@ -78,3 +78,32 @@ internal sealed class UndockCommand : Command<UndockCommand.Settings>
         return 0;
     }
 }
+
+/// <summary><c>orchestrator launcher [--login EMAIL]</c> (M.ORCH-T1487, the <c>/launcher</c> skill): asks any running dashboard
+/// to bring up the next of the login's Launcher tabs after the one shown (cycling), or to open one when it has none -- the
+/// same open as a person tab's right-click New Launcher. The login is <c>--login</c>, else the calling CLI's own (its
+/// <c>CLAUDE_CONFIG_DIR</c> account), else the global one. One best-effort send over the same bus as dock/undock.</summary>
+internal sealed class LauncherCommand : Command<LauncherCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandOption("--login <EMAIL>")]
+        [Description("Whose Launcher tabs; without it, this CLI's own login (CLAUDE_CONFIG_DIR), else the global login.")]
+        public string? Login { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var login = AccountDirs.Normalize(settings.Login)
+            ?? new AccountDirs().Of(Environment.GetEnvironmentVariable(AccountDirs.EnvVar))?.Email;
+        var who = login ?? "the global login";
+        // A longer wait than the default: this process exits right after, so TrySend's background retries would die with it.
+        if (!TermBus.TrySend(new TermSessionEvent { Event = TermSessionEvents.Launcher, Login = login }, timeoutMs: 2000))
+        {
+            AnsiConsole.MarkupLine($"[yellow]Couldn't reach the dashboard's bus for {Markup.Escape(who)}'s Launcher.[/] [grey]Is MindAttic.Orchestrator running?[/]");
+            return 1;
+        }
+        AnsiConsole.MarkupLine($"[green]Asked the dashboard for {Markup.Escape(who)}'s next Launcher tab[/] [grey](a new one opens when it has none).[/]");
+        return 0;
+    }
+}
