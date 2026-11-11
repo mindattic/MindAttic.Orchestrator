@@ -147,8 +147,10 @@
             <Button x:Name="SidebarTaskCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="0" HorizontalContentAlignment="Stretch"
                     Command="{Binding DataContext.OpenTaskDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                     ToolTip="{Binding OpenName}" AutomationProperties.Name="{Binding OpenName}">
-                <Border BorderBrush="{Binding OwnerBrush}" BorderThickness="3,0,0,0" Padding="8,6,8,6" Margin="{Binding Indent}">
-                    <StackPanel>
+                <DockPanel Margin="{Binding Indent}">
+                    <!-- The owner's-colour stripe (M.ORCH-T1626): the library's MaAccentBar, 3px and square to keep the row's look. -->
+                    <Border Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding OwnerBrush}" />
+                    <StackPanel Margin="8,6,8,6">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="{Binding Tokens}" Style="{StaticResource MaTileSubtitle}" Margin="{StaticResource SpaceLS}" />
                             <TextBlock FontSize="12" TextTrimming="CharacterEllipsis">
@@ -159,7 +161,7 @@
                         <TextBlock Text="{Binding Repo}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding Doing}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                </Border>
+                </DockPanel>
             </Button>
         </DataTemplate>
 
