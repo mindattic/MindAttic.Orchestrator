@@ -197,6 +197,7 @@ public sealed class LampSettingsTests
         Case("testTermHostMaxMinutes", s => s with { TestTermHostMaxMinutes = 60 }, 60d, v => v.TestTermHostMaxMinutes = 30, 30d, s => s.TestTermHostMaxMinutes),
         Case("presumeBusyConfirmSeconds", s => s with { PresumeBusyConfirmSeconds = 12 }, 12d, v => v.PresumeBusyConfirmSeconds = 5, 5d, s => s.PresumeBusyConfirmSeconds),
         Case("presumeBusyMaxSeconds", s => s with { PresumeBusyMaxSeconds = 90 }, 90d, v => v.PresumeBusyMaxSeconds = 30, 30d, s => s.PresumeBusyMaxSeconds),
+        Case("activityStaleMinutes", s => s with { ActivityStaleMinutes = 45 }, 45d, v => v.ActivityStaleMinutes = 10, 10d, s => s.ActivityStaleMinutes),
         Case("endedLauncherTabMinutes", s => s with { EndedLauncherTabMinutes = 0 }, 0d, v => v.EndedLauncherTabMinutes = 5, 5d, s => s.EndedLauncherTabMinutes),
         Case("autoOpenLaunchers", s => s with { AutoOpenLaunchers = true }, true, v => v.AutoOpenLaunchers = false, false, s => s.AutoOpenLaunchers),
         Case("confirmCliClose", s => s with { ConfirmCliClose = false }, false, v => v.ConfirmCliClose = true, true, s => s.ConfirmCliClose),

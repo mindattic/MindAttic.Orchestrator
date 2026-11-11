@@ -596,6 +596,12 @@ public sealed record OrchestratorSettings
 
     public const double DefaultPresumeBusyMaxSeconds = 60;
 
+    /// <summary>Minutes an idle CLI may go unseen before its Team Wall activity line ages to stale and is drawn dimmed (M.ORCH-T965);
+    /// 0 never ages one. A CLI waiting on you never ages.</summary>
+    public double ActivityStaleMinutes { get; init; } = DefaultActivityStaleMinutes;
+
+    public const double DefaultActivityStaleMinutes = 20;
+
     /// <summary>How many more times a main-line suite's build is tried when it fails copying a file another process held (MSB3027/MSB3021),
     /// ending that worktree's own leftover test processes first (M.ORCH-T1632; was MainlineTests.FileLockRetries).</summary>
     public double MainTestsLockRetries { get; init; } = DefaultMainTestsLockRetries;

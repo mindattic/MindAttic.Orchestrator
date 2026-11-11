@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using MindAttic.Components.Wpf.Controls;
+using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Term;
@@ -55,6 +57,13 @@ internal sealed class TeamWallWindow : Window
     private volatile HashSet<string> listed = new(StringComparer.Ordinal);
     private int page;
     private bool refreshing, closed;
+    // The activity feed's consumer (M.ORCH-T965): this machine's CLIs' agent rows as the dashboard already matched them (no read of
+    // its own), aged by the ActivityStaleMinutes setting the wall's refresh loads anyway; and, at phone width, a list in place of tiles.
+    private Func<string, AgentBoardRow?>? activityOf;
+    private TimeSpan staleAfter = TimeSpan.FromMinutes(OrchestratorSettings.DefaultActivityStaleMinutes);
+    private bool phone;
+    private readonly MaStackPanel phoneList = new() { Spacing = 8 };
+    private readonly ScrollViewer phoneScroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, PanningMode = PanningMode.VerticalOnly, Visibility = Visibility.Collapsed };
 
     private TeamWallWindow()
     {
@@ -86,8 +95,12 @@ internal sealed class TeamWallWindow : Window
         bar.Children.Add(right);
         bar.Children.Add(chips);
 
+        phoneScroll.SetResourceReference(StyleProperty, "MaBodyScroll");
+        phoneScroll.Content = phoneList;
+        System.Windows.Automation.AutomationProperties.SetName(phoneList, "What each CLI is doing");
         var body = new Grid { Margin = new Thickness(6) };
         body.Children.Add(tilesHost);
+        body.Children.Add(phoneScroll);
         body.Children.Add(empty);
         var root = new DockPanel();
         DockPanel.SetDock(bar, Dock.Top);
@@ -96,6 +109,7 @@ internal sealed class TeamWallWindow : Window
         Content = root;
 
         tilesHost.SizeChanged += (_, _) => Render();
+        SizeChanged += (_, _) => { if (MainWindow.WantsCompact(ActualWidth, ActualHeight, phone) != phone) Render(); };
         StateChanged += (_, _) => Render();
         IsVisibleChanged += (_, _) => Render();
         Loaded += (_, _) => _ = RefreshAsync();
@@ -105,17 +119,19 @@ internal sealed class TeamWallWindow : Window
     }
 
     /// <summary>Opens the wall, or brings it forward when it's open already, and returns it; null when it couldn't open. Never
-    /// throws. <paramref name="title"/> retitles it (a client's dashboard is the wall of its host, M.ORCH-T1473).</summary>
-    public static Window? Open(string? title = null)
+    /// throws. <paramref name="title"/> retitles it (a client's dashboard is the wall of its host, M.ORCH-T1473).
+    /// <paramref name="activityOf"/> gives a local session's agent row for its activity strip (M.ORCH-T965); without it no strip shows.</summary>
+    public static Window? Open(string? title = null, Func<string, AgentBoardRow?>? activityOf = null)
     {
         try
         {
             if (shown is { } open)
             {
+                if (activityOf is not null) open.activityOf = activityOf;
                 DashboardWindow.Restore(open);
                 return open;
             }
-            var wall = new TeamWallWindow();
+            var wall = new TeamWallWindow { activityOf = activityOf };
             if (title is not null) wall.Title = title;
             shown = wall;
             wall.Closed += (_, _) => { if (ReferenceEquals(shown, wall)) shown = null; };
@@ -177,6 +193,7 @@ internal sealed class TeamWallWindow : Window
         {
             var ct = lifetime.Token;
             var settings = await Task.Run(store.LoadSettings, ct).ConfigureAwait(true);
+            staleAfter = TimeSpan.FromMinutes(Math.Max(0, settings.ActivityStaleMinutes));
             var remotes = settings.Gateway.Remotes;
             SyncClients(remotes);
             var local = Task.Run(LocalSource, ct);
@@ -253,6 +270,14 @@ internal sealed class TeamWallWindow : Window
         if (closed || !IsLoaded) return;
         try
         {
+            phone = MainWindow.WantsCompact(ActualWidth, ActualHeight, phone);
+            if (phone)
+            {
+                RenderPhone();
+                return;
+            }
+            tilesHost.Visibility = Visibility.Visible;
+            phoneScroll.Visibility = Visibility.Collapsed;
             var width = tilesHost.ActualWidth;
             var height = tilesHost.ActualHeight;
             var pageSize = TeamWall.PageSize(width, height);
@@ -283,6 +308,7 @@ internal sealed class TeamWallWindow : Window
                     tilesHost.Children.Add(tile);
                 }
                 else tile.Update(s);
+                tile.ShowActivity(LineFor(s));
                 // Moving a tile to another cell keeps it in the same parent: its renderer's HWND is never torn down.
                 Grid.SetColumn(tile, i % columns);
                 Grid.SetRow(tile, i / columns);
@@ -304,6 +330,83 @@ internal sealed class TeamWallWindow : Window
             ShowChips();
         }
         catch (Exception ex) { log.Error(ex, "Laying out the Team Wall failed; contained"); }
+    }
+
+    /// <summary>A session's activity line (M.ORCH-T965): this machine's own, from the row its dashboard tab matched; null for a
+    /// teammate's (their gateway sends no activity until the bus kind of M.ORCH-T962, and its masking, M.ORCH-T963) or one unmatched.</summary>
+    private CliActivityLine? LineFor(WallSession session)
+    {
+        if (!session.IsLocal || activityOf is not { } of) return null;
+        try { return CliActivityLines.Describe(of(session.Id), DateTime.UtcNow, staleAfter); }
+        catch (Exception ex)
+        {
+            log.Error(ex, "Reading {Key:l}'s activity failed; contained", session.Key);
+            return null;
+        }
+    }
+
+    /// <summary>The phone-width view (M.ORCH-T965): below the dashboard's own phone breakpoint (<see cref="MainWindow.WantsCompact"/>)
+    /// a terminal tile is unreadable, so every CLI is a card in one scrolling list instead, with its activity line and age, stale
+    /// ones dimmed; a tap opens it larger. No terminal streams in this view: every tile is let go.</summary>
+    private void RenderPhone()
+    {
+        foreach (var tile in tiles.Values)
+        {
+            tilesHost.Children.Remove(tile);
+            try { tile.Dispose(); } catch (Exception ex) { log.Error(ex, "Closing a tile failed; contained"); }
+        }
+        tiles.Clear();
+        tilesHost.Visibility = Visibility.Collapsed;
+        phoneScroll.Visibility = all.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        phoneList.Children.Clear();
+        foreach (var s in all) phoneList.Children.Add(PhoneCard(s));
+        pageText.Text = "";
+        previous.IsEnabled = next.IsEnabled = false;
+        empty.Visibility = all.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        empty.Text = gateways.Count <= 1 && !clients.Any()
+            ? "No live CLIs here yet, and no teammates' gateways."
+            : "No live CLIs on any gateway right now.";
+        ShowChips();
+    }
+
+    private Border PhoneCard(WallSession s)
+    {
+        var line = LineFor(s);
+        var text = string.IsNullOrWhiteSpace(s.Title) ? s.Repo ?? s.Id : s.Title!.Trim();
+        var exited = s.State == TermSessionStates.Exited;
+        var light = new MaStatusLight
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Status = exited ? MaStatus.Bad : line is null ? MaStatus.Other : TeamWallTile.StatusOf(line.Freshness),
+            Label = exited ? "Exited" : line?.StateWord ?? "Live",
+        };
+        var who = new TextBlock { Text = s.Person, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        var name = new TextBlock { Text = text, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        var top = new MaStackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        top.Children.Add(light);
+        top.Children.Add(who);
+        top.Children.Add(name);
+        var doing = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Text = exited ? "Exited" : line is null ? s.IsLocal ? "No activity seen yet" : "Activity isn't shared by this gateway" : $"{line.Text} · {line.Age}",
+        };
+        doing.SetResourceReference(StyleProperty, "MaMutedText");
+        var stack = new MaStackPanel { Spacing = 4 };
+        // The card's theme text, not the wall's own dark chrome.
+        stack.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "MaText");
+        stack.Children.Add(top);
+        stack.Children.Add(doing);
+        var card = new Border { Child = stack, Cursor = System.Windows.Input.Cursors.Hand, Opacity = line?.Freshness == ActivityFreshness.Stale ? 0.55 : 1 };
+        card.SetResourceReference(StyleProperty, "MaCard");
+        card.ToolTip = TeamWall.CanPopOut(s) ? "Tap to open it larger, watch only" : "Its host serves one viewer at a time: it can't be opened larger";
+        System.Windows.Automation.AutomationProperties.SetName(card, $"{s.Person}: {text}. {doing.Text}");
+        card.MouseLeftButtonUp += (_, _) =>
+        {
+            try { TeamWall.PopOut(s, interact: false); }
+            catch (Exception ex) { log.Error(ex, "Opening {Key:l} larger failed; contained", s.Key); }
+        };
+        return card;
     }
 
     private static void Resize<T>(IList<T> definitions, int count, Func<T> make)

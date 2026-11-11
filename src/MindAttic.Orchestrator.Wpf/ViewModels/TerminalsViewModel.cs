@@ -122,6 +122,11 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow);
 
     private AgentBoardRow? statusRow;
+
+    /// <summary>The agent row its last status read matched (<see cref="ApplyAgentStatus"/>), null while unknown: what the Team
+    /// Wall's activity strip shows for this CLI (M.ORCH-T965), with nothing read again for it.</summary>
+    internal AgentBoardRow? StatusRow => statusRow;
+
     private (bool Known, AgentState State, bool Asking, int Subagents, int Jobs, long TokenStep, long Tokens, long UpStep, long Up, int? Cli, int? Host) tipKey;
 
     /// <summary><see cref="TabHoverTip"/>'s text for <paramref name="row"/> (null while its agent isn't known: the plain lines,

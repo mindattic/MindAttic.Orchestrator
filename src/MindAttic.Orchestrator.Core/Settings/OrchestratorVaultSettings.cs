@@ -475,6 +475,11 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 3600)]
     public double PresumeBusyMaxSeconds { get; set; } = OrchestratorSettings.DefaultPresumeBusyMaxSeconds;
 
+    [Setting("Activity stale after (minutes)", Group = "Dashboard", Order = 25,
+        Help = "An idle CLI unseen this long has its Team Wall activity line aged to stale and dimmed. 0 never ages one; a CLI waiting on you never ages.")]
+    [SettingRange(0, 1440)]
+    public double ActivityStaleMinutes { get; set; } = OrchestratorSettings.DefaultActivityStaleMinutes;
+
     [Setting("Main-line test build lock retries", Group = "Dashboard", Order = 92,
         Help = "How many more times a main-line suite's build is tried when it fails copying a file another process held (MSB3027). Before each try, leftover test processes running from that worktree are ended; nothing outside it is touched.")]
     [SettingRange(0, 10)]
@@ -699,6 +704,7 @@ public sealed class OrchestratorVaultSettings
         TestTermHostMaxMinutes = s.TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = s.PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = s.PresumeBusyMaxSeconds,
+        ActivityStaleMinutes = s.ActivityStaleMinutes,
         MainTestsLockRetries = s.MainTestsLockRetries,
         MainTestsLockRetrySeconds = s.MainTestsLockRetrySeconds,
         EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
@@ -828,6 +834,7 @@ public sealed class OrchestratorVaultSettings
         TestTermHostMaxMinutes = TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = PresumeBusyMaxSeconds,
+        ActivityStaleMinutes = ActivityStaleMinutes,
         MainTestsLockRetries = MainTestsLockRetries,
         MainTestsLockRetrySeconds = MainTestsLockRetrySeconds,
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,

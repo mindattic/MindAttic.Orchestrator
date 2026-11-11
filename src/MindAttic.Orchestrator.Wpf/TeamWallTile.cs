@@ -3,6 +3,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using MindAttic.Components.Wpf.Controls;
+using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Term;
 
@@ -33,6 +35,11 @@ internal sealed class TeamWallTile : Border, IDisposable
     private readonly Button watch, interact;
     private readonly Border body = new() { Background = Brushes.Black, ClipToBounds = true };
     private readonly TextBlock placeholder = new() { Foreground = Brushes.Gray, TextWrapping = TextWrapping.Wrap, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16), TextAlignment = TextAlignment.Center };
+    // The activity strip (M.ORCH-T965): what the CLI is doing, from the agent row the dashboard already reads, aged when idle long.
+    private readonly DockPanel strip = new() { Background = HeaderBrush, LastChildFill = true, Height = 20, Visibility = Visibility.Collapsed };
+    private readonly MaStatusLight activityLight = new() { Margin = new Thickness(8, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock activityText = new() { Foreground = Brushes.Silver, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, FontSize = 11 };
+    private readonly TextBlock activityAge = new() { Foreground = Brushes.Gray, VerticalAlignment = VerticalAlignment.Center, FontSize = 11, Margin = new Thickness(6, 0, 8, 0) };
     private RelayTerminal? relay;
     private string link = "";
     private ushort cols, rows;
@@ -73,9 +80,17 @@ internal sealed class TeamWallTile : Border, IDisposable
             PopOut(interactive: false);
         };
 
+        DockPanel.SetDock(activityLight, Dock.Left);
+        DockPanel.SetDock(activityAge, Dock.Right);
+        strip.Children.Add(activityLight);
+        strip.Children.Add(activityAge);
+        strip.Children.Add(activityText);
+
         var root = new DockPanel();
         DockPanel.SetDock(header, Dock.Top);
+        DockPanel.SetDock(strip, Dock.Top);
         root.Children.Add(header);
+        root.Children.Add(strip);
         root.Children.Add(body);
         Child = root;
         body.Child = placeholder;
@@ -175,6 +190,33 @@ internal sealed class TeamWallTile : Border, IDisposable
         if (cols == 0 && session.Cols > 0) { cols = (ushort)session.Cols; rows = (ushort)Math.Max(1, session.Rows); Fit(); }
         ShowState();
     }
+
+    /// <summary>The activity strip's line (M.ORCH-T965); null hides the strip (a CLI not matched yet, or a teammate's, whose
+    /// gateway sends no activity). A stale line is dimmed.</summary>
+    public void ShowActivity(CliActivityLine? line)
+    {
+        if (line is null)
+        {
+            strip.Visibility = Visibility.Collapsed;
+            return;
+        }
+        activityLight.Status = StatusOf(line.Freshness);
+        activityLight.Label = line.StateWord;
+        activityText.Text = line.Text;
+        activityAge.Text = line.Age;
+        strip.ToolTip = $"{line.StateWord}: {line.Text}" + (line.LastSeenUtc is { } seen ? $"\nLast seen {Formatting.Ago(seen, DateTime.UtcNow)}" : "");
+        System.Windows.Automation.AutomationProperties.SetName(strip, $"{Session.Person}'s CLI: {line.StateWord}, {line.Text}");
+        strip.Opacity = line.Freshness == ActivityFreshness.Stale ? 0.55 : 1;
+        strip.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>The library status light a freshness is drawn with.</summary>
+    internal static MaStatus StatusOf(ActivityFreshness freshness) => freshness switch
+    {
+        ActivityFreshness.Working => MaStatus.Good,
+        ActivityFreshness.Asking => MaStatus.Warning,
+        _ => MaStatus.Other,
+    };
 
     private void ShowState()
     {
