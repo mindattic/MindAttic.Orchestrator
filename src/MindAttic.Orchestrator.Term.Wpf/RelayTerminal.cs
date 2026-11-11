@@ -30,6 +30,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
     private Func<CancellationToken, Task<Stream>>? link;
     private string? viewerId;
     private short fontPoints = FontSizePoints;
+    private Size? letterboxedAt;
 
     public RelayTerminal(TerminalTheme theme)
     {
@@ -57,9 +58,14 @@ public sealed class RelayTerminal : UserControl, IDisposable
         // viewer being used too: TakeSize() is a no-op once it already owns the size or isn't interactive, and this pane's own
         // visibility is checked since every pane in TerminalPanesHost's overlay is measured and arranged (SizeChanged fires)
         // even while another tab is the one shown.
-        Terminal.SizeChanged += (_, _) =>
+        // M.ORCH-T1604: only a row that actually GROWS past what it was when this viewer lost the size reclaims it. Any layout
+        // pass (including one landing just after the loss) used to reclaim at once, so two viewers could ping-pong the size and
+        // a letterbox lasted only an instant.
+        Terminal.SizeChanged += (_, e) =>
         {
             if (!IsVisible) return;
+            if (Connection is { OwnsSize: false } && letterboxedAt is { } at
+                && e.NewSize.Width <= at.Width && e.NewSize.Height <= at.Height) return;
             try { Connection?.TakeSize(); }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Taking the size on resize failed; contained"); }
         };
@@ -193,6 +199,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
         {
             if (disposed || !ReferenceEquals(connection, Connection) || cols == 0 || rows == 0) return;
             SessionSizeChanged?.Invoke(cols, rows);
+            letterboxedAt = owned ? null : new Size(Terminal.ActualWidth, Terminal.ActualHeight);
             if (owned && Terminal.AutoResize) return;
             if (Terminal.Rows != rows || Terminal.Columns != cols || owned)
             {
