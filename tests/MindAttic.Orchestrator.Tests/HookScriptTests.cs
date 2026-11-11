@@ -2746,6 +2746,31 @@ public sealed class HookScriptTests
         Assert.That(Gate(ReadCall, key).Output, Does.Not.Contain("\"deny\""), "a new credit lets it go on at once");
     }
 
+    /// <summary>M.ORCH-T953: with Anthropic's own bill folded into the ledger, the gate sums it as the dashboard does: the billed
+    /// hours, then the estimate only from the read's hour on.</summary>
+    [Test]
+    public void The_api_key_credit_stop_counts_anthropics_bill_in_place_of_the_estimate_before_its_read()
+    {
+        var key = ApiKeyLogin();
+        var since = DateTime.UtcNow.AddHours(-3);
+        ApiCredit(5, since);
+        ApiSpent((since, 4), (since.AddHours(3), 0.5));
+        Assert.That(Gate(ReadCall, key).Output, Does.Not.Contain("\"deny\""), "the estimate: $4.50 of $5");
+
+        // Anthropic's bill, read an hour ago: $6 by then. The estimate's $4 before the read no longer counts; its last hour does.
+        var ledger = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(ApiLedger))!.AsObject();
+        static long Hour(DateTime at) => (long)Math.Floor((at - DateTime.UnixEpoch).TotalHours) * 3600;
+        var read = DateTime.UtcNow.AddHours(-1);
+        ledger["billed"] = new System.Text.Json.Nodes.JsonObject
+        {
+            ["through"] = Hour(read), ["at"] = Hour(read),
+            ["hours"] = new System.Text.Json.Nodes.JsonObject { [Hour(since).ToString(System.Globalization.CultureInfo.InvariantCulture)] = 6.0 },
+        };
+        File.WriteAllText(ApiLedger, ledger.ToJsonString());
+        Assert.That(OutOfCredit(5, since), Is.True, "the ledger's own sum: $6 billed + $0.50 estimated since the read");
+        Assert.That(Gate(ReadCall, key).Output, Does.Contain("\"deny\"").And.Contain("$6.50 spent of $5.00"), "the gate sums it the same way");
+    }
+
     [Test]
     public void The_api_key_credit_stop_fails_open_and_never_stops_another_login()
     {

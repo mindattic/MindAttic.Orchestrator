@@ -45,6 +45,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private Billing.BillingSwitch? billingSwitch;
     private Billing.ApiSpendLedger? apiLedger;
 
+    /// <summary>When Anthropic's bill (api-cost.json) was last written as seen by the last fold (M.ORCH-T953); MinValue: none.
+    /// Starts unset, so the first refresh folds whatever is there.</summary>
+    private DateTime? apiBillStamp;
+
     /// <summary>The billing switch (M.ORCH-T436) whose mode and CLIs each snapshot shows; the dashboard's toggle switches it.
     /// The CLIs the rebalancer failed over to the API key (M.ORCH-T664) are read from <see cref="Store"/>, so they're never asked
     /// back onto the mode.</summary>
@@ -586,7 +590,18 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         {
             var ledger = apiLedger ??= new Billing.ApiSpendLedger(Path.Combine(Store.Directory, Billing.ApiSpendLedger.FileName));
             var onKeyPerson = ownLogin.Where(o => Billing.ApiKeyPerson.Is(Accounts.Dirs.Of(o.Value)?.Email)).Select(o => o.Key).ToHashSet(StringComparer.Ordinal);
-            if (ledger.Observe(claudeSessions.Where(s => onKeyPerson.Contains(s.SessionId)), now) && writing) ledger.Save();
+            var observed = ledger.Observe(claudeSessions.Where(s => onKeyPerson.Contains(s.SessionId)), now);
+            // Anthropic's own bill (M.ORCH-T953), when the daemon has read one with the Vault's Admin API key: folded in each time
+            // a new read lands (or the read is dropped), so the ledger the pace gate sums holds it too; no network call here.
+            var billPath = Path.Combine(Store.Directory, Billing.AnthropicCostReport.FileName);
+            var billStamp = File.Exists(billPath) ? File.GetLastWriteTimeUtc(billPath) : DateTime.MinValue;
+            var billed = false;
+            if (billStamp != apiBillStamp)
+            {
+                apiBillStamp = billStamp;
+                billed = ledger.Bill(billStamp == DateTime.MinValue ? null : Billing.AnthropicCostReport.Load(billPath));
+            }
+            if ((observed || billed) && writing) ledger.Save();
             apiSpend = ledger.Spend(settings.ApiCreditUsd, settings.ApiCreditSinceUtc, now, startOfTodayUtc);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { warnings.Add($"API key spend: {ex.Message}"); }

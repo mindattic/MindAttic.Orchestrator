@@ -627,10 +627,21 @@ public static class AgentGate
                     start = int(at.timestamp() // 3600) * 3600
                 ledger = read_json(ORCH_DIR / "{{Billing.ApiSpendLedger.FileName}}")
                 spent = 0.0
+                # Anthropic's own bill (M.ORCH-T953), when the daemon has read one with the Vault's Admin API key: its hours up to
+                # the read, then the estimate's hours from the read's hour on, as ApiSpendLedger.Spend sums them.
+                cut = None
+                billed = ledger.get("billed")
+                if isinstance(billed, dict) and isinstance(billed.get("hours"), dict) and isinstance(billed.get("through"), int) \
+                        and not isinstance(billed.get("through"), bool):
+                    cut = billed["through"]
+                    for hour, usd in billed["hours"].items():
+                        if (start is None or int(hour) >= start) and isinstance(usd, (int, float)) and not isinstance(usd, bool):
+                            spent += float(usd)
                 for hours in (ledger.get("sessions") or {}).values():
                     if isinstance(hours, dict):
                         for hour, usd in hours.items():
-                            if (start is None or int(hour) >= start) and isinstance(usd, (int, float)) and not isinstance(usd, bool):
+                            if (start is None or int(hour) >= start) and (cut is None or int(hour) >= cut) \
+                                    and isinstance(usd, (int, float)) and not isinstance(usd, bool):
                                 spent += float(usd)
                 return (spent, float(credit)) if float(credit) - spent <= 0 else None
             except Exception:

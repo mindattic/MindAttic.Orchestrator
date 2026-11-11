@@ -51,6 +51,11 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, OrchestratorSettings.MaxWeeklyReservePercent)]
     public int WeeklyReservePercent { get; set; } = OrchestratorSettings.DefaultWeeklyReservePercent;
 
+    [Setting("API key: read Anthropic's bill every (minutes)", Group = "Budget", Order = 6,
+        Help = "Only with an Admin API key in the Vault keyring (provider \"anthropic-admin\"): the daemon reads Anthropic's cost report this often, and the API key's spend is Anthropic's own figures up to then instead of the list-price estimate. 0 never reads it.")]
+    [SettingRange(0, 1440)]
+    public double ApiCostReadMinutes { get; set; } = OrchestratorSettings.DefaultApiCostReadMinutes;
+
     // ── Pacing ─────────────────────────────────────────────────────────────
 
     [Setting("Pace to the reset", Group = "Pacing", Order = 1,
@@ -677,6 +682,7 @@ public sealed class OrchestratorVaultSettings
         MeterStatesSeconds = s.MeterStatesSeconds,
         TestTermHostSweepMinutes = s.TestTermHostSweepMinutes,
         OrgReachSpacingMinutes = s.OrgReachSpacingMinutes,
+        ApiCostReadMinutes = s.ApiCostReadMinutes,
         UtilizationMinSpacingSeconds = s.UtilizationMinSpacingSeconds,
         SyncTimeoutSeconds = s.SyncTimeoutSeconds,
         RefreshMinGapSeconds = s.RefreshMinGapSeconds,
@@ -810,6 +816,7 @@ public sealed class OrchestratorVaultSettings
         MeterStatesSeconds = MeterStatesSeconds,
         TestTermHostSweepMinutes = TestTermHostSweepMinutes,
         OrgReachSpacingMinutes = OrgReachSpacingMinutes,
+        ApiCostReadMinutes = ApiCostReadMinutes,
         UtilizationMinSpacingSeconds = UtilizationMinSpacingSeconds,
         SyncTimeoutSeconds = SyncTimeoutSeconds,
         RefreshMinGapSeconds = RefreshMinGapSeconds,

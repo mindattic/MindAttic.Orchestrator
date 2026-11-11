@@ -100,6 +100,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         using var wakeLease = new DispatchLease(store.Directory, LimitWaker.LeaseName, store.Db);
         using var ledgerLease = new DispatchLease(store.Directory, PaceLedgerWatch.LeaseName, store.Db);
         using var remindLease = new DispatchLease(store.Directory, Reminders.ReminderSender.LeaseName, store.Db);
+        using var costLease = new DispatchLease(store.Directory, Billing.ApiCostWatch.LeaseName, store.Db);
+        var apiCost = new Billing.ApiCostWatch(store.Directory, (level, line) => Say(level, line));
         // Each repo's full suite on its main line after a landing, with no LLM (M.ORCH-T561); one daemon runs them.
         using var testsLease = new DispatchLease(store.Directory, MainlineTests.LeaseName, store.Db);
         // The git-touching chores (audit, db syncs, mirror, GitHub intake) run in one daemon: two in the same checkout collide on
@@ -191,6 +193,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 try { if (ledgerLease.TryAcquire()) ledger.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"pace ledger: couldn't update it (retrying next minute): {ex.Message}"); }
                 tick.Lap("pace ledger");
+                // Anthropic's own bill for the API key (M.ORCH-T953): only with an Admin API key in the Vault, every
+                // ApiCostReadMinutes, off this thread; one daemon reads it.
+                try { if (costLease.TryAcquire()) apiCost.Tick(s, DateTime.UtcNow, cancel); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"API key spend: couldn't start a read of Anthropic's bill (retrying next tick): {ex.Message}"); }
                 foreach (var r in ReapIfDue())
                     Say(LogEventLevel.Warning, $"reaped pid {r.Process.Pid} ({r.Process.Name}): {r.Reason}" +
                         (string.IsNullOrWhiteSpace(r.Process.CommandLine) ? "" : $" — was running: {r.Process.CommandLine}"));

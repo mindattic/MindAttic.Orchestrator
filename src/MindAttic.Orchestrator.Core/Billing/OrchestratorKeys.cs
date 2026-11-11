@@ -38,6 +38,28 @@ public sealed class OrchestratorKeys
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { return false; }
     }
 
+    /// <summary>The provider of the Anthropic Admin API key (M.ORCH-T953), which reads the organization's cost report: never a key
+    /// anything bills, only read with.</summary>
+    public const string AdminProvider = "anthropic-admin";
+
+    /// <summary>The Anthropic Admin API key (M.ORCH-T953): the one assigned to the Orchestrator for <see cref="AdminProvider"/> on
+    /// its Vault tab, else the Vault keyring's <see cref="AdminProvider"/> entry. Null when there's none (or it can't be read):
+    /// the API key's spend is then the list-price estimate, as before. Never logged or shown.</summary>
+    public string? AdminKey()
+    {
+        try
+        {
+            var key = HasAssignment(AdminProvider)
+                ? selector.GetActiveKey(AdminProvider, OrchestratorVaultSettings.AppId)?.Value
+                : AdminFallback();
+            return string.IsNullOrWhiteSpace(key) ? null : key.Trim();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException) { return null; }
+    }
+
+    /// <summary>The Vault keyring's Admin API key (seam).</summary>
+    internal Func<string?> AdminFallback { get; init; } = () => LlmCredentialStore.Default.GetKey(AdminProvider);
+
     /// <summary>The Claude key the orchestrator bills: its assigned active key, else the shared keyring's Claude key. Null when
     /// there is none (or every assigned key is disabled or failing).</summary>
     public string? ClaudeKey()
