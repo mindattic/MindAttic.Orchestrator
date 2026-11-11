@@ -863,7 +863,7 @@ public partial class MainWindow : Window
                 menu.Items.Add(undock);
             }
             AddDockItems(menu, undocked);
-            menu.Items.Add(new Separator());
+            menu.Items.Add(DropdownSeparator());
             AddPopOutItems(menu, pane);
             AddBroadcastItems(menu, pane);
             if (agent is null)
@@ -970,7 +970,7 @@ public partial class MainWindow : Window
                 };
             menu.Items.Add(item);
         }
-        menu.Items.Add(new Separator());
+        menu.Items.Add(DropdownSeparator());
     }
 
     /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): Run Launcher
@@ -999,7 +999,7 @@ public partial class MainWindow : Window
             menu.Items.Add(item);
         }
         menu.Items.Add(ProjectsMenu(tab));
-        menu.Items.Add(new Separator());
+        menu.Items.Add(DropdownSeparator());
         Add("Run Launcher", "Opens this login's standalone Launcher (its own process): the project menu above does the same in-app",
             tab.RunLauncherCommand);
         Add("User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
@@ -1038,7 +1038,7 @@ public partial class MainWindow : Window
         general.ToolTip = "A CLI at the workspace root, every project in reach";
         general.Click += (_, e) => { e.Handled = true; Open(tab.OpenGeneralPromptAsync); };
         root.Items.Add(general);
-        root.Items.Add(new Separator());
+        root.Items.Add(DropdownSeparator());
         if (MainViewModel.ProjectTree is not { } tree)
             root.Items.Add(Disabled("Loading projects…"));
         else if (tree.Count == 0)
@@ -1053,7 +1053,7 @@ public partial class MainWindow : Window
             _ = MainViewModel.RefreshProjectChangesAsync(TimeSpan.FromSeconds(30)).ContinueWith(
                 _ => Dispatcher.BeginInvoke(ShowChanges), TaskScheduler.Default);
         }
-        root.Items.Add(new Separator());
+        root.Items.Add(DropdownSeparator());
         var commit = DropdownItem("Commit and push projects…");
         commit.ToolTip = "Pick projects in this tree and commit and push each one under one message (M.ORCH-T1589)";
         commit.IsEnabled = MainViewModel.ProjectTree is { Count: > 0 };
@@ -1186,7 +1186,7 @@ public partial class MainWindow : Window
         Add("Mask secrets for remote viewers", pane.IsMasked, "Hide API keys, tokens, private keys and Vault-held values on remote streams (on by default; never on this screen)", all.ToggleMaskCommand, pane);
         Add("Pause broadcast", pane.IsBroadcastPaused, "Remote viewers see \"paused by owner\" and nothing else until you resume (Ctrl+Shift+B)", all.TogglePauseCommand, pane);
         Add("Share all my sessions", all.ShareAll, "Share every CLI with remote viewers unless one says otherwise", all.ShareAllCommand, null);
-        menu.Items.Add(new Separator());
+        menu.Items.Add(DropdownSeparator());
     }
 
     /// <summary>The library's dark dropdown (M.ORCH-T667): a bare ContextMenu and MenuItem draw WPF's light system menu.</summary>
@@ -1203,6 +1203,15 @@ public partial class MainWindow : Window
         var item = new MenuItem { Header = header };
         item.SetResourceReference(StyleProperty, "MaDropdownMenuItem");
         return item;
+    }
+
+    /// <summary>A full-width, light-gray rule between a dropdown's groups (a bare Separator draws WPF's
+    /// light system divider, indented to the system's icon gutter).</summary>
+    private static Separator DropdownSeparator()
+    {
+        var separator = new Separator();
+        separator.SetResourceReference(StyleProperty, "MaSeparator");
+        return separator;
     }
 
     private bool Hidden => !IsVisible || WindowState == WindowState.Minimized;
