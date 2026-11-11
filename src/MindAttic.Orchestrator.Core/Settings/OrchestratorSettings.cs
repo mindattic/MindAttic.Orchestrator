@@ -376,6 +376,11 @@ public sealed record OrchestratorSettings
     /// down from it.</summary>
     public double MemoryResumeMarginCommit { get; init; } = 5;
 
+    /// <summary>Off by default (M.ORCH-T1585): open a MindAttic.Launcher (a process of its own, ~80 MB) for every signed-in login,
+    /// and again when its last tab closes. The tab right-click's Open Project lists the same projects in-app; Run Launcher still
+    /// opens one by hand.</summary>
+    public bool AutoOpenLaunchers { get; init; }
+
     /// <summary>Off by default, since it writes tickets into every repo's log: hourly, file GitHub issues
     /// labelled "orchestrator" and CI runs that failed on main as tickets (see <see cref="Tickets.GitHubIntake"/>).</summary>
     public bool GitHubIntake { get; init; }

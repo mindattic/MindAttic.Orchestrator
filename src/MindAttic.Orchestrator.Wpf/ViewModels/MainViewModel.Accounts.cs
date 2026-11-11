@@ -23,6 +23,7 @@ public sealed partial class MainViewModel
 
     /// <summary>The pace target (M.ORCH-T629's idle chart's target line when the login has no utilization of its own).</summary>
     private double paceTargetPercent = new MindAttic.Orchestrator.Settings.OrchestratorSettings().PaceTargetPercent;
+    private bool autoOpenLaunchers = new MindAttic.Orchestrator.Settings.OrchestratorSettings().AutoOpenLaunchers;
 
     /// <summary>This tab's login's roster row (M.ORCH-T628): on the global login's tab, whoever's signed in to it; on a per-CLI
     /// login's tab, the account with its email. Null when the roster doesn't know it.</summary>
@@ -56,6 +57,7 @@ public sealed partial class MainViewModel
                 weeklyStopPercent = settings.WeeklyStopPercent; paceTargetPercent = settings.PaceTargetPercent;
                 tabBlinkTokens = settings.TabBlinkTokens;
                 symbolTabLabels = settings.SymbolTabLabels;
+                autoOpenLaunchers = settings.AutoOpenLaunchers;
             }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
             // Each login's own cutoffs and who's allowed past the weekly one, for the tabs' disabled icon (M.ORCH-T757); kept as

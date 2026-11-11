@@ -133,6 +133,7 @@ public sealed class LampSettingsTests
         Case("tabBlinkTokens", s => s with { TabBlinkTokens = 5000 }, 5000, v => v.TabBlinkTokens = 250, 250, s => s.TabBlinkTokens),
         Case("excludeLauncherFromTeamWall", s => s with { ExcludeLauncherFromTeamWall = true }, true, v => v.ExcludeLauncherFromTeamWall = false, false,
             s => s.ExcludeLauncherFromTeamWall),
+        Case("autoOpenLaunchers", s => s with { AutoOpenLaunchers = true }, true, v => v.AutoOpenLaunchers = false, false, s => s.AutoOpenLaunchers),
         // Folders
         Case("workspaceRoot", s => s with { WorkspaceRoot = @"E:\Work" }, @"E:\Work", v => v.WorkspaceRoot = @"F:\Repos", @"F:\Repos", s => s.WorkspaceRoot),
         Case("worktreeRoot", s => s with { WorktreeRoot = @"E:\wt" }, @"E:\wt", v => v.WorktreeRoot = @"F:\wt", @"F:\wt", s => s.WorktreeRoot),

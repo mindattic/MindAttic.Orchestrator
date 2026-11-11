@@ -554,12 +554,19 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task StartSessionAsync(RepoTileViewModel tile, string kind, string login, string? text)
     {
+        if (await StartSessionAsync(tile.Name, tile.Path, kind, login, text) && Selected == tile) Prompt = "";
+    }
+
+    /// <summary>Opens a <paramref name="kind"/> CLI for the repo <paramref name="name"/> at <paramref name="path"/> on this tab's
+    /// login (or a free one); true once it's asked to start.</summary>
+    private async Task<bool> StartSessionAsync(string name, string path, string kind, string login, string? text)
+    {
         string? configDir = null;
         var on = login;
         if (kind == "Claude" && ScopeEmail is { } own)
         {
             // This tab's login (M.ORCH-T613): the CLI opens on it, and shows on this tab.
-            if (await OwnLoginDirAsync(own, m => StatusMessage = m) is not { } dir) return;
+            if (await OwnLoginDirAsync(own, m => StatusMessage = m) is not { } dir) return false;
             configDir = dir;
             on = TabTitle;
         }
@@ -572,7 +579,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 // Never the global login, a member's own seat (M.ORCH-T747): the API key when billing is on, else it waits.
                 StatusMessage = "No login of its own has room and API billing is off: not started on the global login. Pick a login's tab, or switch API billing on.";
-                return;
+                return false;
             }
             on = auto?.Email ?? GlobalLogin;
         }
@@ -584,11 +591,11 @@ public sealed partial class MainViewModel : ObservableObject
                 System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes)
         {
             StatusMessage = $"Not started: {low}";
-            return;
+            return false;
         }
-        var error = control.Start(tile.Name, tile.Path, kind, text, configDir);
-        StatusMessage = error ?? $"Opened a {kind} tab for {tile.Name}" + (configDir is null ? "" : $" on {on}'s own login") + ". It'll appear here within a few seconds.";
-        if (error is null && Selected == tile) Prompt = "";
+        var error = control.Start(name, path, kind, text, configDir);
+        StatusMessage = error ?? $"Opened a {kind} tab for {name}" + (configDir is null ? "" : $" on {on}'s own login") + ". It'll appear here within a few seconds.";
+        return error is null;
     }
 
     /// <summary>

@@ -291,7 +291,8 @@ public sealed partial class MainViewModel
             if (live) launchersEmbedded.Add(key);
             else if (launchersEmbedded.Remove(key)) launchersOpened.Remove(key);
         }
-        if (ShuttingDown) return;
+        // Off by default (M.ORCH-T1585): each Launcher is a process of its own (~80 MB); the tab right-click's Open Project does its job in-app.
+        if (ShuttingDown || !Root.autoOpenLaunchers) return;
         // Through the same cap as a last tab's respawn (M.ORCH-T1150): a Launcher that exits at once is reopened at most every 30s.
         var now = DateTime.UtcNow;
         var wanted = loginTabs.Where(t => t.IsTabSignedIn && !launchersOpened.Contains(t.tab.Key) && launcherRespawn.TryTake(t.tab.Key, now))
@@ -372,6 +373,8 @@ public sealed partial class MainViewModel
             // OpenTerminal before this tab's process even exited, M.LNCH-T107) before spawning run.ps1 -WaitPid -Force itself.
             // Running our own LauncherRedeployer on top of that races a second dotnet publish against the one already in
             // flight, which can catch the deployed exe mid-move and fail the replacement's own relaunch (M.ORCH-T1524).
+            // With automatic Launchers off (M.ORCH-T1585), a tab gone opens nothing: Open Project on the tab's right-click does.
+            if (!autoOpenLaunchers) return;
             if (pane.Request.IsMenu)
             {
                 if (AllTerminals.Panes.Any(p => p != pane && p.Request.IsMenu && !p.Ended && ReferenceEquals(OwnerOf(p), owner)))
@@ -509,6 +512,42 @@ public sealed partial class MainViewModel
         if (error is { } e) Toasts.Insert(0, new ToastViewModel($"Couldn't run {TabTitle}'s Launcher", e, Palette.Over, null));
         AccountsMessage = status;
     }, () => IsTabSignedIn);
+
+    /// <summary>The Launcher's project tree (M.ORCH-T1585), shared by every tab's right-click menu: null until the first read.</summary>
+    internal static IReadOnlyList<ProjectNode>? ProjectTree { get; private set; }
+
+    private static Task? projectsLoading;
+    private static DateTime projectsReadUtc;
+
+    /// <summary>Reads the roster again (off the UI thread, GitHub's wip topic included) unless a read is already running;
+    /// <paramref name="ifOlderThan"/> skips it while the last read is fresher than that.</summary>
+    internal static Task RefreshProjectsAsync(TimeSpan? ifOlderThan = null)
+    {
+        if (projectsLoading is { IsCompleted: false } running) return running;
+        if (ifOlderThan is { } age && ProjectTree is not null && DateTime.UtcNow - projectsReadUtc < age) return Task.CompletedTask;
+        return projectsLoading = Task.Run(async () =>
+        {
+            var tree = ProjectRoster.Tree(await ProjectRoster.LoadTaggedAsync());
+            ProjectTree = tree;
+            projectsReadUtc = DateTime.UtcNow;
+        });
+    }
+
+    /// <summary>Refresh projects, from the menu: reads the roster again and says how many it found.</summary>
+    internal async Task RefreshProjectListAsync()
+    {
+        AccountsMessage = "Refreshing the project list…";
+        await RefreshProjectsAsync();
+        AccountsMessage = $"Project list refreshed: {ProjectTree?.Sum(CountProjects) ?? 0} projects.";
+    }
+
+    private static int CountProjects(ProjectNode node) => node is ProjectBranch b ? b.Children.Sum(CountProjects) : 1;
+
+    /// <summary>Opens a CLI for <paramref name="project"/> on this tab's login, as the tile grid's Start does.</summary>
+    internal Task OpenProjectAsync(RosterProject project) => StartSessionAsync(project.Name, project.Path, "Claude", AutoLogin, null);
+
+    /// <summary>Opens a CLI at the workspace root (the Launcher's "General Prompt"), on this tab's login.</summary>
+    internal Task OpenGeneralPromptAsync() => StartSessionAsync("General", WorkspaceRoot, "Claude", AutoLogin, null);
 
     private void Retitle(LoginTab next)
     {

@@ -274,6 +274,10 @@ public sealed class OrchestratorVaultSettings
         Help = "Off (the default): the Launcher's own menu tab shows as a tile on the Team Wall like any other CLI.")]
     public bool ExcludeLauncherFromTeamWall { get; set; }
 
+    [Setting("Open a Launcher per login", Group = "Dashboard", Order = 5,
+        Help = "Off (the default): no MindAttic.Launcher process (~80 MB each) is started for every signed-in login or when its last tab closes; a login tab's right-click Open Project lists the same projects in-app, and Run Launcher still opens one by hand.")]
+    public bool AutoOpenLaunchers { get; set; }
+
     // ── Folders ────────────────────────────────────────────────────────────
 
     [Setting("Workspace root", Group = "Folders", Order = 1,
@@ -353,6 +357,7 @@ public sealed class OrchestratorVaultSettings
         SymbolTabLabels = s.SymbolTabLabels,
         TabBlinkTokens = s.TabBlinkTokens,
         ExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall,
+        AutoOpenLaunchers = s.AutoOpenLaunchers,
         WorkspaceRoot = WorkspaceOverrideOf(s),
         WorktreeRoot = s.WorktreeRoot,
         Gateway = OrchestratorGatewayVaultSettings.From(s.Gateway ?? new GatewaySettings()),
@@ -421,6 +426,7 @@ public sealed class OrchestratorVaultSettings
         SymbolTabLabels = SymbolTabLabels,
         TabBlinkTokens = TabBlinkTokens,
         ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall,
+        AutoOpenLaunchers = AutoOpenLaunchers,
         WorktreeRoot = string.IsNullOrWhiteSpace(WorktreeRoot) ? s.WorktreeRoot : WorktreeRoot,
         Gateway = (Gateway ?? new()).ApplyTo(s.Gateway ?? new GatewaySettings()),
     };

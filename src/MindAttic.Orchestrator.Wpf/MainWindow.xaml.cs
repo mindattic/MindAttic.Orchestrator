@@ -997,11 +997,73 @@ public partial class MainWindow : Window
             };
             menu.Items.Add(item);
         }
-        Add("Run Launcher", "Opens this login's Launcher by hand (brings an already-open one to front): for when a login is left with no tabs and the automatic Launcher didn't open",
+        menu.Items.Add(ProjectsMenu(tab));
+        menu.Items.Add(new Separator());
+        Add("Run Launcher", "Opens this login's standalone Launcher (its own process): the project menu above does the same in-app",
             tab.RunLauncherCommand);
         Add("User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
             tab.UserSettingsCommand);
         menu.IsOpen = true;
+    }
+
+    /// <summary>
+    /// "Open Project" (M.ORCH-T1585): the Launcher's Open Project Tab as a tree menu, dot-named projects nested on '.', each
+    /// opening a CLI on <paramref name="tab"/>'s login, so no Launcher process is needed per login; General Prompt opens one at
+    /// the workspace root, Refresh reads the roster and GitHub's wip topic again. A read older than 10 minutes is redone in the
+    /// background each time the menu opens; the menu shows the last one meanwhile.
+    /// </summary>
+    private MenuItem ProjectsMenu(MainViewModel tab)
+    {
+        _ = MainViewModel.RefreshProjectsAsync(TimeSpan.FromMinutes(10));
+        var root = DropdownItem("Open Project");
+        root.ToolTip = "Open a CLI for a project on this login (the Launcher's Open Project Tab, in-app)";
+        root.IsEnabled = tab.IsTabSignedIn;
+        ToolTipService.SetShowOnDisabled(root, true);
+        void Open(Func<Task> start)
+        {
+            model.SelectedTab = tab;
+            _ = start();
+        }
+        var general = DropdownItem("General Prompt");
+        general.ToolTip = "A CLI at the workspace root, every project in reach";
+        general.Click += (_, e) => { e.Handled = true; Open(tab.OpenGeneralPromptAsync); };
+        root.Items.Add(general);
+        root.Items.Add(new Separator());
+        if (MainViewModel.ProjectTree is not { } tree)
+            root.Items.Add(Disabled("Loading projects…"));
+        else if (tree.Count == 0)
+            root.Items.Add(Disabled("No projects on the Launcher's roster"));
+        else
+            foreach (var node in tree) root.Items.Add(ProjectItem(node, tab, Open));
+        root.Items.Add(new Separator());
+        var refresh = DropdownItem("Refresh projects");
+        refresh.ToolTip = "Read the Launcher's roster and GitHub's wip-tagged repos again";
+        refresh.Click += (_, e) => { e.Handled = true; _ = tab.RefreshProjectListAsync(); };
+        root.Items.Add(refresh);
+        return root;
+    }
+
+    private MenuItem ProjectItem(ProjectNode node, MainViewModel tab, Action<Func<Task>> open)
+    {
+        var item = DropdownItem(node.Label);
+        switch (node)
+        {
+            case ProjectBranch branch:
+                foreach (var child in branch.Children) item.Items.Add(ProjectItem(child, tab, open));
+                break;
+            case ProjectLeaf leaf:
+                item.ToolTip = leaf.Project.Path;
+                item.Click += (_, e) => { e.Handled = true; open(() => tab.OpenProjectAsync(leaf.Project)); };
+                break;
+        }
+        return item;
+    }
+
+    private static MenuItem Disabled(string header)
+    {
+        var item = DropdownItem(header);
+        item.IsEnabled = false;
+        return item;
     }
 
     /// <summary>Ctrl+Shift+B (M.ORCH-T935): pauses or resumes the shown CLI's remote broadcast, wherever focus is.</summary>
