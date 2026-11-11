@@ -3602,6 +3602,26 @@ public static class AgentGate
             pass
         """.Replace("\r\n", "\n");
 
+    /// <summary>Rewrites each existing shared copy of context-gate.py under the workspace root to <paramref name="body"/>.
+    /// Best effort: a copy that can't be read or written is skipped, never failing the hook install.</summary>
+    private static List<string> SyncSharedContextGate(string body)
+    {
+        var did = new List<string>();
+        try
+        {
+            var root = OrchestratorOptions.Load().WorkspaceRoot;
+            foreach (var rel in new[] { @"MindAttic.Agency\shared\hooks", @"mindattic-agent-standard\shared\hooks" })
+            {
+                var path = Path.Combine(root, rel, ContextScriptName);
+                if (!File.Exists(path) || File.ReadAllText(path) == body) continue;
+                WriteReplacing(path, body);
+                did.Add("synced " + rel + "\\" + ContextScriptName);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { }
+        return did;
+    }
+
     /// <summary>Writes the scripts and registers their hooks when anything is missing or out of date.
     /// Returns what it did, or null when everything was already in place. Throws <see cref="IOException"/> when
     /// <c>settings.json</c> can't be read (it's left alone), so a caller tries again rather than taking the hooks as in place.</summary>
@@ -3629,6 +3649,9 @@ public static class AgentGate
             did.Add("wrote " + Path.GetFileName(path));
         }
         did.AddRange(DeleteRetiredCommands(Path.Combine(dir, "commands")));
+        // The version-controlled copies of the context gate (MindAttic.Agency's shared/hooks and the mindattic-agent-standard
+        // mirror) are refreshed from the generated script, so a change made only here can't leave them behind (M.ORCH-T1529).
+        if (claudeDir is null) did.AddRange(SyncSharedContextGate(ContextScript(contextPercent, keepGoing)));
 
         var settingsPath = Path.Combine(dir, "settings.json");
         JsonObject? root;
