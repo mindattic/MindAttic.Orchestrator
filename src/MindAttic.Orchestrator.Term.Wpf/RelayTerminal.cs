@@ -64,8 +64,10 @@ public sealed class RelayTerminal : UserControl, IDisposable
         Terminal.SizeChanged += (_, e) =>
         {
             if (!IsVisible) return;
-            if (Connection is { OwnsSize: false } && letterboxedAt is { } at
-                && e.NewSize.Width <= at.Width && e.NewSize.Height <= at.Height) return;
+            // M.ORCH-T1631: the loss (OwnsSize false) is set on the read thread, letterboxedAt only once FollowSizeAsync runs on the UI thread;
+            // a layout pass in between used to reclaim at once, so the letterbox never showed (the flaky letterboxed-viewer test).
+            if (Connection is { OwnsSize: false } && (letterboxedAt is not { } at
+                || (e.NewSize.Width <= at.Width && e.NewSize.Height <= at.Height))) return;
             try { Connection?.TakeSize(); }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Taking the size on resize failed; contained"); }
         };
