@@ -566,7 +566,8 @@ public sealed class CliCommandTests
 
         Assert.That(Run("settings", "--agent-abort", "true"), Is.Zero);
         // The line can wrap mid-number at the test console's width, so the two halves are checked apart (M.ORCH-T795).
-        Assert.That(output.ToString().Replace("\n", " "), Does.Contain("cool-off abort on").And.Contain("min past the line before aborting"));
+        var flat = System.Text.RegularExpressions.Regex.Replace(output.ToString(), @"\s+", " ").Replace("- ", "-"); // a wrap can also fall on the hyphen (M.ORCH-T1603)
+        Assert.That(flat, Does.Contain("cool-off abort on").And.Contain("min past the line before aborting"));
         Assert.That(Store.LoadSettings().AgentAbortAfterMinutes, Is.EqualTo(10));
     }
 
