@@ -402,9 +402,12 @@ $failed = $false
 $built = $false
 if (Test-Stale $artifact @($wpfDir, $coreDir, $termWpfDir, $termDir)) {
     Write-Host "Publishing MindAttic.Orchestrator -> $artifact" -ForegroundColor Cyan
+    # No EnableCompressionInSingleFile (M.ORCH-T1625): a compressed bundle inflates every bundled assembly (the whole .NET and
+    # WPF framework) into private memory in both the dashboard and its daemon; uncompressed, they're mapped straight from the
+    # exe. A bigger exe for less RAM in two always-running processes.
     dotnet publish (Join-Path $wpfDir 'MindAttic.Orchestrator.Wpf.csproj') --configuration Release --runtime win-x64 `
         --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true `
-        /p:EnableCompressionInSingleFile=true /p:DebugType=None --output (Split-Path $artifact) | Out-Host
+        /p:DebugType=None --output (Split-Path $artifact) | Out-Host
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $artifact)) { Write-Host 'Publishing the app FAILED.' -ForegroundColor Red; $failed = $true }
     else { $built = $true; Write-Host ("Built {0} ({1:N0} MB)" -f $artifact, ((Get-Item $artifact).Length / 1MB)) -ForegroundColor Green }
 }
