@@ -6,11 +6,16 @@ namespace MindAttic.Orchestrator.Sessions;
 
 /// <summary>
 /// Kills tool processes a dead agent left behind. A <c>find</c>/<c>rg</c>/<c>grep</c>/<c>git</c>/
-/// <c>bash</c>/<c>python</c>/<c>node</c> whose Claude CLI (or the shell an agent ran it through) has
+/// <c>bash</c>/<c>python</c>/<c>node</c>/<c>dotnet</c> whose Claude CLI (or the shell an agent ran it through) has
 /// already exited leaks handles forever once orphaned (M.ORCH-T87 found two orphaned <c>find /</c> runs
 /// holding 660k handles and freezing the desktop); the pace gate in <see cref="Setup.AgentGate"/> stops
 /// new ones from starting, this reaps the ones that already did. It also catches a still-attached search
 /// that's gone rogue: past <see cref="MaxHandleCount"/> handles or <see cref="MaxAge"/> old.
+/// <para><c>dotnet</c> (M.ORCH-T1586) found live 2026-11-10: 105 idle MSBuild/vstest worker processes (~5.7 GB)
+/// an agent's own <c>dotnet build</c>/<c>dotnet test</c> calls left running once the CLI that started them
+/// exited. <c>dotnet build-server shutdown</c> doesn't reach them (it only knows the server for the current
+/// directory's resolved SDK, not every repo's), so without this they outlive the agent forever, same as an
+/// orphaned <c>find</c>.</para>
 /// </summary>
 public static class ProcessReaper
 {
@@ -27,7 +32,7 @@ public static class ProcessReaper
     /// <summary>A start time WMI couldn't give: never compared, never counted as old.</summary>
     public static readonly DateTime Unknown = DateTime.MinValue;
 
-    private static readonly string[] TargetNames = ["find", "rg", "grep", "git", "bash", "python", "node"];
+    private static readonly string[] TargetNames = ["find", "rg", "grep", "git", "bash", "python", "node", "dotnet"];
 
     public sealed record ProcessInfo(int Pid, string Name, int ParentPid, long HandleCount, DateTime StartUtc, string? CommandLine);
 

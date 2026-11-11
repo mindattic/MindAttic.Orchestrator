@@ -123,6 +123,24 @@ public sealed class ProcessReaperTests
     }
 
     [Test]
+    public void An_msbuild_or_test_run_an_agent_left_behind_is_reaped_once_its_cli_exits()
+    {
+        // M.ORCH-T1586: a dotnet build/test an agent ran (MSBuild node-reuse server, vstest worker, or the
+        // driver itself) outlives its CLI the same way an orphaned find does, so it's just another target.
+        var seen = new HashSet<(int, DateTime)>();
+        var claude = P(1, "claude.exe", parentPid: 0, startUtc: Now.AddHours(-1));
+        var bash = P(2, "bash.exe", parentPid: 1, startUtc: Now.AddMinutes(-20));
+        var msbuild = P(3, "dotnet.exe", parentPid: 2, startUtc: Now.AddMinutes(-19), cmd: "dotnet exec MSBuild.dll");
+        var killed = new List<int>();
+
+        ReapOnce(Now, () => [claude, bash, msbuild], _ => null, p => killed.Add(p.Pid), seen);
+        Assert.That(killed, Is.Empty, "attached: the build server stays while its CLI is alive");
+
+        ReapOnce(Now.AddMinutes(1), () => [msbuild], _ => null, p => killed.Add(p.Pid), seen); // the CLI and its shell exited
+        Assert.That(killed, Is.EqualTo(new[] { 3 }), "the idle build server it left behind goes");
+    }
+
+    [Test]
     public void A_tool_process_with_an_intact_chain_reaching_no_agent_is_left_alone()
     {
         // The user's own terminal: explorer -> pwsh -> git, no Claude CLI anywhere, and nothing in the
