@@ -704,15 +704,21 @@ public sealed class TerminalsViewModel : ObservableObject
         CloseCommand = new RelayCommand(p => { if (p is TerminalPaneViewModel pane) CloseAsked(pane); });
     }
 
-    /// <summary>Asks before a tab's close ends its CLI (M.ORCH-T1437): true closes it. Null closes unasked (tests); the window
-    /// sets one that shows the confirm box.</summary>
+    /// <summary>Asks before a tab's close ends its CLI (M.ORCH-T1437): true closes it now, false leaves it open. Null closes
+    /// unasked (tests); the window sets one that opens its Close CLI modal and answers false, closing the tab itself from the
+    /// modal's Close (M.ORCH-T1442).</summary>
     internal Func<TerminalPaneViewModel, bool>? ConfirmClose { get; set; }
 
-    /// <summary>A person's close (the tab's X, <see cref="CloseCommand"/>): asks first, unless its CLI has already ended, and
-    /// closes only on yes. Pruning and replacing ended tabs call <see cref="Close"/> unasked. False when the answer was no.</summary>
+    /// <summary>The ConfirmCliClose setting (M.ORCH-T1442, on by default), as of the last refresh: off, a running CLI's tab
+    /// closes unasked too.</summary>
+    internal bool ConfirmCloseEnabled { get; set; } = true;
+
+    /// <summary>A person's close (the tab's X, <see cref="CloseCommand"/>): asks first, unless its CLI has already ended or the
+    /// ConfirmCliClose setting is off, and closes only on yes. Pruning and replacing ended tabs call <see cref="Close"/> unasked.
+    /// False when it wasn't closed now.</summary>
     internal bool CloseAsked(TerminalPaneViewModel pane)
     {
-        if (!pane.Ended && ConfirmClose is { } confirm && !confirm(pane)) return false;
+        if (!pane.Ended && !pane.HasExited && ConfirmCloseEnabled && ConfirmClose is { } confirm && !confirm(pane)) return false;
         Close(pane);
         return true;
     }

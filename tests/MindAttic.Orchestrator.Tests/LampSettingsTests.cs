@@ -196,6 +196,7 @@ public sealed class LampSettingsTests
         Case("autoOpenLaunchers", s => s with { AutoOpenLaunchers = true }, true, v => v.AutoOpenLaunchers = false, false, s => s.AutoOpenLaunchers),
         // Folders
         Case("workspaceRoot", s => s with { WorkspaceRoot = @"E:\Work" }, @"E:\Work", v => v.WorkspaceRoot = @"F:\Repos", @"F:\Repos", s => s.WorkspaceRoot),
+        Case("confirmCliClose", s => s with { ConfirmCliClose = false }, false, v => v.ConfirmCliClose = true, true, s => s.ConfirmCliClose),
         Case("worktreeRoot", s => s with { WorktreeRoot = @"E:\wt" }, @"E:\wt", v => v.WorktreeRoot = @"F:\wt", @"F:\wt", s => s.WorktreeRoot),
         // Gateway
         Case("gateway:enabled", s => s with { Gateway = s.Gateway with { Enabled = true } }, true, v => v.Gateway.Enabled = false, false, s => s.Gateway.Enabled),

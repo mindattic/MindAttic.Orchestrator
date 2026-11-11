@@ -58,6 +58,7 @@ public sealed partial class MainViewModel
                 tabBlinkTokens = settings.TabBlinkTokens;
                 symbolTabLabels = settings.SymbolTabLabels;
                 autoOpenLaunchers = settings.AutoOpenLaunchers;
+                AllTerminals.ConfirmCloseEnabled = settings.ConfirmCliClose;
                 AllTerminals.EndedLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedTabMinutes));
                 AllTerminals.EndedMenuLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedLauncherTabMinutes));
                 // The dashboard's intervals, live from the Vault (M.ORCH-T1595): the poll and resync timers read them at their next tick.

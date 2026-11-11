@@ -535,6 +535,10 @@ public sealed class OrchestratorVaultSettings
     [Setting("Workspace root", Group = "Folders", Order = 1,
         Help = "The folder holding every repo. Empty follows Global's workspace root, else MindAttic.Tickets's default.")]
     [PathPicker(PathKind.Folder)]
+    [Setting("Confirm closing a running CLI", Group = "Dashboard", Order = 20,
+        Help = "On (the default): a CLI tab's X asks before it ends a CLI that's still running. A tab whose CLI already ended closes unasked either way.")]
+    public bool ConfirmCliClose { get; set; } = true;
+
     public string? WorkspaceRoot { get; set; }
 
     [Setting("Tools' worktree root", Group = "Folders", Order = 2,
@@ -672,6 +676,7 @@ public sealed class OrchestratorVaultSettings
     /// per-repo maps, the API credit, the gateway's teammates) is kept as it is. The alert recipient and the workspace root are
     /// resolved against <paramref name="global"/> (M.ORCH-T1328): blank follows Vault Global, set overrides it; a null
     /// <paramref name="global"/> is a Global with nothing set.</summary>
+        ConfirmCliClose = s.ConfirmCliClose,
     public OrchestratorSettings ApplyTo(OrchestratorSettings s, MindAtticGlobalSettings? global = null) =>
         WithWorkspaceRoot(WithPsstAlertTo(ApplyOwn(s), PsstAlertTo, global), WorkspaceRoot, global);
 
@@ -797,6 +802,7 @@ public sealed class OrchestratorVaultSettings
     /// <summary><paramref name="s"/> with its alert recipient overridden by <paramref name="vaultValue"/> as Vault.Desktop would set
     /// it: blank follows <paramref name="global"/>'s alert recipient (else <see cref="OrchestratorSettings.DefaultPsstAlertTo"/>),
     /// <see cref="NoAlerts"/> (or "off") texts nobody, anything else is the recipient. <see cref="OrchestratorSettings.PsstAlertTo"/>
+        ConfirmCliClose = ConfirmCliClose,
     /// gets the resolved recipient (what the daemon and the hooks' row use) and the override is kept beside it.</summary>
     public static OrchestratorSettings WithPsstAlertTo(OrchestratorSettings s, string? vaultValue, MindAtticGlobalSettings? global)
     {

@@ -547,6 +547,10 @@ public sealed record OrchestratorSettings
 
     public const double DefaultEndedTabMinutes = 60;
 
+    /// <summary>On by default (M.ORCH-T1442): closing a CLI tab by hand (its X) whose CLI is still running asks first, in the
+    /// dashboard's own modal. A tab whose CLI already ended closes unasked either way.</summary>
+    public bool ConfirmCliClose { get; init; } = true;
+
     /// <summary>Minutes a TermHost running in an orch-test-* temp folder may live before the daemon ends it (M.ORCH-T1623): a test that
     /// opened a real hosted tab and never closed it (it failed first) leaves one running all night. One whose folder is gone is ended
     /// at once; a host in any other folder is never touched.</summary>

@@ -1215,6 +1215,19 @@
             </mc:MaModal.Footer>
         </mc:MaModal>
 
+        <!-- Close CLI? (M.ORCH-T1442, was a separate message box, M.ORCH-T1437): a CLI tab's X on a CLI still running asks here
+             first; Cancel (focused), Esc, its own X and the backdrop keep the tab. The ConfirmCliClose setting turns it off.
+             Driven from MainWindow.xaml.cs (ConfirmCloseTerminal/CloseCli*). -->
+        <mc:MaModal x:Name="CloseCliModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="Close CLI?" AutomationProperties.Name="Close CLI" DialogWidth="400">
+            <TextBlock x:Name="CloseCliQuestion" TextWrapping="Wrap" />
+            <mc:MaModal.Footer>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="CloseCliCancel" Style="{StaticResource MaButton}" Content="Cancel" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Click="CloseCliCancel_Click" />
+                    <Button Style="{StaticResource MaPrimaryButton}" Content="_Close" AutomationProperties.Name="Close" Padding="{StaticResource SpaceHLVS}" Click="CloseCliConfirm_Click" />
+                </StackPanel>
+            </mc:MaModal.Footer>
+        </mc:MaModal>
+
         <!-- A Task List row's details (M.ORCH-T1593): the full ticket the process works (id, repo, type, status, priority,
              approval, assignee, who's working it, prerequisites, estimate, opened, ref), or with no ticket the CLI's own
              description, then who it bills and what it's doing. Esc, its close button and the backdrop close it; Open in

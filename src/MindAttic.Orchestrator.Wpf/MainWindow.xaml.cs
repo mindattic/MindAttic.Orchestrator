@@ -125,8 +125,10 @@ public partial class MainWindow : Window
                 if (added.Control is FrameworkElement terminal) TerminalScrollbar.Hide(terminal);
             }
         };
-        // Closing a CLI tab by hand asks first (M.ORCH-T1437).
+        // Closing a CLI tab by hand asks first (M.ORCH-T1437), in the Close CLI modal (M.ORCH-T1442), closed by its own X,
+        // backdrop or Esc as a cancel.
         model.AllTerminals.ConfirmClose = ConfirmCloseTerminal;
+        CloseCliModal.Closed += (_, _) => { if (closingTab is not null) CloseCliModalFor(false); };
         // The Rename tab modal closed by its own X or backdrop is a cancel (M.ORCH-T1509).
         RenameTabModal.Closed += (_, _) => { if (renamingTab is not null) CloseRenameTab(null); };
         TerminalClip.Attach(TerminalPanesHost);
@@ -428,7 +430,7 @@ public partial class MainWindow : Window
     private void UpdateTerminalsCover()
     {
         var shown = Shown;
-        var covered = shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsTaskDetailOpen || RenameTabModal.IsOpen || model.IsLoading || model.IsOrgEmpty;
+        var covered = shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsTaskDetailOpen || RenameTabModal.IsOpen || CloseCliModal.IsOpen || model.IsLoading || model.IsOrgEmpty;
         TerminalPanesHost.Visibility = covered ? Visibility.Hidden : Visibility.Visible;
     }
 
@@ -443,7 +445,7 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() =>
         {
             var shown = Shown;
-            if (!IsActive || shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsTaskDetailOpen || RenameTabModal.IsOpen
+            if (!IsActive || shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsTaskDetailOpen || RenameTabModal.IsOpen || CloseCliModal.IsOpen
                 || TerminalPanesHost.Visibility != Visibility.Visible) return;
             if (model.AllTerminals.SelectedPane?.Control is not { IsVisible: true } terminal) return;
             var focused = Keyboard.FocusedElement as DependencyObject;
@@ -688,23 +690,50 @@ public partial class MainWindow : Window
     /// <summary>The row an MaTabItem lays its status light, header and trailing text out in (its template's Bd border's child).</summary>
     private static Panel? TabRow(TabItem tab) => (tab.Template?.FindName("Bd", tab) as Border)?.Child as Panel;
 
-    /// <summary>"Close CLI?" (M.ORCH-T1437): the library's message box, its OK relabelled Close, Cancel the default (Enter, Esc).</summary>
+    /// <summary>The tab the Close CLI modal asks about (M.ORCH-T1442); null while it's closed.</summary>
+    private TerminalPaneViewModel? closingTab;
+
+    /// <summary>"Close CLI?" (M.ORCH-T1437, in the window's own MaModal since M.ORCH-T1442): opens the Close CLI modal on
+    /// <paramref name="pane"/>, Cancel focused, the terminals hidden meanwhile since their native windows would draw over it.
+    /// Answers false (not closed now); the modal's Close closes the tab (<see cref="CloseCliModalFor"/>).</summary>
     private bool ConfirmCloseTerminal(TerminalPaneViewModel pane)
     {
-        var box = new MindAttic.Components.Wpf.Controls.MaMessageBox(TerminalsViewModel.CloseQuestion(pane), "Close CLI?", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel)
+        try
         {
-            Owner = this,
-            ShowInTaskbar = false,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-        };
-        if (box.Buttons.FirstOrDefault(b => b.Tag is MessageBoxResult.OK) is { } close)
-        {
-            close.Content = "_Close";
-            AutomationProperties.SetName(close, "Close");
+            closingTab = pane;
+            CloseCliQuestion.Text = TerminalsViewModel.CloseQuestion(pane);
+            CloseCliModal.IsOpen = true;
+            UpdateTerminalsCover();
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!ReferenceEquals(closingTab, pane)) return;
+                CloseCliCancel.Focus();
+                Keyboard.Focus(CloseCliCancel);
+            }, DispatcherPriority.Input);
         }
-        box.ShowDialog();
-        return box.Result == MessageBoxResult.OK;
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Close CLI failed; contained"); }
+        return false;
     }
+
+    /// <summary>Closes the Close CLI modal, closing its tab (ending its CLI) when <paramref name="close"/>, then hands the
+    /// keyboard back to the shown CLI.</summary>
+    private void CloseCliModalFor(bool close)
+    {
+        var pane = closingTab;
+        closingTab = null;
+        try { if (close && pane is not null && model.AllTerminals.Panes.Contains(pane)) model.AllTerminals.Close(pane); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Closing a CLI tab failed; contained"); }
+        finally
+        {
+            CloseCliModal.IsOpen = false;
+            UpdateTerminalsCover();
+            PinTerminalFocus();
+        }
+    }
+
+    private void CloseCliConfirm_Click(object sender, RoutedEventArgs e) => CloseCliModalFor(true);
+
+    private void CloseCliCancel_Click(object sender, RoutedEventArgs e) => CloseCliModalFor(false);
 
     /// <summary>MaTabItem's header presenter (its template's HeaderHost), which SizeTerminalTabs stretches (M.ORCH-T1437).</summary>
     private static ContentPresenter? TabHeader(TabItem tab) => tab.Template?.FindName("HeaderHost", tab) as ContentPresenter;
