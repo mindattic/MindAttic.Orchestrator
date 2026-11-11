@@ -132,7 +132,9 @@ public static partial class LimitHitParser
 
         var zone = Zone(m.Groups["zone"].Value);
         var local = TimeZoneInfo.ConvertTimeFromUtc(atUtc, zone);
-        var hour = int.Parse(m.Groups["h"].Value, CultureInfo.InvariantCulture) % 12 +
+        var shown = int.Parse(m.Groups["h"].Value, CultureInfo.InvariantCulture);
+        if (shown is < 1 or > 12) return false; // "13pm" / "0am" is not a clock reading; folding it would hold CLIs to a wrong time
+        var hour = shown % 12 +
                    (m.Groups["ap"].Value.Equals("pm", StringComparison.OrdinalIgnoreCase) ? 12 : 0);
         var minute = m.Groups["m"].Success ? int.Parse(m.Groups["m"].Value, CultureInfo.InvariantCulture) : 0;
         if (minute > 59) return false;
@@ -145,7 +147,12 @@ public static partial class LimitHitParser
             var day = int.Parse(m.Groups["day"].Value, CultureInfo.InvariantCulture);
             if (month == 0 || day < 1 || day > DateTime.DaysInMonth(local.Year, month)) return false;
             reset = new DateTime(local.Year, month, day, hour, minute, 0);
-            if (reset < local.AddDays(-1)) reset = reset.AddYears(1);
+            if (reset < local.AddDays(-1))
+            {
+                // Feb 29 has no next-year twin: AddYears would quietly read it as Feb 28, a day early.
+                if (day > DateTime.DaysInMonth(local.Year + 1, month)) return false;
+                reset = reset.AddYears(1);
+            }
         }
         else
         {
