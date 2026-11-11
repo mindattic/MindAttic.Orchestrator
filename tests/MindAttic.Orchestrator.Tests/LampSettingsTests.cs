@@ -100,6 +100,7 @@ public sealed class LampSettingsTests
         Case("contextCyclePercent", s => s with { ContextCyclePercent = 70 }, 70, v => v.ContextCyclePercent = 90, 90, s => s.ContextCyclePercent),
         Case("orphanRedispatches", s => s with { OrphanRedispatches = 0 }, 0, v => v.OrphanRedispatches = 5, 5, s => s.OrphanRedispatches),
         Case("orphanQuietMinutes", s => s with { OrphanQuietMinutes = 30 }, 30, v => v.OrphanQuietMinutes = 45, 45, s => s.OrphanQuietMinutes),
+        Case("dbBusyRetries", s => s with { DbBusyRetries = 3 }, 3, v => v.DbBusyRetries = 10, 10, s => s.DbBusyRetries),
         // Logins
         Case("autoLogin", s => s with { AutoLogin = false }, false, v => v.AutoLogin = true, true, s => s.AutoLogin),
         Case("rebalanceLogins", s => s with { RebalanceLogins = false }, false, v => v.RebalanceLogins = true, true, s => s.RebalanceLogins),
@@ -157,6 +158,8 @@ public sealed class LampSettingsTests
             s => s.ClosedTicketsReadLiveMinutes),
         Case("auditEveryHours", s => s with { AuditEveryHours = 0 }, 0, v => v.AuditEveryHours = 6, 6, s => s.AuditEveryHours),
         Case("groomAfterDays", s => s with { GroomAfterDays = 14 }, 14, v => v.GroomAfterDays = 60, 60, s => s.GroomAfterDays),
+        Case("logKeepDays", s => s with { LogKeepDays = 90 }, 90, v => v.LogKeepDays = 14, 14, s => s.LogKeepDays),
+        Case("termLogKeepDays", s => s with { TermLogKeepDays = 3 }, 3, v => v.TermLogKeepDays = 0, 0, s => s.TermLogKeepDays),
         Case("gitHubIntake", s => s with { GitHubIntake = true }, true, v => v.GitHubIntake = false, false, s => s.GitHubIntake),
         // Memory
         Case("memoryGuard", s => s with { MemoryGuard = false }, false, v => v.MemoryGuard = true, true, s => s.MemoryGuard),
