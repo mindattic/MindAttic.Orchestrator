@@ -313,6 +313,11 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 10080)]
     public double EndedTabMinutes { get; set; } = OrchestratorSettings.DefaultEndedTabMinutes;
 
+    [Setting("Leaked test TermHost lifetime (minutes)", Group = "Dashboard", Order = 90,
+        Help = "How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once. A host in any other folder is never touched.")]
+    [SettingRange(1, 10080)]
+    public double TestTermHostMaxMinutes { get; set; } = OrchestratorSettings.DefaultTestTermHostMaxMinutes;
+
     [Setting("Ended Launcher tab lifetime (minutes)", Group = "Dashboard", Order = 7,
         Help = "How long an ended Launcher menu tab stays; 0 (the default) closes it at once.")]
     [SettingRange(0, 10080)]
@@ -406,6 +411,7 @@ public sealed class OrchestratorVaultSettings
         ExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = s.AutoOpenLaunchers,
         EndedTabMinutes = s.EndedTabMinutes,
+        TestTermHostMaxMinutes = s.TestTermHostMaxMinutes,
         EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
         WorkspaceRoot = WorkspaceOverrideOf(s),
         WorktreeRoot = s.WorktreeRoot,
@@ -484,6 +490,7 @@ public sealed class OrchestratorVaultSettings
         ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = AutoOpenLaunchers,
         EndedTabMinutes = EndedTabMinutes,
+        TestTermHostMaxMinutes = TestTermHostMaxMinutes,
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,
         WorktreeRoot = string.IsNullOrWhiteSpace(WorktreeRoot) ? s.WorktreeRoot : WorktreeRoot,
         Gateway = (Gateway ?? new()).ApplyTo(s.Gateway ?? new GatewaySettings()),

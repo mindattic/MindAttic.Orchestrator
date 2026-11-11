@@ -417,6 +417,13 @@ public sealed record OrchestratorSettings
 
     public const double DefaultEndedTabMinutes = 60;
 
+    /// <summary>Minutes a TermHost running in an orch-test-* temp folder may live before the daemon ends it (M.ORCH-T1623): a test that
+    /// opened a real hosted tab and never closed it (it failed first) leaves one running all night. One whose folder is gone is ended
+    /// at once; a host in any other folder is never touched.</summary>
+    public double TestTermHostMaxMinutes { get; init; } = DefaultTestTermHostMaxMinutes;
+
+    public const double DefaultTestTermHostMaxMinutes = 60;
+
     /// <summary>Minutes an ended Launcher menu tab stays (M.ORCH-T1599): 0 closes it at once, since it has nothing to read.</summary>
     public double EndedLauncherTabMinutes { get; init; }
 

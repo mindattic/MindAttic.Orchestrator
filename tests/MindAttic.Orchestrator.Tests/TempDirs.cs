@@ -19,6 +19,7 @@ public sealed class TempDirs
     /// <summary>Deletes every folder <see cref="New"/> made; throws if one can't be.</summary>
     public void DeleteAll()
     {
+        MindAttic.Orchestrator.Sessions.TestTermHostReaper.EndIn(made); // a real TermHost a test opened holds its folder and outlives the run (M.ORCH-T1623)
         var failed = new List<string>();
         foreach (var dir in made)
             if (!Delete(dir)) failed.Add(dir);

@@ -183,6 +183,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Say(LogEventLevel.Warning, $"reaped pid {r.Process.Pid} ({r.Process.Name}): {r.Reason}" +
                         (string.IsNullOrWhiteSpace(r.Process.CommandLine) ? "" : $" — was running: {r.Process.CommandLine}"));
                 tick.Lap("process reaper");
+                foreach (var e in ReapTestHostsIfDue(s))
+                    Say(LogEventLevel.Warning, $"ended leaked test TermHost pid {e.Host.Pid} in {e.Cwd}: {e.Reason}");
+                tick.Lap("leaked test TermHosts");
                 PruneSessionTempIfDue(options.WorkspaceRoot);
                 tick.Lap("ended sessions' temp folders");
                 logPruner.RunIfDue(s, msg => Say(LogEventLevel.Information, msg));
@@ -919,6 +922,16 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         if (DateTime.UtcNow - reapedUtc < Sessions.ProcessReaper.Every) return [];
         reapedUtc = DateTime.UtcNow;
         return Sessions.ProcessReaper.ReapOnce(reapedUtc);
+    }
+
+    private DateTime testHostsReapedUtc;
+
+    /// <summary>Every <see cref="Sessions.TestTermHostReaper.Every"/>, ends TermHosts a test run leaked (M.ORCH-T1623).</summary>
+    private IReadOnlyList<Sessions.TestTermHostReaper.Ended> ReapTestHostsIfDue(OrchestratorSettings s)
+    {
+        if (DateTime.UtcNow - testHostsReapedUtc < Sessions.TestTermHostReaper.Every) return [];
+        testHostsReapedUtc = DateTime.UtcNow;
+        return Sessions.TestTermHostReaper.ReapOnce(testHostsReapedUtc, TimeSpan.FromMinutes(Math.Max(1, s.TestTermHostMaxMinutes)));
     }
 
     private DateTime? sessionTempPrunedUtc;
