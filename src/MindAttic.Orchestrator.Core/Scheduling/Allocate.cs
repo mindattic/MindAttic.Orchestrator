@@ -472,7 +472,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         : $"Start all {claimed} now: one subagent per ticket above, all in one message, each with its own prompt and on the model it names " +
           "(the Agent tool's model: sonnet or opus). Don't hold one back " +
           "because its files overlap another's: they share the repo's checkout on main, each staging only its own files by path, " +
-          "and each pulls with --rebase --autostash as it lands. Claimed, they're this CLI's to work: nothing else will.";
+          "and each lands with git fetch + git merge --no-edit origin/main (never a stash, M.ORCH-T1417) as it lands. Claimed, they're this CLI's to work: nothing else will.";
 
     /// <summary>
     /// The next tickets a CLI running <c>/allocate</c> hands to its own subagents (M.ORCH-T164): workable ones (fixes and

@@ -328,8 +328,8 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
         $"for {ClaimIdle.TotalMinutes:0}+ min: " + string.Join("; ", items.Select(i =>
             $"{i.Id} (in {i.Assignment!.Directory}{(i.Assignment.Model is { } m ? $", model {m}" : "")})")) + ". " +
         "Start a subagent on each now, all in one message, each on the model named and with the prompt orchestrator next printed for it when it was claimed " +
-        "(if that's gone: work the ticket in the repo's own checkout on main, touching and staging by path only its own files, pull --rebase --autostash, " +
-        "push to main, then close it). Overlapping files are no reason to wait: each pulls with --rebase --autostash as it lands. Then carry on with orchestrator next --claim.";
+        "(if that's gone: work the ticket in the repo's own checkout on main, touching and staging by path only its own files, fetch + merge --no-edit origin/main (never a stash), " +
+        "push to main, then close it). Overlapping files are no reason to wait: each lands with fetch + merge (never a stash) as it lands. Then carry on with orchestrator next --claim.";
 
     /// <summary>What an idle /allocate CLI is told, as hook context (<see cref="CliNudges"/>).</summary>
     public static string Prompt(IReadOnlyList<string> repos, IReadOnlyList<string> ids) =>

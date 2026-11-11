@@ -37,7 +37,7 @@ public static class ProjectCommit
     }
 
     /// <summary>Commits everything in <paramref name="project"/>'s working tree as <paramref name="message"/>, pulls its branch
-    /// with --rebase --autostash and pushes it. Never throws for a git failure: the result says what went wrong.</summary>
+    /// with --rebase (the tree is clean after the commit, so no stash) and pushes it. Never throws for a git failure: the result says what went wrong.</summary>
     public static ProjectCommitResult CommitAndPush(RosterProject project, string message, IProcessRunner? runner = null)
     {
         ArgumentNullException.ThrowIfNull(project);
@@ -76,7 +76,7 @@ public static class ProjectCommit
             var remote = Git("ls-remote", "--exit-code", "--heads", "origin", name);
             if (remote.ExitCode == 0 && !remote.TimedOut)
             {
-                var pull = Git("pull", "-q", "--rebase", "--autostash", "origin", name);
+                var pull = Git("pull", "-q", "--rebase", "origin", name);
                 if (pull.ExitCode != 0 || pull.TimedOut)
                 {
                     Git("rebase", "--abort");
