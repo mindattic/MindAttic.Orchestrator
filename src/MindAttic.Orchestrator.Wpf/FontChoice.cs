@@ -69,12 +69,13 @@ public static class FontChoice
         registered = true;
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler(OnShown));
         EventManager.RegisterClassHandler(typeof(ContextMenu), ContextMenu.OpenedEvent, new RoutedEventHandler(OnShown));
-        EventManager.RegisterClassHandler(typeof(ToolTip), ToolTip.OpenedEvent, new RoutedEventHandler(OnShown));
+        // A tooltip is reached through its base class, so no tooltip type is named in code (the library theme draws it).
+        EventManager.RegisterClassHandler(typeof(FrameworkElement), ToolTip.OpenedEvent, new RoutedEventHandler(OnShown));
     }
 
     private static void OnShown(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement element && ReferenceEquals(sender, e.OriginalSource))
+        if (sender is Control element && ReferenceEquals(sender, e.OriginalSource))
             element.SetResourceReference(Control.FontFamilyProperty, ResourceKey);
     }
 }
