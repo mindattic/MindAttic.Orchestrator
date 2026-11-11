@@ -14,6 +14,7 @@ namespace MindAttic.Orchestrator.Activity;
 public sealed partial class TranscriptReader(string projectsDir, string? cachePath = null)
 {
     private const int HeadScanLimit = 256 * 1024;
+    private const int ReadChunk = 1024 * 1024;
     private const int CacheVersion = 5;
     private static readonly TimeSpan SaveEvery = TimeSpan.FromMinutes(1);
 
@@ -366,33 +367,50 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         if (stream.Length == state.Offset) return false;
 
         stream.Seek(state.Offset, SeekOrigin.Begin);
-        var buffer = new byte[stream.Length - state.Offset];
-        var total = 0;
-        while (total < buffer.Length)
+        // Read in a pooled buffer of at most ReadChunk (grown only to fit one line), not one array the size of the whole
+        // backlog: a first read of a multi-MB transcript allocated it on the large-object heap and left that fragmented
+        // (M.ORCH-T1597). Only whole lines are consumed; a line still being written is picked up next poll.
+        var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent((int)Math.Min(stream.Length - state.Offset, ReadChunk));
+        try
         {
-            var n = stream.Read(buffer, total, buffer.Length - total);
-            if (n == 0) break;
-            total += n;
-        }
+            var held = 0; // bytes at the front of buffer not yet consumed (a partial line)
+            var consumedAny = false;
+            while (true)
+            {
+                var n = stream.Read(buffer, held, buffer.Length - held);
+                if (n == 0) break;
+                held += n;
+                var end = buffer.AsSpan(0, held).LastIndexOf((byte)'\n');
+                if (end < 0)
+                {
+                    // One line bigger than the buffer: grow to hold it.
+                    if (held < buffer.Length) continue;
+                    var bigger = System.Buffers.ArrayPool<byte>.Shared.Rent(buffer.Length * 2);
+                    Buffer.BlockCopy(buffer, 0, bigger, 0, held);
+                    System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
+                    buffer = bigger;
+                    continue;
+                }
 
-        // Only consume through the last newline: a line still being written is picked up next poll.
-        var span = buffer.AsSpan(0, total);
-        var end = span.LastIndexOf((byte)'\n');
-        if (end < 0) return false;
-
-        var consumed = span[..(end + 1)];
-        while (!consumed.IsEmpty)
-        {
-            var nl = consumed.IndexOf((byte)'\n');
-            var line = consumed[..nl];
-            consumed = consumed[(nl + 1)..];
-            if (line.IsEmpty) continue;
-            if (state.Cwd is null || state.ForkPrologue || line.IndexOf(UsageMarker) >= 0 || (state.TicketId is null && line.IndexOf(TicketMarker) >= 0) ||
-                (state.PendingFiles.Count > 0 && line.IndexOf(ToolResultMarker) >= 0))
-                Apply(Encoding.UTF8.GetString(line), state, sinceUtc);
+                var consumed = buffer.AsSpan(0, end + 1);
+                while (!consumed.IsEmpty)
+                {
+                    var nl = consumed.IndexOf((byte)'\n');
+                    var line = consumed[..nl];
+                    consumed = consumed[(nl + 1)..];
+                    if (line.IsEmpty) continue;
+                    if (state.Cwd is null || state.ForkPrologue || line.IndexOf(UsageMarker) >= 0 || (state.TicketId is null && line.IndexOf(TicketMarker) >= 0) ||
+                        (state.PendingFiles.Count > 0 && line.IndexOf(ToolResultMarker) >= 0))
+                        Apply(Encoding.UTF8.GetString(line), state, sinceUtc);
+                }
+                state.Offset += end + 1;
+                consumedAny = true;
+                held -= end + 1;
+                Buffer.BlockCopy(buffer, end + 1, buffer, 0, held);
+            }
+            return consumedAny;
         }
-        state.Offset += end + 1;
-        return true;
+        finally { System.Buffers.ArrayPool<byte>.Shared.Return(buffer); }
     }
 
     /// <summary>Folds one transcript line into the file's state.</summary>
