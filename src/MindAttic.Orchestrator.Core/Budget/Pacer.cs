@@ -382,7 +382,12 @@ public static class Pacer
     /// </summary>
     public static Pace CapByStopHeadroom(Pace pace, double? percent, double stopPercent)
     {
-        if (percent is { } near && pace is { Stop: false, WindDown: false } && stopPercent - near < HeadroomPerSubagentPercent)
+        // M.ORCH-T1608: the 96% default (M.ORCH-T1462) already holds a 2-point margin under the old 98% stop for exactly the burst
+        // this headroom guards, so counting the room to the stop alone charged that margin twice: wind-down began at 93% and the
+        // subagents were capped 2 points sooner, and windows ended near 94-95%. The room counts to the stop plus that margin
+        // (never past the hooks' own line), which is the old 98%-stop behaviour, while the stop itself stays at the target.
+        var room = Math.Min(stopPercent + StopBurstMarginPercent, Math.Max(stopPercent, PaceLedger.TargetPercent));
+        if (percent is { } near && pace is { Stop: false, WindDown: false } && room - near < HeadroomPerSubagentPercent)
             pace = pace with
             {
                 WindDown = true,
