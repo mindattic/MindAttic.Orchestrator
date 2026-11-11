@@ -223,6 +223,26 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0.1, 64)]
     public double MemoryPerSubagentGb { get; set; } = 1;
 
+    [Setting("Hold new work past (commit %)", Group = "Memory", Order = 6, Help = "Commit charge (percent of RAM plus a fixed pagefile) at or past which new work holds even with free RAM over the GB line above.")]
+    [SettingRange(1, 100)]
+    public double MemoryTightCommitPercent { get; set; } = 80;
+
+    [Setting("Shed a subagent past (commit %)", Group = "Memory", Order = 7, Help = "Commit charge percent at or past which the newest /allocate subagent is stopped each minute.")]
+    [SettingRange(1, 100)]
+    public double MemoryCriticalCommitPercent { get; set; } = 88;
+
+    [Setting("Refuse tool calls past (commit %)", Group = "Memory", Order = 8, Help = "Commit charge percent at or past which every agent's tool calls are refused until memory recovers.")]
+    [SettingRange(1, 100)]
+    public double MemoryEmergencyCommitPercent { get; set; } = 94;
+
+    [Setting("Resume margin (free GB)", Group = "Memory", Order = 9, Help = "How far clear of a level's free-GB line a reading must be before the guard steps back down from it.")]
+    [SettingRange(0, 1024)]
+    public double MemoryResumeMarginGb { get; set; } = 2;
+
+    [Setting("Resume margin (commit points)", Group = "Memory", Order = 10, Help = "How far clear of a level's commit-percent line a reading must be before the guard steps back down from it.")]
+    [SettingRange(0, 100)]
+    public double MemoryResumeMarginCommit { get; set; } = 5;
+
     [Setting("Audit every (hours)", Group = "Alerts", Order = 5, Help = "Hours between the audits the daemon runs by itself. 0 means only on demand.")]
     [SettingRange(0, 100000)]
     public int AuditEveryHours { get; set; } = 24;
@@ -321,6 +341,11 @@ public sealed class OrchestratorVaultSettings
         MemoryCriticalGb = s.MemoryCriticalGb,
         MemoryEmergencyGb = s.MemoryEmergencyGb,
         MemoryPerSubagentGb = s.MemoryPerSubagentGb,
+        MemoryTightCommitPercent = s.MemoryTightCommitPercent,
+        MemoryCriticalCommitPercent = s.MemoryCriticalCommitPercent,
+        MemoryEmergencyCommitPercent = s.MemoryEmergencyCommitPercent,
+        MemoryResumeMarginGb = s.MemoryResumeMarginGb,
+        MemoryResumeMarginCommit = s.MemoryResumeMarginCommit,
         AuditEveryHours = s.AuditEveryHours,
         GroomAfterDays = s.GroomAfterDays,
         GitHubIntake = s.GitHubIntake,
@@ -384,6 +409,11 @@ public sealed class OrchestratorVaultSettings
         MemoryCriticalGb = MemoryCriticalGb,
         MemoryEmergencyGb = MemoryEmergencyGb,
         MemoryPerSubagentGb = MemoryPerSubagentGb,
+        MemoryTightCommitPercent = MemoryTightCommitPercent,
+        MemoryCriticalCommitPercent = MemoryCriticalCommitPercent,
+        MemoryEmergencyCommitPercent = MemoryEmergencyCommitPercent,
+        MemoryResumeMarginGb = MemoryResumeMarginGb,
+        MemoryResumeMarginCommit = MemoryResumeMarginCommit,
         AuditEveryHours = AuditEveryHours,
         GroomAfterDays = GroomAfterDays,
         GitHubIntake = GitHubIntake,

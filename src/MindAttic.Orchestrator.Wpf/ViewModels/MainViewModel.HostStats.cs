@@ -38,7 +38,7 @@ public sealed partial class MainViewModel
     {
         null => "Physical RAM in use on this machine.",
         { Level: MemoryLevel.Ok } m => $"Physical RAM in use on this machine ({m.Reading.Describe()}). The memory guard holds new work under {m.Lines.TightGb:0.#} GB free.",
-        { Level: MemoryLevel.Tight } m => $"{m.Reading.Describe()}: no new subagents, CLIs or test runs start; running work finishes. New work resumes once it's {m.Lines.TightGb + MemoryGuard.ResumeMarginGb:0.#} GB free for a minute.",
+        { Level: MemoryLevel.Tight } m => $"{m.Reading.Describe()}: no new subagents, CLIs or test runs start; running work finishes. New work resumes once it's {m.Lines.TightGb + m.Lines.ResumeMarginGb:0.#} GB free for a minute.",
         { Level: MemoryLevel.Critical } m => $"{m.Reading.Describe()}: nothing new starts, and the newest /allocate subagent is stopped each minute (its ticket requeued) until it recovers.",
         var m => $"{m.Reading.Describe()}: every agent's tool calls are refused so turns end, until memory recovers. Close what you can.",
     };

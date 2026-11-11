@@ -444,6 +444,26 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("RAM one more subagent is assumed to take (default 1).")]
         public double? MemoryPerSubagentGb { get; init; }
 
+        [CommandOption("--memory-tight-commit-percent <PERCENT>")]
+        [Description("Commit charge percent at or past which nothing new starts, even with free RAM over --memory-tight-gb (default 80).")]
+        public double? MemoryTightCommitPercent { get; init; }
+
+        [CommandOption("--memory-critical-commit-percent <PERCENT>")]
+        [Description("Commit charge percent at or past which the newest /allocate subagent is shed (default 88).")]
+        public double? MemoryCriticalCommitPercent { get; init; }
+
+        [CommandOption("--memory-emergency-commit-percent <PERCENT>")]
+        [Description("Commit charge percent at or past which every tool call is refused until memory recovers (default 94).")]
+        public double? MemoryEmergencyCommitPercent { get; init; }
+
+        [CommandOption("--memory-resume-margin-gb <GB>")]
+        [Description("How far clear of a level's free-GB line a reading must be before stepping back down from it (default 2).")]
+        public double? MemoryResumeMarginGb { get; init; }
+
+        [CommandOption("--memory-resume-margin-commit <POINTS>")]
+        [Description("How far clear of a level's commit-percent line a reading must be before stepping back down from it (default 5).")]
+        public double? MemoryResumeMarginCommit { get; init; }
+
         [CommandOption("--model <REPO_OR_TICKET=MODEL>")]
         [Description("The model /allocate starts a repo's (or one ticket's) subagents on, overriding the pick: Prose=opus, M.ORCH-T12=sonnet, GTFO.*=sonnet; =auto clears. A ticket's wins over its repo's. Repeatable.")]
         public string[] Model { get; init; } = [];
@@ -512,7 +532,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { DiskCleanupGb = cg };
         }
         var memoryChanged = settings.MemoryGuard is not null || settings.MemoryTightGb is not null || settings.MemoryCriticalGb is not null
-            || settings.MemoryEmergencyGb is not null || settings.MemoryPerSubagentGb is not null;
+            || settings.MemoryEmergencyGb is not null || settings.MemoryPerSubagentGb is not null
+            || settings.MemoryTightCommitPercent is not null || settings.MemoryCriticalCommitPercent is not null || settings.MemoryEmergencyCommitPercent is not null
+            || settings.MemoryResumeMarginGb is not null || settings.MemoryResumeMarginCommit is not null;
         if (memoryChanged)
         {
             s = s with
@@ -522,10 +544,20 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
                 MemoryCriticalGb = settings.MemoryCriticalGb ?? s.MemoryCriticalGb,
                 MemoryEmergencyGb = settings.MemoryEmergencyGb ?? s.MemoryEmergencyGb,
                 MemoryPerSubagentGb = settings.MemoryPerSubagentGb ?? s.MemoryPerSubagentGb,
+                MemoryTightCommitPercent = settings.MemoryTightCommitPercent ?? s.MemoryTightCommitPercent,
+                MemoryCriticalCommitPercent = settings.MemoryCriticalCommitPercent ?? s.MemoryCriticalCommitPercent,
+                MemoryEmergencyCommitPercent = settings.MemoryEmergencyCommitPercent ?? s.MemoryEmergencyCommitPercent,
+                MemoryResumeMarginGb = settings.MemoryResumeMarginGb ?? s.MemoryResumeMarginGb,
+                MemoryResumeMarginCommit = settings.MemoryResumeMarginCommit ?? s.MemoryResumeMarginCommit,
             };
             if (!(s.MemoryEmergencyGb > 0 && s.MemoryEmergencyGb <= s.MemoryCriticalGb && s.MemoryCriticalGb <= s.MemoryTightGb))
             { AnsiConsole.MarkupLine("[red]The memory lines go 0 < --memory-emergency-gb <= --memory-critical-gb <= --memory-tight-gb.[/]"); return 1; }
             if (!(s.MemoryPerSubagentGb > 0)) { AnsiConsole.MarkupLine("[red]--memory-per-subagent-gb is more than 0.[/]"); return 1; }
+            if (!(s.MemoryTightCommitPercent > 0 && s.MemoryTightCommitPercent <= s.MemoryCriticalCommitPercent
+                && s.MemoryCriticalCommitPercent <= s.MemoryEmergencyCommitPercent && s.MemoryEmergencyCommitPercent <= 100))
+            { AnsiConsole.MarkupLine("[red]The commit lines go 0 < --memory-tight-commit-percent <= --memory-critical-commit-percent <= --memory-emergency-commit-percent <= 100.[/]"); return 1; }
+            if (!(s.MemoryResumeMarginGb >= 0 && s.MemoryResumeMarginCommit >= 0))
+            { AnsiConsole.MarkupLine("[red]--memory-resume-margin-gb and --memory-resume-margin-commit can't be negative.[/]"); return 1; }
         }
         var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
             || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null || memoryChanged;
@@ -745,8 +777,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.DiskWarnGb > 0 ? $"alerts under {s.DiskWarnGb:0.#} GB free disk (urgent under {Math.Min(s.DiskCriticalGb, s.DiskWarnGb):0.#} GB)" : "disk space not watched") + " · " +
             (s.DiskCleanupGb > 0 ? $"agent temp cleaned up under {s.DiskCleanupGb:0.#} GB free" : "no disk self-cleanup"));
         AnsiConsole.MarkupLine("  memory guard " + (s.MemoryGuard
-            ? $"on: new work holds under {s.MemoryTightGb:0.#} GB free RAM, the newest subagent is shed under {s.MemoryCriticalGb:0.#} GB, " +
-              $"tool calls are refused under {s.MemoryEmergencyGb:0.#} GB; {s.MemoryPerSubagentGb:0.#} GB assumed per subagent"
+            ? $"on: new work holds under {s.MemoryTightGb:0.#} GB free RAM or past {s.MemoryTightCommitPercent:0.#}% commit, " +
+              $"the newest subagent is shed under {s.MemoryCriticalGb:0.#} GB or past {s.MemoryCriticalCommitPercent:0.#}% commit, " +
+              $"tool calls are refused under {s.MemoryEmergencyGb:0.#} GB or past {s.MemoryEmergencyCommitPercent:0.#}% commit; " +
+              $"{s.MemoryPerSubagentGb:0.#} GB assumed per subagent; resumes {s.MemoryResumeMarginGb:0.#} GB / {s.MemoryResumeMarginCommit:0.#} points clear"
             : "off (--memory-guard true)"));
         AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} · {s.MaxSessionsPerRepo} sessions per repo" +
             Markup.Escape(string.Concat(s.RepoMaxSessions.Select(kv => $", {kv.Key} {kv.Value}"))) +

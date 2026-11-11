@@ -359,6 +359,23 @@ public sealed record OrchestratorSettings
     /// <see cref="MemoryTightGb"/>.</summary>
     public double MemoryPerSubagentGb { get; init; } = 1;
 
+    /// <summary>Commit charge (percent of a fixed commit limit: RAM + a fixed pagefile) at or past which
+    /// <see cref="Activity.MemoryLevel.Tight"/> holds even with free RAM over <see cref="MemoryTightGb"/>.</summary>
+    public double MemoryTightCommitPercent { get; init; } = 80;
+
+    /// <summary>Commit charge percent for <see cref="Activity.MemoryLevel.Critical"/>.</summary>
+    public double MemoryCriticalCommitPercent { get; init; } = 88;
+
+    /// <summary>Commit charge percent for <see cref="Activity.MemoryLevel.Emergency"/>.</summary>
+    public double MemoryEmergencyCommitPercent { get; init; } = 94;
+
+    /// <summary>How far clear of a level's free-GB line a reading must be before the guard steps back down from it.</summary>
+    public double MemoryResumeMarginGb { get; init; } = 2;
+
+    /// <summary>How far clear of a level's commit-percent line (in points) a reading must be before the guard steps back
+    /// down from it.</summary>
+    public double MemoryResumeMarginCommit { get; init; } = 5;
+
     /// <summary>Off by default, since it writes tickets into every repo's log: hourly, file GitHub issues
     /// labelled "orchestrator" and CI runs that failed on main as tickets (see <see cref="Tickets.GitHubIntake"/>).</summary>
     public bool GitHubIntake { get; init; }

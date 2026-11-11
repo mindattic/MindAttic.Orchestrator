@@ -122,6 +122,11 @@ public sealed class LampSettingsTests
         Case("memoryCriticalGb", s => s with { MemoryCriticalGb = 2 }, 2d, v => v.MemoryCriticalGb = 1.5, 1.5, s => s.MemoryCriticalGb),
         Case("memoryEmergencyGb", s => s with { MemoryEmergencyGb = 1 }, 1d, v => v.MemoryEmergencyGb = 0.5, 0.5, s => s.MemoryEmergencyGb),
         Case("memoryPerSubagentGb", s => s with { MemoryPerSubagentGb = 1 }, 1d, v => v.MemoryPerSubagentGb = 2, 2d, s => s.MemoryPerSubagentGb),
+        Case("memoryTightCommitPercent", s => s with { MemoryTightCommitPercent = 80 }, 80d, v => v.MemoryTightCommitPercent = 92, 92d, s => s.MemoryTightCommitPercent),
+        Case("memoryCriticalCommitPercent", s => s with { MemoryCriticalCommitPercent = 88 }, 88d, v => v.MemoryCriticalCommitPercent = 94, 94d, s => s.MemoryCriticalCommitPercent),
+        Case("memoryEmergencyCommitPercent", s => s with { MemoryEmergencyCommitPercent = 94 }, 94d, v => v.MemoryEmergencyCommitPercent = 96, 96d, s => s.MemoryEmergencyCommitPercent),
+        Case("memoryResumeMarginGb", s => s with { MemoryResumeMarginGb = 2 }, 2d, v => v.MemoryResumeMarginGb = 0.3, 0.3, s => s.MemoryResumeMarginGb),
+        Case("memoryResumeMarginCommit", s => s with { MemoryResumeMarginCommit = 5 }, 5d, v => v.MemoryResumeMarginCommit = 2, 2d, s => s.MemoryResumeMarginCommit),
         // Dashboard
         Case("theme", s => s with { Theme = "Light" }, "Light", v => v.Theme = "Dark", "Dark", s => s.Theme),
         Case("symbolTabLabels", s => s with { SymbolTabLabels = false }, false, v => v.SymbolTabLabels = true, true, s => s.SymbolTabLabels),

@@ -34,10 +34,15 @@ public sealed record MemoryState(MemoryLevel Level, MemoryReading Reading, strin
     public MemoryLines Lines { get; init; } = MemoryLines.Of(new OrchestratorSettings());
 }
 
-/// <summary>The free-RAM lines (GB) for each level, and what one more subagent is assumed to take.</summary>
-public sealed record MemoryLines(double TightGb, double CriticalGb, double EmergencyGb, double PerSubagentGb)
+/// <summary>The free-RAM lines (GB) for each level, what one more subagent is assumed to take, the matching commit-charge
+/// percent lines, and the margin a reading must clear by (GB and commit points) before stepping back down.</summary>
+public sealed record MemoryLines(double TightGb, double CriticalGb, double EmergencyGb, double PerSubagentGb,
+    double TightCommitPercent, double CriticalCommitPercent, double EmergencyCommitPercent,
+    double ResumeMarginGb, double ResumeMarginCommit)
 {
-    public static MemoryLines Of(OrchestratorSettings s) => new(s.MemoryTightGb, s.MemoryCriticalGb, s.MemoryEmergencyGb, s.MemoryPerSubagentGb);
+    public static MemoryLines Of(OrchestratorSettings s) => new(s.MemoryTightGb, s.MemoryCriticalGb, s.MemoryEmergencyGb, s.MemoryPerSubagentGb,
+        s.MemoryTightCommitPercent, s.MemoryCriticalCommitPercent, s.MemoryEmergencyCommitPercent,
+        s.MemoryResumeMarginGb, s.MemoryResumeMarginCommit);
 }
 
 /// <summary>
@@ -47,17 +52,12 @@ public sealed record MemoryLines(double TightGb, double CriticalGb, double Emerg
 /// <see cref="MemoryLevel.Critical"/> sheds the newest subagent, <see cref="MemoryLevel.Emergency"/> refuses tool calls.
 /// <para>This reverses M.ORCH-T357/T374, which kept machine health alert-only because a hold judged fresh every sample
 /// flapped and /allocate refilled the moment it read normal. Here a level is entered at once but left only one step at a time,
-/// once clear of the line by <see cref="ResumeMarginGb"/> (and <see cref="ResumeMarginCommit"/> points) for
+/// once clear of the line by <see cref="OrchestratorSettings.MemoryResumeMarginGb"/> (and
+/// <see cref="OrchestratorSettings.MemoryResumeMarginCommit"/> points) for
 /// <see cref="SettleFor"/>: at the defaults new work resumes at 6 GB free, not 4.</para>
 /// </summary>
 public sealed class MemoryGuard
 {
-    /// <summary>Commit lines, as a percent of a fixed commit limit (RAM + a fixed pagefile), for each level.</summary>
-    public const double TightCommitPercent = 80, CriticalCommitPercent = 88, EmergencyCommitPercent = 94;
-
-    /// <summary>How far clear of a level's line a reading must be to step down from it.</summary>
-    public const double ResumeMarginGb = 2, ResumeMarginCommit = 5;
-
     /// <summary>How long a reading must stay clear before each step down.</summary>
     public static readonly TimeSpan SettleFor = TimeSpan.FromSeconds(60);
 
@@ -125,11 +125,11 @@ public sealed class MemoryGuard
     /// <summary>The level <paramref name="r"/> reads at on its own, with the step-down margin or without.</summary>
     public static (MemoryLevel Level, string Why) Judge(MemoryReading r, OrchestratorSettings s, bool margin)
     {
-        var (gb, pts) = margin ? (ResumeMarginGb, ResumeMarginCommit) : (0.0, 0.0);
+        var (gb, pts) = margin ? (s.MemoryResumeMarginGb, s.MemoryResumeMarginCommit) : (0.0, 0.0);
         bool Under(double line, double commitLine) => r.FreeGb < line + gb || (r.CommitCounted && r.CommitPercent >= commitLine - pts);
-        var level = Under(s.MemoryEmergencyGb, EmergencyCommitPercent) ? MemoryLevel.Emergency
-            : Under(s.MemoryCriticalGb, CriticalCommitPercent) ? MemoryLevel.Critical
-            : Under(s.MemoryTightGb, TightCommitPercent) ? MemoryLevel.Tight
+        var level = Under(s.MemoryEmergencyGb, s.MemoryEmergencyCommitPercent) ? MemoryLevel.Emergency
+            : Under(s.MemoryCriticalGb, s.MemoryCriticalCommitPercent) ? MemoryLevel.Critical
+            : Under(s.MemoryTightGb, s.MemoryTightCommitPercent) ? MemoryLevel.Tight
             : MemoryLevel.Ok;
         return (level, r.Describe());
     }
