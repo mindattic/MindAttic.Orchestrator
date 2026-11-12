@@ -15,9 +15,6 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'member', 'premium', 'active', 1792866937.886, 1793635021.5990849);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-05T21:54:30Z', 5, '2026-11-06T02:10:00Z', 0);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-05T21:58:34Z', 5, '2026-11-06T02:10:00Z', 0);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-05T22:02:45Z', 6, '2026-11-06T02:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-05T22:06:48Z', 8, '2026-11-06T02:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-05T22:11:05Z', 10, '2026-11-06T02:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-05T22:15:58Z', 11, '2026-11-06T02:10:00Z', 0);
@@ -1088,6 +1085,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-12
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-12T21:42:24Z', 1, '2026-11-13T01:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-12T21:47:29Z', 1, '2026-11-13T01:10:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-12T21:52:33Z', 1, '2026-11-13T01:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-12T21:57:43Z', 1, '2026-11-13T01:10:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-12T22:02:51Z', 1, '2026-11-13T01:10:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -31696,7 +31695,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3b5866ab9797423f1ef2f64bb121fa20b8c87b6c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "ff7ce3730c6ca3564f448242c6ad97cd8aca8c2f",
+    "Tested": "2f097e1b04c74c04aad6f684a24d1960a7068f40",
     "Green": "679864e916d178065864b925544b5a6cc5631c04"
   },
   "MindAttic.Psst": {
@@ -31971,7 +31970,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "ff7ce3730c6ca3564f448242c6ad97cd8aca8c2f",
+    "Tested": "2f097e1b04c74c04aad6f684a24d1960a7068f40",
     "Green": "62cae9a6f534ec6d4b0b0113cc92c35d3731117d"
   },
   "ipt392tmp": {
