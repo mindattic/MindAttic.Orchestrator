@@ -4797,8 +4797,8 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 -- state
 INSERT INTO state (name, value) VALUES ('api-failovers', '[]');
 INSERT INTO state (name, value) VALUES ('audit', '{
-  "RanUtc": "2026-11-12T22:51:48.2527597Z",
-  "Took": "00:00:46.7529990",
+  "RanUtc": "2026-11-13T22:52:40.5688676Z",
+  "Took": "00:00:45.3260944",
   "ReposScanned": 87,
   "FilesScanned": 11581,
   "Drift": [
@@ -31685,7 +31685,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3b5866ab9797423f1ef2f64bb121fa20b8c87b6c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "81c3e9042b60aac9cbf85fc63e5a9dcce3e6739c",
+    "Tested": "ff20db0029866a9ac53857b799eb4b10c40cd9a8",
     "Green": "679864e916d178065864b925544b5a6cc5631c04"
   },
   "MindAttic.Psst": {
@@ -31960,7 +31960,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "81c3e9042b60aac9cbf85fc63e5a9dcce3e6739c",
+    "Tested": "ff20db0029866a9ac53857b799eb4b10c40cd9a8",
     "Green": "62cae9a6f534ec6d4b0b0113cc92c35d3731117d"
   },
   "ipt392tmp": {
