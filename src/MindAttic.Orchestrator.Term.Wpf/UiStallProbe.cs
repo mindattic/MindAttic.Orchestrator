@@ -42,7 +42,7 @@ public sealed partial class UiStallProbe : IDisposable
     private volatile int running = -1;
     private volatile int seenRunning = -2;
     private TimeSpan gcAtSend;
-    private uint faultsAtSend;
+    private (uint Faults, long WorkingSet, long Private) memoryAtSend;
     private long lastLine;
     private int unlogged;
     private TimeSpan worst;
@@ -77,7 +77,7 @@ public sealed partial class UiStallProbe : IDisposable
             seen = null;
             seenRunning = -2;
             gcAtSend = GC.GetTotalPauseDuration();
-            faultsAtSend = PageFaults();
+            memoryAtSend = Memory();
             Interlocked.Exchange(ref sent, Stopwatch.GetTimestamp());
             dispatcher.BeginInvoke(DispatcherPriority.Input, () => Answered(limit));
         }
@@ -98,7 +98,11 @@ public sealed partial class UiStallProbe : IDisposable
         {
             var gc = GC.GetTotalPauseDuration() - gcAtSend;
             worst = took;
-            worstWork = $"{seen ?? Where(seenRunning)}; the GC paused {(long)gc.TotalMilliseconds}ms of it, {PageFaults() - faultsAtSend} page faults";
+            var memory = Memory();
+            // Page faults with the working set growing and private bytes flat are memory paged back in (the machine is short of
+            // RAM); with private bytes growing they are new allocations.
+            worstWork = $"{seen ?? Where(seenRunning)}; the GC paused {(long)gc.TotalMilliseconds}ms of it, {memory.Faults - memoryAtSend.Faults} page faults, " +
+                $"working set {(memory.WorkingSet - memoryAtSend.WorkingSet) / Mb:+0;-0;0} MB, private {(memory.Private - memoryAtSend.Private) / Mb:+0;-0;0} MB";
         }
         // One line per ten thresholds at most, so a jammed thread doesn't flood the log; the line carries the worst of the rest.
         var now = Stopwatch.GetTimestamp();
@@ -120,11 +124,14 @@ public sealed partial class UiStallProbe : IDisposable
         _ => $"an unnamed {(DispatcherPriority)priority}-priority operation",
     };
 
-    /// <summary>This process's page faults so far; 0 when it can't be read.</summary>
-    private static uint PageFaults()
+    private const long Mb = 1024 * 1024;
+
+    /// <summary>This process's page faults so far, its working set and its private bytes; zeros when they can't be read.</summary>
+    private static (uint Faults, long WorkingSet, long Private) Memory()
     {
         var counters = new ProcessMemoryCounters { cb = (uint)Marshal.SizeOf<ProcessMemoryCounters>() };
-        return K32GetProcessMemoryInfo(Self.Handle, ref counters, counters.cb) ? counters.PageFaultCount : 0;
+        return K32GetProcessMemoryInfo(Self.Handle, ref counters, counters.cb)
+            ? (counters.PageFaultCount, (long)counters.WorkingSetSize, (long)counters.PagefileUsage) : default;
     }
 
     private static readonly Process Self = Process.GetCurrentProcess();
