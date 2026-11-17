@@ -393,7 +393,7 @@ public sealed class ContextCyclerTests
                 Assert.That(p.WaitForExit(20_000), Is.True);
                 return output;
             }
-            string? Mark(object cli) => File.Exists(Path.Combine(ctx, $"allocate-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"allocate-{cli}")) : null;
+            string? Mark(int cli) => CliMarks.Read(ctx, CliMarks.Allocate).GetValueOrDefault(cli);
 
             var said = Typed("/allocate -target=others");
             Assert.That((Mark(live1), Mark(live2), Mark(1), Mark(999999)), Is.EqualTo(("A", "B", (string?)null, (string?)null)),
@@ -402,7 +402,7 @@ public sealed class ContextCyclerTests
 
             said = Typed($"/allocate off -target={live1},nobody");
             Assert.That((Mark(live1), Mark(live2)), Is.EqualTo(((string?)null, "B")), "off for the PID named alone");
-            Assert.That(File.Exists(Path.Combine(ctx, $"noallocate-{live1}")), "recorded as typed off in its own record");
+            Assert.That(CliMarks.Read(ctx, CliMarks.NoAllocate).ContainsKey(live1), "recorded as typed off in its own record");
             Assert.That(said, Does.Contain($"CLI {live1} (A)").And.Contain("No running CLI matched nobody"));
 
             Assert.That(Typed("/allocate off -target=nobody"), Does.Contain("\"block\"").And.Contain("matched no running CLI"));
