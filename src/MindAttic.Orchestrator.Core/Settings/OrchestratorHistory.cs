@@ -105,12 +105,30 @@ public static class OrchestratorHistory
                 Sql.Long(r, 3), Sql.OptionalText(r, 4), OptionalTime(r, 5))));
     }
 
-    /// <summary>Replaces the history with <paramref name="days"/> (a merge of what was loaded and what the transcripts show).</summary>
+    /// <summary>Replaces the history with <paramref name="days"/> (a merge of what was loaded and what the transcripts show).
+    /// Only the rows that differ from what's kept are written (M.ORCH-T1748: each statement is a round trip to the server, and
+    /// a save usually moves today's few rows); when a kept row is to go (a day aged out), the whole table is rewritten as before.</summary>
     public static void SaveUsageHistory(this OrchestratorDb db, IEnumerable<DayUsage> days) =>
         db.WriteData((connection, tx) =>
         {
-            Sql.Run(connection, tx, "DELETE FROM usage_history;");
-            foreach (var d in days) InsertDay(connection, tx, d, replace: true);
+            static (string, string, string, string, string) Key(DayUsage d) =>
+                (d.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), d.Repo, d.Provider, d.Account ?? "", d.BeforeUtc is { } b ? Text(b) : "");
+            var wanted = days.ToList();
+            var kept = new Dictionary<(string, string, string, string, string), DayUsage>();
+            var whole = false;
+            foreach (var d in Sql.Read(connection, tx, "SELECT day, repo, provider, fresh, account, before_utc FROM usage_history;",
+                r => new DayUsage(DateOnly.ParseExact(r.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture), r.GetString(1), r.GetString(2),
+                    Sql.Long(r, 3), Sql.OptionalText(r, 4), OptionalTime(r, 5))))
+                whole |= !kept.TryAdd(Key(d), d); // two rows under one key: only a rewrite leaves one
+            var keys = wanted.Select(Key).ToHashSet();
+            if (whole || keys.Count != wanted.Count || kept.Keys.Any(k => !keys.Contains(k)))
+            {
+                Sql.Run(connection, tx, "DELETE FROM usage_history;");
+                foreach (var d in wanted) InsertDay(connection, tx, d, replace: true);
+                return;
+            }
+            foreach (var d in wanted)
+                if (!kept.TryGetValue(Key(d), out var had) || had.Fresh != d.Fresh) InsertDay(connection, tx, d, replace: true);
         });
 
     private static readonly string[] DayKeys = ["day", "repo", "provider", "account", "before_utc"];
@@ -141,12 +159,23 @@ public static class OrchestratorHistory
             .OrderBy(s => s.LastUtc).ThenBy(s => s.SessionId, StringComparer.Ordinal).ToList();
     }
 
-    /// <summary>Replaces the costs with <paramref name="costs"/> (<see cref="TicketCosts.Merge"/>'s result).</summary>
+    /// <summary>Replaces the costs with <paramref name="costs"/> (<see cref="TicketCosts.Merge"/>'s result). Only the rows that
+    /// differ from what's kept are written, and those no longer wanted deleted (M.ORCH-T1748): the table runs to thousands of
+    /// sessions, a save while agents work moves a handful, and each statement is a round trip to the server.</summary>
     public static void SaveTicketCosts(this OrchestratorDb db, IEnumerable<SessionCost> costs) =>
         db.WriteData((connection, tx) =>
         {
-            Sql.Run(connection, tx, "DELETE FROM ticket_costs;");
-            foreach (var c in costs) InsertCost(connection, tx, c, replace: true);
+            // The last of two under one session stands, as a row written twice left it.
+            var wanted = new Dictionary<string, SessionCost>(StringComparer.Ordinal);
+            foreach (var c in costs) wanted[c.SessionId] = c;
+            var kept = Sql.Read(connection, tx, "SELECT session_id, ticket_id, type, repo, fresh, last_utc, own_share, model FROM ticket_costs;",
+                    r => new SessionCost(r.GetString(0), r.GetString(1), Sql.OptionalText(r, 2), r.GetString(3), Sql.Long(r, 4),
+                        Time(r.GetString(5)), Sql.Long(r, 6) != 0, Sql.OptionalText(r, 7)))
+                .ToDictionary(c => c.SessionId, StringComparer.Ordinal);
+            foreach (var gone in kept.Keys.Where(id => !wanted.ContainsKey(id)))
+                Sql.Run(connection, tx, "DELETE FROM ticket_costs WHERE session_id = @id;", ("@id", gone));
+            foreach (var c in wanted.Values)
+                if (!kept.TryGetValue(c.SessionId, out var had) || !had.Equals(c)) InsertCost(connection, tx, c, replace: true);
         });
 
     private static void InsertCost(DbConnection connection, DbTransaction tx, SessionCost c, bool replace)
