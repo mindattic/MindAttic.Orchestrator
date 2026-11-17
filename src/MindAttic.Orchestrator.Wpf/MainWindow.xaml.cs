@@ -40,6 +40,20 @@ public partial class MainWindow : Window
     private MainViewModel Shown => DataContext as MainViewModel ?? model;
 
     /// <summary>Creates the main window.</summary>
+    /// <summary>Whether the window's controls are exposed to UI Automation clients (the setting UiAutomation), as of start-up.</summary>
+    private readonly bool uiAutomation = new MindAttic.Orchestrator.Settings.JsonStore().TryLoadSettings(out var atStart) && atStart.UiAutomation;
+
+    /// <summary>A window peer with no children unless the setting says otherwise (M.ORCH-T1738): with a UI Automation client
+    /// listening, WPF rebuilt the whole window's peer tree after every layout pass (AutomationPeer.UpdateSubtree, 55 of 60
+    /// seconds of layout in a trace), which is what froze the window when a CLI tab was shown.</summary>
+    protected override System.Windows.Automation.Peers.AutomationPeer OnCreateAutomationPeer() =>
+        uiAutomation ? base.OnCreateAutomationPeer() : new QuietWindowPeer(this);
+
+    private sealed class QuietWindowPeer(Window owner) : System.Windows.Automation.Peers.WindowAutomationPeer(owner)
+    {
+        protected override List<System.Windows.Automation.Peers.AutomationPeer>? GetChildrenCore() => null;
+    }
+
     public MainWindow()
     {
         InitializeComponent();

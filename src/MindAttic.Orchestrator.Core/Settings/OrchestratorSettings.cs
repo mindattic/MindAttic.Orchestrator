@@ -721,6 +721,11 @@ public sealed record OrchestratorSettings
     /// dashboard's own modal. A tab whose CLI already ended closes unasked either way.</summary>
     public bool ConfirmCliClose { get; init; } = true;
 
+    /// <summary>Whether the dashboard window exposes its controls to UI Automation clients (screen readers, UI test tools).
+    /// Off by default (M.ORCH-T1738): with any such client listening, WPF re-walks the window's whole control tree after every
+    /// layout pass, which made showing a CLI tab freeze typing for 4 to 40 seconds. Read when the dashboard starts.</summary>
+    public bool UiAutomation { get; init; }
+
     /// <summary>Minutes an ended terminal tab stays, for its last lines, before it's closed unasked (M.ORCH-T1599; was a fixed
     /// 24 hours, M.ORCH-T1177): each holds its native renderer (~50 MB) until then.</summary>
     public double EndedTabMinutes { get; init; } = DefaultEndedTabMinutes;

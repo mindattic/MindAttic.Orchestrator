@@ -904,6 +904,11 @@ public sealed class OrchestratorVaultSettings
         Help = "On (the default): a CLI tab's X asks before it ends a CLI that's still running. A tab whose CLI already ended closes unasked either way.")]
     public bool ConfirmCliClose { get; set; } = true;
 
+    /// <summary>Whether the dashboard window exposes its controls to UI Automation clients; off by default.</summary>
+    [Setting("Expose the dashboard to screen readers", Group = "Dashboard", Order = 25,
+        Help = "Off (the default): the dashboard window hides its controls from UI Automation clients (screen readers, UI test tools, apps that read the screen). With one listening, Windows re-walks the whole window after every layout change, which froze typing for 4 to 40 seconds each time a CLI tab was shown. Turn it on only if you use a screen reader with the dashboard. Takes effect when the dashboard next starts.")]
+    public bool UiAutomation { get; set; }
+
     /// <summary>Minutes between the daemon's sweeps for TermHosts left running in orch-test-* temp folders.</summary>
     [Setting("Sweep for leaked test TermHosts every (minutes)", Group = "Dashboard", Order = 91,
         Help = "Minutes between the daemon's sweeps for TermHosts left running in orch-test-* temp folders. Each sweep is a WMI query.")]
@@ -1083,6 +1088,7 @@ public sealed class OrchestratorVaultSettings
         ExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = s.AutoOpenLaunchers,
         ConfirmCliClose = s.ConfirmCliClose,
+        UiAutomation = s.UiAutomation,
         EndedTabMinutes = s.EndedTabMinutes,
         TestTermHostMaxMinutes = s.TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = s.PresumeBusyConfirmSeconds,
@@ -1254,6 +1260,7 @@ public sealed class OrchestratorVaultSettings
         ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = AutoOpenLaunchers,
         ConfirmCliClose = ConfirmCliClose,
+        UiAutomation = UiAutomation,
         EndedTabMinutes = EndedTabMinutes,
         TestTermHostMaxMinutes = TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = PresumeBusyConfirmSeconds,

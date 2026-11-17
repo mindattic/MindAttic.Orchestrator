@@ -248,6 +248,7 @@ public sealed class LampSettingsTests
         Case("endedLauncherTabMinutes", s => s with { EndedLauncherTabMinutes = 0 }, 0d, v => v.EndedLauncherTabMinutes = 5, 5d, s => s.EndedLauncherTabMinutes),
         Case("autoOpenLaunchers", s => s with { AutoOpenLaunchers = true }, true, v => v.AutoOpenLaunchers = false, false, s => s.AutoOpenLaunchers),
         Case("confirmCliClose", s => s with { ConfirmCliClose = false }, false, v => v.ConfirmCliClose = true, true, s => s.ConfirmCliClose),
+        Case("uiAutomation", s => s with { UiAutomation = false }, false, v => v.UiAutomation = true, true, s => s.UiAutomation),
         Case("memberUntil", s => s with { MemberUntil = "old@mindattic.com=2026-12-01" }, "old@mindattic.com=2026-12-01",
             v => v.MemberUntil = "new@mindattic.com=2027-01-15T08:00;other@mindattic.com=2027-02-01", "new@mindattic.com=2027-01-15T08:00;other@mindattic.com=2027-02-01", s => s.MemberUntil),
         // Folders
