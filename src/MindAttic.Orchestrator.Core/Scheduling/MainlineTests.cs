@@ -145,13 +145,17 @@ public sealed partial class MainlineTests(JsonStore store)
         // tested where it stands and save that over every Green (M.ORCH-T1091); finished runs are reported next tick.
         if (!store.TryLoad<Dictionary<string, RepoState>>(StateName, out var state)) return lines;
         var changed = false;
+        lines.AddRange(FinishBisects(openTickets));
         foreach (var done in running.Values.Where(r => r.Task.IsCompleted).ToList())
         {
             running.Remove(done.Repo);
             var st = state.TryGetValue(done.Repo, out var s) ? s : state[done.Repo] = new RepoState();
             var result = done.Task.IsCompletedSuccessfully ? done.Task.Result
                 : new SuiteResult(false, [], new HashSet<string>(), done.Task.Exception?.GetBaseException().Message ?? "it was cancelled");
-            lines.AddRange(Report(done, result, openTickets));
+            var filedNow = new List<(string Id, Failure Failure)>();
+            lines.AddRange(Report(done, result, openTickets, filedNow));
+            // New failures are bisected from the last green run to the commit that broke them (M.ORCH-T1687).
+            lines.AddRange(QueueBisect(done, st.Green, result, filedNow));
             // A run that didn't complete (timeout, file lock, dotnet missing, Prepare error) tested nothing: the head stays
             // untested so it's tried again after a pause, not skipped for good (M.ORCH-T731).
             if (!result.Completed)
@@ -183,9 +187,11 @@ public sealed partial class MainlineTests(JsonStore store)
                 lines.Add(new Line(false, $"main tests: {(heldSaid.StartsWith("RAM", StringComparison.Ordinal) ? "memory recovered" : "disk space is back")}; suites due start again"));
                 heldSaid = null;
             }
+            // A queued bisect takes the heavy slot before any new suite (M.ORCH-T1687); its repo's suite waits for it.
+            StartBisects(lines, worktreeRoot);
             foreach (var (name, path) in repos)
             {
-                if (running.ContainsKey(name)) continue;
+                if (running.ContainsKey(name) || bisects.ContainsKey(name)) continue;
                 if (retryAfter.TryGetValue(name, out var again) && nowUtc < again) continue;
                 // Asked each check, not cached: a renamed default branch is followed (M.ORCH-T731).
                 var mainline = MainlineOf(path);
@@ -209,7 +215,7 @@ public sealed partial class MainlineTests(JsonStore store)
                 }
                 // The solution comes from the commit being built, tracked files only: the repo's own folder may be behind
                 // origin or hold an untracked or ignored generated solution the fresh worktree doesn't have (M.ORCH-T598).
-                if (running.Count >= MaxRunning) continue;
+                if (running.Count + bisects.Count >= MaxRunning) continue;
                 if (Held() is { } why)
                 {
                     if (heldSaid is null) lines.Add(new Line(false, $"main tests: holding {name}'s full suite (and any others due): {why}"));
@@ -231,7 +237,7 @@ public sealed partial class MainlineTests(JsonStore store)
     }
 
     /// <summary>Files a fix ticket for each failing test none is open for, and closes the open ones whose test passed.</summary>
-    private IEnumerable<Line> Report(Run run, SuiteResult result, Func<TicketsDb?> openTickets)
+    private IEnumerable<Line> Report(Run run, SuiteResult result, Func<TicketsDb?> openTickets, List<(string Id, Failure Failure)>? filedOut = null)
     {
         if (!result.Completed)
         {
@@ -251,7 +257,7 @@ public sealed partial class MainlineTests(JsonStore store)
             {
                 filed = result.Failed.Count == 0 ? [] : [new Line(true, $"main tests: {run.Repo} isn't in the ticket database, so its failing tests weren't filed")];
             }
-            else filed = [.. File(db, run.Repo, run.Mainline, run.Head, run.Since, result, AncestorCheck(run)).Select(l => new Line(l.StartsWith("filed", StringComparison.Ordinal), "main tests: " + l))];
+            else filed = [.. File(db, run.Repo, run.Mainline, run.Head, run.Since, result, AncestorCheck(run), filedOut).Select(l => new Line(l.StartsWith("filed", StringComparison.Ordinal), "main tests: " + l))];
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.Data.Common.DbException)
         {
@@ -262,7 +268,7 @@ public sealed partial class MainlineTests(JsonStore store)
 
     /// <summary>The ticket work of a finished run in <paramref name="repo"/>: what was filed and closed, said.</summary>
     internal static IReadOnlyList<string> File(TicketsDb db, string repo, string mainline, string head, string since, SuiteResult result,
-        Func<string, bool?>? isAncestor = null)
+        Func<string, bool?>? isAncestor = null, List<(string Id, Failure Failure)>? filedOut = null)
     {
         var said = new List<string>();
         var all = db.Tickets(repo).Select(t => t.Ticket).ToList();
@@ -286,6 +292,7 @@ public sealed partial class MainlineTests(JsonStore store)
             var t = db.Add(repo, "fix", TicketRules.Open, Summary(f, mainline, since), $"{mainline}@{Short(head)}");
             open.Add(t);
             filed.Add(t.Id);
+            filedOut?.Add((t.Id, f));
             said.Add($"filed {t.Id} in {repo}: {f.Test} fails on {mainline}");
         }
         foreach (var t in open.Where(t => TestOf(t.Summary) is { } test && passed.Contains(test)).ToList())

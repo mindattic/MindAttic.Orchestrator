@@ -788,6 +788,19 @@ public sealed record OrchestratorSettings
     /// <summary>The default main tests timeout minutes constant.</summary>
     public const double DefaultMainTestsTimeoutMinutes = 90;
 
+    /// <summary>The most suite runs a red main line's bisect makes to find the commit that broke it, after the two that check the
+    /// failure reproduces at the red head and not at the last green commit (M.ORCH-T1687). 0 turns the bisect off.</summary>
+    public double MainBisectMaxSteps { get; init; } = DefaultMainBisectMaxSteps;
+
+    /// <summary>The default main bisect max steps constant.</summary>
+    public const double DefaultMainBisectMaxSteps = 8;
+
+    /// <summary>Minutes a red main line's bisect may take in all before it stops and blames no one (M.ORCH-T1687).</summary>
+    public double MainBisectTimeoutMinutes { get; init; } = DefaultMainBisectTimeoutMinutes;
+
+    /// <summary>The default main bisect timeout minutes constant.</summary>
+    public const double DefaultMainBisectTimeoutMinutes = 240;
+
     /// <summary>Minutes <c>orchestrator branches test</c> waits for the memory guard to clear before each branch's run; past it the
     /// branch is skipped, nothing reported (M.ORCH-T1662).</summary>
     public double BranchTestsMemoryWaitMinutes { get; init; } = DefaultBranchTestsMemoryWaitMinutes;

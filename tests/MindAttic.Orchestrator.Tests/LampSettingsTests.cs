@@ -159,6 +159,8 @@ public sealed class LampSettingsTests
         Case("mainTestsLockRetries", s => s with { MainTestsLockRetries = 2 }, 2d, v => v.MainTestsLockRetries = 4, 4d, s => s.MainTestsLockRetries),
         Case("mainTestsLockRetrySeconds", s => s with { MainTestsLockRetrySeconds = 30 }, 30d, v => v.MainTestsLockRetrySeconds = 10, 10d, s => s.MainTestsLockRetrySeconds),
         Case("mainTestsTimeoutMinutes", s => s with { MainTestsTimeoutMinutes = 90 }, 90d, v => v.MainTestsTimeoutMinutes = 45, 45d, s => s.MainTestsTimeoutMinutes),
+        Case("mainBisectMaxSteps", s => s with { MainBisectMaxSteps = 8 }, 8d, v => v.MainBisectMaxSteps = 0, 0d, s => s.MainBisectMaxSteps),
+        Case("mainBisectTimeoutMinutes", s => s with { MainBisectTimeoutMinutes = 240 }, 240d, v => v.MainBisectTimeoutMinutes = 60, 60d, s => s.MainBisectTimeoutMinutes),
         Case("branchTestsMemoryWaitMinutes", s => s with { BranchTestsMemoryWaitMinutes = 30 }, 30d, v => v.BranchTestsMemoryWaitMinutes = 5, 5d, s => s.BranchTestsMemoryWaitMinutes),
         Case("branchTestsDiskWaitMinutes", s => s with { BranchTestsDiskWaitMinutes = 30 }, 30d, v => v.BranchTestsDiskWaitMinutes = 5, 5d, s => s.BranchTestsDiskWaitMinutes),
         Case("testTermHostSweepMinutes", s => s with { TestTermHostSweepMinutes = 5 }, 5d, v => v.TestTermHostSweepMinutes = 10, 10d, s => s.TestTermHostSweepMinutes),

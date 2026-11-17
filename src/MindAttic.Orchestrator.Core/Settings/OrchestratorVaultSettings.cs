@@ -780,6 +780,18 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 1440)]
     public double MainTestsTimeoutMinutes { get; set; } = OrchestratorSettings.DefaultMainTestsTimeoutMinutes;
 
+    /// <summary>The most suite runs a red main line's bisect makes to find the commit that broke it.</summary>
+    [Setting("Bisect red main: max steps", Group = "Dashboard", Order = 93,
+        Help = "When a main-line suite goes red, the commits since the last green run are bisected (in their own worktree) to the one that broke it, and the fix ticket names it and its ticket. This is the most suite runs that bisect makes, after two that check the failure reproduces at the red head and not at the last green commit (one that doesn't reproduce, like a full disk, blames no one). 0 turns the bisect off.")]
+    [SettingRange(0, 64)]
+    public double MainBisectMaxSteps { get; set; } = OrchestratorSettings.DefaultMainBisectMaxSteps;
+
+    /// <summary>Minutes a red main line's bisect may take in all before it stops and blames no one.</summary>
+    [Setting("Bisect red main: timeout (minutes)", Group = "Dashboard", Order = 93,
+        Help = "Minutes a red main line's bisect may take in all before it stops and blames no one.")]
+    [SettingRange(1, 2880)]
+    public double MainBisectTimeoutMinutes { get; set; } = OrchestratorSettings.DefaultMainBisectTimeoutMinutes;
+
     /// <summary>Minutes orchestrator branches test waits for the memory guard to clear before each branch's run.</summary>
     [Setting("Branch tests memory wait (minutes)", Group = "Dashboard", Order = 93,
         Help = "Minutes orchestrator branches test waits, before each branch's run, for RAM to recover while the memory guard holds new work. Past it the branch is skipped and nothing is reported.")]
@@ -1069,6 +1081,8 @@ public sealed class OrchestratorVaultSettings
         MainTestsLockRetries = s.MainTestsLockRetries,
         MainTestsLockRetrySeconds = s.MainTestsLockRetrySeconds,
         MainTestsTimeoutMinutes = s.MainTestsTimeoutMinutes,
+        MainBisectMaxSteps = s.MainBisectMaxSteps,
+        MainBisectTimeoutMinutes = s.MainBisectTimeoutMinutes,
         BranchTestsMemoryWaitMinutes = s.BranchTestsMemoryWaitMinutes,
         BranchTestsDiskWaitMinutes = s.BranchTestsDiskWaitMinutes,
         EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
@@ -1236,6 +1250,8 @@ public sealed class OrchestratorVaultSettings
         MainTestsLockRetries = MainTestsLockRetries,
         MainTestsLockRetrySeconds = MainTestsLockRetrySeconds,
         MainTestsTimeoutMinutes = MainTestsTimeoutMinutes,
+        MainBisectMaxSteps = MainBisectMaxSteps,
+        MainBisectTimeoutMinutes = MainBisectTimeoutMinutes,
         BranchTestsMemoryWaitMinutes = BranchTestsMemoryWaitMinutes,
         BranchTestsDiskWaitMinutes = BranchTestsDiskWaitMinutes,
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,

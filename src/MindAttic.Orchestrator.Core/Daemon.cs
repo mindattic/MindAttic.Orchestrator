@@ -581,6 +581,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             tests.LockRetries = (int)Math.Clamp(s.MainTestsLockRetries, 0, 10);
             tests.LockRetryDelay = OrchestratorSettings.SecondsSpan(s.MainTestsLockRetrySeconds, 0);
             tests.Timeout = MainlineTests.TimeoutOf(s);
+            tests.BisectMaxSteps = MainlineTests.BisectMaxStepsOf(s);
+            tests.BisectTimeout = MainlineTests.BisectTimeoutOf(s);
             foreach (var line in tests.Tick(repos, s.WorktreeRoot, () => MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(workspaceRoot), DateTime.UtcNow, lease.TryAcquire()))
                 Say(line.Warn ? LogEventLevel.Warning : LogEventLevel.Information, line.Text);
         }
