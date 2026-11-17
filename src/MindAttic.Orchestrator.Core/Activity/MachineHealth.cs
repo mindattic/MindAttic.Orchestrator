@@ -3,8 +3,16 @@ using System.Runtime.InteropServices;
 
 namespace MindAttic.Orchestrator.Activity;
 
-/// <summary>The warn values.</summary>
-public enum HealthLevel { Ok, Warn, Danger }
+/// <summary>How worried a machine reading should make the user.</summary>
+public enum HealthLevel
+{
+    /// <summary>Within its limits.</summary>
+    Ok,
+    /// <summary>Approaching a limit; worth a look.</summary>
+    Warn,
+    /// <summary>Past a limit; needs action now.</summary>
+    Danger,
+}
 
 /// <summary>One process holding a lot of kernel handles.</summary>
 public sealed record HandleHog(int Pid, string Name, int Handles);

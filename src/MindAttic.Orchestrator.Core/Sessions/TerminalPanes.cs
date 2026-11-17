@@ -26,6 +26,7 @@ public sealed record PaneRequest(string Title, string Directory)
     /// <summary>What it runs for, the tab's name without its badge and provider; the folder's name when not given.</summary>
     public string? Repo { get; init; }
 
+    /// <summary>Which CLI provider the pane runs (<c>Claude</c>, <c>Codex</c>, <c>Gemini</c> or <c>Kimi</c>); it badges the tab.</summary>
     public string Provider { get; init; } = "Claude";
 
     /// <summary>The per-CLI login folder (<c>CLAUDE_CONFIG_DIR</c>) its CLI runs on, when known; null for none or the global login.</summary>

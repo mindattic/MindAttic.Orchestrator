@@ -13,13 +13,16 @@ namespace MindAttic.Orchestrator.Setup;
 /// </summary>
 public sealed class Installer
 {
+    /// <summary>File name of the installed dashboard executable.</summary>
     public const string ExeName = "MindAttic.Orchestrator.Desktop.exe";
     /// <summary>The exe's name before M.ORCH-T844: an install still holding it is upgraded in place (its copy stopped, then removed).</summary>
     public const string LegacyExeName = "MindAttic.Orchestrator.exe";
     /// <summary>The logon task this exe registered before WatchDog took the daemon over (M.ORCH-T475). Never registered
     /// now; still ended on an upgrade and deleted on an uninstall, for a machine that has it yet.</summary>
     public const string LegacyTaskName = @"\MindAttic\Orchestrator\Orchestrator daemon";
+    /// <summary>Command-line argument that starts the exe as the background daemon.</summary>
     public const string DaemonArg = "--daemon";
+    /// <summary>File name of the shortcut the installer creates.</summary>
     public const string ShortcutName = "MindAttic Orchestrator.lnk";
 
     /// <summary>Held by the running daemon, so the dashboard can tell whether one is up without WMI.</summary>
@@ -29,15 +32,21 @@ public sealed class Installer
     /// dashboard's way to retire one an older build left hidden in the tray (M.ORCH-T183), which has no window to close.</summary>
     public static string DashboardExitEvent(int pid) => $@"Local\MindAttic.Orchestrator.Dashboard.Exit.{pid}";
 
+    /// <summary>The house install folder, used when it is writable or already holds the install.</summary>
     public static readonly string PreferredDir = @"C:\Apps\MindAttic.Orchestrator";
+    /// <summary>The per-user Programs folder, used when the preferred one is not writable.</summary>
     public static readonly string FallbackDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "MindAttic.Orchestrator");
 
+    /// <summary>An installer for the folder <see cref="ChooseInstallDir"/> picks.</summary>
     public Installer() : this(ChooseInstallDir(PreferredDir, FallbackDir)) { }
 
+    /// <summary>An installer for <paramref name="installDir"/> (tests point it at a temp folder).</summary>
     public Installer(string installDir) => InstallDir = installDir;
 
+    /// <summary>The folder the exe is installed into.</summary>
     public string InstallDir { get; }
+    /// <summary>Full path of the installed exe.</summary>
     public string InstalledExe => Path.Combine(InstallDir, ExeName);
 
     /// <summary>The house folder (C:\Apps) when it's writable or already holds the install; otherwise per-user Programs.</summary>
@@ -108,8 +117,10 @@ public sealed class Installer
     public static bool SamePath(string a, string b) =>
         !string.IsNullOrWhiteSpace(a) && !string.IsNullOrWhiteSpace(b) && string.Equals(Path.GetFullPath(a).TrimEnd('\\'), Path.GetFullPath(b).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>True when <paramref name="runningExe"/> is the installed copy rather than a build output run in place.</summary>
     public bool IsInstalled(string runningExe) => SamePath(runningExe, InstalledExe);
 
+    /// <summary>True when a daemon process holds <see cref="DaemonMutex"/>.</summary>
     public static bool DaemonRunning() => Mutex.TryOpenExisting(DaemonMutex, out var m) && Dispose(m);
 
     private static bool Dispose(IDisposable d) { d.Dispose(); return true; }
@@ -325,6 +336,7 @@ public sealed class Installer
         catch (System.ComponentModel.Win32Exception ex) { throw new InvalidOperationException($"Couldn't start the daemon: {ex.Message}", ex); }
     }
 
+    /// <summary>The shortcut files this installer owns, one per place it puts <see cref="ShortcutName"/>.</summary>
     public static IReadOnlyList<string> ShortcutPaths() =>
     [
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "MindAttic", ShortcutName),

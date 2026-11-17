@@ -46,6 +46,7 @@ public sealed record MachineTopology(TopologyKind Kind)
     public static MachineTopology From(MachineRole role) =>
         role.IsClient && !string.IsNullOrWhiteSpace(role.Member) ? new(TopologyKind.MemberClient) : For(role.Role);
 
+    /// <summary>The topology for a plain machine role, ignoring any member connection.</summary>
     public static MachineTopology For(MachineRoleKind role) => new(role switch
     {
         MachineRoleKind.Host => TopologyKind.Host,
@@ -53,7 +54,9 @@ public sealed record MachineTopology(TopologyKind Kind)
         _ => TopologyKind.Standalone,
     });
 
+    /// <summary>True for a machine that is neither host nor client.</summary>
     public bool IsStandalone => Kind == TopologyKind.Standalone;
+    /// <summary>True for the machine that hosts the shared services.</summary>
     public bool IsHost => Kind == TopologyKind.Host;
 
     /// <summary>An org member's own PC connected to the central host with a member key (hub phase 1, M.ORCH-T1640).</summary>
@@ -108,5 +111,6 @@ public sealed record MachineTopology(TopologyKind Kind)
         || bind.Trim().Equals("localhost", StringComparison.OrdinalIgnoreCase)
         || (IPAddress.TryParse(bind.Trim(), out var address) && IPAddress.IsLoopback(address));
 
+    /// <summary>The topology kind in lowercase (<c>host</c>, <c>client</c>, ...), as it is written to settings and logs.</summary>
     public override string ToString() => Kind.ToString().ToLowerInvariant();
 }

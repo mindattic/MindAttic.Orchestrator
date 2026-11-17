@@ -23,7 +23,17 @@ public sealed record LoginToken(string Email, DateTime MintedUtc, DateTime Expir
 }
 
 /// <summary>How a <see cref="LoginTokens.MintFor"/> went.</summary>
-public enum MintOutcome { Minted, NoToken, WrongAccount, Failed }
+public enum MintOutcome
+{
+    /// <summary>A long-lived token was produced and stored.</summary>
+    Minted,
+    /// <summary><c>claude setup-token</c> ran but printed no token; the login keeps using its own folder login.</summary>
+    NoToken,
+    /// <summary>The token belongs to a different account than the login it was minted for.</summary>
+    WrongAccount,
+    /// <summary>The command could not be run or errored.</summary>
+    Failed,
+}
 
 /// <summary>The token record.</summary>
 public sealed record MintResult(MintOutcome Outcome, string Message, LoginToken? Token = null)

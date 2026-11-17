@@ -23,8 +23,11 @@ namespace MindAttic.Orchestrator.Settings;
 /// </summary>
 public sealed class OrchestratorDb(string path)
 {
+    /// <summary>The database file's path relative to the checkout root.</summary>
     public const string RelativePath = "data/orchestrator.db";
+    /// <summary>The SQL text dump kept beside the database, relative to the checkout root, so the data diffs in git.</summary>
     public const string DumpRelativePath = "data/orchestrator.sql";
+    /// <summary>Environment variable that overrides the database path (every process and worktree then shares that one file).</summary>
     public const string EnvVar = "MINDATTIC_ORCHESTRATOR_DB";
 
     /// <summary>The database every process uses: <see cref="EnvVar"/> when set, else the main checkout's
@@ -65,6 +68,7 @@ public sealed class OrchestratorDb(string path)
             ? System.IO.Path.GetDirectoryName(data) : null;
     }
 
+    /// <summary>The full path of the database file this instance opens.</summary>
     public string Path { get; } = System.IO.Path.GetFullPath(path);
 
     /// <summary>The readable dump written beside the database: <c>orchestrator.sql</c>.</summary>
@@ -521,6 +525,7 @@ public sealed class OrchestratorDb(string path)
     /// Microsoft.Data.Sqlite also retries a busy command until its own timeout (30 s by default), so that's held to the same.</summary>
     internal static int BusyTimeoutMs { get; set; } = 5000;
 
+    /// <summary>The schema version: how many migrations there are, so a database at this number is current.</summary>
     public static int Version => Migrations.Length;
 
     /// <summary>An open connection with the schema brought up to date. Not pooled: a closed connection lets go of the file, so

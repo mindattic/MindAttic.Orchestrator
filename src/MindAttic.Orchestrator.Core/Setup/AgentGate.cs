@@ -11,6 +11,7 @@ namespace MindAttic.Orchestrator.Setup;
 /// </summary>
 public static class AgentGate
 {
+    /// <summary>File name of the generated pace-gate hook script.</summary>
     public const string ScriptName = "pace-gate.py";
 
     /// <summary>Claude Code's limit on the hook; above <see cref="MaxHoldSeconds"/> so a hold is never cut off as a failure.</summary>
@@ -23,10 +24,13 @@ public static class AgentGate
     /// <see cref="ContextHookTimeoutSeconds"/>: Python's start, the save and the answer still fit after it.</summary>
     public const int StopHookBudgetSeconds = 45;
 
+    /// <summary>The longest, in seconds, the pace gate holds a prompt before letting it through.</summary>
     public const int MaxHoldSeconds = 300;
 
+    /// <summary>How often, in seconds, Claude Code re-runs the status line command (written as <c>refreshInterval</c>).</summary>
     public const int StatusLineRefreshSeconds = 60;
 
+    /// <summary>Claude Code's per-user config folder (<c>~/.claude</c>), where hooks and settings are written.</summary>
     public static string ClaudeDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
 
     /// <summary>Python shared by both hooks: the claude.exe process the hook runs under (through the
@@ -679,6 +683,7 @@ public static class AgentGate
     /// <see cref="ApiKeySetAsideName"/> are read in once (kept as .bak) and written again only while the database is held,
     /// missing or older. The context gate's billing check names the set-aside row literally (its Python isn't interpolated).</summary>
     public const string StopLatchStateName = "stop-latch";
+    /// <summary>Store state recording the API keys the context gate has set aside.</summary>
     public const string ApiKeySetAsideStateName = "api-key-set-aside";
 
     /// <summary>
@@ -3049,6 +3054,7 @@ public static class AgentGate
     /// <summary>The pace gate's event log in <c>~/.claude/session-context</c>: one JSON line per hold or refusal.</summary>
     public const string GateLogName = "pace-gate.jsonl";
 
+    /// <summary>File name of the generated context-gate hook script.</summary>
     public const string ContextScriptName = "context-gate.py";
 
     /// <summary>The folder in <c>~/.claude/session-context</c> holding one activity record per CLI session,
@@ -4279,8 +4285,11 @@ public static class AgentGate
     /// <summary>Days Claude Code keeps session transcripts, written as <c>cleanupPeriodDays</c> when a login has none.</summary>
     public const int TranscriptKeepDays = 365;
 
+    /// <summary>Codex CLI's per-user config folder (<c>~/.codex</c>).</summary>
     public static string CodexDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".codex");
+    /// <summary>Gemini CLI's per-user config folder (<c>~/.gemini</c>).</summary>
     public static string GeminiDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gemini");
+    /// <summary>Path of the Kimi CLI's <c>config.toml</c>.</summary>
     public static string KimiConfigPath { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".kimi-code", "config.toml");
 
     /// <summary>

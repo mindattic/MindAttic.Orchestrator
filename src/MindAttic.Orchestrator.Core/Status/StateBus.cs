@@ -215,13 +215,16 @@ public abstract record StatePayload
 /// <summary>The <see cref="StateBus.Members"/> payload: every member, by email.</summary>
 public sealed record MembersPayload : StatePayload
 {
+    /// <summary>Every member.</summary>
     [JsonPropertyName("members")] public IReadOnlyList<Member> Members { get; init; } = [];
 }
 
 /// <summary>The <see cref="StateBus.Orgs"/> payload: every org (the default one first) and every login placed in one.</summary>
 public sealed record OrgsPayload : StatePayload
 {
+    /// <summary>Every org, the default one first.</summary>
     [JsonPropertyName("orgs")] public IReadOnlyList<Organization> Orgs { get; init; } = [];
+    /// <summary>Every login and the org it is placed in.</summary>
     [JsonPropertyName("members")] public IReadOnlyList<OrgMember> Members { get; init; } = [];
 
     /// <summary>The orgs as the store reads them.</summary>
@@ -231,23 +234,27 @@ public sealed record OrgsPayload : StatePayload
 /// <summary>The <see cref="StateBus.Settings"/> payload: the whole of the settings.</summary>
 public sealed record SettingsPayload : StatePayload
 {
+    /// <summary>The settings as stored.</summary>
     [JsonPropertyName("settings")] public OrchestratorSettings Settings { get; init; } = new();
 }
 
 /// <summary>The <see cref="StateBus.Reminders"/> payload: every reminder not sent yet, soonest first.</summary>
 public sealed record RemindersPayload : StatePayload
 {
+    /// <summary>The reminders not sent yet, soonest first.</summary>
     [JsonPropertyName("pending")] public IReadOnlyList<Reminder> Pending { get; init; } = [];
 }
 
 /// <summary>The <see cref="StateBus.Cutoffs"/> payload: every login's own weekly/5-hour cutoffs (<c>org limit</c>).</summary>
 public sealed record CutoffsPayload : StatePayload
 {
+    /// <summary>Each login's own weekly and 5-hour cutoffs.</summary>
     [JsonPropertyName("cutoffs")] public IReadOnlyList<UsageCutoff> Cutoffs { get; init; } = [];
 }
 
 /// <summary>The <see cref="StateBus.Allowances"/> payload: every login allowed past its weekly target (<c>org allow</c>).</summary>
 public sealed record AllowancesPayload : StatePayload
 {
+    /// <summary>Each login allowed past its weekly target.</summary>
     [JsonPropertyName("allowances")] public IReadOnlyList<WeeklyAllowance> Allowances { get; init; } = [];
 }

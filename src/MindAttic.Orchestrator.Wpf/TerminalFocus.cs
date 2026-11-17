@@ -5,7 +5,15 @@ using MindAttic.Orchestrator.Sessions;
 namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>How far "Go to tab" got: the tab itself, its window only, or nothing (with why).</summary>
-public enum GoToOutcome { Tab, Window, NotFound }
+public enum GoToOutcome
+{
+    /// <summary>The tab itself was brought forward.</summary>
+    Tab,
+    /// <summary>Only its window could be found and focused.</summary>
+    Window,
+    /// <summary>Neither the tab nor its window was found.</summary>
+    NotFound,
+}
 
 /// <summary>The outcome record.</summary>
 public sealed record GoToResult(GoToOutcome Outcome, string Note);

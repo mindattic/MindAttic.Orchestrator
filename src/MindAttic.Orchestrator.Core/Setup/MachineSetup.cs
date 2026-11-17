@@ -36,6 +36,7 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
 
     private static readonly TimeSpan GitTimeout = TimeSpan.FromMinutes(2);
 
+    /// <summary>The folder holding every project's checkout, which setup clones into and scans.</summary>
     public string WorkspaceRoot { get; } = workspaceRoot ?? OrchestratorOptions.Load().WorkspaceRoot;
 
     private string OrchestratorRepo => Path.Combine(WorkspaceRoot, "MindAttic.Orchestrator");

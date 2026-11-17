@@ -30,6 +30,7 @@ public partial class App : Application
     /// <summary>What --install exits with when it refused because a Claude CLI is still working (M.ORCH-T873); run.ps1 reads it.</summary>
     public const int BusyRefusedExit = 3;
 
+    /// <summary>Starts the app in one of its modes: dashboard, daemon, or an install/uninstall run.</summary>
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -241,6 +242,7 @@ public partial class App : Application
     /// <summary>This process is the dashboard (not the daemon or an install run): it writes the session-restore file.</summary>
     private bool dashboard;
 
+    /// <summary>Releases the app's hooks and, for the dashboard, saves session restore before exit.</summary>
     protected override void OnExit(ExitEventArgs e)
     {
         // Closed on its own: written once more, marked clean, so the next start offers nothing (M.ORCH-T862).

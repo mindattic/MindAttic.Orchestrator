@@ -130,8 +130,12 @@ public static class OrgSelection
     /// <summary>The store state the dashboard keeps its chosen org in.</summary>
     public const string ViewName = "dashboard-org";
 
-    /// <summary>The org type.</summary>
-    public sealed class View { public string? Org { get; init; } }
+    /// <summary>The shape of the stored choice.</summary>
+    public sealed class View
+    {
+        /// <summary>The chosen org's id or name; null for the default org.</summary>
+        public string? Org { get; init; }
+    }
 
     /// <summary>The org last chosen in the dashboard, or null when none was (or it can't be read now).</summary>
     public static string? Remembered(JsonStore store)

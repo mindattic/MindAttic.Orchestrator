@@ -116,7 +116,9 @@ public sealed record StatusMessage
     /// <summary>The version constant.</summary>
     public const int Version = 1;
 
+    /// <summary>The envelope kind it travelled as; set when read back, never serialized in the payload.</summary>
     [JsonIgnore] public string Kind { get; init; } = "";
+    /// <summary>When the writer sent it (UTC), from the envelope; never serialized in the payload.</summary>
     [JsonIgnore] public DateTime AtUtc { get; init; }
 
     /// <summary>The writing process.</summary>

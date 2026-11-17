@@ -15,15 +15,25 @@ namespace MindAttic.Orchestrator.Sessions;
 /// <summary>A session as a teammate's gateway lists it (<c>GET /sessions</c>, M.ORCH-T933).</summary>
 public sealed record RemoteSessionInfo
 {
+    /// <summary>The session id the gateway knows it by.</summary>
     [JsonPropertyName("id")] public string Id { get; init; } = "";
+    /// <summary>The tab title, when it has one.</summary>
     [JsonPropertyName("title")] public string? Title { get; init; }
+    /// <summary>The email of the login its CLI runs on.</summary>
     [JsonPropertyName("login")] public string? Login { get; init; }
+    /// <summary>The repo it works in.</summary>
     [JsonPropertyName("repo")] public string? Repo { get; init; }
+    /// <summary>Terminal width in columns.</summary>
     [JsonPropertyName("cols")] public int Cols { get; init; }
+    /// <summary>Terminal height in rows.</summary>
     [JsonPropertyName("rows")] public int Rows { get; init; }
+    /// <summary>Its lifecycle state as the gateway names it (running, exited, ...).</summary>
     [JsonPropertyName("state")] public string? State { get; init; }
+    /// <summary>The process exit code once it has exited; null while it runs.</summary>
     [JsonPropertyName("exitCode")] public int? ExitCode { get; init; }
+    /// <summary>When the session started (UTC).</summary>
     [JsonPropertyName("startedUtc")] public DateTime StartedUtc { get; init; }
+    /// <summary>The gateway wire-protocol version the session speaks.</summary>
     [JsonPropertyName("protocol")] public int Protocol { get; init; }
 
     /// <summary><c>watch</c> or <c>interact</c>: the most this caller may do with it (the grant and the token's scope).</summary>
@@ -42,11 +52,17 @@ public sealed record RemoteSessionInfo
 /// <summary>A consent request waiting on this member as a session owner (<c>GET /consents</c>, hub phase 2, M.ORCH-T1641).</summary>
 public sealed record RemoteConsent
 {
+    /// <summary>The consent request id, the handle for approving or denying it.</summary>
     [JsonPropertyName("id")] public string Id { get; init; } = "";
+    /// <summary>The session the viewer wants to interact with.</summary>
     [JsonPropertyName("session")] public string Session { get; init; } = "";
+    /// <summary>The member asking for interact access.</summary>
     [JsonPropertyName("viewer")] public string Viewer { get; init; } = "";
+    /// <summary>The member whose session it is, and who must answer.</summary>
     [JsonPropertyName("owner")] public string Owner { get; init; } = "";
+    /// <summary>When the viewer asked (UTC).</summary>
     [JsonPropertyName("askedUtc")] public DateTime AskedUtc { get; init; }
+    /// <summary>When the request lapses if unanswered (UTC).</summary>
     [JsonPropertyName("deadlineUtc")] public DateTime DeadlineUtc { get; init; }
 }
 

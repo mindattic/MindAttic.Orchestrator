@@ -45,4 +45,12 @@ public static partial class DashboardRequest
 }
 
 /// <summary>What a <c>--show</c> target names.</summary>
-public enum ShowKind { Person, Session, Ticket }
+public enum ShowKind
+{
+    /// <summary>A member or login.</summary>
+    Person,
+    /// <summary>A CLI session.</summary>
+    Session,
+    /// <summary>A ticket.</summary>
+    Ticket,
+}

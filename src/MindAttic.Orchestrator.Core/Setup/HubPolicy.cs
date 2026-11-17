@@ -20,8 +20,10 @@ public interface IWindowsAccounts
 /// <summary>The real lookup: <see cref="NTAccount.Translate"/> to a SID, which only reads the account database.</summary>
 public sealed class LocalWindowsAccounts : IWindowsAccounts
 {
+    /// <summary>The shared instance; the class holds no state.</summary>
     public static readonly LocalWindowsAccounts Instance = new();
 
+    /// <summary>True when <paramref name="account"/> (<c>DOMAIN\name</c>, <c>.\name</c> or a bare name) resolves to a SID on this machine.</summary>
     public bool Exists(string account)
     {
         try
@@ -33,6 +35,7 @@ public sealed class LocalWindowsAccounts : IWindowsAccounts
         catch (Exception ex) when (ex is IdentityNotMappedException or ArgumentException or SystemException) { return false; }
     }
 
+    /// <summary>The signed-in Windows account as <c>DOMAIN\name</c>.</summary>
     public string CurrentUser => $"{Environment.UserDomainName}\\{Environment.UserName}";
 }
 

@@ -16,10 +16,15 @@ namespace MindAttic.Orchestrator.Status;
 /// </summary>
 public sealed record StatusEnvelope
 {
+    /// <summary>The message kind; a subscriber skips one it does not know.</summary>
     [JsonPropertyName("kind")] public string Kind { get; init; } = "";
+    /// <summary>The payload version for that kind.</summary>
     [JsonPropertyName("v")] public int V { get; init; } = 1;
+    /// <summary>When the writer sent it (UTC).</summary>
     [JsonPropertyName("at")] public DateTime AtUtc { get; init; }
+    /// <summary>The writing process id.</summary>
     [JsonPropertyName("pid")] public int Pid { get; init; }
+    /// <summary>The kind's own record, as JSON.</summary>
     [JsonPropertyName("payload")] public JsonElement Payload { get; init; }
 
     /// <summary>An envelope of <paramref name="kind"/> carrying <paramref name="payload"/>, from this process now.</summary>

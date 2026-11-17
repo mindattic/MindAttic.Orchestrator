@@ -16,7 +16,15 @@ public sealed record ClaudeLogin(string AccountUuid, string? OrganizationUuid, s
 }
 
 /// <summary>What Claude Code was told about a key (its last 20 characters in <c>customApiKeyResponses</c>).</summary>
-public enum KeyChoice { None, Approved, Rejected }
+public enum KeyChoice
+{
+    /// <summary>Claude Code has no record for the key, so it asks before using it.</summary>
+    None,
+    /// <summary>Claude Code was told it may use the key.</summary>
+    Approved,
+    /// <summary>Claude Code was told not to use the key.</summary>
+    Rejected,
+}
 
 /// <summary>
 /// Claude Code's own record of which <c>ANTHROPIC_API_KEY</c> it may use: the last 20 characters of each key it was told

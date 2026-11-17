@@ -13,8 +13,18 @@ using MindAttic.Orchestrator.Setup;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-/// <summary>The working values.</summary>
-public enum Focus { All, Waiting, Working, Tickets }
+/// <summary>Which kind of work the dashboard narrows its list to.</summary>
+public enum Focus
+{
+    /// <summary>Everything.</summary>
+    All,
+    /// <summary>Sessions waiting on the user.</summary>
+    Waiting,
+    /// <summary>Sessions actively working.</summary>
+    Working,
+    /// <summary>Open tickets.</summary>
+    Tickets,
+}
 
 /// <summary>The tile group view model type.</summary>
 public sealed class TileGroupViewModel(string title, string hint, Brush accent) : ObservableObject
