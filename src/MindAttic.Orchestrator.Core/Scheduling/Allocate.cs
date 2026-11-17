@@ -1,6 +1,7 @@
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
+using MindAttic.Orchestrator.Setup;
 
 namespace MindAttic.Orchestrator.Scheduling;
 
@@ -177,7 +178,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             // In the repo's own checkout, on main: no worktree, no branch (M.ORCH-T1122).
             var tree = repo.Path;
             var log = Path.Combine(LogDirectory, $"{next.Id}-{nowUtc.ToLocalTime():yyyyMMdd-HHmm}.log");
-            if (Start(tree, PromptFor(next, tree, MainlineOf(repo.Path)), log) is not { } pid)
+            if (Start(tree, PromptFor(next, tree, MainlineOf(repo.Path), branch: BranchWorkFor(settings, MachineTopology.Current, store, next)), log) is not { } pid)
             {
                 Tell(repo.Name, $"allocate: couldn't start an agent in {repo.Name}");
                 failed.Add(repo.Name);
@@ -234,7 +235,10 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     /// session is tied to the ticket), stages only its own files, lands on main itself, then closes the ticket in the ticket
     /// database.
     /// </summary>
-    internal static string PromptFor(QueueItem item, string checkout, string mainline = "main", ModelChoice.Choice? model = null) =>
+    internal static string PromptFor(QueueItem item, string checkout, string mainline = "main", ModelChoice.Choice? model = null, BranchWork? branch = null) =>
+        // M.ORCH-T1633: on the remote host with branch builds on, the ticket is worked on its own work branch instead; everywhere
+        // else (the setting off, or any machine but the host) the prompt below is unchanged, byte for byte.
+        branch is not null ? PromptOnBranch(item, checkout, mainline, model, branch) :
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
         $"Work in {item.Repo}'s own checkout ({checkout}) on {mainline}, never a separate branch or worktree: run every command from that folder (cd there first). " +
         $"Other agents may be working {item.Repo} in this same checkout at the same time, so touch only the files this ticket needs and leave every change " +
@@ -283,6 +287,88 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         "finds that's really wrong, rebuild, and, same as before, re-read each path right before this commit too (the review took time, so another " +
         "agent's concurrent edit to the same path is even more likely here; M.ORCH-T1178) and commit that with plain git commit -m \"<subject>\" " +
         "-- <path> ... (only your paths); don't run the review again. ";
+
+    /// <summary>
+    /// Where a ticket is worked when <see cref="WorksOnBranches"/> (M.ORCH-T1633, a M.ORCH-T1501 follow-up): its own
+    /// <c>origin/work/&lt;ticket&gt;</c> branch (<see cref="Branch"/>; the one it already has, when an earlier round left one, so it
+    /// keeps going on it: <see cref="Exists"/>), checked out in a worktree of its own (<see cref="Worktree"/>), never the repo's
+    /// shared checkout, which other agents keep on main. <see cref="Brief"/> is what the last local test run of that branch found,
+    /// when it failed and the branch came back to this ticket (<see cref="BranchBuilds.Brief"/>).
+    /// </summary>
+    public sealed record BranchWork(string Branch, string Worktree, bool Exists = false, string? Brief = null);
+
+    /// <summary>How a ticket's own work worktree starts (<c>WorktreeRoot\&lt;repo&gt;\work-&lt;ticket&gt;</c>): apart from the host's build
+    /// (<see cref="BranchBuilds.WorktreeName"/>) and merge (<see cref="BranchMerges.MergeTreeName"/>) worktrees, and never named
+    /// as a bare ticket, so the old-worktree sweep leaves it alone.</summary>
+    public const string WorkTreeName = "work-";
+
+    /// <summary>Whether <c>/allocate</c> here works each ticket on its own work branch (M.ORCH-T1633): only on the remote host
+    /// (<see cref="MachineTopology.IsHost"/>), and only with the Vault's <see cref="OrchestratorSettings.RemoteBranchBuilds"/> on.
+    /// The host-only carve-out from main-only: never on the owner's PC (a client), a standalone install, or with the setting off.</summary>
+    public static bool WorksOnBranches(OrchestratorSettings settings, MachineTopology topology) =>
+        settings.RemoteBranchBuilds && topology.IsHost;
+
+    /// <summary>The ticket's own worktree for its work branch.</summary>
+    public static string WorkTreeOf(string worktreeRoot, string repo, string ticketId) =>
+        Path.Combine(worktreeRoot, repo, WorkTreeName + ticketId);
+
+    /// <summary>
+    /// Where <paramref name="item"/> is worked (M.ORCH-T1633): null (the repo's own checkout on main, as ever) unless
+    /// <see cref="WorksOnBranches"/>; else its work branch: the one the host already knows it by (<see cref="BranchBuilds.BranchFor"/>),
+    /// or <c>work/&lt;ticket&gt;</c>, with the failure text when that branch's last local test run failed at the head it still stands
+    /// at (<see cref="BranchBuilds.ReturnedToWork"/>).
+    /// </summary>
+    public static BranchWork? BranchWorkFor(OrchestratorSettings settings, MachineTopology topology, JsonStore store, QueueItem item)
+    {
+        if (!WorksOnBranches(settings, topology)) return null;
+        var state = BranchBuilds.Load(store);
+        var existing = BranchBuilds.BranchFor(state, item.Repo, item.Id);
+        var branch = existing ?? BranchBuilds.Prefix + item.Id;
+        var returned = BranchBuilds.ReturnedToWork(state, BranchBuilds.LoadTests(store))
+            .FirstOrDefault(r => Same(r.Repo, item.Repo) && string.Equals(r.Branch, branch, StringComparison.Ordinal));
+        return new BranchWork(branch, WorkTreeOf(settings.WorktreeRoot, item.Repo, item.Id), existing is not null,
+            returned is null ? null : BranchBuilds.Brief(returned));
+    }
+
+    /// <summary>
+    /// The story's prompt on the remote host with branch builds on (M.ORCH-T1633): worked on its own work branch in a worktree of
+    /// its own, pushed to <c>origin/work/&lt;ticket&gt;</c> and never to main. The host builds each push, the owner's PC runs the
+    /// branch's tests, and the host merges a signed-off head into main itself (M.ORCH-T1501, T1637, T1636); a failed run comes back
+    /// to this ticket, whose next round carries on on the same branch (with what failed, <see cref="BranchWork.Brief"/>).
+    /// </summary>
+    private static string PromptOnBranch(QueueItem item, string checkout, string mainline, ModelChoice.Choice? model, BranchWork b)
+    {
+        var sonnet = model is { IsSonnet: true };
+        return
+            $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
+            (b.Brief is { Length: > 0 } brief ? $"This ticket is back from its branch's local test run: {brief.Trim()} " : "") +
+            $"This machine is the remote host with branch builds on, so this ticket is worked on its own branch, {b.Branch}, never on {mainline}: " +
+            $"the host builds each push to origin/{b.Branch}, the owner's PC runs its tests, and the host merges it into {mainline} itself once they pass. " +
+            $"Work in the ticket's own worktree ({b.Worktree}), never in {item.Repo}'s shared checkout ({checkout}), which other agents keep on {mainline}: " +
+            "never switch that checkout's branch, and never commit or push there. " +
+            (b.Exists ? $"{b.Branch} already has work from an earlier round: carry on from it, on that same branch, not a new one. " : "") +
+            $"Set the worktree up first: git -C \"{checkout}\" fetch origin; then, if {b.Worktree} already exists, cd there, git checkout {b.Branch}, " +
+            $"and git merge --ff-only origin/{b.Branch} when origin has that branch; otherwise git -C \"{checkout}\" worktree add -B {b.Branch} \"{b.Worktree}\" " +
+            $"origin/{b.Branch} when origin has that branch (git -C \"{checkout}\" rev-parse --verify --quiet origin/{b.Branch}), else origin/{mainline}. " +
+            "Then run every command from the worktree (cd there first), touching only the files this ticket needs " +
+            "(never git stash, git reset --hard or git clean, and never a push to " + mainline + "). " +
+            "Run any subagents in the foreground, never in the background. " +
+            "Do these steps in order: " +
+            "1. When the work is done, build it to check it; do not run any tests (not even the ones your change touches), " +
+            $"because the owner's PC runs {item.Repo}'s suite on this branch's head once the host has built it clean, and a failure comes back to this ticket. " +
+            $"2. Commit this ticket's work on {b.Branch}, naming every file you changed: git add <path> ... for new files, then plain " +
+            "git commit -m \"<subject>\" -- <path> <path> ... " +
+            $"(not /commit, whose gate runs the test suite), with {item.Id} at the end of the subject; no push yet, the steps below do that, so keep going. " +
+            (sonnet ? "3. " + ReviewStep(item.Id) : "") +
+            $"{(sonnet ? 4 : 3)}. Push it to its own branch, never to {mainline}: git push origin HEAD:{b.Branch}. " +
+            $"If the push is rejected because origin/{b.Branch} moved, git fetch origin {b.Branch}, git merge --no-edit origin/{b.Branch} (never a stash), rebuild and push again. " +
+            $"Don't merge it into {mainline} yourself: the host does that once its local test run passes. " +
+            $"{(sonnet ? 5 : 4)}. Only once the push has succeeded, as its own step, " +
+            $"mark it finished: tickets ticket close {item.Id} --ref <the commit hash as it landed on origin/{b.Branch}>. " +
+            "Leave the worktree where it is: a failed local test run sends the branch back to this ticket, and its next round carries on there. " +
+            "You are done only when the push has succeeded and the ticket is closed. " +
+            "If you can't finish or push it, leave the ticket open and say why.";
+    }
 
     /// <summary>
     /// Agents that exited. One in the repo's checkout (every one since M.ORCH-T1122) is done when its ticket is closed: it
@@ -462,6 +548,10 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
 
         /// <summary>Why it went there (<see cref="Redelegation.Text"/>); null for this CLI's own.</summary>
         public string? Delegated { get; init; }
+
+        /// <summary>The work branch it's worked on (M.ORCH-T1633: on the remote host with branch builds on), whose own worktree
+        /// is <see cref="Directory"/>; null when it's worked in the repo's own checkout on main.</summary>
+        public string? Branch { get; init; }
     }
 
     /// <summary>What <c>orchestrator next --claim</c> ends with once it claimed some (M.ORCH-T529: a CLI held two claims unstarted
@@ -501,12 +591,12 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null,
         IReadOnlyDictionary<int, DateTime>? onSince = null, Func<int, string?>? loginOf = null,
         IReadOnlyList<LoginRoom>? logins = null, Func<QueueItem, LoginRoom, string?>? redelegate = null, string? login = null,
-        bool canFallBack = false, OrgRouting? orgs = null)
+        bool canFallBack = false, OrgRouting? orgs = null, MachineTopology? topology = null)
     {
         // Org dispatch (M.ORCH-T753): an org's tickets go only to its own members' logins; with one org, nothing changes.
         orgs ??= OrgRouting.Load(store, settings);
         var (handed, why) = NextHere(plan, settings, store, repos, count, claim, nowUtc, mainlineOf, unthrottled, self,
-            pilotRunning, stillOpen, cli, pilots, cliRunning, onSince, loginOf, login, orgs);
+            pilotRunning, stillOpen, cli, pilots, cliRunning, onSince, loginOf, login, orgs, topology ?? MachineTopology.Current);
         // Weekly-aware pacing (M.ORCH-T666): what this CLI's login can't fit goes to a login that can, else the fallback login, so
         // no ticket waits on a full account. Only for a claim (a dry run hands nothing out), and never for a /pacing off CLI,
         // whose own room isn't held to.
@@ -582,7 +672,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         Func<string, string>? mainlineOf, bool unthrottled,
         string? self, Func<Assignment, bool>? pilotRunning, Func<string, string, bool>? stillOpen,
         int? cli, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots, Func<int, bool>? cliRunning,
-        IReadOnlyDictionary<int, DateTime>? onSince, Func<int, string?>? loginOf, string? login, OrgRouting orgs)
+        IReadOnlyDictionary<int, DateTime>? onSince, Func<int, string?>? loginOf, string? login, OrgRouting orgs, MachineTopology topology)
     {
         cliRunning ??= ContextCycler.IsClaude;
         stillOpen ??= StillOpen;
@@ -761,7 +851,11 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             // Who works it, for Tickets Desktop's link back (M.ORCH-T766): best effort, never holds up the claim.
             Tickets.TicketWorking.Set(Path.GetDirectoryName(item.RepoPath), item.Id, login, self);
             var carried = orphans.TryGetValue(item.Id, out var orphan) && orphan.State == OrphanRecord.HandedBack ? OrphanWatch.CarryForward(orphan) : "";
-            handed.Add(new Handout(item, tree, carried + PromptFor(item, tree, mainlineOf(item.RepoPath), model), model));
+            // M.ORCH-T1633: on the remote host with branch builds on, on its own work branch in a worktree of its own; the claim
+            // still names the repo's checkout, as every claim does.
+            var onBranch = BranchWorkFor(settings, topology, store, item);
+            handed.Add(new Handout(item, onBranch?.Worktree ?? tree, carried + PromptFor(item, tree, mainlineOf(item.RepoPath), model, onBranch), model)
+                { Branch = onBranch?.Branch });
             inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
             committed += item.Estimate?.Fresh ?? 0;
         }

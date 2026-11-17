@@ -61,7 +61,9 @@ public sealed class OrgReach(JsonStore store)
                 continue;
             }
             if (!StillOpen(q.RepoPath, q.Id)) continue;
-            var result = open(q, Allocate.PromptFor(q, q.RepoPath, MainlineOf(q.RepoPath)));
+            // M.ORCH-T1633: on its own work branch on the remote host with branch builds on; else in the checkout on main, as ever.
+            var result = open(q, Allocate.PromptFor(q, q.RepoPath, MainlineOf(q.RepoPath),
+                branch: Allocate.BranchWorkFor(settings, Setup.MachineTopology.Current, store, q)));
             if (!result.Ok)
             {
                 Say(org, $"org-reach: {orgs.NameOf(org)}'s {q.Id} waits: {result.Message}");

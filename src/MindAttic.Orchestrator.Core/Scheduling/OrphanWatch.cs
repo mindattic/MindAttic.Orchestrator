@@ -243,7 +243,9 @@ public sealed class OrphanWatch(JsonStore store)
             return rec with { State = OrphanRecord.HandedBack, Redispatches = rec.Redispatches + 1, RedispatchedUtc = nowUtc, Why = $"handed back to the /allocate CLI {pilot}" };
         }
         if (OpenTab is not { } open) return Wait("no /allocate CLI works its repo, and this process can't open a tab");
-        var prompt = CarryForward(rec) + Allocate.PromptFor(q, tree, MainlineOf(q.RepoPath));
+        // M.ORCH-T1633: on its own work branch on the remote host with branch builds on; else in the checkout on main, as ever.
+        var prompt = CarryForward(rec) + Allocate.PromptFor(q, tree, MainlineOf(q.RepoPath),
+            branch: Allocate.BranchWorkFor(settings, Setup.MachineTopology.Current, store, q));
         var result = open(q, prompt);
         if (!result.Ok) return Wait(result.Message);
         events.Add(new Event($"orphaned: started {q.Id} again in a new tab: {result.Message}", false, ("Redispatched", $"{q.Id} in {q.Repo} went dark; started again in a new tab in its checkout.", false)));
