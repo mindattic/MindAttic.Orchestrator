@@ -435,7 +435,7 @@ public partial class App : Application
                 return;
             }
             var gate = new MindAttic.Orchestrator.Settings.JsonStore().LoadSettings();
-            foreach (var did in new[] { installer.EnsureDaemon(self), Installer.EnsureLogonStart(self), Installer.EnsureShortcuts(self), AgentGate.Ensure(contextPercent: gate.ContextCyclePercent, keepGoing: gate.KeepGoing), AgentGate.EnsureOtherProviders() })
+            foreach (var did in new[] { installer.EnsureDaemon(self), Installer.EnsureLogonStart(self), Installer.EnsureShortcuts(self), AgentGate.Ensure(contextPercent: gate.ContextCyclePercent, keepGoing: gate.KeepGoing, transcriptKeepDays: gate.TranscriptKeepDays), AgentGate.EnsureOtherProviders() })
                 if (did is not null) log.Information("Setup: {Did:l}", did);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or COMException)

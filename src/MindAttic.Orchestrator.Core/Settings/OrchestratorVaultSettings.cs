@@ -601,6 +601,41 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 100000)]
     public int TermLogKeepDays { get; set; } = 7;
 
+    /// <summary>KB disk-cleanup.log may grow to before it's rotated.</summary>
+    [Setting("Rotate disk-cleanup.log at (KB)", Group = "Alerts", Order = 63, Help = "KB disk-cleanup.log may grow to before the hourly prune rotates it to disk-cleanup.1.log. 0 never rotates it.")]
+    [SettingRange(0, 1048576)]
+    public int DiskCleanupLogMaxKb { get; set; } = 1024;
+
+    /// <summary>Rotated copies of disk-cleanup.log kept.</summary>
+    [Setting("Rotated disk-cleanup.logs kept", Group = "Alerts", Order = 63, Help = "Rotated copies of disk-cleanup.log kept (.1 is the newest); older ones are deleted.")]
+    [SettingRange(1, 100)]
+    public int DiskCleanupLogKeep { get; set; } = 3;
+
+    /// <summary>Hours between the orchestrator database's maintenance runs.</summary>
+    [Setting("Database maintenance every (hours)", Group = "Alerts", Order = 63, Help = "Hours between the orchestrator database's maintenance runs: its age-prune, then a SQLite VACUUM when enough of the file is free pages. 0 turns it off.")]
+    [SettingRange(0, 8760)]
+    public double DbMaintenanceHours { get; set; } = 24;
+
+    /// <summary>Days the database keeps its event rows (term audit, pace gate events).</summary>
+    [Setting("Keep database events (days)", Group = "Alerts", Order = 63, Help = "Days the orchestrator database keeps its event rows (terminal audit, pace gate events) before maintenance deletes older ones. 0 keeps them for good.")]
+    [SettingRange(0, 100000)]
+    public int DbEventKeepDays { get; set; } = 90;
+
+    /// <summary>Days the database keeps its token history (usage by day, ticket costs).</summary>
+    [Setting("Keep token history (days)", Group = "Alerts", Order = 63, Help = "Days the orchestrator database keeps its token history (usage by day, ticket costs by last use) before maintenance deletes older rows. 0 keeps it for good.")]
+    [SettingRange(0, 100000)]
+    public int DbHistoryKeepDays { get; set; }
+
+    /// <summary>Percent of the SQLite file that must be free pages before maintenance VACUUMs it.</summary>
+    [Setting("VACUUM when free pages reach (%)", Group = "Alerts", Order = 63, Help = "Percent of the orchestrator's SQLite file that must be free pages before maintenance VACUUMs it, so a file with little to reclaim isn't rewritten (and its committed copy churned) for nothing. 0 VACUUMs every run. SQL Server is never vacuumed.")]
+    [SettingRange(0, 100)]
+    public double DbVacuumMinFreePercent { get; set; } = 20;
+
+    /// <summary>Days Claude Code keeps session transcripts (each login's cleanupPeriodDays).</summary>
+    [Setting("Keep Claude transcripts (days)", Group = "Alerts", Order = 63, Help = "Days Claude Code keeps session transcripts, written into each login's cleanupPeriodDays (a crashed CLI is resumed from its transcript). 0 leaves each login's own value alone.")]
+    [SettingRange(0, 36500)]
+    public int TranscriptKeepDays { get; set; } = Setup.AgentGate.TranscriptKeepDays;
+
     /// <summary>Hourly, file GitHub issues labelled "orchestrator" and CI runs that failed on main as tickets.</summary>
     [Setting("GitHub intake", Group = "Alerts", Order = 7,
         Help = "Hourly, file GitHub issues labelled \"orchestrator\" and CI runs that failed on main as tickets.")]
@@ -966,6 +1001,13 @@ public sealed class OrchestratorVaultSettings
         GroomAfterDays = s.GroomAfterDays,
         LogKeepDays = s.LogKeepDays,
         TermLogKeepDays = s.TermLogKeepDays,
+        DiskCleanupLogMaxKb = s.DiskCleanupLogMaxKb,
+        DiskCleanupLogKeep = s.DiskCleanupLogKeep,
+        DbMaintenanceHours = s.DbMaintenanceHours,
+        DbEventKeepDays = s.DbEventKeepDays,
+        DbHistoryKeepDays = s.DbHistoryKeepDays,
+        DbVacuumMinFreePercent = s.DbVacuumMinFreePercent,
+        TranscriptKeepDays = s.TranscriptKeepDays,
         GitHubIntake = s.GitHubIntake,
         SqlFreshnessCheck = s.SqlFreshnessCheck,
         SqlFreshnessCheckAt = s.SqlFreshnessCheckAt,
@@ -1120,6 +1162,13 @@ public sealed class OrchestratorVaultSettings
         GroomAfterDays = GroomAfterDays,
         LogKeepDays = LogKeepDays,
         TermLogKeepDays = TermLogKeepDays,
+        DiskCleanupLogMaxKb = DiskCleanupLogMaxKb,
+        DiskCleanupLogKeep = DiskCleanupLogKeep,
+        DbMaintenanceHours = DbMaintenanceHours,
+        DbEventKeepDays = DbEventKeepDays,
+        DbHistoryKeepDays = DbHistoryKeepDays,
+        DbVacuumMinFreePercent = DbVacuumMinFreePercent,
+        TranscriptKeepDays = TranscriptKeepDays,
         GitHubIntake = GitHubIntake,
         SqlFreshnessCheck = SqlFreshnessCheck,
         SqlFreshnessCheckAt = string.IsNullOrWhiteSpace(SqlFreshnessCheckAt) ? OrchestratorSettings.DefaultSqlFreshnessCheckAt : SqlFreshnessCheckAt.Trim(),

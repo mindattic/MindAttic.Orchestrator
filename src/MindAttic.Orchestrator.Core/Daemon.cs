@@ -871,8 +871,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     /// <summary>Installs the agent hooks; the default writes Claude's and the other providers'. A test's stands in for it.</summary>
-    internal Func<int, bool, IEnumerable<string?>> InstallHooks { get; init; } = (percent, keepGoing) =>
-        [Setup.AgentGate.Ensure(contextPercent: percent, keepGoing: keepGoing), Setup.AgentGate.EnsureOtherProviders()];
+    internal Func<int, bool, int, IEnumerable<string?>> InstallHooks { get; init; } = (percent, keepGoing, transcriptKeepDays) =>
+        [Setup.AgentGate.Ensure(contextPercent: percent, keepGoing: keepGoing, transcriptKeepDays: transcriptKeepDays), Setup.AgentGate.EnsureOtherProviders()];
 
     /// <summary>Runs <c>tickets db sync</c> and <c>gh</c>; a test's stands in for the real one.</summary>
     internal IProcessRunner Runner { get; init; } = ProcessRunner.Default;
@@ -890,20 +890,22 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// <summary>Where alerts go; null sends them through the <see cref="Notifier"/>. A test's records them.</summary>
     internal Action<string, string, bool>? AlertSink { get; init; }
 
-    private (int, bool)? gatePercent; // what the hooks were last written with
+    private (int, bool, int)? gatePercent; // what the hooks were last written with
 
     /// <summary>
-    /// The hooks carry the cycle point, so they're rewritten when it (or keep-going) changes. A write that fails on the
-    /// file system (a hook file locked by a running CLI) is logged and left undone, so the next tick tries again.
+    /// The hooks carry the cycle point, so they're rewritten when it (or keep-going, or the transcript keep written into
+    /// settings.json, M.ORCH-T1681) changes. A write that fails on the file system (a hook file locked by a running CLI) is
+    /// logged and left undone, so the next tick tries again.
     /// </summary>
     internal void EnsureHooks(OrchestratorSettings s)
     {
-        if (gatePercent == (s.ContextCyclePercent, s.KeepGoing)) return;
+        var want = (s.ContextCyclePercent, s.KeepGoing, s.TranscriptKeepDays);
+        if (gatePercent == want) return;
         try
         {
-            foreach (var did in InstallHooks(s.ContextCyclePercent, s.KeepGoing).ToList())
+            foreach (var did in InstallHooks(s.ContextCyclePercent, s.KeepGoing, s.TranscriptKeepDays).ToList())
                 if (did is not null) Say(LogEventLevel.Information, did);
-            gatePercent = (s.ContextCyclePercent, s.KeepGoing);
+            gatePercent = want;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks (retrying next tick): {ex.Message}"); }
     }

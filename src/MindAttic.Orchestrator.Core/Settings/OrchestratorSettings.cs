@@ -391,6 +391,33 @@ public sealed record OrchestratorSettings
     /// <summary>Days a finished terminal host's own log file (terms\&lt;id&gt;.log) is kept (M.ORCH-T1611). 0 keeps them for good.</summary>
     public int TermLogKeepDays { get; init; } = 7;
 
+    /// <summary>KB <c>disk-cleanup.log</c> may grow to before the hourly prune rotates it to <c>disk-cleanup.1.log</c> (M.ORCH-T1681).
+    /// 0 never rotates it.</summary>
+    public int DiskCleanupLogMaxKb { get; init; } = 1024;
+
+    /// <summary>Rotated copies of <c>disk-cleanup.log</c> kept (<c>.1</c> newest); older ones are deleted (M.ORCH-T1681).</summary>
+    public int DiskCleanupLogKeep { get; init; } = 3;
+
+    /// <summary>Hours between the orchestrator database's maintenance runs: its age-prune, then a SQLite VACUUM when enough of the
+    /// file is free pages (M.ORCH-T1681). 0 turns it off.</summary>
+    public double DbMaintenanceHours { get; init; } = 24;
+
+    /// <summary>Days the database keeps its event rows (<c>term_audit</c>, the pace gate's <c>gate_events</c>) before maintenance
+    /// deletes older ones (M.ORCH-T1681). 0 keeps them for good.</summary>
+    public int DbEventKeepDays { get; init; } = 90;
+
+    /// <summary>Days the database keeps its token history (<c>usage_history</c> by day, <c>ticket_costs</c> by last use) before
+    /// maintenance deletes older rows (M.ORCH-T1681). 0, the default, keeps them for good.</summary>
+    public int DbHistoryKeepDays { get; init; }
+
+    /// <summary>Percent of the SQLite file that must be free pages before maintenance VACUUMs it (M.ORCH-T1681): high enough that a
+    /// file with little to reclaim isn't rewritten, so its committed copy isn't churned for nothing. 0 VACUUMs every run.</summary>
+    public double DbVacuumMinFreePercent { get; init; } = 20;
+
+    /// <summary>Days Claude Code keeps session transcripts: written into each login's <c>cleanupPeriodDays</c> (M.ORCH-T843, a
+    /// setting since M.ORCH-T1681). 0 leaves each login's own value alone.</summary>
+    public int TranscriptKeepDays { get; init; } = Setup.AgentGate.TranscriptKeepDays;
+
     /// <summary>Where alerts go off the desktop: a URL that takes a plain-text POST, like an ntfy.sh topic
     /// (https://ntfy.sh/your-topic) for phone pushes. Null sends nothing.</summary>
     public string? NotifyUrl { get; init; }

@@ -26,10 +26,10 @@ public sealed class DaemonSafetyTests
     [TearDown]
     public void TearDown() { try { Directory.Delete(dir, recursive: true); } catch (IOException) { } }
 
-    private Daemon Make(Func<int, bool, IEnumerable<string?>>? hooks = null, IProcessRunner? runner = null, TimeSpan? syncTimeout = null) =>
+    private Daemon Make(Func<int, bool, int, IEnumerable<string?>>? hooks = null, IProcessRunner? runner = null, TimeSpan? syncTimeout = null) =>
         new(new JsonStore(Path.Combine(dir, "store")), (level, line) => said.Add((level, line)))
         {
-            InstallHooks = hooks ?? ((_, _) => []),
+            InstallHooks = hooks ?? ((_, _, _) => []),
             Runner = runner ?? new FakeRunner(_ => new ProcessResult(0, "", "", false)),
             SyncTimeout = syncTimeout ?? TimeSpan.FromMinutes(2),
             AlertSink = (title, message, urgent) => alerts.Add((title, message, urgent)),
@@ -52,7 +52,7 @@ public sealed class DaemonSafetyTests
     public void A_hook_install_that_throws_IOException_is_retried_next_tick_not_marked_done()
     {
         var calls = 0;
-        var daemon = Make(hooks: (_, _) => ++calls == 1 ? throw new IOException("settings.json is locked") : ["installed the hooks"]);
+        var daemon = Make(hooks: (_, _, _) => ++calls == 1 ? throw new IOException("settings.json is locked") : ["installed the hooks"]);
         var s = new OrchestratorSettings();
 
         daemon.EnsureHooks(s);
@@ -72,7 +72,7 @@ public sealed class DaemonSafetyTests
     public void A_hook_install_denied_access_is_retried_too()
     {
         var calls = 0;
-        var daemon = Make(hooks: (_, _) => ++calls == 1 ? throw new UnauthorizedAccessException("denied") : []);
+        var daemon = Make(hooks: (_, _, _) => ++calls == 1 ? throw new UnauthorizedAccessException("denied") : []);
         daemon.EnsureHooks(new OrchestratorSettings());
         daemon.EnsureHooks(new OrchestratorSettings());
         Assert.That(calls, Is.EqualTo(2));
@@ -90,7 +90,7 @@ public sealed class DaemonSafetyTests
             if (calls == 1) throw new IOException("codex config locked");
             yield return "other providers";
         }
-        var daemon = Make(hooks: (_, _) => Install());
+        var daemon = Make(hooks: (_, _, _) => Install());
         daemon.EnsureHooks(new OrchestratorSettings());
         daemon.EnsureHooks(new OrchestratorSettings());
         Assert.That(calls, Is.EqualTo(2));
@@ -101,7 +101,7 @@ public sealed class DaemonSafetyTests
     public void Any_other_failure_propagates_to_the_tick_and_is_still_retried()
     {
         var calls = 0;
-        var daemon = Make(hooks: (_, _) => ++calls == 1 ? throw new InvalidOperationException("bug") : []);
+        var daemon = Make(hooks: (_, _, _) => ++calls == 1 ? throw new InvalidOperationException("bug") : []);
         Assert.Throws<InvalidOperationException>(() => daemon.EnsureHooks(new OrchestratorSettings()));
         daemon.EnsureHooks(new OrchestratorSettings());
         Assert.That(calls, Is.EqualTo(2));
@@ -111,7 +111,7 @@ public sealed class DaemonSafetyTests
     public void A_changed_cycle_point_or_keep_going_rewrites_the_hooks_with_the_new_values()
     {
         var seen = new List<(int, bool)>();
-        var daemon = Make(hooks: (percent, keepGoing) => { seen.Add((percent, keepGoing)); return []; });
+        var daemon = Make(hooks: (percent, keepGoing, _) => { seen.Add((percent, keepGoing)); return []; });
         daemon.EnsureHooks(new OrchestratorSettings { ContextCyclePercent = 80, KeepGoing = true });
         daemon.EnsureHooks(new OrchestratorSettings { ContextCyclePercent = 80, KeepGoing = true });
         daemon.EnsureHooks(new OrchestratorSettings { ContextCyclePercent = 70, KeepGoing = true });

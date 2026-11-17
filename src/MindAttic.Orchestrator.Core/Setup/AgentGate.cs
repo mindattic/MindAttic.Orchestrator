@@ -4225,8 +4225,10 @@ public static class AgentGate
 
     /// <summary>Writes the scripts and registers their hooks when anything is missing or out of date.
     /// Returns what it did, or null when everything was already in place. Throws <see cref="IOException"/> when
-    /// <c>settings.json</c> can't be read (it's left alone), so a caller tries again rather than taking the hooks as in place.</summary>
-    public static string? Ensure(string? claudeDir = null, int contextPercent = DefaultContextPercent, bool keepGoing = true)
+    /// <c>settings.json</c> can't be read (it's left alone), so a caller tries again rather than taking the hooks as in place.
+    /// <paramref name="transcriptKeepDays"/> above 0 is written as the login's exact <c>cleanupPeriodDays</c>; 0 leaves the
+    /// login's own value alone (M.ORCH-T1681).</summary>
+    public static string? Ensure(string? claudeDir = null, int contextPercent = DefaultContextPercent, bool keepGoing = true, int transcriptKeepDays = TranscriptKeepDays)
     {
         var dir = claudeDir ?? ClaudeDir;
         Directory.CreateDirectory(dir);
@@ -4270,10 +4272,12 @@ public static class AgentGate
         // Claude's own usage reaches the orchestrator only through a statusline redraw; an idle tab redraws on this
         // timer too, so the real percent stays fresh while any tab is open (M.ORCH-T125).
         // Claude Code deletes session transcripts (and their subagents') after cleanupPeriodDays, 30 by default: a crashed
-        // CLI is resumed from its transcript, so a longer keep is set unless the login already keeps them at least that long (M.ORCH-T843).
-        if (root["cleanupPeriodDays"] is not JsonValue keep || !keep.TryGetValue<int>(out var keepDays) || keepDays < TranscriptKeepDays)
+        // CLI is resumed from its transcript, so a longer keep is set (M.ORCH-T843). It's the TranscriptKeepDays setting, written
+        // exactly so lowering it really trims the transcripts; 0 leaves the login's own value alone (M.ORCH-T1681).
+        if (transcriptKeepDays > 0
+            && (root["cleanupPeriodDays"] is not JsonValue keep || !keep.TryGetValue<int>(out var keepDays) || keepDays != transcriptKeepDays))
         {
-            root["cleanupPeriodDays"] = TranscriptKeepDays;
+            root["cleanupPeriodDays"] = transcriptKeepDays;
             changed = true;
         }
         if (root["statusLine"] is JsonObject statusLine && statusLine["refreshInterval"] is null)
@@ -4289,7 +4293,8 @@ public static class AgentGate
         return did.Count > 0 ? string.Join(", ", did) : null;
     }
 
-    /// <summary>Days Claude Code keeps session transcripts, written as <c>cleanupPeriodDays</c> when a login has none.</summary>
+    /// <summary>The default days Claude Code keeps session transcripts, written as <c>cleanupPeriodDays</c>; the live value is
+    /// <see cref="Settings.OrchestratorSettings.TranscriptKeepDays"/> (M.ORCH-T1681).</summary>
     public const int TranscriptKeepDays = 365;
 
     /// <summary>Codex CLI's per-user config folder (<c>~/.codex</c>).</summary>
