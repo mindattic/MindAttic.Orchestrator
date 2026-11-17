@@ -6,20 +6,32 @@ public sealed record OrchestratorOptions
     /// <summary>The defaults with your saved settings applied (the workspace picked on first run).</summary>
     public static OrchestratorOptions Load(Settings.JsonStore? store = null) =>
         (store ?? new Settings.JsonStore()).LoadSettings().WorkspaceRoot is { Length: > 0 } root
-            ? new OrchestratorOptions { WorkspaceRoot = root }
-            : new OrchestratorOptions();
+            ? new OrchestratorOptions { WorkspaceRoot = root, ExtraWorkspaceRoots = DefaultExtraWorkspaceRoots }
+            : new OrchestratorOptions { ExtraWorkspaceRoots = DefaultExtraWorkspaceRoots };
 
     /// <summary>Like <see cref="Load"/>, but false when <c>settings.json</c> is there and can't be read (a typo from a hand
     /// edit, held past the retries): its defaults aren't the workspace you picked, so nothing should switch to them.</summary>
     public static bool TryLoad(Settings.JsonStore store, out OrchestratorOptions options)
     {
         var read = store.TryLoad<Settings.OrchestratorSettings>("settings", out var s);
-        options = read && s.WorkspaceRoot is { Length: > 0 } root ? new OrchestratorOptions { WorkspaceRoot = root } : new OrchestratorOptions();
+        options = (read && s.WorkspaceRoot is { Length: > 0 } root ? new OrchestratorOptions { WorkspaceRoot = root } : new OrchestratorOptions())
+            with
+        { ExtraWorkspaceRoots = DefaultExtraWorkspaceRoots };
         return read;
     }
 
+    /// <summary>Other workspace roots whose repos become tiles too (M.ORCH-T1752), selectable and CLI-openable just like
+    /// <see cref="WorkspaceRoot"/>'s: a repo there just won't have any tickets/budget history (no ticket database, no
+    /// USER_STORIES.md) unless it's brought into one. Set by <see cref="Load"/>/<see cref="TryLoad"/>, not defaulted on the
+    /// record itself, so a test building its own <see cref="OrchestratorOptions"/> around a scratch <see cref="WorkspaceRoot"/>
+    /// doesn't also pick up whatever's really sitting in <see cref="DefaultExtraWorkspaceRoots"/> on this machine.</summary>
+    public static readonly IReadOnlyList<string> DefaultExtraWorkspaceRoots = [@"D:\Projects\GunGreenEyes"];
+
     /// <summary>The workspace root.</summary>
     public string WorkspaceRoot { get; init; } = MindAttic.Tickets.Workspace.DefaultRoot;
+
+    /// <summary>See <see cref="DefaultExtraWorkspaceRoots"/>. Empty unless <see cref="Load"/>/<see cref="TryLoad"/> set it.</summary>
+    public IReadOnlyList<string> ExtraWorkspaceRoots { get; init; } = [];
 
     /// <summary>Claude Code's per-project transcript store (one folder per working directory).</summary>
     public string ClaudeProjectsDir { get; init; } =

@@ -327,7 +327,14 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         else warnings.Add($"settings in {Store.Describe(JsonStore.SettingsName)} couldn't be read; " +
             (lastSettings is null ? "showing defaults until they can be" : "using the last ones read until they can be"));
         var settings = lastSettings ?? read;
-        var repos = workspace.Repos();
+        // Extra workspace roots (M.ORCH-T1752): their repos become tiles too, same as the primary root's, but only
+        // here — the ticket-queue/audit/worktree plumbing above stays scoped to workspace.Root, since a repo from
+        // another root has no ticket database or worktrees to bring into it.
+        var repos = options.ExtraWorkspaceRoots.Count == 0 ? workspace.Repos()
+            : (IReadOnlyList<Repo>)
+                [.. workspace.Repos().Concat(options.ExtraWorkspaceRoots.SelectMany(r => new Workspace(r).Repos()))
+                    .DistinctBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)];
 
         // Worktrees the scheduler creates live outside the workspace; credit them to their repo.
         var matcher = new RepoMatcher(repos
