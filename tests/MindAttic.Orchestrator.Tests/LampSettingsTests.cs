@@ -155,6 +155,7 @@ public sealed class LampSettingsTests
         Case("mainTestsLockRetrySeconds", s => s with { MainTestsLockRetrySeconds = 30 }, 30d, v => v.MainTestsLockRetrySeconds = 10, 10d, s => s.MainTestsLockRetrySeconds),
         Case("mainTestsTimeoutMinutes", s => s with { MainTestsTimeoutMinutes = 90 }, 90d, v => v.MainTestsTimeoutMinutes = 45, 45d, s => s.MainTestsTimeoutMinutes),
         Case("branchTestsMemoryWaitMinutes", s => s with { BranchTestsMemoryWaitMinutes = 30 }, 30d, v => v.BranchTestsMemoryWaitMinutes = 5, 5d, s => s.BranchTestsMemoryWaitMinutes),
+        Case("branchTestsDiskWaitMinutes", s => s with { BranchTestsDiskWaitMinutes = 30 }, 30d, v => v.BranchTestsDiskWaitMinutes = 5, 5d, s => s.BranchTestsDiskWaitMinutes),
         Case("testTermHostSweepMinutes", s => s with { TestTermHostSweepMinutes = 5 }, 5d, v => v.TestTermHostSweepMinutes = 10, 10d, s => s.TestTermHostSweepMinutes),
         Case("orgReachSpacingMinutes", s => s with { OrgReachSpacingMinutes = 5 }, 5d, v => v.OrgReachSpacingMinutes = 15, 15d, s => s.OrgReachSpacingMinutes),
         Case("apiCostReadMinutes", s => s with { ApiCostReadMinutes = 15 }, 15d, v => v.ApiCostReadMinutes = 60, 60d, s => s.ApiCostReadMinutes),

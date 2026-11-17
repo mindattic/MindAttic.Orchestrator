@@ -43,6 +43,20 @@ public sealed partial class MainViewModel
         var m => $"{m.Reading.Describe()}: every agent's tool calls are refused so turns end, until memory recovers. Close what you can.",
     };
 
+    private DiskHold? diskHold;
+
+    /// <summary>The menu bar's banner while the disk floor (M.ORCH-T1679/T1692) holds new work, shown in MaBad beside the free-space
+    /// readout: which drive and how little is free. Empty while the disk has room or the floor is off.</summary>
+    public string DiskHoldText => DiskHoldLine(diskHold);
+
+    internal static string DiskHoldLine(DiskHold? hold) => hold is null ? ""
+        : $"Disk full · holding new work ({hold.Drive.Root} {hold.Drive.FreeGb.ToString("0.0", CultureInfo.InvariantCulture)} GB free)";
+
+    /// <summary>What the banner's tooltip says: why nothing new starts and how much space lifts it.</summary>
+    public string DiskHoldToolTip => diskHold is { } h
+        ? $"{h.Why}: no new subagents, CLIs, tickets or test runs start until then. orchestrator disk-cleanup frees agent temp; the floor is the Disk floor setting in MindAttic Vault's Orchestrator page."
+        : "";
+
     private bool allocatePaused;
 
     /// <summary>The menu bar's banner while allocation is paused globally (<c>orchestrator settings --allocate false</c>,
@@ -137,13 +151,16 @@ public sealed partial class MainViewModel
         if (consentsToasted.Count > 512) consentsToasted.Clear();
     }
 
-    private void SetHostStats(double freeGb, double? ramPercent, MemoryState? memoryNow = null, bool allocatePausedNow = false)
+    private void SetHostStats(double freeGb, double? ramPercent, MemoryState? memoryNow = null, bool allocatePausedNow = false, DiskHold? diskHoldNow = null)
     {
         ShowConsentToasts();
         diskFreeGb = freeGb;
         ramUtilizationPercent = ramPercent;
         memory = memoryNow;
         allocatePaused = allocatePausedNow;
+        diskHold = diskHoldNow;
+        Raise(nameof(DiskHoldText));
+        Raise(nameof(DiskHoldToolTip));
         connectedMembers = connectedMembersRead;
         Raise(nameof(ConnectedMembersText));
         Raise(nameof(ConnectedMembersToolTip));

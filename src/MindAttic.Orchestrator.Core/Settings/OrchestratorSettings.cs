@@ -775,6 +775,13 @@ public sealed record OrchestratorSettings
     /// <summary>The default branch tests memory wait minutes constant.</summary>
     public const double DefaultBranchTestsMemoryWaitMinutes = 30;
 
+    /// <summary>Minutes <c>orchestrator branches test</c> waits for the disk floor (<see cref="DiskHoldGb"/>) to lift before each
+    /// branch's run, as it does on RAM; past it the branch is skipped, nothing reported (M.ORCH-T1692).</summary>
+    public double BranchTestsDiskWaitMinutes { get; init; } = DefaultBranchTestsDiskWaitMinutes;
+
+    /// <summary>The default branch tests disk wait minutes constant.</summary>
+    public const double DefaultBranchTestsDiskWaitMinutes = 30;
+
     /// <summary>Off by default, since it commits setup-host.ps1 and texts the admin (M.ORCH-T1488): once a day at
     /// <see cref="SqlFreshnessCheckAt"/>, the daemon asks winget for the newest SQL Server Developer and Express (LocalDB) packages,
     /// writes a newer version or bootstrapper URL into setup-host.ps1, commits and pushes it, and texts

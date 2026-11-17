@@ -2375,6 +2375,44 @@ public static class AgentGate
             return ("RAM emergency (" + free_text(free) + "): tool calls are refused until memory recovers, so the machine doesn't page "
                     "itself to a full disk. End your turn now with one short line saying where you stopped; your uncommitted work stays where it is.")
 
+        # The disk floor (M.ORCH-T1679/T1692): under it no new subagent starts, as at the memory guard's tight level. Free disk is
+        # read live here against the daemon's lines, so a stale or dead daemon can't hide a drive filling; the daemon's own hold
+        # (it runs a self-cleanup first and lifts only once clear of the floor by its margin) counts too while its status is
+        # fresh. A fresh status without the lines is a floor that's off. Fails open: a drive that can't be read holds nothing.
+        def disk_held(s):
+            try:
+                if s and not isinstance(s.get("disk_lines"), dict):
+                    return None
+                floor = {{MemoryDefault(s => s.DiskHoldGb)}}
+                roots = [(os.environ.get("SystemDrive") or "C:") + "\\"]
+                if s:
+                    if s.get("disk_hold"):
+                        return str(s["disk_hold"])
+                    floor = float(s["disk_lines"].get("floor_gb", floor))
+                    if isinstance(s.get("disk_roots"), list) and s["disk_roots"]:
+                        roots = [str(r) for r in s["disk_roots"]]
+                if floor <= 0:
+                    return None
+                fake = os.environ.get("MINDATTIC_FAKE_FREE_DISK_GB")
+                free = []
+                if fake:
+                    free.append((roots[0], float(fake)))
+                else:
+                    import shutil
+                    for r in roots:
+                        try:
+                            free.append((r, shutil.disk_usage(r).free / 1073741824.0))
+                        except Exception:
+                            pass
+                if not free:
+                    return None
+                root, gb = min(free, key=lambda f: f[1])
+                if gb >= floor:
+                    return None
+                return "disk is nearly full (" + root + " has " + format(gb, ".1f") + " GB free, under the " + format(floor, "g") + " GB floor)"
+            except Exception:
+                return None
+
         # The orchestrator's stop, or Claude's own percent at the line: a dead daemon can't switch the stop off (M.ORCH-T167),
         # and neither a stalled one nor an idle session's lower report lifts a stop already seen (latched, M.ORCH-T196).
         # Or a RAM emergency, live and unlatched.
@@ -2454,11 +2492,19 @@ public static class AgentGate
                         pass
             why = None
             while True:
-                ok, why = reserve_for_memory()
+                # Under the disk floor (M.ORCH-T1692) it waits the same way, checked first so no RAM is reserved for it.
+                why = disk_held(status())
+                full = why is not None
+                ok = False
+                if not full:
+                    ok, why = reserve_for_memory()
                 if ok:
                     break
                 if time.monotonic() - start >= MAX_HOLD:
                     gate_log("refused", time.monotonic() - start)
+                    if full:
+                        refuse(why[:1].upper() + why[1:] + ", so this subagent wasn't started: its transcript, scratch and builds would fill the drive. "
+                               "Don't start it now: finish this turn's work yourself, or end the turn, and try again once disk space is freed (orchestrator disk-cleanup).")
                     refuse(why[:1].upper() + why[1:] + ", so this subagent wasn't started: the machine would page itself to a full disk. "
                            "Don't start it now: finish this turn's work yourself, or end the turn, and try again once memory recovers.")
                 activity_hold()

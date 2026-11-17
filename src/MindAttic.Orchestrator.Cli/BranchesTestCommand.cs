@@ -94,10 +94,12 @@ internal sealed class BranchesTestCommand : AsyncCommand<BranchesTestCommand.Set
             var results = new List<object>();
             var allPassed = true;
             var memoryWait = TimeSpan.FromMinutes(double.IsFinite(s.BranchTestsMemoryWaitMinutes) ? Math.Clamp(s.BranchTestsMemoryWaitMinutes, 0, 1440) : 0);
+            var diskWait = TimeSpan.FromMinutes(double.IsFinite(s.BranchTestsDiskWaitMinutes) ? Math.Clamp(s.BranchTestsDiskWaitMinutes, 0, 1440) : 0);
             foreach (var r in chosen)
             {
-                // Like the daemon's suite runs: none starts while the memory guard holds; wait for RAM, else skip (nothing reported).
-                if (await WaitForMemory(() => Ctx.Settings, memoryWait, settings.Json) is { } held)
+                // Like the daemon's suite runs: none starts while the memory guard holds or the disk is under its floor
+                // (M.ORCH-T1692); wait for RAM, then for disk, else skip (nothing reported).
+                if ((await WaitForMemory(() => Ctx.Settings, memoryWait, settings.Json) ?? await WaitForDisk(() => Ctx.Settings, diskWait, settings.Json)) is { } held)
                 {
                     allPassed = false;
                     results.Add(new { repo = r.Repo, branch = r.Branch, head = r.Head, completed = false, ok = false, passed = 0, failed = 0, note = held, reported = (string?)null, warning = (string?)null });
@@ -144,6 +146,23 @@ internal sealed class BranchesTestCommand : AsyncCommand<BranchesTestCommand.Set
             if (held is null) return null;
             if (DateTime.UtcNow >= until) return held;
             if (!said && !quiet) AnsiConsole.MarkupLine($"[grey]Waiting for RAM before the next run: {Markup.Escape(held)}[/]");
+            said = true;
+            await Task.Delay(TimeSpan.FromSeconds(10));
+        }
+    }
+
+    /// <summary>Waits up to <paramref name="max"/> for the disk floor (M.ORCH-T1679) to let new work start, the way
+    /// <see cref="WaitForMemory"/> waits on RAM; null once it does, else why it still holds.</summary>
+    private static async Task<string?> WaitForDisk(Func<OrchestratorSettings> settings, TimeSpan max, bool quiet)
+    {
+        var until = DateTime.UtcNow + max;
+        var said = false;
+        while (true)
+        {
+            var held = MindAttic.Orchestrator.Activity.DiskGuard.StartHeld(settings());
+            if (held is null) return null;
+            if (DateTime.UtcNow >= until) return held;
+            if (!said && !quiet) AnsiConsole.MarkupLine($"[grey]Waiting for disk space before the next run: {Markup.Escape(held)}[/]");
             said = true;
             await Task.Delay(TimeSpan.FromSeconds(10));
         }

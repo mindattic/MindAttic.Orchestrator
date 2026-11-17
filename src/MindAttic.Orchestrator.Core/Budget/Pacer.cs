@@ -17,6 +17,10 @@ public enum PaceMode
     Over,
 }
 
+/// <summary>The disk floor's lines as the pace carries them (M.ORCH-T1692): the floor and the free GB that lifts a hold, and the
+/// drive roots it watches.</summary>
+public sealed record DiskFloorLines(double FloorGb, double ResumeGb, IReadOnlyList<string> Roots);
+
 /// <summary>How fast you can spend and still reach the reset without hitting the wall, and how many sessions that allows.</summary>
 public sealed record Pace(
     PaceMode Mode,
@@ -111,6 +115,10 @@ public sealed record Pace(
 
     /// <summary>The disk floor's hold when this pace was worked out (M.ORCH-T1679); null while the disk has room or the floor is off.</summary>
     public Activity.DiskHold? Disk { get; init; }
+
+    /// <summary>The disk floor's lines and the drives it watches (M.ORCH-T1692), held or not, for the agent hook's own live
+    /// check; null while the floor is off.</summary>
+    public DiskFloorLines? DiskFloor { get; init; }
 
     /// <summary>What agents are told about the allowance at the start of each turn.</summary>
     public string SubagentNote => SubagentAllowance switch
@@ -443,8 +451,14 @@ public static class Pacer
     /// dashboard's pace note) sees the daemon's judgment and its reason. It changes no allowance: the holding is done where new
     /// work starts (allocate, new CLIs, main-line tests, branch builds), and running work carries on.
     /// </summary>
-    public static Pace HoldForDisk(Pace pace, Activity.DiskHold? disk) =>
-        disk is null ? pace : pace with { Disk = disk, Note = $"{pace.Note} {disk.Why}.".TrimStart() };
+    public static Pace HoldForDisk(Pace pace, Activity.DiskHold? disk, OrchestratorSettings? s = null)
+    {
+        // The floor's lines ride along whenever it's on (M.ORCH-T1692): the agent hook reads free disk live against them, so a
+        // stale or dead daemon can't hide a drive filling, as it does for RAM.
+        if (s is { DiskHoldGb: > 0 })
+            pace = pace with { DiskFloor = new DiskFloorLines(s.DiskHoldGb, s.DiskHoldGb + Math.Max(0, s.DiskHoldResumeMarginGb), Activity.DiskWatch.Roots(s.WorktreeRoot)) };
+        return disk is null ? pace : pace with { Disk = disk, Note = $"{pace.Note} {disk.Why}.".TrimStart() };
+    }
 
     /// <summary>The fewest CLIs spending on one login for <see cref="CoolOff"/> to apply: it's for a login split across many CLIs.</summary>
     public const int CoolOffMinClis = 2;

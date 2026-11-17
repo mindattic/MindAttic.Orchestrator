@@ -757,6 +757,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 1440)]
     public double BranchTestsMemoryWaitMinutes { get; set; } = OrchestratorSettings.DefaultBranchTestsMemoryWaitMinutes;
 
+    /// <summary>Minutes orchestrator branches test waits for the disk floor to lift before each branch's run.</summary>
+    [Setting("Branch tests disk wait (minutes)", Group = "Dashboard", Order = 93,
+        Help = "Minutes orchestrator branches test waits, before each branch's run, for disk space to come back while the disk floor holds new work. Past it the branch is skipped and nothing is reported.")]
+    [SettingRange(0, 1440)]
+    public double BranchTestsDiskWaitMinutes { get; set; } = OrchestratorSettings.DefaultBranchTestsDiskWaitMinutes;
+
     /// <summary>How long an ended Launcher menu tab stays; 0 (the default) closes it at once.</summary>
     [Setting("Ended Launcher tab lifetime (minutes)", Group = "Dashboard", Order = 7,
         Help = "How long an ended Launcher menu tab stays; 0 (the default) closes it at once.")]
@@ -1030,6 +1036,7 @@ public sealed class OrchestratorVaultSettings
         MainTestsLockRetrySeconds = s.MainTestsLockRetrySeconds,
         MainTestsTimeoutMinutes = s.MainTestsTimeoutMinutes,
         BranchTestsMemoryWaitMinutes = s.BranchTestsMemoryWaitMinutes,
+        BranchTestsDiskWaitMinutes = s.BranchTestsDiskWaitMinutes,
         EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
         WorkspaceRoot = WorkspaceOverrideOf(s),
         WorktreeRoot = s.WorktreeRoot,
@@ -1191,6 +1198,7 @@ public sealed class OrchestratorVaultSettings
         MainTestsLockRetrySeconds = MainTestsLockRetrySeconds,
         MainTestsTimeoutMinutes = MainTestsTimeoutMinutes,
         BranchTestsMemoryWaitMinutes = BranchTestsMemoryWaitMinutes,
+        BranchTestsDiskWaitMinutes = BranchTestsDiskWaitMinutes,
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,
         WorktreeRoot = string.IsNullOrWhiteSpace(WorktreeRoot) ? s.WorktreeRoot : WorktreeRoot,
         MemberUntil = MemberUntil ?? "",

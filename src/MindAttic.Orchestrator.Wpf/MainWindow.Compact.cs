@@ -90,7 +90,7 @@ public partial class MainWindow
         // (M.ORCH-T1571). The readouts and status bar it hides are a wrapped line in the touch bar (PhoneStatus, M.ORCH-T1570).
         Hold(PhonePickers, VisibilityProperty, Visibility.Visible);
         // MaxWidth, not Visibility: their Visibility is bound to whether they have anything to say.
-        foreach (var readout in new FrameworkElement[] { AllocatePausedText, DiskFreeText, RamUtilizationText, RamWarnText, RamBadText })
+        foreach (var readout in new FrameworkElement[] { AllocatePausedText, DiskHoldText, DiskFreeText, RamUtilizationText, RamWarnText, RamBadText })
             Hold(readout, MaxWidthProperty, 0d);
         Hold(TerminalsPanel, MarginProperty, new Thickness(6, 4, 6, 0));
         Hold(AgentsBody, ScrollViewer.PanningModeProperty, PanningMode.VerticalOnly);

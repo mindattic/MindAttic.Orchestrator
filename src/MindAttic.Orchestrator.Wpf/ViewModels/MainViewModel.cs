@@ -447,7 +447,8 @@ public sealed partial class MainViewModel : ObservableObject
             precomputedPlan = planned;
             ApplyTabs(next, tabs, nextOrgs);
             // The memory guard's level (M.ORCH-T1498): the daemon's, stepped, as the snapshot's pace carries it; else this process's own.
-            SetHostStats(diskFree, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow);
+            // And the disk floor's hold (M.ORCH-T1692): the daemon's, as the snapshot's pace carries it; else this process's own.
+            SetHostStats(diskFree, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow, next.Pace?.Disk ?? DiskGuard.Shared.Last);
             ApplyInbox();
             // What a pushed snapshot's figures are laid over until the next read (M.ORCH-T872).
             (lastMembers, lastOrgs, restShown) = (readMembers, nextOrgs, rest);
@@ -673,6 +674,15 @@ public sealed partial class MainViewModel : ObservableObject
                 System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes)
         {
             StatusMessage = $"Not started: {low}";
+            return false;
+        }
+        // Under the disk floor (M.ORCH-T1692) it's refused outright, with why: a full drive has no "anyway". Read off the UI
+        // thread, since under the floor the guard runs a self-cleanup first; the daemon's hold (the snapshot's pace) counts too.
+        var settingsForStart = store.LoadSettings();
+        var heldByDaemon = full?.Pace?.Disk is not null;
+        if (await Task.Run(() => DiskGuard.Shared.Observe(settingsForStart, DateTime.UtcNow, heldByDaemon)?.Why) is { } diskFull)
+        {
+            StatusMessage = $"Not started: {diskFull}.";
             return false;
         }
         var error = control.Start(name, path, kind, text, configDir);

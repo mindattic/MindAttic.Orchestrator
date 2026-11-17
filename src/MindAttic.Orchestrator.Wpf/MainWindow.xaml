@@ -267,6 +267,11 @@
                 <TextBlock x:Name="AllocatePausedText" Text="{Binding AllocatePausedText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRL}"
                            mc:MaCallout.ToolTip="{Binding AllocatePausedToolTip}" AutomationProperties.Name="{Binding AllocatePausedText}"
                            Visibility="{Binding AllocatePausedText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <!-- The disk floor's hold (M.ORCH-T1679/T1692): in MaBad, shown only while the drive is under the floor even after a
+                     self-cleanup, so nothing new starting is never silent; the tooltip says how much space lifts it. -->
+                <TextBlock x:Name="DiskHoldText" Text="{Binding DiskHoldText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRL}"
+                           mc:MaCallout.ToolTip="{Binding DiskHoldToolTip}" AutomationProperties.Name="{Binding DiskHoldToolTip}"
+                           Visibility="{Binding DiskHoldText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock x:Name="DiskFreeText" Text="{Binding DiskFreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
                            mc:MaCallout.ToolTip="Free space on the system drive" AutomationProperties.Name="{Binding DiskFreeText}"
                            Visibility="{Binding DiskFreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
@@ -1076,6 +1081,8 @@
             <WrapPanel x:Name="PhoneStatus" DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="3,3,3,0">
                 <TextBlock Text="{Binding AllocatePausedText}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRM}"
                            mc:MaCallout.ToolTip="{Binding AllocatePausedToolTip}" Visibility="{Binding AllocatePausedText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock Text="{Binding DiskHoldText}" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRM}"
+                           mc:MaCallout.ToolTip="{Binding DiskHoldToolTip}" Visibility="{Binding DiskHoldText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock Text="{Binding RamBadText}" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRM}"
                            mc:MaCallout.ToolTip="{Binding RamToolTip}" Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock Text="{Binding RamWarnText}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRM}"

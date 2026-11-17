@@ -562,6 +562,14 @@ public sealed class RateLimitStatusWriter(string? path = null)
                 ["start_percent"] = memory.Lines.StartPercent,
             };
         }
+        // The disk floor (M.ORCH-T1692), paced or not: the gates hold new subagents while the daemon holds for disk, and check
+        // free disk live against these lines themselves, as they do RAM. No lines is a floor that's off.
+        if (pace?.DiskFloor is { } floor)
+        {
+            body["disk_lines"] = new Dictionary<string, double> { ["floor_gb"] = floor.FloorGb, ["resume_gb"] = floor.ResumeGb };
+            body["disk_roots"] = floor.Roots;
+            if (pace.Disk is { } disk) body["disk_hold"] = disk.Short;
+        }
         // pace-gate.py holds each tool call this long; the average is what the next refresh corrects the
         // measured rate by (Pacer.AgentDelay), so it's kept until it decays even once the hold is off.
         var nowUtc = UtcNow();
