@@ -143,6 +143,11 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 1000)]
     public int MaxSessionsPerRepo { get; set; } = 2;
 
+    /// <summary>The most Claude CLIs orchestrator start opens on one login of its own; 0 is no limit.</summary>
+    [Setting("CLIs per login", Group = "Scheduler", Order = 4, Help = "The most Claude CLIs that org start, research, pair and orchestrator start open on one login of its own; 0 is no limit. A login's quota caps its throughput, not its CLI count, and each CLI holds about 1.2 GB of RAM. At the limit, a start that carries a prompt is sent to that login's CLI in the same repo, or its CLI at the workspace root, instead of opening another; --new opens one anyway. A tab you open by hand is never limited.")]
+    [SettingRange(0, 100)]
+    public int MaxClisPerLogin { get; set; }
+
     /// <summary>The most subagents running at once across every CLI; under it the pace decides, live.</summary>
     [Setting("Max subagents", Group = "Scheduler", Order = 4,
         Help = "The most subagents running at once across every CLI; under it the pace decides, live. 0 holds every new one.")]
@@ -955,6 +960,7 @@ public sealed class OrchestratorVaultSettings
         Allocate = s.Allocate,
         MaxConcurrentSessions = s.MaxConcurrentSessions,
         MaxSessionsPerRepo = s.MaxSessionsPerRepo,
+        MaxClisPerLogin = s.MaxClisPerLogin,
         MaxSubagents = s.MaxSubagents,
         DefaultProvider = s.DefaultProvider,
         KeepGoing = s.KeepGoing,
@@ -1127,6 +1133,7 @@ public sealed class OrchestratorVaultSettings
         Allocate = Allocate,
         MaxConcurrentSessions = MaxConcurrentSessions,
         MaxSessionsPerRepo = MaxSessionsPerRepo,
+        MaxClisPerLogin = MaxClisPerLogin,
         MaxSubagents = MaxSubagents,
         DefaultProvider = string.IsNullOrWhiteSpace(DefaultProvider) ? s.DefaultProvider : DefaultProvider,
         KeepGoing = KeepGoing,

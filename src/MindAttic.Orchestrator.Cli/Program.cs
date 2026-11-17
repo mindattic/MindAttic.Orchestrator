@@ -344,6 +344,10 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         [CommandOption("--resume <SESSION>")]
         [Description("Reopen a Claude CLI by resuming this conversation (claude --resume <SESSION>), e.g. one cut off by a crash or reboot; --prompt is ignored. Pass --account for the login whose folder holds the session.")]
         public string? Resume { get; init; }
+
+        [CommandOption("--new")]
+        [Description("Open a new CLI even when its login is at the CLIs-per-login limit (settings MaxClisPerLogin).")]
+        public bool New { get; init; }
     }
 
     /// <summary>Where per-CLI logins' folders are; tests point it elsewhere (never the real ~/.claude-accounts).</summary>
@@ -384,6 +388,13 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             var why = !Ctx.Settings.AutoLogin ? "Auto login is off" : pickNote is { Length: > 0 } note ? note : "no login of its own has room";
             AnsiConsole.MarkupLine($"[red]{Markup.Escape(why)} and API billing is off: not started on the global login (a member's own seat). Pass --account, or switch API billing on.[/]");
             return 1;
+        }
+        // The CLIs-per-login limit (M.ORCH-T1736): a login's quota caps its throughput, not its CLI count.
+        if (!settings.New && settings.Resume is null && provider == "Claude" && email is not null && Ctx.Settings.MaxClisPerLogin is > 0 and var cap
+            && LoginClis.AtLimit(options, email, cap, repo.Name, repo.Path, settings.Prompt) is { } atLimit)
+        {
+            AnsiConsole.MarkupLine(atLimit.Sent ? Markup.Escape(atLimit.Line) : $"[red]{Markup.Escape(atLimit.Line)}[/]");
+            return atLimit.Sent ? 0 : 1;
         }
         if (!settings.IgnoreMemory && MindAttic.Orchestrator.Activity.MemoryGuard.StartHeld(Ctx.Settings) is { } low)
         {

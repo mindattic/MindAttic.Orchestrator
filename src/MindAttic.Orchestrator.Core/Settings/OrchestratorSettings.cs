@@ -253,6 +253,12 @@ public sealed record OrchestratorSettings
     /// <summary>Sessions one repo may run at once (all in its own checkout, M.ORCH-T1122), unless <see cref="RepoMaxSessions"/> says otherwise.</summary>
     public int MaxSessionsPerRepo { get; init; } = 2;
 
+    /// <summary>The most Claude CLIs <c>orchestrator start</c> opens on one login of its own (M.ORCH-T1736); 0 is no limit. A
+    /// login's quota caps its throughput, not its CLI count, and each CLI holds about 1.2 GB, so at the limit a start with a
+    /// prompt goes to that login's CLI in the same repo or at the workspace root instead. A tab opened by hand in the dashboard
+    /// is never limited.</summary>
+    public int MaxClisPerLogin { get; init; }
+
     /// <summary>The repo max sessions.</summary>
     public Dictionary<string, int> RepoMaxSessions { get; init; } = [];
 

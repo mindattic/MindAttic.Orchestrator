@@ -88,6 +88,7 @@ public sealed class LampSettingsTests
         Case("allocate", s => s with { Allocate = false }, false, v => v.Allocate = true, true, s => s.Allocate),
         Case("maxConcurrentSessions", s => s with { MaxConcurrentSessions = 6 }, 6, v => v.MaxConcurrentSessions = 9, 9, s => s.MaxConcurrentSessions),
         Case("maxSessionsPerRepo", s => s with { MaxSessionsPerRepo = 3 }, 3, v => v.MaxSessionsPerRepo = 1, 1, s => s.MaxSessionsPerRepo),
+        Case("maxClisPerLogin", s => s with { MaxClisPerLogin = 0 }, 0, v => v.MaxClisPerLogin = 1, 1, s => s.MaxClisPerLogin),
         Case("maxSubagents", s => s with { MaxSubagents = 8 }, 8, v => v.MaxSubagents = 24, 24, s => s.MaxSubagents),
         Case("defaultProvider", s => s with { DefaultProvider = "Gemini" }, "Gemini", v => v.DefaultProvider = "Kimi", "Kimi", s => s.DefaultProvider),
         Case("keepGoing", s => s with { KeepGoing = false }, false, v => v.KeepGoing = true, true, s => s.KeepGoing),
