@@ -437,10 +437,15 @@ public static class AgentGate
                 k.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
                 k.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4
                 k.CloseHandle.argtypes = [wintypes.HANDLE]
+                k.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
                 h = k.OpenProcess(0x1000, False, int(pid))  # PROCESS_QUERY_LIMITED_INFORMATION
                 if not h:
                     return None
                 try:
+                    # An exited process stays openable while anything (its parent, the host) holds a handle to it: it's gone all the same.
+                    code = wintypes.DWORD()
+                    if not k.GetExitCodeProcess(h, ctypes.byref(code)) or code.value != 259:  # STILL_ACTIVE
+                        return None
                     t = [wintypes.FILETIME() for _ in range(4)]
                     if not k.GetProcessTimes(h, *[ctypes.byref(x) for x in t]):
                         return None
