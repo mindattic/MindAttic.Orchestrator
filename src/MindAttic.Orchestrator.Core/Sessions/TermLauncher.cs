@@ -44,6 +44,11 @@ public sealed record TermLaunchSpec
     /// dashboard on the machine opens a tab for it. For a caller that deliberately runs a real host beside one.</summary>
     public bool Unlisted { get; init; }
 
+    /// <summary>Starts the host elevated (M.ORCH-T1656): <see cref="TermLauncher.StartElevated"/> instead of
+    /// <see cref="TermLauncher.Start(TermLaunchSpec, TimeSpan?)"/>. <see cref="Environment"/> must be empty — a UAC prompt
+    /// can't carry it (see <see cref="TermLauncher.StartElevated"/>).</summary>
+    public bool Elevated { get; init; }
+
     /// <summary>
     /// <paramref name="request"/> as a hosted CLI, built the way <c>TerminalPaneViewModel</c> builds its tab: the command line is
     /// <see cref="PaneRequest.ProcessCommandLine"/> (which clears <c>NO_COLOR</c>, sets <c>COLORTERM</c>, the pane pipe's
@@ -61,6 +66,7 @@ public sealed record TermLaunchSpec
         Repo = request.Name,
         IsMenu = request.IsMenu,
         Unlisted = request.Unlisted,
+        Elevated = request.Elevated,
     };
 }
 
@@ -190,6 +196,60 @@ public static class TermLauncher
                     Login = spec.Login, Repo = spec.Repo, Cwd = spec.Directory, CommandLine = spec.CommandLine,
                     State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow, IsMenu = spec.IsMenu,
                 };
+            Thread.Sleep(50);
+        }
+    }
+
+    /// <summary>How long <see cref="StartElevated"/> waits for the host to register: long enough for a human to answer the UAC
+    /// prompt, not just the few seconds <see cref="DefaultRegisterWait"/> gives an already-trusted, unelevated launch.</summary>
+    public static readonly TimeSpan DefaultElevatedWait = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// Starts <paramref name="spec"/> under a detached, elevated TermHost (M.ORCH-T1656, M.LNCH-T125): the same
+    /// <c>--launch</c> respawn as <see cref="Start(TermLaunchSpec, TimeSpan?)"/>, but through <c>ShellExecuteEx</c> with
+    /// <c>runas</c> so Windows prompts for UAC consent first. The CLI <c>--launch</c> respawns (<see cref="Native.SpawnDetached"/>
+    /// in <c>Program.cs</c>) inherits that elevated token, so the detached host — and the CLI it starts on its ConPTY — end up
+    /// elevated without this process ever touching a handle across the privilege boundary itself.
+    /// <para><c>ShellExecuteEx</c> can't redirect standard streams, so unlike <see cref="Start(TermLaunchSpec, TimeSpan?)"/> this
+    /// never reads the <c>--launch</c> JSON line; it only waits on the session registry (<see cref="TermSessions.Get"/>), for up
+    /// to <paramref name="registerWait"/> (<see cref="DefaultElevatedWait"/> by default — a human has to click through the
+    /// prompt). It can't set <see cref="TermLaunchSpec.Environment"/> either (<c>ProcessStartInfo.Environment</c> throws with
+    /// <c>UseShellExecute</c>): <paramref name="spec"/> must carry none, which holds for every current caller (a utility shell
+    /// needs no Claude login or billing variable).</para>
+    /// Throws <see cref="InvalidOperationException"/> when the host can't be found, the user declines the UAC prompt (Win32
+    /// error 1223), or no host registers within <paramref name="registerWait"/>.
+    /// </summary>
+    public static TermSessionRecord StartElevated(TermLaunchSpec spec, TimeSpan? registerWait = null)
+    {
+        if (spec.Environment.Count > 0)
+            throw new NotSupportedException("An elevated TermHost can't carry Environment variables: UseShellExecute can't set them, " +
+                "and nothing here puts a secret on its command line instead.");
+
+        var host = FindHost() ?? throw new InvalidOperationException(
+            $"TermHost isn't installed: no {HostExeName} beside {AppContext.BaseDirectory}, and {HostPathVariable} isn't set.");
+        var id = spec.Id ?? TermProtocol.NewSessionId();
+        var psi = new ProcessStartInfo(host)
+        {
+            UseShellExecute = true,
+            Verb = "runas",
+            WorkingDirectory = Path.GetDirectoryName(host) ?? AppContext.BaseDirectory,
+        };
+        foreach (var arg in Arguments(spec, id)) psi.ArgumentList.Add(arg);
+
+        try { using var launch = Process.Start(psi); }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            throw new InvalidOperationException("Elevation was cancelled.");
+        }
+
+        var until = DateTime.UtcNow + (registerWait ?? DefaultElevatedWait);
+        while (true)
+        {
+            if (TermSessions.Get(id) is { } record) return record;
+            if (DateTime.UtcNow >= until)
+                throw new InvalidOperationException($"The elevated TermHost (session {id}) didn't register within " +
+                    $"{(registerWait ?? DefaultElevatedWait).TotalSeconds:0}s; see " +
+                    $"{Path.Combine(TermSessions.DefaultDirectory, TermProtocol.Sanitize(id) + ".log")}.");
             Thread.Sleep(50);
         }
     }

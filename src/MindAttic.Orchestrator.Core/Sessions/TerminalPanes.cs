@@ -58,6 +58,12 @@ public sealed record PaneRequest(string Title, string Directory)
     /// an integration test) and never wants that dashboard to open a tab for it.</summary>
     public bool Unlisted { get; init; }
 
+    /// <summary>Its CLI needs to run elevated (M.ORCH-T1656, M.LNCH-T125 — MindAttic.Launcher's "Open Command Prompt (Admin)"
+    /// and "Open PowerShell (Admin)"): the dashboard must run this under a TermHost started with a UAC prompt rather than its
+    /// own in-process terminal, which can't elevate itself. <c>TerminalsViewModel.Open</c> refuses it when no TermHost is
+    /// available rather than silently running it unelevated.</summary>
+    public bool Elevated { get; init; }
+
     /// <summary>Where this tab sat among its login's tabs when it was first opened (M.ORCH-T1170): ticks, so later tabs sort
     /// after earlier ones. Saved in the session's <see cref="TermPaneFile"/> sidecar alongside everything else, so a session
     /// still live after a dashboard crash reattaches to the same spot in the tab strip instead of wherever reattachment order

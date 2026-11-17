@@ -747,9 +747,11 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <summary>Whether new CLIs start in a TermHost (when one is installed); off, every tab runs in this process.</summary>
     public bool UseTermHost { get; init; } = true;
 
-    /// <summary>Starts a hosted CLI and returns its record; blocks (the default is <see cref="TermLauncher.Start(TermLaunchSpec, TimeSpan?)"/>).
+    /// <summary>Starts a hosted CLI and returns its record; blocks (the default is <see cref="TermLauncher.Start(TermLaunchSpec, TimeSpan?)"/>,
+    /// or <see cref="TermLauncher.StartElevated"/> for a <see cref="TermLaunchSpec.Elevated"/> spec, M.ORCH-T1656).
     /// Tests replace it.</summary>
-    internal Func<TermLaunchSpec, TermSessionRecord> Launch { get; init; } = spec => TermLauncher.Start(spec);
+    internal Func<TermLaunchSpec, TermSessionRecord> Launch { get; init; } =
+        spec => spec.Elevated ? TermLauncher.StartElevated(spec) : TermLauncher.Start(spec);
 
     /// <summary>Whether a TermHost can be started (the default looks for one). Tests replace it.</summary>
     internal Func<bool> HostAvailable { get; init; } = () => TermLauncher.FindHost() is not null;
@@ -927,6 +929,10 @@ public sealed class TerminalsViewModel : ObservableObject
             catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Terminals").Error(ex, "Looking for TermHost failed"); }
             if (!hosted) OrchestratorLog.For("Terminals").Warning("TermHost isn't installed: {Repo:l} runs inside the dashboard", request.Name);
         }
+        // M.ORCH-T1656: an elevated CLI can only run under a TermHost (a UAC-elevated --launch respawn); this process itself
+        // is never elevated, so running it in-process (the !hosted fallback below) would silently run it unelevated instead.
+        if (request.Elevated && !hosted)
+            return "An elevated tab needs TermHost installed (UseTermHost is off, or no TermHost build was found).";
         TerminalPaneViewModel pane;
         try { pane = new TerminalPaneViewModel(request, pipeName, hosted); }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or InvalidOperationException or System.ComponentModel.Win32Exception)

@@ -13,6 +13,35 @@ internal static class Native
     public const int ERROR_ACCESS_DENIED = 5;
     public static readonly IntPtr PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016;
 
+    public const uint LABEL_SECURITY_INFORMATION = 0x00000010;
+    private const uint SDDL_REVISION_1 = 1;
+
+    [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        string StringSecurityDescriptor, uint StringSDRevision, out IntPtr SecurityDescriptor, IntPtr SecurityDescriptorSize);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool SetKernelObjectSecurity(IntPtr Handle, uint SecurityInformation, IntPtr SecurityDescriptor);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr LocalFree(IntPtr hMem);
+
+    /// <summary>Lowers <paramref name="handle"/>'s mandatory label to Low (SDDL <c>S:(ML;;;LW)</c>), M.ORCH-T1656: Windows'
+    /// default "no write up" policy would otherwise block a Medium-IL caller — the dashboard's own, ordinary (non-elevated)
+    /// viewer process — from even opening a High-IL (elevated) pipe for write, so it could never send the elevated CLI a
+    /// keystroke. Labeling the pipe Low removes that: "no write up" only ever blocks writing to something *above* the
+    /// caller, never below it, and this touches only the mandatory label, not the pipe's DACL or owner (still this user
+    /// only, via <c>PipeOptions.CurrentUserOnly</c>). Only called when this host process is itself elevated — an ordinary
+    /// host's pipe is left at its default label. False (logged, never thrown) on any failure; the pipe still works for an
+    /// elevated viewer either way (a popped-out TermViewer run elevated, or the TermHost's own detached respawn).</summary>
+    public static bool LowerPipeIntegrityToLow(IntPtr handle)
+    {
+        if (!ConvertStringSecurityDescriptorToSecurityDescriptorW("S:(ML;;;LW)", SDDL_REVISION_1, out var sd, IntPtr.Zero))
+            return false;
+        try { return SetKernelObjectSecurity(handle, LABEL_SECURITY_INFORMATION, sd); }
+        finally { LocalFree(sd); }
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct COORD { public short X, Y; }
 
