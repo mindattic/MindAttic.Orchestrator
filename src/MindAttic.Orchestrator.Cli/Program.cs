@@ -106,7 +106,7 @@ internal static class CliApp
             // Help goes where every command writes, so a test swapping AnsiConsole.Console sees it too (M.ORCH-T496).
             config.ConfigureConsole(AnsiConsole.Console);
             config.AddCommand<StatusCommand>("status").WithDescription("Every repo: state, live sessions, open tickets, tokens today.");
-            config.AddCommand<StartCommand>("start").WithDescription("Open an agent tab for a repo through the Launcher; --account <email> runs its Claude CLI on that per-CLI login's token pool.");
+            config.AddCommand<StartCommand>("start").WithDescription("Open an agent tab for a repo through the Launcher; --account <email> runs its Claude CLI on that per-CLI login's token pool; --resume <session> reopens a Claude conversation (e.g. one cut off by a crash).");
             config.AddCommand<DockCommand>("dock").WithDescription("Give a hosted CLI (its id, else this CLI's own) its dashboard tab back now, never restarting it (M.ORCH-T1448).");
             config.AddCommand<UndockCommand>("undock").WithDescription("Drop a hosted CLI's dashboard tab (its id, else this CLI's own); the CLI keeps running headless until orchestrator dock (M.ORCH-T1448).");
             config.AddCommand<LauncherCommand>("launcher").WithDescription("Bring up the next of this login's Launcher tabs in the dashboard (cycling), or open one when it has none (M.ORCH-T1487).");
@@ -339,6 +339,10 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         [CommandOption("--ignore-memory")]
         [Description("Start it even while RAM is low (the memory guard holds new CLIs then).")]
         public bool IgnoreMemory { get; init; }
+
+        [CommandOption("--resume <SESSION>")]
+        [Description("Reopen a Claude CLI by resuming this conversation (claude --resume <SESSION>), e.g. one cut off by a crash or reboot; --prompt is ignored. Pass --account for the login whose folder holds the session.")]
+        public string? Resume { get; init; }
     }
 
     /// <summary>Where per-CLI logins' folders are; tests point it elsewhere (never the real ~/.claude-accounts).</summary>
@@ -356,6 +360,11 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         var repo = new MindAttic.Tickets.Workspace(options.WorkspaceRoot).Find(settings.Repo);
         if (repo is null) { AnsiConsole.MarkupLine($"[red]No repo named {Markup.Escape(settings.Repo)}.[/]"); return 1; }
         if (Ctx.Provider(settings.Provider) is not { } provider) return 1;
+        if (settings.Resume is not null && provider != "Claude")
+        {
+            AnsiConsole.MarkupLine($"[red]--resume resumes a Claude conversation: {Markup.Escape(provider)} has none.[/]");
+            return 1;
+        }
         string? configDir = null, email = null, pickNote = null;
         var dirs = DirsOverride?.Invoke() ?? new AccountDirs();
         if (settings.Account is not null)
@@ -386,9 +395,9 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             AnsiConsole.MarkupLine($"[red]{Markup.Escape(full)}. Not started.[/]");
             return 1;
         }
-        var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt, configDir);
+        var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Resume is null ? settings.Prompt : null, configDir, settings.Resume);
         if (error is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }
-        AnsiConsole.MarkupLine($"Started [bold]{provider}[/] in {Markup.Escape(repo.Name)}" +
+        AnsiConsole.MarkupLine($"{(settings.Resume is null ? "Started" : "Resumed")} [bold]{provider}[/] in {Markup.Escape(repo.Name)}" +
             (email is null ? "." : $" on {Markup.Escape(email)}'s own login."));
         return 0;
     }
