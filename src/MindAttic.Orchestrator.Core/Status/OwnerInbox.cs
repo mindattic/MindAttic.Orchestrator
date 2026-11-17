@@ -23,6 +23,10 @@ public sealed record OwnerInboxItem(string Kind, string Id, string Title, string
     /// <summary>The ticket it is about, opened in Tickets Desktop from the dashboard; null when it isn't a ticket.</summary>
     public string? TicketId { get; init; }
 
+    /// <summary>Who it's assigned to now (<see cref="Snapshot.Assignees"/>, set in <see cref="OwnerInbox.Build"/> for every
+    /// ticket item); null when it isn't a ticket or isn't assigned. What the Inbox's "Delegate" picker starts from.</summary>
+    public string? Assignee { get; init; }
+
     /// <summary>What names it across ticks: the alert is sent once per key (<see cref="OwnerInboxAlerts"/>).</summary>
     public string Key => $"{Kind}|{Id}";
 }
@@ -94,7 +98,10 @@ public static class OwnerInbox
             foreach (var item in found)
             {
                 if (item.TicketId is { } ticket && !tickets.Add(ticket)) continue;
-                if (keys.Add(item.Key)) items.Add(item);
+                // Every ticket item gets its current assignee (M.ORCH-T1732), so the Delegate picker starts from who has it
+                // instead of always "Unassigned": one lookup here, not one per provider.
+                var withAssignee = item.TicketId is { } tid ? item with { Assignee = inputs.Snapshot.Assignees.GetValueOrDefault(tid) } : item;
+                if (keys.Add(withAssignee.Key)) items.Add(withAssignee);
             }
         }
         return items;

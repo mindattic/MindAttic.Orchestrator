@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Windows.Input;
 using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Scheduling;
@@ -9,11 +10,15 @@ using MindAttic.Orchestrator.Status;
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>One row of the owner inbox (M.ORCH-T1689): what waits on the owner, since when, and what to do about it. A ticket's
-/// row links its id into Tickets Desktop, like every ticket id in the window.</summary>
-public sealed class InboxRowViewModel(OwnerInboxItem item, DateTime nowUtc)
+/// row links its id into Tickets Desktop, like every ticket id in the window. It can also act right there (M.ORCH-T1732):
+/// Approve, Clear, Release and Delegate run against the ticket database directly, the Copy button stays for whoever would
+/// rather paste the command into a terminal, and Sign in / Consent (not tickets) keep Copy as their only way.</summary>
+public sealed class InboxRowViewModel(OwnerInboxItem item, DateTime nowUtc, IReadOnlyList<PersonOptionViewModel>? people = null)
 {
     /// <summary>What names it across refreshes.</summary>
     public string Key { get; } = item.Key;
+    /// <summary>The raw kind (<see cref="OwnerInbox"/>'s constants), for what buttons apply; <see cref="Kind"/> is its label.</summary>
+    internal string RawKind { get; } = item.Kind;
     /// <summary>Its kind, as a word: Approve, Waiting on you, Stale, Orphaned, Sign in, Consent.</summary>
     public string Kind { get; } = OwnerInbox.KindLabel(item.Kind);
     /// <summary>Which one: a ticket id, a login's email, a consent request's id.</summary>
@@ -30,6 +35,24 @@ public sealed class InboxRowViewModel(OwnerInboxItem item, DateTime nowUtc)
     public string Action { get; } = item.Action;
     /// <summary>What a screen reader says for the row.</summary>
     public string AccessibleName { get; } = $"{OwnerInbox.KindLabel(item.Kind)}: {item.Id}. {item.Title}. {item.Action}";
+
+    /// <summary>Whether "Approve" applies: an open ticket waiting for approval.</summary>
+    public bool CanApprove => RawKind == OwnerInbox.Approval;
+    /// <summary>Whether "Clear" applies: a ticket parked with the <c>waiting-on-owner</c> label.</summary>
+    public bool CanClearWaiting => RawKind == OwnerInbox.WaitingOnOwner;
+    /// <summary>Whether "Release" applies: a stale or orphaned claim, the same release the Queue's own button runs.</summary>
+    public bool CanRelease => RawKind is OwnerInbox.Orphaned or OwnerInbox.Stale;
+    /// <summary>Whether "Work it now" applies: approving or clearing it is also enough to try dispatching it at once.</summary>
+    public bool CanWorkNow => RawKind is OwnerInbox.Approval or OwnerInbox.WaitingOnOwner;
+    /// <summary>Whether it can be delegated to someone else, or back to nobody: any ticket item.</summary>
+    public bool CanDelegate => IsTicket;
+
+    /// <summary>The Delegate picker's choice: starts on whoever already has it (<see cref="OwnerInboxItem.Assignee"/>), else
+    /// "Unassigned". The ComboBox sets it as the row is browsed; only the Delegate button commits it, so browsing the list
+    /// doesn't change anything by itself.</summary>
+    public PersonOptionViewModel? Assignee { get; set; } =
+        (people ?? []).FirstOrDefault(p => item.Assignee is { } email && string.Equals(p.Email, email, StringComparison.OrdinalIgnoreCase))
+        ?? (people ?? []).FirstOrDefault(p => p.Email is null);
 }
 
 /// <summary>
@@ -43,6 +66,7 @@ public sealed partial class MainViewModel
     private readonly ObservableCollection<InboxRowViewModel> inboxRows = [];
     private bool isInboxOpen;
     private ICommand? toggleInboxCommand, closeInboxCommand, copyInboxActionCommand;
+    private ICommand? approveInboxCommand, clearWaitingInboxCommand, releaseInboxCommand, delegateInboxCommand, workInboxNowCommand;
 
     /// <summary>The inbox for <paramref name="built"/> and its <paramref name="plan"/>; null (the last one stays) when the refresh
     /// made no plan or a repo's tickets couldn't be read, when the list would be partial. Never throws.</summary>
@@ -64,7 +88,7 @@ public sealed partial class MainViewModel
         // short), which also moves each row's "2h ago" on.
         if (same && isInboxOpen) return;
         inboxRows.Clear();
-        foreach (var item in items) inboxRows.Add(new InboxRowViewModel(item, now));
+        foreach (var item in items) inboxRows.Add(new InboxRowViewModel(item, now, people));
         if (same) return;
         foreach (var name in new[] { nameof(InboxCount), nameof(InboxBadge), nameof(HasInbox), nameof(InboxToolTip), nameof(InboxTitle) })
             RaiseOnEveryTab(name);
@@ -72,6 +96,10 @@ public sealed partial class MainViewModel
 
     /// <summary>Everything waiting on the owner, most pressing kind first.</summary>
     public ObservableCollection<InboxRowViewModel> InboxItems => Root.inboxRows;
+
+    /// <summary>Who a ticket row can be delegated to (M.ORCH-T1732): every known person, "Unassigned" first. Not scoped to any
+    /// one tab's org, since a ticket here can go to anyone with a login on this machine.</summary>
+    public ObservableCollection<PersonOptionViewModel> InboxAssignees => Root.people;
 
     /// <summary>How many items wait.</summary>
     public int InboxCount => Root.inboxRows.Count;
@@ -113,4 +141,108 @@ public sealed partial class MainViewModel
         try { System.Windows.Clipboard.SetText(row.Action); }
         catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or InvalidOperationException) { /* the clipboard is held: nothing copied */ }
     });
+
+    // ── Acting on a row directly (M.ORCH-T1732): each runs on whichever tab is on screen, like the Queue's own Start and
+    // Release, so a ticket assigned to a user still opens on that user's login. ──
+
+    /// <summary>Approves the row's ticket.</summary>
+    public ICommand ApproveInboxCommand => Root.approveInboxCommand ??= new RelayCommand(p => { if (p is InboxRowViewModel row) Root.Shown.ApproveInbox(row); });
+    /// <summary>Clears the row's <c>waiting-on-owner</c> label.</summary>
+    public ICommand ClearWaitingInboxCommand => Root.clearWaitingInboxCommand ??= new RelayCommand(p => { if (p is InboxRowViewModel row) Root.Shown.ClearWaitingInbox(row); });
+    /// <summary>Releases the row's stale or orphaned claim.</summary>
+    public ICommand ReleaseInboxCommand => Root.releaseInboxCommand ??= new RelayCommand(p => { if (p is InboxRowViewModel row) Root.Shown.ReleaseInbox(row); });
+    /// <summary>Delegates the row's ticket to its picker's choice (or back to nobody).</summary>
+    public ICommand DelegateInboxCommand => Root.delegateInboxCommand ??= new RelayCommand(p => { if (p is InboxRowViewModel row) Root.Shown.DelegateInbox(row); });
+    /// <summary>Approves or clears the row, then starts it at once if it's workable.</summary>
+    public ICommand WorkInboxNowCommand => Root.workInboxNowCommand ??= new RelayCommand(p => { if (p is InboxRowViewModel row) Root.Shown.WorkInboxNow(row); });
+
+    /// <summary>Approves <paramref name="row"/>'s ticket (<see cref="OwnerInboxActions.Approve"/>), then refreshes: the row
+    /// leaves the Inbox once the plan no longer counts it as awaiting approval.</summary>
+    public async void ApproveInbox(InboxRowViewModel row)
+    {
+        if (!row.CanApprove || Locked(row.Id)) return;
+        try
+        {
+            OwnerInboxActions.Approve(WorkspaceRoot, row.Id);
+            QueueMessage = $"{row.Id} is approved.";
+            await RefreshAsync();
+            if (full is not null) Root.ApplyPlan(full);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException or KeyNotFoundException or InvalidOperationException)
+        {
+            QueueMessage = $"Approve failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "Approve from the Inbox failed");
+        }
+    }
+
+    /// <summary>Clears <paramref name="row"/>'s <c>waiting-on-owner</c> label (<see cref="OwnerInboxActions.ClearWaiting"/>),
+    /// then refreshes.</summary>
+    public async void ClearWaitingInbox(InboxRowViewModel row)
+    {
+        if (!row.CanClearWaiting || Locked(row.Id)) return;
+        try
+        {
+            OwnerInboxActions.ClearWaiting(WorkspaceRoot, row.Id);
+            QueueMessage = $"{row.Id} is cleared: it's handed out again like any other queued ticket.";
+            await RefreshAsync();
+            if (full is not null) Root.ApplyPlan(full);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException or KeyNotFoundException or InvalidOperationException)
+        {
+            QueueMessage = $"Clear failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "Clear from the Inbox failed");
+        }
+    }
+
+    /// <summary>Releases <paramref name="row"/>'s stale or orphaned claim: the same <see cref="Release"/> the Queue's own
+    /// button runs.</summary>
+    public void ReleaseInbox(InboxRowViewModel row)
+    {
+        if (row.CanRelease) Release(row.Id);
+    }
+
+    /// <summary>Delegates <paramref name="row"/>'s ticket to its picker's current choice, or back to nobody when it's
+    /// "Unassigned" (<see cref="OwnerInboxActions.Delegate"/>), then refreshes.</summary>
+    public async void DelegateInbox(InboxRowViewModel row)
+    {
+        if (!row.CanDelegate || Locked(row.Id)) return;
+        try
+        {
+            var change = OwnerInboxActions.Delegate(WorkspaceRoot, row.Id, row.Assignee?.Email);
+            QueueMessage = change.Text;
+            await RefreshAsync();
+            if (full is not null) Root.ApplyPlan(full);
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException or KeyNotFoundException or InvalidOperationException)
+        {
+            QueueMessage = $"Delegate failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "Delegate from the Inbox failed");
+        }
+    }
+
+    /// <summary>Approves (or clears) <paramref name="row"/>, refreshes, then starts it at once through the same
+    /// <see cref="Dispatch"/> the Queue's own Start button runs, if the refreshed plan says it's workable and nobody has it
+    /// yet; otherwise says why not instead of silently doing nothing.</summary>
+    public async void WorkInboxNow(InboxRowViewModel row)
+    {
+        if (!row.CanWorkNow || Locked(row.Id)) return;
+        try
+        {
+            QueueMessage = $"Starting {row.Id}…";
+            if (row.RawKind == OwnerInbox.Approval) OwnerInboxActions.Approve(WorkspaceRoot, row.Id);
+            else OwnerInboxActions.ClearWaiting(WorkspaceRoot, row.Id);
+            await RefreshAsync();
+            if (full is not null) Root.ApplyPlan(full);
+            var item = Plan?.Queue.FirstOrDefault(q => string.Equals(q.Id, row.Id, StringComparison.OrdinalIgnoreCase));
+            if (item is null) { QueueMessage = $"{row.Id} is ready, but isn't in the queue yet (it may still be blocked)."; return; }
+            if (item.IsAssigned) { QueueMessage = $"{row.Id} is already being worked."; return; }
+            if (!item.MayWork) { QueueMessage = $"{row.Id} still isn't workable."; return; }
+            Dispatch(item);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException or KeyNotFoundException or InvalidOperationException)
+        {
+            QueueMessage = $"Failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "Work-it-now from the Inbox failed");
+        }
+    }
 }

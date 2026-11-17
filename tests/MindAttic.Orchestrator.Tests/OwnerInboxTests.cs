@@ -2,6 +2,7 @@ using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Status;
+using MindAttic.Orchestrator.Wpf.ViewModels;
 using MindAttic.Tickets.Log;
 using NUnit.Framework;
 
@@ -57,6 +58,21 @@ public sealed class OwnerInboxTests
             Assert.That(item.Title, Is.EqualTo("summary of A-T1"));
             Assert.That(item.Action, Is.EqualTo("tickets ticket approve A-T1"));
             Assert.That(item.SinceUtc, Is.Not.Null);
+        });
+    }
+
+    [Test]
+    public void A_ticket_items_assignee_comes_from_the_snapshot_for_the_delegate_picker()
+    {
+        var snap = Snap(T("A-T1"), T("A-T2")) with
+        {
+            Assignees = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["A-T1"] = "amy@example.com" },
+        };
+        var items = OwnerInbox.Build(Inputs(snap));
+        Assert.Multiple(() =>
+        {
+            Assert.That(items.Single(i => i.Id == "A-T1").Assignee, Is.EqualTo("amy@example.com"));
+            Assert.That(items.Single(i => i.Id == "A-T2").Assignee, Is.Null, "unassigned stays null, not empty");
         });
     }
 
@@ -255,5 +271,54 @@ public sealed class OwnerInboxTests
         Assert.That(row.IsTicket, Is.False);
         Assert.That(row.Where, Is.Empty);
         Assert.That(row.Kind, Is.EqualTo("Sign in"));
+    }
+
+    [Test]
+    public void Only_its_own_kind_of_row_can_approve_clear_release_or_work_it_now_but_any_ticket_can_be_delegated()
+    {
+        Assert.Multiple(() =>
+        {
+            var approval = Row(OwnerInbox.Approval, "A-T1");
+            Assert.That(approval, Has.Property(nameof(InboxRowViewModel.CanApprove)).True
+                .And.Property(nameof(InboxRowViewModel.CanWorkNow)).True
+                .And.Property(nameof(InboxRowViewModel.CanDelegate)).True
+                .And.Property(nameof(InboxRowViewModel.CanClearWaiting)).False
+                .And.Property(nameof(InboxRowViewModel.CanRelease)).False);
+
+            var waiting = Row(OwnerInbox.WaitingOnOwner, "A-T2");
+            Assert.That(waiting, Has.Property(nameof(InboxRowViewModel.CanClearWaiting)).True
+                .And.Property(nameof(InboxRowViewModel.CanWorkNow)).True
+                .And.Property(nameof(InboxRowViewModel.CanApprove)).False);
+
+            var stale = Row(OwnerInbox.Stale, "A-T3");
+            Assert.That(stale, Has.Property(nameof(InboxRowViewModel.CanRelease)).True
+                .And.Property(nameof(InboxRowViewModel.CanWorkNow)).False
+                .And.Property(nameof(InboxRowViewModel.CanDelegate)).True);
+
+            var orphaned = Row(OwnerInbox.Orphaned, "A-T4");
+            Assert.That(orphaned, Has.Property(nameof(InboxRowViewModel.CanRelease)).True);
+
+            var signIn = new InboxRowViewModel(Item(OwnerInbox.SignIn, "amy@example.com"), Now);
+            Assert.That(signIn, Has.Property(nameof(InboxRowViewModel.CanDelegate)).False
+                .And.Property(nameof(InboxRowViewModel.CanApprove)).False
+                .And.Property(nameof(InboxRowViewModel.CanRelease)).False);
+        });
+        return;
+
+        static InboxRowViewModel Row(string kind, string id) => new(Item(kind, id), Now);
+    }
+
+    [Test]
+    public void The_delegate_picker_starts_on_whoever_already_has_it_else_unassigned()
+    {
+        var nobody = new PersonOptionViewModel(null);
+        var amy = new PersonOptionViewModel("amy@example.com");
+        var people = new List<PersonOptionViewModel> { nobody, amy };
+
+        var assigned = new InboxRowViewModel(Item(OwnerInbox.Approval, "A-T1") with { Assignee = "amy@example.com" }, Now, people);
+        Assert.That(assigned.Assignee, Is.SameAs(amy));
+
+        var unassigned = new InboxRowViewModel(Item(OwnerInbox.Approval, "A-T2"), Now, people);
+        Assert.That(unassigned.Assignee, Is.SameAs(nobody));
     }
 }

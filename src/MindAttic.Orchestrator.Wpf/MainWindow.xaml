@@ -1309,9 +1309,10 @@
         </mc:MaModal>
 
         <!-- The owner inbox (M.ORCH-T1689): everything waiting on the owner, one card each: its kind, the item (a ticket's id
-             links into Tickets Desktop, the only place a ticket is approved or edited), its repo and how long it has waited,
-             what it is, and the command that answers it with a Copy button. Every line wraps, so the cards read in the phone
-             layout too. Esc, its close button and the backdrop close it. -->
+             still links into Tickets Desktop, for prioritizing, blocking or closing it), its repo and how long it has waited,
+             what it is, its own Approve/Clear/Release/Work it now/Delegate buttons (M.ORCH-T1732), and the command that answers
+             it with a Copy button for whoever would rather paste it into a terminal. Every line wraps, so the cards read in the
+             phone layout too. Esc, its close button and the backdrop close it. -->
         <mc:MaModal x:Name="InboxModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="{Binding InboxTitle}" AutomationProperties.Name="Inbox" DialogWidth="560"
                     IsOpen="{Binding IsInboxOpen}" CloseCommand="{Binding CloseInboxCommand}">
             <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,0,12,0" MaxHeight="520">
@@ -1335,6 +1336,36 @@
                                             <Run Text="  " /><Run Text="{Binding Where, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
                                         </TextBlock>
                                         <TextBlock Text="{Binding Title}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
+                                        <!-- Acts on the row directly (M.ORCH-T1732), no terminal needed: Approve/Clear/Release run at
+                                             once, Work it now also starts it, and Delegate assigns it to the picker's choice (or back
+                                             to nobody). Each is the same change Tickets Desktop's own buttons make. -->
+                                        <WrapPanel Margin="{StaticResource RowGutter}" Visibility="{Binding IsTicket, Converter={StaticResource Visible}}">
+                                            <Button Style="{StaticResource MaPrimaryButton}" Content="Approve" Padding="{StaticResource SpaceHLVS}" Margin="0,0,6,6"
+                                                    Visibility="{Binding CanApprove, Converter={StaticResource Visible}}"
+                                                    Command="{Binding DataContext.ApproveInboxCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                    mc:MaCallout.ToolTip="Approve it for work" AutomationProperties.Name="{Binding Id, StringFormat='Approve {0}'}" />
+                                            <Button Style="{StaticResource MaPrimaryButton}" Content="Clear" Padding="{StaticResource SpaceHLVS}" Margin="0,0,6,6"
+                                                    Visibility="{Binding CanClearWaiting, Converter={StaticResource Visible}}"
+                                                    Command="{Binding DataContext.ClearWaitingInboxCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                    mc:MaCallout.ToolTip="Take the waiting-on-owner label off it" AutomationProperties.Name="{Binding Id, StringFormat='Clear {0}'}" />
+                                            <Button Style="{StaticResource MaButton}" Content="Release" Padding="{StaticResource SpaceHLVS}" Margin="0,0,6,6"
+                                                    Visibility="{Binding CanRelease, Converter={StaticResource Visible}}"
+                                                    Command="{Binding DataContext.ReleaseInboxCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                    mc:MaCallout.ToolTip="Put it back in the queue" AutomationProperties.Name="{Binding Id, StringFormat='Release {0}'}" />
+                                            <Button Style="{StaticResource MaButton}" Content="Work it now" Padding="{StaticResource SpaceHLVS}" Margin="0,0,6,6"
+                                                    Visibility="{Binding CanWorkNow, Converter={StaticResource Visible}}"
+                                                    Command="{Binding DataContext.WorkInboxNowCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                    mc:MaCallout.ToolTip="Approve (or clear) it, then start it at once if it's workable" AutomationProperties.Name="{Binding Id, StringFormat='Work {0} now'}" />
+                                            <StackPanel Orientation="Horizontal" Visibility="{Binding CanDelegate, Converter={StaticResource Visible}}">
+                                                <ComboBox Width="150" Margin="0,0,6,6" VerticalAlignment="Center"
+                                                          ItemsSource="{Binding DataContext.InboxAssignees, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          DisplayMemberPath="Name" SelectedItem="{Binding Assignee}"
+                                                          AutomationProperties.Name="{Binding Id, StringFormat='Delegate {0} to'}" />
+                                                <Button Style="{StaticResource MaButton}" Content="Delegate" Padding="{StaticResource SpaceHLVS}" Margin="0,0,6,6"
+                                                        Command="{Binding DataContext.DelegateInboxCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                        mc:MaCallout.ToolTip="Assign it to the picker's choice (Unassigned hands it out again)" AutomationProperties.Name="{Binding Id, StringFormat='Delegate {0}'}" />
+                                            </StackPanel>
+                                        </WrapPanel>
                                         <DockPanel Margin="{StaticResource RowGutter}">
                                             <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Copy" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Top"
                                                     Command="{Binding DataContext.CopyInboxActionCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
