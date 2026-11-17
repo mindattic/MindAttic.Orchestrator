@@ -102,25 +102,56 @@ or a local Claude CLI file on the PC lands in the host's database at once, and e
 - **Work:** type `/allocate` in a CLI on the host (through the Team Wall or Remote Desktop).
 - **Restarts:** the VM signs itself in, and Scheduler starts the daemon, which starts the gateway. Your PC reconnects on its
   own.
-- **Work branches (in progress, off by default; M.ORCH-T1501):** with the Vault setting *Build work branches (remote host)*
-  on, the host's daemon builds each `origin/work/*` branch in a worktree of its own (at most *Work-branch builds at once*),
-  apart from the others and from main, and `orchestrator branches` shows each one; `--ready` lists the ones built clean and
-  waiting for a local test run (`--json` for scripts). Branches exist only on the host: your PC stays on main.
-  `orchestrator branches report <repo> <branch> <head> --pass|--fail [--note "<what failed>"]` records a local run of one
-  head (M.ORCH-T1637). A failing run sends the branch back to the work unit that produced it, the ticket its name carries
-  (`work/<ticket>`): the ticket gets a note with the failures and is handed out again, to keep iterating on that same
-  branch, while every other branch goes on building and being tested. Once it pushes a new head, the host builds it and
-  queues it for a local run again; `--returned` lists the branches back with their work unit. A passing run signs that
-  head off (M.ORCH-T1636): at its next look the host merges it into main by itself, in a worktree of its own
-  (`<WorktreeRoot>\<repo>\merge-main`, never the repo's checkout), pushes main and deletes the branch on origin (kept if it
-  moved after the sign-off; a head that moved isn't merged, it needs its own run). A merge that conflicts with main is
-  logged and not tried again until a new head is signed off. Then `orchestrator branches ff [<repo>...]` on your PC
-  fast-forwards main (only a checkout on main, only a fast-forward). `orchestrator branches test [<branch>...] [--repo
-  <name>]` on your PC (M.ORCH-T1635) runs the full suite of some or all queued branches, one at a time, each at the head
-  the host built, in a detached worktree (`<WorktreeRoot>\<repo>\local-tests`; your checkout stays on main), and reports
-  pass or fail per head back to the host through its gateway (`POST /branches`, the owner's token only), the same record
-  `branches report` writes; a run that couldn't complete isn't reported, and `--list` only shows what would run. The PC's
-  periodic fetch job is still to come.
+- **Work branches (the remote-branch loop; off by default; M.ORCH-T1501):** the host does the work on branches, your PC
+  runs the tests, and the host merges what passed. It all hangs on the Vault setting *Build work branches (remote host)*
+  (`RemoteBranchBuilds`), which is read on each machine from its own Vault: it must be on on the host (to branch, build and
+  merge) and, separately, on your PC (for the fetch job below). Off, everything is as it was: tickets are worked on main.
+  The loop, end to end:
+  1. **Work on a branch (M.ORCH-T1633).** On the host with the setting on, `/allocate` works each ticket on its own
+     `origin/work/<ticket>` branch in a `<WorktreeRoot>\<repo>\work-<ticket>` worktree, never the repo's shared checkout.
+     The agent builds (no tests), commits, pushes to `origin/work/<ticket>` (never to main) and closes the ticket. A ticket
+     that already has a branch carries on from it, with the failure text of its last local test run in its brief. Off, or on
+     any other machine, the claim prompt is the main-line one, unchanged.
+  2. **Build on the host.** The host's daemon builds each `origin/work/*` branch in a worktree of its own (at most *Work-branch
+     builds at once*), apart from the others and from main. `orchestrator branches` shows each branch; `--ready` lists the
+     ones built clean and waiting for a local test run (`--json` for scripts). Branches exist only on the host: your PC
+     stays on main.
+  3. **Fetch the queue to your PC (M.ORCH-T1634).** `orchestrator branches fetch` pulls that ready list through the gateway
+     and keeps it locally (`--show` prints the last copy without asking the host, `--json` for scripts); it runs no test. On
+     a client with `RemoteBranchBuilds` on, a MindAttic.Scheduler job (`Orchestrator\BranchQueue`) runs it every *Fetch the
+     host's ready-to-test branches every (min)* (`BranchQueueFetchMinutes`, default 10); every dashboard start and every
+     fetch brings that job in line with the Vault (registered, re-timed or cancelled). It needs MindAttic.Scheduler in the
+     workspace. A fetch that fails keeps the last queue and says why.
+  4. **Test on your PC (M.ORCH-T1635).** `orchestrator branches test [<branch>...] [--repo <name>] [--timeout <min>] [--list]`
+     runs the full suite of some or all queued branches, one at a time, each at the head the host built, in a detached
+     worktree (`<WorktreeRoot>\<repo>\local-tests`; your checkout stays on main). It asks the host for the queue itself
+     (it doesn't read the fetched copy), and reports pass or fail per head back through the gateway (`POST /branches`, the
+     owner's token only). A run that couldn't complete isn't reported; `--list` only shows what would run. The suite timeout is
+     the *Test suite timeout (minutes)* setting (`MainTestsTimeoutMinutes`, shared with the main-line suites; `--timeout`
+     overrides it for one run), and each run first waits up to *Branch tests memory wait (minutes)*
+     (`BranchTestsMemoryWaitMinutes`) for the memory guard to let new work start, else that branch is skipped and nothing is
+     reported (M.ORCH-T1662). Nothing starts this on its own: you run it (or `branches report` by hand).
+     `orchestrator branches report <repo> <branch> <head> --pass|--fail [--note "<what failed>"]` records a run
+     of one head directly (M.ORCH-T1637); `branches test` writes the same record.
+  5. **A failing run (M.ORCH-T1637).** The branch goes back to the work unit that produced it, the ticket its name carries
+     (`work/<ticket>`): the ticket gets a note with the failures and its claim is cleared so it can be handed out again, to
+     keep iterating on that same branch, while every other branch goes on building and being tested. Once it pushes a new
+     head, the host builds it and queues it for a local run again; `--returned` lists the branches back with their work unit.
+  6. **A passing run (M.ORCH-T1636).** It signs that head off; at its next look the host merges it into main by itself, in a
+     worktree of its own (`<WorktreeRoot>\<repo>\merge-main`, never the repo's checkout), pushes main and deletes the branch
+     on origin (kept if it moved after the sign-off; a head that moved isn't merged, it needs its own run). A merge that
+     conflicts with main is logged and not tried again until a new head is signed off.
+  7. **Catch up your PC.** `orchestrator branches ff [<repo>...]` fast-forwards your PC's main from origin (only a checkout on
+     main, only a fast-forward).
+
+  Known gaps today:
+  - Nothing runs `branches ff` on the PC by itself; run it (or `machine pull`) when you want main current.
+  - Nothing runs `branches test` on the PC by itself either, so a fetched branch waits until you start a run.
+  - The host pushes a merge to main without building it: the build and the tests happened on the branch's head, not on the
+    merged result, so a branch that merges clean but breaks main is only found by the next main-line run.
+  - The PC's fetch job only exists with `RemoteBranchBuilds` on in the PC's own Vault, not just the host's.
+  - The agent closes the branch's ticket when it pushes, so a failing run's "handed out again" doesn't reach a closed ticket:
+    the failure note lands on it, but it isn't re-handed (M.ORCH-T1661, being fixed; this describes today's behaviour).
 - **Back to one machine:** `orchestrator machine standalone` (and `orchestrator db migrate` to go back to SQL Server).
 
 ## Limits
