@@ -55,6 +55,13 @@ try
     using var broadcast = new BroadcastFile(options.DataDir);
     var watchers = new WatcherBoard(options.DataDir, message => TermWatchersBus.TrySend(message));
     var signingKey = new SigningKeyFile(options.DataDir);
+    var grants = new AclGrants(options.Owner, options.DataDir);
+    // Hub phase 2b (M.ORCH-T1667): the hosts this gateway started under members' own Windows accounts. Empty, and so inert, unless
+    // the hub policy (HubMemberSessions and HubMemberWindowsUsers, on the host) let a member start one.
+    var memberHosts = new TermMemberHosts(options.DataDir);
+    var members = new MemberSessionLauncher(LogonRunAs.Instance, CredentialManagerMemberCredentials.Instance, memberHosts,
+        termHostExe: GatewayTermHost.Find, workspaceRoot: () => TicketsRunner.WorkspaceRoot, registryRoot: () => TermMemberHosts.DefaultRegistryRoot,
+        peerSid: () => TermPipeAcl.CurrentUser.Value, startWait: () => grants.Hub?.StartWait ?? TimeSpan.FromSeconds(TermHubPolicy.DefaultStartWaitSeconds));
     var services = new GatewayServices
     {
         Options = options,
@@ -63,9 +70,9 @@ try
         OwnerKey = GatewayKeys.LoadOrCreate(options.DataDir, GatewayKeys.OwnerKeyFile),
         // M.ORCH-T934: members' grants and org membership from orchestrator.db (the snapshot the daemon writes), and the audit
         // spool the daemon imports into it.
-        Grants = new AclGrants(options.Owner, options.DataDir),
-        Sessions = new RegistrySessions(),
-        Pipes = new NamedPipeConnector(),
+        Grants = grants,
+        Sessions = new MemberAwareSessions(new RegistrySessions(), memberHosts),
+        Pipes = new MemberAwarePipeConnector(new NamedPipeConnector(), memberHosts),
         Log = log,
         Audit = new SpoolAudit(options.DataDir, log),
         Broadcast = broadcast,
@@ -73,9 +80,10 @@ try
         Watchers = watchers,
         // Hub phase 1 (M.ORCH-T1640): org members' own keys (orchestrator machine invite|revoke), reread as members.json changes.
         MemberKeys = new MemberKeysFile(options.DataDir),
-        // Hub phase 2 (M.ORCH-T1641): members start and stop their own CLIs (orchestrator start; never under another Windows
-        // account in this build). Only reachable while the ACL snapshot carries the hub policy.
-        Launcher = new OrchestratorLauncher(),
+        // Hub phase 2 (M.ORCH-T1641): members start and stop their own CLIs (orchestrator start as the host's user, or, phase 2b,
+        // a TermHost under the member's own Windows account). Only reachable while the ACL snapshot carries the hub policy.
+        Launcher = new OrchestratorLauncher(members),
+        SessionAccounts = new MemberAwareAccounts(HostUserAccounts.Instance, memberHosts),
     };
 
     var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory });

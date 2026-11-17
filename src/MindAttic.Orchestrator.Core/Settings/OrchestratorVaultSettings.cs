@@ -414,6 +414,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(5, 600)]
     public double HubConsentSeconds { get; set; } = OrchestratorSettings.DefaultHubConsentSeconds;
 
+    /// <summary>Seconds the gateway waits for a member's CLI, started under their own Windows account, to come up.</summary>
+    [Setting("Member CLI start wait (s)", Group = "Gateway", Order = 6,
+        Help = "With 'Members work their own CLIs' and 'Per-member Windows users': how long the gateway waits for a CLI it started under a member's own Windows account to come up (its terminal host to register) before answering their start. A host that comes up later still runs and shows on their Team Wall.")]
+    [SettingRange(2, 120)]
+    public double HubMemberStartWaitSeconds { get; set; } = OrchestratorSettings.DefaultHubMemberStartWaitSeconds;
+
     /// <summary>Seconds between a member client's looks at the host for consent requests on their own CLIs.</summary>
     [Setting("Consent check every (s)", Group = "Gateway", Order = 7,
         Help = "On a member's PC connected to the host: how often the dashboard asks the host whether anyone is asking to type into one of your CLIs, to show it as a toast. Keep it well under the consent wait.")]
@@ -878,6 +884,7 @@ public sealed class OrchestratorVaultSettings
         HubTrustedOrg = s.HubTrustedOrg,
         HubMemberWindowsUsers = s.HubMemberWindowsUsers,
         HubConsentSeconds = s.HubConsentSeconds,
+        HubMemberStartWaitSeconds = s.HubMemberStartWaitSeconds,
         HubConsentPollSeconds = s.HubConsentPollSeconds,
         TabBlinkMinSpacingMs = s.TabBlinkMinSpacingMs,
         ProjectsRefreshMinutes = s.ProjectsRefreshMinutes,
@@ -1022,6 +1029,7 @@ public sealed class OrchestratorVaultSettings
         HubTrustedOrg = HubTrustedOrg,
         HubMemberWindowsUsers = HubMemberWindowsUsers,
         HubConsentSeconds = HubConsentSeconds,
+        HubMemberStartWaitSeconds = HubMemberStartWaitSeconds,
         HubConsentPollSeconds = HubConsentPollSeconds,
         TabBlinkMinSpacingMs = TabBlinkMinSpacingMs,
         ProjectsRefreshMinutes = ProjectsRefreshMinutes,

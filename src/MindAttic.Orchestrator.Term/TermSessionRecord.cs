@@ -74,6 +74,11 @@ public record TermSessionRecord
     /// so it's read case-insensitively and defaults false, same as every other optional field here.</summary>
     [JsonPropertyName("isMenu")] public bool IsMenu { get; init; }
 
+    /// <summary>The Windows account the host runs under (<c>DOMAIN\user</c>), as the host itself reports it (hub phase 2b,
+    /// M.ORCH-T1667). A display hint only: whether a session runs under a member's own account, the gateway takes from its own launch
+    /// ledger (<see cref="TermMemberHosts"/>), which only the host's user writes, never from this field. Null from an older host.</summary>
+    [JsonPropertyName("account")] public string? Account { get; init; }
+
     [JsonIgnore] public bool Exited => State == TermSessionStates.Exited;
 }
 
@@ -117,6 +122,6 @@ public sealed record TermSessionEvent : TermSessionRecord
     {
         Id = Id, HostPid = HostPid, HostStartUtc = HostStartUtc, Pipe = Pipe, Title = Title, Login = Login, ConfigDir = ConfigDir,
         Repo = Repo, Cwd = Cwd, CommandLine = CommandLine, Cols = Cols, Rows = Rows, State = State, ExitCode = ExitCode,
-        StartedUtc = StartedUtc, Protocol = Protocol, IsMenu = IsMenu,
+        StartedUtc = StartedUtc, Protocol = Protocol, IsMenu = IsMenu, Account = Account,
     };
 }

@@ -80,6 +80,12 @@ internal sealed class TermSession
         title = options.Title;
     }
 
+    /// <summary>A server instance of this session's pipe: on a host started under a member's own account for a peer (hub phase 2b,
+    /// M.ORCH-T1667, <see cref="HostOptions.PeerSid"/>), ACL'd to this account and that peer alone (<see cref="TermPipeAcl"/>); on
+    /// every other host, <see cref="NewServer"/>'s as before.</summary>
+    private NamedPipeServerStream Serve(bool firstInstance = false) =>
+        TermPipeAcl.ParseSid(options.PeerSid) is { } peer ? TermPipeAcl.CreateServer(options.PipeName, peer, firstInstance) : NewServer(firstInstance);
+
     /// <summary>Runs until the CLI has exited and the linger is over. 0 when the CLI ran, 1 when it couldn't start, 3 when the
     /// session id is already taken by another host.</summary>
     public int Run()
@@ -88,7 +94,7 @@ internal sealed class TermSession
         log.Write($"host start id={options.Id} pipe={options.PipeName} cwd={options.Cwd} cmd={commandLine}");
 
         // Claim the pipe name first: a second host with the same id must not serve the same pipe.
-        try { firstInstance = NewServer(firstInstance: true); }
+        try { firstInstance = Serve(firstInstance: true); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             log.Write($"session id {options.Id} is taken (pipe {options.PipeName} exists): {ex.Message}; exiting");
@@ -357,7 +363,7 @@ internal sealed class TermSession
             NamedPipeServerStream? server = null;
             try
             {
-                server = Interlocked.Exchange(ref firstInstance, null) ?? NewServer();
+                server = Interlocked.Exchange(ref firstInstance, null) ?? Serve();
                 await server.WaitForConnectionAsync().ConfigureAwait(false);
             }
             catch (Exception ex)

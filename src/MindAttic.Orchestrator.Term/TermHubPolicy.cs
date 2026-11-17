@@ -61,6 +61,16 @@ public sealed record TermHubPolicy
     /// <summary>How long a consent request waits for the session owner's answer before the viewer is left watching.</summary>
     [JsonPropertyName("consentSeconds")] public double ConsentSeconds { get; init; } = DefaultConsentSeconds;
 
+    /// <summary>The default wait for a member's TermHost to register after it's started under their account, seconds.</summary>
+    public const double DefaultStartWaitSeconds = 15;
+
+    /// <summary>How long the gateway waits for a TermHost it started under a member's own account to write its registry file before
+    /// answering the start (hub phase 2b, M.ORCH-T1667); the Vault's HubMemberStartWaitSeconds.</summary>
+    [JsonPropertyName("startWaitSeconds")] public double StartWaitSeconds { get; init; } = DefaultStartWaitSeconds;
+
+    /// <summary>The start wait, clamped to something sane.</summary>
+    [JsonIgnore] public TimeSpan StartWait => TimeSpan.FromSeconds(Math.Clamp(double.IsFinite(StartWaitSeconds) ? StartWaitSeconds : DefaultStartWaitSeconds, 1, 300));
+
     /// <summary>The members whose own Windows account the host found (only while <see cref="WindowsUsers"/> is on).</summary>
     [JsonPropertyName("accounts")] public List<TermHubAccount> Accounts { get; init; } = [];
 

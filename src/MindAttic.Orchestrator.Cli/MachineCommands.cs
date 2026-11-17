@@ -428,7 +428,9 @@ internal sealed class MachineConsentCommand : AsyncCommand<MachineConsentCommand
 /// <c>orchestrator machine isolate &lt;member&gt; &lt;windows-account&gt;</c> | <c>--clear</c> (hub phase 2, M.ORCH-T1641): on the host,
 /// records which Windows account an invited member's CLIs run under, once an admin has made it (docs/REMOTE_HOST.md). It only
 /// writes the name into the gateway's members file and looks the account up; it never creates, changes or deletes an account, a
-/// group, an ACL or a credential.
+/// group or an ACL. With <c>--password</c> (hub phase 2b, M.ORCH-T1667) it asks for that account's password, without echo, and
+/// stores it in this Windows user's Credential Manager (DPAPI-sealed; never a file, a log or the command line), so the gateway can
+/// start that member's CLIs under it; <c>--clear</c> forgets the stored password along with the account.
 /// </summary>
 internal sealed class MachineIsolateCommand : Command<MachineIsolateCommand.Settings>
 {
@@ -446,9 +448,18 @@ internal sealed class MachineIsolateCommand : Command<MachineIsolateCommand.Sett
         [Description("Forget their account: their CLIs can't be typed into by them again until one is set (or the org is trusted).")]
         public bool Clear { get; init; }
 
+        [CommandOption("--password")]
+        [Description("Also ask for that account's password (typed, not echoed) and keep it in this user's Credential Manager, so the gateway can start their CLIs under it.")]
+        public bool Password { get; init; }
+
         public override ValidationResult Validate() =>
-            Clear == (Account is not null) ? ValidationResult.Error("Give their Windows account, or --clear.") : ValidationResult.Success();
+            Clear == (Account is not null) ? ValidationResult.Error("Give their Windows account, or --clear.")
+            : Clear && Password ? ValidationResult.Error("--clear forgets the password too; leave out --password.")
+            : ValidationResult.Success();
     }
+
+    /// <summary>Where member passwords are kept (Credential Manager; a test's fake).</summary>
+    internal static IMemberCredentials Credentials { get; set; } = CredentialManagerMemberCredentials.Instance;
 
     public override int Execute(CommandContext context, Settings settings)
     {
@@ -464,6 +475,8 @@ internal sealed class MachineIsolateCommand : Command<MachineIsolateCommand.Sett
             account = TermWindowsAccounts.Normalize(settings.Account, LocalWindowsAccounts.Instance.CurrentUser, out var why);
             if (account is null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(why ?? "That isn't a Windows account name.")}[/]"); return 1; }
         }
+        // The account mapped before, whose stored password --clear (or a different account) leaves behind.
+        var previous = TermMemberKeys.List().FirstOrDefault(k => k is not null && TermMemberKeys.Normalize(k.Email) == TermMemberKeys.Normalize(email))?.WindowsUser;
         bool found;
         try { found = TermMemberKeys.SetWindowsUser(email, account); }
         catch (IOException ex) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]"); return 1; }
@@ -473,6 +486,14 @@ internal sealed class MachineIsolateCommand : Command<MachineIsolateCommand.Sett
             return 1;
         }
         GatewayAcl.Publish();
+        if (previous is { Length: > 0 } old && (account is null || !TermWindowsAccounts.Same(old, account)))
+        {
+            try
+            {
+                if (Credentials.Forget(old)) AnsiConsole.MarkupLine($"[grey]Forgot the stored password of {Markup.Escape(old)}.[/]");
+            }
+            catch (InvalidOperationException ex) { AnsiConsole.MarkupLine($"[yellow]Couldn't forget {Markup.Escape(old)}'s stored password: {Markup.Escape(ex.Message)}[/]"); }
+        }
         if (account is null)
         {
             AnsiConsole.MarkupLine($"[green]{Markup.Escape(email)} has no Windows account here any more.[/]");
@@ -481,9 +502,61 @@ internal sealed class MachineIsolateCommand : Command<MachineIsolateCommand.Sett
         AnsiConsole.MarkupLine($"[green]{Markup.Escape(email)}'s CLIs on this host are to run as {Markup.Escape(account)}.[/]");
         if (!LocalWindowsAccounts.Instance.Exists(account))
             AnsiConsole.MarkupLine($"[yellow]No Windows account {Markup.Escape(account)} exists here yet: an admin makes it once (docs/REMOTE_HOST.md, \"Per-member Windows users\"); until then they can't type into or start CLIs here.[/]");
+        if (settings.Password)
+        {
+            if (!StorePassword(account)) return 1;
+        }
+        else if (!Credentials.Has(account))
+            AnsiConsole.MarkupLine($"[grey]No password for {Markup.Escape(account)} is stored yet: they can't start CLIs here until you run this again with --password.[/]");
         var s = Ctx.Store().LoadSettings();
         if (!s.HubMemberSessions || !s.HubMemberWindowsUsers)
             AnsiConsole.MarkupLine("[grey]It takes effect once the Vault's HubMemberSessions and HubMemberWindowsUsers are on.[/]");
         return 0;
+    }
+
+    /// <summary>Asks for <paramref name="account"/>'s password twice, without echo, and stores it (<see cref="Credentials"/>). The
+    /// typed text is never printed, logged or kept past this call beyond what the console's own input buffer holds.</summary>
+    private static bool StorePassword(string account)
+    {
+        if (Console.IsInputRedirected)
+        {
+            AnsiConsole.MarkupLine("[red]--password asks at the keyboard: run it in a console, not with input redirected.[/]");
+            return false;
+        }
+        var first = ReadSecret($"Password of {account}: ");
+        var second = ReadSecret("Again: ");
+        try
+        {
+            if (first.Length == 0) { AnsiConsole.MarkupLine("[red]Nothing was stored: the password was empty.[/]"); return false; }
+            if (!first.AsSpan().SequenceEqual(second)) { AnsiConsole.MarkupLine("[red]Nothing was stored: the two didn't match.[/]"); return false; }
+            try { Credentials.Save(account, first); }
+            catch (InvalidOperationException ex) { AnsiConsole.MarkupLine($"[red]Nothing was stored: {Markup.Escape(ex.Message)}[/]"); return false; }
+            AnsiConsole.MarkupLine($"[green]Stored {Markup.Escape(account)}'s password in this user's Credential Manager.[/]");
+            return true;
+        }
+        finally
+        {
+            Array.Clear(first);
+            Array.Clear(second);
+        }
+    }
+
+    /// <summary>A line typed without echo, as characters the caller clears.</summary>
+    private static char[] ReadSecret(string prompt)
+    {
+        Console.Write(prompt);
+        var buffer = new char[CredentialManagerMemberCredentials.MaxPasswordChars];
+        var length = 0;
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.Enter) break;
+            if (key.Key == ConsoleKey.Backspace) { if (length > 0) buffer[--length] = '\0'; continue; }
+            if (key.KeyChar != '\0' && length < buffer.Length) buffer[length++] = key.KeyChar;
+        }
+        Console.WriteLine();
+        var result = buffer[..length];
+        Array.Clear(buffer);
+        return result;
     }
 }

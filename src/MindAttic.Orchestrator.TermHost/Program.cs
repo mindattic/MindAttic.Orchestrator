@@ -19,6 +19,10 @@ try
 {
     if (!options.EnvPrepared) PrepareEnvironment(options);
 
+    // Hub phase 2b (M.ORCH-T1667): a host under a member's own account lets its peer (the host's user) see it run and end it.
+    if (!options.Launch && TermPipeAcl.ParseSid(options.PeerSid) is { } peer && !MemberHost.GrantPeer(peer, out var refused))
+        log.Write($"couldn't let the peer query or stop this host ({refused}); it may look gone to the gateway");
+
     if (options.Launch)
     {
         // Started from the host's own folder, never the CLI's, so the long-lived host holds no handle on a repo or worktree.
@@ -40,12 +44,15 @@ catch (Exception ex)
 }
 
 // The CLI's environment, set on this process (which runs only it), so CreateProcess passes it on: truecolor, no stale
-// NO_COLOR (as PaneRequest.ProcessCommandLine does), the session's id and pipe, then each --env (KEY= removes KEY).
+// NO_COLOR (as PaneRequest.ProcessCommandLine does), the session's id and pipe, then each --env (KEY= removes KEY). On a member's
+// host (hub phase 2b) a value's %VARIABLES% are expanded from this account's own environment, so the gateway can say
+// %USERPROFILE%\.claude-accounts\<login> without knowing where the member's profile is.
 static void PrepareEnvironment(HostOptions options)
 {
     Environment.SetEnvironmentVariable("NO_COLOR", null);
     Environment.SetEnvironmentVariable("COLORTERM", "truecolor");
     Environment.SetEnvironmentVariable("MINDATTIC_TERM_ID", options.Id);
     Environment.SetEnvironmentVariable("MINDATTIC_TERM_PIPE", options.PipeName);
-    foreach (var (key, value) in options.Env) Environment.SetEnvironmentVariable(key, value);
+    foreach (var (key, value) in options.Env)
+        Environment.SetEnvironmentVariable(key, options.IsMemberHost && value is not null ? Environment.ExpandEnvironmentVariables(value) : value);
 }

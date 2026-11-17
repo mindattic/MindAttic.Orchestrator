@@ -226,7 +226,8 @@ routes answer 404. Turn it on, on the host, and:
   grant (a new or extended grant is asked about again) and is held in the gateway's memory, so a restarted gateway asks
   again. A grant on a CLI no member owns needs no consent (the owner made it on their own CLI).
 - **Start and stop from the member's PC:** `orchestrator machine start <repo> [--login <email>]` starts a CLI on one of
-  their own logins (never another member's; the host runs `orchestrator start <repo> --account <login>`), and
+  their own logins (never another member's; the host runs `orchestrator start <repo> --account <login>`, or, with
+  per-member Windows users, a terminal host under their own account, below), and
   `orchestrator machine stop <session>` stops one of their own. Both need isolation or trusted org, as typing does.
 - **No deflate on interactive streams** while it's on: typed input beside secrets on one compressed stream is the
   CRIME/BREACH shape. Watch streams stay compressed.
@@ -246,15 +247,53 @@ the host, by hand:
    example `icacls D:\Projects\MindAttic /grant "erin-cli:(OI)(CI)RX"`, then `(OI)(CI)M` on the repos they work. Never
    on another member's `.claude-accounts` folder, the gateway's data folder or `owner.key`.
 3. Sign in once as that account (or `runas /profile /user:erin-cli cmd`) so Windows makes its profile, then sign its
-   Claude login in there with `claude setup-token`, so the token lives in that profile, sealed with that account's DPAPI.
-4. Record the mapping: `orchestrator machine isolate erin erin-cli` (it only stores the name and looks the account up;
-   `--clear` forgets it). `orchestrator machine isolate` refuses the host's own user, which would isolate nothing.
+   Claude login in there, in the folder the gateway will point the CLI at: in that account's console,
+   `$env:CLAUDE_CONFIG_DIR = "$env:USERPROFILE\.claude-accounts\erin@example.com"; claude setup-token` (the member's own
+   login email), so the token lives in that profile, sealed with that account's DPAPI. Check `claude` is on that
+   account's PATH (`where.exe claude`); install it for that user if not.
+4. Make the folder its terminal hosts register in, readable by the host's user and writable by that account only, in
+   the same elevated PowerShell (`<host-user>` is the Windows user the Orchestrator runs as):
+
+   ```powershell
+   $dir = "$env:ProgramData\MindAttic\MindAttic.Orchestrator\member-terms\erin-cli"   # the account's user name, lower case
+   New-Item -ItemType Directory -Force $dir | Out-Null
+   icacls $dir /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" "<host-user>:(OI)(CI)M" "erin-cli:(OI)(CI)M"
+   ```
+
+   (`MINDATTIC_MEMBER_TERMS` moves the `member-terms` root, for the gateway's user, if `%ProgramData%` won't do.) Give
+   the account read and execute on the Orchestrator's install folder, `C:\Apps\MindAttic.Orchestrator`, too, if it
+   hasn't got it (standard users usually have).
+5. Record the mapping and store the account's password for the gateway, as the host's user (not elevated):
+   `orchestrator machine isolate erin erin-cli --password`. It asks for the password twice without echo and keeps it in
+   the host user's Windows Credential Manager (target `MindAttic.Orchestrator/hub-member:<account>`, sealed with that
+   user's DPAPI; never a file, a log or a command line). `--clear` forgets the mapping and the stored password;
+   `orchestrator machine isolate` refuses the host's own user, which would isolate nothing. When the account's password
+   changes, run it again with `--password`.
+6. Make sure the Secondary Logon service runs (`Get-Service seclogon`; its default start type, Manual, is enough).
 
 The daemon then lists, in the gateway's snapshot, each invited member whose account exists; one whose account is missing
 gets no typing and no starting, never a fallback to the host's user.
 
-**Not built yet.** Launching a TermHost under the member's account (it needs that account's credential or a small
-service, and its named pipe ACL'd to that account and the daemon) is left out of this build: every CLI still runs as the
-host's user, so per-member isolation alone never lets a member type, and `machine start` answers that starting under
-their own account isn't built (501). Until it is, use *trusted org* only where it's true. The remaining piece is its own
-ticket.
+**How a member's CLI starts (hub phase 2b, M.ORCH-T1667).** `orchestrator machine start <repo>` from the member's PC asks
+the gateway, which (with `HubMemberSessions` and `HubMemberWindowsUsers` on and the member mapped) starts the TermHost
+under the member's account with the stored password (`CreateProcessWithLogonW`, the account's own profile and
+environment; no service, no elevation, no UAC). The host is told the host's user as its one peer, so:
+
+- its named pipe's DACL names only the member's account (full) and the host's user (read and write), and refuses any
+  network logon; the gateway opens it at identification level only (the member's host can't act as the host's user) and
+  only once Windows says the process serving it is the very TermHost it started;
+- the host lets the host's user see that it runs and end it (one ACE on its own process), so `machine stop` works; a
+  stop ends the TermHost alone, and the CLI goes with its console;
+- it writes its registry file in the member's `member-terms` folder, and the CLI's `CLAUDE_CONFIG_DIR` is
+  `%USERPROFILE%\.claude-accounts\<login>` in the member's own profile.
+
+The gateway records each host it starts this way in `member-hosts.json` in its data folder (only the host's user can
+read or write it) and trusts nothing in the member's folder on its own: a session counts as running under a member's
+account, which is what lets that member type into it, only when that ledger names its id, pid and start time. The host's
+record also carries an `account` field, for display. The answer waits up to *Member CLI start wait (s)*
+(`HubMemberStartWaitSeconds`, 15 by default) for the host to register; one that comes up later still shows on the Team
+Wall. Without a stored password, the folder, or the TermHost, `machine start` says which and starts nothing.
+
+`CreateProcessWithLogonW` gives the member's account access to the window station and desktop the gateway runs on, as
+`runas` does. A Windows service that starts the hosts (so no password is stored) isn't built; the stored credential is
+the one way in.

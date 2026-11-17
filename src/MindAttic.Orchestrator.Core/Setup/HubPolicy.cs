@@ -75,6 +75,7 @@ public static class HubPolicy
             TrustedOrg = settings.HubTrustedOrg,
             WindowsUsers = settings.HubMemberWindowsUsers,
             ConsentSeconds = settings.HubConsentSeconds,
+            StartWaitSeconds = settings.HubMemberStartWaitSeconds,
             Accounts = [.. mapped.OrderBy(a => a.Email, StringComparer.Ordinal)],
         };
     }

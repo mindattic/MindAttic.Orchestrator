@@ -763,6 +763,13 @@ public sealed record OrchestratorSettings
     /// <summary>The default hub consent seconds constant.</summary>
     public const double DefaultHubConsentSeconds = Term.TermHubPolicy.DefaultConsentSeconds;
 
+    /// <summary>Hub phase 2b (M.ORCH-T1667): how many seconds the gateway waits for a TermHost it started under a member's own
+    /// Windows account to register before answering the member's start.</summary>
+    public double HubMemberStartWaitSeconds { get; init; } = DefaultHubMemberStartWaitSeconds;
+
+    /// <summary>The default hub member start wait seconds constant.</summary>
+    public const double DefaultHubMemberStartWaitSeconds = Term.TermHubPolicy.DefaultStartWaitSeconds;
+
     /// <summary>Hub phase 2: on a member's client, how often (seconds) the dashboard asks the host for consent requests on the
     /// member's own CLIs, to show each as a toast.</summary>
     public double HubConsentPollSeconds { get; init; } = DefaultHubConsentPollSeconds;

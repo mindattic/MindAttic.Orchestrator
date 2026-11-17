@@ -52,7 +52,8 @@ internal sealed class GatewayServices
     /// <summary>The session owners' consents to other members' interact grants (hub phase 2, M.ORCH-T1641), in memory.</summary>
     public GatewayConsents Consents { get; init; } = new();
 
-    /// <summary>The Windows account each hosted session runs under (hub phase 2): this gateway's own user for every one, in this build.</summary>
+    /// <summary>The Windows account each hosted session runs under (hub phase 2): this gateway's own user by default; the served
+    /// gateway answers a member's account for the hosts it started under one (<see cref="MemberAwareAccounts"/>, M.ORCH-T1667).</summary>
     public ISessionAccounts SessionAccounts { get; init; } = HostUserAccounts.Instance;
 
     /// <summary>Starts and stops CLIs for members' clients (hub phase 2); none by default.</summary>

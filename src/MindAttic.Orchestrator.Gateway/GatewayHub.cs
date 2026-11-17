@@ -140,9 +140,9 @@ internal interface ISessionAccounts
 }
 
 /// <summary>
-/// Every hosted session runs as this gateway's own Windows user: the only way this build starts a TermHost. Launching one under a
-/// member's own account (and ACL'ing its pipe to them and the daemon) isn't built yet, so no session here ever counts as a
-/// member's own account, and per-member isolation never lets anyone type until it is.
+/// Every hosted session runs as this gateway's own Windows user: what a session is when the gateway didn't start it under a member's
+/// account. <see cref="MemberAwareAccounts"/> (hub phase 2b, M.ORCH-T1667) answers the member's account for the hosts its ledger
+/// says it started under one, and falls back to this for every other session.
 /// </summary>
 internal sealed class HostUserAccounts : ISessionAccounts
 {
@@ -175,15 +175,21 @@ internal sealed class NoLauncher : ISessionLauncher
 /// <summary>
 /// The real launcher: <c>orchestrator start &lt;repo&gt; --account &lt;login&gt;</c> (the Launcher opens the hosted CLI, as the
 /// dashboard's own start does) as the host's user, and a stop that ends the session's TermHost process tree once its pid and start
-/// time still name it. A <see cref="TermLaunchKind.MemberUser"/> plan is refused as not built: starting a process under another
-/// Windows account needs that account's credential or a service, and its pipe ACL'd to the daemon, which this build leaves out.
+/// time still name it. A <see cref="TermLaunchKind.MemberUser"/> plan (hub phase 2b, M.ORCH-T1667) goes to
+/// <paramref name="members"/>, which starts the TermHost under the member's own account; without one it is refused as not supported
+/// (501). A member's host is stopped by ending the TermHost alone (its ConPTY takes the CLI with it): the peer may end that one
+/// process, not the member's other processes.
 /// </summary>
-internal sealed class OrchestratorLauncher : ISessionLauncher
+internal sealed class OrchestratorLauncher(MemberSessionLauncher? members = null) : ISessionLauncher
 {
     public async Task<LaunchResult> StartAsync(string repo, string login, TermLaunchPlan plan, CancellationToken ct)
     {
         if (plan.Kind == TermLaunchKind.MemberUser)
-            return new LaunchResult(false, $"Starting a CLI under your own Windows account ({plan.Account}) isn't built into this host's Orchestrator yet, so nothing was started.", NotSupported: true);
+        {
+            if (members is null || string.IsNullOrWhiteSpace(plan.Account))
+                return new LaunchResult(false, $"This host's gateway doesn't start CLIs under members' own Windows accounts ({plan.Account}), so nothing was started.", NotSupported: true);
+            return await members.StartAsync(repo, login, plan.Account, ct).ConfigureAwait(false);
+        }
         if (plan.Kind != TermLaunchKind.HostUser) return new LaunchResult(false, plan.Why ?? "Not started.");
         var (code, output) = await TicketsRunner.RunStartAsync(repo, login, ct).ConfigureAwait(false);
         return new LaunchResult(code == 0, output);
@@ -192,10 +198,12 @@ internal sealed class OrchestratorLauncher : ISessionLauncher
     public LaunchResult Stop(TermSessionRecord session)
     {
         if (!TermSessions.IsHostRunning(session)) return new LaunchResult(false, "That CLI isn't running any more.");
+        var member = members?.Ledger.Of(session);
         try
         {
             using var p = Process.GetProcessById(session.HostPid);
-            p.Kill(entireProcessTree: true);
+            p.Kill(entireProcessTree: member is null);
+            if (member is not null) members!.Ledger.Remove(member.Id);
             return new LaunchResult(true, $"Stopped {session.Id}.");
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)

@@ -13,6 +13,13 @@ namespace MindAttic.Orchestrator.TermHost;
 internal sealed class Registration
 {
     private readonly HostLog log;
+
+    /// <summary>The registry folder (<c>--registry</c>, a member's host), else null for <see cref="TermSessions.DefaultDirectory"/>.</summary>
+    private readonly string? directory;
+
+    /// <summary>Whether to announce on the status bus: not for a member's host (hub phase 2b), whose peer's bus pipe is its user's alone.</summary>
+    private readonly bool announce;
+
     private readonly object gate = new();
     private readonly AutoResetEvent wake = new(false);
     private TermSessionRecord current;
@@ -22,6 +29,8 @@ internal sealed class Registration
     public Registration(HostOptions options, string commandLine, ushort cols, ushort rows, HostLog log)
     {
         this.log = log;
+        directory = options.RegistryDir;
+        announce = !options.IsMemberHost;
         DateTime hostStart;
         using (var self = Process.GetCurrentProcess()) hostStart = self.StartTime.ToUniversalTime();
         current = new TermSessionRecord
@@ -30,7 +39,7 @@ internal sealed class Registration
             Login = options.Login, Repo = options.Repo, Cwd = options.Cwd ?? Environment.CurrentDirectory,
             ConfigDir = Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR") is { Length: > 0 } dir ? dir : null,
             CommandLine = commandLine, Cols = cols, Rows = rows, State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow,
-            Protocol = TermProtocol.Version, IsMenu = options.IsMenu,
+            Protocol = TermProtocol.Version, IsMenu = options.IsMenu, Account = AccountName(),
         };
     }
 
@@ -41,7 +50,7 @@ internal sealed class Registration
     {
         TermSessionRecord record;
         lock (gate) record = current;
-        if (!TermSessions.Write(record)) log.Write($"couldn't write the registry file {TermSessions.PathOf(record.Id)}");
+        if (!TermSessions.Write(record, directory)) log.Write($"couldn't write the registry file {TermSessions.PathOf(record.Id, directory)}");
         Announce(record, TermSessionEvents.Started);
         worker = new Thread(Follow) { IsBackground = true, Name = "registry" };
         worker.Start();
@@ -77,7 +86,7 @@ internal sealed class Registration
         var joined = true;
         try { joined = worker is null || worker.Join(TimeSpan.FromSeconds(2)); } catch (ThreadStateException) { }
         if (!joined) log.Write("the registry worker didn't finish within 2s; leaving the registry file in place rather than risk it being recreated after a delete");
-        else if (!TermSessions.Delete(record.Id)) log.Write("couldn't delete the registry file");
+        else if (!TermSessions.Delete(record.Id, directory)) log.Write("couldn't delete the registry file");
         Announce(record, TermSessionEvents.Ended);
     }
 
@@ -96,15 +105,28 @@ internal sealed class Registration
             }
             try
             {
-                if (!TermSessions.Write(record)) log.Write("couldn't rewrite the registry file");
+                if (!TermSessions.Write(record, directory)) log.Write("couldn't rewrite the registry file");
                 Announce(record, TermSessionEvents.Changed);
             }
             catch (Exception ex) { log.Error(ex, "updating the registry failed; contained"); }
         }
     }
 
+    /// <summary>The Windows account this host runs under (<c>DOMAIN\user</c>), reported in its record (hub phase 2b); null when it can't
+    /// be told.</summary>
+    private static string? AccountName()
+    {
+        try
+        {
+            using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            return identity.Name is { Length: > 0 } name ? name : null;
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException) { return null; }
+    }
+
     private void Announce(TermSessionRecord record, string sessionEvent)
     {
+        if (!announce) return;
         try { TermBus.TrySend(new TermSessionEvent(record, sessionEvent)); }
         catch (Exception ex) { log.Error(ex, "announcing on the status bus failed; contained"); }
     }

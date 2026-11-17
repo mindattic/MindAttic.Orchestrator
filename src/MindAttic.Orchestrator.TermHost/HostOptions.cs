@@ -17,6 +17,11 @@ namespace MindAttic.Orchestrator.TermHost;
 /// pipe can attach, and no dashboard opens a tab for it. For smoke tests beside a running dashboard.</item>
 /// <item><c>--menu</c> (M.ORCH-T1256) marks the registry record <see cref="TermSessionRecord.IsMenu"/>: this is the Launcher's
 /// own menu pane, not a CLI it opened, so the Team Wall can leave it out per the ExcludeLauncherFromTeamWall setting.</item>
+/// <item><c>--peer-sid &lt;SID&gt;</c> and <c>--registry &lt;dir&gt;</c> (hub phase 2b, M.ORCH-T1667) mark a host the gateway started under
+/// a member's own Windows account: its pipe is ACL'd to this account and that one peer (the host's user, which runs the daemon and
+/// gateway) instead of this user only (<see cref="TermPipeAcl"/>), the peer may query and end this process, the registry file goes
+/// in that folder (the member's own, which the host's user reads), nothing is announced on the bus (the peer's bus pipe is its
+/// user's alone), and <c>--env</c> values have <c>%VARIABLES%</c> expanded from this account's own environment.</item>
 /// <item>After <c>--</c>: the CLI, as arguments, or as one whole command line when it is a single argument with a space in it
 /// (a PaneRequest's ProcessCommandLine). With none, <c>pwsh</c>, else <c>powershell.exe</c> when pwsh isn't installed.</item>
 /// </list>
@@ -25,7 +30,7 @@ internal sealed record HostOptions
 {
     public const string Usage =
         "usage: MindAttic.Orchestrator.TermHost [--launch] [--id <id>] [--cwd <dir>] [--env KEY=VALUE]... [--title <text>] " +
-        "[--login <email>] [--repo <name>] [--linger <seconds>] [--unlisted] [--menu] [-- <command line>]";
+        "[--login <email>] [--repo <name>] [--linger <seconds>] [--unlisted] [--menu] [--peer-sid <SID> --registry <dir>] [-- <command line>]";
 
     /// <summary>How long a host stays after its CLI exits when no viewer has seen the exit (spike section 1).</summary>
     public static readonly TimeSpan DefaultLinger = TimeSpan.FromMinutes(10);
@@ -45,6 +50,16 @@ internal sealed record HostOptions
     /// <summary>This is the Launcher's own menu, not a CLI it opened (<c>--menu</c>, M.ORCH-T1256).</summary>
     public bool IsMenu { get; init; }
 
+    /// <summary>The one other account allowed on this host's pipe (<c>--peer-sid</c>, hub phase 2b): set only on a host started under a
+    /// member's own Windows account, for the host's user. Null for every ordinary host.</summary>
+    public string? PeerSid { get; init; }
+
+    /// <summary>The registry folder (<c>--registry</c>), else <see cref="TermSessions.DefaultDirectory"/>.</summary>
+    public string? RegistryDir { get; init; }
+
+    /// <summary>Whether this host runs for a peer under a member's account (<see cref="PeerSid"/>).</summary>
+    public bool IsMemberHost => PeerSid is not null;
+
     /// <summary>Set on the host <c>--launch</c> starts: the launching process already applied <see cref="Env"/>, and the
     /// host inherits it, so no variable (a token) is ever on the long-lived host's command line.</summary>
     public bool EnvPrepared { get; init; }
@@ -57,7 +72,7 @@ internal sealed record HostOptions
     public static HostOptions? Parse(IReadOnlyList<string> args, out string? error)
     {
         error = null;
-        string? id = null, cwd = null, title = null, login = null, repo = null;
+        string? id = null, cwd = null, title = null, login = null, repo = null, peerSid = null, registry = null;
         var env = new List<KeyValuePair<string, string?>>();
         var linger = DefaultLinger;
         bool launch = false, prepared = false, unlisted = false, isMenu = false;
@@ -81,6 +96,15 @@ internal sealed record HostOptions
                 case "--title" when hasValue: title = args[++i]; break;
                 case "--login" when hasValue: login = args[++i]; break;
                 case "--repo" when hasValue: repo = args[++i]; break;
+                case "--peer-sid" when hasValue:
+                    // An account's SID only: never a group (Everyone, Users...) that would open the pipe to many.
+                    if (TermPipeAcl.ParseSid(args[++i]) is not { } sid) { error = $"--peer-sid wants an account's SID, not '{args[i]}'."; return null; }
+                    peerSid = sid.Value;
+                    break;
+                case "--registry" when hasValue:
+                    registry = args[++i];
+                    if (!Path.IsPathFullyQualified(registry)) { error = $"--registry wants a full path, not '{registry}'."; return null; }
+                    break;
                 case "--env" when hasValue:
                     var pair = args[++i];
                     var eq = pair.IndexOf('=');
@@ -101,10 +125,12 @@ internal sealed record HostOptions
         // Checked directly, not through Sanitize (M.ORCH-T1423): Sanitize's hash suffix is never all dashes, so it could no
         // longer stand in for "this id has no letter or digit at all".
         if (id is not null && !id.Any(char.IsAsciiLetterOrDigit)) { error = $"--id '{id}' has no letter or digit."; return null; }
+        // A member's host is always both: its registry file has to land where the peer reads it, never in this account's own folder.
+        if ((peerSid is null) != (registry is null)) { error = "--peer-sid and --registry go together."; return null; }
         return new HostOptions
         {
             Id = id ?? TermProtocol.NewSessionId(), Cwd = cwd, Env = env, Title = title, Login = login, Repo = repo, Linger = linger, Launch = launch,
-            EnvPrepared = prepared, Unlisted = unlisted, IsMenu = isMenu, Command = command,
+            EnvPrepared = prepared, Unlisted = unlisted, IsMenu = isMenu, Command = command, PeerSid = peerSid, RegistryDir = registry,
         };
     }
 
@@ -119,6 +145,8 @@ internal sealed record HostOptions
         if (Repo is not null) args.AddRange(["--repo", Repo]);
         if (Unlisted) args.Add("--unlisted");
         if (IsMenu) args.Add("--menu");
+        if (PeerSid is not null) args.AddRange(["--peer-sid", PeerSid]);
+        if (RegistryDir is not null) args.AddRange(["--registry", RegistryDir]);
         if (Command.Count > 0) { args.Add("--"); args.AddRange(Command); }
         return args;
     }
