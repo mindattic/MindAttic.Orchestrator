@@ -646,12 +646,14 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task<bool> StartSessionAsync(string name, string path, string kind, string login, string? text)
     {
         string? configDir = null;
+        string? email = null;
         var on = login;
         if (kind == "Claude" && ScopeEmail is { } own)
         {
             // This tab's login (M.ORCH-T613): the CLI opens on it, and shows on this tab.
             if (await OwnLoginDirAsync(own, m => StatusMessage = m) is not { } dir) return false;
             configDir = dir;
+            email = own;
             on = TabTitle;
         }
         else if (kind == "Claude" && login == AutoLogin)
@@ -665,7 +667,8 @@ public sealed partial class MainViewModel : ObservableObject
                 StatusMessage = "No login of its own has room and API billing is off: not started on the global login. Pick a login's tab, or switch API billing on.";
                 return false;
             }
-            on = auto?.Email ?? GlobalLogin;
+            email = auto?.Email;
+            on = email ?? GlobalLogin;
         }
         // Short of RAM (M.ORCH-T1496) a CLI you start yourself asks first; automated starts are simply held.
         if (MindAttic.Orchestrator.Activity.MemoryGuard.StartHeld(store.LoadSettings()) is { } low
@@ -686,8 +689,10 @@ public sealed partial class MainViewModel : ObservableObject
             StatusMessage = $"Not started: {diskFull}.";
             return false;
         }
-        var error = control.Start(name, path, kind, text, configDir);
-        StatusMessage = error ?? $"Opened a {kind} tab for {name}" + (configDir is null ? "" : $" on {on}'s own login") + ". It'll appear here within a few seconds.";
+        // Embedded (M.ORCH-T1730), not a Windows Terminal tab scanned for and tracked afterward: it's a dashboard tab the
+        // moment it's asked for, not "within a few seconds".
+        var error = OpenTerminal(control.RepoPaneRequest(name, path, kind, text, configDir, email));
+        StatusMessage = error ?? $"Opened a {kind} tab for {name}" + (configDir is null ? "" : $" on {on}'s own login") + ".";
         return error is null;
     }
 

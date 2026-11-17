@@ -131,6 +131,35 @@ public sealed class SessionControl(OrchestratorOptions options)
         };
     }
 
+    /// <summary>A repo (or the workspace root, for "General Prompt") CLI as a <see cref="PaneRequest"/> (M.ORCH-T1730), to open
+    /// embedded as a Terminals panel tab for <paramref name="email"/>'s login instead of its own Windows Terminal window: the
+    /// same <c>MindAttic.Launcher.exe host …</c> command <see cref="StartArguments"/>'s Windows Terminal tab runs, with
+    /// <paramref name="configDir"/> passed as <c>--config-dir</c> (MindAttic.Launcher's <c>host --config-dir</c>, its own
+    /// escape hatch for a tab whose process doesn't inherit a Windows Terminal tab's environment setup) rather than set as an
+    /// environment variable.
+    /// Every CLI the login-tab's right-click menu opens (Open Project, General Prompt) and the tile grid's Start use this, so
+    /// none of them opens outside the dashboard the way <see cref="Start"/>'s Windows Terminal tab (still scanned for and
+    /// tracked, never embedded) used to.</summary>
+    public PaneRequest RepoPaneRequest(string title, string directory, string provider, string? prompt, string? configDir, string? email)
+    {
+        var look = provider == "Claude" ? Look(configDir) : null;
+        var tabTitle = TabTitle(title, provider, look, RepoNames);
+        List<string> command = [options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider];
+        if (configDir is not null) command.AddRange(["--config-dir", configDir]);
+        if (!string.IsNullOrWhiteSpace(prompt)) command.AddRange(["--prompt", SafePrompt(prompt)]);
+        return new PaneRequest(tabTitle, directory)
+        {
+            Command = command,
+            Repo = title,
+            Provider = provider,
+            ConfigDir = configDir,
+            Email = AccountDirs.Normalize(email),
+            Initials = look?.Initials,
+            Alias = look?.Alias,
+            TabColor = look?.TabColor,
+        };
+    }
+
     /// <summary>The command lines of the Launcher processes running now, by pid; tests set their own.</summary>
     internal Func<IReadOnlyDictionary<int, string>> LauncherMenus { get; init; } = HostSessionScanner.LauncherCommandLines;
 
