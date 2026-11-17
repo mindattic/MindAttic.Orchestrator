@@ -173,8 +173,47 @@ internal sealed class BranchesReportCommand : Command<BranchesReportCommand.Sett
             var tests = BranchBuilds.LoadTests(Ctx.Store());
             var returned = BranchBuilds.ReturnedToWork(BranchBuilds.Load(Ctx.Store()), tests)
                 .FirstOrDefault(r => string.Equals(r.Repo, repo, StringComparison.OrdinalIgnoreCase) && r.Branch == branch);
-            if (returned is not null) warning = BranchBuilds.SendBack(OrchestratorOptions.Load().WorkspaceRoot, returned);
+            if (returned is not null) warning = BranchBuilds.SendBack(OrchestratorOptions.Load().WorkspaceRoot, returned, Ctx.Store());
         }
         return (report, warning);
+    }
+}
+
+/// <summary><c>orchestrator branches pushed &lt;repo&gt; &lt;branch&gt; &lt;head&gt;</c> (M.ORCH-T1661): on the remote host, the agent's
+/// last step once its ticket's work is pushed to its work branch. The ticket stays open (the host closes it when it merges the
+/// branch into main) but isn't handed out again while the branch waits on its build and local test run; a failed run, a failed
+/// build or a merge conflict hands it back.</summary>
+internal sealed class BranchesPushedCommand : Command<BranchesPushedCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<repo>")]
+        [Description("The repo the branch is in, as the host names it.")]
+        public string Repo { get; init; } = "";
+
+        [CommandArgument(1, "<branch>")]
+        [Description("The work branch (work/<ticket>), without origin/.")]
+        public string Branch { get; init; } = "";
+
+        [CommandArgument(2, "<head>")]
+        [Description("The commit pushed (its full hash, or at least 7 characters of it).")]
+        public string Head { get; init; } = "";
+
+        public override ValidationResult Validate() =>
+            Head.Trim().Length < 7 ? ValidationResult.Error("Name the pushed commit: its hash, at least 7 characters.") : ValidationResult.Success();
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var branch = settings.Branch.StartsWith("origin/", StringComparison.Ordinal) ? settings.Branch["origin/".Length..] : settings.Branch;
+        if (BranchBuilds.WorkUnitOf(branch) is not { } ticket)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(branch)} names no ticket (work/<ticket>); nothing was marked.[/]");
+            return 1;
+        }
+        BranchBuilds.MarkAwaiting(Ctx.Store(), settings.Repo, branch, ticket, settings.Head, DateTime.UtcNow);
+        AnsiConsole.MarkupLine($"[green]{Markup.Escape(ticket)} awaits {Markup.Escape(settings.Repo)}'s {Markup.Escape(branch)} at {Markup.Escape(BranchesCommand.Short(settings.Head.Trim()))}[/]" +
+            ": it stays open, isn't handed out again meanwhile, and is closed when the host merges it into main (a failed run hands it back).");
+        return 0;
     }
 }

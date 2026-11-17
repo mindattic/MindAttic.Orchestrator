@@ -185,7 +185,8 @@ public static partial class Scheduler
             .OrderBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Ticket.Number ?? int.MaxValue)
             .ToList();
         var queue = snapshot.Repos
-            .SelectMany(r => r.OpenTickets.Where(t => !IsEpic(t.Id) && (MayWork(t) || assigned.ContainsKey(t.Id))).Select(t => new QueueItem(
+            // A host branch ticket waiting on its pushed branch is open but not work (M.ORCH-T1661): never handed out again meanwhile.
+            .SelectMany(r => r.OpenTickets.Where(t => !IsEpic(t.Id) && !snapshot.AwaitingBranch.Contains(t.Id) && (MayWork(t) || assigned.ContainsKey(t.Id))).Select(t => new QueueItem(
                 r.Name, r.Path, t,
                 Priority(t.Id),
                 assigned.GetValueOrDefault(t.Id),
@@ -218,7 +219,8 @@ public static partial class Scheduler
         queue = PrerequisitesFirst(queue);
 
         // A ticket that's no longer open was finished (or closed by hand): its assignment is done.
-        var finished = assignments.Where(a => !openIds.Contains(a.TicketId) && !snapshot.UnknownRepos.Contains(a.Repo)).ToList();
+        // So is one whose work is pushed to its work branch on the host, waiting on its test (M.ORCH-T1661): its agent is done.
+        var finished = assignments.Where(a => (!openIds.Contains(a.TicketId) || snapshot.AwaitingBranch.Contains(a.TicketId)) && !snapshot.UnknownRepos.Contains(a.Repo)).ToList();
 
         // Every repo with an agent working or waiting holds a slot, as does every live assignment.
         var occupied = snapshot.Repos.Count(r => r.State != RepoState.Dormant);

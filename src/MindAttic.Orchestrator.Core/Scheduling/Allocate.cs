@@ -326,8 +326,9 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         var branch = existing ?? BranchBuilds.Prefix + item.Id;
         var returned = BranchBuilds.ReturnedToWork(state, BranchBuilds.LoadTests(store))
             .FirstOrDefault(r => Same(r.Repo, item.Repo) && string.Equals(r.Branch, branch, StringComparison.Ordinal));
+        // M.ORCH-T1661: a head the host couldn't build hands the ticket back too, with the build's errors.
         return new BranchWork(branch, WorkTreeOf(settings.WorktreeRoot, item.Repo, item.Id), existing is not null,
-            returned is null ? null : BranchBuilds.Brief(returned));
+            returned is not null ? BranchBuilds.Brief(returned) : BranchBuilds.BuildBrief(state, item.Repo, branch));
     }
 
     /// <summary>
@@ -341,7 +342,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         var sonnet = model is { IsSonnet: true };
         return
             $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
-            (b.Brief is { Length: > 0 } brief ? $"This ticket is back from its branch's local test run: {brief.Trim()} " : "") +
+            (b.Brief is { Length: > 0 } brief ? $"This ticket is back from its branch: {brief.Trim()} " : "") +
             $"This machine is the remote host with branch builds on, so this ticket is worked on its own branch, {b.Branch}, never on {mainline}: " +
             $"the host builds each push to origin/{b.Branch}, the owner's PC runs its tests, and the host merges it into {mainline} itself once they pass. " +
             $"Work in the ticket's own worktree ({b.Worktree}), never in {item.Repo}'s shared checkout ({checkout}), which other agents keep on {mainline}: " +
@@ -363,11 +364,14 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             $"{(sonnet ? 4 : 3)}. Push it to its own branch, never to {mainline}: git push origin HEAD:{b.Branch}. " +
             $"If the push is rejected because origin/{b.Branch} moved, git fetch origin {b.Branch}, git merge --no-edit origin/{b.Branch} (never a stash), rebuild and push again. " +
             $"Don't merge it into {mainline} yourself: the host does that once its local test run passes. " +
+            // M.ORCH-T1661: the ticket stays open until the host merges the branch (BranchMerges closes it then, with the merged
+            // commit as its ref), so a failed local run can hand it back without the Tickets library needing a reopen.
             $"{(sonnet ? 5 : 4)}. Only once the push has succeeded, as its own step, " +
-            $"mark it finished: tickets ticket close {item.Id} --ref <the commit hash as it landed on origin/{b.Branch}>. " +
+            $"mark it awaiting its branch test: orchestrator branches pushed {item.Repo} {b.Branch} <the commit hash as it landed on origin/{b.Branch}>. " +
+            $"Don't close the ticket: it stays open, isn't handed out again while the branch waits, and the host closes it once it merges {b.Branch} into {mainline}. " +
             "Leave the worktree where it is: a failed local test run sends the branch back to this ticket, and its next round carries on there. " +
-            "You are done only when the push has succeeded and the ticket is closed. " +
-            "If you can't finish or push it, leave the ticket open and say why.";
+            "You are done only when the push has succeeded and the ticket is marked awaiting its branch test. " +
+            "If you can't finish or push it, leave the ticket unmarked and say why.";
     }
 
     /// <summary>

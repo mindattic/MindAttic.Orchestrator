@@ -45,8 +45,9 @@ public sealed class BranchMerges(JsonStore store)
 
     /// <summary>A merge's outcome for one branch. <see cref="Retry"/>: it failed for a reason a later check may not meet (the
     /// worktree couldn't be made, main moved before the push), so the same sign-off is tried again; a conflict is final for
-    /// that head.</summary>
-    public sealed record Outcome(string Repo, string Branch, string Head, string? Merged, string? Note, bool Retry = false);
+    /// that head. <see cref="Rejected"/>: the merge itself was refused for good at that head (a conflict with main), so its ticket is
+    /// handed back; <see cref="Gone"/>: the branch is gone from origin, so its ticket is handed back too (M.ORCH-T1661).</summary>
+    public sealed record Outcome(string Repo, string Branch, string Head, string? Merged, string? Note, bool Retry = false, bool Rejected = false, bool Gone = false);
 
     /// <summary>A line for the daemon's log; <see cref="Warn"/> marks a merge that didn't land.</summary>
     public sealed record Line(bool Warn, string Text);
@@ -62,6 +63,16 @@ public sealed class BranchMerges(JsonStore store)
 
     /// <summary>How often the sign-offs are looked at (Vault: <see cref="OrchestratorSettings.BranchBuildsCheckSeconds"/>).</summary>
     internal TimeSpan CheckEvery { get; set; } = TimeSpan.FromSeconds(OrchestratorSettings.DefaultBranchBuildsCheckSeconds);
+
+    /// <summary>The workspace whose ticket database a merge's ticket is closed (or handed back) in (M.ORCH-T1661); null writes
+    /// no ticket, only clears its awaiting mark. The daemon sets it.</summary>
+    public string? WorkspaceRoot { get; set; }
+
+    /// <summary>Settles a merge's ticket (seam; <see cref="BranchBuilds.SettleMerge"/>); returns what couldn't be done.</summary>
+    internal Func<Outcome, string?>? Settle { get; init; }
+
+    private string? SettleMerge(Outcome o) =>
+        Settle is { } settle ? settle(o) : BranchBuilds.SettleMerge(store, WorkspaceRoot, o.Repo, o.Branch, o.Merged, o.Note, o.Rejected, o.Gone);
 
     private Task<IReadOnlyList<Outcome>>? running;
     private DateTime checkedUtc = DateTime.MinValue;
@@ -94,6 +105,9 @@ public sealed class BranchMerges(JsonStore store)
                             (o.Note is { } n ? $" ({n})" : ", and the branch deleted"))
                         : new Line(true, $"branch merges: {o.Repo}'s {o.Branch} signed off at {Short(o.Head)} but not merged" +
                             (o.Retry ? " yet" : "") + $": {o.Note}"));
+                    // M.ORCH-T1661: the branch's ticket stayed open until now; merged, it's closed with main's commit as its ref,
+                    // and a merge refused for good (or a branch gone) hands it back.
+                    if (SettleMerge(o) is { } unsettled) lines.Add(new Line(true, $"branch merges: {o.Repo}'s {o.Branch}: {unsettled}"));
                 }
                 store.Save(StateName, record);
             }
@@ -136,7 +150,7 @@ public sealed class BranchMerges(JsonStore store)
         var (repo, path, branch, head) = d;
         if (Git(path, ["fetch", "-q", "--prune", "origin"]).Code != 0) return new Outcome(repo, branch, head, null, "origin couldn't be fetched", Retry: true);
         var tip = RevParse(path, "refs/remotes/origin/" + branch);
-        if (tip is null) return new Outcome(repo, branch, head, null, $"{branch} is gone from origin");
+        if (tip is null) return new Outcome(repo, branch, head, null, $"{branch} is gone from origin", Gone: true);
         if (!SameHead(tip, head)) return new Outcome(repo, branch, head, null, $"{branch} moved to {Short(tip)} after its sign-off; that head needs its own local test run");
 
         var mainline = Mainline(path);
@@ -149,7 +163,7 @@ public sealed class BranchMerges(JsonStore store)
             Git(tree, ["merge", "--abort"]);
             return new Outcome(repo, branch, head, null, conflicts.Length > 0
                 ? $"it conflicts with {mainline} in {string.Join(", ", conflicts.Take(5))}{(conflicts.Length > 5 ? $" and {conflicts.Length - 5} more" : "")}"
-                : $"git merge failed: {FirstLine(output)}");
+                : $"git merge failed: {FirstLine(output)}", Rejected: true);
         }
         var (pushed, pushOutput) = Git(tree, ["push", "-q", "origin", "HEAD:refs/heads/" + mainline]);
         if (pushed != 0) return new Outcome(repo, branch, head, null, $"its push to {mainline} was refused ({FirstLine(pushOutput)}); merged again on the new {mainline} at the next check", Retry: true);

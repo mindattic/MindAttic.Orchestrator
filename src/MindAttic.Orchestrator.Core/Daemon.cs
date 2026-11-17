@@ -469,6 +469,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 RunMainlineTests(mainTests, testsLease, snapshot, s, options.WorkspaceRoot);
                 tick.Lap("main-line tests");
                 // Off (the default): nothing; turned off mid-build, the builds running are still recorded, none start.
+                // Where a merged branch's ticket is closed (M.ORCH-T1661): branch tickets stay open until the host's merge.
+                branchMerges.WorkspaceRoot = options.WorkspaceRoot;
                 if (s.RemoteBranchBuilds || branchBuilds.Running.Count > 0 || branchMerges.Running)
                     RunBranchBuilds(branchBuilds, branchMerges, s.RemoteBranchBuilds && branchLease.TryAcquire(), snapshot, s);
                 tick.Lap("branch builds");

@@ -163,11 +163,14 @@ public sealed partial class BranchBuilds
     /// <summary>
     /// Hands a returned branch back to its work unit in the ticket database: a note on its ticket with what failed and to keep
     /// going on the same branch (<see cref="Brief"/>), and the ticket's working claim cleared so it's handed out again. Best
-    /// effort; returns what couldn't be done (null when it all was, or there's no ticket database to write to).
+    /// effort; returns what couldn't be done (null when it all was, or there's no ticket database to write to). The ticket's
+    /// awaiting mark is cleared in <paramref name="store"/> (M.ORCH-T1661): it stayed open while its branch waited, and now
+    /// it's handed out again.
     /// </summary>
-    public static string? SendBack(string? workspaceRoot, Returned r)
+    public static string? SendBack(string? workspaceRoot, Returned r, JsonStore? store = null)
     {
         if (r.Ticket is null) return $"{r.Branch} names no ticket (work/<ticket>), so no ticket was told; its work unit picks it up from orchestrator branches";
+        if (store is not null) ClearAwaiting(store, r.Ticket);
         try
         {
             using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(workspaceRoot);
@@ -175,6 +178,7 @@ public sealed partial class BranchBuilds
             if (db.Ticket(r.Ticket) is not { } t) return $"there's no ticket {r.Ticket} to send {r.Branch} back to";
             db.AddNote(t.Ticket.Id, NoteAuthor, Brief(r));
             if (t.Ticket.Status != MindAttic.Tickets.Log.TicketRules.Open)
+                // Only a branch ticket closed before M.ORCH-T1661 kept them open until the merge.
                 return $"{t.Ticket.Id} is {t.Ticket.Status}: the failure is noted on it, but it must be open again to be worked";
         }
         catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException or AccessViolationException))

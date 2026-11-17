@@ -616,7 +616,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             // The moves in flight (M.ORCH-T637): what locks a moving CLI's controls and tickets everywhere.
             Moves = new MoveLocks(Store).All(),
             // The tickets the last-resort cool-off aborted (M.ORCH-T786): first in the queue for the next round.
-            Requeued = AgentAbort.Requeued(Store, now) };
+            Requeued = AgentAbort.Requeued(Store, now),
+            // The host's branch tickets waiting on their pushed branch (M.ORCH-T1661): open, but not handed out again meanwhile.
+            AwaitingBranch = BranchBuilds.AwaitingTickets(Store) };
 
         RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Tickets.Log.Ticket> open)
         {

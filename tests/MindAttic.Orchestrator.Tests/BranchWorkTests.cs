@@ -79,7 +79,9 @@ public sealed class BranchWorkTests
             .And.Contain("its own branch, work/A-T1, never on main")
             .And.Contain(@"worktree add -B work/A-T1 ""D:\WT\A\work-A-T1"" origin/work/A-T1")
             .And.Contain("git push origin HEAD:work/A-T1")
-            .And.Contain("tickets ticket close A-T1 --ref <the commit hash as it landed on origin/work/A-T1>")
+            .And.Contain("orchestrator branches pushed A work/A-T1 <the commit hash as it landed on origin/work/A-T1>")
+            .And.Contain("Don't close the ticket")
+            .And.Not.Contain("tickets ticket close")
             .And.Not.Contain("HEAD:main")
             .And.Not.Contain("Work in A's own checkout")
             .And.Not.Contain("earlier round"));
@@ -101,5 +103,54 @@ public sealed class BranchWorkTests
         Assert.That(h.Branch, Is.EqualTo("work/A-T1-retry"), "the branch it already has, not a new one");
         Assert.That(h.Prompt, Does.Contain("Foo_test failed").And.Contain("already has work from an earlier round")
             .And.Contain("git push origin HEAD:work/A-T1-retry"));
+    }
+
+    // M.ORCH-T1661: a pushed branch ticket stays open, but isn't handed out again until its branch comes back.
+    [Test]
+    public void A_ticket_awaiting_its_pushed_branch_is_kept_out_of_the_queue_and_its_claim_is_done()
+    {
+        BranchBuilds.MarkAwaiting(store, "A", "work/A-T1", "A-T1", "aaaaaaa1", Now);
+        var snap = Snap() with { AwaitingBranch = BranchBuilds.AwaitingTickets(store) };
+        var claim = new Assignment("A-T1", "A", @"D:\W\A", Providers.Claude, Now, true);
+        var plan = Scheduler.Plan(snap, Settings(true), [claim]);
+        Assert.That(plan.Queue, Is.Empty, "open, but not handed out again while its branch waits");
+        Assert.That(plan.Finished.Select(a => a.TicketId), Is.EqualTo(new[] { "A-T1" }), "its agent's claim is done");
+    }
+
+    [Test]
+    public void A_failed_local_run_or_a_failed_build_hands_the_awaiting_ticket_back()
+    {
+        BranchBuilds.MarkAwaiting(store, "A", "work/A-T1", "A-T1", "aaaaaaa1", Now);
+        Assert.That(BranchBuilds.AwaitingTickets(store), Is.EquivalentTo(new[] { "A-T1" }), "not seen by the host yet: still awaited");
+
+        store.Save(BranchBuilds.StateName, new Dictionary<string, Dictionary<string, BranchBuilds.BranchState>>
+        {
+            ["A"] = new() { ["work/A-T1"] = new() { Head = "aaaaaaa1", Built = "aaaaaaa1", Ok = false, Note = "CS0103" } },
+        });
+        Assert.That(BranchBuilds.AwaitingTickets(store), Is.Empty, "its head failed to build");
+
+        store.Save(BranchBuilds.StateName, new Dictionary<string, Dictionary<string, BranchBuilds.BranchState>>
+        {
+            ["A"] = new() { ["work/A-T1"] = new() { Head = "aaaaaaa1", Built = "aaaaaaa1", Ok = true } },
+        });
+        Assert.That(BranchBuilds.AwaitingTickets(store), Is.EquivalentTo(new[] { "A-T1" }), "built clean, waiting on its local run");
+
+        store.Save(BranchBuilds.TestsName, new Dictionary<string, Dictionary<string, BranchBuilds.TestState>>
+        {
+            ["A"] = new() { ["work/A-T1"] = new() { Head = "aaaaaaa1", Ok = false, Note = "Foo_test failed", Rounds = 1, ReturnedTo = "A-T1" } },
+        });
+        Assert.That(BranchBuilds.AwaitingTickets(store), Is.Empty, "its local run failed");
+        Assert.That(BranchBuilds.ClearAwaiting(store, "a-t1"), Is.True, "SendBack's clear, whatever case the id is in");
+        Assert.That(BranchBuilds.LoadAwaiting(store), Is.Empty);
+    }
+
+    [Test]
+    public void The_hosts_merge_clears_the_mark_and_a_move_after_sign_off_keeps_it()
+    {
+        BranchBuilds.MarkAwaiting(store, "A", "work/A-T1", "A-T1", "aaaaaaa1", Now);
+        Assert.That(BranchBuilds.SettleMerge(store, null, "A", "work/A-T1", null, "work/A-T1 moved", rejected: false, gone: false), Is.Null);
+        Assert.That(BranchBuilds.LoadAwaiting(store).Keys, Is.EquivalentTo(new[] { "A-T1" }), "its new head is still awaited");
+        Assert.That(BranchBuilds.SettleMerge(store, null, "A", "work/A-T1", "bbbbbbb2", null, rejected: false, gone: false), Is.Null);
+        Assert.That(BranchBuilds.LoadAwaiting(store), Is.Empty, "merged: the ticket is closed, the mark gone");
     }
 }

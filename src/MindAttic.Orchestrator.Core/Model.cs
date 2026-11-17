@@ -234,6 +234,11 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// first in the queue for the next round.</summary>
     public IReadOnlySet<string> Requeued { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Open tickets whose work is pushed to a work branch on the remote host, waiting on its build, local test run and
+    /// merge (M.ORCH-T1661, <see cref="Scheduling.BranchBuilds.AwaitingName"/>): kept out of the queue, so they
+    /// aren't handed out again, until a failed run hands one back or the host's merge closes it.</summary>
+    public IReadOnlySet<string> AwaitingBranch { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one approved in the database's queue; never an epic
     /// (M.ORCH-T1146), and never one that's part-of an epic that isn't itself approved yet (M.ORCH-T1210) — a fix is no
     /// exception to that part: nothing in an unapproved epic has started, so there's nothing in it to fix yet either.</summary>
