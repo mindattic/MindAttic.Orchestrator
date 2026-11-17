@@ -11,12 +11,12 @@
 
     Asks for administrator rights (one UAC prompt). Takes effect after a restart.
 
-        powershell -ExecutionPolicy Bypass -File set-pagefile.ps1            # 16 GB on C:
+        powershell -ExecutionPolicy Bypass -File set-pagefile.ps1            # 8 GB on C:
         powershell -ExecutionPolicy Bypass -File set-pagefile.ps1 -SizeGb 24
         powershell -ExecutionPolicy Bypass -File set-pagefile.ps1 -Restore   # back to system-managed
 
 .PARAMETER SizeGb
-    The pagefile's fixed size (minimum = maximum). Default 16.
+    The pagefile's fixed size (minimum = maximum). Default 8 (was 16, M.ORCH-T1694).
 
 .PARAMETER Drive
     The drive the pagefile lives on. Default C:.
@@ -25,7 +25,7 @@
     Hand the pagefile back to Windows (system-managed, unbounded).
 #>
 param(
-    [ValidateRange(1, 256)][int]$SizeGb = 16,
+    [ValidateRange(1, 256)][int]$SizeGb = 8,
     [ValidatePattern('^[A-Za-z]:$')][string]$Drive = 'C:',
     [switch]$Restore
 )
