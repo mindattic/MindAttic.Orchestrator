@@ -136,3 +136,39 @@ or a local Claude CLI file on the PC lands in the host's database at once, and e
   `setup-host.ps1 -Bind <its 100.x address>`; the certificate already names the VM's addresses, and the client pins it.
 - **The host uses SQLite.** The VM keeps the orchestrator's and the ticket data in the committed SQLite files, synced by its
   daemon, and needs no SQL Server.
+
+## Org members on the host (hub phase 1)
+
+Other org members can connect their own PCs to the same host (M.ORCH-T1640; the plan is
+`docs/research/hub-and-spoke.md`). Each gets a key of their own, never the owner key, and connects as themselves.
+
+On the host:
+
+```powershell
+orchestrator machine invite erin        # any way of naming an active member: email, name, initials...
+orchestrator machine members            # who is invited, when the gateway last saw them, who is connected now
+orchestrator machine revoke erin        # cut them off at once
+```
+
+`invite` needs an active member (`orchestrator members`), mints their member key (only its SHA-256 is kept, in the
+gateway's `members.json`; a new invite replaces an older key) and prints the line for their PC:
+
+```powershell
+orchestrator machine connect mindattic-vm --pin <sha256> --member erin@example.com --member-key mk1_...
+```
+
+Send it to them privately. On their PC it works like the owner's connect: the PC becomes a client (no daemon, no pace
+hooks; its own data is not pushed anywhere), the key is sealed with DPAPI and mints short-lived tokens whose subject is
+the member's email, and `tickets` runs on the host through the shim.
+
+- **Watch only.** Their Team Wall lists the host's shared CLIs of their own org (same-org watch, the existing gateway
+  ACL); a member of another org sees none. Nobody types into anyone's CLI yet.
+- **Tickets as themselves.** Their `tickets` may run `ticket show`, `list`, `new`, `note` and `close`, and `close` only
+  on a ticket one of their own logins works or is assigned. A note's author is their email. Options that reach a file on
+  the host (`--root`, `--output`, `--description-file`) or name another author are refused, and so is every other verb
+  (approvals, priorities, assignments, the database): those stay the owner's. Each call is in the gateway audit
+  (`orchestrator gateway audit`), per member, by verb, never its text.
+- **Revoking** takes effect within a second: their key and every token minted for them are refused, and their open
+  streams close (1008) within 10 seconds.
+- The host's dashboard shows a connected-members count in its menu bar; the Vault's *Member counts as connected for
+  (min)* sets how long after the gateway last saw a member they still count.

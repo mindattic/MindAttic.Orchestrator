@@ -69,17 +69,35 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
     /// <see cref="MachineRole.HostRemoteName"/>. Makes this machine a client first if it isn't one. Returns whether the host
     /// answered.
     /// </summary>
-    public async Task<bool> ConnectAsync(string host, string pin, string ownerKey, string orchestratorExe)
+    public Task<bool> ConnectAsync(string host, string pin, string ownerKey, string orchestratorExe) =>
+        ConnectCoreAsync(host, pin, ownerKey, null, null, orchestratorExe);
+
+    /// <summary>
+    /// Connects an org member's own PC to the central host (hub phase 1, M.ORCH-T1640): as <see cref="ConnectAsync"/>, but with the
+    /// <paramref name="memberKey"/> the host's <c>orchestrator machine invite</c> minted for <paramref name="member"/>, so every token
+    /// this PC mints is the member's own and the host's ACL decides what it sees (their org's shared sessions, watch only) and which
+    /// tickets commands it may run. A PC that isn't a client yet becomes one without pushing its data: it was never the host's
+    /// predecessor, so its databases are not the org's. Returns whether the host answered.
+    /// </summary>
+    public Task<bool> ConnectMemberAsync(string host, string pin, string memberKey, string member, string orchestratorExe) =>
+        ConnectCoreAsync(host, pin, null, memberKey, member, orchestratorExe);
+
+    private async Task<bool> ConnectCoreAsync(string host, string pin, string? ownerKey, string? memberKey, string? member, string orchestratorExe)
     {
         var url = GatewayRemotes.NormalizeUrl(host) ?? throw new ArgumentException($"\"{host}\" isn't a host name, address or https URL.");
         var normalizedPin = GatewayRemotes.NormalizePin(pin) ?? throw new ArgumentException("The pin is the gateway certificate's SHA-256: 64 hex characters.");
+        var asMember = memberKey is not null;
+        var memberEmail = asMember ? Sessions.AccountDirs.Normalize(member) ?? throw new ArgumentException($"\"{member}\" isn't the member's email.") : null;
+        if (asMember && !memberKey!.Trim().StartsWith(TermMemberKeys.Prefix, StringComparison.Ordinal))
+            throw new ArgumentException($"That isn't a member key (it starts with {TermMemberKeys.Prefix}): run the line the host's orchestrator machine invite printed.");
         if (!MachineTopology.Current.IsClient)
         {
-            say("Not a client yet: handing off first (data pushed, daemon stopped, hooks out).");
-            if (!Handoff(null, pushData: true, orchestratorExe)) return false;
+            say(asMember ? "Not a client yet: becoming one first (daemon stopped, hooks out; this PC's data stays its own)."
+                : "Not a client yet: handing off first (data pushed, daemon stopped, hooks out).");
+            if (!Handoff(null, pushData: !asMember, orchestratorExe)) return false;
         }
         var hostName = new Uri(url).Host;
-        new MachineRole { Role = MachineRoleKind.Client, Host = hostName, GatewayUrl = url }.Save();
+        new MachineRole { Role = MachineRoleKind.Client, Host = hostName, GatewayUrl = url, Member = memberEmail }.Save();
 
         // The client's own store now: never the checkout's copy (OrchestratorDb.StatePath).
         var store = new JsonStore();
@@ -90,7 +108,9 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
             Person = $"Host ({hostName})",
             Url = url,
             CertSha256 = normalizedPin,
-            SealedOwnerKey = GatewayRemotes.Seal(ownerKey),
+            SealedOwnerKey = ownerKey is null ? null : GatewayRemotes.Seal(ownerKey),
+            SealedMemberKey = memberKey is null ? null : GatewayRemotes.Seal(memberKey),
+            Member = memberEmail,
         };
         var remotes = s.Gateway.Remotes.Where(r => !string.Equals(r.Name, remote.Name, StringComparison.OrdinalIgnoreCase)).Append(remote).ToList();
         store.SaveSettings(s with { Gateway = s.Gateway with { Remotes = remotes } });
@@ -99,7 +119,8 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
 
         using var client = new Sessions.GatewayClient(remote);
         var listing = await client.ListAsync(CancellationToken.None).ConfigureAwait(false);
-        if (listing.Online) say($"Connected: {hostName} has {listing.Sessions.Count} CLI session(s) running.");
+        if (listing.Online && asMember) say($"Connected as {memberEmail}: you can watch {listing.Sessions.Count} shared CLI session(s) of your org on {hostName}.");
+        else if (listing.Online) say($"Connected: {hostName} has {listing.Sessions.Count} CLI session(s) running.");
         else say($"Saved, but {hostName} didn't answer: {listing.Problem}. Check the VM is on, that its daemon runs (orchestrator machine there) and that port {new Uri(url).Port} is open.");
         return listing.Online;
     }
@@ -160,6 +181,17 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         var host = Environment.MachineName.ToLowerInvariant();
         var hostPort = running.Port == TermGateway.DefaultPort ? host : $"{host}:{running.Port}";
         return $"orchestrator machine connect {hostPort} --pin {running.CertSha256} --owner-key {key}";
+    }
+
+    /// <summary>The command an org member runs on their own PC to connect to this host with <paramref name="memberKey"/> (hub
+    /// phase 1, M.ORCH-T1640), or null when this machine's gateway isn't running.</summary>
+    public static string? MemberConnectLine(string member, string memberKey, TermGatewayStatus? running = null)
+    {
+        running ??= TermGateway.Running();
+        if (running is null) return null;
+        var host = Environment.MachineName.ToLowerInvariant();
+        var hostPort = running.Port == TermGateway.DefaultPort ? host : $"{host}:{running.Port}";
+        return $"orchestrator machine connect {hostPort} --pin {running.CertSha256} --member {member} --member-key {memberKey}";
     }
 
     /// <summary>This machine's names and addresses for the gateway's certificate: its name, its DNS name, and every IPv4 address

@@ -71,6 +71,8 @@ try
         Broadcast = broadcast,
         Secrets = secrets,
         Watchers = watchers,
+        // Hub phase 1 (M.ORCH-T1640): org members' own keys (orchestrator machine invite|revoke), reread as members.json changes.
+        MemberKeys = new MemberKeysFile(options.DataDir),
     };
 
     var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory });

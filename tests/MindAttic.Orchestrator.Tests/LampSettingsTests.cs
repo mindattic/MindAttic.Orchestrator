@@ -169,6 +169,8 @@ public sealed class LampSettingsTests
         Case("closedTicketsReadSeconds", s => s with { ClosedTicketsReadSeconds = 60 }, 60d, v => v.ClosedTicketsReadSeconds = 120, 120d, s => s.ClosedTicketsReadSeconds),
         Case("closedTicketsReadLiveMinutes", s => s with { ClosedTicketsReadLiveMinutes = 15 }, 15d, v => v.ClosedTicketsReadLiveMinutes = 30, 30d,
             s => s.ClosedTicketsReadLiveMinutes),
+        // The host's connected-members window (hub phase 1, M.ORCH-T1640)
+        Case("memberConnectedMinutes", s => s with { MemberConnectedMinutes = 3 }, 3d, v => v.MemberConnectedMinutes = 10, 10d, s => s.MemberConnectedMinutes),
         Case("auditEveryHours", s => s with { AuditEveryHours = 0 }, 0, v => v.AuditEveryHours = 6, 6, s => s.AuditEveryHours),
         Case("groomAfterDays", s => s with { GroomAfterDays = 14 }, 14, v => v.GroomAfterDays = 60, 60, s => s.GroomAfterDays),
         Case("logKeepDays", s => s with { LogKeepDays = 90 }, 90, v => v.LogKeepDays = 14, 14, s => s.LogKeepDays),

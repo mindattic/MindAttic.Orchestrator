@@ -41,6 +41,10 @@ public sealed record MachineRole
     /// <summary>A client's host gateway, <c>https://host:port</c>.</summary>
     public string? GatewayUrl { get; init; }
 
+    /// <summary>A member client's org member (hub phase 1, M.ORCH-T1640): the email the host invited (<c>orchestrator machine
+    /// connect --member</c>). Null on the owner's own client, and on every other role.</summary>
+    public string? Member { get; init; }
+
     /// <summary>When the role was last set (UTC).</summary>
     public DateTime? ChangedUtc { get; init; }
 
@@ -126,6 +130,7 @@ public sealed record MachineRole
     public override string ToString() => Role switch
     {
         MachineRoleKind.Host => "host (runs the daemon, every CLI and the gateway)",
+        MachineRoleKind.Client when !string.IsNullOrWhiteSpace(Member) => $"member client of {Host ?? GatewayUrl ?? "?"} as {Member} (runs nothing; watches the host's org)",
         MachineRoleKind.Client => $"client of {Host ?? GatewayUrl ?? "?"} (runs nothing; watches the host)",
         _ => "standalone (everything on this machine)",
     };

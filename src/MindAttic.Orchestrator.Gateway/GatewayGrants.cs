@@ -23,6 +23,14 @@ internal interface IGatewayGrants
 {
     /// <summary>The most <paramref name="viewer"/> (a token's subject) may do with <paramref name="session"/>.</summary>
     GatewayAccess AccessTo(string viewer, TermSessionRecord session);
+
+    /// <summary>Whether <paramref name="viewer"/> is an active org member (hub phase 1, M.ORCH-T1640): only then may a member key
+    /// mint them a token, or a member token run a tickets command. Nobody is, without a member roster.</summary>
+    bool IsActiveMember(string viewer) => false;
+
+    /// <summary>The Claude logins that are <paramref name="viewer"/>'s (hub phase 1, M.ORCH-T1640): their own email, and every login
+    /// <c>org_members</c> places under their name. A member may close only a ticket one of these works or is assigned.</summary>
+    IReadOnlySet<string> LoginsOf(string viewer) => new HashSet<string>(StringComparer.Ordinal) { viewer.Trim().ToLowerInvariant() };
 }
 
 /// <summary>Only the machine owner's own identity gets in, with full access; everyone else gets nothing (M.ORCH-T933's grants,
@@ -64,6 +72,30 @@ internal sealed class AclGrants(string owner, string directory, Func<DateTime>? 
     private DateTime stamp = DateTime.MinValue, checkedUtc = DateTime.MinValue;
 
     public GatewayAccess AccessTo(string viewer, TermSessionRecord session) => Evaluate(Current(), owner, viewer, session, now());
+
+    public bool IsActiveMember(string viewer) => FindMember(Current(), viewer) is not null;
+
+    public IReadOnlySet<string> LoginsOf(string viewer) => Logins(Current(), viewer);
+
+    /// <summary>The active member <paramref name="viewer"/> is under <paramref name="acl"/>, or null.</summary>
+    internal static TermAclMember? FindMember(TermGatewayAclSnapshot? acl, string? viewer)
+    {
+        if (acl is null || string.IsNullOrWhiteSpace(viewer)) return null;
+        var v = Normalize(viewer);
+        return (acl.Members ?? []).FirstOrDefault(m => m is not null && Normalize(m.Email) == v);
+    }
+
+    /// <summary>The logins that are <paramref name="viewer"/>'s under <paramref name="acl"/>: their email, and each login placed
+    /// under their name (as <see cref="SharesOrg"/> reads a member's logins).</summary>
+    internal static IReadOnlySet<string> Logins(TermGatewayAclSnapshot? acl, string viewer)
+    {
+        var mine = new HashSet<string>(StringComparer.Ordinal) { Normalize(viewer) };
+        if (FindMember(acl, viewer) is { Name: { Length: > 0 } name })
+            foreach (var l in acl!.Logins ?? [])
+                if (l is not null && !string.IsNullOrEmpty(l.Login) && string.Equals(l.Person?.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase))
+                    mine.Add(Normalize(l.Login));
+        return mine;
+    }
 
     private TermGatewayAclSnapshot? Current()
     {

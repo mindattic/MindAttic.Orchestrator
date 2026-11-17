@@ -221,11 +221,14 @@ internal static class CliApp
                 m.SetDescription("Run the Orchestrator on another machine (a VM or HVD) so it doesn't use this one's memory (M.ORCH-T1473, docs/REMOTE_HOST.md). Bare: this machine's role.");
                 m.SetDefaultCommand<MachineShowCommand>();
                 m.AddCommand<MachineHandoffCommand>("handoff").WithDescription("On the PC, first: push the data to git, write the host kit (--kit <folder>), and stop running the Orchestrator here (role client).");
-                m.AddCommand<MachineConnectCommand>("connect").WithDescription("On the PC, last: connect <host> --pin <sha256> --owner-key <key>, the line setup-host.ps1 prints; the dashboard becomes the host's Team Wall.");
+                m.AddCommand<MachineConnectCommand>("connect").WithDescription("On the PC, last: connect <host> --pin <sha256> --owner-key <key>, the line setup-host.ps1 prints; the dashboard becomes the host's Team Wall. An org member's PC: --member <email> --member-key <key>, the line machine invite prints.");
                 m.AddCommand<MachineHostCommand>("host").WithDescription("On the VM (setup-host.ps1 runs it): role host, the gateway on for the network, the firewall opened, the daemon started; prints the connect line.");
                 m.AddCommand<MachineStandaloneCommand>("standalone").WithDescription("Everything on this machine again (undoes handoff or host).");
                 m.AddCommand<MachinePullCommand>("pull").WithDescription("git pull every repo in the workspace; on a client, refresh the host's tickets too.");
                 m.AddCommand<MachineKitCommand>("kit").WithDescription("Write only the host kit to <folder>.");
+                m.AddCommand<MachineInviteCommand>("invite").WithDescription("On the host (hub phase 1, M.ORCH-T1640): invite <member>, an active org member, to connect their own PC: mints their member key (never the owner key) and prints their connect line.");
+                m.AddCommand<MachineMembersCommand>("members").WithDescription("On the host: every member invited to connect, their key (live or revoked), when the gateway last saw them, and who is connected now.");
+                m.AddCommand<MachineRevokeCommand>("revoke").WithDescription("On the host: revoke <member>'s member key; the gateway refuses it and their tokens within a second, and closes their open streams within 10 seconds.");
                 m.AddCommand<MachineTicketsCommand>("tickets").WithDescription("On a client: run a tickets command on the host (tickets -- <args>); the tickets shim on this PC does it for you.");
             });
             config.AddBranch("branches", b =>

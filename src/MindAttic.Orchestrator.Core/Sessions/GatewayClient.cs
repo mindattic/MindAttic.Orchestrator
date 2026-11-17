@@ -60,6 +60,7 @@ public sealed class GatewayClient : IDisposable
     private volatile string? token;
     private readonly string? pin;
     private readonly string? ownerKey;
+    private readonly string? memberKey;
     private readonly SemaphoreSlim minting = new(1, 1);
     private volatile string? mintProblem;
 
@@ -73,6 +74,8 @@ public sealed class GatewayClient : IDisposable
         this.latest = latest;
         token = GatewayRemotes.Token(remote);
         ownerKey = GatewayRemotes.OwnerKey(remote);
+        // An org member's own key to the central host (hub phase 1, M.ORCH-T1640): minted with like the owner key, never both.
+        memberKey = ownerKey is null ? GatewayRemotes.MemberKey(remote) : null;
         pin = GatewayRemotes.NormalizePin(remote.CertSha256);
         BaseUrl = GatewayRemotes.NormalizeUrl(remote.Url);
         var handler = new SocketsHttpHandler
@@ -91,7 +94,7 @@ public sealed class GatewayClient : IDisposable
     public string? BaseUrl { get; }
 
     /// <summary>Whether a token was found and could be unsealed for this Windows user.</summary>
-    public bool HasToken => token is not null || ownerKey is not null;
+    public bool HasToken => token is not null || ownerKey is not null || memberKey is not null;
 
     /// <summary>A token minted with the owner key lasts this long (the gateway's most).</summary>
     public const int MintMinutes = 60;
@@ -103,7 +106,7 @@ public sealed class GatewayClient : IDisposable
     /// </summary>
     internal async Task MintIfDueAsync(CancellationToken ct)
     {
-        if (ownerKey is null || BaseUrl is null) return;
+        if ((ownerKey is null && memberKey is null) || BaseUrl is null) return;
         if (token is { } t && GatewayRemotes.ExpiresUtc(t) is { } exp && exp - DateTime.UtcNow > TimeSpan.FromMinutes(10)) return;
         // Inside the never-throws contract too: a cancelled wait (another call minting) or a disposed client threw out of it.
         try { await minting.WaitAsync(ct).ConfigureAwait(false); }
@@ -113,14 +116,21 @@ public sealed class GatewayClient : IDisposable
             if (token is { } again && GatewayRemotes.ExpiresUtc(again) is { } e2 && e2 - DateTime.UtcNow > TimeSpan.FromMinutes(10)) return;
             using var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl + "/auth/token")
             {
-                Content = JsonContent.Create(new { ownerKey, scope = "interact", minutes = MintMinutes }),
+                Content = ownerKey is not null
+                    ? JsonContent.Create(new { ownerKey, scope = "interact", minutes = MintMinutes })
+                    : JsonContent.Create(new { memberKey, scope = "interact", minutes = MintMinutes }),
             };
             using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
             bounded.CancelAfter(ListTimeout);
             using var response = await http.SendAsync(request, bounded.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                mintProblem = response.StatusCode switch
+                mintProblem = memberKey is not null ? response.StatusCode switch
+                {
+                    HttpStatusCode.Unauthorized => "it refused your member key (revoked, replaced by a newer invite, or you're no longer an active member: ask the host's owner for a new orchestrator machine invite)",
+                    HttpStatusCode.TooManyRequests => "it's refusing keys from here for a while (too many wrong ones)",
+                    var code => $"it answered {(int)code} to your member key",
+                } : response.StatusCode switch
                 {
                     HttpStatusCode.Unauthorized => "it refused this machine's owner key (the host's key changed: run the connect line it prints again)",
                     HttpStatusCode.TooManyRequests => "it's refusing owner keys from here for a while (too many wrong ones)",
@@ -277,7 +287,7 @@ public sealed class GatewayClient : IDisposable
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(ConnectTimeout);
             await socket.ConnectAsync(url, timeout.Token).ConfigureAwait(false);
-            return new WebSocketFrameStream(socket, latest is null && ownerKey is null ? null : FreshToken, token);
+            return new WebSocketFrameStream(socket, latest is null && ownerKey is null && memberKey is null ? null : FreshToken, token);
         }
         catch
         {
@@ -291,7 +301,7 @@ public sealed class GatewayClient : IDisposable
     internal string? FreshToken()
     {
         // The owner's own host: the token this client minted last (the wall's listing re-mints it before it runs low).
-        if (ownerKey is not null) return token;
+        if (ownerKey is not null || memberKey is not null) return token;
         if (latest?.Invoke() is not { } now) return null;
         if (GatewayRemotes.NormalizeUrl(now.Url) != BaseUrl || GatewayRemotes.NormalizePin(now.CertSha256) != pin) return null;
         return GatewayRemotes.Token(now);

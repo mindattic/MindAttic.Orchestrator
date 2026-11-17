@@ -709,6 +709,14 @@ public sealed record OrchestratorSettings
     /// <summary>The default branch queue fetch minutes constant.</summary>
     public const double DefaultBranchQueueFetchMinutes = 10;
 
+    /// <summary>On the host (hub phase 1, M.ORCH-T1640): how many minutes after its gateway last saw an invited member (a token
+    /// minted, sessions listed, a tickets command) they still count as connected, for the dashboard's connected-members readout
+    /// and <c>orchestrator machine members</c>.</summary>
+    public double MemberConnectedMinutes { get; init; } = DefaultMemberConnectedMinutes;
+
+    /// <summary>The default member connected minutes constant.</summary>
+    public const double DefaultMemberConnectedMinutes = 3;
+
     /// <summary>The max server memory (MB) the daemon keeps localhost's SQL Server at (M.ORCH-T1621): 0 (the default) leaves SQL
     /// Server's own setting alone; any other value under <see cref="SqlServerMaxMemoryFloorMb"/> is raised to it, never applied
     /// lower, since 1024 MB crashed the instance (error 17300) and only an admin restart in minimal mode recovered it.</summary>

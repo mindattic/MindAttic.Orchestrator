@@ -425,6 +425,8 @@ public sealed partial class MainViewModel : ObservableObject
                 var paused = store.TryLoadSettings(out var settingsNow) && !settingsNow.Allocate;
                 // Members whose until date has passed drop off the roster, so no CLI tab is started or respawned for them (M.ORCH-T1401).
                 var lapsed = MemberUntil.Lapsed(settingsNow?.MemberUntil, DateTime.Now);
+                // On the host, the org members connected to it now (hub phase 1, M.ORCH-T1640): the menu bar's chip.
+                connectedMembersRead = ConnectedMembersNow(settingsNow);
                 planned = PlanOffUi(built);
                 return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, diskFreeGb, ramUtilizationPercent, paused);
             }), () => localChanges);

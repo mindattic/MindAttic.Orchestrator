@@ -44,6 +44,10 @@ internal sealed class GatewayServices
 
     /// <summary>Who is attached remotely, announced on the status bus.</summary>
     public WatcherBoard Watchers { get; init; } = new(null, null);
+
+    /// <summary>The org members' own keys (hub phase 1, M.ORCH-T1640): <c>members.json</c>, reread as it changes. The default has
+    /// none, so only the owner key mints a token.</summary>
+    public IMemberKeys MemberKeys { get; init; } = NoMemberKeys.Instance;
 }
 
 /// <summary>A session as <c>GET /sessions</c> lists it: never its command line, folder, config dir, pipe or host pid.</summary>
@@ -65,7 +69,8 @@ internal sealed record GatewaySession(
 internal sealed record TokenRequest(
     [property: JsonPropertyName("ownerKey")] string? OwnerKey,
     [property: JsonPropertyName("scope")] string? Scope,
-    [property: JsonPropertyName("minutes")] int? Minutes);
+    [property: JsonPropertyName("minutes")] int? Minutes,
+    [property: JsonPropertyName("memberKey")] string? MemberKey = null);
 
 /// <summary><c>POST /tickets</c>'s body: the tickets CLI's arguments, and the folder (relative to the workspace root) it was
 /// typed in, which picks the repo a command without <c>--repo</c> means.</summary>
@@ -88,9 +93,11 @@ internal sealed record TokenResponse(
 /// <list type="bullet">
 /// <item><c>GET /health</c>: unauthenticated liveness, <c>{ ok, version }</c>.</item>
 /// <item><c>POST /auth/token</c>: <c>{ ownerKey, scope?, minutes? }</c> to a short-lived bearer token; five wrong keys from one
-/// address in five minutes and it answers 429 until they age out.</item>
+/// address in five minutes and it answers 429 until they age out. <c>{ memberKey, ... }</c> instead (hub phase 1, M.ORCH-T1640):
+/// an active org member's own key, from <c>orchestrator machine invite</c>, to a token whose subject is their email.</item>
 /// <item><c>POST /tickets</c>: <c>{ args, directory? }</c> runs the tickets CLI here for the owner's own client (M.ORCH-T1479):
-/// the owner's interact token only, <c>{ exitCode, output }</c> back.</item>
+/// the owner's interact token, <c>{ exitCode, output }</c> back; or an active org member's interact token for
+/// <see cref="MemberTickets"/>' allowlist, run as them and audited per member (hub phase 1, M.ORCH-T1640).</item>
 /// <item><c>POST /branches</c>: <c>{ args }</c> runs <c>orchestrator branches</c> here (its listing or <c>report</c>, nothing else)
 /// for the owner's own client's local test runs of work branches (M.ORCH-T1635); same token rule and answer as <c>/tickets</c>.</item>
 /// <item><c>GET /sessions</c>: this machine's hosted sessions the caller may see.</item>
@@ -142,7 +149,28 @@ internal static class GatewayApp
                 // Counted before the key is checked (M.ORCH-T987), so concurrent guesses can't slip past the limit.
                 if (!g.Throttle.TryBegin(from)) return TypedResults.StatusCode(StatusCodes.Status429TooManyRequests);
                 if (request is null) return TypedResults.BadRequest();
-                if (!GatewayKeys.Matches(g.OwnerKey, request.OwnerKey))
+                string subject;
+                if (GatewayKeys.Matches(g.OwnerKey, request.OwnerKey)) subject = g.Options.Owner;
+                else if (request.OwnerKey is null && !string.IsNullOrWhiteSpace(request.MemberKey))
+                {
+                    // An org member's own key (hub phase 1, M.ORCH-T1640): its token is theirs, never the owner's, and only while they
+                    // are an active member; the ACL decides what it sees, the tickets allowlist what it runs.
+                    var member = g.MemberKeys.Match(request.MemberKey);
+                    if (member is null)
+                    {
+                        g.Log.Write($"token refused: unknown or revoked member key from {from}");
+                        AuditRefusal(g, "", from.ToString(), "unknown or revoked member key");
+                        return TypedResults.Unauthorized();
+                    }
+                    if (!g.Grants.IsActiveMember(member) || string.Equals(member, g.Options.Owner.Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        g.Log.Write($"token refused: {member} isn't an active member, from {from}");
+                        g.Audit.Write(Record(g, TermGatewayAudit.Refused, member, "", "none", from.ToString(), detail: "member key: not an active member"));
+                        return TypedResults.Unauthorized();
+                    }
+                    subject = member;
+                }
+                else
                 {
                     g.Log.Write($"token refused: wrong owner key from {from}");
                     AuditRefusal(g, "", from.ToString(), "wrong owner key");
@@ -152,9 +180,10 @@ internal static class GatewayApp
                 var scope = request.Scope is null ? GatewayScopes.Interact : request.Scope.ToLowerInvariant();
                 if (!GatewayScopes.IsValid(scope)) return TypedResults.BadRequest();
                 var minutes = Math.Clamp(request.Minutes ?? g.Options.TokenMinutes, 1, GatewayOptions.MaxTokenMinutes);
-                var (token, expires) = g.Tokens.Issue(g.Options.Owner, scope, TimeSpan.FromMinutes(minutes));
-                g.Log.Write($"token issued to {g.Options.Owner} ({scope}, {minutes} min) for {from}");
-                return TypedResults.Ok(new TokenResponse(token, g.Options.Owner, scope, expires));
+                var (token, expires) = g.Tokens.Issue(subject, scope, TimeSpan.FromMinutes(minutes));
+                g.Log.Write($"token issued to {subject} ({scope}, {minutes} min) for {from}");
+                if (!ReferenceEquals(subject, g.Options.Owner)) g.MemberKeys.Seen(subject);
+                return TypedResults.Ok(new TokenResponse(token, subject, scope, expires));
             }
             catch (Exception ex)
             {
@@ -174,12 +203,15 @@ internal static class GatewayApp
                     AuditRefusal(g, "", RemoteOf(http), TokenRefusal(http));
                     return Results.Unauthorized();
                 }
-                if (!string.Equals(who.Subject.Trim(), g.Options.Owner.Trim(), StringComparison.OrdinalIgnoreCase) || who.Scope != GatewayScopes.Interact)
+                var isOwner = string.Equals(who.Subject.Trim(), g.Options.Owner.Trim(), StringComparison.OrdinalIgnoreCase);
+                // An org member's interact token (hub phase 1, M.ORCH-T1640) may run the allowlisted verbs as themselves.
+                if (who.Scope != GatewayScopes.Interact || (!isOwner && !g.Grants.IsActiveMember(who.Subject)))
                 {
                     AuditRefusal(g, who.Subject, RemoteOf(http), "tickets: not the owner's interact token");
                     return Results.StatusCode(StatusCodes.Status403Forbidden);
                 }
                 if (request?.Args is not { Count: > 0 and <= 64 } args || args.Any(a => a is null || a.Length > 32_000)) return Results.BadRequest();
+                if (!isOwner) return await MemberTicketsAsync(http, g, who.Subject, args, request.Directory).ConfigureAwait(false);
                 g.Log.Write($"tickets {args[0]} {(args.Count > 1 ? args[1] : "")} for {who.Subject} from {RemoteOf(http)}");
                 var result = await TicketsRunner.RunAsync(args, request.Directory, http.RequestAborted);
                 return Results.Json(new TicketsResponse(result.ExitCode, result.Output));
@@ -229,6 +261,7 @@ internal static class GatewayApp
                     AuditRefusal(g, "", RemoteOf(http), TokenRefusal(http));
                     return Results.Unauthorized();
                 }
+                if (!string.Equals(who.Subject.Trim(), g.Options.Owner.Trim(), StringComparison.OrdinalIgnoreCase)) g.MemberKeys.Seen(who.Subject);
                 var list = new List<GatewaySession>();
                 var broadcast = g.Broadcast.Current;
                 var sessions = g.Sessions.Enumerate();
@@ -350,6 +383,7 @@ internal static class GatewayApp
             var p = g.Tokens.Validate(fresh.Trim());
             var refused = p is null ? "bad or expired token"
                 : !string.Equals(p.Subject.Trim(), who.Subject.Trim(), StringComparison.OrdinalIgnoreCase) ? "another member's token"
+                : IsRevokedMember(g, p.Subject) ? "their member key was revoked"
                 : OwnerOnlyGrants.Effective(g.Grants.AccessTo(p.Subject, session), p.Scope, requestedMode) < access ? "less access than the stream has"
                 : null;
             if (refused is not null)
@@ -385,6 +419,12 @@ internal static class GatewayApp
                         var expired = g.Tokens.Expired(holder);
                         endedWhy = expired ? "token expired" : "access revoked";
                         why = expired ? "lapsed: its token expired and no fresh one came" : "revoked: the signing key changed";
+                    }
+                    else if (IsRevokedMember(g, who.Subject))
+                    {
+                        // machine revoke (hub phase 1, M.ORCH-T1640): closed with 1008 like any revoked access.
+                        endedWhy = "access revoked";
+                        why = "revoked: their member key was revoked";
                     }
                     else
                     {
@@ -473,9 +513,48 @@ internal static class GatewayApp
 
     private static string RemoteOf(HttpContext http) => http.Connection.RemoteIpAddress?.ToString() ?? "?";
 
-    /// <summary>The bearer token's holder, or null. Only the Authorization header is read: a token in a URL would land in logs.</summary>
+    /// <summary>The bearer token's holder, or null. Only the Authorization header is read: a token in a URL would land in logs. A
+    /// member whose key was revoked (hub phase 1, M.ORCH-T1640) is refused, whatever token they hold.</summary>
     internal static GatewayPrincipal? Authenticate(HttpContext http, GatewayServices g) =>
-        BearerToken(http) is { } token ? g.Tokens.Validate(token) : null;
+        BearerToken(http) is { } token && g.Tokens.Validate(token) is { } p && !IsRevokedMember(g, p.Subject) ? p : null;
+
+    /// <summary>Whether <paramref name="subject"/> is a member <c>orchestrator machine revoke</c> cut off; never the owner.</summary>
+    private static bool IsRevokedMember(GatewayServices g, string subject) =>
+        !string.Equals(subject.Trim(), g.Options.Owner.Trim(), StringComparison.OrdinalIgnoreCase) && g.MemberKeys.IsRevoked(subject);
+
+    /// <summary>
+    /// A tickets command from an org member's token (hub phase 1, M.ORCH-T1640): only <see cref="MemberTickets.Verbs"/>, never an
+    /// option that reaches a host file or names another author, and <c>close</c> only on a ticket one of their logins works or is
+    /// assigned. It runs as them (a note's author is their email) and is audited per member: the verb, never the text. A refusal
+    /// answers 403 with why in the usual <c>{ exitCode, output }</c>.
+    /// </summary>
+    private static async Task<IResult> MemberTicketsAsync(HttpContext http, GatewayServices g, string member, List<string> args, string? directory)
+    {
+        var from = RemoteOf(http);
+        var verb = MemberTickets.Verb(args);
+        IResult Refuse(string why)
+        {
+            g.Log.Write($"tickets {verb} for {member} from {from} refused: {why}");
+            g.Audit.Write(Record(g, TermGatewayAudit.Refused, member, "", "none", from, detail: $"tickets {verb}: {why}"));
+            return Results.Json(new TicketsResponse(1, $"The host refused it: {why}."), statusCode: StatusCodes.Status403Forbidden);
+        }
+        if (MemberTickets.Refusal(args) is { } refused) return Refuse(refused);
+        if (args[1] == "close")
+        {
+            if (MemberTickets.TicketId(args) is not { } id) return Refuse("close names one ticket id");
+            var show = await TicketsRunner.RunAsync(["ticket", "show", id, "--json"], directory, http.RequestAborted).ConfigureAwait(false);
+            if (show.ExitCode != 0) return Refuse($"no ticket {id} to close");
+            if (!MemberTickets.WorkedBy(show.Output, g.Grants.LoginsOf(member)))
+                return Refuse($"members close only tickets their own logins work or are assigned, and {id} isn't one");
+        }
+        // A note is theirs: its author is the member, never the host's user (--author from them was refused above).
+        List<string> run = args[1] == "note" ? [.. args, "--author", member] : args;
+        g.MemberKeys.Seen(member);
+        g.Log.Write($"tickets {verb} for {member} from {from}");
+        var result = await TicketsRunner.RunAsync(run, directory, http.RequestAborted).ConfigureAwait(false);
+        g.Audit.Write(Record(g, TermGatewayAudit.Tickets, member, "", GatewayScopes.Interact, from, detail: $"{verb}: exit {result.ExitCode}"));
+        return Results.Json(new TicketsResponse(result.ExitCode, result.Output));
+    }
 
     /// <summary>The bearer token in the Authorization header, unchecked; held only in memory, never logged.</summary>
     private static string? BearerToken(HttpContext http)

@@ -387,6 +387,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 1440)]
     public double BranchQueueFetchMinutes { get; set; } = OrchestratorSettings.DefaultBranchQueueFetchMinutes;
 
+    /// <summary>On the host: minutes after the gateway last saw an invited member that they still count as connected.</summary>
+    [Setting("Member counts as connected for (min)", Group = "Gateway", Order = 2,
+        Help = "On the host (hub phase 1): how many minutes after the gateway last saw an invited org member (a sign-in, their Team Wall's look at the sessions, a tickets command) they still count as connected, for the dashboard's connected-members readout and orchestrator machine members.")]
+    [SettingRange(0.5, 1440)]
+    public double MemberConnectedMinutes { get; set; } = OrchestratorSettings.DefaultMemberConnectedMinutes;
+
     /// <summary>How many extra times a write retries taking SQL Server's write lock after it stayed busy past its timeout (each wait longer than the last) before the command fails.</summary>
     [Setting("Database busy retries", Group = "Scheduler", Order = 92, Help = "How many extra times a write retries taking SQL Server's write lock after it stayed busy past its timeout (each wait longer than the last) before the command fails. Raise it when many CLIs and subagents write at once.")]
     [SettingRange(0, 100)]
@@ -821,6 +827,7 @@ public sealed class OrchestratorVaultSettings
         BranchBuildsTimeoutMinutes = s.BranchBuildsTimeoutMinutes,
         BranchBuildsCheckSeconds = s.BranchBuildsCheckSeconds,
         BranchQueueFetchMinutes = s.BranchQueueFetchMinutes,
+        MemberConnectedMinutes = s.MemberConnectedMinutes,
         TabBlinkMinSpacingMs = s.TabBlinkMinSpacingMs,
         ProjectsRefreshMinutes = s.ProjectsRefreshMinutes,
         ProjectChangesRefreshSeconds = s.ProjectChangesRefreshSeconds,
@@ -956,6 +963,7 @@ public sealed class OrchestratorVaultSettings
         BranchBuildsTimeoutMinutes = BranchBuildsTimeoutMinutes,
         BranchBuildsCheckSeconds = BranchBuildsCheckSeconds,
         BranchQueueFetchMinutes = BranchQueueFetchMinutes,
+        MemberConnectedMinutes = MemberConnectedMinutes,
         TabBlinkMinSpacingMs = TabBlinkMinSpacingMs,
         ProjectsRefreshMinutes = ProjectsRefreshMinutes,
         ProjectChangesRefreshSeconds = ProjectChangesRefreshSeconds,

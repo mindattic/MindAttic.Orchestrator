@@ -5,8 +5,9 @@ namespace MindAttic.Orchestrator.Setup;
 
 /// <summary>
 /// What part this machine plays in a multi-machine install (hub phase 0, M.ORCH-T1639). <see cref="Standalone"/>,
-/// <see cref="Host"/> and <see cref="Client"/> are today's <see cref="MachineRoleKind"/> values; <see cref="MemberClient"/> and
-/// <see cref="Spoke"/> are reserved for later hub phases (docs/research/hub-and-spoke.md) and nothing selects them yet.
+/// <see cref="Host"/> and <see cref="Client"/> are today's <see cref="MachineRoleKind"/> values; <see cref="MemberClient"/> (hub
+/// phase 1, M.ORCH-T1640) is a client connected with a member key; <see cref="Spoke"/> is reserved for a later hub phase
+/// (docs/research/hub-and-spoke.md) and nothing selects it yet.
 /// </summary>
 public enum TopologyKind
 {
@@ -19,7 +20,9 @@ public enum TopologyKind
     /// <summary>The owner's own PC watching its host: runs no daemon, no hooks, no gateway (docs/REMOTE_HOST.md).</summary>
     Client,
 
-    /// <summary>Reserved (hub phase 1): an org member's PC connected to a central host. Nothing selects it yet.</summary>
+    /// <summary>Hub phase 1 (M.ORCH-T1640): an org member's PC connected to a central host with their own member key. A client in
+    /// every way (<see cref="MachineTopology.IsClient"/>); only a client whose <see cref="MachineRole.Member"/> is set selects it,
+    /// never a <see cref="MachineRoleKind"/> on its own.</summary>
     MemberClient,
 
     /// <summary>Reserved (hub phase 3): a federated machine that joins a host through Relay. Nothing selects it yet.</summary>
@@ -38,7 +41,10 @@ public sealed record MachineTopology(TopologyKind Kind)
     /// <summary>This machine's topology, from <see cref="MachineRole.Current"/> (re-read at most every few seconds).</summary>
     public static MachineTopology Current => From(MachineRole.Current);
 
-    public static MachineTopology From(MachineRole role) => For(role.Role);
+    /// <summary>The topology <paramref name="role"/> means: <see cref="For"/> its kind, except that a client connected as an org
+    /// member (<see cref="MachineRole.Member"/>, hub phase 1) is a <see cref="TopologyKind.MemberClient"/>.</summary>
+    public static MachineTopology From(MachineRole role) =>
+        role.IsClient && !string.IsNullOrWhiteSpace(role.Member) ? new(TopologyKind.MemberClient) : For(role.Role);
 
     public static MachineTopology For(MachineRoleKind role) => new(role switch
     {
@@ -49,6 +55,9 @@ public sealed record MachineTopology(TopologyKind Kind)
 
     public bool IsStandalone => Kind == TopologyKind.Standalone;
     public bool IsHost => Kind == TopologyKind.Host;
+
+    /// <summary>An org member's own PC connected to the central host with a member key (hub phase 1, M.ORCH-T1640).</summary>
+    public bool IsMemberClient => Kind == TopologyKind.MemberClient;
 
     /// <summary>A machine that watches another one's work rather than doing it: the owner's client (and, reserved, a member's).</summary>
     public bool IsClient => Kind is TopologyKind.Client or TopologyKind.MemberClient;

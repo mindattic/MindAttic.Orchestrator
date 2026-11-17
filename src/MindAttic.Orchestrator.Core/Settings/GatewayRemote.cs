@@ -33,6 +33,14 @@ public sealed record GatewayRemote
     /// and the link never expires.</summary>
     public string? SealedOwnerKey { get; init; }
 
+    /// <summary>An org member's key to the central host (hub phase 1, M.ORCH-T1640; <c>orchestrator machine connect --member-key</c>),
+    /// DPAPI-sealed for this Windows user and base64: like <see cref="SealedOwnerKey"/>, this machine mints fresh tokens with it, but
+    /// they are the member's own, never the owner's.</summary>
+    public string? SealedMemberKey { get; init; }
+
+    /// <summary>The member <see cref="SealedMemberKey"/> is for (their email), as the host invited them.</summary>
+    public string? Member { get; init; }
+
     /// <summary>Who the wall says these CLIs belong to.</summary>
     public string Who => string.IsNullOrWhiteSpace(Person) ? Name : Person.Trim();
 }
@@ -83,6 +91,9 @@ public static class GatewayRemotes
 
     /// <summary>The remote's owner key in the clear, or null when it has none or it can't be unsealed here.</summary>
     public static string? OwnerKey(GatewayRemote remote) => Unseal(remote.SealedOwnerKey);
+
+    /// <summary>The remote's member key in the clear (hub phase 1), or null when it has none or it can't be unsealed here.</summary>
+    public static string? MemberKey(GatewayRemote remote) => Unseal(remote.SealedMemberKey);
 
     private static string? Unseal(string? sealedText)
     {

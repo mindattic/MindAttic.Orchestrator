@@ -57,12 +57,49 @@ public sealed partial class MainViewModel
         "The master switch for /allocate is off: the CLIs that typed /allocate keep it, but orchestrator next hands none of them a ticket. " +
         "orchestrator settings --allocate true resumes it, or the Allocate setting in MindAttic Vault's Orchestrator page.";
 
+    // ── Connected members (hub phase 1, M.ORCH-T1640) ──────────────────────
+    // On the host, the org members whose own PCs are connected to its gateway with their member keys: read with the rest of
+    // the refresh, off the UI thread (ConnectedMembersNow), from the gateway's members-seen.json. Empty on every other machine.
+
+    private volatile IReadOnlyList<string> connectedMembersRead = [];
+    private IReadOnlyList<string> connectedMembers = [];
+
+    /// <summary>The members connected to this host now, by email; empty unless this machine is the host. Never throws.</summary>
+    internal static IReadOnlyList<string> ConnectedMembersNow(MindAttic.Orchestrator.Settings.OrchestratorSettings? settings)
+    {
+        try
+        {
+            if (!MindAttic.Orchestrator.Setup.MachineTopology.Current.IsHost) return [];
+            var minutes = settings?.MemberConnectedMinutes ?? MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultMemberConnectedMinutes;
+            return MindAttic.Orchestrator.Term.TermMemberKeys.Connected(DateTime.UtcNow, TimeSpan.FromMinutes(Math.Max(0.1, minutes)));
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { return []; }
+    }
+
+    /// <summary>The menu bar's chip on the host: "2 members connected"; empty when none is (or this isn't the host).</summary>
+    public string ConnectedMembersText => ConnectedMembersLine(connectedMembers);
+
+    internal static string ConnectedMembersLine(IReadOnlyList<string> members) => members.Count switch
+    {
+        0 => "",
+        1 => "1 member connected",
+        var n => $"{n} members connected",
+    };
+
+    /// <summary>Who they are, for the chip's tooltip.</summary>
+    public string ConnectedMembersToolTip => connectedMembers.Count == 0 ? ""
+        : $"Connected to this host from their own PCs: {string.Join(", ", connectedMembers)}. They watch their org's shared CLIs, read-only " +
+          "(orchestrator machine members lists every invited member; orchestrator machine revoke cuts one off).";
+
     private void SetHostStats(double freeGb, double? ramPercent, MemoryState? memoryNow = null, bool allocatePausedNow = false)
     {
         diskFreeGb = freeGb;
         ramUtilizationPercent = ramPercent;
         memory = memoryNow;
         allocatePaused = allocatePausedNow;
+        connectedMembers = connectedMembersRead;
+        Raise(nameof(ConnectedMembersText));
+        Raise(nameof(ConnectedMembersToolTip));
         Raise(nameof(AllocatePausedText));
         Raise(nameof(DiskFreeText));
         Raise(nameof(RamUtilizationText));

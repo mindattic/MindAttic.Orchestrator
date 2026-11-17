@@ -87,6 +87,10 @@ public static class TermGatewayAudit
     /// <summary>The constants attach, detach, input, refused.</summary>
     public const string Attach = "attach", Detach = "detach", Input = "input", Refused = "refused";
 
+    /// <summary>A tickets command a member ran on the host through <c>POST /tickets</c> (hub phase 1, M.ORCH-T1640): its verb in
+    /// the detail, never its text.</summary>
+    public const string Tickets = "tickets";
+
     /// <summary>The constants acl file, spool file.</summary>
     public const string AclFile = "acl.json", SpoolFile = "audit.jsonl";
     private const string DrainingSuffix = ".draining";
