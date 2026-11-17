@@ -71,7 +71,7 @@ public sealed partial class MainViewModel
     /// same two figures as words, "wk: 15% | 5h: 29%", per the SymbolTabLabels setting (M.ORCH-T1255). Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
     public string TabTrailing => !tab.SignedIn ? ""
         : tab.IsApiKey ? ApiTrailingOf(Spend)
-        : TabUsageOf(FiveHourUsed, WeekUsed, MeterReadUtc, NeedsSignInAgain, DateTime.UtcNow, Lambda, Root.symbolTabLabels);
+        : TabUsageOf(FiveHourUsed, WeekUsed, MeterReadUtc, NeedsSignInAgain, DateTime.UtcNow, Lambda, Root.symbolTabLabels, HasFiveHourWindow);
 
     /// <summary>Whether the tab shows the weekly/5-hour bars beside its name instead of <see cref="TabTrailing"/>'s own text
     /// (M.ORCH-T1532, in place of the plain "Σ: 15% | λ: 29%" figures): signed in, not the API key tab (its trailing is
@@ -106,29 +106,30 @@ public sealed partial class MainViewModel
     /// "stale · read 11h ago" instead of its figures, never shown as current (the tab sizes itself to its own content, M.ORCH-T1096,
     /// so the old figures go to the tooltip, <see cref="TabStaleLineOf"/>).
     /// </summary>
-    internal static string TabUsageOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, bool signInAgain, DateTime nowUtc, double? lambda, bool symbols) =>
+    internal static string TabUsageOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, bool signInAgain, DateTime nowUtc, double? lambda, bool symbols, bool fiveHour = true) =>
         signInAgain ? "sign in again"
         : IsStale(readUtc, nowUtc) ? $"stale · read {Formatting.Ago(readUtc, nowUtc)}"
-        : TabUsagePairsOf(fiveHourUsed, weekUsed, lambda, symbols);
+        : TabUsagePairsOf(fiveHourUsed, weekUsed, lambda, symbols, fiveHour);
 
     private static bool IsStale(DateTime? readUtc, DateTime nowUtc) => readUtc is { } r && nowUtc - r > UsageReport.StaleAfter;
 
     /// <summary>For the tooltip, once the reading is stale (M.ORCH-T1119): " Claude's meter was last read 11h ago (Σ: 91% | λ: 0%),
     /// so these figures may be out of date."; empty while it's fresh or never read.</summary>
-    internal static string TabStaleLineOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, DateTime nowUtc, double? lambda, bool symbols) =>
+    internal static string TabStaleLineOf(double? fiveHourUsed, double? weekUsed, DateTime? readUtc, DateTime nowUtc, double? lambda, bool symbols, bool fiveHour = true) =>
         IsStale(readUtc, nowUtc)
-            ? $" Claude's meter was last read {Formatting.Ago(readUtc, nowUtc)} ({TabUsagePairsOf(fiveHourUsed, weekUsed, lambda, symbols)}), so these figures may be out of date."
+            ? $" Claude's meter was last read {Formatting.Ago(readUtc, nowUtc)} ({TabUsagePairsOf(fiveHourUsed, weekUsed, lambda, symbols, fiveHour)}), so these figures may be out of date."
             : "";
 
-    internal string TabStaleLine => tab.SignedIn && !tab.IsApiKey ? TabStaleLineOf(FiveHourUsed, WeekUsed, MeterReadUtc, DateTime.UtcNow, Lambda, Root.symbolTabLabels) : "";
+    internal string TabStaleLine => tab.SignedIn && !tab.IsApiKey ? TabStaleLineOf(FiveHourUsed, WeekUsed, MeterReadUtc, DateTime.UtcNow, Lambda, Root.symbolTabLabels, HasFiveHourWindow) : "";
 
     /// <summary>The cutoffs the visible label leaves out (M.ORCH-T968), for the tooltip and accessible name: "cutoffs 5-hour 98%, weekly 90%".</summary>
-    internal string TabCutoffsLine => tab.SignedIn && !tab.IsApiKey ? $" Cutoffs: 5-hour {FiveHourCutoff}%, weekly {WeeklyCutoff}%." : "";
+    internal string TabCutoffsLine => !tab.SignedIn || tab.IsApiKey ? ""
+        : HasFiveHourWindow ? $" Cutoffs: 5-hour {FiveHourCutoff}%, weekly {WeeklyCutoff}%." : $" Cutoff: weekly {WeeklyCutoff}%.";
 
     /// <summary>The hover tip's own lead line (M.ORCH-T1536): the same "Σ: 15% | λ: 29%" figures as the tab face's bars
     /// (ShowsTabUsageBars) and TabTrailing's own text, current rather than the cutoffs TabCutoffsLine gives; empty for the
     /// API key tab (its trailing is money) or signed out.</summary>
-    internal string TabUsageLine => tab.SignedIn && !tab.IsApiKey ? TabUsagePairsOf(FiveHourUsed, WeekUsed, Lambda, Root.symbolTabLabels) : "";
+    internal string TabUsageLine => tab.SignedIn && !tab.IsApiKey ? TabUsagePairsOf(FiveHourUsed, WeekUsed, Lambda, Root.symbolTabLabels, HasFiveHourWindow) : "";
 
     /// <summary>"$37.66 left", or "$1.20 today" with no starting credit set; "" before the first read.</summary>
     internal static string ApiTrailingOf(ApiSpend? spend) =>
@@ -138,9 +139,11 @@ public sealed partial class MainViewModel
     /// M.ORCH-T1255): each window's % used, rounded for display only ("—" never read). λ/"5h" is exactly the 5-hour window's %
     /// used (see <see cref="Lambda"/>), so a separate "5hr:" figure would only repeat it (M.ORCH-T968, M.ORCH-T1207, M.ORCH-T1251).
     /// Always shown, 0% while no 5-hour block has started yet (M.ORCH-T1267): a missing λ read as "nothing running", when an idle
-    /// login at 0% looks the same as one whose window just hasn't been read.</summary>
-    internal static string TabUsagePairsOf(double? fiveHourUsed, double? weekUsed, double? lambda, bool symbols) =>
-        symbols
+    /// login at 0% looks the same as one whose window just hasn't been read. A login with no 5-hour window
+    /// (<paramref name="fiveHour"/> false, a solo Ultra account, M.ORCH-T1751) shows its week alone.</summary>
+    internal static string TabUsagePairsOf(double? fiveHourUsed, double? weekUsed, double? lambda, bool symbols, bool fiveHour = true) =>
+        !fiveHour ? $"{(symbols ? "Σ" : "wk")}: {UsedOf(weekUsed)}%"
+        : symbols
             ? $"Σ: {UsedOf(weekUsed)}% | λ: {UsedOf(lambda ?? 0)}%"
             : $"wk: {UsedOf(weekUsed)}% | 5h: {UsedOf(lambda ?? 0)}%";
 
@@ -154,7 +157,7 @@ public sealed partial class MainViewModel
     private (TabLight Light, string Word) TabStatus => tab.IsApiKey
         ? ApiStatusOf(tab.SignedIn, Spend)
         : StatusOf(tab.SignedIn, string.Equals(Root.signingInEmail, tab.Email, StringComparison.OrdinalIgnoreCase) && tab.Email is not null,
-            SignedInAsOther, WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff, NeedsSignInAgain ? ClaudeMeterProbe.SignInAgain(CutoffEmail) : null);
+            SignedInAsOther, WeekUsed, WeeklyCutoff, HasFiveHourWindow ? FiveHourUsed : null, FiveHourCutoff, NeedsSignInAgain ? ClaudeMeterProbe.SignInAgain(CutoffEmail) : null);
 
     /// <summary>The API key's person's light (M.ORCH-T906): red with no key in the Vault, purple once its credit is spent, else green.</summary>
     internal static (TabLight Light, string Word) ApiStatusOf(bool hasKey, ApiSpend? spend) =>

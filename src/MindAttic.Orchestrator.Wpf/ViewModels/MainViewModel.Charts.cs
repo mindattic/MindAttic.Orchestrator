@@ -16,7 +16,14 @@ public sealed partial class MainViewModel
     /// <summary>Whether this plan's own 5-hour chart shows: every signed-in Claude login but a solo Ultra account, which has
     /// only a weekly limit worth charting. Shown by default (true) before the plan is known, so a fresh sign-in isn't held
     /// back from its 5-hour chart on a guess.</summary>
-    public bool ShowsFiveHourChart => ShowsClaudeMeters && OwnRow?.Plan != "Ultra";
+    public bool ShowsFiveHourChart => ShowsClaudeMeters && HasFiveHourWindow;
+
+    /// <summary>This login's plan: its roster row's, else the one its own login folder's sign-in names (M.ORCH-T1751: a login
+    /// the roster has no row for read as "plan unknown", so a solo Ultra login kept its 5-hour figure in the sidebar).</summary>
+    internal string? OwnPlan => OwnRow?.Plan ?? (CutoffEmail is { } email && Root.loginPlans.TryGetValue(email, out var plan) ? plan : null);
+
+    /// <summary>Whether this login has a 5-hour window at all: every plan but a solo Ultra account. True while the plan isn't known.</summary>
+    internal bool HasFiveHourWindow => OwnPlan != "Ultra";
 
     /// <summary>Whether this plan's own weekly chart shows: a solo Ultra account only, whose cutoff to preview is the week,
     /// not a 5-hour window it doesn't have.</summary>

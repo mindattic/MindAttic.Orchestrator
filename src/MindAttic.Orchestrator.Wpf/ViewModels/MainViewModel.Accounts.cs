@@ -120,6 +120,9 @@ public sealed partial class MainViewModel
     /// logins' meters can't be read until the person signs in again (M.ORCH-T1119); the global login's tab keeps them for every tab.</summary>
     private IReadOnlyDictionary<string, DateTime> meterReadUtc = new Dictionary<string, DateTime>();
     private IReadOnlySet<string> signInAgain = new HashSet<string>();
+
+    /// <summary>Each per-CLI login's plan as its own folder's sign-in names it (M.ORCH-T1751), read with the meter states.</summary>
+    private IReadOnlyDictionary<string, string> loginPlans = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     private DateTime meterStatesReadUtc;
 
     /// <summary>How often <see cref="LoadMeterStates"/> rereads them: well inside <see cref="UsageReport.StaleAfter"/> (30s by
@@ -133,9 +136,14 @@ public sealed partial class MainViewModel
         try
         {
             var read = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+            var plans = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var dir in OwnLoginDirs().All())
+            {
                 if (ReportedUsage.LoadAnyAge(dir.UsagePath) is { } r) read[dir.Email] = r.AtUtc;
+                if (dir.SignedInPlan is { } plan) plans[dir.Email] = plan;
+            }
             meterReadUtc = read;
+            loginPlans = plans;
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { }
         signInAgain = UsageReport.NeedingSignIn(ReportedUsage.DefaultDb);

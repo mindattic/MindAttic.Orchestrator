@@ -69,6 +69,17 @@ public sealed record AccountDir(string Email, string Directory)
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
         }
     }
+
+    /// <summary>The plan of the login here as its sign-in names it ("Ultra", "Team · Max"); null when signed out, unreadable or
+    /// unnamed (M.ORCH-T1751).</summary>
+    public string? SignedInPlan
+    {
+        get
+        {
+            try { return AccountProfile.Read(ConfigPath)?.Plan; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
+        }
+    }
 }
 
 /// <summary>
