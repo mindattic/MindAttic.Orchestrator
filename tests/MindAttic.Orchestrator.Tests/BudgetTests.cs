@@ -147,6 +147,17 @@ public sealed class BudgetTests
     }
 
     [Test]
+    public void A_low_reading_with_no_known_limit_is_claudes_own_percent_not_spend_over_the_peak()
+    {
+        // M.ORCH-T1664: a reading under 5% can't size a limit, so the block fell back to the peak and read spend/peak
+        // (here 4000/1000 = 400%) though Claude itself said 1%.
+        var reported = new ReportedUsage(new ReportedWindow(1, Day.AddHours(15)), null, Day.AddHours(11));
+        var s = BudgetCalculator.Compute([E(1, 1000), E(10, 4000)], new OrchestratorSettings(), Day.AddHours(11), Day, TimeZoneInfo.Utc, reported: reported);
+        Assert.That(s.BlockLimitIsPeak, Is.True);
+        Assert.That(s.BlockPercent, Is.EqualTo(1).Within(0.01));
+    }
+
+    [Test]
     public void Beating_your_peak_is_context_not_an_alarm()
     {
         var s = BudgetCalculator.Compute([E(1, 100), E(10, 300)], new OrchestratorSettings(), Day.AddHours(11), Day);

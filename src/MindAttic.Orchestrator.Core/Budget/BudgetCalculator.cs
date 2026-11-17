@@ -286,6 +286,10 @@ public static class BudgetCalculator
             // Claude actually reported too (M.ORCH-T801).
             reportedBlockPercent = Math.Min(100, reported5h.Percent);
         }
+        // No limit known yet (under 5% Claude's percent can't size one) but Claude did report this window: its own percent is
+        // the truth, not this window's spend over the busiest earlier block, which read far past Claude's 0-2% (M.ORCH-T1664).
+        else if (isPeak && reported5h is not null && current is not null)
+            reportedBlockPercent = Math.Min(100, reported5h.Percent);
         // With no reading and no earlier block to compare against, the "limit" is this window's own spend (peak is 0), which made any
         // fresh window read exactly 100% of itself (M.ORCH-T1664: a login's new window showed "5hr limit: 100%" and a chart
         // jump to 100% two minutes in, while Claude's meter said 0-2%). With nothing to compare to, there is no percent yet.
