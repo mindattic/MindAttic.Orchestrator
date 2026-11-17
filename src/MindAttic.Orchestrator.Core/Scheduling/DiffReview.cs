@@ -96,6 +96,8 @@ public static class DiffReview
     public static (bool Ok, string Output) RunClaude(string prompt, string directory)
     {
         var promptPath = Path.Combine(Path.GetTempPath(), $"orchestrator-review-{Environment.ProcessId}-{Guid.NewGuid():N}.txt");
+        // In the resource ledger while it exists (M.ORCH-T1677): a crash before the finally leaves a row the sweeper reclaims.
+        using var tracked = Activity.LedgerTemp.Track(promptPath);
         try
         {
             File.WriteAllText(promptPath, prompt);

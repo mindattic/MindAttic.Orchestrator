@@ -44,13 +44,13 @@ public static class SessionTempPruner
     public static string BaseDir() => Path.Combine(Path.GetTempPath(), "claude");
 
     // Hidden and system files are the session's too; only links are skipped.
-    private static readonly EnumerationOptions Walk = new()
+    internal static readonly EnumerationOptions Walk = new()
     {
         RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint, IgnoreInaccessible = false,
     };
 
     // Every folder in one folder (not below it), links included.
-    private static readonly EnumerationOptions Links = new() { AttributesToSkip = 0, IgnoreInaccessible = false };
+    internal static readonly EnumerationOptions Links = new() { AttributesToSkip = 0, IgnoreInaccessible = false };
 
     /// <summary>Deletes the folder of every session that has definitely ended; returns how many and their bytes.</summary>
     public static (int Folders, long Bytes) Prune(string baseDir, Func<string, bool?> running) =>
@@ -204,7 +204,7 @@ public static class SessionTempPruner
     }
 
     /// <summary>A folder, every folder below it (not through links) and <paramref name="files"/>: what its newest time is read from.</summary>
-    private static IEnumerable<FileSystemInfo> Tree(string dir, FileInfo[] files)
+    internal static IEnumerable<FileSystemInfo> Tree(string dir, FileInfo[] files)
     {
         var root = new DirectoryInfo(dir);
         return files.Concat<FileSystemInfo>(root.GetDirectories("*", Walk)).Append(root);
@@ -219,7 +219,7 @@ public static class SessionTempPruner
 
     /// <summary>Deletes a folder: links first, each by itself (a recursive delete removes a junction but then throws, as it tries
     /// it as a volume mount point too, so the folder stayed), then the rest; nothing is followed through a link.</summary>
-    private static void DeleteTree(string dir)
+    internal static void DeleteTree(string dir)
     {
         foreach (var d in new DirectoryInfo(dir).GetDirectories("*", Walk).Prepend(new DirectoryInfo(dir)))
             foreach (var link in d.GetDirectories("*", Links).Where(l => l.Attributes.HasFlag(FileAttributes.ReparsePoint))) link.Delete();
@@ -245,7 +245,7 @@ public static class SessionTempPruner
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
     }
 
-    private static void ClearReadOnly(FileInfo file)
+    internal static void ClearReadOnly(FileInfo file)
     {
         try { if (file.IsReadOnly) file.IsReadOnly = false; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
@@ -253,7 +253,7 @@ public static class SessionTempPruner
 
     /// <summary>Whether any process has the file open. Opened for reading, sharing nothing: any other handle on it refuses
     /// that, and a read-only file can still be opened this way, so the probe changes nothing (a dry run stays one).</summary>
-    private static bool InUse(FileInfo file)
+    internal static bool InUse(FileInfo file)
     {
         try
         {

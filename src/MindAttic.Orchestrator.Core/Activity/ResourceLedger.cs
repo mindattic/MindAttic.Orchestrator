@@ -66,6 +66,23 @@ public sealed class ResourceLedger(OrchestratorDb db, string? machine = null)
     /// <summary>The owner name for something a process uses (its pid).</summary>
     public static string ProcessOwner(int pid) => "pid:" + pid.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>The owner name for something a process uses, with when that process started (<c>pid:1234@2026-11-16T08:00:00Z</c>),
+    /// so a later process given the same pid isn't taken for it (M.ORCH-T1677).</summary>
+    public static string ProcessOwner(int pid, DateTime startedUtc) => ProcessOwner(pid) + "@" + Text(startedUtc);
+
+    /// <summary>The pid, and the start time when it was recorded, of a <see cref="ProcessOwner(int)"/> owner name; null when
+    /// <paramref name="owner"/> isn't one.</summary>
+    public static (int Pid, DateTime? StartedUtc)? ParseProcessOwner(string owner)
+    {
+        if (!owner.StartsWith("pid:", StringComparison.Ordinal)) return null;
+        var rest = owner["pid:".Length..];
+        var at = rest.IndexOf('@');
+        if (!int.TryParse(at < 0 ? rest : rest[..at], NumberStyles.None, CultureInfo.InvariantCulture, out var pid)) return null;
+        if (at < 0) return (pid, null);
+        return DateTime.TryParse(rest[(at + 1)..], CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var started)
+            ? (pid, started) : (pid, null);
+    }
+
     /// <summary>The owner name for something the daemon itself uses.</summary>
     public const string DaemonOwner = "daemon";
 

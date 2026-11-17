@@ -292,6 +292,35 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 8760)]
     public double ScratchLeaseHours { get; set; } = OrchestratorSettings.DefaultScratchLeaseHours;
 
+    /// <summary>The ledger sweep deletes nothing and only writes what it would delete, with bytes, to the disk-cleanup log.</summary>
+    [Setting("Ledger sweep: dry run", Group = "Alerts", Order = 12,
+        Help = "On, the ledger sweep (scratch dirs and temp files whose owner is gone or whose ticket is delivered, crash leftovers in %TEMP%, stale bin/obj in the daemon's worktrees) deletes nothing and only writes what it would delete, with bytes, to the disk-cleanup log. orchestrator disk-cleanup --ledger shows the plan; --ledger-run runs it for real whatever this says.")]
+    public bool LedgerSweepDryRun { get; set; } = true;
+
+    /// <summary>Minutes nothing may have been written in a ledger entry's folder before the sweep deletes it.</summary>
+    [Setting("Ledger sweep: quiet before delete (minutes)", Group = "Alerts", Order = 13,
+        Help = "Minutes nothing may have been created or written in a ledger entry's folder before the sweep deletes it, even once its owner is gone or its ticket is delivered. 0: no wait.")]
+    [SettingRange(0, 525600)]
+    public double LedgerSweepQuietMinutes { get; set; } = 30;
+
+    /// <summary>Hours a crash leftover in %TEMP% no ledger row covers must be old and quiet before the sweep deletes it.</summary>
+    [Setting("Ledger sweep: crash leftovers older than (hours)", Group = "Alerts", Order = 14,
+        Help = "Hours a crash leftover in %TEMP% that no ledger row covers (orchestrator-review-*.txt, mindattic-token-check-*) must be old and quiet before the sweep deletes it. 0 turns that sweep off.")]
+    [SettingRange(0, 8760)]
+    public double LedgerSweepLeftoverHours { get; set; } = 24;
+
+    /// <summary>Hours a daemon worktree's bin/obj must have gone unwritten before the sweep deletes them.</summary>
+    [Setting("Ledger sweep: stale bin/obj older than (hours)", Group = "Alerts", Order = 15,
+        Help = "Hours the bin and obj folders of a daemon worktree (main-tests, main-bisect, local-tests, merge-main, branch-*) must have gone unwritten, with no build or test running there, before the sweep deletes them. The worktree itself is never deleted. 0 turns it off.")]
+    [SettingRange(0, 8760)]
+    public double LedgerSweepBuildOutputHours { get; set; } = 72;
+
+    /// <summary>Days a released ledger row whose folder is gone is kept as history before the sweep drops it.</summary>
+    [Setting("Ledger sweep: keep released rows (days)", Group = "Alerts", Order = 16,
+        Help = "Days a released resource-ledger row whose folder is gone is kept as history before the sweep drops it. 0 keeps them.")]
+    [SettingRange(0, 3650)]
+    public double LedgerSweepHistoryDays { get; set; } = 30;
+
     /// <summary>Seconds the background daemon waits before starting its loop again after it died; doubles with each consecutive failure up to the cap below.</summary>
     [Setting("Daemon restart wait (s)", Group = "Scheduler", Order = 90, Help = "Seconds the background daemon waits before starting its loop again after it died; doubles with each consecutive failure up to the cap below.")]
     [SettingRange(1, 3600)]
@@ -948,6 +977,11 @@ public sealed class OrchestratorVaultSettings
         SessionTempPruneMinutes = s.SessionTempPruneMinutes,
         MirrorSeconds = s.MirrorSeconds,
         TicketsDbSyncMinutes = s.TicketsDbSyncMinutes,
+        LedgerSweepDryRun = s.LedgerSweepDryRun,
+        LedgerSweepQuietMinutes = s.LedgerSweepQuietMinutes,
+        LedgerSweepLeftoverHours = s.LedgerSweepLeftoverHours,
+        LedgerSweepBuildOutputHours = s.LedgerSweepBuildOutputHours,
+        LedgerSweepHistoryDays = s.LedgerSweepHistoryDays,
         OrchestratorDbSyncMinutes = s.OrchestratorDbSyncMinutes,
         MemorySampleSeconds = s.MemorySampleSeconds,
         MemorySettleSeconds = s.MemorySettleSeconds,
@@ -1112,6 +1146,11 @@ public sealed class OrchestratorVaultSettings
         TicketsDbSyncMinutes = TicketsDbSyncMinutes,
         OrchestratorDbSyncMinutes = OrchestratorDbSyncMinutes,
         MemorySampleSeconds = MemorySampleSeconds,
+        LedgerSweepDryRun = LedgerSweepDryRun,
+        LedgerSweepQuietMinutes = LedgerSweepQuietMinutes,
+        LedgerSweepLeftoverHours = LedgerSweepLeftoverHours,
+        LedgerSweepBuildOutputHours = LedgerSweepBuildOutputHours,
+        LedgerSweepHistoryDays = LedgerSweepHistoryDays,
         MemorySettleSeconds = MemorySettleSeconds,
         HealthSampleSeconds = HealthSampleSeconds,
         PagefileCheckHours = PagefileCheckHours,

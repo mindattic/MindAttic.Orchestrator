@@ -463,6 +463,26 @@ public sealed record OrchestratorSettings
     /// <summary>The default scratch lease hours constant.</summary>
     public const double DefaultScratchLeaseHours = 48;
 
+    /// <summary>Whether the ledger sweep (M.ORCH-T1677, <see cref="Activity.LedgerSweeper"/>) deletes nothing and only writes
+    /// what it would delete, with bytes, to the disk-cleanup log. On by default: the sweep is new, so it's watched first.
+    /// <c>orchestrator disk-cleanup --ledger-run</c> runs it for real whatever this says.</summary>
+    public bool LedgerSweepDryRun { get; init; } = true;
+
+    /// <summary>Minutes nothing may have been created or written in a ledger entry's folder before the sweep deletes it, even
+    /// once its owner is gone or its ticket delivered: an agent closing its ticket may still be copying something out. 0: no wait.</summary>
+    public double LedgerSweepQuietMinutes { get; init; } = 30;
+
+    /// <summary>Hours a crash leftover in %TEMP% that no ledger row covers (<c>orchestrator-review-*.txt</c>,
+    /// <c>mindattic-token-check-*</c>) must be old and quiet before the sweep deletes it. 0 turns that sweep off.</summary>
+    public double LedgerSweepLeftoverHours { get; init; } = 24;
+
+    /// <summary>Hours the <c>bin</c>/<c>obj</c> folders of a daemon worktree (main-tests, main-bisect, local-tests, merge-main,
+    /// branch-*) must have gone unwritten, with no build or test running there, before the sweep deletes them. 0 turns it off.</summary>
+    public double LedgerSweepBuildOutputHours { get; init; } = 72;
+
+    /// <summary>Days a released ledger row whose folder is gone is kept as history before the sweep drops it. 0 keeps them.</summary>
+    public double LedgerSweepHistoryDays { get; init; } = 30;
+
     /// <summary>Seconds the background daemon waits before starting its loop again after it died (M.ORCH-T1615); doubles with each
     /// consecutive failure up to <see cref="DaemonRestartMaxSeconds"/> (M.ORCH-T1619).</summary>
     public double DaemonRestartSeconds { get; init; } = 15;

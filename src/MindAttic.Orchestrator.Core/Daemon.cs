@@ -211,6 +211,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 tick.Lap("leaked test TermHosts");
                 PruneSessionTempIfDue(options.WorkspaceRoot);
                 tick.Lap("ended sessions' temp folders");
+                SweepLedgerIfDue(options.WorkspaceRoot);
+                tick.Lap("ledger sweep");
                 logPruner.RunIfDue(s, msg => Say(LogEventLevel.Information, msg));
                 tick.Lap("old logs");
                 // Old side-by-side TermHost versions, once the CLIs still running on them have ended (M.ORCH-T932).

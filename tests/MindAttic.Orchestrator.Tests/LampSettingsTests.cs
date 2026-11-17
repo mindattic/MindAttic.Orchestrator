@@ -122,6 +122,11 @@ public sealed class LampSettingsTests
         Case("diskHoldResumeMarginGb", s => s with { DiskHoldResumeMarginGb = 2 }, 2d, v => v.DiskHoldResumeMarginGb = 3.5, 3.5, s => s.DiskHoldResumeMarginGb),
         Case("tempRetentionHours", s => s with { TempRetentionHours = 48 }, 48d, v => v.TempRetentionHours = 72, 72d, s => s.TempRetentionHours),
         Case("scratchLeaseHours", s => s with { ScratchLeaseHours = 48 }, 48d, v => v.ScratchLeaseHours = 24, 24d, s => s.ScratchLeaseHours),
+        Case("ledgerSweepDryRun", s => s with { LedgerSweepDryRun = true }, true, v => v.LedgerSweepDryRun = false, false, s => s.LedgerSweepDryRun),
+        Case("ledgerSweepQuietMinutes", s => s with { LedgerSweepQuietMinutes = 30 }, 30d, v => v.LedgerSweepQuietMinutes = 5, 5d, s => s.LedgerSweepQuietMinutes),
+        Case("ledgerSweepLeftoverHours", s => s with { LedgerSweepLeftoverHours = 24 }, 24d, v => v.LedgerSweepLeftoverHours = 6, 6d, s => s.LedgerSweepLeftoverHours),
+        Case("ledgerSweepBuildOutputHours", s => s with { LedgerSweepBuildOutputHours = 72 }, 72d, v => v.LedgerSweepBuildOutputHours = 0, 0d, s => s.LedgerSweepBuildOutputHours),
+        Case("ledgerSweepHistoryDays", s => s with { LedgerSweepHistoryDays = 30 }, 30d, v => v.LedgerSweepHistoryDays = 7, 7d, s => s.LedgerSweepHistoryDays),
         Case("daemonRestartSeconds", s => s with { DaemonRestartSeconds = 15 }, 15d, v => v.DaemonRestartSeconds = 30, 30d, s => s.DaemonRestartSeconds),
         Case("daemonRestartMaxSeconds", s => s with { DaemonRestartMaxSeconds = 300 }, 300d, v => v.DaemonRestartMaxSeconds = 600, 600d, s => s.DaemonRestartMaxSeconds),
         // The live-dialed intervals and caps (M.ORCH-T1595)

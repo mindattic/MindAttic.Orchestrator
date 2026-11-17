@@ -310,6 +310,8 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     {
         // An empty scratch config folder, not the account's own: its sign-in must not answer for the token being checked.
         var scratch = Path.Combine(Path.GetTempPath(), "mindattic-token-check-" + Guid.NewGuid().ToString("N"));
+        // In the resource ledger while it exists (M.ORCH-T1677): a crash before the finally leaves a row the sweeper reclaims.
+        using var tracked = Activity.LedgerTemp.Track(scratch);
         Directory.CreateDirectory(scratch);
         try
         {

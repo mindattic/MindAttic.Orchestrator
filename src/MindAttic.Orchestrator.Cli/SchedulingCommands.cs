@@ -462,6 +462,30 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Hours a %TEMP%\\claude session folder is kept whatever the free space: older, and quiet as long, it goes once its session isn't running; a running session loses only scratchpad entries that old and quiet (default 48; 0 turns it off).")]
         public double? TempRetentionHours { get; init; }
 
+        [CommandOption("--scratch-lease-hours <H>")]
+        [Description("Hours a claimed ticket's own scratch dir (ORCH_SCRATCH) is leased for in the resource ledger; claiming it again renews it, and past it the ledger sweep may reclaim it once the ticket is no longer claimed (default 48; 0 means no expiry).")]
+        public double? ScratchLeaseHours { get; init; }
+
+        [CommandOption("--ledger-sweep-dry-run <ON>")]
+        [Description("true (the default): the ledger sweep deletes nothing and only writes what it would delete, with bytes, to the disk-cleanup log. false lets the daemon delete. orchestrator disk-cleanup --ledger shows the plan; --ledger-run runs it once for real.")]
+        public bool? LedgerSweepDryRun { get; init; }
+
+        [CommandOption("--ledger-sweep-quiet-minutes <M>")]
+        [Description("Minutes nothing may have been written in a ledger entry's folder before the sweep deletes it, even once its owner is gone or its ticket is delivered (default 30; 0: no wait).")]
+        public double? LedgerSweepQuietMinutes { get; init; }
+
+        [CommandOption("--ledger-sweep-leftover-hours <H>")]
+        [Description("Hours a crash leftover in %TEMP% no ledger row covers (orchestrator-review-*.txt, mindattic-token-check-*) must be old and quiet before the sweep deletes it (default 24; 0 turns it off).")]
+        public double? LedgerSweepLeftoverHours { get; init; }
+
+        [CommandOption("--ledger-sweep-build-output-hours <H>")]
+        [Description("Hours the bin and obj folders of a daemon worktree (main-tests, main-bisect, local-tests, merge-main, branch-*) must have gone unwritten, with no build or test running there, before the sweep deletes them (default 72; 0 turns it off).")]
+        public double? LedgerSweepBuildOutputHours { get; init; }
+
+        [CommandOption("--ledger-sweep-history-days <D>")]
+        [Description("Days a released resource-ledger row whose folder is gone is kept as history before the sweep drops it (default 30; 0 keeps them).")]
+        public double? LedgerSweepHistoryDays { get; init; }
+
         [CommandOption("--memory-guard <ON>")]
         [Description("true (the default): when RAM runs low, hold new subagents, CLIs and test runs and let running work finish; lower still, shed the newest subagent, then refuse tool calls. false turns it off.")]
         public bool? MemoryGuard { get; init; }
@@ -625,6 +649,26 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             || settings.DiskHoldGb is not null || settings.DiskHoldResumeMarginGb is not null
             || settings.TempRetentionHours is not null || memoryChanged || settings.HeavyProcesses is not null;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
+        // The ledger sweep's settings (M.ORCH-T1677) and the lease it reads.
+        if (settings.ScratchLeaseHours is not null || settings.LedgerSweepDryRun is not null || settings.LedgerSweepQuietMinutes is not null
+            || settings.LedgerSweepLeftoverHours is not null || settings.LedgerSweepBuildOutputHours is not null || settings.LedgerSweepHistoryDays is not null)
+        {
+            s = s with
+            {
+                ScratchLeaseHours = settings.ScratchLeaseHours ?? s.ScratchLeaseHours,
+                LedgerSweepDryRun = settings.LedgerSweepDryRun ?? s.LedgerSweepDryRun,
+                LedgerSweepQuietMinutes = settings.LedgerSweepQuietMinutes ?? s.LedgerSweepQuietMinutes,
+                LedgerSweepLeftoverHours = settings.LedgerSweepLeftoverHours ?? s.LedgerSweepLeftoverHours,
+                LedgerSweepBuildOutputHours = settings.LedgerSweepBuildOutputHours ?? s.LedgerSweepBuildOutputHours,
+                LedgerSweepHistoryDays = settings.LedgerSweepHistoryDays ?? s.LedgerSweepHistoryDays,
+            };
+            if (!(s.ScratchLeaseHours >= 0 && s.ScratchLeaseHours <= 8760 && s.LedgerSweepLeftoverHours >= 0 && s.LedgerSweepLeftoverHours <= 8760
+                && s.LedgerSweepBuildOutputHours >= 0 && s.LedgerSweepBuildOutputHours <= 8760))
+            { AnsiConsole.MarkupLine("[red]--scratch-lease-hours, --ledger-sweep-leftover-hours and --ledger-sweep-build-output-hours are 0 to 8760.[/]"); return 1; }
+            if (!(s.LedgerSweepQuietMinutes >= 0 && s.LedgerSweepQuietMinutes <= 525600)) { AnsiConsole.MarkupLine("[red]--ledger-sweep-quiet-minutes is 0 to 525600.[/]"); return 1; }
+            if (!(s.LedgerSweepHistoryDays >= 0 && s.LedgerSweepHistoryDays <= 3650)) { AnsiConsole.MarkupLine("[red]--ledger-sweep-history-days is 0 to 3650.[/]"); return 1; }
+            changed = true;
+        }
         if (settings.Notify is { } notify)
         {
             var off = notify.Equals("none", StringComparison.OrdinalIgnoreCase);
@@ -847,6 +891,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.DiskCleanupGb > 0 ? $"agent temp cleaned up under {s.DiskCleanupGb:0.#} GB free" : "no disk self-cleanup") + " · " +
             (s.DiskHoldGb > 0 ? $"new work held under {s.DiskHoldGb:0.#} GB free disk (resumes at {s.DiskHoldGb + s.DiskHoldResumeMarginGb:0.#} GB)" : "no disk floor") + " · " +
             (s.TempRetentionHours > 0 ? $"session temp kept {s.TempRetentionHours:0.#}h" : "session temp kept until its session ends"));
+        AnsiConsole.MarkupLine($"  ledger sweep {(s.LedgerSweepDryRun ? "dry run (deletes nothing; --ledger-sweep-dry-run false)" : "on")}: " +
+            $"ticket scratch leased {(s.ScratchLeaseHours > 0 ? $"{s.ScratchLeaseHours:0.#}h" : "until released")}, deleted once quiet {s.LedgerSweepQuietMinutes:0.#} min · " +
+            (s.LedgerSweepLeftoverHours > 0 ? $"crash leftovers after {s.LedgerSweepLeftoverHours:0.#}h" : "crash leftovers kept") + " · " +
+            (s.LedgerSweepBuildOutputHours > 0 ? $"daemon worktrees' bin/obj after {s.LedgerSweepBuildOutputHours:0.#}h unwritten" : "daemon worktrees' bin/obj kept") + " · " +
+            (s.LedgerSweepHistoryDays > 0 ? $"released rows kept {s.LedgerSweepHistoryDays:0.#}d" : "released rows kept"));
         AnsiConsole.MarkupLine("  memory guard " + (s.MemoryGuard
             ? $"on from {s.MemoryGuardStartPercent:0.#}% RAM used: new work holds under {s.MemoryTightGb:0.#} GB free RAM or past {s.MemoryTightCommitPercent:0.#}% commit, " +
               $"the newest subagent is shed under {s.MemoryCriticalGb:0.#} GB or past {s.MemoryCriticalCommitPercent:0.#}% commit, " +
