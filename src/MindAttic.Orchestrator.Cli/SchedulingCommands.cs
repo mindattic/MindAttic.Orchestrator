@@ -309,6 +309,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The most subagents running at once across every CLI; under it the pace decides, live (0 holds every new one).")]
         public int? MaxSubagents { get; init; }
 
+        [CommandOption("--heavy-processes <N>")]
+        [Description("How many heavy processes (a game player, a Unity/Unreal/s&box build or editor, a long soak) may run on the machine at once: a heavy shell command takes a machine-wide lease first and is refused while that many are held (default 1; 0 turns the lease off). orchestrator clis shows who holds it.")]
+        public int? HeavyProcesses { get; init; }
+
         [CommandOption("--pace-start-percent <PERCENT>")]
         [Description("A login's 5-hour or weekly use under which no pace guard is considered: no pace holds, no subagent allowance cap, no cool-off (default 90).")]
         public double? PaceGuardStartPercent { get; init; }
@@ -558,6 +562,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             MaxSubagents = settings.MaxSubagents ?? s.MaxSubagents,
         };
         if (settings.MaxSubagents is < 0) { AnsiConsole.MarkupLine("[red]--max-subagents can't be negative.[/]"); return 1; }
+        if (settings.HeavyProcesses is { } heavy)
+        {
+            if (heavy is < 0 or > 64) { AnsiConsole.MarkupLine("[red]--heavy-processes is 0 to 64.[/]"); return 1; }
+            s = s with { HeavyProcessLimit = heavy };
+        }
         if (settings.DiskWarnGb is { } dw && !(dw >= 0) || settings.DiskCriticalGb is { } dc && !(dc >= 0)) { AnsiConsole.MarkupLine("[red]--disk-warn-gb and --disk-critical-gb can't be negative.[/]"); return 1; }
         if (settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null)
         {
@@ -614,7 +623,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
             || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null
             || settings.DiskHoldGb is not null || settings.DiskHoldResumeMarginGb is not null
-            || settings.TempRetentionHours is not null || memoryChanged;
+            || settings.TempRetentionHours is not null || memoryChanged || settings.HeavyProcesses is not null;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
         if (settings.Notify is { } notify)
         {
@@ -844,6 +853,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
               $"tool calls are refused under {s.MemoryEmergencyGb:0.#} GB or past {s.MemoryEmergencyCommitPercent:0.#}% commit; " +
               $"{s.MemoryPerSubagentGb:0.#} GB assumed per subagent; resumes {s.MemoryResumeMarginGb:0.#} GB / {s.MemoryResumeMarginCommit:0.#} points clear"
             : "off (--memory-guard true)"));
+        AnsiConsole.MarkupLine("  heavy-process lease " + (s.HeavyProcessLimit > 0
+            ? $"on: {s.HeavyProcessLimit} game player, engine build or long soak at a time across the machine (orchestrator clis shows who holds it)"
+            : "off (--heavy-processes 1)"));
         AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} · {s.MaxSessionsPerRepo} sessions per repo" +
             Markup.Escape(string.Concat(s.RepoMaxSessions.Select(kv => $", {kv.Key} {kv.Value}"))) +
             (s.RepoBudgetPercent.Count > 0 ? " · repo caps " + Markup.Escape(string.Join(", ", s.RepoBudgetPercent.Select(kv => $"{kv.Key} {kv.Value}%"))) : "") +

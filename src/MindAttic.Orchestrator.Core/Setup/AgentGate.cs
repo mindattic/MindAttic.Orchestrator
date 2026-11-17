@@ -2247,6 +2247,13 @@ public static class AgentGate
                 "or use the Glob/Grep tools with a path."))))
             raise SystemExit(0)
 
+        {{HeavyGate.Python}}
+        # Checked here, ahead of every exit below (an exempt turn, /pacing off, a CLI billed elsewhere): one heavy process per
+        # machine whoever asks. A call refused further down leaves its lease to lapse: no process is found for it.
+        heavy_refusal_note = heavy_gate(data)
+        if heavy_refusal_note:
+            refuse(heavy_refusal_note)
+
         # The quicksave of a CLI /allocate off is winding down always goes through, at the window's stop too: winding down is often
         # for the account that's run out, and the CLI's work would be lost to the switch (M.ORCH-T572).
         if tool in ("Bash", "PowerShell") and QUICKSAVE.search(cmd) and winding_down(os.environ.get("MINDATTIC_CLI_PID") or cli_pid()):

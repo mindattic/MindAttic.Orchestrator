@@ -447,6 +447,15 @@ public sealed record OrchestratorSettings
     /// const <see cref="OrchestratorDb.BusyRetries"/>, 3 then 6 under M.ORCH-T1617). A live store pushes it into that static.</summary>
     public int DbBusyRetries { get; init; } = 6;
 
+    /// <summary>How many heavy processes (a game player, a Unity/Unreal/s&amp;box build or editor, a long soak) may run on the
+    /// machine at once (M.ORCH-T1680): the pace gate makes a shell command matching the heavy pattern list take a machine-wide
+    /// lease first and refuses it while that many are held (<see cref="Setup.HeavyGate"/>, <see cref="Scheduling.HeavyLease"/>).
+    /// 0 turns the lease off.</summary>
+    public int HeavyProcessLimit { get; init; } = DefaultHeavyProcessLimit;
+
+    /// <summary>What <see cref="HeavyProcessLimit"/> is until it's set: the agent standard's one heavy process per machine.</summary>
+    public const int DefaultHeavyProcessLimit = 1;
+
     /// <summary>The memory guard (M.ORCH-T1494): when RAM runs low, new work stops (subagents, CLIs, main-line tests) and running
     /// work finishes, the way the 5-hour and weekly stops scale back; past <see cref="MemoryCriticalGb"/> the newest subagent is
     /// shed, past <see cref="MemoryEmergencyGb"/> tool calls are refused. /pacing off doesn't turn it off; only this does.</summary>

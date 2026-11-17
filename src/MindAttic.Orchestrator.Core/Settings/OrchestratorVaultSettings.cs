@@ -457,6 +457,12 @@ public sealed class OrchestratorVaultSettings
         Help = "When RAM runs low, no new subagents, CLIs or test runs start and running work finishes; lower still, the newest subagent is shed, then tool calls are refused until memory recovers. /pacing off doesn't turn it off.")]
     public bool MemoryGuard { get; set; } = true;
 
+    /// <summary>How many heavy processes (a game player, an engine build or editor, a long soak) may run on the machine at once; a heavy shell command is refused while that many hold the lease.</summary>
+    [Setting("Heavy processes at once", Group = "Memory", Order = 1,
+        Help = "How many heavy processes (a game player, a Unity/Unreal/s&box build or editor, a long soak) may run on the machine at once. A shell command matching the heavy pattern list takes a machine-wide lease first and is refused, with who holds it, while that many are held; nothing is killed. 0 turns the lease off.")]
+    [SettingRange(0, 64)]
+    public int HeavyProcessLimit { get; set; } = OrchestratorSettings.DefaultHeavyProcessLimit;
+
     /// <summary>Physical RAM in use under which the guard does nothing: no holds and no subagent cap by free RAM.</summary>
     [Setting("Guard starts at (RAM used %)", Group = "Memory", Order = 1,
         Help = "Physical RAM in use under which the guard does nothing: no holds and no subagent cap by free RAM. Windows 11 keeps RAM full on purpose, so at this line the guard first collects garbage and trims working sets instead of holding work.")]
@@ -917,6 +923,7 @@ public sealed class OrchestratorVaultSettings
         ClosedTicketsReadSeconds = s.ClosedTicketsReadSeconds,
         ClosedTicketsReadLiveMinutes = s.ClosedTicketsReadLiveMinutes,
         MemoryGuard = s.MemoryGuard,
+        HeavyProcessLimit = s.HeavyProcessLimit,
         MemoryGuardStartPercent = s.MemoryGuardStartPercent,
         MemoryTightGb = s.MemoryTightGb,
         MemoryCriticalGb = s.MemoryCriticalGb,
@@ -1066,6 +1073,7 @@ public sealed class OrchestratorVaultSettings
         ClosedTicketsReadSeconds = ClosedTicketsReadSeconds,
         ClosedTicketsReadLiveMinutes = ClosedTicketsReadLiveMinutes,
         MemoryGuard = MemoryGuard,
+        HeavyProcessLimit = HeavyProcessLimit,
         MemoryGuardStartPercent = MemoryGuardStartPercent,
         MemoryTightGb = MemoryTightGb,
         MemoryCriticalGb = MemoryCriticalGb,

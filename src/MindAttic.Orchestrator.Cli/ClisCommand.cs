@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using MindAttic.Orchestrator;
 using MindAttic.Orchestrator.Billing;
+using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -32,6 +33,7 @@ internal sealed class ClisCommand : Command<ClisCommand.Settings>
         if (roster.Clis.Count == 0)
         {
             AnsiConsole.MarkupLine("[grey]No Claude CLI is open.[/]");
+            HeavyLeaseLines(now);
             return 0;
         }
         var table = new Table().Border(TableBorder.Rounded).AddColumns("Repo", "Pid", "Allocate", "Bills", "Where", "State", "Last turn");
@@ -50,6 +52,27 @@ internal sealed class ClisCommand : Command<ClisCommand.Settings>
         // The master switch apart from each CLI's own /allocate (M.ORCH-T1491): paused, none of them is handed anything.
         if (Ctx.Store().TryLoadSettings(out var s) && !s.Allocate)
             AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(MindAttic.Orchestrator.Scheduling.Allocate.PausedGlobally)}[/]");
+        HeavyLeaseLines(now);
         return 0;
+    }
+
+    /// <summary>Who holds the heavy-process lease (M.ORCH-T1680): what the pace gate's refusal sends an agent here to see.</summary>
+    private static void HeavyLeaseLines(DateTime now)
+    {
+        var limit = Ctx.Store().TryLoadSettings(out var s) ? s.HeavyProcessLimit : MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultHeavyProcessLimit;
+        var held = HeavyLease.Held(Ctx.Store().Db, now);
+        if (limit <= 0)
+        {
+            AnsiConsole.MarkupLine("[grey]Heavy-process lease: off (orchestrator settings --heavy-processes 1 turns it on).[/]");
+            return;
+        }
+        if (held.Count == 0)
+        {
+            AnsiConsole.MarkupLine($"Heavy-process lease: [green]free[/] ({limit} at a time).");
+            return;
+        }
+        AnsiConsole.MarkupLine($"Heavy-process lease: [yellow]{held.Count} of {limit} held[/].");
+        foreach (var (holder, state) in held)
+            AnsiConsole.MarkupLine("  " + Markup.Escape(HeavyLease.Describe(holder, state, now)));
     }
 }

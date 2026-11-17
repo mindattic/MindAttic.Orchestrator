@@ -196,6 +196,7 @@ public sealed class LampSettingsTests
         Case("sqlFreshnessCheckAt", s => s with { SqlFreshnessCheckAt = "05:30" }, "05:30", v => v.SqlFreshnessCheckAt = "03:15", "03:15", s => s.SqlFreshnessCheckAt),
         // Memory
         Case("memoryGuard", s => s with { MemoryGuard = false }, false, v => v.MemoryGuard = true, true, s => s.MemoryGuard),
+        Case("heavyProcessLimit", s => s with { HeavyProcessLimit = 1 }, 1, v => v.HeavyProcessLimit = 2, 2, s => s.HeavyProcessLimit),
         Case("memoryGuardStartPercent", s => s with { MemoryGuardStartPercent = 90 }, 90d, v => v.MemoryGuardStartPercent = 85, 85d, s => s.MemoryGuardStartPercent),
         Case("memoryTightGb", s => s with { MemoryTightGb = 4 }, 4d, v => v.MemoryTightGb = 6, 6d, s => s.MemoryTightGb),
         Case("memoryCriticalGb", s => s with { MemoryCriticalGb = 2 }, 2d, v => v.MemoryCriticalGb = 1.5, 1.5, s => s.MemoryCriticalGb),
