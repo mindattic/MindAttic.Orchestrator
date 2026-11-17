@@ -993,7 +993,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var t = tunables;
         if (DateTime.UtcNow - reapedUtc < OrchestratorSettings.SecondsSpan(t.ReapEverySeconds)) return [];
         reapedUtc = DateTime.UtcNow;
-        return Sessions.ProcessReaper.ReapOnce(reapedUtc, Math.Max(1, t.ReapMaxHandles), OrchestratorSettings.SecondsSpan(t.ReapSearchMaxMinutes * 60, 60));
+        // The store keeps what was seen under an agent across restarts (M.ORCH-T1678): the first scan reaps what an earlier daemon saw.
+        return Sessions.ProcessReaper.ReapOnce(reapedUtc, Math.Max(1, t.ReapMaxHandles), OrchestratorSettings.SecondsSpan(t.ReapSearchMaxMinutes * 60, 60), store);
     }
 
     private DateTime testHostsReapedUtc;

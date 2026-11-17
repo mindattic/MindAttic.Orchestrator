@@ -107,18 +107,129 @@ public static class ProcessReaper
         return (false, false, chain);
     }
 
-    /// <summary>Every process seen under a live Claude CLI by earlier scans (pid and start time, so a reused id isn't it).</summary>
+    /// <summary>Every process seen under a live Claude CLI by earlier scans (pid and start time, so a reused id isn't it),
+    /// this daemon's and, through <see cref="SeenStore"/>, the ones before it.</summary>
     private static readonly HashSet<(int Pid, DateTime Start)> SeenUnderAgent = [];
 
     /// <summary>Snapshots every process via WMI, kills the ones <see cref="Select"/> flags (the whole tree under
     /// each, so an orphaned shell takes its own still-running children with it), and returns what it killed.
     /// Best effort: a process that exits mid-kill, or WMI being unavailable, is swallowed rather than thrown.</summary>
-    public static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc, long maxHandles = MaxHandleCount, TimeSpan? maxAge = null)
+    /// <param name="store">Where the seen set is kept between runs (M.ORCH-T1678): read in before the first scan, so that scan
+    /// already reaps what an earlier daemon saw under an agent that has since exited, and written back as it changes. Null
+    /// keeps it in memory alone.</param>
+    public static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc, long maxHandles = MaxHandleCount, TimeSpan? maxAge = null, Settings.JsonStore? store = null)
     {
         lock (SeenUnderAgent)
         {
-            if (SeenUnderAgent.Count > 50_000) SeenUnderAgent.Clear(); // every process ever seen under an agent, for the whole run (M.ORCH-T1607)
-            return ReapOnce(nowUtc, Snapshot, CommandLineOf, Kill, SeenUnderAgent, maxHandles, maxAge);
+            if (store is not null && (kept is null || !ReferenceEquals(kept.Store, store))) kept = new SeenStore(store);
+            kept?.Load(SeenUnderAgent);
+            if (SeenUnderAgent.Count > MaxSeen) SeenUnderAgent.Clear(); // every process ever seen under an agent, for the whole run (M.ORCH-T1607)
+            var reaped = ReapOnce(nowUtc, Snapshot, CommandLineOf, Kill, SeenUnderAgent, maxHandles, maxAge);
+            kept?.SaveIfDue(SeenUnderAgent, nowUtc);
+            return reaped;
+        }
+    }
+
+    /// <summary>The most processes the seen set holds, in memory and as kept.</summary>
+    internal const int MaxSeen = 50_000;
+
+    private static SeenStore? kept;
+
+    /// <summary>One process seen under a live Claude CLI as it's kept: its id and when it started (UTC ticks, exactly as the
+    /// scan read them), which together are the process. An id alone is not: Windows hands it to another process later.</summary>
+    public sealed record SeenProcess(int Pid, long StartTicks);
+
+    /// <summary>The seen set as its state row holds it. <see cref="Machine"/> is the machine whose processes they are: the
+    /// database file travels (git, a copy), and another machine's ids mean nothing here.</summary>
+    public sealed class SeenState
+    {
+        /// <summary>The machine name.</summary>
+        public string? Machine { get; set; }
+
+        /// <summary>The processes seen.</summary>
+        public List<SeenProcess> Seen { get; set; } = [];
+    }
+
+    /// <summary>
+    /// Keeps the seen-under-agent set in the store's <see cref="StateName"/> row (M.ORCH-T1678), so a process an earlier daemon
+    /// saw under an agent is still known after a restart and is reaped on the first scan once its agent has gone. Only this
+    /// machine's row is read, and each entry is the pid and the start time together, so a pid Windows has reused since is not
+    /// the process that was seen: <see cref="Select"/> matches both against the scan, and the kill checks the start again.
+    /// </summary>
+    internal sealed class SeenStore(Settings.JsonStore store, string? machine = null)
+    {
+        /// <summary>The state row's name (volatile: this machine's file only, not in the dump).</summary>
+        public const string StateName = "reaper-seen";
+
+        /// <summary>The least time between two writes; a little under a scan's minute, so a scan a moment early still writes.</summary>
+        public static readonly TimeSpan SaveEvery = TimeSpan.FromSeconds(55);
+
+        private readonly string machine = machine ?? Environment.MachineName;
+        private HashSet<(int Pid, DateTime Start)>? saved; // what the row holds; null until it has been read
+        private DateTime savedUtc;
+
+        /// <summary>The store.</summary>
+        public Settings.JsonStore Store { get; } = store;
+
+        /// <summary>Whether the row has been read: until then nothing is written, which would replace it unread.</summary>
+        public bool Loaded => saved is not null;
+
+        /// <summary>Adds what the row holds to <paramref name="seen"/>, once; a row that can't be read now is tried again on
+        /// the next call. Returns how many it added.</summary>
+        public int Load(ISet<(int Pid, DateTime Start)> seen)
+        {
+            if (saved is not null) return 0;
+            if (!Store.TryLoad<SeenState>(StateName, out var state)) return 0;
+            var mine = FromState(state, machine);
+            saved = [.. mine];
+            var added = 0;
+            foreach (var entry in mine)
+                if (seen.Add(entry)) added++;
+            return added;
+        }
+
+        /// <summary>Writes <paramref name="seen"/> when it differs from what the row holds and the last write was at least
+        /// <see cref="SaveEvery"/> ago. Returns whether it wrote. A write that fails is logged and tried again next time.</summary>
+        public bool SaveIfDue(IReadOnlySet<(int Pid, DateTime Start)> seen, DateTime nowUtc)
+        {
+            if (saved is null || nowUtc - savedUtc < SaveEvery) return false;
+            var state = ToState(seen, machine);
+            var now = FromState(state, machine);
+            if (now.SetEquals(saved)) return false;
+            try { Store.Save(StateName, state); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException)
+            {
+                savedUtc = nowUtc; // not every scan: the next try is a minute on
+                OrchestratorLog.For("ProcessReaper").Warning(ex, "Couldn't save the processes seen under an agent; trying again in a minute");
+                return false;
+            }
+            saved = now;
+            savedUtc = nowUtc;
+            return true;
+        }
+
+        /// <summary>The set as it's kept: entries with a known start only (an id alone is never an identity), at most
+        /// <see cref="MaxSeen"/>, in a steady order.</summary>
+        internal static SeenState ToState(IEnumerable<(int Pid, DateTime Start)> seen, string machine) => new()
+        {
+            Machine = machine,
+            Seen = [.. seen.Where(s => s.Pid > 0 && s.Start != Unknown)
+                .Select(s => new SeenProcess(s.Pid, s.Start.ToUniversalTime().Ticks))
+                .Distinct().OrderBy(s => s.Pid).ThenBy(s => s.StartTicks).Take(MaxSeen)],
+        };
+
+        /// <summary>The kept set read back: nothing from another machine's row, and no entry without a pid and a start time.</summary>
+        internal static HashSet<(int Pid, DateTime Start)> FromState(SeenState? state, string machine)
+        {
+            var seen = new HashSet<(int Pid, DateTime Start)>();
+            if (state?.Seen is not { } entries || !string.Equals(state.Machine, machine, StringComparison.OrdinalIgnoreCase)) return seen;
+            foreach (var e in entries)
+            {
+                if (e is null || e.Pid <= 0 || e.StartTicks <= 0 || e.StartTicks > DateTime.MaxValue.Ticks) continue;
+                seen.Add((e.Pid, new DateTime(e.StartTicks, DateTimeKind.Utc)));
+                if (seen.Count >= MaxSeen) break;
+            }
+            return seen;
         }
     }
 

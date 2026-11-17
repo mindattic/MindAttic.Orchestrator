@@ -201,6 +201,169 @@ public sealed class ProcessReaperTests
         Assert.That(Pick(processes), Is.Empty);
     }
 
+    // ---- the seen set kept across a daemon restart (M.ORCH-T1678) ----
+
+    private static string ScratchDir() => Path.Combine(Path.GetTempPath(), "reaper-seen-" + Guid.NewGuid().ToString("N"));
+
+    private static void Delete(string dir)
+    {
+        try { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    [Test]
+    public void An_orphan_seen_by_the_daemon_before_a_restart_is_reaped_on_the_first_scan_after_it()
+    {
+        var dir = ScratchDir();
+        try
+        {
+            var claude = P(1, "claude.exe", parentPid: 0, startUtc: Now.AddHours(-1));
+            var bash = P(2, "bash.exe", parentPid: 1, startUtc: Now.AddMinutes(-5));
+            var find = P(3, "find.exe", parentPid: 2, startUtc: Now.AddMinutes(-4));
+            var mine = P(9, "node.exe", parentPid: 8, startUtc: Now.AddHours(-3));
+            var killed = new List<int>();
+
+            // The first daemon: sees the agent's tools, keeps them, and stops.
+            var before = new SeenStore(new MindAttic.Orchestrator.Settings.JsonStore(dir), "PC");
+            var seen = new HashSet<(int Pid, DateTime Start)>();
+            before.Load(seen);
+            ReapOnce(Now, () => [claude, bash, find, mine], _ => null, p => killed.Add(p.Pid), seen);
+            Assert.That(before.SaveIfDue(seen, Now), Is.True);
+            Assert.That(killed, Is.Empty);
+
+            // The agent and its shell exit while no daemon runs; a new daemon's first scan knows the find was the agent's.
+            var after = new SeenStore(new MindAttic.Orchestrator.Settings.JsonStore(dir), "PC");
+            var restarted = new HashSet<(int Pid, DateTime Start)>();
+            Assert.That(after.Load(restarted), Is.EqualTo(2), "the shell and the find");
+            ReapOnce(Now.AddMinutes(30), () => [find, mine], _ => null, p => killed.Add(p.Pid), restarted);
+
+            Assert.That(killed, Is.EqualTo(new[] { 3 }), "the find the dead agent left goes; your own node, never seen under one, stays");
+            Assert.That(restarted, Is.EquivalentTo(new[] { (3, find.StartUtc) }), "the shell that's gone is forgotten");
+        }
+        finally { Delete(dir); }
+    }
+
+    [Test]
+    public void A_kept_pid_that_another_process_has_taken_since_is_never_reaped()
+    {
+        var dir = ScratchDir();
+        try
+        {
+            var store = new MindAttic.Orchestrator.Settings.JsonStore(dir);
+            var find = P(3, "find.exe", parentPid: 2, startUtc: Now.AddMinutes(-4));
+            var before = new SeenStore(store, "PC");
+            before.Load(new HashSet<(int Pid, DateTime Start)>());
+            Assert.That(before.SaveIfDue(new HashSet<(int Pid, DateTime Start)> { (find.Pid, find.StartUtc) }, Now), Is.True);
+
+            // After the restart pid 3 is your own orphaned node, started later (or a tick apart): same id, not the same process.
+            var restarted = new HashSet<(int Pid, DateTime Start)>();
+            new SeenStore(store, "PC").Load(restarted);
+            var killed = new List<int>();
+            var reused = P(3, "node.exe", parentPid: 2, startUtc: Now.AddMinutes(10));
+            var nearly = P(3, "find.exe", parentPid: 2, startUtc: find.StartUtc.AddTicks(1));
+            ReapOnce(Now.AddMinutes(30), () => [reused], _ => null, p => killed.Add(p.Pid), restarted);
+            Assert.That(killed, Is.Empty);
+            Assert.That(restarted, Is.Empty, "the kept entry is dropped: its process is gone");
+
+            new SeenStore(store, "PC").Load(restarted);
+            ReapOnce(Now.AddMinutes(30), () => [nearly], _ => null, p => killed.Add(p.Pid), restarted);
+            Assert.That(killed, Is.Empty, "the start must be the one recorded, to the tick");
+        }
+        finally { Delete(dir); }
+    }
+
+    [Test]
+    public void The_kept_set_round_trips_pid_and_start_exactly_and_skips_what_has_no_identity()
+    {
+        var start = new DateTime(2026, 11, 16, 8, 30, 15, DateTimeKind.Utc).AddTicks(1234567);
+        var state = SeenStore.ToState([(7, start), (7, start.AddTicks(1)), (5, start), (9, Unknown), (0, start), (-4, start)], "PC");
+
+        Assert.That(state.Machine, Is.EqualTo("PC"));
+        Assert.That(state.Seen, Is.EqualTo(new[] { new SeenProcess(5, start.Ticks), new SeenProcess(7, start.Ticks), new SeenProcess(7, start.Ticks + 1) }),
+            "no unknown start, no pid 0, in a steady order");
+        Assert.That(SeenStore.FromState(state, "PC"), Is.EquivalentTo(new[] { (5, start), (7, start), (7, start.AddTicks(1)) }));
+        Assert.That(SeenStore.FromState(state, "pc"), Has.Count.EqualTo(3), "a machine's name in another case is still it");
+
+        Assert.That(SeenStore.FromState(state, "OTHER-PC"), Is.Empty, "another machine's pids mean nothing here");
+        Assert.That(SeenStore.FromState(null, "PC"), Is.Empty);
+        Assert.That(SeenStore.FromState(new SeenState { Seen = [new SeenProcess(5, start.Ticks)] }, "PC"), Is.Empty, "a row that names no machine");
+        var bad = new SeenState { Machine = "PC", Seen = [new SeenProcess(0, start.Ticks), new SeenProcess(5, 0), new SeenProcess(6, -1), new SeenProcess(7, long.MaxValue)] };
+        Assert.That(SeenStore.FromState(bad, "PC"), Is.Empty, "no pid, no start, or a start that isn't a time");
+    }
+
+    [Test]
+    public void The_kept_set_is_capped()
+    {
+        var many = Enumerable.Range(1, MaxSeen + 10).Select(i => (i, Now));
+        var state = SeenStore.ToState(many, "PC");
+
+        Assert.That(state.Seen, Has.Count.EqualTo(MaxSeen));
+        Assert.That(SeenStore.FromState(state, "PC"), Has.Count.EqualTo(MaxSeen));
+    }
+
+    [Test]
+    public void The_seen_set_is_written_only_when_it_changed_and_at_most_about_once_a_minute()
+    {
+        var dir = ScratchDir();
+        try
+        {
+            var store = new MindAttic.Orchestrator.Settings.JsonStore(dir);
+            var kept = new SeenStore(store, "PC");
+            var seen = new HashSet<(int Pid, DateTime Start)> { (3, Now) };
+
+            Assert.That(kept.SaveIfDue(seen, Now), Is.False, "never before the row was read: that would replace it unread");
+            Assert.That(store.Has(SeenStore.StateName), Is.False);
+            Assert.That(kept.Load(new HashSet<(int Pid, DateTime Start)>()), Is.Zero, "nothing kept yet");
+            Assert.That(kept.Loaded, Is.True);
+
+            Assert.That(kept.SaveIfDue(seen, Now), Is.True);
+            Assert.That(kept.SaveIfDue(seen, Now.AddMinutes(5)), Is.False, "unchanged");
+            seen.Add((4, Now));
+            Assert.That(kept.SaveIfDue(seen, Now.AddSeconds(20)), Is.False, "changed, but written 20 s ago");
+            Assert.That(kept.SaveIfDue(seen, Now.AddSeconds(60)), Is.True);
+            seen.Clear();
+            Assert.That(kept.SaveIfDue(seen, Now.AddMinutes(3)), Is.True, "emptied: the row is emptied too, so nothing stale is read back");
+
+            var restarted = new HashSet<(int Pid, DateTime Start)>();
+            Assert.That(new SeenStore(store, "PC").Load(restarted), Is.Zero);
+        }
+        finally { Delete(dir); }
+    }
+
+    [Test]
+    public void Loading_adds_to_what_this_run_already_saw_and_happens_once()
+    {
+        var dir = ScratchDir();
+        try
+        {
+            var store = new MindAttic.Orchestrator.Settings.JsonStore(dir);
+            var first = new SeenStore(store, "PC");
+            first.Load(new HashSet<(int Pid, DateTime Start)>());
+            first.SaveIfDue(new HashSet<(int Pid, DateTime Start)> { (3, Now), (4, Now) }, Now);
+
+            var kept = new SeenStore(store, "PC");
+            var seen = new HashSet<(int Pid, DateTime Start)> { (4, Now), (8, Now) };
+            Assert.That(kept.Load(seen), Is.EqualTo(1), "pid 4 was there already");
+            Assert.That(seen, Is.EquivalentTo(new[] { (3, Now), (4, Now), (8, Now) }));
+
+            seen.Clear();
+            Assert.That(kept.Load(seen), Is.Zero, "read once a run: a later scan's forgetting isn't undone");
+            Assert.That(seen, Is.Empty);
+
+            // Another machine's daemon reading this file (it travels with the checkout) takes none of it.
+            var elsewhere = new HashSet<(int Pid, DateTime Start)>();
+            Assert.That(new SeenStore(store, "OTHER-PC").Load(elsewhere), Is.Zero);
+            Assert.That(elsewhere, Is.Empty);
+        }
+        finally { Delete(dir); }
+    }
+
+    [Test]
+    public void The_seen_row_is_volatile_so_it_stays_on_this_machine_and_out_of_the_dump()
+    {
+        Assert.That(MindAttic.Orchestrator.Settings.OrchestratorDb.Volatile, Does.Contain(SeenStore.StateName));
+    }
+
     [Test]
     public void Only_the_processes_about_to_be_killed_have_their_command_line_fetched()
     {
