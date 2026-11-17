@@ -501,7 +501,9 @@ public sealed class ContextCyclerTests
                 p.StandardOutput.ReadToEnd();
                 Assert.That(p.WaitForExit(20_000), Is.True);
             }
-            var mark = Path.Combine(dir, ".claude", "session-context", "allocate-7");
+            // M.ORCH-T1658: the hook writes marks to the database once it exists, so read them through CliMarks.
+            var markDir = Path.Combine(dir, ".claude", "session-context");
+            string? Mark() => Sessions.CliMarks.Read(markDir, Sessions.CliMarks.Allocate).GetValueOrDefault(7);
 
             // M.ORCH-T560: /allocate replaced /autopilot and its alias /work; the old command files go once they're still ours.
             File.WriteAllText(Path.Combine(dir, "commands", "autopilot.md"), Setup.AgentGate.RetiredCommands.Single(c => c.File == "autopilot.md").Body);
@@ -515,13 +517,13 @@ public sealed class ContextCyclerTests
 
             Typed("/work");
             Typed("/autopilot");
-            Assert.That(File.Exists(mark), Is.False, "/work and /autopilot no longer switch it on");
+            Assert.That(Mark(), Is.Null, "/work and /autopilot no longer switch it on");
             Typed("/allocate");
-            Assert.That(File.ReadAllText(mark), Is.EqualTo("A"), "on for this CLI's repo");
+            Assert.That(Mark(), Is.EqualTo("A"), "on for this CLI's repo");
             Typed("/allocate off");
-            Assert.That(File.Exists(mark), Is.False);
+            Assert.That(Mark(), Is.Null);
             Typed("/allocate -repo=B,C");
-            Assert.That(File.ReadAllText(mark), Is.EqualTo("B,C"));
+            Assert.That(Mark(), Is.EqualTo("B,C"));
 
             var command = File.ReadAllText(Path.Combine(dir, "commands", "allocate.md"));
             Assert.That(command, Does.Contain("Auto-allocates").And.Contain("orchestrator next").And.Not.Contain("/autopilot")

@@ -1333,7 +1333,7 @@ public sealed class HookScriptTests
         Assert.That(Gate(SkillCall("crossrepo", "off")).Output, Does.Not.Contain("\"deny\""));
         Assert.That(Gate(SkillCall("allocate", "off")).Output, Does.Not.Contain("\"deny\""));
         Assert.That(CliMark("crossrepo", Cli), Is.Null);
-        Assert.That(File.Exists(Path.Combine(Marks, $"allocate-{Cli}")), Is.False);
+        Assert.That(CliMark("allocate", Cli), Is.Null);
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
     }
 
