@@ -3008,4 +3008,230 @@ public sealed class HookScriptTests
             tool_input = new { task_id = "b9tz/r09" }, tool_response = new { } }, AgentGate.ContextScriptName);
         Assert.That(File.Exists(mark), Is.False, "stopped by hand, its mark goes");
     }
+
+    // ---- M.ORCH-T1647: M.ORCH-T1193's advisory edit claims (holders list, M.ORCH-T1649) ----
+
+    private string ClaimDir => Path.Combine(Marks, AgentGate.EditClaimDirName);
+
+    /// <summary>An environment for the claim tests: a scratch orchestrator database (never this machine's) holding the EditClaims
+    /// mode and, when given, EditClaimMinutes, and the CLI the agent runs in (this test process by default: a live one).</summary>
+    private Dictionary<string, string> ClaimEnv(string mode, int? minutes = null, int? cli = null)
+    {
+        var db = Path.Combine(dir, "claims-orchestrator.db");
+        using (var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={db};Pooling=False"))
+        {
+            c.Open();
+            void Run(string sql, params (string Name, string Value)[] args)
+            {
+                using var cmd = c.CreateCommand();
+                cmd.CommandText = sql;
+                foreach (var (n, v) in args) cmd.Parameters.AddWithValue(n, v);
+                cmd.ExecuteNonQuery();
+            }
+            Run("CREATE TABLE IF NOT EXISTS settings (name TEXT PRIMARY KEY, value TEXT NOT NULL)");
+            Run("INSERT OR REPLACE INTO settings (name, value) VALUES ('EditClaims', $v)", ("$v", JsonSerializer.Serialize(mode)));
+            if (minutes is { } m) Run("INSERT OR REPLACE INTO settings (name, value) VALUES ('EditClaimMinutes', $v)", ("$v", m.ToString()));
+        }
+        return new()
+        {
+            [MindAttic.Orchestrator.Settings.OrchestratorDb.EnvVar] = db,
+            ["MINDATTIC_CLI_PID"] = (cli ?? Environment.ProcessId).ToString(),
+        };
+    }
+
+    private string RepoFile(string name) => Path.Combine(ws, "UnitySolarSystem", name);
+
+    /// <summary>A file-edit hook call by the CLI's main thread (<paramref name="agent"/> null) or by that subagent.</summary>
+    private object Edit(string session, string? agent, string file, string tool = "Edit", string hook = "PostToolUse")
+    {
+        var call = new Dictionary<string, object?>
+        {
+            ["hook_event_name"] = hook, ["session_id"] = session, ["cwd"] = ws, ["tool_name"] = tool,
+            ["tool_input"] = new { file_path = file }, ["tool_response"] = new { },
+        };
+        if (agent != null) call["agent_id"] = agent;
+        return call;
+    }
+
+    private object ShellDone(string session, string? agent, string command, object? response = null)
+    {
+        var call = new Dictionary<string, object?>
+        {
+            ["hook_event_name"] = "PostToolUse", ["session_id"] = session, ["cwd"] = ws, ["tool_name"] = "Bash",
+            ["tool_input"] = new { command }, ["tool_response"] = response ?? new { stdout = "[main abc1234] x\n 1 file changed", exit_code = 0 },
+        };
+        if (agent != null) call["agent_id"] = agent;
+        return call;
+    }
+
+    private List<(string Session, string Agent)> HoldersOf(string file)
+    {
+        if (!Directory.Exists(ClaimDir)) return [];
+        foreach (var f in Directory.EnumerateFiles(ClaimDir, "*.json"))
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(f));
+            if (!Path.GetFileName(doc.RootElement.GetProperty("path").GetString()!).Equals(file, StringComparison.OrdinalIgnoreCase)) continue;
+            return doc.RootElement.GetProperty("holders").EnumerateArray()
+                .Select(h => (h.GetProperty("session").GetString()!, h.GetProperty("agent").GetString()!)).ToList();
+        }
+        return [];
+    }
+
+    private string Post(object call, IDictionary<string, string> env) => Gate(call, env, AgentGate.ContextScriptName).Output;
+
+    private string Pre(object call, IDictionary<string, string> env) => Gate(call, env).Output;
+
+    [Test]
+    public void An_edit_claims_its_file_and_a_second_agent_is_warned_and_becomes_a_co_holder()
+    {
+        var env = ClaimEnv("Warn");
+        var a = RepoFile("a.cs");
+        Assert.That(Post(Edit("m1", null, a), env), Does.Not.Contain("[Edit claim]"), "the first editor is told nothing");
+        Assert.That(HoldersOf("a.cs"), Is.EqualTo(new[] { ("m1", "") }), "claimed by the main thread");
+        Assert.That(Post(Edit("m1", null, a), env), Does.Not.Contain("[Edit claim]"), "its own claim isn't a warning");
+        Assert.That(HoldersOf("a.cs"), Has.Count.EqualTo(1), "an edit refreshes the hold, never doubles it");
+
+        var warned = Post(Edit("m1", "ag2", a), env);
+        Assert.That(warned, Does.Contain("[Edit claim]").And.Contain("also being edited by another agent").And.Contain("main session"));
+        Assert.That(HoldersOf("a.cs"), Is.EquivalentTo(new[] { ("m1", ""), ("m1", "ag2") }), "the second agent holds it beside the first");
+        Assert.That(Post(Edit("m1", "ag3", a), env), Does.Contain("main session").And.Contain("subagent ag2"), "a third is told about both");
+    }
+
+    [Test]
+    public void A_non_edit_tool_a_file_outside_every_repo_and_the_Off_mode_make_no_claim()
+    {
+        var env = ClaimEnv("Warn");
+        Post(Edit("m1", null, RepoFile("r.cs"), tool: "Read"), env);
+        Post(Edit("m1", null, Path.Combine(dir, "elsewhere.cs")), env);
+        Assert.That(Directory.Exists(ClaimDir) && Directory.EnumerateFiles(ClaimDir).Any(), Is.False, "a Read claims nothing, nor does a file outside every repo");
+        Post(Edit("m1", null, RepoFile("o.cs")), ClaimEnv("Off"));
+        Assert.That(HoldersOf("o.cs"), Is.Empty, "Off records nothing");
+    }
+
+    [Test]
+    public void Block_refuses_a_subagent_editing_a_claimed_file_but_never_a_main_thread()
+    {
+        var env = ClaimEnv("Block");
+        var a = RepoFile("a.cs");
+        Post(Edit("m1", "ag1", a), env);
+
+        var refused = JsonDocument.Parse(Pre(Edit("m1", "ag2", a, hook: "PreToolUse"), env)).RootElement.GetProperty("hookSpecificOutput");
+        Assert.That(refused.GetProperty("permissionDecision").GetString(), Is.EqualTo("deny"));
+        Assert.That(refused.GetProperty("permissionDecisionReason").GetString(), Does.Contain("is being edited by another agent").And.Contain("subagent ag1").And.Contain("EditClaims is set to Block"));
+
+        Assert.That(Pre(Edit("m1", null, a, hook: "PreToolUse"), env), Does.Not.Contain("being edited by another agent"), "the CLI's main thread is never refused");
+        Assert.That(Pre(Edit("m2", null, a, hook: "PreToolUse"), env), Does.Not.Contain("being edited by another agent"), "nor another CLI's");
+        Assert.That(Pre(Edit("m1", "ag1", a, hook: "PreToolUse"), env), Does.Not.Contain("being edited by another agent"), "the holder itself");
+        Assert.That(Pre(Edit("m1", "ag2", RepoFile("free.cs"), hook: "PreToolUse"), env), Does.Not.Contain("being edited by another agent"), "an unclaimed file");
+        Assert.That(Pre(Edit("m1", "ag2", a, hook: "PreToolUse"), ClaimEnv("Warn")), Does.Not.Contain("being edited by another agent"), "Warn refuses nothing");
+    }
+
+    [Test]
+    public void A_commit_naming_paths_releases_only_those_and_one_naming_none_releases_all_of_the_committers_holds()
+    {
+        var env = ClaimEnv("Warn");
+        Post(Edit("m1", null, RepoFile("a.cs")), env);
+        Post(Edit("m1", null, RepoFile("b.cs")), env);
+        Post(Edit("m2", null, RepoFile("c.cs")), env);
+
+        Post(ShellDone("m1", null, "git commit -m \"fix\" -- UnitySolarSystem/a.cs"), env);
+        Assert.That(HoldersOf("a.cs"), Is.Empty, "the named path is released");
+        Assert.That(HoldersOf("b.cs"), Is.Not.Empty, "the one it didn't name is still held");
+        Assert.That(HoldersOf("c.cs"), Is.Not.Empty, "another agent's hold is never touched");
+
+        Post(ShellDone("m1", null, "git add b.cs && git commit -m \"more\""), env);
+        Assert.That(HoldersOf("b.cs"), Is.Empty, "a commit naming no paths lets go of everything it held");
+        Assert.That(HoldersOf("c.cs"), Is.EqualTo(new[] { ("m2", "") }), "still another agent's");
+    }
+
+    [Test]
+    public void A_commit_releases_only_the_committers_hold_and_the_co_holder_keeps_its_own()
+    {
+        var env = ClaimEnv("Warn");
+        var a = RepoFile("a.cs");
+        Post(Edit("m1", null, a), env);
+        Post(Edit("m1", "ag2", a), env);
+        Assert.That(HoldersOf("a.cs"), Has.Count.EqualTo(2));
+
+        Post(ShellDone("m1", null, "git commit -m x -- UnitySolarSystem/a.cs"), env);
+        Assert.That(HoldersOf("a.cs"), Is.EqualTo(new[] { ("m1", "ag2") }), "the co-holder still holds it");
+
+        Post(ShellDone("m1", "ag2", "git commit -am x"), env);
+        Assert.That(HoldersOf("a.cs"), Is.Empty, "its own commit releases the last hold");
+        Assert.That(Directory.EnumerateFiles(ClaimDir, "*.json"), Is.Empty, "and the claim file goes");
+    }
+
+    [Test]
+    public void A_commit_that_failed_releases_nothing_and_one_that_made_the_commit_does()
+    {
+        var env = ClaimEnv("Warn");
+        var a = RepoFile("a.cs");
+        Post(Edit("m1", null, a), env);
+
+        foreach (var failed in new object[]
+                 {
+                     new { stdout = "", stderr = "error: pathspec 'x' did not match", exit_code = 1 },
+                     new { stdout = "On branch main\nnothing to commit, working tree clean" },
+                     new { stdout = "fatal: unable to create index.lock" },
+                     new { stdout = "", is_error = true },
+                 })
+        {
+            Post(ShellDone("m1", null, "git commit -m x", failed), env);
+            Assert.That(HoldersOf("a.cs"), Is.Not.Empty, "a commit that didn't happen keeps its claims: " + JsonSerializer.Serialize(failed));
+        }
+
+        Post(ShellDone("m1", null, "git commit -m x && git push", new { stdout = "[main abc1234] x\n 1 file changed", stderr = "fatal: push rejected", exit_code = 1 }), env);
+        Assert.That(HoldersOf("a.cs"), Is.Empty, "git's own [branch hash] line says it committed, whatever failed after it");
+
+        Post(Edit("m1", null, a), env);
+        Post(ShellDone("m1", null, "git commit -m x", new { stdout = "", exit_code = 0 }), env);
+        Assert.That(HoldersOf("a.cs"), Is.Empty, "no hash line, but a zero exit code");
+
+        Post(Edit("m1", null, a), env);
+        Post(ShellDone("m1", null, "git status", new { stdout = "[main abc1234] x" }), env);
+        Assert.That(HoldersOf("a.cs"), Is.Not.Empty, "a call that ran no git commit releases nothing");
+    }
+
+    [Test]
+    public void A_subagent_finishing_releases_its_holds_and_no_others()
+    {
+        var env = ClaimEnv("Warn");
+        var a = RepoFile("a.cs");
+        Post(Edit("m1", "ag1", a), env);
+        Post(Edit("m1", "ag2", a), env);
+        Post(Edit("m1", "ag1", RepoFile("b.cs")), env);
+
+        Post(new { hook_event_name = "SubagentStop", session_id = "m1", agent_id = "ag1", cwd = ws }, env);
+        Assert.That(HoldersOf("a.cs"), Is.EqualTo(new[] { ("m1", "ag2") }), "ag2 keeps its hold on the shared file");
+        Assert.That(HoldersOf("b.cs"), Is.Empty, "ag1's own claim is gone");
+    }
+
+    [Test]
+    public void A_claim_whose_CLI_died_or_that_lapsed_holds_nothing_and_warns_and_refuses_no_one()
+    {
+        // A CLI pid that is gone: a process started and finished.
+        using var gone = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c", "pass" }, UseShellExecute = false })!;
+        Assert.That(gone.WaitForExit(20_000), Is.True);
+        var a = RepoFile("a.cs");
+        Post(Edit("m1", "ag1", a), ClaimEnv("Block", cli: gone.Id));
+        Assert.That(HoldersOf("a.cs"), Has.Count.EqualTo(1), "recorded");
+
+        var live = ClaimEnv("Block");
+        Assert.That(Pre(Edit("m1", "ag2", a, hook: "PreToolUse"), live), Does.Not.Contain("being edited by another agent"), "its CLI is gone: not refused");
+        Assert.That(Post(Edit("m1", "ag2", a), live), Does.Not.Contain("[Edit claim]"), "nor warned");
+        Assert.That(HoldersOf("a.cs"), Is.EqualTo(new[] { ("m1", "ag2") }), "the dead one is dropped from the claim");
+
+        // A hold past EditClaimMinutes (1 min): its CLI is alive, but it hasn't edited since.
+        var expiring = ClaimEnv("Block", minutes: 1);
+        var b = RepoFile("b.cs");
+        Post(Edit("m1", "ag1", b), expiring);
+        var file = Directory.EnumerateFiles(ClaimDir, "*.json").Single(f => File.ReadAllText(f).Contains("b.cs", StringComparison.OrdinalIgnoreCase));
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(file))!;
+        json["holders"]![0]!["at"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 3600;
+        File.WriteAllText(file, json.ToJsonString());
+
+        Assert.That(Pre(Edit("m1", "ag2", b, hook: "PreToolUse"), expiring), Does.Not.Contain("being edited by another agent"), "lapsed: not refused");
+        Assert.That(Post(Edit("m1", "ag2", b), expiring), Does.Not.Contain("[Edit claim]"), "lapsed: not warned");
+        Assert.That(HoldersOf("b.cs"), Is.EqualTo(new[] { ("m1", "ag2") }));
+    }
 }
