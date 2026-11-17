@@ -67,7 +67,7 @@ public static class UtilizationSeries
         if (b.CurrentBlock is not { } block) return LastWindow(samples, targetPercent, nowUtc, exponent, minSpacing);
         var points = Line(samples, block.StartUtc, block.EndUtc, nowUtc, minSpacing);
         // No reading and nothing to compare to (M.ORCH-T1669): no line, not a false 0%; the next reading draws it.
-        if (b.BlockPercentUnknown && points.Count == 1)
+        if (b.BlockPercentUnknown)
             return new Utilization(block.StartUtc, block.EndUtc, nowUtc, targetPercent, [], 0, 0, 0, TimeSpan.Zero, exponent, Unknown: true);
         var now = Math.Max(points[^1].Percent, b.BlockPercent);
         if (nowUtc > points[^1].AtUtc) points.Add(new(nowUtc, now));

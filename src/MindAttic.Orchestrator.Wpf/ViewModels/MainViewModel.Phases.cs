@@ -336,6 +336,9 @@ public sealed partial class MainViewModel
         // A real window is already drawn (its own Actual readings): keep that climb rather than replacing it with a flat
         // line at the current %, which would erase genuine history whenever "idle" is read for only a moment.
         if (s.Utilization is { Ended: false, Idle: false } u && u.EndUtc > nowUtc) return u with { Idle = true };
+        if (s.Budget is { CurrentBlock: { } ublock, BlockPercentUnknown: true } && row?.FiveHourUsedAt(nowUtc) is null && ublock.EndUtc > nowUtc)
+            // No reading anywhere and nothing to compare to (M.ORCH-T1669): unknown, not a flat 0% line.
+            return new Utilization(ublock.StartUtc, ublock.EndUtc, nowUtc, target, [], 0, 0, 0, TimeSpan.Zero, Unknown: true);
         if (s.Budget is { CurrentBlock: { } block } b && block.EndUtc > nowUtc)
             // Peak/no-limit-yet prefers the roster's own reported % (more authoritative than our rough peak-relative
             // guess) but the roster only ever holds the global ~/.claude sign-in, never a per-CLI AccountDir: without a
