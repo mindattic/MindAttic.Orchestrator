@@ -328,9 +328,9 @@ public sealed class OrchestratorVaultSettings
     public bool MemoryGuard { get; set; } = true;
 
     [Setting("Guard starts at (RAM used %)", Group = "Memory", Order = 1,
-        Help = "Physical RAM in use under which the guard does nothing: no holds and no subagent cap by free RAM. Work runs full speed until the machine nears the edge.")]
+        Help = "Physical RAM in use under which the guard does nothing: no holds and no subagent cap by free RAM. Windows 11 keeps RAM full on purpose, so at this line the guard first collects garbage and trims working sets instead of holding work.")]
     [SettingRange(0, 100)]
-    public double MemoryGuardStartPercent { get; set; } = 90;
+    public double MemoryGuardStartPercent { get; set; } = 98;
 
     [Setting("Hold new work under (free GB)", Group = "Memory", Order = 2, Help = "Free RAM under which nothing new starts; running work finishes.")]
     [SettingRange(0.5, 1024)]

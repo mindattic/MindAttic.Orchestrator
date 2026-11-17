@@ -1059,12 +1059,20 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     private Activity.MemoryLevel memoryLevel;
 
+    private DateTime reclaimLogged;
+
     /// <summary>Every tick, the memory guard's level (M.ORCH-T1494; it reads the machine at most every 5 seconds): a change is
     /// logged, and a fall to a new level alerted. The holding itself is done where work starts (the pace's allowance, the
     /// gates' live check, allocate, new CLIs, main-line tests).</summary>
     private void WatchMemory(OrchestratorSettings s)
     {
-        if (Activity.MemoryGuard.Shared.Observe(s, DateTime.UtcNow) is not { } m || m.Level == memoryLevel) return;
+        var observed = Activity.MemoryGuard.Shared.Observe(s, DateTime.UtcNow);
+        if (Activity.MemoryGuard.Shared.LastReclaim is { Note: { } note } r && r.StartedUtc != reclaimLogged)
+        {
+            reclaimLogged = r.StartedUtc;
+            Say(LogEventLevel.Information, $"memory guard reclaim at {s.MemoryGuardStartPercent:0.#}% RAM used: {note}");
+        }
+        if (observed is not { } m || m.Level == memoryLevel) return;
         var worse = m.Level > memoryLevel;
         memoryLevel = m.Level;
         var what = m.Level switch

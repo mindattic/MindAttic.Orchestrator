@@ -31,8 +31,29 @@ public sealed class MemoryGuardTests
         Assert.That(MemoryGuard.Judge(calm, S, margin: false).Level, Is.EqualTo(MemoryLevel.Ok));
         var pace = Allowing(8, running: 3);
         Assert.That(Pacer.CapByMemory(pace, new MemoryState(MemoryLevel.Ok, new MemoryReading(2, 50, true, UsedPercent: 60), ""), S).SubagentAllowance, Is.EqualTo(8));
-        Assert.That(MemoryGuard.Judge(calm with { UsedPercent = 95 }, S, margin: false).Level, Is.EqualTo(MemoryLevel.Emergency), "past the line it's awake");
+        Assert.That(MemoryGuard.Judge(calm with { UsedPercent = 95 }, S, margin: false).Level, Is.EqualTo(MemoryLevel.Ok), "Windows 11 keeps RAM full: 95% used is still dormant");
+        Assert.That(MemoryGuard.Judge(calm with { UsedPercent = 98 }, S, margin: false).Level, Is.EqualTo(MemoryLevel.Emergency), "past the line it's awake");
         Assert.That(MemoryGuard.Judge(calm, S with { MemoryGuardStartPercent = 50 }, margin: false).Level, Is.EqualTo(MemoryLevel.Emergency), "the line is a setting");
+    }
+
+    [Test]
+    public void At_the_start_line_the_guard_reclaims_memory_once_per_settle()
+    {
+        var reclaims = 0;
+        var used = 99.0;
+        var g = new MemoryGuard { Read = () => new MemoryReading(8, 50, true, UsedPercent: used), Reclaim = () => { Interlocked.Increment(ref reclaims); return "done"; } };
+        g.Observe(S, T0);
+        SpinWait.SpinUntil(() => g.LastReclaim is { Note: not null }, 2000);
+        Assert.That(reclaims, Is.EqualTo(1));
+        g.Observe(S, T0.AddSeconds(10));
+        Assert.That(reclaims, Is.EqualTo(1), "not again inside the settle time");
+        g.Observe(S, T0.AddSeconds(70));
+        SpinWait.SpinUntil(() => reclaims == 2, 2000);
+        Assert.That(reclaims, Is.EqualTo(2), "again once the settle time passes");
+        used = 90;
+        g.Observe(S, T0.AddSeconds(200));
+        Thread.Sleep(50);
+        Assert.That(reclaims, Is.EqualTo(2), "below the line, no reclaim");
     }
 
     [Test]

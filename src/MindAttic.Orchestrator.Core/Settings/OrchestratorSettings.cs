@@ -415,8 +415,10 @@ public sealed record OrchestratorSettings
     public bool MemoryGuard { get; init; } = true;
 
     /// <summary>Physical RAM in use (percent) under which the guard is dormant (M.ORCH-T1591): no holds and no subagent cap by
-    /// free RAM, so everything runs full speed until the machine is near the edge.</summary>
-    public double MemoryGuardStartPercent { get; init; } = 90;
+    /// free RAM, so everything runs full speed until the machine is near the edge. Windows 11 keeps RAM as full as it can on
+    /// purpose, so at this line the guard first collects garbage and trims working sets (<see cref="Activity.MemoryReclaim"/>)
+    /// rather than holding work; 98 (was 90).</summary>
+    public double MemoryGuardStartPercent { get; init; } = 98;
 
     /// <summary>Free RAM (GB) under which no new work starts (<see cref="Activity.MemoryLevel.Tight"/>).</summary>
     public double MemoryTightGb { get; init; } = 4;
@@ -575,15 +577,15 @@ public sealed record OrchestratorSettings
     /// opens one by hand.</summary>
     public bool AutoOpenLaunchers { get; init; }
 
+    /// <summary>On by default (M.ORCH-T1442): closing a CLI tab by hand (its X) whose CLI is still running asks first, in the
+    /// dashboard's own modal. A tab whose CLI already ended closes unasked either way.</summary>
+    public bool ConfirmCliClose { get; init; } = true;
+
     /// <summary>Minutes an ended terminal tab stays, for its last lines, before it's closed unasked (M.ORCH-T1599; was a fixed
     /// 24 hours, M.ORCH-T1177): each holds its native renderer (~50 MB) until then.</summary>
     public double EndedTabMinutes { get; init; } = DefaultEndedTabMinutes;
 
     public const double DefaultEndedTabMinutes = 60;
-
-    /// <summary>On by default (M.ORCH-T1442): closing a CLI tab by hand (its X) whose CLI is still running asks first, in the
-    /// dashboard's own modal. A tab whose CLI already ended closes unasked either way.</summary>
-    public bool ConfirmCliClose { get; init; } = true;
 
     /// <summary>Minutes a TermHost running in an orch-test-* temp folder may live before the daemon ends it (M.ORCH-T1623): a test that
     /// opened a real hosted tab and never closed it (it failed first) leaves one running all night. One whose folder is gone is ended

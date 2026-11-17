@@ -21,7 +21,8 @@ public enum MemoryLevel
 public sealed record MemoryReading(double FreeGb, double CommitPercent, bool CommitCounted, bool Simulated = false, double UsedPercent = 100)
 {
     /// <summary>Under <see cref="OrchestratorSettings.MemoryGuardStartPercent"/> of RAM in use the guard is dormant (M.ORCH-T1591):
-    /// no level, no subagent cap; it only scales work back near the edge.</summary>
+    /// no level, no subagent cap. Windows 11 fills RAM on purpose, so at the line the guard first reclaims memory
+    /// (<see cref="MemoryReclaim"/>); it only scales work back if the free-RAM lines are still crossed.</summary>
     public bool Dormant(OrchestratorSettings s) => UsedPercent < s.MemoryGuardStartPercent;
 
     public string Describe() =>
@@ -79,15 +80,25 @@ public sealed class MemoryGuard
     public static readonly TimeSpan SimulateFor = TimeSpan.FromMinutes(30);
 
     /// <summary>The guard this process judges by: the daemon's carries the hysteresis; a short-lived CLI's reads raw.</summary>
-    public static MemoryGuard Shared { get; internal set; } = new();
+    public static MemoryGuard Shared { get; internal set; } = new() { Reclaim = MemoryReclaim.Run };
 
     /// <summary>Reads the machine; tests stand in their own.</summary>
     internal Func<MemoryReading?> Read { get; init; } = ReadMachine;
+
+    /// <summary>Gets memory back once RAM in use reaches <see cref="OrchestratorSettings.MemoryGuardStartPercent"/>, at most once
+    /// per <see cref="OrchestratorSettings.MemorySettleSeconds"/>, off the caller's thread; returns a line on what it did. Only
+    /// <see cref="Shared"/> carries one, so a test's guard never trims the machine it runs on.</summary>
+    internal Func<string>? Reclaim { get; init; }
+
+    /// <summary>When the last reclaim started, and the line it returned (null while one runs or before the first).</summary>
+    public (DateTime StartedUtc, string? Note)? LastReclaim { get { lock (gate) return lastReclaim; } }
 
     private readonly Lock gate = new();
     private MemoryState? last;
     private DateTime sampledUtc;
     private DateTime? clearSinceUtc;
+    private (DateTime StartedUtc, string? Note)? lastReclaim;
+    private int reclaiming;
 
     /// <summary>The level now, read at most every <see cref="SampleEvery"/>; null while the guard is off or memory can't be read.</summary>
     public MemoryState? Observe(OrchestratorSettings s, DateTime nowUtc)
@@ -98,8 +109,26 @@ public sealed class MemoryGuard
             if (last is not null && nowUtc - sampledUtc < OrchestratorSettings.SecondsSpan(s.MemorySampleSeconds) && nowUtc >= sampledUtc) return last;
             if (Read() is not { } reading) return last;
             sampledUtc = nowUtc;
+            if (!reading.Simulated && !reading.Dormant(s)) StartReclaim(s, nowUtc);
             return last = Step(last?.Level ?? MemoryLevel.Ok, reading, s, nowUtc) with { Lines = MemoryLines.Of(s) };
         }
+    }
+
+    /// <summary>Starts a <see cref="Reclaim"/> pass in the background unless one runs or ran within the settle time.</summary>
+    private void StartReclaim(OrchestratorSettings s, DateTime nowUtc)
+    {
+        if (Reclaim is not { } reclaim) return;
+        if (lastReclaim is { } prior && nowUtc - prior.StartedUtc < OrchestratorSettings.SecondsSpan(s.MemorySettleSeconds) && nowUtc >= prior.StartedUtc) return;
+        if (Interlocked.CompareExchange(ref reclaiming, 1, 0) != 0) return;
+        lastReclaim = (nowUtc, null);
+        Task.Run(() =>
+        {
+            string note;
+            try { note = reclaim(); }
+            catch (Exception e) { note = $"reclaim failed: {e.Message}"; }
+            lock (gate) lastReclaim = (nowUtc, note);
+            Volatile.Write(ref reclaiming, 0);
+        });
     }
 
     /// <summary>The last level judged, without reading again; null before the first.</summary>
