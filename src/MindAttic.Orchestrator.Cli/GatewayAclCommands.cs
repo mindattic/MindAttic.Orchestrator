@@ -42,7 +42,7 @@ internal static class GatewayAcl
     /// <summary>Rewrites the gateway's snapshot now, so a grant or revoke applies at once (the daemon would within a tick).</summary>
     internal static void Publish()
     {
-        try { TermGrants.Publish(Db(), DateTime.UtcNow); }
+        try { TermGrants.Publish(Db(), DateTime.UtcNow, hub: MindAttic.Orchestrator.Setup.HubPolicy.Current(Ctx.Store().LoadSettings())); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException)
         {
             AnsiConsole.MarkupLine($"[yellow]Couldn't update the gateway's ACL now ({Markup.Escape(ex.Message)}); the daemon does within a tick.[/]");

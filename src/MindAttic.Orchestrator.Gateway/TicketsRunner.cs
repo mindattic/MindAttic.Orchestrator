@@ -94,6 +94,14 @@ internal static class TicketsRunner
         return await RunExeAsync(exe, "orchestrator", args, null, ct).ConfigureAwait(false);
     }
 
+    /// <summary>Starts a CLI here for a member's client (hub phase 2, M.ORCH-T1641): <c>orchestrator start &lt;repo&gt; --account
+    /// &lt;login&gt;</c>, nothing else of the orchestrator CLI. The caller checked the repo's shape and that the login is theirs.</summary>
+    public static async Task<(int ExitCode, string Output)> RunStartAsync(string repo, string login, CancellationToken ct)
+    {
+        if (OrchestratorExe() is not { } exe) return (127, "The orchestrator CLI isn't installed on the host (MindAttic.Orchestrator's run.ps1 installs it).");
+        return await RunExeAsync(exe, "orchestrator", ["start", repo, "--account", login], null, ct).ConfigureAwait(false);
+    }
+
     private static async Task<(int ExitCode, string Output)> RunExeAsync(string exe, string name, IReadOnlyList<string> args, string? relativeDirectory, CancellationToken ct)
     {
         var psi = new ProcessStartInfo(exe)

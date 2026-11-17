@@ -735,6 +735,34 @@ public sealed record OrchestratorSettings
     /// <summary>The default member connected minutes constant.</summary>
     public const double DefaultMemberConnectedMinutes = 3;
 
+    /// <summary>Off by default (hub phase 2, M.ORCH-T1641): on the host, org members start, stop and type into their own CLIs (the
+    /// session's owner is the member whose login it runs on), and another member's interact grant needs the owner's consent. Off,
+    /// or on any machine but the host, the gateway decides exactly as before (<see cref="Setup.HubPolicy"/>).</summary>
+    public bool HubMemberSessions { get; init; }
+
+    /// <summary>Off by default (hub phase 2): with <see cref="HubMemberSessions"/>, the org accepts that members' CLIs run as the
+    /// host's one Windows user (which can read every login's credentials), so members may type into them without per-member
+    /// Windows users.</summary>
+    public bool HubTrustedOrg { get; init; }
+
+    /// <summary>Off by default (hub phase 2): with <see cref="HubMemberSessions"/>, members' CLIs run under their own Windows accounts
+    /// (<c>orchestrator machine isolate</c>; the accounts themselves are made by an admin, docs/REMOTE_HOST.md).</summary>
+    public bool HubMemberWindowsUsers { get; init; }
+
+    /// <summary>Hub phase 2: how many seconds a consent request waits for the session owner's answer before the viewer is left
+    /// watching.</summary>
+    public double HubConsentSeconds { get; init; } = DefaultHubConsentSeconds;
+
+    /// <summary>The default hub consent seconds constant.</summary>
+    public const double DefaultHubConsentSeconds = Term.TermHubPolicy.DefaultConsentSeconds;
+
+    /// <summary>Hub phase 2: on a member's client, how often (seconds) the dashboard asks the host for consent requests on the
+    /// member's own CLIs, to show each as a toast.</summary>
+    public double HubConsentPollSeconds { get; init; } = DefaultHubConsentPollSeconds;
+
+    /// <summary>The default hub consent poll seconds constant.</summary>
+    public const double DefaultHubConsentPollSeconds = 5;
+
     /// <summary>The max server memory (MB) the daemon keeps localhost's SQL Server at (M.ORCH-T1621): 0 (the default) leaves SQL
     /// Server's own setting alone; any other value under <see cref="SqlServerMaxMemoryFloorMb"/> is raised to it, never applied
     /// lower, since 1024 MB crashed the instance (error 17300) and only an admin restart in minimal mode recovered it.</summary>

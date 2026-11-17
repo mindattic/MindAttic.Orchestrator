@@ -31,6 +31,23 @@ public sealed record RemoteSessionInfo
 
     /// <summary>The remote's Launcher menu pane, not a CLI it opened (M.ORCH-T1256); false for an older gateway that doesn't send it.</summary>
     [JsonPropertyName("isMenu")] public bool IsMenu { get; init; }
+
+    /// <summary>Hub phase 2 (M.ORCH-T1641): the org member whose login the CLI runs on, on a host with member sessions on; else null.</summary>
+    [JsonPropertyName("owner")] public string? Owner { get; init; }
+
+    /// <summary>Hub phase 2: an interact grant on it that waits on its owner's consent (ask, pending or denied); null otherwise.</summary>
+    [JsonPropertyName("consent")] public string? Consent { get; init; }
+}
+
+/// <summary>A consent request waiting on this member as a session owner (<c>GET /consents</c>, hub phase 2, M.ORCH-T1641).</summary>
+public sealed record RemoteConsent
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = "";
+    [JsonPropertyName("session")] public string Session { get; init; } = "";
+    [JsonPropertyName("viewer")] public string Viewer { get; init; } = "";
+    [JsonPropertyName("owner")] public string Owner { get; init; } = "";
+    [JsonPropertyName("askedUtc")] public DateTime AskedUtc { get; init; }
+    [JsonPropertyName("deadlineUtc")] public DateTime DeadlineUtc { get; init; }
 }
 
 /// <summary>What one look at a gateway found: its sessions, or why it couldn't be read (offline, refused, no token).</summary>
@@ -256,6 +273,74 @@ public sealed class GatewayClient : IDisposable
         // TryGetProperty above throw InvalidOperationException, which escaped uncaught, breaking this method's own "never
         // throws but on cancellation" contract - the same class of host-answer problem JsonException already covers.
         catch (InvalidOperationException) { return (1, "The host's answer couldn't be read."); }
+    }
+
+    /// <summary>Starts a CLI on the host in <paramref name="repo"/> on <paramref name="login"/> (the member's own email when null; hub
+    /// phase 2, M.ORCH-T1641). Exit 0 and the host's output when it started; otherwise 1 and why. Never throws but on cancellation.</summary>
+    public Task<(int ExitCode, string Output)> StartSessionAsync(string repo, string? login, CancellationToken ct) =>
+        SendHubAsync(HttpMethod.Post, "/sessions", new { repo, login }, "start", ct);
+
+    /// <summary>Stops one of the member's own CLIs on the host (hub phase 2). Comes back as <see cref="StartSessionAsync"/> does.</summary>
+    public Task<(int ExitCode, string Output)> StopSessionAsync(string sessionId, CancellationToken ct) =>
+        SendHubAsync(HttpMethod.Delete, "/sessions/" + Uri.EscapeDataString(sessionId.Trim()), null, "stop", ct);
+
+    /// <summary>The consent requests waiting on this member as a session owner (hub phase 2); null when the host couldn't be asked
+    /// (offline, refused, or member sessions are off there). Never throws but on cancellation.</summary>
+    public async Task<IReadOnlyList<RemoteConsent>?> ConsentsAsync(CancellationToken ct)
+    {
+        var (code, body) = await SendRawAsync(HttpMethod.Get, "/consents", null, ct).ConfigureAwait(false);
+        if (code != 200) return null;
+        try { return JsonSerializer.Deserialize<List<RemoteConsent>>(body, Json) is { } list ? list.Where(c => !string.IsNullOrWhiteSpace(c.Id)).ToList() : []; }
+        catch (JsonException) { return null; }
+    }
+
+    /// <summary>Answers consent request <paramref name="id"/> (hub phase 2). Exit 0 when the host took it; 1 and why otherwise.</summary>
+    public async Task<(int ExitCode, string Output)> AnswerConsentAsync(string id, bool allow, CancellationToken ct)
+    {
+        var (code, body) = await SendRawAsync(HttpMethod.Post, "/consents/" + Uri.EscapeDataString(id.Trim()), new { allow }, ct).ConfigureAwait(false);
+        return code switch
+        {
+            200 => (0, allow ? "Allowed: their next attach types into your CLI." : "Refused: they keep watching only, for as long as their grant lasts."),
+            404 => (1, "No such request waiting on you: it lapsed (no answer in time leaves them watching), was answered, or isn't about your CLI."),
+            < 0 => (1, body),
+            _ => (1, $"The host answered {code}."),
+        };
+    }
+
+    private async Task<(int ExitCode, string Output)> SendHubAsync(HttpMethod method, string route, object? body, string what, CancellationToken ct)
+    {
+        var (code, text) = await SendRawAsync(method, route, body, ct).ConfigureAwait(false);
+        if (code < 0) return (1, text);
+        if (code == 404 && method != HttpMethod.Delete) return (1, "The host doesn't let members start CLIs (its owner hasn't turned on HubMemberSessions, or its Orchestrator is older than this PC's).");
+        if (code == 404) return (1, "No CLI of yours with that id on the host.");
+        try
+        {
+            using var doc = JsonDocument.Parse(text);
+            var root = doc.RootElement;
+            var output = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("output", out var o) ? o.GetString() ?? "" : "";
+            return (code == 200 ? 0 : 1, output.Length > 0 ? output : $"The host answered {code} to the {what}.");
+        }
+        catch (JsonException) { return (code == 200 ? 0 : 1, code == 200 ? "" : $"The host answered {code} to the {what}."); }
+    }
+
+    /// <summary>One authenticated request to the host: its status and body, or a negative status and why it couldn't be sent.</summary>
+    private async Task<(int Status, string Body)> SendRawAsync(HttpMethod method, string route, object? body, CancellationToken ct)
+    {
+        if (BaseUrl is null) return (-1, $"The host's gateway URL ({Remote.Url}) isn't an https address.");
+        await MintIfDueAsync(ct).ConfigureAwait(false);
+        if (token is null) return (-1, "Couldn't reach the host for a token: " + (mintProblem ?? "no key here (orchestrator machine connect)") + ".");
+        try
+        {
+            using var request = new HttpRequestMessage(method, BaseUrl + route);
+            if (body is not null) request.Content = JsonContent.Create(body);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            bounded.CancelAfter(TicketsTimeout);
+            using var response = await http.SendAsync(request, bounded.Token).ConfigureAwait(false);
+            return ((int)response.StatusCode, await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return (-1, "The host didn't answer in time."); }
+        catch (HttpRequestException ex) { return (-1, "The host can't be reached: " + Describe(ex) + "."); }
     }
 
     /// <summary>

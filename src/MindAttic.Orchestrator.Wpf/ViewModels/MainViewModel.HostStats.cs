@@ -91,8 +91,55 @@ public sealed partial class MainViewModel
         : $"Connected to this host from their own PCs: {string.Join(", ", connectedMembers)}. They watch their org's shared CLIs, read-only " +
           "(orchestrator machine members lists every invited member; orchestrator machine revoke cuts one off).";
 
+    // ── Consent toasts (hub phase 2, M.ORCH-T1641) ─────────────────────────
+    // On a member's own PC connected to the host: every HubConsentPollSeconds (Vault), read with the rest of the refresh, off the
+    // UI thread (ConsentsNow), the host's consent requests on this member's CLIs; each new one is a toast naming who asks and the
+    // command that answers it. No answer within the host's consent wait leaves them watching. Nothing on any other machine.
+
+    private volatile IReadOnlyList<MindAttic.Orchestrator.Sessions.RemoteConsent> consentsRead = [];
+    private readonly HashSet<string> consentsToasted = new(StringComparer.Ordinal);
+    private MindAttic.Orchestrator.Sessions.GatewayClient? consentClient;
+    private DateTime consentsPolledUtc = DateTime.MinValue;
+
+    /// <summary>The host's consent requests waiting on this member, when a look is due; the last ones read otherwise, and none on
+    /// any machine but a member's client. Never throws; bounded to a few seconds.</summary>
+    internal IReadOnlyList<MindAttic.Orchestrator.Sessions.RemoteConsent> ConsentsNow(MindAttic.Orchestrator.Settings.OrchestratorSettings? settings)
+    {
+        try
+        {
+            if (!MindAttic.Orchestrator.Setup.MachineTopology.Current.IsMemberClient) return [];
+            var every = TimeSpan.FromSeconds(Math.Max(1, settings?.HubConsentPollSeconds ?? MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultHubConsentPollSeconds));
+            if (DateTime.UtcNow - consentsPolledUtc < every) return consentsRead;
+            consentsPolledUtc = DateTime.UtcNow;
+            consentClient ??= MindAttic.Orchestrator.Setup.MachineSetup.HostClient();
+            if (consentClient is null) return [];
+            using var bounded = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            return consentClient.ConsentsAsync(bounded.Token).GetAwaiter().GetResult() ?? [];
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or System.IO.IOException or UnauthorizedAccessException or InvalidOperationException
+                                       or System.Text.Json.JsonException or System.Net.Http.HttpRequestException) { return []; }
+    }
+
+    /// <summary>The toast for a consent request: who asks to type into which CLI, and how to answer.</summary>
+    internal static (string Title, string Body) ConsentToast(MindAttic.Orchestrator.Sessions.RemoteConsent c) =>
+        ($"{c.Viewer} asks to type into your CLI",
+         $"Session {c.Session} on the host. orchestrator machine consent {c.Id} allow (or deny). No answer by {c.DeadlineUtc.ToLocalTime():HH:mm:ss} leaves them watching.");
+
+    private void ShowConsentToasts()
+    {
+        var now = DateTime.UtcNow;
+        foreach (var c in consentsRead)
+        {
+            if (c.DeadlineUtc <= now || !consentsToasted.Add(c.Id)) continue;
+            var (title, body) = ConsentToast(c);
+            Toasts.Insert(0, new ToastViewModel(title, body, Palette.Waiting, null) { Lifetime = c.DeadlineUtc - now });
+        }
+        if (consentsToasted.Count > 512) consentsToasted.Clear();
+    }
+
     private void SetHostStats(double freeGb, double? ramPercent, MemoryState? memoryNow = null, bool allocatePausedNow = false)
     {
+        ShowConsentToasts();
         diskFreeGb = freeGb;
         ramUtilizationPercent = ramPercent;
         memory = memoryNow;

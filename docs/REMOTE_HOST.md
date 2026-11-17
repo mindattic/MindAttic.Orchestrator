@@ -172,3 +172,58 @@ the member's email, and `tickets` runs on the host through the shim.
   streams close (1008) within 10 seconds.
 - The host's dashboard shows a connected-members count in its menu bar; the Vault's *Member counts as connected for
   (min)* sets how long after the gateway last saw a member they still count.
+
+## Members working their own CLIs on the host (hub phase 2)
+
+Off by default (M.ORCH-T1641). With the Vault's *Members work their own CLIs (host)* (`HubMemberSessions`) off, or on
+any machine that isn't the host, nothing in this section exists: the gateway decides exactly as in phase 1, and its new
+routes answer 404. Turn it on, on the host, and:
+
+- **A CLI's owner is the member whose Claude login it runs on** (their email, or a login `orchestrator orgs member`
+  placed under their name). Their Team Wall lists their own CLIs even outside their org, with an `owner` field.
+- **Typing needs isolation.** A member types into a CLI on the host only when it runs under their own Windows account
+  (below), or when the Vault's *Trusted org* (`HubTrustedOrg`) says the org accepts that every CLI runs as the host's
+  one Windows user. That user can read every login's `.credentials.json` and decrypt every DPAPI secret on the host, so
+  under "trusted org" anyone who can type into a CLI can reach all of them. Without either, members watch, their own
+  CLIs included. The same rule caps the owner's interact grants: on a CLI that may not be typed into, a grant counts as
+  watch.
+- **Consent.** The host owner's interact grant (`orchestrator gateway grant <who> interact`) on a *member's* CLI takes
+  effect only once that member says yes. The viewer's first attach asks them; it shows as a toast on their dashboard
+  (every *Consent check every (s)*), and `orchestrator machine consents` lists the waiting requests. They answer with
+  `orchestrator machine consent <id> allow|deny`. No answer within *Consent wait (s)* (30 by default) leaves the viewer
+  watching; their next attach asks again. Once allowed, the viewer's next attach types. An answer lasts as long as that
+  grant (a new or extended grant is asked about again) and is held in the gateway's memory, so a restarted gateway asks
+  again. A grant on a CLI no member owns needs no consent (the owner made it on their own CLI).
+- **Start and stop from the member's PC:** `orchestrator machine start <repo> [--login <email>]` starts a CLI on one of
+  their own logins (never another member's; the host runs `orchestrator start <repo> --account <login>`), and
+  `orchestrator machine stop <session>` stops one of their own. Both need isolation or trusted org, as typing does.
+- **No deflate on interactive streams** while it's on: typed input beside secrets on one compressed stream is the
+  CRIME/BREACH shape. Watch streams stay compressed.
+- Every start, stop, consent request and answer is in the gateway audit, by who and what, never content.
+
+### Per-member Windows users
+
+With *Per-member Windows users (host)* (`HubMemberWindowsUsers`) on as well, each member's CLIs are meant to run under
+their own Windows account: own profile, own DPAPI scope, own `%USERPROFILE%\.claude-accounts`. The Orchestrator never
+creates, changes or deletes a Windows account, group, ACL or credential; an admin does the following once per member, on
+the host, by hand:
+
+1. Make the account, a standard (not admin) local user with a strong password, for example in an elevated PowerShell:
+   `New-LocalUser -Name erin-cli -FullName "Erin (Orchestrator CLIs)" -Password (Read-Host -AsSecureString)`. Don't add
+   it to Administrators or Remote Desktop Users.
+2. Give it read and execute on the workspace and the installed tools, and modify on that member's own repos only, for
+   example `icacls D:\Projects\MindAttic /grant "erin-cli:(OI)(CI)RX"`, then `(OI)(CI)M` on the repos they work. Never
+   on another member's `.claude-accounts` folder, the gateway's data folder or `owner.key`.
+3. Sign in once as that account (or `runas /profile /user:erin-cli cmd`) so Windows makes its profile, then sign its
+   Claude login in there with `claude setup-token`, so the token lives in that profile, sealed with that account's DPAPI.
+4. Record the mapping: `orchestrator machine isolate erin erin-cli` (it only stores the name and looks the account up;
+   `--clear` forgets it). `orchestrator machine isolate` refuses the host's own user, which would isolate nothing.
+
+The daemon then lists, in the gateway's snapshot, each invited member whose account exists; one whose account is missing
+gets no typing and no starting, never a fallback to the host's user.
+
+**Not built yet.** Launching a TermHost under the member's account (it needs that account's credential or a small
+service, and its named pipe ACL'd to that account and the daemon) is left out of this build: every CLI still runs as the
+host's user, so per-member isolation alone never lets a member type, and `machine start` answers that starting under
+their own account isn't built (501). Until it is, use *trusted org* only where it's true. The remaining piece is its own
+ticket.

@@ -73,6 +73,9 @@ try
         Watchers = watchers,
         // Hub phase 1 (M.ORCH-T1640): org members' own keys (orchestrator machine invite|revoke), reread as members.json changes.
         MemberKeys = new MemberKeysFile(options.DataDir),
+        // Hub phase 2 (M.ORCH-T1641): members start and stop their own CLIs (orchestrator start; never under another Windows
+        // account in this build). Only reachable while the ACL snapshot carries the hub policy.
+        Launcher = new OrchestratorLauncher(),
     };
 
     var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory });

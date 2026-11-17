@@ -248,7 +248,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // spooled audit records into orchestrator.db's term_audit (also after it's turned off, so none is left behind).
                 try
                 {
-                    if (s.Gateway.Enabled) TermGrants.Publish(store.Db, DateTime.UtcNow);
+                    // With the hub phase 2 policy on the host (M.ORCH-T1641); null, so unchanged, everywhere it's off.
+                    if (s.Gateway.Enabled) TermGrants.Publish(store.Db, DateTime.UtcNow, hub: Setup.HubPolicy.Current(s));
                     TermGrants.ImportAudit(store.Db);
                 }
                 catch (Exception ex) { Say(LogEventLevel.Warning, $"team gateway ACL and audit: {ex.Message}"); }

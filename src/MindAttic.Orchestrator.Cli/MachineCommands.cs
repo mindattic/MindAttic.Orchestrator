@@ -315,3 +315,175 @@ internal sealed class MachineRevokeCommand : Command<MachineRevokeCommand.Settin
         return revoked ? 0 : 1;
     }
 }
+
+/// <summary>Shared bits of hub phase 2's client commands (M.ORCH-T1641): the host's gateway, or why there's none.</summary>
+internal static class MachineHub
+{
+    public static GatewayClient? Client()
+    {
+        var client = MachineSetup.HostClient();
+        if (client is null) AnsiConsole.MarkupLine("[red]This machine isn't connected to a host: run the orchestrator machine connect line the host's owner sent you.[/]");
+        return client;
+    }
+
+    public static int Say(int code, string output)
+    {
+        var text = output.TrimEnd();
+        if (text.Length > 0) AnsiConsole.MarkupLine(code == 0 ? Markup.Escape(text) : $"[red]{Markup.Escape(text)}[/]");
+        return code;
+    }
+}
+
+/// <summary><c>orchestrator machine start &lt;repo&gt; [--login &lt;email&gt;]</c> (hub phase 2, M.ORCH-T1641): on a member's PC, starts a
+/// CLI on the host in a repo, on one of their own logins (their email by default). The host refuses another member's login.</summary>
+internal sealed class MachineStartCommand : AsyncCommand<MachineStartCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<REPO>")]
+        [Description("The repo folder's name on the host, such as MindAttic.Orchestrator.")]
+        public string Repo { get; init; } = "";
+
+        [CommandOption("--login <EMAIL>")]
+        [Description("Which of your own Claude logins it runs on; your email when left out.")]
+        public string? Login { get; init; }
+    }
+
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+    {
+        using var client = MachineHub.Client();
+        if (client is null) return 1;
+        var (code, output) = await client.StartSessionAsync(settings.Repo.Trim(), settings.Login?.Trim(), CancellationToken.None);
+        return MachineHub.Say(code, code == 0 && output.Trim().Length == 0 ? $"Started a CLI in {settings.Repo.Trim()} on the host." : output);
+    }
+}
+
+/// <summary><c>orchestrator machine stop &lt;session&gt;</c> (hub phase 2, M.ORCH-T1641): on a member's PC, stops one of their own CLIs
+/// on the host (its id as the Team Wall shows it).</summary>
+internal sealed class MachineStopCommand : AsyncCommand<MachineStopCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<SESSION>")]
+        public string Session { get; init; } = "";
+    }
+
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+    {
+        using var client = MachineHub.Client();
+        if (client is null) return 1;
+        var (code, output) = await client.StopSessionAsync(settings.Session, CancellationToken.None);
+        return MachineHub.Say(code, output);
+    }
+}
+
+/// <summary><c>orchestrator machine consents</c> (hub phase 2, M.ORCH-T1641): on a member's PC, who is asking right now to type into
+/// one of their CLIs on the host under the host owner's grant. No answer in the Vault's consent wait leaves them watching.</summary>
+internal sealed class MachineConsentsCommand : AsyncCommand
+{
+    public override async Task<int> ExecuteAsync(CommandContext context)
+    {
+        using var client = MachineHub.Client();
+        if (client is null) return 1;
+        var pending = await client.ConsentsAsync(CancellationToken.None);
+        if (pending is null) { AnsiConsole.MarkupLine("[red]The host couldn't be asked (offline, or member sessions are off there).[/]"); return 1; }
+        if (pending.Count == 0) { AnsiConsole.MarkupLine("[grey]Nobody is asking to type into your CLIs.[/]"); return 0; }
+        var table = new Table().Border(TableBorder.Rounded).AddColumns("Id", "Who", "Your CLI", "Asked", "Answer by");
+        foreach (var c in pending)
+            table.AddRow(Markup.Escape(c.Id), Markup.Escape(c.Viewer), Markup.Escape(c.Session), GatewayAcl.When(c.AskedUtc), c.DeadlineUtc.ToLocalTime().ToString("HH:mm:ss"));
+        AnsiConsole.Write(table);
+        AnsiConsole.MarkupLine("[grey]orchestrator machine consent <id> allow|deny[/]");
+        return 0;
+    }
+}
+
+/// <summary><c>orchestrator machine consent &lt;id&gt; allow|deny</c> (hub phase 2, M.ORCH-T1641): on a member's PC, the answer to a
+/// request to type into one of their CLIs. Allowed, the viewer's next attach types; denied, they watch for as long as the grant lasts.</summary>
+internal sealed class MachineConsentCommand : AsyncCommand<MachineConsentCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<ID>")]
+        public string Id { get; init; } = "";
+
+        [CommandArgument(1, "<ANSWER>")]
+        [Description("allow or deny.")]
+        public string Answer { get; init; } = "";
+
+        public override ValidationResult Validate() =>
+            Answer.Trim().ToLowerInvariant() is "allow" or "deny" or "yes" or "no" ? ValidationResult.Success() : ValidationResult.Error("The answer is allow or deny.");
+    }
+
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+    {
+        using var client = MachineHub.Client();
+        if (client is null) return 1;
+        var allow = settings.Answer.Trim().ToLowerInvariant() is "allow" or "yes";
+        var (code, output) = await client.AnswerConsentAsync(settings.Id, allow, CancellationToken.None);
+        return MachineHub.Say(code, output);
+    }
+}
+
+/// <summary>
+/// <c>orchestrator machine isolate &lt;member&gt; &lt;windows-account&gt;</c> | <c>--clear</c> (hub phase 2, M.ORCH-T1641): on the host,
+/// records which Windows account an invited member's CLIs run under, once an admin has made it (docs/REMOTE_HOST.md). It only
+/// writes the name into the gateway's members file and looks the account up; it never creates, changes or deletes an account, a
+/// group, an ACL or a credential.
+/// </summary>
+internal sealed class MachineIsolateCommand : Command<MachineIsolateCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<WHO>")]
+        [Description("An invited member: email, the part before the @, name, first name, login alias or initials.")]
+        public string Who { get; init; } = "";
+
+        [CommandArgument(1, "[ACCOUNT]")]
+        [Description("Their own Windows account on this host: user, .\\user, MACHINE\\user or DOMAIN\\user.")]
+        public string? Account { get; init; }
+
+        [CommandOption("--clear")]
+        [Description("Forget their account: their CLIs can't be typed into by them again until one is set (or the org is trusted).")]
+        public bool Clear { get; init; }
+
+        public override ValidationResult Validate() =>
+            Clear == (Account is not null) ? ValidationResult.Error("Give their Windows account, or --clear.") : ValidationResult.Success();
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        if (!MachineTopology.Current.IsHost)
+        {
+            AnsiConsole.MarkupLine("[red]Only the host isolates members: run this on the host.[/]");
+            return 1;
+        }
+        if (GatewayAcl.Member(settings.Who) is not { } email) return 1;
+        string? account = null;
+        if (!settings.Clear)
+        {
+            account = TermWindowsAccounts.Normalize(settings.Account, LocalWindowsAccounts.Instance.CurrentUser, out var why);
+            if (account is null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(why ?? "That isn't a Windows account name.")}[/]"); return 1; }
+        }
+        bool found;
+        try { found = TermMemberKeys.SetWindowsUser(email, account); }
+        catch (IOException ex) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]"); return 1; }
+        if (!found)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(email)} was never invited to this host: orchestrator machine invite {Markup.Escape(email)} first.[/]");
+            return 1;
+        }
+        GatewayAcl.Publish();
+        if (account is null)
+        {
+            AnsiConsole.MarkupLine($"[green]{Markup.Escape(email)} has no Windows account here any more.[/]");
+            return 0;
+        }
+        AnsiConsole.MarkupLine($"[green]{Markup.Escape(email)}'s CLIs on this host are to run as {Markup.Escape(account)}.[/]");
+        if (!LocalWindowsAccounts.Instance.Exists(account))
+            AnsiConsole.MarkupLine($"[yellow]No Windows account {Markup.Escape(account)} exists here yet: an admin makes it once (docs/REMOTE_HOST.md, \"Per-member Windows users\"); until then they can't type into or start CLIs here.[/]");
+        var s = Ctx.Store().LoadSettings();
+        if (!s.HubMemberSessions || !s.HubMemberWindowsUsers)
+            AnsiConsole.MarkupLine("[grey]It takes effect once the Vault's HubMemberSessions and HubMemberWindowsUsers are on.[/]");
+        return 0;
+    }
+}

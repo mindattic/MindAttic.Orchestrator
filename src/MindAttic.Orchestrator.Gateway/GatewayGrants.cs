@@ -31,6 +31,14 @@ internal interface IGatewayGrants
     /// <summary>The Claude logins that are <paramref name="viewer"/>'s (hub phase 1, M.ORCH-T1640): their own email, and every login
     /// <c>org_members</c> places under their name. A member may close only a ticket one of these works or is assigned.</summary>
     IReadOnlySet<string> LoginsOf(string viewer) => new HashSet<string>(StringComparer.Ordinal) { viewer.Trim().ToLowerInvariant() };
+
+    /// <summary>The hub phase 2 policy (M.ORCH-T1641), or null while it's off: then nothing below differs from <see cref="AccessTo"/>.</summary>
+    TermHubPolicy? Hub => null;
+
+    /// <summary>The most <paramref name="viewer"/> may do with <paramref name="session"/>, which runs under Windows account
+    /// <paramref name="sessionAccount"/>, and whether that rests on a grant its owner must consent to (hub phase 2). Without a hub
+    /// policy it is <see cref="AccessTo"/>, with no consent.</summary>
+    GatewayDecision Decide(string viewer, TermSessionRecord session, string? sessionAccount) => new(AccessTo(viewer, session));
 }
 
 /// <summary>Only the machine owner's own identity gets in, with full access; everyone else gets nothing (M.ORCH-T933's grants,
@@ -76,6 +84,78 @@ internal sealed class AclGrants(string owner, string directory, Func<DateTime>? 
     public bool IsActiveMember(string viewer) => FindMember(Current(), viewer) is not null;
 
     public IReadOnlySet<string> LoginsOf(string viewer) => Logins(Current(), viewer);
+
+    public TermHubPolicy? Hub => Current()?.Hub is { IsOn: true } hub ? hub : null;
+
+    public GatewayDecision Decide(string viewer, TermSessionRecord session, string? sessionAccount) =>
+        Decide(Current(), owner, viewer, session, now(), sessionAccount);
+
+    /// <summary>
+    /// The hub phase 2 decision (M.ORCH-T1641; <see cref="TermHubPolicy"/>). Without a hub policy in <paramref name="acl"/> it is
+    /// <see cref="Evaluate"/>, unchanged. With one:
+    /// <list type="bullet">
+    /// <item>The machine owner always interacts.</item>
+    /// <item>The session's owner (the member whose login it runs on) interacts with it when it may be typed into
+    /// (<see cref="TermHubPolicy.MayInteract"/>: trusted org, or it runs under their own Windows account), else watches it, whatever
+    /// org it's in.</item>
+    /// <item>Anyone else: the org default and the machine owner's grants, as before, except that an interact grant counts only on a
+    /// session that may be typed into, and on a member's session it needs that member's consent (<see cref="GatewayDecision.ConsentKey"/>):
+    /// the gateway serves watch until they say yes.</item>
+    /// </list>
+    /// </summary>
+    internal static GatewayDecision Decide(TermGatewayAclSnapshot? acl, string owner, string viewer, TermSessionRecord session, DateTime nowUtc, string? sessionAccount)
+    {
+        if (acl?.Hub is not { IsOn: true } hub) return new(Evaluate(acl, owner, viewer, session, nowUtc));
+        if (string.IsNullOrWhiteSpace(viewer)) return new(GatewayAccess.None);
+        if (string.Equals(viewer.Trim(), owner.Trim(), StringComparison.OrdinalIgnoreCase)) return new(GatewayAccess.Interact);
+        var member = FindMember(acl, viewer);
+        if (member is null) return new(GatewayAccess.None);
+        var v = Normalize(viewer);
+        var sessionOwner = SessionOwner(acl, session);
+        var typable = hub.MayInteract(sessionOwner, sessionAccount);
+        if (sessionOwner == v) return new(typable ? GatewayAccess.Interact : GatewayAccess.Watch, null, sessionOwner);
+
+        var access = SharesOrg(acl, member, session) ? GatewayAccess.Watch : GatewayAccess.None;
+        string? consent = null;
+        var interactWithoutConsent = false;
+        foreach (var g in acl.Grants ?? [])
+        {
+            if (g is null) continue;
+            if (!string.Equals(g.Owner?.Trim(), owner.Trim(), StringComparison.OrdinalIgnoreCase) || Normalize(g.Viewer) != v) continue;
+            if (!string.IsNullOrEmpty(g.Session) && !string.Equals(g.Session, session.Id, StringComparison.OrdinalIgnoreCase)) continue;
+            var level = string.Equals(g.Level, GatewayScopes.Interact, StringComparison.OrdinalIgnoreCase) ? GatewayAccess.Interact
+                : string.Equals(g.Level, GatewayScopes.Watch, StringComparison.OrdinalIgnoreCase) ? GatewayAccess.Watch : GatewayAccess.None;
+            if (g.ExpiresUtc is { } expires ? expires <= nowUtc : level == GatewayAccess.Interact) continue;
+            if (level == GatewayAccess.Interact)
+            {
+                // Typing into a CLI that runs as the host's one user (or as someone else's account) is refused without isolation.
+                if (!typable) level = GatewayAccess.Watch;
+                // On a member's CLI, the machine owner's grant takes effect only with that member's consent.
+                else if (sessionOwner is not null) consent ??= ConsentKey(g, v, sessionOwner);
+                else interactWithoutConsent = true;
+            }
+            if (level > access) access = level;
+        }
+        if (access == GatewayAccess.Interact && !interactWithoutConsent && consent is not null) return new(GatewayAccess.Interact, consent, sessionOwner);
+        return new(access, null, sessionOwner);
+    }
+
+    /// <summary>The member who owns <paramref name="session"/> under <paramref name="acl"/>: the active member whose logins (their
+    /// email, or one placed under their name) include the session's login; null for the global login or one no member owns.</summary>
+    internal static string? SessionOwner(TermGatewayAclSnapshot? acl, TermSessionRecord session)
+    {
+        if (acl is null) return null;
+        var login = Normalize(session.Login);
+        if (login.Length == 0) return null;
+        foreach (var m in acl.Members ?? [])
+            if (m is not null && !string.IsNullOrWhiteSpace(m.Email) && Logins(acl, m.Email).Contains(login)) return Normalize(m.Email);
+        return null;
+    }
+
+    /// <summary>One grant's identity for consent: who granted it, to whom, on what, until when, on whose CLI. A new or changed
+    /// grant is a new key, so it is asked about again.</summary>
+    internal static string ConsentKey(TermAclGrant g, string viewer, string sessionOwner) =>
+        string.Join('|', Normalize(g.Owner), viewer, (g.Session ?? "").Trim().ToLowerInvariant(), g.ExpiresUtc?.ToUniversalTime().Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "", sessionOwner);
 
     /// <summary>The active member <paramref name="viewer"/> is under <paramref name="acl"/>, or null.</summary>
     internal static TermAclMember? FindMember(TermGatewayAclSnapshot? acl, string? viewer)

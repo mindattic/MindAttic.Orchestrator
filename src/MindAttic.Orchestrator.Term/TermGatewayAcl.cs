@@ -37,6 +37,13 @@ public sealed record TermGatewayAclSnapshot
     [JsonPropertyName("members")] public List<TermAclMember> Members { get; init; } = [];
     [JsonPropertyName("logins")] public List<TermAclLogin> Logins { get; init; } = [];
     [JsonPropertyName("grants")] public List<TermAclGrant> Grants { get; init; } = [];
+
+    /// <summary>Hub phase 2 (M.ORCH-T1641): what org members may do with their own CLIs on the host. Null, and left out of the file
+    /// altogether, unless the Vault's HubMemberSessions is on and this machine is the host, so the gateway decides exactly as it
+    /// did before.</summary>
+    [JsonPropertyName("hub")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TermHubPolicy? Hub { get; init; }
 }
 
 /// <summary>
@@ -90,6 +97,9 @@ public static class TermGatewayAudit
     /// <summary>A tickets command a member ran on the host through <c>POST /tickets</c> (hub phase 1, M.ORCH-T1640): its verb in
     /// the detail, never its text.</summary>
     public const string Tickets = "tickets";
+
+    /// <summary>Hub phase 2 (M.ORCH-T1641): a CLI started or stopped through the gateway, and a consent asked for or answered.</summary>
+    public const string Start = "start", Stop = "stop", Consent = "consent";
 
     /// <summary>The constants acl file, spool file.</summary>
     public const string AclFile = "acl.json", SpoolFile = "audit.jsonl";

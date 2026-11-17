@@ -427,6 +427,8 @@ public sealed partial class MainViewModel : ObservableObject
                 var lapsed = MemberUntil.Lapsed(settingsNow?.MemberUntil, DateTime.Now);
                 // On the host, the org members connected to it now (hub phase 1, M.ORCH-T1640): the menu bar's chip.
                 connectedMembersRead = ConnectedMembersNow(settingsNow);
+                // On a member's PC, consent requests on their own CLIs on the host (hub phase 2, M.ORCH-T1641): toasts.
+                consentsRead = ConsentsNow(settingsNow);
                 planned = PlanOffUi(built);
                 return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, diskFreeGb, ramUtilizationPercent, paused);
             }), () => localChanges);

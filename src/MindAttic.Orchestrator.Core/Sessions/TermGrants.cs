@@ -91,8 +91,9 @@ public static class TermGrants
         return [.. all.Where(g => (owner is null || string.Equals(g.Owner, owner.Trim(), StringComparison.OrdinalIgnoreCase)) && (includeExpired || g.IsLive(nowUtc)))];
     }
 
-    /// <summary>What the gateway decides from: the active members, the Claude logins placed in orgs, and the live grants.</summary>
-    public static TermGatewayAclSnapshot Snapshot(OrchestratorDb db, DateTime nowUtc)
+    /// <summary>What the gateway decides from: the active members, the Claude logins placed in orgs, and the live grants; and, on a
+    /// host with the Vault's HubMemberSessions on, the hub phase 2 policy (<paramref name="hub"/>, M.ORCH-T1641), else none.</summary>
+    public static TermGatewayAclSnapshot Snapshot(OrchestratorDb db, DateTime nowUtc, TermHubPolicy? hub = null)
     {
         var members = MemberRoster.Load(db)
             .Where(m => m.Status == "active")
@@ -107,13 +108,14 @@ public static class TermGrants
         var grants = List(db, nowUtc)
             .Select(g => new TermAclGrant(g.Owner, g.Viewer, g.Session, g.Level, g.ExpiresUtc))
             .ToList();
-        return new TermGatewayAclSnapshot { Members = members, Logins = logins, Grants = grants };
+        return new TermGatewayAclSnapshot { Members = members, Logins = logins, Grants = grants, Hub = hub };
     }
 
     /// <summary>Writes the snapshot into the gateway's data folder when it changed; true when it wrote. An expired grant drops
-    /// out at the next publish after it lapses, and the gateway checks expiry itself meanwhile.</summary>
-    public static bool Publish(OrchestratorDb db, DateTime nowUtc, string? directory = null) =>
-        TermGatewayAudit.WriteAcl(Snapshot(db, nowUtc), directory);
+    /// out at the next publish after it lapses, and the gateway checks expiry itself meanwhile. <paramref name="hub"/> is the hub
+    /// phase 2 policy (<see cref="Setup.HubPolicy.Current"/>), null everywhere it's off.</summary>
+    public static bool Publish(OrchestratorDb db, DateTime nowUtc, string? directory = null, TermHubPolicy? hub = null) =>
+        TermGatewayAudit.WriteAcl(Snapshot(db, nowUtc, hub), directory);
 
     /// <summary>Imports the gateway's spooled audit records into <c>term_audit</c> (each id once) and clears the spool. How many
     /// were new.</summary>

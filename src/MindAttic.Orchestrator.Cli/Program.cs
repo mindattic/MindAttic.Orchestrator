@@ -229,6 +229,11 @@ internal static class CliApp
                 m.AddCommand<MachineInviteCommand>("invite").WithDescription("On the host (hub phase 1, M.ORCH-T1640): invite <member>, an active org member, to connect their own PC: mints their member key (never the owner key) and prints their connect line.");
                 m.AddCommand<MachineMembersCommand>("members").WithDescription("On the host: every member invited to connect, their key (live or revoked), when the gateway last saw them, and who is connected now.");
                 m.AddCommand<MachineRevokeCommand>("revoke").WithDescription("On the host: revoke <member>'s member key; the gateway refuses it and their tokens within a second, and closes their open streams within 10 seconds.");
+                m.AddCommand<MachineIsolateCommand>("isolate").WithDescription("On the host (hub phase 2, M.ORCH-T1641): isolate <member> <windows-account> records which Windows account an admin made for that member's CLIs (--clear forgets it); never creates or changes an account.");
+                m.AddCommand<MachineStartCommand>("start").WithDescription("On a member's PC (hub phase 2): start <repo> [[--login <email>]] starts a CLI on the host on one of your own logins.");
+                m.AddCommand<MachineStopCommand>("stop").WithDescription("On a member's PC (hub phase 2): stop <session> stops one of your own CLIs on the host.");
+                m.AddCommand<MachineConsentsCommand>("consents").WithDescription("On a member's PC (hub phase 2): who is asking right now to type into one of your CLIs on the host.");
+                m.AddCommand<MachineConsentCommand>("consent").WithDescription("On a member's PC (hub phase 2): consent <id> allow|deny answers one; no answer in time leaves them watching.");
                 m.AddCommand<MachineTicketsCommand>("tickets").WithDescription("On a client: run a tickets command on the host (tickets -- <args>); the tickets shim on this PC does it for you.");
             });
             config.AddBranch("branches", b =>

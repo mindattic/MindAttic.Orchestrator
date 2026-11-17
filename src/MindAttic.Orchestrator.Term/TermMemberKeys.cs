@@ -24,6 +24,12 @@ public sealed record TermMemberKey
     /// <summary>When it was revoked (UTC); null while it works.</summary>
     [JsonPropertyName("revokedUtc")] public DateTime? RevokedUtc { get; init; }
 
+    /// <summary>Hub phase 2 (M.ORCH-T1641): the Windows account this member's CLIs on the host run under, set by <c>orchestrator
+    /// machine isolate</c>; null (and left out of the file) when none is. A name only, never a password.</summary>
+    [JsonPropertyName("windowsUser")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? WindowsUser { get; init; }
+
     /// <summary>Whether it still mints tokens.</summary>
     [JsonIgnore] public bool IsLive => RevokedUtc is null;
 }
@@ -80,8 +86,10 @@ public static class TermMemberKeys
         var key = Prefix + TermGatewayTokens.Base64Url(RandomNumberGenerator.GetBytes(32));
         Update(directory, file =>
         {
+            // A new invite keeps the Windows account the member was given (hub phase 2, M.ORCH-T1641): it's about them, not the key.
+            var account = file.Keys.FirstOrDefault(k => k is not null && Normalize(k.Email) == who)?.WindowsUser;
             var keys = file.Keys.Where(k => k is not null && Normalize(k.Email) != who).ToList();
-            keys.Add(new TermMemberKey { Email = who, Hash = Hash(key), CreatedUtc = nowUtc, CreatedBy = createdBy });
+            keys.Add(new TermMemberKey { Email = who, Hash = Hash(key), CreatedUtc = nowUtc, CreatedBy = createdBy, WindowsUser = account });
             return file with { Keys = [.. keys.OrderBy(k => k.Email, StringComparer.Ordinal)] };
         });
         return key;
@@ -103,6 +111,25 @@ public static class TermMemberKeys
             return file with { Keys = keys };
         });
         return revoked;
+    }
+
+    /// <summary>Sets (or, with null, clears) the Windows account <paramref name="email"/>'s CLIs on the host run under (hub phase 2,
+    /// M.ORCH-T1641); false when they were never invited. Only the name is kept; the file holds no password.</summary>
+    public static bool SetWindowsUser(string email, string? account, string? directory = null)
+    {
+        var who = Normalize(email);
+        var found = false;
+        Update(directory, file =>
+        {
+            var keys = file.Keys.Where(k => k is not null).Select(k =>
+            {
+                if (Normalize(k.Email) != who) return k;
+                found = true;
+                return k with { WindowsUser = string.IsNullOrWhiteSpace(account) ? null : account.Trim() };
+            }).ToList();
+            return file with { Keys = keys };
+        });
+        return found;
     }
 
     /// <summary>Every member key on file (live and revoked), by email; empty when there is none or it can't be read.</summary>

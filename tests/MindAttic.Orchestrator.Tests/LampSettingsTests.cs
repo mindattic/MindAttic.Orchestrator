@@ -173,6 +173,12 @@ public sealed class LampSettingsTests
             s => s.ClosedTicketsReadLiveMinutes),
         // The host's connected-members window (hub phase 1, M.ORCH-T1640)
         Case("memberConnectedMinutes", s => s with { MemberConnectedMinutes = 3 }, 3d, v => v.MemberConnectedMinutes = 10, 10d, s => s.MemberConnectedMinutes),
+        // Hub phase 2 (M.ORCH-T1641): members' own CLIs on the host, isolation, consent
+        Case("hubMemberSessions", s => s with { HubMemberSessions = true }, true, v => v.HubMemberSessions = false, false, s => s.HubMemberSessions),
+        Case("hubTrustedOrg", s => s with { HubTrustedOrg = true }, true, v => v.HubTrustedOrg = false, false, s => s.HubTrustedOrg),
+        Case("hubMemberWindowsUsers", s => s with { HubMemberWindowsUsers = true }, true, v => v.HubMemberWindowsUsers = false, false, s => s.HubMemberWindowsUsers),
+        Case("hubConsentSeconds", s => s with { HubConsentSeconds = 30 }, 30d, v => v.HubConsentSeconds = 60, 60d, s => s.HubConsentSeconds),
+        Case("hubConsentPollSeconds", s => s with { HubConsentPollSeconds = 5 }, 5d, v => v.HubConsentPollSeconds = 10, 10d, s => s.HubConsentPollSeconds),
         Case("auditEveryHours", s => s with { AuditEveryHours = 0 }, 0, v => v.AuditEveryHours = 6, 6, s => s.AuditEveryHours),
         Case("groomAfterDays", s => s with { GroomAfterDays = 14 }, 14, v => v.GroomAfterDays = 60, 60, s => s.GroomAfterDays),
         Case("logKeepDays", s => s with { LogKeepDays = 90 }, 90, v => v.LogKeepDays = 14, 14, s => s.LogKeepDays),

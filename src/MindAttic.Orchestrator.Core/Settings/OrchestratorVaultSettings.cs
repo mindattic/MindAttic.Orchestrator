@@ -393,6 +393,33 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0.5, 1440)]
     public double MemberConnectedMinutes { get; set; } = OrchestratorSettings.DefaultMemberConnectedMinutes;
 
+    /// <summary>Off (the default): on the host, members only watch, as in hub phase 1.</summary>
+    [Setting("Members work their own CLIs (host)", Group = "Gateway", Order = 3,
+        Help = "Off (the default): the gateway works exactly as before; members connected to the host only watch. On, on the host (hub phase 2): a CLI's owner is the member whose Claude login it runs on; members start and stop CLIs on their own logins from their PC, and type into their own CLIs once per-member Windows users or 'trusted org' allow it; another member's interact grant on a member's CLI needs that member's consent. Interactive streams are sent uncompressed. Ignored on every machine but the host.")]
+    public bool HubMemberSessions { get; set; }
+
+    /// <summary>Off (the default): members type into CLIs on the host only when those run under their own Windows accounts.</summary>
+    [Setting("Trusted org: members' CLIs may run as the host's user", Group = "Gateway", Order = 4,
+        Help = "Off (the default). On, with 'Members work their own CLIs': you accept that members' CLIs on the host run as the host's one Windows user. That user can read every Claude login's credentials and every DPAPI secret on the host, so any member who can type into a CLI can reach all of them. Only turn it on for an org whose members you trust with each other's logins.")]
+    public bool HubTrustedOrg { get; set; }
+
+    /// <summary>Off (the default): every CLI on the host runs as its one Windows user.</summary>
+    [Setting("Per-member Windows users (host)", Group = "Gateway", Order = 5,
+        Help = "Off (the default). On, with 'Members work their own CLIs': each member's CLIs on the host run under their own Windows account (own profile, own DPAPI scope), set with orchestrator machine isolate <member> <account>. An admin makes the accounts once by hand (docs/REMOTE_HOST.md); the Orchestrator never creates, changes or deletes a Windows account.")]
+    public bool HubMemberWindowsUsers { get; set; }
+
+    /// <summary>Seconds a consent request waits for the session owner before the viewer is left watching.</summary>
+    [Setting("Consent wait (s)", Group = "Gateway", Order = 6,
+        Help = "With 'Members work their own CLIs': when another member's interact grant is first used on a member's CLI, that CLI's owner is asked (a toast on their dashboard, or orchestrator machine consents). With no answer in this many seconds the viewer is left watching, read-only.")]
+    [SettingRange(5, 600)]
+    public double HubConsentSeconds { get; set; } = OrchestratorSettings.DefaultHubConsentSeconds;
+
+    /// <summary>Seconds between a member client's looks at the host for consent requests on their own CLIs.</summary>
+    [Setting("Consent check every (s)", Group = "Gateway", Order = 7,
+        Help = "On a member's PC connected to the host: how often the dashboard asks the host whether anyone is asking to type into one of your CLIs, to show it as a toast. Keep it well under the consent wait.")]
+    [SettingRange(2, 300)]
+    public double HubConsentPollSeconds { get; set; } = OrchestratorSettings.DefaultHubConsentPollSeconds;
+
     /// <summary>How many extra times a write retries taking SQL Server's write lock after it stayed busy past its timeout (each wait longer than the last) before the command fails.</summary>
     [Setting("Database busy retries", Group = "Scheduler", Order = 92, Help = "How many extra times a write retries taking SQL Server's write lock after it stayed busy past its timeout (each wait longer than the last) before the command fails. Raise it when many CLIs and subagents write at once.")]
     [SettingRange(0, 100)]
@@ -840,6 +867,11 @@ public sealed class OrchestratorVaultSettings
         BranchBuildsCheckSeconds = s.BranchBuildsCheckSeconds,
         BranchQueueFetchMinutes = s.BranchQueueFetchMinutes,
         MemberConnectedMinutes = s.MemberConnectedMinutes,
+        HubMemberSessions = s.HubMemberSessions,
+        HubTrustedOrg = s.HubTrustedOrg,
+        HubMemberWindowsUsers = s.HubMemberWindowsUsers,
+        HubConsentSeconds = s.HubConsentSeconds,
+        HubConsentPollSeconds = s.HubConsentPollSeconds,
         TabBlinkMinSpacingMs = s.TabBlinkMinSpacingMs,
         ProjectsRefreshMinutes = s.ProjectsRefreshMinutes,
         ProjectChangesRefreshSeconds = s.ProjectChangesRefreshSeconds,
@@ -978,6 +1010,11 @@ public sealed class OrchestratorVaultSettings
         BranchBuildsCheckSeconds = BranchBuildsCheckSeconds,
         BranchQueueFetchMinutes = BranchQueueFetchMinutes,
         MemberConnectedMinutes = MemberConnectedMinutes,
+        HubMemberSessions = HubMemberSessions,
+        HubTrustedOrg = HubTrustedOrg,
+        HubMemberWindowsUsers = HubMemberWindowsUsers,
+        HubConsentSeconds = HubConsentSeconds,
+        HubConsentPollSeconds = HubConsentPollSeconds,
         TabBlinkMinSpacingMs = TabBlinkMinSpacingMs,
         ProjectsRefreshMinutes = ProjectsRefreshMinutes,
         ProjectChangesRefreshSeconds = ProjectChangesRefreshSeconds,

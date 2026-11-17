@@ -330,6 +330,14 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         say("tickets runs on this machine again.");
     }
 
+    /// <summary>A client of the host's gateway (hub phase 2, M.ORCH-T1641: starting, stopping and consenting from a member's PC), or
+    /// null when this machine isn't a client connected to a host. The caller disposes it.</summary>
+    public static Sessions.GatewayClient? HostClient()
+    {
+        if (!MachineTopology.Current.IsClient) return null;
+        return GatewayRemotes.Find(new JsonStore().LoadSettings().Gateway, MachineRole.HostRemoteName) is { } remote ? new Sessions.GatewayClient(remote) : null;
+    }
+
     /// <summary>
     /// Runs a tickets command on the host (M.ORCH-T1479), in the workspace folder <paramref name="currentDirectory"/> is in.
     /// A <c>--description-file</c> is read here and sent as <c>--description</c>, since the host can't see this machine's files.

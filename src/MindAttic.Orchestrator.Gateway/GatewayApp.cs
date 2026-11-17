@@ -48,6 +48,15 @@ internal sealed class GatewayServices
     /// <summary>The org members' own keys (hub phase 1, M.ORCH-T1640): <c>members.json</c>, reread as it changes. The default has
     /// none, so only the owner key mints a token.</summary>
     public IMemberKeys MemberKeys { get; init; } = NoMemberKeys.Instance;
+
+    /// <summary>The session owners' consents to other members' interact grants (hub phase 2, M.ORCH-T1641), in memory.</summary>
+    public GatewayConsents Consents { get; init; } = new();
+
+    /// <summary>The Windows account each hosted session runs under (hub phase 2): this gateway's own user for every one, in this build.</summary>
+    public ISessionAccounts SessionAccounts { get; init; } = HostUserAccounts.Instance;
+
+    /// <summary>Starts and stops CLIs for members' clients (hub phase 2); none by default.</summary>
+    public ISessionLauncher Launcher { get; init; } = NoLauncher.Instance;
 }
 
 /// <summary>A session as <c>GET /sessions</c> lists it: never its command line, folder, config dir, pipe or host pid.</summary>
@@ -64,7 +73,11 @@ internal sealed record GatewaySession(
     [property: JsonPropertyName("protocol")] int Protocol,
     [property: JsonPropertyName("access")] string Access,
     [property: JsonPropertyName("paused")] bool Paused,
-    [property: JsonPropertyName("isMenu")] bool IsMenu);
+    [property: JsonPropertyName("isMenu")] bool IsMenu,
+    // Hub phase 2 (M.ORCH-T1641), only while it's on (null otherwise, and left out): the member who owns the session, and where an
+    // interact grant that waits on their consent stands (ask, pending or denied; gone once they allow it).
+    [property: JsonPropertyName("owner")] string? Owner = null,
+    [property: JsonPropertyName("consent")] string? Consent = null);
 
 internal sealed record TokenRequest(
     [property: JsonPropertyName("ownerKey")] string? OwnerKey,
@@ -269,10 +282,11 @@ internal static class GatewayApp
                 {
                     // Only what the owner shares (M.ORCH-T935): remote watching is opt-in, per session or for all of them.
                     if (!broadcast.IsShared(s.Id)) continue;
-                    var access = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, s), who.Scope, null);
+                    var (access, decision, consent) = Access(g, who.Subject, who.Scope, s, null);
                     if (access == GatewayAccess.None) continue;
                     list.Add(new GatewaySession(s.Id, ListedTitle(g, s, broadcast), s.Login, s.Repo, s.Cols, s.Rows, s.State, s.ExitCode, s.StartedUtc, s.Protocol,
-                        access == GatewayAccess.Interact ? GatewayScopes.Interact : GatewayScopes.Watch, broadcast.IsPaused(s.Id), s.IsMenu));
+                        access == GatewayAccess.Interact ? GatewayScopes.Interact : GatewayScopes.Watch, broadcast.IsPaused(s.Id), s.IsMenu,
+                        decision.SessionOwner, ConsentText(decision, consent)));
                 }
                 // Titles kept for sessions that ended are let go.
                 if (g.ListedTitles.Count > sessions.Count)
@@ -298,7 +312,182 @@ internal static class GatewayApp
                 if (!http.Response.HasStarted) http.Response.StatusCode = StatusCodes.Status500InternalServerError;
             }
         });
+
+        MapHub(app, g);
     }
+
+    /// <summary>
+    /// Hub phase 2's endpoints (M.ORCH-T1641), each answering 404 unless the ACL snapshot carries a hub policy (the Vault's
+    /// HubMemberSessions, on the host only), so a gateway without it looks exactly as before:
+    /// <list type="bullet">
+    /// <item><c>POST /sessions</c> <c>{ repo, login? }</c>: starts a CLI in a repo on one of the caller's own logins (the machine
+    /// owner: any login), as <see cref="TermHubPolicy.PlanLaunch"/> allows; an interact token.</item>
+    /// <item><c>DELETE /sessions/{id}</c>: stops a CLI its owner (or the machine owner) no longer wants; anyone else gets 404.</item>
+    /// <item><c>GET /consents</c>: the consent requests waiting on the caller, as a session owner.</item>
+    /// <item><c>POST /consents/{id}</c> <c>{ allow }</c>: their answer; an interact token.</item>
+    /// </list>
+    /// Each start, stop and answer is audited by who and what, never content.
+    /// </summary>
+    private static void MapHub(WebApplication app, GatewayServices g)
+    {
+        app.MapPost("/sessions", async (StartRequest? request, HttpContext http) =>
+        {
+            try
+            {
+                if (Authenticate(http, g) is not { } who)
+                {
+                    AuditRefusal(g, "", RemoteOf(http), TokenRefusal(http));
+                    return Results.Unauthorized();
+                }
+                if (g.Grants.Hub is not { } hub) return Results.NotFound();
+                var from = RemoteOf(http);
+                var isOwner = IsOwner(g, who.Subject);
+                IResult Refuse(string why, int status = StatusCodes.Status403Forbidden)
+                {
+                    g.Log.Write($"start for {who.Subject} from {from} refused: {why}");
+                    g.Audit.Write(Record(g, TermGatewayAudit.Refused, who.Subject, "", "none", from, detail: "start: " + why));
+                    return Results.Json(new TicketsResponse(1, $"The host refused it: {why}."), statusCode: status);
+                }
+                if (who.Scope != GatewayScopes.Interact) return Refuse("starting a CLI needs an interact token");
+                if (!isOwner && !g.Grants.IsActiveMember(who.Subject)) return Refuse("only active org members start CLIs here");
+                var repo = request?.Repo?.Trim();
+                if (!HubNames.IsRepo(repo)) return Results.BadRequest();
+                var login = TermMemberKeys.Normalize(request!.Login is { Length: > 0 } l ? l : who.Subject);
+                if (login.Length is 0 or > 256 || !login.Contains('@', StringComparison.Ordinal)) return Results.BadRequest();
+                if (!isOwner && !g.Grants.LoginsOf(who.Subject).Contains(login)) return Refuse("members start CLIs only on their own logins");
+                var plan = isOwner ? TermLaunchPlan.Host : hub.PlanLaunch(who.Subject);
+                if (plan.Kind == TermLaunchKind.Refused) return Refuse(plan.Why ?? "not allowed");
+                g.Log.Write($"start {repo} on {login} for {who.Subject} from {from} ({plan.Kind})");
+                var result = await g.Launcher.StartAsync(repo!, login, plan, http.RequestAborted).ConfigureAwait(false);
+                g.Audit.Write(Record(g, TermGatewayAudit.Start, who.Subject, "", GatewayScopes.Interact, from,
+                    detail: $"{repo} on {login}: {(result.Ok ? "started" : result.NotSupported ? "not supported" : "failed")}"));
+                return Results.Json(new TicketsResponse(result.Ok ? 0 : 1, result.Output),
+                    statusCode: result.Ok ? StatusCodes.Status200OK : result.NotSupported ? StatusCodes.Status501NotImplemented : StatusCodes.Status502BadGateway);
+            }
+            catch (Exception ex)
+            {
+                g.Log.Error(ex, "starting a CLI failed; contained");
+                return Results.StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        });
+
+        app.MapDelete("/sessions/{id}", (string id, HttpContext http) =>
+        {
+            try
+            {
+                if (Authenticate(http, g) is not { } who)
+                {
+                    AuditRefusal(g, TermProtocol.Sanitize(id), RemoteOf(http), TokenRefusal(http));
+                    return Results.Unauthorized();
+                }
+                if (g.Grants.Hub is null) return Results.NotFound();
+                var from = RemoteOf(http);
+                var session = g.Sessions.Get(id);
+                // Only the machine owner, or the member who owns the CLI with an interact token; anyone else can't tell it's there.
+                var mine = session is not null && (IsOwner(g, who.Subject)
+                    || (who.Scope == GatewayScopes.Interact && g.Grants.IsActiveMember(who.Subject)
+                        && g.Grants.Decide(who.Subject, session, g.SessionAccounts.AccountOf(session)).SessionOwner == TermMemberKeys.Normalize(who.Subject)));
+                if (!mine)
+                {
+                    g.Audit.Write(Record(g, TermGatewayAudit.Refused, who.Subject, TermProtocol.Sanitize(id), "none", from,
+                        detail: session is null ? "stop: no such session" : "stop: not their CLI"));
+                    return Results.NotFound();
+                }
+                var result = g.Launcher.Stop(session!);
+                g.Log.Write($"stop {session!.Id} for {who.Subject} from {from}: {(result.Ok ? "stopped" : result.Output)}");
+                g.Audit.Write(Record(g, TermGatewayAudit.Stop, who.Subject, session.Id, GatewayScopes.Interact, from,
+                    detail: result.Ok ? "stopped" : result.NotSupported ? "not supported" : "failed"));
+                return Results.Json(new TicketsResponse(result.Ok ? 0 : 1, result.Output),
+                    statusCode: result.Ok ? StatusCodes.Status200OK : result.NotSupported ? StatusCodes.Status501NotImplemented : StatusCodes.Status409Conflict);
+            }
+            catch (Exception ex)
+            {
+                g.Log.Error(ex, "stopping a CLI failed; contained");
+                return Results.StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        });
+
+        app.MapGet("/consents", (HttpContext http) =>
+        {
+            try
+            {
+                if (Authenticate(http, g) is not { } who)
+                {
+                    AuditRefusal(g, "", RemoteOf(http), TokenRefusal(http));
+                    return Results.Unauthorized();
+                }
+                if (g.Grants.Hub is null) return Results.NotFound();
+                return Results.Json(g.Consents.PendingFor(who.Subject));
+            }
+            catch (Exception ex)
+            {
+                g.Log.Error(ex, "listing consents failed; contained");
+                return Results.StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        });
+
+        app.MapPost("/consents/{id}", (string id, ConsentAnswer? answer, HttpContext http) =>
+        {
+            try
+            {
+                if (Authenticate(http, g) is not { } who)
+                {
+                    AuditRefusal(g, "", RemoteOf(http), TokenRefusal(http));
+                    return Results.Unauthorized();
+                }
+                if (g.Grants.Hub is null) return Results.NotFound();
+                if (who.Scope != GatewayScopes.Interact) return Results.StatusCode(StatusCodes.Status403Forbidden);
+                if (answer?.Allow is not { } allow || id.Length is 0 or > 64) return Results.BadRequest();
+                // Only the session's owner answers, and only while the request waits: an unknown, lapsed or someone else's is 404.
+                if (g.Consents.Answer(id, who.Subject, allow) is not { } answered) return Results.NotFound();
+                var from = RemoteOf(http);
+                g.Log.Write($"consent {answered.Id}: {who.Subject} {(allow ? "allowed" : "refused")} {answered.Viewer} typing into {answered.Session}");
+                g.Audit.Write(Record(g, TermGatewayAudit.Consent, who.Subject, answered.Session, allow ? GatewayScopes.Interact : GatewayScopes.Watch, from,
+                    detail: $"{(allow ? "allowed" : "refused")} {answered.Viewer}"));
+                return Results.Json(answered);
+            }
+            catch (Exception ex)
+            {
+                g.Log.Error(ex, "answering a consent failed; contained");
+                return Results.StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        });
+    }
+
+    /// <summary>Whether <paramref name="subject"/> is the machine owner.</summary>
+    private static bool IsOwner(GatewayServices g, string subject) =>
+        string.Equals(subject.Trim(), g.Options.Owner.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// What <paramref name="subject"/> holding a <paramref name="scope"/> token may do with <paramref name="s"/> as asked
+    /// (<paramref name="requestedMode"/>): the grants' decision (<see cref="IGatewayGrants.Decide"/>), held at watch while an interact
+    /// grant waits on its session owner's consent (hub phase 2, M.ORCH-T1641), then the least of that, the token's scope and the
+    /// request. Without a hub policy this is exactly the grant, scope and request as before.
+    /// </summary>
+    internal static (GatewayAccess Access, GatewayDecision Decision, ConsentState Consent) Access(GatewayServices g, string subject, string scope,
+        TermSessionRecord s, string? requestedMode)
+    {
+        var decision = g.Grants.Decide(subject, s, g.SessionAccounts.AccountOf(s));
+        var granted = decision.Access;
+        var consent = ConsentState.None;
+        if (granted == GatewayAccess.Interact && decision.ConsentKey is { } key)
+        {
+            consent = g.Consents.State(key);
+            if (consent != ConsentState.Allowed) granted = GatewayAccess.Watch;
+        }
+        return (OwnerOnlyGrants.Effective(granted, scope, requestedMode), decision, consent);
+    }
+
+    /// <summary>How <c>GET /sessions</c> lists a consent that holds the caller at watch: ask (not asked yet, or it lapsed), pending
+    /// or denied; null when no consent is involved or it was given.</summary>
+    private static string? ConsentText(GatewayDecision decision, ConsentState consent) =>
+        decision.ConsentKey is null ? null : consent switch
+        {
+            ConsentState.Allowed => null,
+            ConsentState.Pending => "pending",
+            ConsentState.Denied => "denied",
+            _ => "ask",
+        };
 
     private static async Task StreamAsync(HttpContext http, string id, GatewayServices g)
     {
@@ -313,9 +502,19 @@ internal static class GatewayApp
         var session = g.Sessions.Get(id);
         string? requestedMode = http.Request.Query["mode"];
         var shared = session is not null && g.Broadcast.Current.IsShared(session.Id);
-        var access = session is null || !shared ? GatewayAccess.None
-            : OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), who.Scope, requestedMode);
+        var (access, decision, consent) = session is null || !shared ? (GatewayAccess.None, new GatewayDecision(GatewayAccess.None), ConsentState.None)
+            : Access(g, who.Subject, who.Scope, session, requestedMode);
         var from = http.Connection.RemoteIpAddress?.ToString() ?? "?";
+        // Hub phase 2 (M.ORCH-T1641): another member's interact grant on a member's CLI, first used: its owner is asked, and the
+        // viewer watches meanwhile; once they allow it, the viewer's next attach types.
+        if (session is not null && access == GatewayAccess.Watch && decision is { ConsentKey: { } key, SessionOwner: { } sessionOwner }
+            && consent == ConsentState.None && who.Scope == GatewayScopes.Interact
+            && !string.Equals(requestedMode, GatewayScopes.Watch, StringComparison.OrdinalIgnoreCase)
+            && g.Consents.Ask(key, sessionOwner, TermMemberKeys.Normalize(who.Subject), session.Id, g.Grants.Hub?.ConsentWindow ?? TimeSpan.FromSeconds(TermHubPolicy.DefaultConsentSeconds)) is { } asked)
+        {
+            g.Log.Write($"consent {asked.Id}: asked {sessionOwner} whether {who.Subject} may type into {session.Id}; watching until they answer");
+            g.Audit.Write(Record(g, TermGatewayAudit.Consent, who.Subject, session.Id, GatewayScopes.Watch, from, detail: $"asked {sessionOwner}"));
+        }
         // Not found, not shared (M.ORCH-T935) and not allowed look the same, so a token can't probe for session ids.
         if (session is null || access == GatewayAccess.None)
         {
@@ -347,8 +546,10 @@ internal static class GatewayApp
         {
             accepted = await http.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext
             {
-                // permessage-deflate: VT compresses 5 to 10x (spike section 5). Offered; used when the viewer asks for it.
-                DangerousEnableCompression = true,
+                // permessage-deflate: VT compresses 5 to 10x (spike section 5). Offered; used when the viewer asks for it. Not on
+                // an interactive stream while hub member sessions are on (M.ORCH-T1641): typed input beside secrets on one
+                // compressed stream is the CRIME/BREACH shape (T934/T935).
+                DangerousEnableCompression = !(access == GatewayAccess.Interact && g.Grants.Hub is not null),
                 DisableServerContextTakeover = false,
                 ServerMaxWindowBits = 15,
             }).ConfigureAwait(false);
@@ -384,7 +585,7 @@ internal static class GatewayApp
             var refused = p is null ? "bad or expired token"
                 : !string.Equals(p.Subject.Trim(), who.Subject.Trim(), StringComparison.OrdinalIgnoreCase) ? "another member's token"
                 : IsRevokedMember(g, p.Subject) ? "their member key was revoked"
-                : OwnerOnlyGrants.Effective(g.Grants.AccessTo(p.Subject, session), p.Scope, requestedMode) < access ? "less access than the stream has"
+                : Access(g, p.Subject, p.Scope, session, requestedMode).Access < access ? "less access than the stream has"
                 : null;
             if (refused is not null)
             {
@@ -428,7 +629,7 @@ internal static class GatewayApp
                     }
                     else
                     {
-                        var now = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), holder.Scope, requestedMode);
+                        var now = Access(g, who.Subject, holder.Scope, session, requestedMode).Access;
                         if (now < access) why = $"dropped to {now}";
                     }
                     failures = 0;
