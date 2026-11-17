@@ -360,8 +360,13 @@ public sealed class FallbackViewers
         var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe) ?? "" };
         psi.ArgumentList.Add("--session");
         psi.ArgumentList.Add(session.Id);
-        return Process.Start(psi);
+        return StartOutliving(psi);
     }
+
+    /// <summary>A viewer window is the person's, not its starter's: it starts outside the caller's job (M.ORCH-T1691), so one
+    /// opened by a command run in a hosted CLI stays up when that CLI ends. Null when it had already gone by the time it was
+    /// looked up (nothing left to watch).</summary>
+    private static Process? StartOutliving(ProcessStartInfo psi) => Breakaway.TryOpen(Breakaway.Start(psi).Pid);
 
     /// <summary>A pop-out window on <paramref name="session"/> beside the dashboard's tab (M.ORCH-T931): <c>TermViewer --session
     /// &lt;id&gt; --stay [--watch]</c>. It never folds back while the dashboard is up, since the person asked for it. Never throws;
@@ -376,7 +381,7 @@ public sealed class FallbackViewers
             psi.ArgumentList.Add(session.Id);
             psi.ArgumentList.Add("--stay");
             if (watchOnly) psi.ArgumentList.Add("--watch");
-            return Process.Start(psi);
+            return StartOutliving(psi);
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or InvalidOperationException or UnauthorizedAccessException)
         {

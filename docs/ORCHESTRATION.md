@@ -167,9 +167,32 @@ depends on anyone walking parent pids in time.
   pipes. Other commands' leftovers are let go once the command has exited. The process joins its job right after it
   starts, not at creation, so a child born in those first moments would be missed; `Kill(entireProcessTree: true)`
   still runs at the timeout as the fallback.
-- **What may outlive its CLI.** Only a process started with `CREATE_BREAKAWAY_FROM_JOB`, which the job allows. A
-  TermHost started from inside a hosted CLI does that (`Native.SpawnDetached`), so a CLI opened by another CLI outlives
-  it. Anything else started from a hosted CLI (a GUI app, a dashboard or daemon launched by a deploy) ends with that CLI.
+- **What may outlive its CLI (M.ORCH-T1691).** Only a process started with `CREATE_BREAKAWAY_FROM_JOB`, which the job
+  allows. One helper does that, `Breakaway.Start` (`MindAttic.Orchestrator.Term/Breakaway.cs`), and everything the
+  orchestrator starts to outlive its caller goes through it, because a deploy or a command run from a hosted CLI would
+  otherwise lose what it started the moment that CLI's host ended:
+  - a detached TermHost (`Native.SpawnDetached`), so a CLI opened by another CLI outlives it;
+  - the daemon (`Installer.StartDaemon`: an install, `machine` setup, the dashboard finding none running);
+  - the dashboard, when an install restarts it, when a copy hands over to the installed one, and when `run.ps1 -Launch`
+    starts it;
+  - the gateway (`GatewaySupervisor`);
+  - TermViewer windows (fallback viewers, pop-outs, the team wall's);
+  - the Windows Terminal window of a started CLI or of the Launcher's menu (`SessionControl.Start`, `OpenLauncher`);
+  - Tickets Desktop (a ticket opened from a command or the dashboard).
+
+  If a job the caller is in forbids breakaway, Windows refuses with access denied and the process is started the
+  ordinary way, inside the job. The helper passes no handles on, so the started process never holds a script's output
+  pipe. A PowerShell script can't ask for the flag (`Start-Process` has no way to), so `run.ps1` starts the dashboard
+  with `orchestrator spawn [--cwd <dir>] [--no-window] [--] <program> [arguments...]`, which starts the program through
+  the same helper and exits (0: started, 1: couldn't, 2: bad command line). A CLI from before that verb (a first deploy)
+  answers non-zero without starting anything, and the script falls back to `Start-Process` as before.
+- **What stays contained, on purpose.** Everything else a hosted CLI starts: its shells, builds, tests and tools, and
+  whatever a command waits on (`claude` sign-ins and token mints, `git`, `schtasks`, the Launcher's `run.ps1` and
+  commit-all, a TermHost's short `--launch` step). So do `/allocate`'s background agents (`BackgroundAgent`), the
+  sign-in page's private browser window (it is only needed while the sign-in command runs) and Explorer, VS Code or
+  Notepad opened from the dashboard, which is itself outside any CLI's job. Nothing long-lived runs through
+  `ProcessRunner`: every run is waited on to its exit or its timeout, and `ProcessRunner.Contained` is only `dotnet`
+  builds and tests (branch builds, main's tests, a branch's test run).
 - **When there is no job.** If Windows refuses the job, or the CLI won't start in it, the host logs why and starts the
   CLI without one; `MINDATTIC_TERM_JOB=off` in the host's environment switches it off. The tree is then found by
   parent pid as before (`ProcessTree`, `ProcessReaper`, `TermHostKill`), which also still covers CLIs that run in the

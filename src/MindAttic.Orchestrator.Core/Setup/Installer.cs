@@ -332,7 +332,8 @@ public sealed class Installer
 
     private static void StartDaemon(string exe)
     {
-        try { Process.Start(DaemonStartInfo(exe))?.Dispose(); }
+        // Outside the caller's job (M.ORCH-T1691): an install run from a hosted CLI leaves a daemon that outlives that CLI.
+        try { Term.Breakaway.Start(DaemonStartInfo(exe)); }
         catch (System.ComponentModel.Win32Exception ex) { throw new InvalidOperationException($"Couldn't start the daemon: {ex.Message}", ex); }
     }
 

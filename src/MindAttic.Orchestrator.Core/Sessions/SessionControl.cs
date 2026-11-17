@@ -34,7 +34,8 @@ public sealed class SessionControl(OrchestratorOptions options)
         foreach (var a in StartArguments(title, directory, provider, prompt, configDir, resumeSession)) psi.ArgumentList.Add(a);
         try
         {
-            using var _ = Process.Start(psi);
+            // Outside the caller's job (M.ORCH-T1691): a terminal opened by a command run in a hosted CLI outlives that CLI.
+            Term.Breakaway.Start(psi);
             return null;
         }
         catch (System.ComponentModel.Win32Exception ex)
@@ -62,7 +63,8 @@ public sealed class SessionControl(OrchestratorOptions options)
         foreach (var a in LauncherArguments(email)) psi.ArgumentList.Add(a);
         try
         {
-            using var _ = Process.Start(psi);
+            // Outside the caller's job (M.ORCH-T1691): a terminal opened by a command run in a hosted CLI outlives that CLI.
+            Term.Breakaway.Start(psi);
             return null;
         }
         catch (System.ComponentModel.Win32Exception ex)

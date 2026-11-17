@@ -12,6 +12,8 @@ using Spectre.Console.Cli;
 try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch (IOException) { }
 // LAMP (M.ORCH-T1308): run.ps1's install step imports today's settings into MindAttic Vault and writes its manifest, then exits.
 if (OrchestratorSettingsManifest.TryRun(args, Console.Out, out var manifestExit)) return manifestExit;
+// A deploy script's dashboard start (M.ORCH-T1691): `spawn <program> [arguments...]` starts it outside the calling CLI's job, then exits.
+if (MindAttic.Orchestrator.Setup.SpawnVerb.TryRun(args, Console.Out, Console.Error, out var spawnExit)) return spawnExit;
 OrchestratorLog.Start(args.FirstOrDefault() == "daemon" ? "Daemon" : "Cli");
 // A change this command makes to the members, orgs, settings, pause or reminders is pushed to every dashboard through the
 // daemon's inbox as it commits (M.ORCH-T891), so none has to poll for it. Sent before the command returns: the process exits next.

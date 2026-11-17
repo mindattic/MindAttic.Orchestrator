@@ -41,7 +41,8 @@ public static partial class TicketsApp
 
             var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
             if (Directory.Exists(options.WorkspaceRoot)) { psi.ArgumentList.Add("--root"); psi.ArgumentList.Add(options.WorkspaceRoot); }
-            using var _ = Process.Start(psi);
+            // Outside this process's job, if it is in one (M.ORCH-T1691).
+            MindAttic.Orchestrator.Term.Breakaway.Start(psi);
             return null;
         }
         catch (Exception ex)

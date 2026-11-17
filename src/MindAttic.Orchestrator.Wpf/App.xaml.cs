@@ -323,8 +323,9 @@ public partial class App : Application
     {
         try
         {
-            using var p = Process.Start(new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! });
-            log.Information("Restarted the dashboard the install stopped");
+            // Outside this installer's job (M.ORCH-T1691): a deploy run from a hosted CLI leaves a dashboard that outlives that CLI.
+            var started = MindAttic.Orchestrator.Term.Breakaway.Start(new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! });
+            log.Information("Restarted the dashboard the install stopped (pid {Pid}, outside this process's job: {BrokeAway})", started.Pid, started.BrokeAway);
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
         {
@@ -347,9 +348,11 @@ public partial class App : Application
         foreach (var a in args) psi.ArgumentList.Add(a);
         try
         {
+            // What this hands over to outlives it, so it starts outside this process's job (M.ORCH-T1691). The daemon is waited
+            // on instead, so it stays this process's child.
+            if (!daemon) { MindAttic.Orchestrator.Term.Breakaway.Start(psi); return 0; }
             using var p = Process.Start(psi);
             if (p is null) return 1;
-            if (!daemon) return 0;
             p.WaitForExit();
             return p.ExitCode;
         }
@@ -379,7 +382,7 @@ public partial class App : Application
         {
             installer.Install(self);
             log.Information("Installed {From:l} to {To:l}", self, installer.InstalledExe);
-            Process.Start(InstalledCopy(installer, args));
+            MindAttic.Orchestrator.Term.Breakaway.Start(InstalledCopy(installer, args));
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
@@ -392,10 +395,11 @@ public partial class App : Application
     }
 
     /// <summary>The installed copy, passed on what this launch hands over (<c>--start &lt;repo&gt;</c>, already checked to be a plain
-    /// repo name), each argument quoted on its own.</summary>
+    /// repo name), each argument quoted on its own. A plain start, so <see cref="MindAttic.Orchestrator.Term.Breakaway"/> can put it
+    /// outside this process's job (M.ORCH-T1691).</summary>
     private static ProcessStartInfo InstalledCopy(Installer installer, IReadOnlyList<string> args)
     {
-        var psi = new ProcessStartInfo(installer.InstalledExe) { UseShellExecute = true, WorkingDirectory = installer.InstallDir };
+        var psi = new ProcessStartInfo(installer.InstalledExe) { UseShellExecute = false, WorkingDirectory = installer.InstallDir };
         foreach (var a in args) psi.ArgumentList.Add(a);
         return psi;
     }
@@ -405,7 +409,7 @@ public partial class App : Application
     {
         try
         {
-            Process.Start(InstalledCopy(installer, args));
+            MindAttic.Orchestrator.Term.Breakaway.Start(InstalledCopy(installer, args));
             return true;
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)

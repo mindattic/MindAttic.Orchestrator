@@ -156,8 +156,8 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
             };
             foreach (var a in arguments) psi.ArgumentList.Add(a);
             psi.Environment[TermGateway.ManagedVariable] = "1";
-            using var p = Process.Start(psi);
-            return p?.Id;
+            // Outside the caller's job (M.ORCH-T1691): a gateway started by a command run in a hosted CLI outlives that CLI.
+            return Breakaway.Start(psi).Pid;
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or InvalidOperationException) { return null; }
     }

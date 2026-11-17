@@ -240,8 +240,9 @@ public static class TeamWall
             if (FallbackViewers.DefaultExe() is not { } exe) return false;
             var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe) ?? "" };
             foreach (var arg in PopOutArguments(session, interact)) psi.ArgumentList.Add(arg);
-            using var process = Process.Start(psi);
-            return process is not null;
+            // Outside the caller's job (M.ORCH-T1691), as every viewer window.
+            Breakaway.Start(psi);
+            return true;
         }
         catch (Exception ex) when (ex is Win32Exception or IOException or InvalidOperationException or UnauthorizedAccessException)
         {

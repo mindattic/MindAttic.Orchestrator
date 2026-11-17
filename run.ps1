@@ -391,8 +391,22 @@ function Test-ClisIdle([string]$BusyExe = $cliExe) {
     return $false
 }
 
+# Starts something that outlives this script (the dashboard). A hosted CLI runs inside a kill-on-close job (M.ORCH-T1674),
+# and Start-Process can't ask to leave it, so a dashboard a deploy started from a CLI ended with that CLI's host. The
+# deployed CLI's `spawn` starts it outside the job instead (M.ORCH-T1691). A CLI from before that verb (a first deploy),
+# or none, answers non-zero without starting anything, and Start-Process does it as before.
+function Start-Outliving([string]$path) {
+    if (Test-Path $cliExe) {
+        try {
+            & $cliExe spawn -- $path *> $null
+            if ($LASTEXITCODE -eq 0) { return }
+        } catch { }
+    }
+    Start-Process -FilePath $path
+}
+
 function Exit-Refused {
-    if ($Launch -and (Find-Installed)) { Start-Process -FilePath (Find-Installed) }
+    if ($Launch -and (Find-Installed)) { Start-Outliving (Find-Installed) }
     exit 1
 }
 
@@ -573,7 +587,7 @@ if (-not $failed -and (Test-Path $cliExe)) {
     }
 }
 
-if ($Launch -and $installed) { Start-Process -FilePath $installed }
+if ($Launch -and $installed) { Start-Outliving $installed }
 
 if ($failed) { Write-Host 'Deploy FAILED.' -ForegroundColor Red; exit 1 }
 exit 0

@@ -61,7 +61,8 @@ public static partial class TicketsDesktop
         foreach (var a in Arguments(ticketId!, options.WorkspaceRoot)) psi.ArgumentList.Add(a);
         try
         {
-            using var _ = Process.Start(psi);
+            // Outside the caller's job (M.ORCH-T1691): a ticket opened by a command run in a hosted CLI stays open when that CLI ends.
+            Term.Breakaway.Start(psi);
             return null;
         }
         catch (System.ComponentModel.Win32Exception ex)
