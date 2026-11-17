@@ -78,6 +78,12 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
      another waits, so the next place that frees goes to the CLI under its share; one that wants no more lends its
      unused share. `orchestrator next --claim` likewise keeps a share for every other `/allocate` CLI with workable
      tickets of its own (`rl-status.json` → `subagents_by_cli`).
+   - *Hand-started tickets (M.ORCH-T1696):* a ticket a CLI starts by hand at the user's request is claimed with
+     `orchestrator claim <ID>`: the same assignment `next --claim` records (this CLI, its session and login, the repo's
+     checkout), so `/allocate` and the daemon's who-works-it sync leave it alone. It's refused while another live CLI (or a
+     running background agent) holds it; a claim whose CLI is gone is taken over. It ends as any claim does: the ticket
+     closing, `orchestrator release <ID>`, or its CLI going away. (`tickets ticket working` lives in MindAttic.Tickets and
+     doesn't call it; claim first, then work.)
    - *Hold:* each tool call waits `20s × (demand ÷ sustainable − 1)`, up to 5 minutes, while the draw is over what
      the window can sustain. It's 0 as soon as the draw fits.
    - *Stop:* at the target, every tool call is refused and every typed prompt is answered without being sent, so

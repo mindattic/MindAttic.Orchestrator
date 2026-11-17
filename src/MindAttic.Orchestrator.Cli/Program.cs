@@ -120,6 +120,7 @@ internal static class CliApp
             config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
             config.AddCommand<DiskCleanupCommand>("disk-cleanup").WithDescription("Delete agent-made temp (ended sessions, stale scratch builds) oldest first when the temp drive is under --disk-cleanup-gb; --dry-run lists it.");
             config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");
+            config.AddCommand<ClaimCommand>("claim").WithDescription("Claim one named ticket this CLI starts by hand at the user's request (a real assignment for this CLI and session): /allocate and other CLIs skip it until it closes or is released; refused when another live CLI holds it (M.ORCH-T1696).");
             config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /allocate hands its subagents, each with its model (--claim: assignment and prompt, worked in the repo's own checkout on main).");
             config.AddCommand<ReviewCommand>("review").WithDescription("From a Sonnet ticket's repo checkout: its one Opus review of the diff before it lands, when the diff is big or touches risky files (--dry-run only says).");
             config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /allocate would start right now, without starting anything.");

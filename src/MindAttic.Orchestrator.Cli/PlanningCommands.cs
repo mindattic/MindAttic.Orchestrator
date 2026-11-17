@@ -215,3 +215,41 @@ internal static class TokenText
         return true;
     }
 }
+
+/// <summary>A CLI claiming one named ticket it starts by hand at the user's request (M.ORCH-T1696): a real Assignment for this CLI
+/// and session, the one <c>next --claim</c> records, so /allocate skips it and the daemon keeps its "working" mark.</summary>
+internal sealed class ClaimCommand : Command<ClaimCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<TICKET>")]
+        [Description("The ticket to claim, e.g. M.ORCH-T123.")]
+        public string Ticket { get; init; } = "";
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var cli = Ctx.CallingCli();
+        var (_, store, snapshot, _) = Ctx.Load(cli);
+        var id = Ctx.Id(settings.Ticket);
+        var root = OrchestratorOptions.Load(store).WorkspaceRoot;
+        MindAttic.Orchestrator.Tickets.TicketQueue.Found? found;
+        using (var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root))
+            found = MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id);
+        if (found is null) { Console.Error.WriteLine($"No ticket {id} in the workspace."); return 1; }
+        if (found.Ticket.Status == MindAttic.Tickets.Log.TicketRules.Closed) { Console.Error.WriteLine($"{id} is closed; nothing to claim."); return 1; }
+        var repo = snapshot.Repos.FirstOrDefault(r => r.Path.Length > 0 && r.Name.Equals(found.Repo, StringComparison.OrdinalIgnoreCase));
+        if (repo is null) { Console.Error.WriteLine($"{id}'s repo ({found.Repo}) has no checkout in this workspace."); return 1; }
+        var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
+        var self = cli is { } me ? cycler.LatestSessionOf(me) : null;
+        var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs();
+        var login = (Ctx.CurrentLogin is { } seam ? seam() : Ctx.LoginOfCli(cli) ?? dirs.Current())?.Email ?? snapshot.GlobalEmail;
+        var result = NamedClaim.Claim(store, id, repo.Name, repo.Path, cli, self, login,
+            MindAttic.Orchestrator.Sessions.ContextCycler.IsClaude, a => a.Pilot is { } p && MindAttic.Orchestrator.Sessions.BackgroundAgent.IsRunning(p, a.PilotStartedUtc), DateTime.UtcNow);
+        if (!result.Claimed) { Console.Error.WriteLine(result.Message); return 1; }
+        // Who works it, for Tickets Desktop's link back, and kept by the daemon's sync now there's an assignment behind it.
+        MindAttic.Orchestrator.Tickets.TicketWorking.Set(root, id, login, self);
+        Console.WriteLine(result.Message);
+        return 0;
+    }
+}
