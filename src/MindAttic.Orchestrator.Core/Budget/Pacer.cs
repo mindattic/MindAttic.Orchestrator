@@ -127,7 +127,8 @@ public sealed record Pace(
         null => "",
         var a when DormantPercent is { } used => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). Usage is at " +
             $"{used:0}%, under the {GuardStartPercent:0}% line where pacing starts, so run at full speed: a subagent on every ticket you've claimed " +
-            "or been handed, and parallel subagents for independent pieces.",
+            "or been handed, and parallel subagents for independent pieces." +
+            (AgentDelaySeconds > 0 ? $" Tool calls are still held about {AgentDelaySeconds:0}s each: the burn is outpacing the curve even this early." : ""),
         0 => $"Subagents: none new right now ({Note}). Finish with the {Subagents} running; a new one waits until there's room.",
         var a when CoolOffPercent is { } hot => $"Subagents: {a} at once across all agents ({Subagents} running now). Cooling off: this login's " +
             $"{CoolOffClis} CLIs together are on course to end the 5-hour window near {hot:0}%, past its {TargetPercent:0}% pace line, so new " +
@@ -487,11 +488,15 @@ public static class Pacer
     /// <summary>
     /// The pace guards' start line (M.ORCH-T1592: a CLI was told it was paced at 6% of its 5-hour window and 1% of its week). While
     /// both the login's 5-hour use (<see cref="StopPercentOf"/>, the figure the stop goes by) and its weekly use are under
-    /// <see cref="OrchestratorSettings.PaceGuardStartPercent"/>, no pace guard is considered: no hold on tool calls, no subagent
-    /// allowance under <see cref="OrchestratorSettings.MaxSubagents"/>, no cool-off, no coasting, and every session slot open
-    /// (<paramref name="active"/> sessions running). Left as it is at the stop, past a limit, unpaced, while the week caps the
-    /// window, and once either window reaches the line, from where the guards work as before. Run before
-    /// <see cref="CapByStopHeadroom"/> and <see cref="CapByMemory"/>, which guard the hard stop and the machine, not the pace.
+    /// <see cref="OrchestratorSettings.PaceGuardStartPercent"/>, no subagent-facing guard is considered: no cap on
+    /// <see cref="OrchestratorSettings.MaxSubagents"/>, no cool-off, no coasting, and every session slot open (<paramref name="active"/>
+    /// sessions running). The per-call hold (<see cref="AgentDelay"/>) is left exactly as <see cref="Compute"/> worked it out, not
+    /// zeroed here (M.ORCH-T1750: zeroing it let a lone CLI with no subagents to cap run a window from ~20% to 91.6% while its pace
+    /// line sat at 34%, all of it under this line, with the UserPromptSubmit hook still saying "run at full speed"), so a burst this
+    /// early still slows the CLI's own tool calls instead of coasting unthrottled to the stop. Left as it is at the stop, past a
+    /// limit, unpaced, while the week caps the window, and once either window reaches the line, from where the guards work as
+    /// before. Run before <see cref="CapByStopHeadroom"/> and <see cref="CapByMemory"/>, which guard the hard stop and the machine,
+    /// not the pace.
     /// </summary>
     public static Pace Dormant(Pace pace, BudgetStatus b, OrchestratorSettings s, int active)
     {
@@ -508,7 +513,6 @@ public static class Pacer
         {
             Mode = PaceMode.Open,
             SessionCap = max,
-            AgentDelaySeconds = 0,
             SubagentAllowance = s.MaxSubagents > 0 ? s.MaxSubagents : pace.SubagentAllowance,
             SpareSessions = Math.Max(pace.SpareSessions, max - Math.Max(0, active)),
             CoolOffPercent = null, CoolOffClis = 0, UnderTargetPercent = null,

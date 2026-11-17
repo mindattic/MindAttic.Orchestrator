@@ -146,11 +146,15 @@ public sealed class PacerTests
     }
 
     [Test]
-    public void Outrunning_the_window_never_holds_running_agents()
+    public void Outrunning_the_window_holds_running_agents_again()
     {
-        // M.ORCH-T706: hard cutoffs only, no throttling before them.
+        // M.ORCH-T706 hard-coded this off; M.ORCH-T1750 restored it (2026-11-17) after a lone CLI with no subagents to
+        // cap ran a window from ~20% to 91.6% while its pace line sat at 34% unheld.
         var over = Pace(10.5, 4, new OrchestratorSettings { BlockBudget = 11_000, PaceTargetPercent = 100 }, E(10, 1000), E(10.4, 1000));
-        Assert.That(over.AgentDelaySeconds, Is.Zero, "three times what fits, and still nobody is held");
+        Assert.That(over.AgentDelaySeconds, Is.EqualTo(40), "three times what fits: held so the burn stretches toward the reset");
+
+        var off = Pace(10.5, 4, new OrchestratorSettings { BlockBudget = 11_000, PaceTargetPercent = 100, ThrottleAgents = false }, E(10, 1000), E(10.4, 1000));
+        Assert.That(off.AgentDelaySeconds, Is.Zero, "--throttle-agents false still runs to the cutoff unheld");
     }
 
     [Test]

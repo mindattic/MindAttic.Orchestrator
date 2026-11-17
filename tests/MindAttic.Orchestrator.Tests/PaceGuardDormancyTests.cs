@@ -19,8 +19,11 @@ public sealed class PaceGuardDormancyTests
         new(null, 1_000_000, false, fiveHour, default, default, null, week, 0, null, 80);
 
     [Test]
-    public void Under_the_line_on_both_windows_runs_full_speed()
+    public void Under_the_line_on_both_windows_runs_full_speed_but_keeps_the_per_call_hold()
     {
+        // M.ORCH-T1750: a lone CLI with no subagents to cap ran a window from ~20% to 91.6% while its pace line sat at
+        // 34%, all of it under this line, because dormancy used to zero the per-call hold too; now only the
+        // subagent-facing guards go dormant, and the hold Compute worked out survives.
         var pace = Pacer.Dormant(Throttled(), Budget(6, 1), Settings, 2);
         Assert.Multiple(() =>
         {
@@ -28,11 +31,11 @@ public sealed class PaceGuardDormancyTests
             Assert.That(pace.Mode, Is.EqualTo(PaceMode.Open));
             Assert.That(pace.SessionCap, Is.EqualTo(6));
             Assert.That(pace.SubagentAllowance, Is.EqualTo(8));
-            Assert.That(pace.AgentDelaySeconds, Is.Zero);
+            Assert.That(pace.AgentDelaySeconds, Is.EqualTo(30), "the per-call hold isn't dormancy's to clear");
             Assert.That(pace.CoolOffPercent, Is.Null);
             Assert.That(pace.SpareSessions, Is.EqualTo(4));
             Assert.That(pace.Advise, Is.False);
-            Assert.That(pace.SubagentNote, Does.Contain("full speed"));
+            Assert.That(pace.SubagentNote, Does.Contain("full speed").And.Contain("held about 30s"));
         });
     }
 
