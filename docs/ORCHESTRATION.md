@@ -159,6 +159,14 @@ depends on anyone walking parent pids in time.
   The job closes when the CLI exits, and when the host exits, is stopped (`machine stop`, a closed tab) or is killed:
   whatever was left of the tree ends with it. The host itself and the pseudoconsole's OpenConsole are not in the job.
   Elevated hosts and hosts under a member's own account make their job the same way.
+- **Commands the daemon runs (M.ORCH-T1675).** `ProcessRunner` runs every command (`dotnet`, `git`, `gh`, `tickets`)
+  in its own job. At the timeout the whole job is ended, not only the processes still reachable by parent pid, and if
+  the daemon itself dies mid-run Windows closes the job and the run's tree goes with it. Builds and tests
+  (`ProcessRunner.Contained`: branch builds, main's tests, a branch's test run) also end whatever the command left
+  running once it exited (MSBuild nodes, testhost, VBCSCompiler), so nothing holds the worktree's files or the output
+  pipes. Other commands' leftovers are let go once the command has exited. The process joins its job right after it
+  starts, not at creation, so a child born in those first moments would be missed; `Kill(entireProcessTree: true)`
+  still runs at the timeout as the fallback.
 - **What may outlive its CLI.** Only a process started with `CREATE_BREAKAWAY_FROM_JOB`, which the job allows. A
   TermHost started from inside a hosted CLI does that (`Native.SpawnDetached`), so a CLI opened by another CLI outlives
   it. Anything else started from a hosted CLI (a GUI app, a dashboard or daemon launched by a deploy) ends with that CLI.

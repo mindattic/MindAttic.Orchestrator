@@ -57,7 +57,7 @@ public sealed class BranchTestRun
 
         var tree = TreeOf(worktreeRoot, ready.Repo);
         if (Prepare(repoPath, tree, ready.Head) is { } prepareError) return Incomplete(prepareError);
-        var suite = (RunSuite ?? (s => MainlineTests.Dotnet(ProcessRunner.Default, s, Timeout, LockRetryDelay, LockRetries, MainlineTests.EndLeftoverProcesses)))(
+        var suite = (RunSuite ?? (s => MainlineTests.Dotnet(ProcessRunner.Contained, s, Timeout, LockRetryDelay, LockRetries, MainlineTests.EndLeftoverProcesses)))(
             Path.Combine(tree, solution));
         return From(ready, suite);
     }

@@ -179,7 +179,7 @@ public sealed partial class BranchBuilds(JsonStore store)
                     changed = true;
                     running[Key(name, branch)] = new Run(name, branch, head, Spawn(() =>
                         Prepare(path, tree, head) is { } error ? new BuildResult(false, error)
-                            : (RunBuild ?? (s => Dotnet(ProcessRunner.Default, s, timeout)))(Path.Combine(tree, solution))));
+                            : (RunBuild ?? (s => Dotnet(ProcessRunner.Contained, s, timeout)))(Path.Combine(tree, solution))));
                     lines.Add(new Line(false, $"branch builds: building {name}'s {branch} at {Short(head)}"));
                 }
             }

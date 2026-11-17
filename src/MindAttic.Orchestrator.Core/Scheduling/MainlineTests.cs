@@ -84,7 +84,7 @@ public sealed partial class MainlineTests(JsonStore store)
         OrchestratorSettings.MinutesSpan(s.MainTestsTimeoutMinutes, SuiteTimeout);
 
     private SuiteResult DefaultRunSuite(string solution) =>
-        Dotnet(ProcessRunner.Default, solution, Timeout, LockRetryDelay, LockRetries, EndLeftoverProcesses);
+        Dotnet(ProcessRunner.Contained, solution, Timeout, LockRetryDelay, LockRetries, EndLeftoverProcesses);
 
     /// <summary>Ends processes whose program file lives under <paramref name="tree"/> (a testhost or TermHost a previous run left, which
     /// holds the DLLs the build copies over); every other process, and this one, is left alone (M.ORCH-T1632).</summary>
