@@ -702,6 +702,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 3600)]
     public double LauncherRespawnSeconds { get; set; } = 30;
 
+    /// <summary>Seconds an elevated (Administrator) CLI tab waits for its TermHost to register, UAC prompt included (M.ORCH-T1656).</summary>
+    [Setting("Elevated tab start wait (s)", Group = "Dashboard", Order = 12,
+        Help = "Seconds an elevated (Administrator) CLI tab waits for its TermHost to register after the UAC prompt opens; past it the tab reports that the host never started.")]
+    [SettingRange(5, 3600)]
+    public double ElevatedTermWaitSeconds { get; set; } = OrchestratorSettings.DefaultElevatedTermWaitSeconds;
+
     /// <summary>Seconds between the dashboard's rereads of each login's meter state: when it was last read and who must sign in again.</summary>
     [Setting("Reread login meters every (s)", Group = "Dashboard", Order = 13,
         Help = "Seconds between the dashboard's rereads of each login's meter state: when it was last read and who must sign in again.")]
@@ -854,6 +860,7 @@ public sealed class OrchestratorVaultSettings
         DashboardHiddenHolderPollSeconds = s.DashboardHiddenHolderPollSeconds,
         TermResyncSeconds = s.TermResyncSeconds,
         LauncherRespawnSeconds = s.LauncherRespawnSeconds,
+        ElevatedTermWaitSeconds = s.ElevatedTermWaitSeconds,
         MeterStatesSeconds = s.MeterStatesSeconds,
         TestTermHostSweepMinutes = s.TestTermHostSweepMinutes,
         OrgReachSpacingMinutes = s.OrgReachSpacingMinutes,
@@ -997,6 +1004,7 @@ public sealed class OrchestratorVaultSettings
         DashboardHiddenHolderPollSeconds = DashboardHiddenHolderPollSeconds,
         TermResyncSeconds = TermResyncSeconds,
         LauncherRespawnSeconds = LauncherRespawnSeconds,
+        ElevatedTermWaitSeconds = ElevatedTermWaitSeconds,
         MeterStatesSeconds = MeterStatesSeconds,
         TestTermHostSweepMinutes = TestTermHostSweepMinutes,
         OrgReachSpacingMinutes = OrgReachSpacingMinutes,

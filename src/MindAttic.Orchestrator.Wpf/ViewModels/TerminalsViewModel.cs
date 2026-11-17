@@ -748,10 +748,10 @@ public sealed class TerminalsViewModel : ObservableObject
     public bool UseTermHost { get; init; } = true;
 
     /// <summary>Starts a hosted CLI and returns its record; blocks (the default is <see cref="TermLauncher.Start(TermLaunchSpec, TimeSpan?)"/>,
-    /// or <see cref="TermLauncher.StartElevated"/> for a <see cref="TermLaunchSpec.Elevated"/> spec, M.ORCH-T1656).
-    /// Tests replace it.</summary>
+    /// or <see cref="TermLauncher.StartElevated(TermLaunchSpec, TimeSpan?)"/> for a <see cref="TermLaunchSpec.Elevated"/> spec,
+    /// waiting <see cref="DashboardTimings.ElevatedTermWait"/> for the UAC prompt and the host, M.ORCH-T1656). Tests replace it.</summary>
     internal Func<TermLaunchSpec, TermSessionRecord> Launch { get; init; } =
-        spec => spec.Elevated ? TermLauncher.StartElevated(spec) : TermLauncher.Start(spec);
+        spec => spec.Elevated ? TermLauncher.StartElevated(spec, DashboardTimings.ElevatedTermWait) : TermLauncher.Start(spec);
 
     /// <summary>Whether a TermHost can be started (the default looks for one). Tests replace it.</summary>
     internal Func<bool> HostAvailable { get; init; } = () => TermLauncher.FindHost() is not null;

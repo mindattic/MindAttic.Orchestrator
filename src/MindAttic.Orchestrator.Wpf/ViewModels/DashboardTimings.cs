@@ -25,6 +25,10 @@ internal static class DashboardTimings
     /// <summary>The least time between two Launchers for one person: <see cref="OrchestratorSettings.LauncherRespawnSeconds"/>.</summary>
     public static TimeSpan LauncherSpacing { get; private set; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>How long an elevated CLI tab waits for its TermHost, UAC prompt included (M.ORCH-T1656):
+    /// <see cref="OrchestratorSettings.ElevatedTermWaitSeconds"/>.</summary>
+    public static TimeSpan ElevatedTermWait { get; private set; } = TimeSpan.FromSeconds(OrchestratorSettings.DefaultElevatedTermWaitSeconds);
+
     /// <summary>The login meters' reread: <see cref="OrchestratorSettings.MeterStatesSeconds"/>.</summary>
     public static TimeSpan MeterStates { get; private set; } = TimeSpan.FromSeconds(30);
 
@@ -61,6 +65,7 @@ internal static class DashboardTimings
         HiddenHolderPoll = OrchestratorSettings.SecondsSpan(s.DashboardHiddenHolderPollSeconds, 1);
         TermResync = OrchestratorSettings.SecondsSpan(s.TermResyncSeconds, 1);
         LauncherSpacing = OrchestratorSettings.SecondsSpan(s.LauncherRespawnSeconds, 1);
+        ElevatedTermWait = OrchestratorSettings.SecondsSpan(s.ElevatedTermWaitSeconds, 5);
         MeterStates = OrchestratorSettings.SecondsSpan(s.MeterStatesSeconds, 1);
         // At least 50ms, so a refresh's blink queue stays bounded.
         TabBlinkMinSpacing = OrchestratorSettings.SecondsSpan(s.TabBlinkMinSpacingMs / 1000, 0.05);

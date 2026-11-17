@@ -144,6 +144,7 @@ public sealed class LampSettingsTests
             s => s.DashboardHiddenHolderPollSeconds),
         Case("termResyncSeconds", s => s with { TermResyncSeconds = 45 }, 45d, v => v.TermResyncSeconds = 90, 90d, s => s.TermResyncSeconds),
         Case("launcherRespawnSeconds", s => s with { LauncherRespawnSeconds = 30 }, 30d, v => v.LauncherRespawnSeconds = 60, 60d, s => s.LauncherRespawnSeconds),
+        Case("elevatedTermWaitSeconds", s => s with { ElevatedTermWaitSeconds = 90 }, 90d, v => v.ElevatedTermWaitSeconds = 300, 300d, s => s.ElevatedTermWaitSeconds),
         Case("meterStatesSeconds", s => s with { MeterStatesSeconds = 30 }, 30d, v => v.MeterStatesSeconds = 15, 15d, s => s.MeterStatesSeconds),
         // The rest of the sweep (M.ORCH-T1624)
         Case("mainTestsLockRetries", s => s with { MainTestsLockRetries = 2 }, 2d, v => v.MainTestsLockRetries = 4, 4d, s => s.MainTestsLockRetries),

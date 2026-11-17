@@ -542,6 +542,13 @@ public sealed record OrchestratorSettings
     /// <summary>The least seconds between two Launchers opened for one person (M.ORCH-T1150), so one that exits at once can't loop.</summary>
     public double LauncherRespawnSeconds { get; init; } = 30;
 
+    /// <summary>The default of <see cref="ElevatedTermWaitSeconds"/>: long enough for a human to answer the UAC prompt.</summary>
+    public const double DefaultElevatedTermWaitSeconds = 120;
+
+    /// <summary>Seconds an elevated (Administrator) CLI tab waits for its TermHost to register, the UAC prompt included
+    /// (M.ORCH-T1656; <c>TermLauncher.StartElevated</c>).</summary>
+    public double ElevatedTermWaitSeconds { get; init; } = DefaultElevatedTermWaitSeconds;
+
     /// <summary>Seconds between the dashboard's rereads of each login's meter state (when it was last read, who must sign in again).</summary>
     public double MeterStatesSeconds { get; init; } = 30;
 

@@ -44,9 +44,9 @@ public sealed record TermLaunchSpec
     /// dashboard on the machine opens a tab for it. For a caller that deliberately runs a real host beside one.</summary>
     public bool Unlisted { get; init; }
 
-    /// <summary>Starts the host elevated (M.ORCH-T1656): <see cref="TermLauncher.StartElevated"/> instead of
-    /// <see cref="TermLauncher.Start(TermLaunchSpec, TimeSpan?)"/>. <see cref="Environment"/> must be empty — a UAC prompt
-    /// can't carry it (see <see cref="TermLauncher.StartElevated"/>).</summary>
+    /// <summary>Starts the host elevated (M.ORCH-T1656): <see cref="TermLauncher.StartElevated(TermLaunchSpec, TimeSpan?)"/> instead
+    /// of <see cref="TermLauncher.Start(TermLaunchSpec, TimeSpan?)"/>. <see cref="Environment"/> must be empty — a UAC prompt
+    /// can't carry it (see <see cref="TermLauncher.StartElevated(TermLaunchSpec, TimeSpan?)"/>).</summary>
     public bool Elevated { get; init; }
 
     /// <summary>
@@ -200,9 +200,11 @@ public static class TermLauncher
         }
     }
 
-    /// <summary>How long <see cref="StartElevated"/> waits for the host to register: long enough for a human to answer the UAC
-    /// prompt, not just the few seconds <see cref="DefaultRegisterWait"/> gives an already-trusted, unelevated launch.</summary>
-    public static readonly TimeSpan DefaultElevatedWait = TimeSpan.FromMinutes(2);
+    /// <summary>How long <see cref="StartElevated"/> waits for the host to register when its caller passes no wait: long enough
+    /// for a human to answer the UAC prompt, not just the few seconds <see cref="DefaultRegisterWait"/> gives an already-trusted,
+    /// unelevated launch. The dashboard passes the Vault setting <see cref="Settings.OrchestratorSettings.ElevatedTermWaitSeconds"/>
+    /// instead (M.ORCH-T1656); this is its default.</summary>
+    public static readonly TimeSpan DefaultElevatedWait = TimeSpan.FromSeconds(Settings.OrchestratorSettings.DefaultElevatedTermWaitSeconds);
 
     /// <summary>
     /// Starts <paramref name="spec"/> under a detached, elevated TermHost (M.ORCH-T1656, M.LNCH-T125): the same
@@ -219,15 +221,58 @@ public static class TermLauncher
     /// Throws <see cref="InvalidOperationException"/> when the host can't be found, the user declines the UAC prompt (Win32
     /// error 1223), or no host registers within <paramref name="registerWait"/>.
     /// </summary>
-    public static TermSessionRecord StartElevated(TermLaunchSpec spec, TimeSpan? registerWait = null)
+    public static TermSessionRecord StartElevated(TermLaunchSpec spec, TimeSpan? registerWait = null) =>
+        StartElevated(spec, registerWait, FindHost, ShellStart, id => TermSessions.Get(id), () => DateTime.UtcNow, Thread.Sleep);
+
+    /// <summary>The real elevated start: <c>ShellExecuteEx</c> with <c>runas</c>, which shows the UAC prompt.</summary>
+    private static void ShellStart(ProcessStartInfo psi)
+    {
+        using var launch = Process.Start(psi);
+    }
+
+    /// <summary>Win32's ERROR_CANCELLED: the user declined the UAC prompt.</summary>
+    internal const int ErrorCancelled = 1223;
+
+    /// <summary>
+    /// <see cref="StartElevated(TermLaunchSpec, TimeSpan?)"/> with its side effects as seams (M.ORCH-T1656), so tests drive it
+    /// with fakes and never raise a UAC prompt: <paramref name="findHost"/> finds the host, <paramref name="shellStart"/> runs
+    /// the <c>runas</c> start (<see cref="ElevatedStartInfo"/>), <paramref name="lookup"/> reads the session registry, and
+    /// <paramref name="now"/> and <paramref name="sleep"/> are the clock.
+    /// </summary>
+    internal static TermSessionRecord StartElevated(TermLaunchSpec spec, TimeSpan? registerWait, Func<string?> findHost,
+        Action<ProcessStartInfo> shellStart, Func<string, TermSessionRecord?> lookup, Func<DateTime> now, Action<int> sleep)
     {
         if (spec.Environment.Count > 0)
             throw new NotSupportedException("An elevated TermHost can't carry Environment variables: UseShellExecute can't set them, " +
                 "and nothing here puts a secret on its command line instead.");
 
-        var host = FindHost() ?? throw new InvalidOperationException(
+        var host = findHost() ?? throw new InvalidOperationException(
             $"TermHost isn't installed: no {HostExeName} beside {AppContext.BaseDirectory}, and {HostPathVariable} isn't set.");
         var id = spec.Id ?? TermProtocol.NewSessionId();
+        var wait = registerWait ?? DefaultElevatedWait;
+
+        try { shellStart(ElevatedStartInfo(host, spec, id)); }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == ErrorCancelled)
+        {
+            throw new InvalidOperationException("Elevation was cancelled.");
+        }
+
+        var until = now() + wait;
+        while (true)
+        {
+            if (lookup(id) is { } record) return record;
+            if (now() >= until)
+                throw new InvalidOperationException($"The elevated TermHost (session {id}) didn't register within " +
+                    $"{wait.TotalSeconds:0}s; see {Path.Combine(TermSessions.DefaultDirectory, TermProtocol.Sanitize(id) + ".log")}.");
+            sleep(50);
+        }
+    }
+
+    /// <summary>The <c>runas</c> start of <paramref name="host"/>'s <c>--launch</c> respawn for <paramref name="spec"/> as session
+    /// <paramref name="id"/> (M.ORCH-T1656): shell-executed (the only way to get the UAC prompt), from the host's own folder,
+    /// with exactly the arguments an unelevated <see cref="Start(TermLaunchSpec, TimeSpan?)"/> passes.</summary>
+    internal static ProcessStartInfo ElevatedStartInfo(string host, TermLaunchSpec spec, string id)
+    {
         var psi = new ProcessStartInfo(host)
         {
             UseShellExecute = true,
@@ -235,23 +280,7 @@ public static class TermLauncher
             WorkingDirectory = Path.GetDirectoryName(host) ?? AppContext.BaseDirectory,
         };
         foreach (var arg in Arguments(spec, id)) psi.ArgumentList.Add(arg);
-
-        try { using var launch = Process.Start(psi); }
-        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
-        {
-            throw new InvalidOperationException("Elevation was cancelled.");
-        }
-
-        var until = DateTime.UtcNow + (registerWait ?? DefaultElevatedWait);
-        while (true)
-        {
-            if (TermSessions.Get(id) is { } record) return record;
-            if (DateTime.UtcNow >= until)
-                throw new InvalidOperationException($"The elevated TermHost (session {id}) didn't register within " +
-                    $"{(registerWait ?? DefaultElevatedWait).TotalSeconds:0}s; see " +
-                    $"{Path.Combine(TermSessions.DefaultDirectory, TermProtocol.Sanitize(id) + ".log")}.");
-            Thread.Sleep(50);
-        }
+        return psi;
     }
 
     /// <summary>The <c>--launch</c> arguments for <paramref name="spec"/> as session <paramref name="id"/>.</summary>

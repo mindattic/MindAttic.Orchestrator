@@ -341,30 +341,14 @@ internal sealed class TermSession
     }
 
     /// <summary>Whether this host process itself runs elevated (M.ORCH-T1656): computed once, since a process's own token
-    /// elevation never changes while it runs. <see cref="NewServer"/> lowers its pipe's integrity label only when this is
-    /// true — an ordinary, unelevated host (almost every one) is untouched.</summary>
-    private static readonly bool IsElevated = ComputeIsElevated();
+    /// elevation never changes while it runs.</summary>
+    private static readonly bool IsElevated = HostPipes.IsProcessElevated();
 
-    private static bool ComputeIsElevated()
-    {
-        try
-        {
-            using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-            return new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
-        }
-        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException) { return false; }
-    }
+    /// <summary>Where every pipe instance comes from (M.ORCH-T1656): today's <see cref="CurrentUserPipeFactory"/> for an
+    /// unelevated host, <see cref="ElevatedPipeFactory"/> (user-only DACL, Medium label) for an elevated one. Tests replace it.</summary>
+    internal IHostPipeFactory Pipes { get; init; } = HostPipes.For(IsElevated);
 
-    private NamedPipeServerStream NewServer(bool firstInstance = false)
-    {
-        var server = new NamedPipeServerStream(options.PipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
-            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | (firstInstance ? PipeOptions.FirstPipeInstance : 0));
-        // M.ORCH-T1656: an elevated host's pipe otherwise defaults to a High mandatory label, which blocks the dashboard's
-        // own (Medium-IL) viewer from opening it at all. See Native.LowerPipeIntegrityToLow.
-        if (IsElevated && !Native.LowerPipeIntegrityToLow(server.SafePipeHandle.DangerousGetHandle()))
-            log.Write("couldn't lower the pipe's integrity label; an unelevated viewer may not be able to attach");
-        return server;
-    }
+    private NamedPipeServerStream NewServer(bool firstInstance = false) => Pipes.Create(options.PipeName, firstInstance);
 
     private async Task AcceptLoopAsync()
     {
