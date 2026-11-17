@@ -132,7 +132,7 @@ public sealed class Installer
             // again, or pacing and the hooks' holds stay off until the next logon (M.ORCH-T353).
             // The copy's failure is what's reported: a daemon that can't start too (no old exe there) mustn't replace it.
             try { if (!DaemonRunning() && File.Exists(old)) StartDaemon(old); }
-            catch (InvalidOperationException ex) { OrchestratorLog.For("Installer").Warning(ex, "Restarting the old daemon after a failed copy failed; contained"); }
+            catch (InvalidOperationException startEx) { OrchestratorLog.For("Installer").Warning(startEx, "Restarting the old daemon after a failed copy failed; contained"); }
             throw;
         }
         InstallLegacyCopy(runningExe);
@@ -275,7 +275,7 @@ public sealed class Installer
     public string? EnsureDaemon(string exe)
     {
         // The host runs it (M.ORCH-T1473).
-        if (DaemonRunning() || MachineRole.Current.IsClient) return null;
+        if (DaemonRunning() || !MachineTopology.Current.RunsDaemon) return null;
         StartDaemon(exe);
         return "started the daemon";
     }
@@ -304,7 +304,7 @@ public sealed class Installer
     /// </summary>
     public static string? EnsureLogonStart(string exe)
     {
-        if (MachineRole.Current.IsClient) return null;
+        if (!MachineTopology.Current.RunsDaemon) return null;
         using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RunKey);
         var current = key.GetValue(LogonValueName) as string;
         if (Run("schtasks", "/Query", "/TN", SchedulerDaemonTask).Code == 0)

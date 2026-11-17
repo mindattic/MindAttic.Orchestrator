@@ -73,7 +73,7 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
     {
         var url = GatewayRemotes.NormalizeUrl(host) ?? throw new ArgumentException($"\"{host}\" isn't a host name, address or https URL.");
         var normalizedPin = GatewayRemotes.NormalizePin(pin) ?? throw new ArgumentException("The pin is the gateway certificate's SHA-256: 64 hex characters.");
-        if (!MachineRole.Current.IsClient)
+        if (!MachineTopology.Current.IsClient)
         {
             say("Not a client yet: handing off first (data pushed, daemon stopped, hooks out).");
             if (!Handoff(null, pushData: true, orchestratorExe)) return false;
@@ -212,7 +212,7 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         });
         await Task.WhenAll(tasks).ConfigureAwait(false);
         say($"Pulled {repos.Count - problems} of {repos.Count} repos.");
-        if (MachineRole.Current.IsClient) RefreshTicketsMirror();
+        if (!MachineTopology.Current.UsesLocalTicketsDb) RefreshTicketsMirror();
         return problems;
     }
 
@@ -304,9 +304,8 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
     /// </summary>
     public async Task<(int ExitCode, string Output)> RunTicketsOnHostAsync(IReadOnlyList<string> args, string currentDirectory, CancellationToken ct)
     {
-        var role = MachineRole.Current;
         var store = new JsonStore();
-        if (!role.IsClient || GatewayRemotes.Find(store.LoadSettings().Gateway, MachineRole.HostRemoteName) is not { } remote)
+        if (!MachineTopology.Current.UsesTicketsShim || GatewayRemotes.Find(store.LoadSettings().Gateway, MachineRole.HostRemoteName) is not { } remote)
             return (1, "This machine isn't connected to a host (orchestrator machine connect).");
         var sent = new List<string>(args.Count);
         for (var i = 0; i < args.Count; i++)

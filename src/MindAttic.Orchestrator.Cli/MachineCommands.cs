@@ -20,6 +20,7 @@ internal sealed class MachineShowCommand : Command
     public override int Execute(CommandContext context)
     {
         var role = MachineRole.Current;
+        var topology = MachineTopology.From(role);
         AnsiConsole.MarkupLine($"This machine ({Markup.Escape(Environment.MachineName)}): [aqua]{Markup.Escape(role.ToString())}[/]");
         AnsiConsole.MarkupLine($"Daemon: {(Installer.DaemonRunning() ? "[green]running[/]" : "[grey]not running[/]")}");
         AnsiConsole.MarkupLine($"Orchestrator data: {Markup.Escape(OrchestratorDb.LivePath)}");
@@ -27,7 +28,7 @@ internal sealed class MachineShowCommand : Command
             AnsiConsole.MarkupLine($"Ticket data: {Markup.Escape(tickets)} (the host's, refreshed by orchestrator machine pull)");
         if (TermGateway.Running() is { } gw)
             AnsiConsole.MarkupLine($"Gateway: [green]running[/] on {Markup.Escape(gw.Bind)}:{gw.Port}, certificate SHA-256 {gw.CertSha256}");
-        if (role.IsHost)
+        if (topology.IsHost)
         {
             if (MachineSetup.ConnectLine() is { } line)
             {
@@ -36,9 +37,9 @@ internal sealed class MachineShowCommand : Command
             }
             else AnsiConsole.MarkupLine("[yellow]The gateway isn't running yet; the daemon starts it within a tick.[/]");
         }
-        else if (role.IsClient && role.GatewayUrl is null)
+        else if (topology.IsClient && role.GatewayUrl is null)
             AnsiConsole.MarkupLine("[yellow]No host connected yet: run setup-host.ps1 on the VM, then the orchestrator machine connect line it prints.[/]");
-        else if (!role.IsClient)
+        else if (!topology.IsClient)
             AnsiConsole.MarkupLine("[grey]To move the work to a VM: orchestrator machine handoff --kit <folder> here, then setup-host.ps1 on the VM (docs/REMOTE_HOST.md).[/]");
         return 0;
     }
