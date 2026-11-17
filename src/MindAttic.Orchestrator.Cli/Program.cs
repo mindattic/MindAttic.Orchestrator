@@ -233,6 +233,7 @@ internal static class CliApp
                 b.SetDescription("On the remote host: each origin/work/* branch, its isolated build (M.ORCH-T1501, off unless the Vault's RemoteBranchBuilds) and its local test run (M.ORCH-T1637); --ready lists the ones built clean and waiting for a local test run, --returned the ones whose run failed and are back with their work unit, --json as data.");
                 b.SetDefaultCommand<BranchesCommand>();
                 b.AddCommand<BranchesReportCommand>("report").WithDescription("Record a local test run: report <repo> <branch> <head> --pass|--fail [[--note \"<what failed>\"]]. A fail sends the branch back to its work unit (its ticket noted and handed out again) to keep iterating on the same branch; no other branch waits on it.");
+                b.AddCommand<BranchesFastForwardCommand>("ff").WithDescription("On the PC, after the host merged a signed-off branch into main (M.ORCH-T1636): fast-forward main in the named repos' checkouts (ff [[<repo>...]], every workspace repo when none), leaving any off main or with changes in the way as they are.");
             });
             // Let crashes reach the catch below so they're logged, not just printed.
             config.PropagateExceptions();

@@ -110,8 +110,13 @@ or a local Claude CLI file on the PC lands in the host's database at once, and e
   head (M.ORCH-T1637). A failing run sends the branch back to the work unit that produced it, the ticket its name carries
   (`work/<ticket>`): the ticket gets a note with the failures and is handed out again, to keep iterating on that same
   branch, while every other branch goes on building and being tested. Once it pushes a new head, the host builds it and
-  queues it for a local run again; `--returned` lists the branches back with their work unit. Running the local suite,
-  the sign-off's merge to main and the PC's fetch job are still to come.
+  queues it for a local run again; `--returned` lists the branches back with their work unit. A passing run signs that
+  head off (M.ORCH-T1636): at its next look the host merges it into main by itself, in a worktree of its own
+  (`<WorktreeRoot>\<repo>\merge-main`, never the repo's checkout), pushes main and deletes the branch on origin (kept if it
+  moved after the sign-off; a head that moved isn't merged, it needs its own run). A merge that conflicts with main is
+  logged and not tried again until a new head is signed off. Then `orchestrator branches ff [<repo>...]` on your PC
+  fast-forwards main (only a checkout on main, only a fast-forward). Running the local suite and the PC's fetch job are
+  still to come.
 - **Back to one machine:** `orchestrator machine standalone` (and `orchestrator db migrate` to go back to SQL Server).
 
 ## Limits

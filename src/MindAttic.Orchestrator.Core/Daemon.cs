@@ -120,6 +120,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         {
             Held = () => Activity.MemoryGuard.Shared.Last is { Level: > Activity.MemoryLevel.Ok } m ? $"RAM is low ({m.Reading.Describe()})" : null,
         };
+        // And their merge into main once a local test run signs one off (M.ORCH-T1636), by the same lease holder.
+        var branchMerges = new BranchMerges(store);
         var reminders = new Reminders.ReminderSender(store, new Reminders.PsstClient(Runner), (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent));
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
@@ -466,8 +468,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 RunMainlineTests(mainTests, testsLease, snapshot, s, options.WorkspaceRoot);
                 tick.Lap("main-line tests");
                 // Off (the default): nothing; turned off mid-build, the builds running are still recorded, none start.
-                if (s.RemoteBranchBuilds || branchBuilds.Running.Count > 0)
-                    RunBranchBuilds(branchBuilds, s.RemoteBranchBuilds && branchLease.TryAcquire(), snapshot, s);
+                if (s.RemoteBranchBuilds || branchBuilds.Running.Count > 0 || branchMerges.Running)
+                    RunBranchBuilds(branchBuilds, branchMerges, s.RemoteBranchBuilds && branchLease.TryAcquire(), snapshot, s);
                 tick.Lap("branch builds");
                 // Keyed without its numbers: a hold whose percent ticks 93 → 94 is the same hold, not a new line (found live: 46 lines in 2h).
                 var pausedKey = allocate.Paused is null ? null : Digits().Replace(allocate.Paused, "#");
@@ -577,17 +579,21 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     /// <summary>Builds each repo's <c>origin/work/*</c> branches that moved, each in its own worktree, and records the builds that
-    /// finished (<see cref="BranchBuilds"/>, M.ORCH-T1501). Only <paramref name="mayStart"/> (setting on, lease held) starts one.</summary>
-    private void RunBranchBuilds(BranchBuilds builds, bool mayStart, Snapshot snapshot, OrchestratorSettings s)
+    /// finished (<see cref="BranchBuilds"/>, M.ORCH-T1501), then merges the ones a local test run signed off into main
+    /// (<see cref="BranchMerges"/>, M.ORCH-T1636). Only <paramref name="mayStart"/> (setting on, lease held) starts either.</summary>
+    private void RunBranchBuilds(BranchBuilds builds, BranchMerges merges, bool mayStart, Snapshot snapshot, OrchestratorSettings s)
     {
         try
         {
             var repos = snapshot.Repos.Where(r => r.Path.Length > 0 && !r.Name.StartsWith('('))
-                .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase).Select(g => (g.Key, g.First().Path));
+                .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase).Select(g => (g.Key, g.First().Path)).ToList();
             builds.MaxRunning = (int)Math.Clamp(double.IsFinite(s.BranchBuildsMaxRunning) ? s.BranchBuildsMaxRunning : 1, 1, 32);
             builds.Timeout = OrchestratorSettings.SecondsSpan(s.BranchBuildsTimeoutMinutes * 60, 60);
             builds.CheckEvery = OrchestratorSettings.SecondsSpan(s.BranchBuildsCheckSeconds, 5);
             foreach (var line in builds.Tick(repos, s.WorktreeRoot, DateTime.UtcNow, mayStart))
+                Say(line.Warn ? LogEventLevel.Warning : LogEventLevel.Information, line.Text);
+            merges.CheckEvery = builds.CheckEvery;
+            foreach (var line in merges.Tick(repos, s.WorktreeRoot, DateTime.UtcNow, mayStart))
                 Say(line.Warn ? LogEventLevel.Warning : LogEventLevel.Information, line.Text);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException)
