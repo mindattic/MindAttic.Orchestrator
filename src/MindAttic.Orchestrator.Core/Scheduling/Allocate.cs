@@ -270,7 +270,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         "ticket's work alone, as one commit, naming every file you changed: git add <path> ... for new files, then plain " +
         "git commit -m \"<subject>\" -- <path> <path> ... (the -- and the paths are required: other agents share this checkout and " +
         "may have files staged, and a commit without paths would take theirs too) " +
-        $"(not /commit, whose gate runs the test suite), with {item.Id} at the end of the subject; no push yet, the steps below do that, so keep going. " +
+        $"(not /commit, whose gate runs the test suite), with {item.Id} at the end of the subject; Never reuse .git/COMMIT_EDITMSG (no git commit -F .git/COMMIT_EDITMSG, -c or --amend off it): this checkout is shared, so it holds whatever message another agent wrote last; pass your own -m, or a message file in ORCH_SCRATCH. no push yet, the steps below do that, so keep going. " +
         // M.ORCH-T563: a Sonnet ticket's big or risky diff gets one Opus review of the diff alone before it lands.
         (model is { IsSonnet: true } ? "3. " + ReviewStep(item.Id) : "") +
         $"{(model is { IsSonnet: true } ? 4 : 3)}. Land it on {item.Repo}'s main line, {mainline}: git fetch origin {mainline}, then git merge --no-edit origin/{mainline} " +
