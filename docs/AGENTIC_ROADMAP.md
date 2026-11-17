@@ -201,6 +201,19 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
 - New `Scheduling/JobScheduler.cs`: ready units × idle agents matched by role, ordered by job
   priority then the existing `GraphWeight`. Login is chosen last, by room, with the existing
   `LoginRoom`/`Redelegation`. Pace becomes one admission check beside RAM, disk and role fit.
+- **CLIs are a managed pool, not one-off instances.** Today a person opens a CLI on one login,
+  turns `/allocate` on, and that CLI pulls for itself. In the pool model a member says how much of
+  their login the pool may use; the orchestrator then decides how many CLIs each login runs, what
+  role each has and which unit it takes, opens and closes them as the queue needs, and fills each
+  login up to its cutoff. A person's own CLI is never taken over, and their own use still wins.
+- **Capacity pool**: every login's remaining 5-hour and weekly room, per org, is one figure the
+  scheduler plans against: what the pool can carry now, when each login resets, and which units
+  fit where. A unit that doesn't fit any one login's remaining room is planned for the reset that
+  will carry it, not started and stranded.
+- **Dashboard**: the Users → CLIs view stays exactly as it is, with each CLI row gaining its role
+  and current unit. Beside it, a **Work** view runs the other way: milestone → job → unit → the
+  agent, login and machine carrying it. Above both, a pool bar: total room across all logins, the
+  burn rate, the next resets, and what is queued against them.
 - Wire it into the dormant daemon starter (`Allocate.Order`/`Tick`, `Allocate.cs:22,128-198`) and
   into `Allocate.Next` so `/allocate` CLIs and daemon-started sessions draw from the same queue.
 - One admission function: the checks now spread over the CLI, the daemon and the generated hooks
