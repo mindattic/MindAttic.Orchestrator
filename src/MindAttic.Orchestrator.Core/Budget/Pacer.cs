@@ -109,6 +109,9 @@ public sealed record Pace(
     /// <summary>Short of RAM: nothing new starts, whatever the windows allow.</summary>
     public bool MemoryHold => Memory is { Level: > Activity.MemoryLevel.Ok };
 
+    /// <summary>The disk floor's hold when this pace was worked out (M.ORCH-T1679); null while the disk has room or the floor is off.</summary>
+    public Activity.DiskHold? Disk { get; init; }
+
     /// <summary>What agents are told about the allowance at the start of each turn.</summary>
     public string SubagentNote => SubagentAllowance switch
     {
@@ -434,6 +437,14 @@ public static class Pacer
             : $"{pace.Note} Free RAM ({memory.Reading.Describe()}) holds {cap} subagent{(cap == 1 ? "" : "s")} at once.";
         return pace with { SubagentAllowance = cap, Note = note.TrimStart() };
     }
+
+    /// <summary>
+    /// The disk floor's hold (M.ORCH-T1679) carried on the pace, so every reader of it (allocate in another process, the
+    /// dashboard's pace note) sees the daemon's judgment and its reason. It changes no allowance: the holding is done where new
+    /// work starts (allocate, new CLIs, main-line tests, branch builds), and running work carries on.
+    /// </summary>
+    public static Pace HoldForDisk(Pace pace, Activity.DiskHold? disk) =>
+        disk is null ? pace : pace with { Disk = disk, Note = $"{pace.Note} {disk.Why}.".TrimStart() };
 
     /// <summary>The fewest CLIs spending on one login for <see cref="CoolOff"/> to apply: it's for a login split across many CLIs.</summary>
     public const int CoolOffMinClis = 2;

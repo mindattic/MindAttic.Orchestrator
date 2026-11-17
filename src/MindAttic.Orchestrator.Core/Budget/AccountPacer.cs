@@ -203,6 +203,8 @@ public sealed class AccountPacer
         pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, Pacer.StopPercent(settings, week));
         // Short of RAM, nothing new starts, whatever the windows allow (M.ORCH-T1494).
         pace = Pacer.CapByMemory(pace, Activity.MemoryGuard.Shared.Observe(settings, now), settings);
+        // Under the disk floor even after a self-cleanup, nothing new starts either (M.ORCH-T1679): the pace carries why.
+        pace = Pacer.HoldForDisk(pace, Activity.DiskGuard.Shared.Observe(settings, now));
         // Let past its weekly target by the user (M.ORCH-T694): said in its pace note, which its tab shows.
         if (why is not null) pace = pace with { Note = $"{pace.Note} {why}" };
         if (write)

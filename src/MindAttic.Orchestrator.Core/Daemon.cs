@@ -108,17 +108,18 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         // The git-touching chores (audit, db syncs, mirror, GitHub intake) run in one daemon: two in the same checkout collide on
         // index.lock and undo each other's reset and merge --abort (M.ORCH-T722).
         using var gitChoresLease = new DispatchLease(store.Directory, GitChoresLeaseName, store.Db);
-        // One suite at a time, and none while RAM is short (M.ORCH-T1496): each is a whole dotnet test of several GB.
+        // One suite at a time, and none while RAM is short (M.ORCH-T1496) or the disk is under its floor (M.ORCH-T1679): each
+        // is a whole dotnet test of several GB, in its own worktree.
         var mainTests = new MainlineTests(store)
         {
             MaxRunning = 1,
-            Held = () => Activity.MemoryGuard.Shared.Last is { Level: > Activity.MemoryLevel.Ok } m ? $"RAM is low ({m.Reading.Describe()})" : null,
+            Held = MachineHeld,
         };
         // The remote host's work-branch builds (M.ORCH-T1501), off unless RemoteBranchBuilds; one daemon builds them.
         using var branchLease = new DispatchLease(store.Directory, BranchBuilds.LeaseName, store.Db);
         var branchBuilds = new BranchBuilds(store)
         {
-            Held = () => Activity.MemoryGuard.Shared.Last is { Level: > Activity.MemoryLevel.Ok } m ? $"RAM is low ({m.Reading.Describe()})" : null,
+            Held = MachineHeld,
         };
         // And their merge into main once a local test run signs one off (M.ORCH-T1636), by the same lease holder.
         var branchMerges = new BranchMerges(store);
@@ -192,6 +193,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 WatchPagefile();
                 WatchDisk(s);
                 CleanDiskIfLow(s, DateTime.UtcNow, options.WorkspaceRoot);
+                WatchDiskHold(s);
                 tick.Lap("hooks, machine health and disk space");
                 try { if (ledgerLease.TryAcquire()) ledger.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"pace ledger: couldn't update it (retrying next minute): {ex.Message}"); }
@@ -405,7 +407,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                         store.Save(AllocateHoldsName, new AllocateHolds(
                             QuietHours.Active(s.QuietHours, DateTime.Now) is not null,
                             [.. plan.Worked],
-                            [.. plan.Stale.Where(q => q.Assignment is { Pilot: { } p } a && Sessions.BackgroundAgent.IsRunning(p, a.PilotStartedUtc)).Select(q => q.Id)]));
+                            [.. plan.Stale.Where(q => q.Assignment is { Pilot: { } p } a && Sessions.BackgroundAgent.IsRunning(p, a.PilotStartedUtc)).Select(q => q.Id)],
+                            Activity.DiskGuard.Shared.Last?.Why));
                         publishedStale = staleIds;
                         publishedStaleUtc = DateTime.UtcNow;
                     }
@@ -944,8 +947,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// <summary>What else orchestrator next holds back, for the context gate's keep-going (rewritten with the stale list).</summary>
     public const string AllocateHoldsName = "allocate-holds";
 
-    /// <summary>The worked record.</summary>
-    public sealed record AllocateHolds(bool Quiet, IReadOnlyList<Scheduling.WorkedTicket> Worked, IReadOnlyList<string> LivePilot);
+    /// <summary>The worked record. <paramref name="Disk"/> is why nothing is handed out while the disk is under its floor
+    /// (M.ORCH-T1679: which drive, how much is free and how much to free); null while it has room.</summary>
+    public sealed record AllocateHolds(bool Quiet, IReadOnlyList<Scheduling.WorkedTicket> Worked, IReadOnlyList<string> LivePilot, string? Disk = null);
     private IReadOnlyList<string>? publishedStale;
     private DateTime publishedStaleUtc;
 

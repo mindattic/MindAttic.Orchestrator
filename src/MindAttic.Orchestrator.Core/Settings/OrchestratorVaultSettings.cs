@@ -265,6 +265,16 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 100000)]
     public double DiskCleanupGb { get; set; } = 30;
 
+    /// <summary>The hard disk floor: free GB on the system or worktree drive under which no new work starts, once a self-cleanup has run and the drive is still under it.</summary>
+    [Setting("Disk floor: hold new work (free GB)", Group = "Alerts", Order = 5, Help = "Free GB on the system or worktree drive under which no new work starts (no tickets handed out, no new CLI, no main-line tests or branch builds), once a self-cleanup has run and the drive is still under it. Running work is never stopped. 0 turns the hold off.")]
+    [SettingRange(0, 100000)]
+    public double DiskHoldGb { get; set; } = 5;
+
+    /// <summary>GB a held drive must be clear of the disk floor before new work starts again.</summary>
+    [Setting("Disk floor: resume margin (GB)", Group = "Alerts", Order = 5, Help = "GB a held drive must be clear of the disk floor before new work starts again, so a drive hovering on the floor doesn't flap.")]
+    [SettingRange(0, 100000)]
+    public double DiskHoldResumeMarginGb { get; set; } = 2;
+
     /// <summary>Hours a %TEMP%\claude session folder is kept whatever the free space: older, with nothing in it written for as long, it goes once its session isn't running; a running session keeps its folder and loses only scratchpad entries that old and that quiet.</summary>
     [Setting("Keep session temp (hours)", Group = "Alerts", Order = 10,
         Help = "Hours a %TEMP%\\claude session folder is kept whatever the free space: older, with nothing in it written for as long, it goes once its session isn't running; a running session keeps its folder and loses only scratchpad entries that old and that quiet. 0 turns it off.")]
@@ -846,6 +856,8 @@ public sealed class OrchestratorVaultSettings
         DiskWarnGb = s.DiskWarnGb,
         DiskCriticalGb = s.DiskCriticalGb,
         DiskCleanupGb = s.DiskCleanupGb,
+        DiskHoldGb = s.DiskHoldGb,
+        DiskHoldResumeMarginGb = s.DiskHoldResumeMarginGb,
         TempRetentionHours = s.TempRetentionHours,
         ScratchLeaseHours = s.ScratchLeaseHours,
         DaemonRestartSeconds = s.DaemonRestartSeconds,
@@ -992,6 +1004,8 @@ public sealed class OrchestratorVaultSettings
         DiskWarnGb = DiskWarnGb,
         DiskCriticalGb = DiskCriticalGb,
         DiskCleanupGb = DiskCleanupGb,
+        DiskHoldGb = DiskHoldGb,
+        DiskHoldResumeMarginGb = DiskHoldResumeMarginGb,
         TempRetentionHours = TempRetentionHours,
         ScratchLeaseHours = ScratchLeaseHours,
         DaemonRestartSeconds = DaemonRestartSeconds,

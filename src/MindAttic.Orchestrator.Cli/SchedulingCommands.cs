@@ -446,6 +446,14 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Free GB on the temp drive under which agent-made temp (ended sessions' folders, stale scratch builds) is deleted, oldest first (default 30; 0 turns it off).")]
         public double? DiskCleanupGb { get; init; }
 
+        [CommandOption("--disk-hold-gb <GB>")]
+        [Description("The hard disk floor: free GB on the system or worktree drive under which no new work starts (tickets, CLIs, main-line tests, branch builds), once a self-cleanup has run and it's still under it; running work is never stopped (default 5; 0 turns it off).")]
+        public double? DiskHoldGb { get; init; }
+
+        [CommandOption("--disk-hold-resume-margin-gb <GB>")]
+        [Description("GB a held drive must be clear of --disk-hold-gb before new work starts again, so it doesn't flap (default 2).")]
+        public double? DiskHoldResumeMarginGb { get; init; }
+
         [CommandOption("--temp-retention-hours <H>")]
         [Description("Hours a %TEMP%\\claude session folder is kept whatever the free space: older, and quiet as long, it goes once its session isn't running; a running session loses only scratchpad entries that old and quiet (default 48; 0 turns it off).")]
         public double? TempRetentionHours { get; init; }
@@ -561,6 +569,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             if (!(cg >= 0)) { AnsiConsole.MarkupLine("[red]--disk-cleanup-gb can't be negative.[/]"); return 1; }
             s = s with { DiskCleanupGb = cg };
         }
+        if (settings.DiskHoldGb is not null || settings.DiskHoldResumeMarginGb is not null)
+        {
+            s = s with { DiskHoldGb = settings.DiskHoldGb ?? s.DiskHoldGb, DiskHoldResumeMarginGb = settings.DiskHoldResumeMarginGb ?? s.DiskHoldResumeMarginGb };
+            if (!(s.DiskHoldGb >= 0 && s.DiskHoldResumeMarginGb >= 0)) { AnsiConsole.MarkupLine("[red]--disk-hold-gb and --disk-hold-resume-margin-gb can't be negative.[/]"); return 1; }
+        }
         if (settings.TempRetentionHours is { } rh)
         {
             if (!(rh >= 0 && rh <= 8760)) { AnsiConsole.MarkupLine("[red]--temp-retention-hours is 0 to 8760.[/]"); return 1; }
@@ -600,6 +613,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         }
         var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
             || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null
+            || settings.DiskHoldGb is not null || settings.DiskHoldResumeMarginGb is not null
             || settings.TempRetentionHours is not null || memoryChanged;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
         if (settings.Notify is { } notify)
@@ -822,6 +836,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.StaleAfterHours > 0 ? $"assignments go stale after {s.StaleAfterHours}h quiet" : "assignments never go stale") + " · " +
             (s.DiskWarnGb > 0 ? $"alerts under {s.DiskWarnGb:0.#} GB free disk (urgent under {Math.Min(s.DiskCriticalGb, s.DiskWarnGb):0.#} GB)" : "disk space not watched") + " · " +
             (s.DiskCleanupGb > 0 ? $"agent temp cleaned up under {s.DiskCleanupGb:0.#} GB free" : "no disk self-cleanup") + " · " +
+            (s.DiskHoldGb > 0 ? $"new work held under {s.DiskHoldGb:0.#} GB free disk (resumes at {s.DiskHoldGb + s.DiskHoldResumeMarginGb:0.#} GB)" : "no disk floor") + " · " +
             (s.TempRetentionHours > 0 ? $"session temp kept {s.TempRetentionHours:0.#}h" : "session temp kept until its session ends"));
         AnsiConsole.MarkupLine("  memory guard " + (s.MemoryGuard
             ? $"on from {s.MemoryGuardStartPercent:0.#}% RAM used: new work holds under {s.MemoryTightGb:0.#} GB free RAM or past {s.MemoryTightCommitPercent:0.#}% commit, " +

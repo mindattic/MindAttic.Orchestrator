@@ -484,6 +484,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         else pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, Pacer.StopPercent(paceSettings));
         // Short of RAM, nothing new starts, whatever the windows allow (M.ORCH-T1494).
         pace = Pacer.CapByMemory(pace, Activity.MemoryGuard.Shared.Observe(settings, now), settings);
+        // Under the disk floor even after a self-cleanup, nothing new starts either (M.ORCH-T1679): the pace carries why.
+        pace = Pacer.HoldForDisk(pace, Activity.DiskGuard.Shared.Observe(settings, now));
         var writing = rateLimitFile is not null && (statusLease is null || statusLease.IsHeld || statusLease.TryAcquire());
         if (writing) rateLimitFile!.Write(budget, pace);
         // Each per-CLI login's own budget and pace (M.ORCH-T559), written for its CLIs' hooks by the process writing the global one.

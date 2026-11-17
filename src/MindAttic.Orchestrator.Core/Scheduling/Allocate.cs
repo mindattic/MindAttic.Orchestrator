@@ -777,6 +777,10 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         if (memory is { Level: > Activity.MemoryLevel.Ok } low)
             return ([], $"RAM is low ({low.Reading.Describe()}): nothing new starts until it recovers, so the machine doesn't page " +
                 "itself to a full disk. Finish what's running and run it again in a few minutes");
+        // Under the disk floor even after a self-cleanup nothing new is handed out either (M.ORCH-T1679): this process's own
+        // reading, with the resume margin when the daemon's pace already holds, so a stale pace can't hold a drive that has room.
+        if (Activity.DiskGuard.Shared.Observe(settings, nowUtc, heldElsewhere: plan.Pace?.Disk is not null) is { } full)
+            return ([], $"{full.Why}; run it again once space is freed");
         var unstarted = cli is null && !unthrottled && plan.Pace?.SubagentAllowance is not null ? UnstartedClaims(plan, cliRunning, login) : 0;
         var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents - unstarted
             : settings.MaxConcurrentSessions - plan.Queue.Count(Busy));

@@ -179,7 +179,8 @@ public sealed partial class MainlineTests(JsonStore store)
             checkedUtc = nowUtc;
             if (heldSaid is not null && Held() is null)
             {
-                lines.Add(new Line(false, "main tests: memory recovered; suites due start again"));
+                // Held for RAM or for the disk floor (M.ORCH-T1679): say which one let go.
+                lines.Add(new Line(false, $"main tests: {(heldSaid.StartsWith("RAM", StringComparison.Ordinal) ? "memory recovered" : "disk space is back")}; suites due start again"));
                 heldSaid = null;
             }
             foreach (var (name, path) in repos)

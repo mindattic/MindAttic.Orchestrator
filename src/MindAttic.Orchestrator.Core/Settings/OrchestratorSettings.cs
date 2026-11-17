@@ -404,6 +404,15 @@ public sealed record OrchestratorSettings
     /// named. 0 turns it off.</summary>
     public double DiskCleanupGb { get; init; } = 30;
 
+    /// <summary>The hard disk floor (M.ORCH-T1679): free GB on the system drive (or the <see cref="WorktreeRoot"/>'s drive) under
+    /// which no new work starts, once a self-cleanup has run and the drive is still under it (<see cref="Activity.DiskGuard"/>).
+    /// Running work is never stopped for it. 0 turns the hold off.</summary>
+    public double DiskHoldGb { get; init; } = 5;
+
+    /// <summary>GB a held drive must be clear of <see cref="DiskHoldGb"/> before new work starts again, so a drive hovering on
+    /// the floor doesn't flap: at the defaults new work resumes at 7 GB free, not 5.</summary>
+    public double DiskHoldResumeMarginGb { get; init; } = 2;
+
     /// <summary>Hours a %TEMP%\claude session folder is kept, whatever the free space (M.ORCH-T1466): one created longer ago than
     /// this, with nothing in it created or written for as long, goes once its session isn't running (an ended one goes anyway, see
     /// <see cref="Sessions.SessionTempPruner"/>); a running session keeps its folder and only its scratchpad entries that old and

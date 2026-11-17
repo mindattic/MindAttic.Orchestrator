@@ -128,7 +128,8 @@ public sealed partial class BranchBuilds(JsonStore store)
             checkedUtc = nowUtc;
             if (heldSaid is not null && Held() is null)
             {
-                lines.Add(new Line(false, "branch builds: memory recovered; builds due start again"));
+                // Held for RAM or for the disk floor (M.ORCH-T1679): say which one let go.
+                lines.Add(new Line(false, $"branch builds: {(heldSaid.StartsWith("RAM", StringComparison.Ordinal) ? "memory recovered" : "disk space is back")}; builds due start again"));
                 heldSaid = null;
             }
             foreach (var (name, path) in repos)

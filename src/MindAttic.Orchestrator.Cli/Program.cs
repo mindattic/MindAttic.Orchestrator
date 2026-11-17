@@ -376,6 +376,12 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             AnsiConsole.MarkupLine($"[red]{Markup.Escape(low)} Not started (--ignore-memory starts it anyway).[/]");
             return 1;
         }
+        // The disk floor (M.ORCH-T1679) has no override: under it, after a self-cleanup, a new CLI is what fills the drive.
+        if (MindAttic.Orchestrator.Activity.DiskGuard.StartHeld(Ctx.Settings) is { } full)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(full)}. Not started.[/]");
+            return 1;
+        }
         var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt, configDir);
         if (error is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }
         AnsiConsole.MarkupLine($"Started [bold]{provider}[/] in {Markup.Escape(repo.Name)}" +

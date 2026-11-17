@@ -261,7 +261,8 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
 - **Startup orphan sweep**: persist `ProcessReaper`'s seen-under-agent set so orphans born while the
   daemon was down are reaped.
 - **Hard floors as admission**: below the disk floor, reclaim first, then hold new units until
-  space returns (today low disk only alerts). RAM levels stay as they are in `MemoryGuard`.
+  space returns (the disk floor is `DiskGuard`, M.ORCH-T1679: `settings --disk-hold-gb`). RAM levels stay as they are in
+  `MemoryGuard`.
 - **Heavy-process lease**: the documented "one game player / engine build / soak per machine" rule
   enforced by a hook pattern list plus a machine-wide row in `leases`.
 - **Growth caps**: rotate `disk-cleanup.log`; age-prune and `VACUUM` orchestrator.db; make transcript

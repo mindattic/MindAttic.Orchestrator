@@ -178,6 +178,8 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             ? "no login of its own has room and the API key's login isn't ready to take it (no key in the Vault?): it waits for a login with room, or for the Vault's API key to be ready"
             : "no login of its own has room and API billing is off: it waits for a login with room, or for API billing to be switched on (the API key is the only fallback, never a member's seat)", null);
         if (Activity.MemoryGuard.StartHeld(store.LoadSettings()) is { } low) return (low, null);
+        // Nor under the disk floor (M.ORCH-T1679): a new CLI's transcript, scratch and builds are what fill the last few GB.
+        if (Activity.DiskGuard.StartHeld(store.LoadSettings()) is { } full) return ($"{full}; no new CLI starts until then.", null);
         var startError = sessions.Start(title, directory, provider, prompt, configDir);
         if (startError is not null) return (startError, null);
         _ = Foreground.RestoreAsync(focus, TimeSpan.FromSeconds(2));
