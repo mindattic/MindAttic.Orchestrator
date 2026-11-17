@@ -102,6 +102,10 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
   (`Budget/Pacer.cs:21-145`), so a job can see up front which logins can carry its units.
 - Atomic checkout: unit lease written under the assignments lock, same pattern as
   `Allocate.cs:848-853`.
+- Start order when a slot frees (from Paperclip's run queue): work a person asked for directly,
+  then other units, then recovered units; within a tier, in-progress first, then priority, then
+  age. Every Nth start goes to the unit that has waited longest, so nothing starves under a deep
+  queue. N and the waiting age are settings.
 - Wakeup queue with coalescing (a `wakeups` state row) replaces ad hoc wakes in `AllocateWaker`.
 - Soft file claims: the plan's Key Files feed the commit gate's existing per-path record so disjoint
   units are preferred first; nothing waits because of overlap.
@@ -122,6 +126,10 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
   terminal. Extends `SessionTempPruner`; "unknown owner, kept forever" no longer applies to
   orchestrator-owned things. Also sweeps crash leftovers (`orchestrator-review-*`,
   `mindattic-token-check-*`) and stale `bin/obj` in the `main-tests` and branch worktrees.
+- **Delete only what is proven delivered** (from Paperclip's workspace reaper): a unit's scratch is
+  removed once its commit is on `origin/main`, or once it was handed back with a checkpoint; anything
+  else waits out a retention window. Each new sweep ships with a dry-run mode that logs what it
+  would delete, and every retention window is a setting.
 - **Startup orphan sweep**: persist `ProcessReaper`'s seen-under-agent set so orphans born while the
   daemon was down are reaped.
 - **Hard floors as admission**: below the disk floor, reclaim first, then hold new units until
@@ -146,6 +154,15 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
   already being prompted.
 - Lease expiry and CLI death both land on the same path: unit back to `ready` with its checkpoint
   (folds in `OrphanWatch`).
+- Holds are independent (from Paperclip's agent lifecycle): a manual pause, a budget stop and a
+  resource floor are tracked separately, so resuming by hand never clears a budget or resource hold.
+  Agents pass through `pausing` and `resuming` so the dashboard shows a request that hasn't landed.
+- Restart report: when the daemon restarts it lists every unit that was running as adopted (agent
+  still alive), finished while down, or lost. Lost units go back to `ready` with their checkpoint
+  and are named in the log and dashboard; nothing is dropped silently.
+- Stopped-job check (from Paperclip's task watchdog): a job with open units but nothing running,
+  queued or waking gets one review unit, keyed by a fingerprint of the stopped state so the same
+  stop is never reviewed twice.
 - Stall rules (from ECC's `loop-operator`), built on the existing `LoopDetector` and `Watchdog`: a
   unit is paused and escalated to the owner when it shows no progress across two checkpoints, fails
   twice with the same error, or drifts past its job's budget. It resumes only after its build
@@ -162,6 +179,10 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
 - Role and pipeline definitions are versioned files, so a bad change is a revert.
 
 ### Phase 7 — Other providers
+- `IAgentRuntime` follows Paperclip's adapter shape: `Execute` (returns usage, cost and session
+  state), `TestEnvironment` (info/warn/error checks, each marked retryable or not) and a session
+  codec that saves and restores the runtime's session between wakes, with a way to drop a session
+  that can no longer be resumed.
 - `IAgentRuntime` adapters for Codex, Kimi and agy, with a readiness check per adapter; extend the
   per-member login model beyond Claude accounts. Roles and pipelines need no change.
 
