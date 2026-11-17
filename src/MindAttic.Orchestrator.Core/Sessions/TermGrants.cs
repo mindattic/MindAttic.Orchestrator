@@ -27,7 +27,7 @@ public sealed record TermGrant(string Owner, string Viewer, string Session, stri
 /// </summary>
 public static class TermGrants
 {
-    /// <summary>The watch constant.</summary>
+    /// <summary>The constants watch, interact.</summary>
     public const string Watch = TermGatewayTokens.Watch, Interact = TermGatewayTokens.Interact;
 
     /// <summary>How long an interact grant lasts when no <c>--for</c> is given.</summary>

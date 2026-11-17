@@ -40,7 +40,7 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 1e15)]
     public long? WeeklyBudget { get; set; }
 
-    /// <summary>When Claude's weekly limit restarts, e.g.</summary>
+    /// <summary>When Claude's weekly limit restarts, e.g. "Monday 09:00".</summary>
     [Setting("Week resets (local time)", Group = "Budget", Order = 3,
         Help = "When Claude's weekly limit restarts, e.g. \"Monday 09:00\". Claude's own reported reset comes first; empty uses the reset your last weekly limit hit reported, or a rolling 7 days.")]
     public string? WeeklyReset { get; set; }

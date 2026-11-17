@@ -12,7 +12,7 @@ namespace MindAttic.Orchestrator.Budget;
 /// </summary>
 public sealed record PlannedWindow(string Login, string Kind, DateTime EndUtc, double PlannedPercent, double ActualPercent, DateTime? ReachedUtc, bool Closed = false)
 {
-    /// <summary>The weekly constant.</summary>
+    /// <summary>The constants five hour, weekly.</summary>
     public const string FiveHour = "5-hour", Weekly = "weekly";
 
     /// <summary>"planned 31%, ended at 29%" (or "at 29% so far" while it runs), and when it reached its plan.</summary>

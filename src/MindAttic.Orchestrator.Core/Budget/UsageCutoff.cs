@@ -40,7 +40,7 @@ public static class UsageCutoffs
 {
     /// <summary>The state name constant.</summary>
     public const string StateName = "usage-cutoffs";
-    /// <summary>The default weekly percent constant.</summary>
+    /// <summary>The constants default weekly percent, default five hour percent.</summary>
     public const int DefaultWeeklyPercent = 90, DefaultFiveHourPercent = 96;
     /// <summary>The lowest weekly cutoff (the weekly reserve's own limit, 50) and the lowest 5-hour one.</summary>
     public const int MinWeeklyPercent = 100 - OrchestratorSettings.MaxWeeklyReservePercent, MinFiveHourPercent = 1;

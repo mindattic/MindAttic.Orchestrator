@@ -238,7 +238,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Whether tickets focus.</summary>
     public bool IsTicketsFocus => Focus == Focus.Tickets;
 
-    /// <summary>The sort by tickets constant.</summary>
+    /// <summary>The constants sort by name, sort by tickets.</summary>
     public const string SortByName = "Name", SortByTickets = "Open tickets";
     /// <summary>The repo sorts.</summary>
     public IReadOnlyList<string> RepoSorts => RepoSortNames;

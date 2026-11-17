@@ -31,7 +31,7 @@ public sealed class JsonStore
     /// <summary>A setting's value as its row keeps it: one line.</summary>
     private static readonly JsonSerializerOptions Compact = new();
 
-    /// <summary>The settings name constant.</summary>
+    /// <summary>The constants settings name, assignments name, limits name.</summary>
     public const string SettingsName = "settings", AssignmentsName = "assignments", LimitsName = "limits";
 
     /// <summary>The store's own folder under <c>%APPDATA%</c>, where the JSON files were: logs, prompts and leases stay there.</summary>

@@ -84,10 +84,10 @@ public sealed record TermGatewayAuditRecord
 /// </summary>
 public static class TermGatewayAudit
 {
-    /// <summary>The refused constant.</summary>
+    /// <summary>The constants attach, detach, input, refused.</summary>
     public const string Attach = "attach", Detach = "detach", Input = "input", Refused = "refused";
 
-    /// <summary>The spool file constant.</summary>
+    /// <summary>The constants acl file, spool file.</summary>
     public const string AclFile = "acl.json", SpoolFile = "audit.jsonl";
     private const string DrainingSuffix = ".draining";
 

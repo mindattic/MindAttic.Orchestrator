@@ -15,9 +15,9 @@ public static class TermGatewayTokens
 {
     /// <summary>The prefix constant.</summary>
     public const string Prefix = "v1.";
-    /// <summary>The watch constant.</summary>
+    /// <summary>The constants watch, interact.</summary>
     public const string Watch = "watch", Interact = "interact";
-    /// <summary>The signing key file constant.</summary>
+    /// <summary>The constants signing key file, owner key file.</summary>
     public const string SigningKeyFile = "signing.key", OwnerKeyFile = "owner.key";
 
     /// <summary>The longest a session token may live.</summary>

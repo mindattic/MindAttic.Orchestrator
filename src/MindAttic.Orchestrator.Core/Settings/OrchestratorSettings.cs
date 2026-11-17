@@ -67,7 +67,7 @@ public sealed record OrchestratorSettings
     /// <see cref="MaxWeeklyReservePercent"/>; applies to each login on its own.</summary>
     public int WeeklyReservePercent { get; init; } = DefaultWeeklyReservePercent;
 
-    /// <summary>The max weekly reserve percent constant.</summary>
+    /// <summary>The constants default weekly reserve percent, max weekly reserve percent.</summary>
     public const int DefaultWeeklyReservePercent = 10, MaxWeeklyReservePercent = 50;
 
     /// <summary>The percent of an account's week at which its CLIs stop: 100 minus <see cref="WeeklyReservePercent"/>
@@ -121,7 +121,7 @@ public sealed record OrchestratorSettings
     /// <summary>The front-loaded curve's exponent: under 1 bends it up early (0.55 by default); 1 is a straight line.</summary>
     public double PaceCurveK { get; init; } = 0.55;
 
-    /// <summary>The linear profile constant.</summary>
+    /// <summary>The constants linear profile, front loaded profile.</summary>
     public const string LinearProfile = "linear", FrontLoadedProfile = "front-loaded";
 
     /// <summary>The pace profiles.</summary>
@@ -283,7 +283,7 @@ public sealed record OrchestratorSettings
     /// it spends (uncached), so busy tabs blink at their own rate. <see cref="MinTabBlinkTokens"/> to <see cref="MaxTabBlinkTokens"/>.</summary>
     public int TabBlinkTokens { get; init; } = DefaultTabBlinkTokens;
 
-    /// <summary>The min tab blink tokens constant.</summary>
+    /// <summary>The constants default tab blink tokens, min tab blink tokens, max tab blink tokens.</summary>
     public const int DefaultTabBlinkTokens = 1000, MinTabBlinkTokens = 1, MaxTabBlinkTokens = 10_000_000;
 
     /// <summary>The dashboard's tab trailing text (M.ORCH-T1255): symbols, "Σ: 15% | λ: 29%" (the default, M.ORCH-T1251), or
