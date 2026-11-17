@@ -270,6 +270,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
             if (!Set(ref isSelected, value)) return;
             // Hidden, not collapsed: a hidden terminal keeps its size, so its CLI's lines don't rewrap at every tab switch.
             Control.Visibility = value ? Visibility.Visible : Visibility.Hidden;
+            // Out of sight, it draws nothing (M.ORCH-T1734): every hidden tab's output on the UI thread is what typing waited behind.
+            if (Relay is { } relay) relay.Paused = !value;
         }
     }
 
@@ -565,6 +567,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         // Claude's usage figures read off its screen (M.ORCH-T1118): fed on the relay's reader thread, parsed on the pool.
         if (Request.Provider == "Claude") relay.OutputTap = (screen ??= new Budget.ScreenUsageScanner(OnScreenUsage)).Feed;
         relay.InputTap = OnInputSent;
+        relay.Paused = !isSelected;
         Relay = relay;
         ((TerminalView)Control).Child = relay;
     }

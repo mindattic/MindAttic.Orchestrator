@@ -179,14 +179,128 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
     private void Raise(string text)
     {
         if (text.Length == 0) return;
-        StringBuilder? opened = null;
+        StringBuilder? opened;
         lock (pendingGate)
         {
-            pendingChars += text.Length;
-            if (batch is null) batch = opened = new StringBuilder();
-            batch.Append(text);
+            if (muted)
+            {
+                Hold(text);
+                return;
+            }
+            opened = Queue(text);
         }
         if (opened is not null) PostRaw(() => Drain(opened));
+    }
+
+    /// <summary>Under <see cref="pendingGate"/>: adds text to the open batch; returns the batch when this opened it, to post.</summary>
+    private StringBuilder? Queue(string text)
+    {
+        StringBuilder? opened = null;
+        pendingChars += text.Length;
+        if (batch is null) batch = opened = new StringBuilder();
+        batch.Append(text);
+        return opened;
+    }
+
+    /// <summary>The most output (chars) a paused connection holds for its catch-up; past it the catch-up is the host's replay.</summary>
+    internal const int MaxHeldChars = MaxPendingChars / 4;
+
+    // Paused (M.ORCH-T1734): a viewer nobody is looking at (a hidden tab) reads on, so the taps, the modes and the exit still
+    // work, but what it would draw is held, not posted: drawing every hidden tab's output on the one UI thread is what typing
+    // into the shown tab waited behind. 'muted' outlasts 'paused' while a resume waits on the host's replay.
+    private readonly StringBuilder held = new();
+    private volatile bool paused;
+    private bool muted, heldOverflowed;
+    private volatile bool resync;
+    private bool sizeUnsent;
+
+    /// <summary>Under <see cref="pendingGate"/>: keeps text for the catch-up, or only the fact that it was too much to keep.</summary>
+    private void Hold(string text)
+    {
+        if (held.Length + text.Length > MaxHeldChars)
+        {
+            heldOverflowed = true;
+            held.Clear();
+            if (text.Length > MaxHeldChars) return;
+        }
+        held.Append(text);
+    }
+
+    /// <summary>
+    /// While set, nothing is drawn (M.ORCH-T1734): output is read and tapped as ever, and held. Cleared, the renderer catches
+    /// up: with what was held when that is all of it, else with the host's exact screen, by attaching again at once (no
+    /// backoff, no <see cref="Reconnecting"/>). Resizes aren't sent while set; the last one is sent when it clears. UI thread.
+    /// </summary>
+    public bool Paused
+    {
+        get => paused;
+        set
+        {
+            StringBuilder? opened = null;
+            var reattach = false;
+            lock (pendingGate)
+            {
+                if (paused == value) return;
+                paused = value;
+                if (value)
+                {
+                    muted = true;
+                    return;
+                }
+                if (!muted) return;
+                // Too much was held to keep, and the host can still be asked: its replay unmutes (AttachOnceAsync).
+                if (heldOverflowed && !ended && !exited && !closed) reattach = true;
+                else opened = Unmute();
+            }
+            if (opened is not null) PostRaw(() => Drain(opened));
+            if (!reattach)
+            {
+                SendHeldSize();
+                return;
+            }
+            resync = true;
+            Stream? p;
+            lock (gate) p = link;
+            // No link right now: it is being attached already, and that attach's replay unmutes.
+            try { p?.Dispose(); }
+            catch (Exception) { }
+        }
+    }
+
+    /// <summary>Under <see cref="pendingGate"/>: draws again, starting with what was held; returns a batch to post, if it opened one.</summary>
+    private StringBuilder? Unmute()
+    {
+        muted = false;
+        heldOverflowed = false;
+        if (held.Length == 0) return null;
+        // What was held may hold a full reset (ESC c), which turns win32-input-mode off in the renderer: asserted after it.
+        var text = held.Append(Win32InputMode).ToString();
+        held.Clear();
+        return Queue(text);
+    }
+
+    /// <summary>The host is gone for good while paused output was held: the renderer gets what there is, once it is shown.</summary>
+    private void UnmuteAtEnd()
+    {
+        StringBuilder? opened;
+        lock (pendingGate)
+        {
+            if (!muted || paused) return;
+            opened = Unmute();
+        }
+        if (opened is not null) PostRaw(() => Drain(opened));
+    }
+
+    private void SendHeldSize()
+    {
+        uint r, c;
+        lock (gate)
+        {
+            if (!sizeUnsent) return;
+            sizeUnsent = false;
+            (r, c) = (rows, cols);
+        }
+        if (r > 0 && c > 0) Send(TermFrameKind.Resize, TermProtocol.Size((ushort)Math.Min(c, ushort.MaxValue), (ushort)Math.Min(r, ushort.MaxValue)));
     }
 
     /// <summary>On the UI thread: renders one batch, whole, and lets a waiting reader go on once there is room.</summary>
@@ -250,8 +364,15 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
             if (drop.Final || exited || !HostAlive())
             {
                 ended = true;
+                UnmuteAtEnd();
                 Post(() => Detached?.Invoke(drop.Why));
                 return;
+            }
+            // A resume dropped the link itself, for the host's replay (M.ORCH-T1734): attached again at once, nothing lost.
+            if (resync)
+            {
+                resync = false;
+                continue;
             }
             if (drop.Live && DateTime.UtcNow - started >= StableLink) attempt = 0;
             var wait = ReconnectDelay(attempt++);
@@ -263,6 +384,7 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
             if (!HostAlive())
             {
                 ended = true;
+                UnmuteAtEnd();
                 Post(() => Detached?.Invoke(why + "; the host is gone"));
                 return;
             }
@@ -299,6 +421,8 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
                 // A sequence the last link cut off mid-character mustn't prefix this one's replay with U+FFFD (bughunt 2026-10-27).
                 utf8.Reset();
                 escEnded = false;
+                // The Hello below carries the size, a paused viewer's unsent one included.
+                sizeUnsent = false;
                 // Queued under the gate that set the link, so the Hello is the first frame this link carries.
                 outbox.Writer.TryWrite((p, TermProtocol.Frame(TermFrameKind.Hello,
                     TermProtocol.Hello(protocol, (ushort)(cols > 0 ? cols : 120), (ushort)(rows > 0 ? rows : 30), interactive, viewerId ?? ViewerId))));
@@ -326,6 +450,18 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
                     case TermFrameKind.Replay:
                         if (TermProtocol.ReadReplay(payload) is { } replay)
                         {
+                            // The replay is the whole screen, so nothing held before it matters (M.ORCH-T1734): a shown viewer
+                            // draws from here on; one still paused holds the replay in place of what it held.
+                            resync = false;
+                            lock (pendingGate)
+                            {
+                                if (muted)
+                                {
+                                    held.Clear();
+                                    heldOverflowed = false;
+                                    muted = paused;
+                                }
+                            }
                             // A reattach: the renderer still shows the old screen, so it is cleared before the replay redraws it.
                             if (previousAttaches > 0) Raise("\u001bc");
                             OnReplay(replay);
@@ -492,6 +628,12 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
             if (this.rows == rows && cols == columns && link is not null) return;
             this.rows = rows;
             cols = columns;
+            // A hidden viewer's layout mustn't resize the CLI under the shown one (M.ORCH-T1734): kept, and sent when it is shown.
+            if (paused)
+            {
+                sizeUnsent = true;
+                return;
+            }
         }
         Send(TermFrameKind.Resize, TermProtocol.Size((ushort)Math.Min(columns, ushort.MaxValue), (ushort)Math.Min(rows, ushort.MaxValue)));
     }

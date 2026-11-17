@@ -167,6 +167,21 @@ public sealed class RelayTerminal : UserControl, IDisposable
     /// <summary>Handed each piece of input this viewer sent (M.ORCH-T1413, <see cref="RelayConnection.InputTap"/>).</summary>
     public Action<string>? InputTap { get; set; }
 
+    /// <summary>Whether this viewer is out of sight (M.ORCH-T1734, <see cref="RelayConnection.Paused"/>): it draws nothing and
+    /// resizes nothing until it is shown again, then catches up. Kept for a connection made later. UI thread.</summary>
+    public bool Paused
+    {
+        get => paused;
+        set
+        {
+            paused = value;
+            try { if (Connection is { } c) c.Paused = value; }
+            catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Pausing a relay terminal failed; contained"); }
+        }
+    }
+
+    private bool paused;
+
     /// <summary>The session's size (cols, rows) as the host last said it (protocol 2 hosts).</summary>
     public event Action<ushort, ushort>? SessionSizeChanged;
 
@@ -186,6 +201,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
         // Each live chunk to whoever reads the screen (M.ORCH-T1118), on the reader's thread.
         connection.OutputTap = text => OutputTap?.Invoke(text);
         connection.InputTap = data => InputTap?.Invoke(data);
+        connection.Paused = paused;
         Connection = connection;
         // Resets the renderer (ESC c), then Start()s the connection; the host's replay follows.
         Terminal.Connection = connection;
