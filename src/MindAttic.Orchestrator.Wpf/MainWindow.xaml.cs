@@ -188,6 +188,7 @@ public partial class MainWindow : Window
                 Closed += (_, _) => resync.Stop();
             }
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
+            if (restoreOnLoad) restored |= RestoreSaveAllClose(model);
             await model.RefreshAsync();
             // Each person back on the CLI tab they last had chosen (M.ORCH-T1436), kept by TermHost session in the restore file.
             if (restoreOnLoad) model.ReselectRemembered(SessionRestore.Previous);
@@ -207,6 +208,50 @@ public partial class MainWindow : Window
         // Minimized, nobody is looking: no 5-second refresh (M.ORCH-T115). Shown again, it catches up at once.
         IsVisibleChanged += async (_, _) => await OnShownOrHidden();
         StateChanged += async (_, _) => await OnShownOrHidden();
+    }
+
+    /// <summary>
+    /// Reopens a Save all &amp; close run's tabs (M.ORCH-T1724), when one left its one-shot pending file: the same
+    /// <see cref="MainViewModel.RestoreTabs"/> every crash recovery uses, so a tab whose session is known resumes with
+    /// Claude's own <c>claude --resume</c> as always. The file is consumed (deleted) up front, whether or not this
+    /// succeeds, so a later start never replays it. Only the rare tab that can't natively resume (no session id) then gets
+    /// its captured handoff's <c>/quickload &lt;code&gt;</c> typed in, once given a moment to come up; matched to its live pane
+    /// by login and repo folder, since a freshly spawned CLI's own TermHost session id is new.
+    /// </summary>
+    private bool RestoreSaveAllClose(MainViewModel owner)
+    {
+        var store = new SaveAllCloseStore();
+        if (store.Load() is not { } pending) return false;
+        store.Delete();
+        if (pending.State.Tabs.Count == 0) return false;
+        owner.RestoreTabs(pending.State);
+        var toInject = new List<(string? Login, string Directory, string Code)>();
+        for (var i = 0; i < pending.State.Tabs.Count; i++)
+        {
+            var tab = pending.State.Tabs[i];
+            var code = i < pending.Codes.Count ? pending.Codes[i] : null;
+            if (code is { Length: > 0 } && !SessionRestoreStore.Resumes(tab)) toInject.Add((tab.Login, tab.Request.Directory, code));
+        }
+        if (toInject.Count > 0)
+        {
+            var settle = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(4) };
+            settle.Tick += (_, _) =>
+            {
+                settle.Stop();
+                var used = new HashSet<TerminalPaneViewModel>();
+                foreach (var (login, directory, code) in toInject)
+                {
+                    var pane = owner.AllTerminals.Panes.FirstOrDefault(p => !p.Ended && !used.Contains(p)
+                        && string.Equals(p.Login, login, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(p.Request.Directory, directory, StringComparison.OrdinalIgnoreCase));
+                    if (pane is null) continue;
+                    used.Add(pane);
+                    if (pane.WriteInput(TerminalPaste.Payload($"/quickload {code}", pane.Bracketed))) pane.WriteInput("\r");
+                }
+            };
+            settle.Start();
+        }
+        return true;
     }
 
     /// <summary><c>--start &lt;repo&gt;</c> (M.ORCH-T767): a CLI in that workspace repo, as Start opens one; anything else is refused.</summary>

@@ -308,6 +308,9 @@
                 <Button x:Name="WindDownButton" Style="{StaticResource MaToolButton}" Content="&#xE769;" Command="{Binding WindDownCommand}"
                         mc:MaCallout.ToolTip="Wind down: /allocate off and pacing off for every CLI across every login, each finishing its own subagents first"
                         AutomationProperties.Name="Wind down every CLI" />
+                <Button x:Name="SaveAllCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE74E;" Command="{Binding SaveAllCloseCommand}"
+                        mc:MaCallout.ToolTip="Save all &amp; close: force-quicksave every open CLI, then close every one and exit (frees their memory); each reopens at the next start, resuming where it left off"
+                        AutomationProperties.Name="Save all CLIs and close" />
             </StackPanel>
             </Grid>
         </Border>
