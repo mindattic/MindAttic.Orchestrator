@@ -1220,7 +1220,7 @@ public sealed class HookScriptTests
     {
         Gate(Said("use cross-repo for MindAttic.Tickets and fix the parser there"), AgentGate.ContextScriptName);
         Assert.That(Gate(SkillCall("crossrepo", "MindAttic.Tickets")).Output, Does.Not.Contain("\"deny\""));
-        Assert.That(File.ReadAllText(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.EqualTo("MindAttic.Tickets"));
+        Assert.That(CliMark("crossrepo", Cli), Is.EqualTo("MindAttic.Tickets"));
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Is.Empty, "the guard reads the same mark");
     }
 
@@ -1230,14 +1230,14 @@ public sealed class HookScriptTests
         Gate(Said("fix the parser in MindAttic.Tickets"), AgentGate.ContextScriptName);
         var refused = Gate(SkillCall("crossrepo", "MindAttic.Tickets")).Output;
         Assert.That(refused, Does.Contain("\"deny\"").And.Contain("/crossrepo <repos>"));
-        Assert.That(File.Exists(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.False);
+        Assert.That(CliMark("crossrepo", Cli), Is.Null);
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\"").And.Contain("This window is for UnitySolarSystem"));
 
         // A plugin-style name is the same skill, and asking once doesn't carry over to the next prompt.
         Gate(Said("crossrepo please"), AgentGate.ContextScriptName);
         Gate(Said("now carry on"), AgentGate.ContextScriptName);
         Assert.That(Gate(SkillCall("mindattic:crossrepo", "all")).Output, Does.Contain("\"deny\""), "the note is cleared at the next prompt");
-        Assert.That(File.Exists(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.False);
+        Assert.That(CliMark("crossrepo", Cli), Is.Null);
     }
 
     // ---- Blocked on you (M.ORCH-T790): the tab's red flag reads the context gate's asking mark ----
@@ -1332,7 +1332,7 @@ public sealed class HookScriptTests
         Gate(Said("that's enough for today"), AgentGate.ContextScriptName);
         Assert.That(Gate(SkillCall("crossrepo", "off")).Output, Does.Not.Contain("\"deny\""));
         Assert.That(Gate(SkillCall("allocate", "off")).Output, Does.Not.Contain("\"deny\""));
-        Assert.That(File.Exists(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.False);
+        Assert.That(CliMark("crossrepo", Cli), Is.Null);
         Assert.That(File.Exists(Path.Combine(Marks, $"allocate-{Cli}")), Is.False);
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
     }
@@ -1342,7 +1342,7 @@ public sealed class HookScriptTests
     {
         var mark = Path.Combine(Marks, $"crossrepo-{Cli}");
         Gate(Said("/crossrepo MindAttic.Tickets"), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Tickets"));
+        Assert.That(CliMark("crossrepo", Cli), Is.EqualTo("MindAttic.Tickets"));
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Is.Empty);
         Gate(Said("/crossrepo off"), AgentGate.ContextScriptName);
         Assert.That(File.Exists(mark), Is.False);
@@ -1355,12 +1355,12 @@ public sealed class HookScriptTests
         var mark = Path.Combine(Marks, $"crossrepo-{Cli}");
         Directory.CreateDirectory(Path.Combine(ws, "Unity.Shared", ".git"));
         Gate(Said("/crossrepo -repo=Unity.Shared,MindAttic.Tickets."), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("Unity.Shared,MindAttic.Tickets"));
+        Assert.That(CliMark("crossrepo", Cli), Is.EqualTo("Unity.Shared,MindAttic.Tickets"));
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Is.Empty);
         Assert.That(Gate(EditIn("Unity.Shared")).Output, Is.Empty);
         Gate(Said("/crossrepo off"), AgentGate.ContextScriptName);
         Gate(Said("/crossrepo  MindAttic.Tickets. "), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Tickets"));
+        Assert.That(CliMark("crossrepo", Cli), Is.EqualTo("MindAttic.Tickets"));
     }
 
     [Test]
