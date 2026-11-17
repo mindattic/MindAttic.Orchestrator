@@ -58,6 +58,30 @@ public static partial class ProcessTree
     /// <summary>Every running process's parent and exe name, by process id, at one moment.</summary>
     internal static IReadOnlyDictionary<int, (int Parent, string Exe)> Snapshot() => Processes();
 
+    /// <summary>A Claude CLI, or an Orchestrator process that hosts one (M.ORCH-T1671): <see cref="MemoryReclaim"/> never kills
+    /// anything under one of these past a working-set trim, since the machine's own automation lives there.</summary>
+    private static readonly string[] ProtectedRootNames =
+        ["claude.exe", "MindAttic.Launcher.exe", "MindAttic.Orchestrator.TermHost.exe", "MindAttic.Orchestrator.Desktop.exe"];
+
+    /// <summary>Whether <paramref name="exe"/> is one of <see cref="ProtectedRootNames"/>, or that name once the updater
+    /// renames it (<c>claude.exe.old.N</c>), the same way <see cref="ClaudeAncestor(int, IReadOnlyDictionary{int, (int, string)})"/>
+    /// matches it.</summary>
+    internal static bool IsProtectedRootName(string exe) =>
+        ProtectedRootNames.Any(r => exe.StartsWith(r, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Whether <paramref name="pid"/>, or anything above it up to 16 steps, is a protected root: everywhere
+    /// <see cref="MemoryReclaim"/>'s foreign trim and kill steps must stop at a trim, or stay off entirely.</summary>
+    internal static bool IsProtected(int pid, IReadOnlyDictionary<int, (int Parent, string Exe)> processes)
+    {
+        for (var i = 0; i < 16 && processes.TryGetValue(pid, out var p); i++)
+        {
+            if (IsProtectedRootName(p.Exe)) return true;
+            if (p.Parent == 0 || p.Parent == pid) return false;
+            pid = p.Parent;
+        }
+        return false;
+    }
+
     private static Dictionary<int, (int Parent, string Exe)> Processes()
     {
         var parents = new Dictionary<int, (int Parent, string Exe)>();

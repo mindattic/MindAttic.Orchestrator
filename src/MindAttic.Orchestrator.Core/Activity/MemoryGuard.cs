@@ -93,7 +93,7 @@ public sealed class MemoryGuard
     /// <summary>Gets memory back once RAM in use reaches <see cref="OrchestratorSettings.MemoryGuardStartPercent"/>, at most once
     /// per <see cref="OrchestratorSettings.MemorySettleSeconds"/>, off the caller's thread; returns a line on what it did. Only
     /// <see cref="Shared"/> carries one, so a test's guard never trims the machine it runs on.</summary>
-    internal Func<string>? Reclaim { get; init; }
+    internal Func<OrchestratorSettings, string>? Reclaim { get; init; }
 
     /// <summary>When the last reclaim started, and the line it returned (null while one runs or before the first).</summary>
     public (DateTime StartedUtc, string? Note)? LastReclaim { get { lock (gate) return lastReclaim; } }
@@ -129,7 +129,7 @@ public sealed class MemoryGuard
         Task.Run(() =>
         {
             string note;
-            try { note = reclaim(); }
+            try { note = reclaim(s); }
             catch (Exception e) { note = $"reclaim failed: {e.Message}"; }
             lock (gate) lastReclaim = (nowUtc, note);
             Volatile.Write(ref reclaiming, 0);

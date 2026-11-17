@@ -41,7 +41,7 @@ public sealed class MemoryGuardTests
     {
         var reclaims = 0;
         var used = 99.0;
-        var g = new MemoryGuard { Read = () => new MemoryReading(8, 50, true, UsedPercent: used), Reclaim = () => { Interlocked.Increment(ref reclaims); return "done"; } };
+        var g = new MemoryGuard { Read = () => new MemoryReading(8, 50, true, UsedPercent: used), Reclaim = _ => { Interlocked.Increment(ref reclaims); return "done"; } };
         g.Observe(S, T0);
         SpinWait.SpinUntil(() => g.LastReclaim is { Note: not null }, 2000);
         Assert.That(reclaims, Is.EqualTo(1));
