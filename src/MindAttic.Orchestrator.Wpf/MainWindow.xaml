@@ -765,39 +765,15 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </ScrollViewer>
-                                <!-- A solo Ultra login has no 5-hour window to show here (M.ORCH-T1540, ShowsFiveHourChart,
-                                     the same condition FiveHourSection's chart below already collapses on).
-                                     The two boxes pick the chart below (M.ORCH-T1395): each is the library's one MaButton dressed as
-                                     the MaCard it was (MaSurface on MaChromeBorder, 1px, radius 6; Padding is SpaceHSVXS plus the 1px a
-                                     Border's own thickness adds), checked while its chart shows, which outlines it in MaFocus. -->
-                                <mc:MaButton Shape="Rounded" CornerRadius="5.5" StrokeThickness="1" Padding="9,5,9,5" Margin="{StaticResource SpaceLS}" MinWidth="104"
-                                             Background="{DynamicResource MaSurface}" BorderBrush="{DynamicResource MaChromeBorder}" CheckedBorderBrush="{DynamicResource MaFocus}"
-                                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" FocusVisualStyle="{StaticResource MaFocusRing}"
-                                             IsChecked="{Binding FiveHourChartSelected, Mode=OneWay}" Command="{Binding ShowFiveHourChartCommand}"
-                                             AutomationProperties.Name="{Binding FiveHourLimitText, StringFormat='{}{0}, show the 5-hour chart'}"
-                                             Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding FiveHourLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding FiveHourLimitBrush}" />
-                                        <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
-                                                     Value="{Binding FiveHourLimitPercent, Mode=OneWay}" Foreground="{Binding FiveHourLimitBrush}" />
-                                    </StackPanel>
-                                </mc:MaButton>
-                                <mc:MaButton Shape="Rounded" CornerRadius="5.5" StrokeThickness="1" Padding="9,5,9,5" Margin="{StaticResource SpaceLS}" MinWidth="104"
-                                             Background="{DynamicResource MaSurface}" BorderBrush="{DynamicResource MaChromeBorder}" CheckedBorderBrush="{DynamicResource MaFocus}"
-                                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" FocusVisualStyle="{StaticResource MaFocusRing}"
-                                             IsChecked="{Binding WeeklyChartSelected, Mode=OneWay}" Command="{Binding ShowWeeklyChartCommand}"
-                                             AutomationProperties.Name="{Binding WeeklyLimitText, StringFormat='{}{0}, show the weekly chart'}">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding WeeklyLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding WeeklyLimitBrush}" />
-                                        <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
-                                                     Value="{Binding WeeklyLimitPercent, Mode=OneWay}" Foreground="{Binding WeeklyLimitBrush}" />
-                                    </StackPanel>
-                                </mc:MaButton>
                             </StackPanel>
                     </StackPanel>
 
-                    <!-- The 5-hour chart (M.ORCH-T191): every plan but a solo Ultra account, which has no 5-hour limit worth
-                         charting on its own page (M.ORCH-T1403, ShowsFiveHourChart). -->
+                    <!-- The compact 5-hour preview (M.ORCH-T191, shrunk and made plan-exclusive by M.ORCH-T1670): every plan
+                         but a solo Ultra account (ShowsFiveHourSection). The 5hr/Weekly toggle boxes this used to sit under
+                         are gone (M.ORCH-T1670): their own figure and bar just repeated the tab strip's and login list's own
+                         live percentages (LoginUsageBarsTemplate above), and the chart itself is now the one and only thing
+                         to pick, by plan, never by a click. The chart's own target line and dotted projection already carry
+                         the "where it will hit its cutoff" preview; this just draws it smaller. -->
                     <StackPanel x:Name="FiveHourSection" Visibility="{Binding ShowsFiveHourSection, Converter={StaticResource Visible}}">
                         <Border x:Name="UtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
                                 AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
@@ -805,16 +781,15 @@
                             <StackPanel>
                                 <TextBlock Text="5-hour utilization" Style="{StaticResource MaSectionLabel}" />
                                 <mc:MaLineChart x:Name="UtilizationChart" Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"
-                                                Height="130" Margin="{StaticResource SpaceH0VS}" />
-                                <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
+                                                Height="64" Margin="{StaticResource SpaceH0VS}" />
+                                <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="11" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
 
-                    <!-- The weekly chart (M.ORCH-T1403): every Claude login, Team seat or solo Ultra alike (ShowsWeeklyChart) -
-                         the same pace-curve drawing as the 5-hour chart, over the week instead (WeeklyUtilizationChartData).
-                         One of the two shows at a time, picked by the 5hr/Weekly boxes above (M.ORCH-T1395, ShowsWeeklySection),
-                         so it sits exactly where the 5-hour card does. -->
+                    <!-- The compact weekly preview (M.ORCH-T1403, shrunk and made Ultra-exclusive by M.ORCH-T1670): a solo
+                         Ultra account only (ShowsWeeklySection) - its own 5-hour window isn't the one worth charting, so the
+                         week takes the 5-hour card's place instead of sitting beside it behind a toggle. -->
                     <StackPanel x:Name="WeeklySection" Visibility="{Binding ShowsWeeklySection, Converter={StaticResource Visible}}">
                         <Border x:Name="WeeklyUtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
                                 AutomationProperties.Name="{Binding WeeklyUtilizationText, StringFormat='Weekly utilization: {0}'}"
@@ -822,8 +797,8 @@
                             <StackPanel>
                                 <TextBlock Text="Weekly utilization" Style="{StaticResource MaSectionLabel}" />
                                 <mc:MaLineChart x:Name="WeeklyUtilizationChart" Data="{Binding WeeklyUtilization, Converter={x:Static local:WeeklyUtilizationChartData.Converter}}"
-                                                Height="130" Margin="{StaticResource SpaceH0VS}" />
-                                <TextBlock Text="{Binding WeeklyUtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
+                                                Height="64" Margin="{StaticResource SpaceH0VS}" />
+                                <TextBlock Text="{Binding WeeklyUtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="11" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
                     </StackPanel>

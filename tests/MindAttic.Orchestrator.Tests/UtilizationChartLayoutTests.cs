@@ -10,7 +10,8 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>The 5-hour utilization chart spans the dashboard's full width under the stat tiles, and is tall (M.ORCH-T191).</summary>
+/// <summary>The 5-hour utilization chart spans the dashboard's full width under the stat tiles (M.ORCH-T191), small by plan
+/// rather than the old tall dual-chart picker (M.ORCH-T1670).</summary>
 [Apartment(ApartmentState.STA)]
 public sealed class UtilizationChartLayoutTests
 {
@@ -150,7 +151,7 @@ public sealed class UtilizationChartLayoutTests
         Assert.That(card.Attribute("Width"), Is.Null, "no fixed width: it stretches across the window");
         Assert.That(chart.Attribute("Width"), Is.Null);
         Assert.That((string?)chart.Attribute("Data"), Is.EqualTo("{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"));
-        Assert.That(double.Parse((string)chart.Attribute("Height")!, System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo(130), "half the old 260 (M.ORCH-T877)");
+        Assert.That(double.Parse((string)chart.Attribute("Height")!, System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo(64), "small by plan, not the old 130 (M.ORCH-T1670)");
         // It collapses only on an empty caption, which is never so once a snapshot is in, idle or not (M.ORCH-T502).
         Assert.That((string?)card.Attribute("Visibility"), Does.StartWith("{Binding UtilizationText,"));
     }

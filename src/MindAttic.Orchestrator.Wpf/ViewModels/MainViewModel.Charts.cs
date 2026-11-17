@@ -1,14 +1,15 @@
-using System.Windows.Input;
-using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Budget;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// The person page's weekly chart (M.ORCH-T1403), alongside the existing 5-hour one: every Claude login but a solo Ultra
-/// account (no Team/Enterprise org backing it, so <see cref="AccountRoster.PlanOf"/> gives it exactly "Ultra") shows both its
-/// 5-hour and its weekly chart; a solo Ultra account shows only its week. The API key's person is unchanged (its credit
-/// burndown, never these).
+/// The person page's compact utilization preview (M.ORCH-T1670, replacing the picked pair from M.ORCH-T1403/M.ORCH-T1395):
+/// one small chart, chosen by plan rather than by a click, since the dashboard already shows both live percentages on the
+/// tab strip and the login list (LoginUsageBarsTemplate) and a second, user-picked copy here was pure repetition. Every
+/// Claude login but a solo Ultra account (no Team/Enterprise org backing it, so <see cref="AccountRoster.PlanOf"/> gives it
+/// exactly "Ultra") gets its 5-hour chart, with its target line and dotted projection previewing where the recent rate
+/// crosses the cutoff; a solo Ultra account, whose 5-hour window isn't the one worth charting, gets its weekly chart
+/// instead, with the same preview over the week. The API key's person is unchanged (its credit burndown, never these).
 /// </summary>
 public sealed partial class MainViewModel
 {
@@ -17,44 +18,17 @@ public sealed partial class MainViewModel
     /// back from its 5-hour chart on a guess.</summary>
     public bool ShowsFiveHourChart => ShowsClaudeMeters && OwnRow?.Plan != "Ultra";
 
-    /// <summary>Whether this plan's own weekly chart shows: every signed-in Claude login, Team seat or solo Ultra alike -- only
-    /// the API key's person (no weekly window of its own) has none.</summary>
-    public bool ShowsWeeklyChart => ShowsClaudeMeters;
+    /// <summary>Whether this plan's own weekly chart shows: a solo Ultra account only, whose cutoff to preview is the week,
+    /// not a 5-hour window it doesn't have.</summary>
+    public bool ShowsWeeklyChart => ShowsClaudeMeters && !ShowsFiveHourChart;
 
-    // ── which chart the utilization panel draws (M.ORCH-T1395) ────────────
+    // ── which chart the compact utilization panel draws (M.ORCH-T1670: by plan, not a user-picked pair) ──
 
-    /// <summary>The 5hr/Weekly limit boxes are toggles picking the one chart the panel draws: 5hr by default, remembered per
-    /// tab for the dashboard's run. Both series are already in the snapshot, so a switch only swaps which card shows.</summary>
-    private bool weeklyChartSelected;
+    /// <summary>The 5-hour chart shows: every plan but a solo Ultra account.</summary>
+    public bool ShowsFiveHourSection => ShowsFiveHourChart;
 
-    /// <summary>The Weekly box reads as selected: picked, or the plan has no 5-hour chart (solo Ultra, whose 5hr box is
-    /// hidden, so the week is all there is to draw).</summary>
-    public bool WeeklyChartSelected => weeklyChartSelected || !ShowsFiveHourChart;
-
-    /// <summary>The 5hr box reads as selected.</summary>
-    public bool FiveHourChartSelected => !WeeklyChartSelected;
-
-    /// <summary>The 5-hour chart shows: the plan has one (<see cref="ShowsFiveHourChart"/>) and its box is selected.</summary>
-    public bool ShowsFiveHourSection => ShowsFiveHourChart && !weeklyChartSelected;
-
-    /// <summary>The weekly chart shows: the login has a week (<see cref="ShowsWeeklyChart"/>) and its box is selected.</summary>
-    public bool ShowsWeeklySection => ShowsWeeklyChart && WeeklyChartSelected;
-
-    private ICommand? showFiveHourChartCommand, showWeeklyChartCommand;
-
-    /// <summary>The 5hr box: draw the 5-hour chart.</summary>
-    public ICommand ShowFiveHourChartCommand => showFiveHourChartCommand ??= new RelayCommand(() => SelectWeeklyChart(false));
-
-    /// <summary>The Weekly box: draw the weekly chart.</summary>
-    public ICommand ShowWeeklyChartCommand => showWeeklyChartCommand ??= new RelayCommand(() => SelectWeeklyChart(true));
-
-    internal void SelectWeeklyChart(bool weekly)
-    {
-        if (weeklyChartSelected == weekly) return;
-        weeklyChartSelected = weekly;
-        foreach (var name in new[] { nameof(FiveHourChartSelected), nameof(WeeklyChartSelected), nameof(ShowsFiveHourSection), nameof(ShowsWeeklySection) })
-            Raise(name);
-    }
+    /// <summary>The weekly chart shows: a solo Ultra account only.</summary>
+    public bool ShowsWeeklySection => ShowsWeeklyChart;
 
     /// <summary>The current week against its pace, for the weekly graph; null before the first snapshot or without a weekly
     /// reset known yet (<see cref="WeeklyUtilizationSeries"/>, built the same way for every login, Team seat or solo Ultra).</summary>

@@ -282,27 +282,20 @@ public sealed partial class MainViewModel
     private string LoginName => tab.Title.EndsWith(" (fallback)", StringComparison.Ordinal) ? tab.Title[..^" (fallback)".Length]
         : tab.IsGlobal ? "the global login" : tab.Title;
 
-    // ── 5hr/weekly limit boxes (M.ORCH-T1168) ──────────────────────────────
+    // ── 5hr/weekly limit figures (M.ORCH-T1168), for the tab strip and login list's own bars ──────
 
-    /// <summary>The utilization panel's compact 5-hour readout: the same live 5-hour used percent already on the tab strip
-    /// (<see cref="FiveHourUsed"/>, M.ORCH-T968), surfaced here rather than computed anew.</summary>
+    /// <summary>The same live 5-hour used percent already on the tab strip and login list (<see cref="FiveHourUsed"/>,
+    /// M.ORCH-T968), surfaced here rather than computed anew (LoginUsageBarsTemplate, the pinned Usage tab's header).</summary>
     public double FiveHourLimitPercent => Math.Max(0, FiveHourUsed ?? 0);
 
-    /// <summary>"5hr limit: 66%" (M.ORCH-T1168).</summary>
-    public string FiveHourLimitText => $"5hr limit: {FiveHourLimitPercent.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%";
-
-    /// <summary>The 5hr box's figure and bar colour (M.ORCH-T1191, author request): banded by the raw percentage itself,
-    /// the same reading the 5-hour graph plots, not this login's own cutoff.</summary>
+    /// <summary>That bar's figure and colour (M.ORCH-T1191, author request): banded by the raw percentage itself, the same
+    /// reading the 5-hour graph plots, not this login's own cutoff.</summary>
     public Brush FiveHourLimitBrush => BandBrush(FiveHourUsed);
 
-    /// <summary>The utilization panel's compact weekly readout: the live weekly used percent already on the tab strip
-    /// (<see cref="WeekUsed"/>).</summary>
+    /// <summary>The same live weekly used percent already on the tab strip and login list (<see cref="WeekUsed"/>).</summary>
     public double WeeklyLimitPercent => Math.Max(0, WeekUsed ?? 0);
 
-    /// <summary>"Weekly limit: 22%" (M.ORCH-T1168).</summary>
-    public string WeeklyLimitText => $"Weekly limit: {WeeklyLimitPercent.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%";
-
-    /// <summary>The weekly box's figure and bar colour (M.ORCH-T1191): the same band as <see cref="FiveHourLimitBrush"/>.</summary>
+    /// <summary>That bar's figure and colour (M.ORCH-T1191): the same band as <see cref="FiveHourLimitBrush"/>.</summary>
     public Brush WeeklyLimitBrush => BandBrush(WeekUsed);
 
     // ── the pinned Usage tab (M.ORCH-T1446) ─────────────────────────────────
@@ -431,9 +424,9 @@ public sealed partial class MainViewModel
                                      nameof(WeeklyHeadline), nameof(WeeklyCaption), nameof(WeeklyAccountLine),
                                      nameof(Utilization), nameof(UtilizationText),
                                      nameof(WeeklyUtilization), nameof(WeeklyUtilizationText), nameof(ShowsFiveHourChart), nameof(ShowsWeeklyChart),
-                                     nameof(ShowsFiveHourSection), nameof(ShowsWeeklySection), nameof(FiveHourChartSelected), nameof(WeeklyChartSelected),
-                                     nameof(FiveHourLimitPercent), nameof(FiveHourLimitText), nameof(FiveHourLimitBrush),
-                                     nameof(WeeklyLimitPercent), nameof(WeeklyLimitText), nameof(WeeklyLimitBrush),
+                                     nameof(ShowsFiveHourSection), nameof(ShowsWeeklySection),
+                                     nameof(FiveHourLimitPercent), nameof(FiveHourLimitBrush),
+                                     nameof(WeeklyLimitPercent), nameof(WeeklyLimitBrush),
                                      nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip),
                                      nameof(CutoffsHeadline), nameof(CutoffsCaption), nameof(LastUpdatedHeadline), nameof(LastUpdatedCaption) })
             Raise(name);
