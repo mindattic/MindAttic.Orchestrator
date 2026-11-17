@@ -106,6 +106,10 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
 - Soft file claims: the plan's Key Files feed the commit gate's existing per-path record so disjoint
   units are preferred first; nothing waits because of overlap.
 - Stage gates: build-only verify; `DiffReview` generalised into a `reviewer` stage.
+- Reviewer contract (from ECC's `code-reviewer`): a verdict of `approve`, `warning` or `block`; each
+  blocking finding names the exact line and the failure scenario; only findings the reviewer is
+  confident in are reported, and zero findings is a valid result. A `block` hands the unit back to
+  an implementer with the findings as its brief. Planner and reviewer roles get read-only tools.
 
 ### Phase 4 — Resource ownership (never run out)
 - **Job Objects**: every hosted CLI's process tree goes in a Windows Job Object with
@@ -142,6 +146,10 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
   already being prompted.
 - Lease expiry and CLI death both land on the same path: unit back to `ready` with its checkpoint
   (folds in `OrphanWatch`).
+- Stall rules (from ECC's `loop-operator`), built on the existing `LoopDetector` and `Watchdog`: a
+  unit is paused and escalated to the owner when it shows no progress across two checkpoints, fails
+  twice with the same error, or drifts past its job's budget. It resumes only after its build
+  passes. The counts are settings.
 - A login reaching its hard cutoff pauses only that login's agents; their units move to other
   agents of the same role, or wait for the reset using the existing resume-after-reset wake.
 
