@@ -105,8 +105,13 @@ or a local Claude CLI file on the PC lands in the host's database at once, and e
 - **Work branches (in progress, off by default; M.ORCH-T1501):** with the Vault setting *Build work branches (remote host)*
   on, the host's daemon builds each `origin/work/*` branch in a worktree of its own (at most *Work-branch builds at once*),
   apart from the others and from main, and `orchestrator branches` shows each one; `--ready` lists the ones built clean and
-  waiting for a local test run (`--json` for scripts). Branches exist only on the host: your PC stays on main. The local
-  test run, its sign-off and the merge to main are still to come.
+  waiting for a local test run (`--json` for scripts). Branches exist only on the host: your PC stays on main.
+  `orchestrator branches report <repo> <branch> <head> --pass|--fail [--note "<what failed>"]` records a local run of one
+  head (M.ORCH-T1637). A failing run sends the branch back to the work unit that produced it, the ticket its name carries
+  (`work/<ticket>`): the ticket gets a note with the failures and is handed out again, to keep iterating on that same
+  branch, while every other branch goes on building and being tested. Once it pushes a new head, the host builds it and
+  queues it for a local run again; `--returned` lists the branches back with their work unit. Running the local suite,
+  the sign-off's merge to main and the PC's fetch job are still to come.
 - **Back to one machine:** `orchestrator machine standalone` (and `orchestrator db migrate` to go back to SQL Server).
 
 ## Limits

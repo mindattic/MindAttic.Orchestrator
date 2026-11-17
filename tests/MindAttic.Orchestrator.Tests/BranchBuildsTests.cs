@@ -119,4 +119,72 @@ public sealed class BranchBuildsTests
         Assert.That(b.Branches(dir)!.Keys, Does.Not.Contain("feature/x"));
         Assert.That(BranchBuilds.TreeOf(@"D:\wt", "A", "work/x/y z"), Is.EqualTo(Path.Combine(@"D:\wt", "A", "branch-x-y-z")));
     }
+
+    // M.ORCH-T1637: a failing local run sends the branch back to the work unit that produced it, which keeps iterating on the
+    // same branch, while every other branch goes on.
+
+    private void BuildBoth()
+    {
+        var b = Make();
+        Tick(b, Now);
+        Tick(b, Now.AddSeconds(1));
+    }
+
+    [Test]
+    public void A_failing_local_run_sends_the_branch_back_to_its_ticket_without_holding_the_others()
+    {
+        BuildBoth();
+        var report = BranchBuilds.RecordTest(store, "A", "work/M.ORCH-T1", "aaaaaaa1", ok: false, "Foo_test failed", Now);
+        Assert.That(report.Outcome, Is.EqualTo(BranchBuilds.ReportOutcome.SentBack));
+        Assert.That(report.Ticket, Is.EqualTo("M.ORCH-T1"));
+
+        var state = BranchBuilds.Load(store);
+        var tests = BranchBuilds.LoadTests(store);
+        Assert.That(BranchBuilds.ReadyToTest(state, tests).Select(r => r.Branch), Is.EqualTo(new[] { "work/M.ORCH-T2" }), "the other branch is still queued");
+        var back = BranchBuilds.ReturnedToWork(state, tests).Single();
+        Assert.That((back.Branch, back.Ticket, back.Note, back.Rounds), Is.EqualTo(("work/M.ORCH-T1", "M.ORCH-T1", "Foo_test failed", 1)));
+        Assert.That(BranchBuilds.Brief(back), Does.Contain("same branch").And.Contain("origin/work/M.ORCH-T1").And.Contain("Foo_test failed"));
+        Assert.That(BranchBuilds.BranchFor(state, "A", "M.ORCH-T1"), Is.EqualTo("work/M.ORCH-T1"), "its next round goes on the same branch");
+    }
+
+    [Test]
+    public void A_new_head_on_a_returned_branch_is_built_and_queued_again()
+    {
+        BuildBoth();
+        BranchBuilds.RecordTest(store, "A", "work/M.ORCH-T1", "aaaaaaa1", ok: false, "x", Now);
+        heads["work/M.ORCH-T1"] = "aaaaaaa2";
+        var b = Make();
+        Tick(b, Now.AddMinutes(2));
+        Tick(b, Now.AddMinutes(2).AddSeconds(1));
+        var state = BranchBuilds.Load(store);
+        var tests = BranchBuilds.LoadTests(store);
+        Assert.That(BranchBuilds.ReturnedToWork(state, tests), Is.Empty, "the work unit moved on");
+        Assert.That(BranchBuilds.ReadyToTest(state, tests).Select(r => r.Head), Does.Contain("aaaaaaa2"));
+
+        var second = BranchBuilds.RecordTest(store, "A", "work/M.ORCH-T1", "aaaaaaa2", ok: false, "y", Now.AddMinutes(3));
+        Assert.That(BranchBuilds.LoadTests(store)["A"]["work/M.ORCH-T1"].Rounds, Is.EqualTo(2), second.Text);
+        BranchBuilds.RecordTest(store, "A", "work/M.ORCH-T1", "aaaaaaa2", ok: false, "y", Now.AddMinutes(4));
+        Assert.That(BranchBuilds.LoadTests(store)["A"]["work/M.ORCH-T1"].Rounds, Is.EqualTo(2), "the same result twice counts once");
+    }
+
+    [Test]
+    public void A_result_for_an_old_head_is_dropped_and_a_pass_signs_off()
+    {
+        BuildBoth();
+        Assert.That(BranchBuilds.RecordTest(store, "A", "work/M.ORCH-T1", "aaaaaaa0", ok: false, null, Now).Outcome, Is.EqualTo(BranchBuilds.ReportOutcome.Stale));
+        Assert.That(BranchBuilds.RecordTest(store, "A", "work/nope", "aaaaaaa1", ok: true, null, Now).Outcome, Is.EqualTo(BranchBuilds.ReportOutcome.Unknown));
+        Assert.That(BranchBuilds.RecordTest(store, "A", "work/M.ORCH-T2", "bbbbbbb1", ok: true, null, Now).Outcome, Is.EqualTo(BranchBuilds.ReportOutcome.Passed));
+        var state = BranchBuilds.Load(store);
+        var tests = BranchBuilds.LoadTests(store);
+        Assert.That(BranchBuilds.SignedOff(state, tests).Select(r => r.Branch), Is.EqualTo(new[] { "work/M.ORCH-T2" }));
+        Assert.That(BranchBuilds.ReadyToTest(state, tests).Select(r => r.Branch), Is.EqualTo(new[] { "work/M.ORCH-T1" }));
+    }
+
+    [Test]
+    public void A_work_branch_names_its_ticket()
+    {
+        Assert.That(BranchBuilds.WorkUnitOf("work/M.ORCH-T1637"), Is.EqualTo("M.ORCH-T1637"));
+        Assert.That(BranchBuilds.WorkUnitOf("work/M.ORCH-T1637-retry"), Is.EqualTo("M.ORCH-T1637"));
+        Assert.That(BranchBuilds.WorkUnitOf("work/spike"), Is.Null);
+    }
 }

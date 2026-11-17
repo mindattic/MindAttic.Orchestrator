@@ -228,7 +228,12 @@ internal static class CliApp
                 m.AddCommand<MachineKitCommand>("kit").WithDescription("Write only the host kit to <folder>.");
                 m.AddCommand<MachineTicketsCommand>("tickets").WithDescription("On a client: run a tickets command on the host (tickets -- <args>); the tickets shim on this PC does it for you.");
             });
-            config.AddCommand<BranchesCommand>("branches").WithDescription("On the remote host: each origin/work/* branch and its isolated build (M.ORCH-T1501, off unless the Vault's RemoteBranchBuilds); --ready lists the ones built clean and waiting for a local test run, --json as data.");
+            config.AddBranch("branches", b =>
+            {
+                b.SetDescription("On the remote host: each origin/work/* branch, its isolated build (M.ORCH-T1501, off unless the Vault's RemoteBranchBuilds) and its local test run (M.ORCH-T1637); --ready lists the ones built clean and waiting for a local test run, --returned the ones whose run failed and are back with their work unit, --json as data.");
+                b.SetDefaultCommand<BranchesCommand>();
+                b.AddCommand<BranchesReportCommand>("report").WithDescription("Record a local test run: report <repo> <branch> <head> --pass|--fail [[--note \"<what failed>\"]]. A fail sends the branch back to its work unit (its ticket noted and handed out again) to keep iterating on the same branch; no other branch waits on it.");
+            });
             // Let crashes reach the catch below so they're logged, not just printed.
             config.PropagateExceptions();
         });
