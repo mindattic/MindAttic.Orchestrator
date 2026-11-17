@@ -115,8 +115,12 @@ or a local Claude CLI file on the PC lands in the host's database at once, and e
   (`<WorktreeRoot>\<repo>\merge-main`, never the repo's checkout), pushes main and deletes the branch on origin (kept if it
   moved after the sign-off; a head that moved isn't merged, it needs its own run). A merge that conflicts with main is
   logged and not tried again until a new head is signed off. Then `orchestrator branches ff [<repo>...]` on your PC
-  fast-forwards main (only a checkout on main, only a fast-forward). Running the local suite and the PC's fetch job are
-  still to come.
+  fast-forwards main (only a checkout on main, only a fast-forward). `orchestrator branches test [<branch>...] [--repo
+  <name>]` on your PC (M.ORCH-T1635) runs the full suite of some or all queued branches, one at a time, each at the head
+  the host built, in a detached worktree (`<WorktreeRoot>\<repo>\local-tests`; your checkout stays on main), and reports
+  pass or fail per head back to the host through its gateway (`POST /branches`, the owner's token only), the same record
+  `branches report` writes; a run that couldn't complete isn't reported, and `--list` only shows what would run. The PC's
+  periodic fetch job is still to come.
 - **Back to one machine:** `orchestrator machine standalone` (and `orchestrator db migrate` to go back to SQL Server).
 
 ## Limits

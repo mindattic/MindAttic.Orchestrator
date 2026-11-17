@@ -47,9 +47,55 @@ internal static class TicketsRunner
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return root; }
     }
 
+    /// <summary>The orchestrator CLI here (M.ORCH-T1635): <c>MINDATTIC_ORCHESTRATOR</c>, else the installed one, else the first
+    /// <c>orchestrator.exe</c> on PATH.</summary>
+    public static string? OrchestratorExe()
+    {
+        if (Environment.GetEnvironmentVariable("MINDATTIC_ORCHESTRATOR") is { Length: > 0 } set && File.Exists(set)) return set;
+        const string installed = @"C:\Apps\MindAttic.Orchestrator\Cli\orchestrator.exe";
+        if (File.Exists(installed)) return installed;
+        return OnPath("orchestrator.exe");
+    }
+
+    private static string? OnPath(string name)
+    {
+        foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            try
+            {
+                var candidate = Path.Combine(dir.Trim().Trim('"'), name);
+                if (File.Exists(candidate)) return candidate;
+            }
+            catch (ArgumentException) { }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="args"/> is an <c>orchestrator branches</c> command the owner's client may run here (M.ORCH-T1635):
+    /// the host's work-branch queue (<c>branches</c> with options only, such as <c>--ready --json</c>) or a local test run's
+    /// report (<c>branches report ...</c>). Nothing else of the orchestrator CLI is reachable through the gateway.
+    /// </summary>
+    public static bool BranchesAllowed(IReadOnlyList<string> args) =>
+        args.Count > 0 && args[0] == "branches"
+        && (args.Count == 1 || args[1] == "report" || args.Skip(1).All(a => a is "--ready" or "--returned" or "--json"));
+
     public static async Task<(int ExitCode, string Output)> RunAsync(IReadOnlyList<string> args, string? relativeDirectory, CancellationToken ct)
     {
         if (Exe() is not { } exe) return (127, "The tickets CLI isn't installed on the host (MindAttic.Tickets' run.ps1 installs it).");
+        return await RunExeAsync(exe, "tickets", args, relativeDirectory, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Runs an allowed <c>orchestrator branches</c> command here (<see cref="BranchesAllowed"/>, M.ORCH-T1635).</summary>
+    public static async Task<(int ExitCode, string Output)> RunBranchesAsync(IReadOnlyList<string> args, CancellationToken ct)
+    {
+        if (!BranchesAllowed(args)) return (2, "Only orchestrator branches (its listing, or report) runs on the host through the gateway.");
+        if (OrchestratorExe() is not { } exe) return (127, "The orchestrator CLI isn't installed on the host (MindAttic.Orchestrator's run.ps1 installs it).");
+        return await RunExeAsync(exe, "orchestrator", args, null, ct).ConfigureAwait(false);
+    }
+
+    private static async Task<(int ExitCode, string Output)> RunExeAsync(string exe, string name, IReadOnlyList<string> args, string? relativeDirectory, CancellationToken ct)
+    {
         var psi = new ProcessStartInfo(exe)
         {
             RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true, UseShellExecute = false, CreateNoWindow = true,
@@ -58,7 +104,7 @@ internal static class TicketsRunner
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
         psi.Environment["NO_COLOR"] = "1";
-        using var p = Process.Start(psi) ?? throw new InvalidOperationException("tickets didn't start");
+        using var p = Process.Start(psi) ?? throw new InvalidOperationException($"{name} didn't start");
         p.StandardInput.Close();
         // The limit covers reading the output too: a child of tickets still holding its stdout kept the reads (and the
         // request) waiting past it.
@@ -74,8 +120,8 @@ internal static class TicketsRunner
         catch (OperationCanceledException)
         {
             try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
-            if (ct.IsCancellationRequested) return (130, "The request was cancelled before tickets finished."); // the client went away: not a timeout
-            return (124, $"tickets timed out on the host after {Timeout.TotalMinutes:0} minutes.");
+            if (ct.IsCancellationRequested) return (130, $"The request was cancelled before {name} finished."); // the client went away: not a timeout
+            return (124, $"{name} timed out on the host after {Timeout.TotalMinutes:0} minutes.");
         }
     }
 }

@@ -140,15 +140,7 @@ internal sealed class BranchesReportCommand : Command<BranchesReportCommand.Sett
     public override int Execute(CommandContext context, Settings settings)
     {
         var branch = settings.Branch.StartsWith("origin/", StringComparison.Ordinal) ? settings.Branch["origin/".Length..] : settings.Branch;
-        var report = BranchBuilds.RecordTest(Ctx.Store(), settings.Repo, branch, settings.Head, settings.Pass, settings.Note, DateTime.UtcNow);
-        string? warning = null;
-        if (report.Outcome == BranchBuilds.ReportOutcome.SentBack)
-        {
-            var tests = BranchBuilds.LoadTests(Ctx.Store());
-            var returned = BranchBuilds.ReturnedToWork(BranchBuilds.Load(Ctx.Store()), tests)
-                .FirstOrDefault(r => string.Equals(r.Repo, settings.Repo, StringComparison.OrdinalIgnoreCase) && r.Branch == branch);
-            if (returned is not null) warning = BranchBuilds.SendBack(OrchestratorOptions.Load().WorkspaceRoot, returned);
-        }
+        var (report, warning) = Record(settings.Repo, branch, settings.Head, settings.Pass, settings.Note);
         if (settings.Json)
         {
             Console.WriteLine(JsonSerializer.Serialize(new { outcome = report.Outcome.ToString(), text = report.Text, ticket = report.Ticket, head = report.Head, warning },
@@ -167,5 +159,22 @@ internal sealed class BranchesReportCommand : Command<BranchesReportCommand.Sett
             if (warning is not null) AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(warning)}[/]");
         }
         return report.Outcome is BranchBuilds.ReportOutcome.Unknown or BranchBuilds.ReportOutcome.Unreadable ? 1 : 0;
+    }
+
+    /// <summary>Records a local run in this machine's store (the host's) and, when it sends the branch back, tells its ticket: the
+    /// one path every report takes, <c>branches report</c>'s and <c>branches test</c>'s alike (M.ORCH-T1635). The warning is what
+    /// couldn't be done about the ticket, or null.</summary>
+    internal static (BranchBuilds.Report Report, string? Warning) Record(string repo, string branch, string head, bool pass, string? note)
+    {
+        var report = BranchBuilds.RecordTest(Ctx.Store(), repo, branch, head, pass, note, DateTime.UtcNow);
+        string? warning = null;
+        if (report.Outcome == BranchBuilds.ReportOutcome.SentBack)
+        {
+            var tests = BranchBuilds.LoadTests(Ctx.Store());
+            var returned = BranchBuilds.ReturnedToWork(BranchBuilds.Load(Ctx.Store()), tests)
+                .FirstOrDefault(r => string.Equals(r.Repo, repo, StringComparison.OrdinalIgnoreCase) && r.Branch == branch);
+            if (returned is not null) warning = BranchBuilds.SendBack(OrchestratorOptions.Load().WorkspaceRoot, returned);
+        }
+        return (report, warning);
     }
 }

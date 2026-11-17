@@ -91,6 +91,8 @@ internal sealed record TokenResponse(
 /// address in five minutes and it answers 429 until they age out.</item>
 /// <item><c>POST /tickets</c>: <c>{ args, directory? }</c> runs the tickets CLI here for the owner's own client (M.ORCH-T1479):
 /// the owner's interact token only, <c>{ exitCode, output }</c> back.</item>
+/// <item><c>POST /branches</c>: <c>{ args }</c> runs <c>orchestrator branches</c> here (its listing or <c>report</c>, nothing else)
+/// for the owner's own client's local test runs of work branches (M.ORCH-T1635); same token rule and answer as <c>/tickets</c>.</item>
 /// <item><c>GET /sessions</c>: this machine's hosted sessions the caller may see.</item>
 /// <item><c>GET /sessions/{id}/stream</c>, a WebSocket (permessage-deflate offered): the session's frames, both ways
 /// (<see cref="TermBridge"/>); <c>?mode=watch</c> asks for read-only. It lasts as long as its token, or the latest fresh one
@@ -185,6 +187,35 @@ internal static class GatewayApp
             catch (Exception ex)
             {
                 g.Log.Error(ex, "running a tickets command failed; contained");
+                return Results.StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        });
+
+        app.MapPost("/branches", async (TicketsRequest? request, HttpContext http) =>
+        {
+            try
+            {
+                // The owner's own client (M.ORCH-T1635): the host's work-branch queue, and its local test runs' reports, both
+                // through orchestrator branches here, which owns the branch builds' record. The owner's interact token only.
+                if (Authenticate(http, g) is not { } who)
+                {
+                    AuditRefusal(g, "", RemoteOf(http), TokenRefusal(http));
+                    return Results.Unauthorized();
+                }
+                if (!string.Equals(who.Subject.Trim(), g.Options.Owner.Trim(), StringComparison.OrdinalIgnoreCase) || who.Scope != GatewayScopes.Interact)
+                {
+                    AuditRefusal(g, who.Subject, RemoteOf(http), "branches: not the owner's interact token");
+                    return Results.StatusCode(StatusCodes.Status403Forbidden);
+                }
+                if (request?.Args is not { Count: > 0 and <= 64 } args || args.Any(a => a is null || a.Length > 32_000) || !TicketsRunner.BranchesAllowed(args))
+                    return Results.BadRequest();
+                g.Log.Write($"orchestrator {args[0]} {(args.Count > 1 ? args[1] : "")} for {who.Subject} from {RemoteOf(http)}");
+                var result = await TicketsRunner.RunBranchesAsync(args, http.RequestAborted);
+                return Results.Json(new TicketsResponse(result.ExitCode, result.Output));
+            }
+            catch (Exception ex)
+            {
+                g.Log.Error(ex, "running an orchestrator branches command failed; contained");
                 return Results.StatusCode(StatusCodes.Status500InternalServerError);
             }
         });

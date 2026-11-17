@@ -206,14 +206,25 @@ public sealed class GatewayClient : IDisposable
     /// <paramref name="relativeDirectory"/> names there; needs the owner key (the owner's own host). Returns its exit code and
     /// output; a host that can't be reached or refuses comes back as exit 1 with why. Never throws but on cancellation.
     /// </summary>
-    public async Task<(int ExitCode, string Output)> RunTicketsAsync(IReadOnlyList<string> args, string? relativeDirectory, CancellationToken ct)
+    public Task<(int ExitCode, string Output)> RunTicketsAsync(IReadOnlyList<string> args, string? relativeDirectory, CancellationToken ct) =>
+        RunOnHostAsync("/tickets", "tickets", args, relativeDirectory, ct);
+
+    /// <summary>
+    /// Runs <c>orchestrator branches</c> on the host with <paramref name="args"/> (M.ORCH-T1635): its work-branch listing (such as
+    /// <c>branches --ready --json</c>) or a local test run's <c>branches report</c>; the gateway runs nothing else. Needs the owner
+    /// key, like <see cref="RunTicketsAsync"/>, and comes back the same way.
+    /// </summary>
+    public Task<(int ExitCode, string Output)> RunBranchesAsync(IReadOnlyList<string> args, CancellationToken ct) =>
+        RunOnHostAsync("/branches", "branches", args, null, ct);
+
+    private async Task<(int ExitCode, string Output)> RunOnHostAsync(string route, string what, IReadOnlyList<string> args, string? relativeDirectory, CancellationToken ct)
     {
         if (BaseUrl is null) return (1, $"The host's gateway URL ({Remote.Url}) isn't an https address.");
         await MintIfDueAsync(ct).ConfigureAwait(false);
         if (token is null) return (1, "Couldn't reach the host for a token: " + (mintProblem ?? "no owner key here (orchestrator machine connect)") + ".");
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl + "/tickets")
+            using var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl + route)
             {
                 Content = JsonContent.Create(new { args, directory = relativeDirectory }),
             };
@@ -222,13 +233,13 @@ public sealed class GatewayClient : IDisposable
             bounded.CancelAfter(TicketsTimeout);
             using var response = await http.SendAsync(request, bounded.Token).ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.NotFound) return (1, "The host's gateway is older than this PC's Orchestrator: deploy MindAttic.Orchestrator on the host (orchestrator machine pull, then run.ps1).");
-            if (!response.IsSuccessStatusCode) return (1, $"The host refused the tickets command ({(int)response.StatusCode}).");
+            if (!response.IsSuccessStatusCode) return (1, $"The host refused the {what} command ({(int)response.StatusCode}).");
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
             var root = doc.RootElement;
             return (root.TryGetProperty("exitCode", out var code) && code.TryGetInt32(out var c) ? c : 1,
                 root.TryGetProperty("output", out var output) ? output.GetString() ?? "" : "");
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return (1, "The host didn't finish the tickets command in time."); }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return (1, $"The host didn't finish the {what} command in time."); }
         catch (HttpRequestException ex) { return (1, "The host can't be reached: " + Describe(ex) + "."); }
         catch (JsonException) { return (1, "The host's answer couldn't be read."); }
         // Bughunt, M.ORCH-T1538: a well-formed-JSON-but-not-an-object answer (null, an array, a scalar) makes
