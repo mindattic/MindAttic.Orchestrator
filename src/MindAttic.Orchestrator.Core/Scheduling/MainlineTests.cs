@@ -76,8 +76,15 @@ public sealed partial class MainlineTests(JsonStore store)
 
     internal TimeSpan LockRetryDelay { get; set; } = TimeSpan.FromSeconds(OrchestratorSettings.DefaultMainTestsLockRetrySeconds);
 
+    /// <summary>How long one suite may run (the MainTestsTimeoutMinutes Vault setting, M.ORCH-T1662; the daemon sets it before each tick).</summary>
+    internal TimeSpan Timeout { get; set; } = SuiteTimeout;
+
+    /// <summary>The suite time limit in <paramref name="s"/>; the 90-minute default when it isn't a usable number.</summary>
+    public static TimeSpan TimeoutOf(OrchestratorSettings s) =>
+        OrchestratorSettings.MinutesSpan(s.MainTestsTimeoutMinutes, SuiteTimeout);
+
     private SuiteResult DefaultRunSuite(string solution) =>
-        Dotnet(ProcessRunner.Default, solution, SuiteTimeout, LockRetryDelay, LockRetries, EndLeftoverProcesses);
+        Dotnet(ProcessRunner.Default, solution, Timeout, LockRetryDelay, LockRetries, EndLeftoverProcesses);
 
     /// <summary>Ends processes whose program file lives under <paramref name="tree"/> (a testhost or TermHost a previous run left, which
     /// holds the DLLs the build copies over); every other process, and this one, is left alone (M.ORCH-T1632).</summary>

@@ -84,17 +84,26 @@ internal sealed class BranchesTestCommand : AsyncCommand<BranchesTestCommand.Set
             }
 
             var workspace = OrchestratorOptions.Load().WorkspaceRoot;
-            var defaults = new BranchTestRun();
+            var timeout = MainlineTests.TimeoutOf(s);
             var runner = new BranchTestRun
             {
-                Timeout = settings.TimeoutMinutes is double m && double.IsFinite(m) && m > 0 ? TimeSpan.FromMinutes(m) : defaults.Timeout,
+                Timeout = OrchestratorSettings.MinutesSpan(settings.TimeoutMinutes ?? double.NaN, timeout),
                 LockRetries = (int)Math.Clamp(double.IsFinite(s.MainTestsLockRetries) ? s.MainTestsLockRetries : 2, 0, 10),
                 LockRetryDelay = OrchestratorSettings.SecondsSpan(s.MainTestsLockRetrySeconds, 1),
             };
             var results = new List<object>();
             var allPassed = true;
+            var memoryWait = TimeSpan.FromMinutes(double.IsFinite(s.BranchTestsMemoryWaitMinutes) ? Math.Clamp(s.BranchTestsMemoryWaitMinutes, 0, 1440) : 0);
             foreach (var r in chosen)
             {
+                // Like the daemon's suite runs: none starts while the memory guard holds; wait for RAM, else skip (nothing reported).
+                if (await WaitForMemory(() => Ctx.Settings, memoryWait, settings.Json) is { } held)
+                {
+                    allPassed = false;
+                    results.Add(new { repo = r.Repo, branch = r.Branch, head = r.Head, completed = false, ok = false, passed = 0, failed = 0, note = held, reported = (string?)null, warning = (string?)null });
+                    if (!settings.Json) AnsiConsole.MarkupLine($"{Markup.Escape(r.Repo)}'s [aqua]{Markup.Escape(r.Branch)}[/]: [yellow]didn't run, nothing reported:[/] {Markup.Escape(held)}");
+                    continue;
+                }
                 if (!settings.Json)
                     AnsiConsole.MarkupLine($"Running {Markup.Escape(r.Repo)}'s [aqua]{Markup.Escape(r.Branch)}[/] at {Markup.Escape(BranchesCommand.Short(r.Head))}…");
                 var result = runner.Run(r, Path.Combine(workspace, r.Repo), s.WorktreeRoot);
@@ -121,6 +130,22 @@ internal sealed class BranchesTestCommand : AsyncCommand<BranchesTestCommand.Set
         finally
         {
             host?.Dispose();
+        }
+    }
+
+    /// <summary>Waits up to <paramref name="max"/> for the memory guard to let new work start; null once it does, else why it still holds.</summary>
+    private static async Task<string?> WaitForMemory(Func<OrchestratorSettings> settings, TimeSpan max, bool quiet)
+    {
+        var until = DateTime.UtcNow + max;
+        var said = false;
+        while (true)
+        {
+            var held = MindAttic.Orchestrator.Activity.MemoryGuard.StartHeld(settings());
+            if (held is null) return null;
+            if (DateTime.UtcNow >= until) return held;
+            if (!said && !quiet) AnsiConsole.MarkupLine($"[grey]Waiting for RAM before the next run: {Markup.Escape(held)}[/]");
+            said = true;
+            await Task.Delay(TimeSpan.FromSeconds(10));
         }
     }
 

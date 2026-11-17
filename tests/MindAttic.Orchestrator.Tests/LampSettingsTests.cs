@@ -148,6 +148,8 @@ public sealed class LampSettingsTests
         // The rest of the sweep (M.ORCH-T1624)
         Case("mainTestsLockRetries", s => s with { MainTestsLockRetries = 2 }, 2d, v => v.MainTestsLockRetries = 4, 4d, s => s.MainTestsLockRetries),
         Case("mainTestsLockRetrySeconds", s => s with { MainTestsLockRetrySeconds = 30 }, 30d, v => v.MainTestsLockRetrySeconds = 10, 10d, s => s.MainTestsLockRetrySeconds),
+        Case("mainTestsTimeoutMinutes", s => s with { MainTestsTimeoutMinutes = 90 }, 90d, v => v.MainTestsTimeoutMinutes = 45, 45d, s => s.MainTestsTimeoutMinutes),
+        Case("branchTestsMemoryWaitMinutes", s => s with { BranchTestsMemoryWaitMinutes = 30 }, 30d, v => v.BranchTestsMemoryWaitMinutes = 5, 5d, s => s.BranchTestsMemoryWaitMinutes),
         Case("testTermHostSweepMinutes", s => s with { TestTermHostSweepMinutes = 5 }, 5d, v => v.TestTermHostSweepMinutes = 10, 10d, s => s.TestTermHostSweepMinutes),
         Case("orgReachSpacingMinutes", s => s with { OrgReachSpacingMinutes = 5 }, 5d, v => v.OrgReachSpacingMinutes = 15, 15d, s => s.OrgReachSpacingMinutes),
         Case("apiCostReadMinutes", s => s with { ApiCostReadMinutes = 15 }, 15d, v => v.ApiCostReadMinutes = 60, 60d, s => s.ApiCostReadMinutes),

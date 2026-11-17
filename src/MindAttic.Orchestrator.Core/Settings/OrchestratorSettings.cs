@@ -587,6 +587,10 @@ public sealed record OrchestratorSettings
     public static TimeSpan SecondsSpan(double seconds, double minSeconds = 0) =>
         TimeSpan.FromSeconds(double.IsFinite(seconds) ? Math.Clamp(seconds, minSeconds, 1e9) : minSeconds);
 
+    /// <summary>A setting's minutes as a <see cref="TimeSpan"/>; <paramref name="fallback"/> when it isn't a positive finite number.</summary>
+    public static TimeSpan MinutesSpan(double minutes, TimeSpan fallback) =>
+        double.IsFinite(minutes) && minutes > 0 ? TimeSpan.FromMinutes(Math.Min(minutes, 1e6)) : fallback;
+
     /// <summary>Off by default (M.ORCH-T1585): open a MindAttic.Launcher (a process of its own, ~80 MB) for every signed-in login,
     /// and again when its last tab closes. The tab right-click's Open Project lists the same projects in-app; Run Launcher still
     /// opens one by hand.</summary>
@@ -665,6 +669,20 @@ public sealed record OrchestratorSettings
 
     /// <summary>The default main tests lock retry seconds constant.</summary>
     public const double DefaultMainTestsLockRetrySeconds = 30;
+
+    /// <summary>Minutes one suite may run before it's ended and counted as not completed: the main-line suites and
+    /// <c>orchestrator branches test</c> (M.ORCH-T1662; was a fixed 90).</summary>
+    public double MainTestsTimeoutMinutes { get; init; } = DefaultMainTestsTimeoutMinutes;
+
+    /// <summary>The default main tests timeout minutes constant.</summary>
+    public const double DefaultMainTestsTimeoutMinutes = 90;
+
+    /// <summary>Minutes <c>orchestrator branches test</c> waits for the memory guard to clear before each branch's run; past it the
+    /// branch is skipped, nothing reported (M.ORCH-T1662).</summary>
+    public double BranchTestsMemoryWaitMinutes { get; init; } = DefaultBranchTestsMemoryWaitMinutes;
+
+    /// <summary>The default branch tests memory wait minutes constant.</summary>
+    public const double DefaultBranchTestsMemoryWaitMinutes = 30;
 
     /// <summary>Off by default, since it commits setup-host.ps1 and texts the admin (M.ORCH-T1488): once a day at
     /// <see cref="SqlFreshnessCheckAt"/>, the daemon asks winget for the newest SQL Server Developer and Express (LocalDB) packages,

@@ -627,6 +627,18 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 600)]
     public double MainTestsLockRetrySeconds { get; set; } = OrchestratorSettings.DefaultMainTestsLockRetrySeconds;
 
+    /// <summary>Minutes one suite may run before it's ended and counted as not completed (main-line suites and branches test).</summary>
+    [Setting("Test suite timeout (minutes)", Group = "Dashboard", Order = 93,
+        Help = "Minutes one suite may run before it's ended and counted as not completed. Applies to the main-line suites and to orchestrator branches test (its --timeout overrides it for one run).")]
+    [SettingRange(1, 1440)]
+    public double MainTestsTimeoutMinutes { get; set; } = OrchestratorSettings.DefaultMainTestsTimeoutMinutes;
+
+    /// <summary>Minutes orchestrator branches test waits for the memory guard to clear before each branch's run.</summary>
+    [Setting("Branch tests memory wait (minutes)", Group = "Dashboard", Order = 93,
+        Help = "Minutes orchestrator branches test waits, before each branch's run, for RAM to recover while the memory guard holds new work. Past it the branch is skipped and nothing is reported.")]
+    [SettingRange(0, 1440)]
+    public double BranchTestsMemoryWaitMinutes { get; set; } = OrchestratorSettings.DefaultBranchTestsMemoryWaitMinutes;
+
     /// <summary>How long an ended Launcher menu tab stays; 0 (the default) closes it at once.</summary>
     [Setting("Ended Launcher tab lifetime (minutes)", Group = "Dashboard", Order = 7,
         Help = "How long an ended Launcher menu tab stays; 0 (the default) closes it at once.")]
@@ -869,6 +881,8 @@ public sealed class OrchestratorVaultSettings
         ActivityEndedMinutes = s.ActivityEndedMinutes,
         MainTestsLockRetries = s.MainTestsLockRetries,
         MainTestsLockRetrySeconds = s.MainTestsLockRetrySeconds,
+        MainTestsTimeoutMinutes = s.MainTestsTimeoutMinutes,
+        BranchTestsMemoryWaitMinutes = s.BranchTestsMemoryWaitMinutes,
         EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
         WorkspaceRoot = WorkspaceOverrideOf(s),
         WorktreeRoot = s.WorktreeRoot,
@@ -1005,6 +1019,8 @@ public sealed class OrchestratorVaultSettings
         ActivityEndedMinutes = ActivityEndedMinutes,
         MainTestsLockRetries = MainTestsLockRetries,
         MainTestsLockRetrySeconds = MainTestsLockRetrySeconds,
+        MainTestsTimeoutMinutes = MainTestsTimeoutMinutes,
+        BranchTestsMemoryWaitMinutes = BranchTestsMemoryWaitMinutes,
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,
         WorktreeRoot = string.IsNullOrWhiteSpace(WorktreeRoot) ? s.WorktreeRoot : WorktreeRoot,
         MemberUntil = MemberUntil ?? "",
