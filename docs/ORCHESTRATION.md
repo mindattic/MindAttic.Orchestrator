@@ -93,6 +93,34 @@ approved, while any other requirement they carry, such as an earlier phase's tic
 is never queued, proposed, handed out by `orchestrator next --claim` or counted as work by keep-going: while unapproved
 it waits for your yes with the other proposed tickets, and once approved it just stays open until its children are done.
 
+## The owner inbox: what waits on you (M.ORCH-T1689)
+
+Everything waiting on the owner is one list, so nothing stalls unseen: `orchestrator inbox` (`--json` for scripts), and
+the dashboard's Inbox button in the menu bar, which shows the count and opens the list. A ticket's id opens it in Tickets
+Desktop, where it is approved or edited; every row carries the command that answers it. What it lists today:
+
+| Kind | What | Answer |
+| --- | --- | --- |
+| Orphaned | A ticket whose CLI or tab went dark and that the daemon gave up redispatching, or that has waited a stale period (`StaleAfterHours`) for its redispatch | `orchestrator release <ID>` |
+| Waiting on you | An open ticket labelled `waiting-on-owner` | `tickets ticket label remove <ID> waiting-on-owner` |
+| Stale | A stale claim nobody picked up for another stale period after it went stale | `orchestrator release <ID>` |
+| Approve | An open ticket that isn't a fix and isn't approved | `tickets ticket approve <ID>` |
+| Sign in | A login whose meter can't be read until its person signs in again | `orchestrator login --account <email>` |
+| Consent | On a member's PC, someone asking to type into one of their CLIs on the host | `orchestrator machine consent <id> allow\|deny` |
+
+A ticket two kinds name is listed once, by the first in that order. The list is built from what a tick already has (the
+snapshot, the plan, the `orphaned-tickets` and `meter-probe` state rows); it runs no query of its own. Each kind is one
+provider in `OwnerInbox.Providers` (`Core/Status/OwnerInbox.cs`): a later kind (an escalation, a quarantined unit, a
+milestone acceptance) is one more provider there.
+
+**The alert.** Once a minute the daemon compares the list with the items it has already seen (the `owner-inbox-alerted`
+state row) and texts the alert recipient through Psst about the new ones: one text per look, naming up to three and
+counting the rest. An item is alerted once and never again, across restarts and daemons, and one that leaves the list
+and comes back within 90 days stays quiet. The first look only records what is already waiting, so a backlog isn't
+texted. The Vault's "Text new inbox items" setting (`InboxAlerts`, on by default) turns the texts off; items are still
+recorded as seen, so turning it back on texts no backlog. Consent requests are not texted (the daemon doesn't ask the
+host for them; the dashboard already shows a toast for each).
+
 ## Ticket attribution: flagged, not blocked (M.ORCH-T1520)
 
 MINDATTIC_AGENT.md's GOLDEN RULE says every request is a ticket, filed before any code is written for

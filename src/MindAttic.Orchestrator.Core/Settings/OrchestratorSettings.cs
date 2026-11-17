@@ -328,6 +328,12 @@ public sealed record OrchestratorSettings
     /// <see cref="PsstAlertTo"/> stands for the override itself; see <see cref="OrchestratorVaultSettings.WithPsstAlertTo"/>.</summary>
     public string? PsstAlertToOverride { get; init; }
 
+    /// <summary>Whether a new item in the owner inbox (M.ORCH-T1689, <see cref="Status.OwnerInbox"/>: a ticket to approve, one
+    /// parked on the owner, a stale or orphaned one nobody picked up, a login to sign in again) is texted to
+    /// <see cref="PsstAlertTo"/> through Psst, once per item. Off, new items are still noted as seen, so turning it on later
+    /// texts no backlog.</summary>
+    public bool InboxAlerts { get; init; } = true;
+
     /// <summary>The default psst alert to constant.</summary>
     public const string DefaultPsstAlertTo = "ryan";
 

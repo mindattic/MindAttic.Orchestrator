@@ -440,12 +440,15 @@ public sealed partial class MainViewModel : ObservableObject
                 // On a member's PC, consent requests on their own CLIs on the host (hub phase 2, M.ORCH-T1641): toasts.
                 consentsRead = ConsentsNow(settingsNow);
                 planned = PlanOffUi(built);
+                // The owner inbox (M.ORCH-T1689): everything waiting on the owner, from the snapshot and plan just made.
+                if (InboxNow(built, planned?.Item2, settingsNow) is { } inbox) inboxRead = inbox;
                 return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, diskFreeGb, ramUtilizationPercent, paused);
             }), () => localChanges);
             precomputedPlan = planned;
             ApplyTabs(next, tabs, nextOrgs);
             // The memory guard's level (M.ORCH-T1498): the daemon's, stepped, as the snapshot's pace carries it; else this process's own.
             SetHostStats(diskFree, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow);
+            ApplyInbox();
             // What a pushed snapshot's figures are laid over until the next read (M.ORCH-T872).
             (lastMembers, lastOrgs, restShown) = (readMembers, nextOrgs, rest);
             await TickAllocateAsync(next);

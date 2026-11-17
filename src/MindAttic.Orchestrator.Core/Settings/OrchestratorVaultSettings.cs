@@ -245,6 +245,11 @@ public sealed class OrchestratorVaultSettings
         Help = "Who's texted through Psst when a login reaches its own cutoff: a Psst contact (ryan) or a US number. Empty follows Global's alert recipient; none texts nobody.")]
     public string PsstAlertTo { get; set; } = "";
 
+    /// <summary>Text the alert recipient through Psst when something new waits on the owner in the inbox, once per item.</summary>
+    [Setting("Text new inbox items", Group = "Alerts", Order = 1,
+        Help = "Text the alert recipient through Psst when something new waits on you in the owner inbox (orchestrator inbox): a ticket to approve, one parked as waiting-on-owner, a stale or orphaned ticket nobody picked up, a login to sign in again. Once per item, never repeated. Off, the inbox still lists them.")]
+    public bool InboxAlerts { get; set; } = true;
+
     /// <summary>A URL that takes a plain-text POST, like an ntfy.sh topic, for phone pushes.</summary>
     [Setting("Push alerts to", Group = "Alerts", Order = 2, Help = "A URL that takes a plain-text POST, like an ntfy.sh topic, for phone pushes. Empty sends nothing.")]
     [UrlSetting]
@@ -844,6 +849,7 @@ public sealed class OrchestratorVaultSettings
         ContextCyclePercent = s.ContextCyclePercent,
         OrphanRedispatches = s.OrphanRedispatches,
         OrphanQuietMinutes = s.OrphanQuietMinutes,
+        InboxAlerts = s.InboxAlerts,
         EditClaims = s.EditClaims,
         EditClaimMinutes = s.EditClaimMinutes,
         AutoLogin = s.AutoLogin,
@@ -994,6 +1000,7 @@ public sealed class OrchestratorVaultSettings
         ContextCyclePercent = ContextCyclePercent,
         OrphanRedispatches = OrphanRedispatches,
         OrphanQuietMinutes = OrphanQuietMinutes,
+        InboxAlerts = InboxAlerts,
         EditClaims = string.IsNullOrWhiteSpace(EditClaims) ? s.EditClaims : EditClaims,
         EditClaimMinutes = EditClaimMinutes,
         AutoLogin = AutoLogin,

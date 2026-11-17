@@ -428,12 +428,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The terminals are native windows WPF can't draw over: hidden (never collapsed, so each keeps its size) while
-    /// Logins, User Settings or a Task List row's details (M.ORCH-T1622) is open, the loader covers the window or an org with no
+    /// Logins, User Settings, a Task List row's details (M.ORCH-T1622) or the Inbox (M.ORCH-T1689) is open, the loader covers the window or an org with no
     /// login covers the page.</summary>
     private void UpdateTerminalsCover()
     {
         var shown = Shown;
-        var covered = shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsTaskDetailOpen || RenameTabModal.IsOpen || CloseCliModal.IsOpen || model.IsLoading || model.IsOrgEmpty;
+        var covered = shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsTaskDetailOpen || shown.IsInboxOpen || RenameTabModal.IsOpen || CloseCliModal.IsOpen || model.IsLoading || model.IsOrgEmpty;
         TerminalPanesHost.Visibility = covered ? Visibility.Hidden : Visibility.Visible;
     }
 
@@ -448,7 +448,7 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() =>
         {
             var shown = Shown;
-            if (!IsActive || shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsTaskDetailOpen || RenameTabModal.IsOpen || CloseCliModal.IsOpen
+            if (!IsActive || shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsTaskDetailOpen || shown.IsInboxOpen || RenameTabModal.IsOpen || CloseCliModal.IsOpen
                 || TerminalPanesHost.Visibility != Visibility.Visible) return;
             if (model.AllTerminals.SelectedPane?.Control is not { IsVisible: true } terminal) return;
             var focused = Keyboard.FocusedElement as DependencyObject;
@@ -476,7 +476,7 @@ public partial class MainWindow : Window
     private void OnShownChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (sender != Shown) return;
-        if (e.PropertyName is nameof(MainViewModel.IsLoginsOpen) or nameof(MainViewModel.IsUserSettingsOpen) or nameof(MainViewModel.IsTaskDetailOpen))
+        if (e.PropertyName is nameof(MainViewModel.IsLoginsOpen) or nameof(MainViewModel.IsUserSettingsOpen) or nameof(MainViewModel.IsTaskDetailOpen) or nameof(MainViewModel.IsInboxOpen))
         {
             UpdateTerminalsCover();
             PinTerminalFocus(); // a dialog closing hands the keyboard back to the CLI
@@ -1309,6 +1309,7 @@ public partial class MainWindow : Window
         if (shown.IsLoginsOpen) shown.IsLoginsOpen = false;
         else if (shown.IsUserSettingsOpen) shown.IsUserSettingsOpen = false;
         else if (shown.IsTaskDetailOpen) shown.IsTaskDetailOpen = false;
+        else if (shown.IsInboxOpen) shown.IsInboxOpen = false;
     }
 
     /// <summary>Says <paramref name="text"/> through a screen reader without moving focus (WCAG 4.1.3, status messages):

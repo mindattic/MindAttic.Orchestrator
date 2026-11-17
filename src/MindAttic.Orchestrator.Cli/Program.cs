@@ -113,6 +113,7 @@ internal static class CliApp
             config.AddCommand<SendCommand>("send").WithDescription("Type text into a live Launcher-hosted session.");
             config.AddCommand<BudgetCommand>("budget").WithDescription("Token budget for the current 5-hour block and the week, and the pace; --block/--weekly/--warn/--pace/--target set them, --hits lists learned limits.");
             config.AddCommand<QueueCommand>("queue").WithDescription("Every open ticket across the workspace, in the order the scheduler would start them: explicit priority, then newest first, each ticket's open prerequisites just before it.");
+            config.AddCommand<InboxCommand>("inbox").WithDescription("Everything waiting on the owner right now (M.ORCH-T1689): tickets to approve, tickets parked as waiting-on-owner, stale and orphaned tickets nobody picked up, logins to sign in again, consent requests; each with the command that answers it. --json for scripts.");
             config.AddCommand<DispatchCommand>("dispatch").WithDescription("Start a session on a ticket, in its repo's own checkout on main.");
             config.AddCommand<ReleaseCommand>("release").WithDescription("Return a ticket to the queue; --remove-worktree also deletes its old clean worktree (one made before tickets were worked on main).");
             config.AddCommand<DaemonCommand>("daemon").WithDescription("Keep the budget file, pace and hooks fresh without the dashboard open.");

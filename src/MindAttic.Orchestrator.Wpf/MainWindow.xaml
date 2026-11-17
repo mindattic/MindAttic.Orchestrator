@@ -283,6 +283,17 @@
                            Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <Button x:Name="TeamWallButton" Style="{StaticResource MaToolButton}" Content="&#xE716;" Click="TeamWallButton_Click"
                         mc:MaCallout.ToolTip="Team Wall: everyone's live CLIs" AutomationProperties.Name="Team Wall" />
+                <!-- The owner inbox (M.ORCH-T1689): everything waiting on the owner (approvals, tickets parked on them, stale and
+                     orphaned tickets nobody picked up, logins to sign in again, consent requests), its count on the button
+                     while there is any; it opens InboxModal. In the menu bar, so it stays in the phone layout too. -->
+                <Grid x:Name="InboxTool" VerticalAlignment="Center">
+                    <Button x:Name="InboxButton" Style="{StaticResource MaToolButton}" Content="&#xE715;" Command="{Binding ToggleInboxCommand}"
+                            mc:MaCallout.ToolTip="{Binding InboxToolTip}" AutomationProperties.Name="{Binding InboxToolTip}" />
+                    <mc:MaBadge x:Name="InboxBadge" Style="{StaticResource MaTag}" MinWidth="16" Height="16" Padding="3,0" BorderThickness="0" Content="{Binding InboxBadge}"
+                                Background="{DynamicResource MaWarn}" Foreground="{DynamicResource MaOnAccent}" FontSize="9" FontWeight="Bold"
+                                HorizontalAlignment="Right" VerticalAlignment="Top" IsHitTestVisible="False" Focusable="False"
+                                Visibility="{Binding HasInbox, Converter={StaticResource Visible}}" />
+                </Grid>
                 <Button x:Name="TicketsButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Command="{Binding OpenTicketsAppCommand}"
                         mc:MaCallout.ToolTip="Open Tickets" AutomationProperties.Name="Open Tickets" />
                 <Button x:Name="LoginsButton" Style="{StaticResource MaToolButton}" Content="&#xE77B;" Command="{Binding ToggleLoginsCommand}"
@@ -1283,6 +1294,53 @@
                             Command="{Binding OpenInTicketsCommand}" CommandParameter="{Binding TaskDetailTicketId}"
                             Visibility="{Binding HasTaskDetailTicket, Converter={StaticResource Visible}}" />
                     <Button Style="{StaticResource MaPrimaryButton}" Content="Close" Padding="{StaticResource SpaceHLVS}" Command="{Binding CloseTaskDetailCommand}" />
+                </StackPanel>
+            </mc:MaModal.Footer>
+        </mc:MaModal>
+
+        <!-- The owner inbox (M.ORCH-T1689): everything waiting on the owner, one card each: its kind, the item (a ticket's id
+             links into Tickets Desktop, the only place a ticket is approved or edited), its repo and how long it has waited,
+             what it is, and the command that answers it with a Copy button. Every line wraps, so the cards read in the phone
+             layout too. Esc, its close button and the backdrop close it. -->
+        <mc:MaModal x:Name="InboxModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="{Binding InboxTitle}" AutomationProperties.Name="Inbox" DialogWidth="560"
+                    IsOpen="{Binding IsInboxOpen}" CloseCommand="{Binding CloseInboxCommand}">
+            <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,0,12,0" MaxHeight="520">
+                <StackPanel>
+                    <TextBlock x:Name="InboxEmpty" Text="Nothing is waiting on you." Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                               Visibility="{Binding HasInbox, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                    <ItemsControl x:Name="InboxList" Style="{StaticResource MaRowList}" ItemsSource="{Binding InboxItems}" Focusable="False" AutomationProperties.Name="Waiting on you">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:InboxRowViewModel}">
+                                <Border Style="{StaticResource MaRowCard}" AutomationProperties.Name="{Binding AccessibleName}">
+                                    <StackPanel>
+                                        <TextBlock TextWrapping="Wrap" Visibility="{Binding IsTicket, Converter={StaticResource Visible}}">
+                                            <Run Text="{Binding Kind, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" /><Run Text="  " />
+                                            <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
+                                                       AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
+                                            <Run Text="  " /><Run Text="{Binding Where, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Visibility="{Binding IsTicket, Converter={x:Static vm:Converters.FalseToVisible}}">
+                                            <Run Text="{Binding Kind, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" /><Run Text="  " />
+                                            <Run Text="{Binding Id, Mode=OneWay}" FontWeight="SemiBold" />
+                                            <Run Text="  " /><Run Text="{Binding Where, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
+                                        <DockPanel Margin="{StaticResource RowGutter}">
+                                            <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Copy" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Top"
+                                                    Command="{Binding DataContext.CopyInboxActionCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                    mc:MaCallout.ToolTip="Copy the command" AutomationProperties.Name="{Binding Action, StringFormat='Copy the command: {0}'}" />
+                                            <TextBlock Text="{Binding Action}" FontFamily="Consolas" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+            <mc:MaModal.Footer>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource MaPrimaryButton}" Content="Close" Padding="{StaticResource SpaceHLVS}" Command="{Binding CloseInboxCommand}" />
                 </StackPanel>
             </mc:MaModal.Footer>
         </mc:MaModal>

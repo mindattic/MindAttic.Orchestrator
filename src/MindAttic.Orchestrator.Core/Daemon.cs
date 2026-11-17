@@ -426,6 +426,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 try { if (remindLease.TryAcquire()) reminders.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"reminders: {ex.Message}"); }
 
+                // The owner inbox (M.ORCH-T1689): what newly waits on the owner is texted through Psst, once per item.
+                ReportInbox(snapshot, plan, s, DateTime.UtcNow);
+
                 // An hour and half an hour before the reset: a window on course to end under its target with nothing for any
                 // CLI to work is said, never acted on (M.ORCH-T176).
                 ReportUnderTarget(snapshot, plan, cycler.AllocateClis());
