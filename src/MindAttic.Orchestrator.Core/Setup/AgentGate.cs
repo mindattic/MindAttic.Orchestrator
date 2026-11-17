@@ -2778,7 +2778,9 @@ public static class AgentGate
     /// <c>orch_rows</c>/<c>orch_settings</c>/<c>repo_of</c>, <see cref="CliPid"/> and <see cref="ClaudeUsagePython"/>'s
     /// <c>process_started</c>): advisory per-path edit claims (M.ORCH-T1193, the follow-up to M.ORCH-T1178, which only made a
     /// same-file collision loud at commit time). The context gate's PostToolUse records a claim when an agent edits a file in
-    /// a repo checkout and releases it when that agent commits it, when the subagent stops, or once its CLI is gone; a claim
+    /// a repo checkout and releases it when that agent's commit succeeds (git's commit line or the shell's exit code, not just
+    /// no "fatal:", M.ORCH-T1649), when the subagent stops, or once its CLI is gone. A second agent editing a held file becomes
+    /// a co-holder (M.ORCH-T1649), so the first holder's commit drops only its own hold. A hold
     /// not refreshed by an edit for <see cref="Settings.OrchestratorSettings.EditClaimMinutes"/> lapses (a crashed agent's).
     /// Another agent editing a claimed file is warned who holds it, or, with <see cref="Settings.OrchestratorSettings.EditClaims"/>
     /// "Block", refused by the pace gate's PreToolUse when it's a subagent. A CLI's own main thread is never refused, so the
@@ -2830,59 +2832,80 @@ public static class AgentGate
                 return c if isinstance(c, dict) else None
             except Exception:
                 return None
-        def edit_claim_mine(c, data):
-            return c.get("session") == str(data.get("session_id") or "") and c.get("agent") == str(data.get("agent_id") or "")
-        def edit_claim_live(c, now, life):
+        def edit_claim_holders(c):
+            # The agents holding claim c (M.ORCH-T1649: a second agent's edit makes it a co-holder); a claim written before
+            # co-holders were kept is its own one holder.
+            hs = c.get("holders") if isinstance(c, dict) else None
+            if isinstance(hs, list):
+                return [h for h in hs if isinstance(h, dict)]
+            return [c] if isinstance(c, dict) and ("session" in c or "agent" in c) else []
+        def edit_claim_mine(h, data):
+            return h.get("session") == str(data.get("session_id") or "") and h.get("agent") == str(data.get("agent_id") or "")
+        def edit_claim_live(h, now, life):
             # Still standing: edited within its life, and its CLI still running (the same process, not a reused pid).
             try:
-                if now - float(c.get("at") or 0) > life:
+                if now - float(h.get("at") or 0) > life:
                     return False
-                pid = c.get("cli")
+                pid = h.get("cli")
                 if pid:
                     started = process_started(pid)
                     if started is None:
                         return False
-                    if c.get("cli_started") and abs(started - float(c["cli_started"])) > 2:
+                    if h.get("cli_started") and abs(started - float(h["cli_started"])) > 2:
                         return False
                 return True
             except Exception:
                 return False
-        def edit_claim_other(p, data, life):
-            # The live claim another agent holds on file p, or None.
+        def edit_claim_others(p, data, life):
+            # The live holders of file p's claim other than this agent (oldest first), or [].
             c = edit_claim_read(edit_claim_file(p))
-            if not c or edit_claim_mine(c, data) or not edit_claim_live(c, time.time(), life):
-                return None
-            return c
-        def edit_claim_holder(c):
-            who = str(c.get("who") or "")
-            agent = str(c.get("agent") or "")
+            if not c:
+                return []
+            now = time.time()
+            return [h for h in edit_claim_holders(c) if not edit_claim_mine(h, data) and edit_claim_live(h, now, life)]
+        def edit_claim_holder(h):
+            who = str(h.get("who") or "")
+            agent = str(h.get("agent") or "")
             text = (who + "'s " if who else "") + ("subagent " + agent[:8] if agent else "main session")
-            if c.get("cli"):
-                text += " in CLI " + str(c["cli"])
-            if c.get("session"):
-                text += " (session " + str(c["session"])[:8] + ")"
+            if h.get("cli"):
+                text += " in CLI " + str(h["cli"])
+            if h.get("session"):
+                text += " (session " + str(h["session"])[:8] + ")"
             try:
-                text += ", claimed " + str(max(0, int((time.time() - float(c.get("at") or 0)) // 60))) + " min ago"
+                text += ", claimed " + str(max(0, int((time.time() - float(h.get("at") or 0)) // 60))) + " min ago"
             except Exception:
                 pass
             return text
-        def edit_claim_take(p, data):
-            # Records (or refreshes) this agent's claim on file p, replaced whole so a reader never sees half of it.
+        def edit_claim_holders_text(hs):
+            return "; ".join(edit_claim_holder(h) for h in hs)
+        def edit_claim_write(f, p, hs):
+            # Replaces claim file f whole (so a reader never sees half of it), or drops it when no holder is left.
+            if not hs:
+                f.unlink()
+                return
+            EDIT_CLAIMS.mkdir(parents=True, exist_ok=True)
+            tmp = f.with_name(f.name + "." + str(os.getpid()) + ".tmp")
+            tmp.write_text(json.dumps({"path": p, "holders": hs}), encoding="utf-8")
+            os.replace(tmp, f)
+        def edit_claim_take(p, data, life):
+            # Records (or refreshes) this agent's hold on file p's claim, beside any other live holder: a second agent editing
+            # a held file becomes its co-holder (M.ORCH-T1649), so the first holder's commit releases only its own hold and
+            # the second's edits stay claimed (and overlap-warned) without waiting for its next edit.
             try:
                 pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
                 pid = int(pid) if str(pid or "").isdigit() else None
-                claim = {"path": p, "session": str(data.get("session_id") or ""), "agent": str(data.get("agent_id") or ""),
-                         "cli": pid, "cli_started": process_started(pid) if pid else None, "at": time.time(),
-                         "who": Path(os.environ.get("CLAUDE_CONFIG_DIR") or "").name}
-                EDIT_CLAIMS.mkdir(parents=True, exist_ok=True)
+                mine = {"session": str(data.get("session_id") or ""), "agent": str(data.get("agent_id") or ""),
+                        "cli": pid, "cli_started": process_started(pid) if pid else None, "at": time.time(),
+                        "who": Path(os.environ.get("CLAUDE_CONFIG_DIR") or "").name}
                 f = edit_claim_file(p)
-                tmp = f.with_name(f.name + "." + str(os.getpid()) + ".tmp")
-                tmp.write_text(json.dumps(claim), encoding="utf-8")
-                os.replace(tmp, f)
+                now = time.time()
+                kept = [h for h in edit_claim_holders(edit_claim_read(f) or {}) if not edit_claim_mine(h, data) and edit_claim_live(h, now, life)]
+                edit_claim_write(f, p, kept + [mine])
             except Exception:
                 pass
         def edit_claims_release(keep):
-            # Drops every claim keep(claim) says to let go, and any claim met on the way that has lapsed; never raises.
+            # Lets go of every hold keep(holder, claim) says not to keep, and any hold met on the way that has lapsed; a claim
+            # left with no holder is dropped. Never raises.
             try:
                 if not EDIT_CLAIMS.is_dir():
                     return
@@ -2895,21 +2918,60 @@ public static class AgentGate
                             if now - f.stat().st_mtime > 60:
                                 f.unlink()  # unreadable for a minute: not one being replaced
                             continue
-                        if not keep(c):
-                            f.unlink()
-                            continue
-                        if life is None:
-                            life = edit_claim_settings()[1]
-                        if not edit_claim_live(c, now, life):
-                            f.unlink()
+                        hs = edit_claim_holders(c)
+                        kept = [h for h in hs if keep(h, c)]
+                        if kept:
+                            if life is None:
+                                life = edit_claim_settings()[1]
+                            kept = [h for h in kept if edit_claim_live(h, now, life)]
+                        if len(kept) != len(hs) or "holders" not in c:
+                            edit_claim_write(f, str(c.get("path") or ""), kept)
                     except Exception:
                         pass
             except Exception:
                 pass
         GIT_COMMIT = re.compile(r"(?:^|[;&|(\n])\s*(?:&\s*)?['\"]?git(?:\.exe)?['\"]?(?:\s+(?:-C\s+(?:\"[^\"]*\"|'[^']*'|\S+)|-c\s+\S+|--?[\w-]+(?:=\S+)?))*\s+commit\b")
+        def tool_response_text(response):
+            # Every piece of text in a tool's response (its stdout, stderr, output, error ...), joined.
+            if response is None:
+                return ""
+            if isinstance(response, str):
+                return response
+            if isinstance(response, dict):
+                return "\n".join(tool_response_text(v) for v in response.values() if isinstance(v, (str, dict, list)))
+            if isinstance(response, list):
+                return "\n".join(tool_response_text(v) for v in response)
+            return ""
+        def tool_exit_code(response):
+            # The shell call's exit code as its response reports it (an exit-code field, an error/interrupted flag, or the
+            # "Exit code N" line a failed call's output carries), or None when it says nothing about one.
+            if isinstance(response, dict):
+                for k in ("exit_code", "exitCode", "returncode", "returnCode", "return_code", "exit_status", "exitStatus"):
+                    v = response.get(k)
+                    if isinstance(v, bool):
+                        continue
+                    if isinstance(v, int):
+                        return v
+                    if isinstance(v, str) and re.fullmatch(r"\s*-?\d+\s*", v):
+                        return int(v)
+                if response.get("is_error") is True or response.get("isError") is True or response.get("interrupted") is True:
+                    return 1
+            m = re.findall(r"(?im)^\s*(?:error:\s*)?exit(?:ed with)?\s+(?:code|status)\s*:?\s*(-?\d+)\b", tool_response_text(response))
+            return int(m[-1]) if m else None
+        def git_commit_succeeded(response):
+            # Whether a shell call that ran git commit made the commit (M.ORCH-T1649): git's own "[branch hash] subject" line says
+            # so even when a later command chained after it failed; otherwise the call's exit code; only when the response
+            # carries neither, the absence of git's failure lines (fatal:, error:, nothing to commit).
+            text = tool_response_text(response)
+            if re.search(r"(?m)^\[[^\]\n]*\s[0-9a-f]{7,40}\]\s", text):
+                return True
+            code = tool_exit_code(response)
+            if code is not None:
+                return code == 0
+            return not re.search(r"(?im)^\s*(?:fatal|error):|nothing (?:added )?to commit|no changes added to commit", text)
         def edit_claims_committed(data, command, cwd):
-            # A git commit by this agent releases its claims on the paths it names after " -- "; with none named (or none of
-            # them claimed by it), all of its claims, so a commit never leaves its own claims standing.
+            # A git commit by this agent releases its holds on the paths it names after " -- "; with none named (or none of
+            # them held by it), all of its holds, so a commit never leaves its own claims standing. Co-holders keep theirs.
             m = GIT_COMMIT.search(command)
             if not m:
                 return
@@ -2919,16 +2981,18 @@ public static class AgentGate
             def named_it(c):
                 p = str(c.get("path") or "")
                 for n in named:
-                    full = edit_claim_path(n, cwd)
+                    full =edit_claim_path(n, cwd)
                     if (full and full == p) or p.endswith(os.sep + re.sub(r"^(?:\.[\\/])+", "", n)):
                         return True
                 return False
-            mine = [c for c in (edit_claim_read(f) for f in (EDIT_CLAIMS.glob("*.json") if EDIT_CLAIMS.is_dir() else [])) if c and edit_claim_mine(c, data)]
+            claims = [c for c in (edit_claim_read(f) for f in (EDIT_CLAIMS.glob("*.json") if EDIT_CLAIMS.is_dir() else [])) if c]
+            mine = [c for c in claims if any(edit_claim_mine(h, data) for h in edit_claim_holders(c))]
             precise = bool(named) and any(named_it(c) for c in mine)
-            edit_claims_release(lambda c: not (edit_claim_mine(c, data) and (not precise or named_it(c))))
+            edit_claims_release(lambda h, c: not (edit_claim_mine(h, data) and (not precise or named_it(c))))
         def edit_claims_after_tool(data):
-            # The context gate's PostToolUse: an edit claims its file (and warns when another agent already holds it); a git
-            # commit releases the committing agent's claims. Returns the warning to give the agent, or None. Never raises.
+            # The context gate's PostToolUse: an edit claims its file (a co-holder beside any other agent already holding it,
+            # which it's warned about); a git commit that succeeded releases the committing agent's holds. Returns the warning
+            # to give the agent, or None. Never raises.
             try:
                 tool = str(data.get("tool_name") or "")
                 args = data.get("tool_input") if isinstance(data.get("tool_input"), dict) else {}
@@ -2939,17 +3003,18 @@ public static class AgentGate
                     mode, life = edit_claim_settings()
                     if mode == "off":
                         return None
-                    held = edit_claim_other(p, data, life)
-                    if held is None:
-                        edit_claim_take(p, data)
+                    held = edit_claim_others(p, data, life)
+                    edit_claim_take(p, data, life)
+                    if not held:
                         return None
-                    return ("[Edit claim] " + str(args.get("file_path") or args.get("notebook_path")) + " is also being edited by another agent: " + edit_claim_holder(held) + " (M.ORCH-T1193). "
+                    return ("[Edit claim] " + str(args.get("file_path") or args.get("notebook_path")) + " is also being edited by another agent: " + edit_claim_holders_text(held) + " (M.ORCH-T1193). "
                             "You both have uncommitted changes in it now: re-read it right before you commit and commit only your own "
-                            "hunks (a private index and git apply --cached), or leave the file to them. Their claim lapses when they "
-                            "commit it, their subagent finishes or their CLI closes, or after " + str(int(life // 60)) + " min without an edit.")
+                            "hunks (a private index and git apply --cached), or leave the file to them. You now hold it with them, so "
+                            "whoever edits it next is warned about you both; each hold lapses when its agent commits it, its subagent "
+                            "finishes or its CLI closes, or after " + str(int(life // 60)) + " min without an edit.")
                 if tool in ("Bash", "PowerShell"):
                     command = str(args.get("command") or "")
-                    if "commit" in command and "fatal:" not in str(data.get("tool_response") or ""):
+                    if "commit" in command and GIT_COMMIT.search(command) and git_commit_succeeded(data.get("tool_response")):
                         edit_claims_committed(data, command, data.get("cwd"))
             except Exception:
                 pass
@@ -2965,10 +3030,10 @@ public static class AgentGate
                 if not p or not edit_claim_file(p).exists():
                     return None
                 mode, life = edit_claim_settings()
-                held = edit_claim_other(p, data, life) if mode == "block" else None
-                if held is None:
+                held = edit_claim_others(p, data, life) if mode == "block" else []
+                if not held:
                     return None
-                return (str(args.get("file_path") or args.get("notebook_path")) + " is being edited by another agent: " + edit_claim_holder(held) + ". EditClaims is set to Block "
+                return (str(args.get("file_path") or args.get("notebook_path")) + " is being edited by another agent: " + edit_claim_holders_text(held) + ". EditClaims is set to Block "
                         "(M.ORCH-T1193), so this edit was refused. Work on your other files first and try again later (the claim "
                         "lapses when they commit it, their subagent finishes or their CLI closes, or after " + str(int(life // 60)) +
                         " min without an edit), or end your turn reporting the overlap if you can't go on without this file.")
@@ -3698,7 +3763,7 @@ public static class AgentGate
                     mark.unlink()
                 if event == "SubagentStop":
                     # A finished subagent's edit claims go with it (M.ORCH-T1193).
-                    edit_claims_release(lambda c: c.get("agent") != str(data["agent_id"]))
+                    edit_claims_release(lambda h, c: h.get("agent") != str(data["agent_id"]))
             sys.exit(0)
         # A background shell (M.ORCH-T1528): a Bash or PowerShell call run in the background goes on after the turn ends, so it is marked
         # (its task id, this CLI, when) and the dashboard counts the CLI busy while that CLI has a shell started about then still running.
