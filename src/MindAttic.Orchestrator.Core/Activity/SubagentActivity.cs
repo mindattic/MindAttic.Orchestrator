@@ -181,8 +181,8 @@ public sealed class SubagentActivityReader(string projectsDir)
             }
             tail.Offset += end + 1;
         }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
+        catch (IOException ex) { OrchestratorLog.For("SubagentActivity").Warning(ex, "Reading a subagent transcript failed; contained"); }
+        catch (UnauthorizedAccessException ex) { OrchestratorLog.For("SubagentActivity").Warning(ex, "Reading a subagent transcript was denied; contained"); }
     }
 
     private static void Apply(ReadOnlySpan<byte> line, Tail tail)

@@ -56,8 +56,8 @@ public sealed class ProviderLogReader(string codexSessionsDir, string geminiTmpD
                 ReadAppended(path, state, sinceUtc);
                 state.LastWriteUtc = info.LastWriteTimeUtc;
             }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
+            catch (IOException ex) { OrchestratorLog.For("ProviderLogReader").Warning(ex, "Reading a provider chat log failed; it is read again next scan"); }
+            catch (UnauthorizedAccessException ex) { OrchestratorLog.For("ProviderLogReader").Warning(ex, "Reading a provider chat log was denied; it is read again next scan"); }
         }
         foreach (var gone in files.Keys.Where(k => !present.Contains(k)).ToList()) files.Remove(gone);
 

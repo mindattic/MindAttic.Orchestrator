@@ -143,7 +143,7 @@ public sealed class MemberProfileSync
                     using var roles = JsonDocument.Parse(rolesBody);
                     if (roles.RootElement.ValueKind == JsonValueKind.Object) role = RoleOf(Text(roles.RootElement, "organization_role"));
                 }
-                catch (JsonException) { }
+                catch (JsonException ex) { OrchestratorLog.For("MemberProfileSync").Debug(ex, "The organization roles reply was not JSON; role left unset"); }
             }
             return new ClaudeProfile(email, Text(a, "display_name") ?? Text(a, "full_name"), role);
         }

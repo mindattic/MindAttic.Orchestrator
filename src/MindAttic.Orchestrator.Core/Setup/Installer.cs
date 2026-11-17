@@ -132,7 +132,7 @@ public sealed class Installer
             // again, or pacing and the hooks' holds stay off until the next logon (M.ORCH-T353).
             // The copy's failure is what's reported: a daemon that can't start too (no old exe there) mustn't replace it.
             try { if (!DaemonRunning() && File.Exists(old)) StartDaemon(old); }
-            catch (InvalidOperationException) { }
+            catch (InvalidOperationException ex) { OrchestratorLog.For("Installer").Warning(ex, "Restarting the old daemon after a failed copy failed; contained"); }
             throw;
         }
         InstallLegacyCopy(runningExe);

@@ -169,7 +169,7 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         yield return Environment.MachineName.ToLowerInvariant();
         string? fqdn = null;
         try { fqdn = Dns.GetHostEntry(Environment.MachineName).HostName; }
-        catch (SocketException) { }
+        catch (SocketException ex) { OrchestratorLog.For("MachineSetup").Debug(ex, "The DNS lookup of this machine's FQDN failed; only the short name is used"); }
         if (fqdn is { Length: > 0 } && !fqdn.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)) yield return fqdn.ToLowerInvariant();
         foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
         {
@@ -294,7 +294,7 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         if (parts.RemoveAll(p => p.TrimEnd('\\').Equals(ShimDirectory, StringComparison.OrdinalIgnoreCase)) > 0)
             Environment.SetEnvironmentVariable("Path", string.Join(';', parts), EnvironmentVariableTarget.User);
         try { if (Directory.Exists(ShimDirectory)) Directory.Delete(ShimDirectory, recursive: true); }
-        catch (IOException) { }
+        catch (IOException ex) { OrchestratorLog.For("MachineSetup").Warning(ex, "Removing the tickets shim directory failed; contained"); }
         say("tickets runs on this machine again.");
     }
 
