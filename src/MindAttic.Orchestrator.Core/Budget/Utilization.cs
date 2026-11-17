@@ -16,7 +16,8 @@ public sealed record UtilizationPoint(DateTime AtUtc, double Percent);
 /// </summary>
 public sealed record Utilization(DateTime StartUtc, DateTime EndUtc, DateTime NowUtc, double TargetPercent,
     IReadOnlyList<UtilizationPoint> Actual, double NowPercent, double PercentPerHour, double ProjectedEndPercent, TimeSpan OverPace,
-    double Exponent = 1, bool Ended = false, bool Idle = false, bool Unstarted = false)
+    double Exponent = 1, bool Ended = false, bool Idle = false, bool Unstarted = false,
+    bool Unknown = false)
 {
     /// <summary>Ended with a window on record to draw (not just an empty axis).</summary>
     public bool HasLastWindow => Ended && Actual.Count > 0;
@@ -65,6 +66,9 @@ public static class UtilizationSeries
         // token limit is needed to draw it.
         if (b.CurrentBlock is not { } block) return LastWindow(samples, targetPercent, nowUtc, exponent, minSpacing);
         var points = Line(samples, block.StartUtc, block.EndUtc, nowUtc, minSpacing);
+        // No reading and nothing to compare to (M.ORCH-T1669): no line, not a false 0%; the next reading draws it.
+        if (b.BlockPercentUnknown && points.Count == 1)
+            return new Utilization(block.StartUtc, block.EndUtc, nowUtc, targetPercent, [], 0, 0, 0, TimeSpan.Zero, exponent, Unknown: true);
         var now = Math.Max(points[^1].Percent, b.BlockPercent);
         if (nowUtc > points[^1].AtUtc) points.Add(new(nowUtc, now));
 

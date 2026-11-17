@@ -119,6 +119,34 @@ public sealed class BudgetTests
     }
 
     [Test]
+    public void A_fresh_window_with_no_reading_and_no_earlier_block_is_unknown_not_zero_or_full()
+    {
+        var s = BudgetCalculator.Compute([E(10, 250)], new OrchestratorSettings(), Day.AddHours(11), Day);
+
+        Assert.That(s.BlockPercentUnknown, Is.True);
+        Assert.That(s.BlockLimitIsPeak, Is.True);
+        Assert.That(s.BlockPercent, Is.EqualTo(0), "a safe number for the gates, never a false 100%");
+        Assert.That(s.Level, Is.EqualTo(BudgetLevel.Ok), "unknown never blocks");
+        Assert.That(s.StopBlockPercent, Is.Null);
+        var chart = UtilizationSeries.Build([], s, 96, Day.AddHours(11));
+        Assert.That(chart.Unknown, Is.True);
+        Assert.That(chart.Actual, Is.Empty);
+    }
+
+    [Test]
+    public void A_reading_or_an_earlier_block_keeps_a_window_known()
+    {
+        var reported = new ReportedUsage(new ReportedWindow(40, Day.AddHours(15)), null, Day.AddHours(11));
+        var read = BudgetCalculator.Compute([E(10, 250)], new OrchestratorSettings(), Day.AddHours(11), Day, TimeZoneInfo.Utc, reported: reported);
+        Assert.That(read.BlockPercentUnknown, Is.False);
+        Assert.That(read.BlockPercent, Is.EqualTo(40).Within(1.5), "the reading");
+
+        var prior = BudgetCalculator.Compute([E(1, 1000), E(10, 250)], new OrchestratorSettings(), Day.AddHours(11), Day);
+        Assert.That(prior.BlockPercentUnknown, Is.False);
+        Assert.That(prior.BlockPercent, Is.EqualTo(25).Within(0.01), "against the earlier block, as before");
+    }
+
+    [Test]
     public void Beating_your_peak_is_context_not_an_alarm()
     {
         var s = BudgetCalculator.Compute([E(1, 100), E(10, 300)], new OrchestratorSettings(), Day.AddHours(11), Day);

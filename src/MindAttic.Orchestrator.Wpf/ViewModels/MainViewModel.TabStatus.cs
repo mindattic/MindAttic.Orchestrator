@@ -431,7 +431,7 @@ public sealed partial class MainViewModel
     private double? SnapshotFiveHour => SnapshotFiveHourOf(Budget, OwnRow?.FiveHourUsedAt(DateTime.UtcNow));
 
     internal static double? SnapshotFiveHourOf(BudgetStatus? budget, double? rosterFiveHourUsed) =>
-        budget is { CurrentBlock: not null } b ? b.BlockPercent : rosterFiveHourUsed;
+        budget is { CurrentBlock: not null, BlockPercentUnknown: false } b ? b.BlockPercent : rosterFiveHourUsed;
 
     /// <summary>On a per-CLI login's tab, who its folder is signed in to when that's another account's email; else null.</summary>
     private string? SignedInAsOther => MismatchOf(ScopeEmail, snapshot?.Account, accountRows);

@@ -93,6 +93,11 @@ public sealed record BudgetStatus(
     /// Null when the window isn't sized from Claude's reports. Only the stop uses it: every display still shows Claude's number.</summary>
     public double? StopBlockPercent { get; init; }
 
+    /// <summary>True when the window has no percent at all (M.ORCH-T1669): no Claude reading and no earlier block to compare to, so
+    /// <see cref="BlockPercent"/> holds 0 only as a safe number for the gates (they never read a peak-relative percent as a limit);
+    /// displays (the 5hr pill, the chart) show it as unknown instead of 0%.</summary>
+    public bool BlockPercentUnknown { get; init; }
+
     /// <summary>Uncached tokens per hour over the last <see cref="BudgetCalculator.RecentWindow"/>:
     /// the burn rate to steer by, since the whole-block average lags.</summary>
     public double RecentFreshPerHour { get; init; }
@@ -354,6 +359,7 @@ public static class BudgetCalculator
             week, weeklyLimit, weeklyPercent, perHour, projected, settings.WarnPercent)
         {
             StopBlockPercent = stopPercent is { } sp ? Math.Max(sp, blockPercent) : null,
+            BlockPercentUnknown = reportedBlockPercent is null && isPeak && peak <= 0,
             WeekStartUtc = weekStart,
             WeekResetUtc = weekReset,
             BlockLimitSource = blockSource,

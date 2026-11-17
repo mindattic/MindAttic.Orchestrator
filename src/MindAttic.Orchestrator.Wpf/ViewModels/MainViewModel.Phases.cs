@@ -141,6 +141,7 @@ public sealed partial class MainViewModel
     internal static string BlockHeadline(BudgetStatus? b) => b switch
     {
         null or { CurrentBlock: null } => "Idle",
+        { BlockPercentUnknown: true } => "—",
         { BlockLimitIsPeak: true } => $"~{Math.Round(b.BlockPercent, MidpointRounding.AwayFromZero).ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%",
         _ => Formatting.FiveHourPercent(b.BlockPercent),
     };
@@ -340,7 +341,7 @@ public sealed partial class MainViewModel
             // guess) but the roster only ever holds the global ~/.claude sign-in, never a per-CLI AccountDir: without a
             // row for this login (M.ORCH-T806), fall back to the block's own rough BlockPercent, not 0.
             return UtilizationSeries.IdleWindow(block.EndUtc,
-                b.BlockLimitIsPeak || b.BlockLimit <= 0 ? row?.FiveHourUsedAt(nowUtc) ?? b.BlockPercent : b.BlockPercent, target, nowUtc);
+                b.BlockLimitIsPeak || b.BlockLimit <= 0 ? row?.FiveHourUsedAt(nowUtc) ?? (b.BlockPercentUnknown ? 0 : b.BlockPercent) : b.BlockPercent, target, nowUtc);
         return UtilizationSeries.IdleWindow(row?.FiveHourResetAt(nowUtc), row?.FiveHourUsedAt(nowUtc) ?? 0, target, nowUtc);
     }
 
@@ -355,6 +356,7 @@ public sealed partial class MainViewModel
     {
         { Idle: true, Unstarted: true } =>
             $"Idle: 0% of this 5-hour window used; nothing running on {login}. No window has started, so this is the next 5 hours from now.",
+        { Unknown: true } => "This 5-hour window has no reading yet and no earlier window to compare to, so its percent is unknown; the line starts with Claude's next report.",
         { Idle: true } u => $"Idle: {Formatting.FiveHourPercent(u.NowPercent)} of this 5-hour window used; nothing running on {login}. " +
                             $"It resets at {Formatting.ResetTime(u.EndUtc, u.NowUtc)}; the target is {u.TargetPercent:0}%.",
         null => loaded ? "No 5-hour limit known yet, so there's no pace to draw this window against." : "",

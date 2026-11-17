@@ -36,6 +36,8 @@ public static class UtilizationChartData
 
         var target = MaChartReferenceLine.Level(u.StartUtc, u.EndUtc, u.TargetPercent, brushes.Accent,
             label: string.Create(CultureInfo.CurrentCulture, $"{u.TargetPercent:0}% target"));
+        // A window with no percent yet (M.ORCH-T1669): the target line only, no point.
+        if (u.Unknown) return new MaLineChartData(u.StartUtc, u.EndUtc, [], ReferenceLines: [target]);
         // Nothing running on the login (M.ORCH-T629): a flat line at its current % across the window, against the target.
         if (u.Idle)
             return new MaLineChartData(u.StartUtc, u.EndUtc,
