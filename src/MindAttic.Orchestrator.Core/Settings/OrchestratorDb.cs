@@ -165,12 +165,19 @@ public sealed class OrchestratorDb(string path)
     }
 
     /// <summary>Copies what <paramref name="what"/> names from SQL Server (<paramref name="server"/>) into this file, replacing it.</summary>
-    private void Mirror(DbConnection server, IEnumerable<string> what)
+    private void Mirror(DbConnection server, IEnumerable<string> what) =>
+        Mirror(what.Select(w => (Name: w, Rows: w.StartsWith("state:", StringComparison.Ordinal)
+                ? Sql.Read(server, null, "SELECT name, value, written_at FROM state WHERE name = @name;", MirrorRow, ("@name", w["state:".Length..]))
+                : Sql.Read(server, null, $"SELECT * FROM {w};", MirrorRow)))
+            .ToList());
+
+    private static (string Column, object? Value)[] MirrorRow(DbDataReader r) =>
+        [.. Enumerable.Range(0, r.FieldCount).Select(i => (r.GetName(i), r.IsDBNull(i) ? null : r.GetValue(i)))];
+
+    /// <summary>Writes <paramref name="copies"/> (each a table, or one "state:&lt;name&gt;" row, as read from SQL Server) into this
+    /// file, replacing what it had of each.</summary>
+    private void Mirror(List<(string Name, List<(string Column, object? Value)[]> Rows)> copies)
     {
-        var copies = what.Select(w => (Name: w, Rows: w.StartsWith("state:", StringComparison.Ordinal)
-                ? Sql.Read(server, null, "SELECT name, value, written_at FROM state WHERE name = @name;", Row, ("@name", w["state:".Length..]))
-                : Sql.Read(server, null, $"SELECT * FROM {w};", Row)))
-            .ToList();
         Write((connection, tx) =>
         {
             foreach (var (name, rows) in copies)
@@ -183,9 +190,6 @@ public sealed class OrchestratorDb(string path)
                         [.. row.Select(c => ("@" + c.Column, c.Value))]);
             }
         }, dump: false);
-
-        static (string Column, object? Value)[] Row(DbDataReader r) =>
-            [.. Enumerable.Range(0, r.FieldCount).Select(i => (r.GetName(i), r.IsDBNull(i) ? null : r.GetValue(i)))];
     }
 
     /// <summary>Copies every mirrored table (<see cref="Mirrored"/>, the saved state but its volatile rows, which stay here)
@@ -195,8 +199,13 @@ public sealed class OrchestratorDb(string path)
     {
         if (Server is not { } server) return;
         using var connection = server.Open();
-        var names = Sql.Read(connection, null, "SELECT name FROM state;", r => r.GetString(0)).Where(n => !Volatile.Contains(n)).ToList();
-        Mirror(connection, ["settings", "assignments", .. names.Select(n => "state:" + n)]);
+        // The saved state in one read (M.ORCH-T1748), not one per row: three round trips a sync however many rows there are.
+        var state = Sql.Read(connection, null, "SELECT name, value, written_at FROM state;", MirrorRow)
+            .Select(row => (Name: (string)row[0].Value!, Row: row)).Where(s => !Volatile.Contains(s.Name)).ToList();
+        var names = state.Select(s => s.Name).ToList();
+        Mirror([("settings", Sql.Read(connection, null, "SELECT * FROM settings;", MirrorRow)),
+            ("assignments", Sql.Read(connection, null, "SELECT * FROM assignments;", MirrorRow)),
+            .. state.Select(s => (Name: "state:" + s.Name, Rows: new List<(string Column, object? Value)[]> { s.Row }))]);
         // A saved row gone from the server (deleted there) goes from here too, but never a volatile one, which only this file keeps.
         Write((c, tx) =>
         {
@@ -577,13 +586,34 @@ public sealed class OrchestratorDb(string path)
     public static string Dump(DbConnection connection, DbTransaction? tx = null)
     {
         var sb = new StringBuilder("-- MindAttic.Orchestrator database dump (written with every change; the .db file is the store).\n");
-        foreach (var (table, order, where) in Tables)
+        static string Select((string Table, string Order, string Where) t) => $"SELECT {Columns(t.Table)} FROM {t.Table}{t.Where} ORDER BY {t.Order};";
+        // SQL Server answers every table in one round trip (M.ORCH-T1748), its result sets in the tables' order: a dump is
+        // written inside each write's transaction, holding the write lock, and across a network twelve round trips are slow.
+        using var batch = Sql.IsServer(connection) ? connection.CreateCommand() : null;
+        DbDataReader? all = null;
+        if (batch is not null)
         {
+            batch.Transaction = tx;
+            batch.CommandText = string.Join("\n", Tables.Select(Select));
+            all = batch.ExecuteReader();
+        }
+        using var allReader = all;
+        var first = true;
+        foreach (var t in Tables)
+        {
+            var table = t.Table;
             sb.Append("\n-- ").Append(table).Append('\n');
-            using var command = connection.CreateCommand();
-            command.Transaction = tx;
-            command.CommandText = $"SELECT {Columns(table)} FROM {table}{where} ORDER BY {order};";
-            using var r = command.ExecuteReader();
+            if (all is not null && !first && !all.NextResult())
+                throw new InvalidOperationException($"The dump's read of {table} came back without a result.");
+            first = false;
+            using var command = all is null ? connection.CreateCommand() : null;
+            if (command is not null)
+            {
+                command.Transaction = tx;
+                command.CommandText = Select(t);
+            }
+            using var own = command?.ExecuteReader();
+            var r = all ?? own!;
             var columns = Enumerable.Range(0, r.FieldCount).Select(r.GetName).ToList();
             while (r.Read())
             {

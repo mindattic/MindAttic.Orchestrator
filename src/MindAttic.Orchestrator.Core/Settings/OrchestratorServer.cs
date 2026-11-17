@@ -26,7 +26,10 @@ public sealed class OrchestratorServer(string connectionString)
     /// <summary>The machine's setting, under <c>%APPDATA%\MindAttic\MindAttic.Orchestrator</c>: <c>{"SqlServer": "..."}</c>.</summary>
     public static string ConfigFile => Path.Combine(JsonStore.LiveDirectory, "database.json");
 
-    /// <summary>The full instance on this machine, Windows sign-in.</summary>
+    /// <summary>The full instance on this machine, Windows sign-in. Only what <c>orchestrator db migrate --server</c> builds when
+    /// no connection string is given: a configured string (<see cref="ConfigFile"/>, <see cref="EnvVar"/>, <c>--connection</c>) is
+    /// used exactly as written, so one naming its own <c>Authentication</c> (Entra ID, for Azure SQL Database), <c>Encrypt</c> and
+    /// <c>Connect Timeout</c> keeps them (M.ORCH-T1748).</summary>
     public static string DefaultConnection(string server = "localhost", string database = DefaultDatabase) => new SqlConnectionStringBuilder
     {
         DataSource = server,
@@ -41,8 +44,63 @@ public sealed class OrchestratorServer(string connectionString)
     /// <summary>The connection string.</summary>
     public string ConnectionString { get; } = connectionString;
 
-    /// <summary>Describes.</summary>
-    public string Describe() => new SqlConnectionStringBuilder(ConnectionString) is var b ? $"{b.DataSource}/{b.InitialCatalog}" : ConnectionString;
+    /// <summary>The server and database, for a message or a log line: never the connection string itself, which may hold a
+    /// service principal's secret (M.ORCH-T1748).</summary>
+    public string Describe()
+    {
+        try
+        {
+            var b = new SqlConnectionStringBuilder(ConnectionString);
+            return $"{b.DataSource}/{b.InitialCatalog}";
+        }
+        catch (Exception ex) when (ex is ArgumentException or FormatException) { return "a connection string that can't be read"; }
+    }
+
+    /// <summary><paramref name="connection"/> with its password (a SQL login's, or a service principal's secret) replaced by
+    /// <c>***</c>, for anything that must show the string; one that can't be read is not shown at all (M.ORCH-T1748).</summary>
+    public static string Redact(string connection)
+    {
+        try
+        {
+            var b = new SqlConnectionStringBuilder(connection);
+            if (b.Password.Length > 0) b.Password = "***";
+            return b.ConnectionString;
+        }
+        catch (Exception ex) when (ex is ArgumentException or FormatException) { return "(a connection string that can't be read)"; }
+    }
+
+    /// <summary>The host names Azure SQL Database's servers end in (the public cloud, then the sovereign ones).</summary>
+    private static readonly string[] AzureHosts =
+        [".database.windows.net", ".database.usgovcloudapi.net", ".database.chinacloudapi.cn", ".database.cloudapi.de"];
+
+    private static (string? Connection, bool Azure) azureCached;
+
+    /// <summary>Whether <paramref name="connection"/> names an Azure SQL Database server (M.ORCH-T1748), told from its host
+    /// name alone (no round trip): there the database is provisioned ahead, there is no <c>master</c> to create it from, and
+    /// nothing server-level (<c>sp_configure</c>) may run. False for none, for one that can't be read, and for localhost.</summary>
+    public static bool IsAzure(string? connection)
+    {
+        if (string.IsNullOrWhiteSpace(connection)) return false;
+        lock (CacheLock) if (azureCached.Connection == connection) return azureCached.Azure;
+        bool azure;
+        try
+        {
+            // "tcp:name.database.windows.net,1433": the host is what's between the protocol and the port or instance.
+            var host = new SqlConnectionStringBuilder(connection).DataSource.Trim();
+            var colon = host.IndexOf(':');
+            if (colon >= 0) host = host[(colon + 1)..];
+            var end = host.IndexOfAny([',', '\\']);
+            if (end >= 0) host = host[..end];
+            host = host.Trim();
+            azure = AzureHosts.Any(suffix => host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex) when (ex is ArgumentException or FormatException) { azure = false; }
+        lock (CacheLock) azureCached = (connection, azure);
+        return azure;
+    }
+
+    /// <summary>Whether the database this machine is configured for (<see cref="Configured"/>) is on Azure SQL Database.</summary>
+    public static bool ConfiguredIsAzure() => IsAzure(Configured());
 
     private static (DateTime Stamp, string? Connection) cached = (DateTime.MinValue, null);
     private static readonly System.Threading.Lock CacheLock = new();
@@ -234,15 +292,18 @@ public sealed class OrchestratorServer(string connectionString)
     }
 
     /// <summary>Creates the database on <paramref name="connection"/>'s server when it isn't there, with a binary collation so
-    /// keys compare and sort as SQLite's do.</summary>
+    /// keys compare and sort as SQLite's do. Not on Azure SQL Database (M.ORCH-T1748): there it is provisioned ahead (with the
+    /// same collation), and a login that is only a user of that database can't open <c>master</c> at all; a server found to be
+    /// Azure's only once connected (engine edition 5, behind a name of its own) is left alone the same way.</summary>
     public static void CreateDatabase(string connection)
     {
+        if (IsAzure(connection)) return;
         var b = new SqlConnectionStringBuilder(connection);
         var name = b.InitialCatalog;
         b.InitialCatalog = "master";
         using var master = new SqlConnection(b.ConnectionString);
         master.Open();
-        Sql.Run(master, null, $"IF DB_ID(@name) IS NULL EXEC (N'CREATE DATABASE ' + @quoted + N' COLLATE Latin1_General_100_BIN2');",
+        Sql.Run(master, null, "IF CONVERT(int, SERVERPROPERTY('EngineEdition')) <> 5 AND DB_ID(@name) IS NULL EXEC (N'CREATE DATABASE ' + @quoted + N' COLLATE Latin1_General_100_BIN2');",
             ("@name", name), ("@quoted", "[" + name.Replace("]", "]]", StringComparison.Ordinal) + "]"));
     }
 }

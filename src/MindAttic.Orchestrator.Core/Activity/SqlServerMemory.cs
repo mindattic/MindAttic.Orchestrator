@@ -8,7 +8,8 @@ namespace MindAttic.Orchestrator.Activity;
 /// memory cap is live-dialable from the Vault. 0 leaves SQL Server's own setting alone; any other value is raised to at least
 /// <see cref="OrchestratorSettings.SqlServerMaxMemoryFloorMb"/>, since 1024 MB crashed the instance (error 17300). The instance
 /// is read and changed once per change of the target (and once at the daemon's start), never every tick; a failure is
-/// reported and not tried again until the target changes.
+/// reported and not tried again until the target changes. With the orchestrator's database on Azure SQL Database
+/// (<see cref="OrchestratorServer.ConfiguredIsAzure"/>, M.ORCH-T1748) nothing is read or set at all.
 /// </summary>
 public sealed class SqlServerMemory
 {
@@ -27,10 +28,26 @@ public sealed class SqlServerMemory
     /// <summary>Sets the instance's max server memory (MB); a test's stands in for the real instance.</summary>
     internal Action<int> Apply { get; init; } = ApplyToServer;
 
+    /// <summary>Whether the orchestrator's database is on Azure SQL Database (M.ORCH-T1748): localhost's instance is then not
+    /// this app's to configure, and Azure has no <c>sp_configure</c>; a test's stands in for the machine's setting.</summary>
+    internal Func<bool> OnAzure { get; init; } = OrchestratorServer.ConfiguredIsAzure;
+
+    /// <summary>Whether the last call left the instance alone because the database is on Azure, so that's said once.</summary>
+    private bool leftAlone;
+
     /// <summary>What happened this call, for the daemon's log: null when nothing was looked at.</summary>
     public string? Observe(OrchestratorSettings s)
     {
         var target = Target(s.SqlServerMaxMemoryMb);
+        if (OnAzure())
+        {
+            // Nothing is read or set, and nothing counts as handled: back on localhost, the target is applied at the next call.
+            handled = null;
+            if (leftAlone || target == 0) return null;
+            leftAlone = true;
+            return $"SQL Server max server memory ({target} MB) not applied: the orchestrator's database is on Azure SQL Database, so localhost's SQL Server is left as it is";
+        }
+        leftAlone = false;
         if (target == handled) return null;
         handled = target;
         if (target == 0) return null;
