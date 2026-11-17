@@ -6,8 +6,8 @@ namespace MindAttic.Orchestrator.Setup;
 /// The heavy-process lease's half of the pace gate (M.ORCH-T1680). The agent standard says "one heavy process per machine:
 /// one game player, one Unity/Unreal build, or one long soak at a time", and nothing enforced it: parallel players and engine
 /// builds once grew the pagefile to 43 GB. <see cref="Python"/> is spliced into <see cref="AgentGate.Script"/>: before a shell
-/// command runs, it's matched against a list of heavy commands (<see cref="DefaultPatternsJson"/>, plus the repo's own
-/// <see cref="RepoPatternsFile"/>), and one that matches must take a machine-wide lease first (a <c>heavy-N</c> row of
+/// command runs, it's matched against a list of heavy commands (<see cref="DefaultPatternsJson"/>, plus the
+/// <see cref="Settings.OrchestratorSettings.HeavyProcessPatterns"/> setting and the repo's own <see cref="RepoPatternsFile"/>), and one that matches must take a machine-wide lease first (a <c>heavy-N</c> row of
 /// orchestrator.db's <c>leases</c>, see <see cref="HeavyLease"/>). Held by someone else, the call is refused with what is
 /// running and who holds it; the holder is never killed. Any error lets the call through.
 /// </summary>
@@ -66,6 +66,10 @@ public static class HeavyGate
         .Replace("__HEAVY_DEFAULT_PATTERNS__", DefaultPatternsJson.Replace("\r\n", "\n"))
         .Replace("__HEAVY_REPO_FILE__", RepoPatternsFile)
         .Replace("__HEAVY_PREFIX__", HeavyLease.Prefix)
+        .Replace("__HEAVY_GRACE_SETTING__", nameof(Settings.OrchestratorSettings.HeavyProcessGraceSeconds))
+        .Replace("__HEAVY_UNKNOWN_MAX_SETTING__", nameof(Settings.OrchestratorSettings.HeavyProcessUnknownMaxSeconds))
+        .Replace("__HEAVY_SLACK_SETTING__", nameof(Settings.OrchestratorSettings.HeavyProcessSlackSeconds))
+        .Replace("__HEAVY_PATTERNS_SETTING__", nameof(Settings.OrchestratorSettings.HeavyProcessPatterns))
         .Replace("__HEAVY_GRACE__", HeavyLease.GraceSeconds.ToString())
         .Replace("__HEAVY_UNKNOWN_MAX__", HeavyLease.UnknownMaxSeconds.ToString())
         .Replace("__HEAVY_SLACK__", HeavyLease.SlackSeconds.ToString())
@@ -84,9 +88,41 @@ public static class HeavyGate
         # error lets the call through.
         HEAVY_DEFAULT = json.loads(r'''__HEAVY_DEFAULT_PATTERNS__''')
         HEAVY_PREFIX = "__HEAVY_PREFIX__"
-        HEAVY_GRACE = __HEAVY_GRACE__              # seconds a lease just taken counts as held before its process must be found
-        HEAVY_UNKNOWN_MAX = __HEAVY_UNKNOWN_MAX__  # ... and how long it counts while the machine's processes can't be listed
-        HEAVY_SLACK = __HEAVY_SLACK__              # a lease's process may have started this many seconds before its lease's time
+
+        HEAVY_SETTINGS = [None]
+        def heavy_settings():
+            # The orchestrator's settings, read once per hook run; {} when they can't be read (every default then applies).
+            if HEAVY_SETTINGS[0] is None:
+                try:
+                    s = orch_settings()
+                except Exception:
+                    s = None
+                HEAVY_SETTINGS[0] = s if isinstance(s, dict) else {}
+            return HEAVY_SETTINGS[0]
+
+        def heavy_seconds(name, default):
+            try:
+                return max(0.0, float(heavy_settings().get(name, default)))
+            except Exception:
+                return float(default)
+
+        # Seconds a lease just taken counts as held before its process must be found; how long one past that still counts while
+        # the machine's processes can't be listed; and how long before its lease's time its process may have started (Vault settings).
+        def heavy_grace():
+            return heavy_seconds("__HEAVY_GRACE_SETTING__", __HEAVY_GRACE__)
+        def heavy_unknown_max():
+            return heavy_seconds("__HEAVY_UNKNOWN_MAX_SETTING__", __HEAVY_UNKNOWN_MAX__)
+        def heavy_slack():
+            return heavy_seconds("__HEAVY_SLACK_SETTING__", __HEAVY_SLACK__)
+
+        def heavy_setting_patterns():
+            # The extra heavy commands in the HeavyProcessPatterns setting: JSON in the default list's shape, or the bare list.
+            v = heavy_settings().get("__HEAVY_PATTERNS_SETTING__")
+            if isinstance(v, str):
+                v = json.loads(v) if v.strip() else None
+            if isinstance(v, list):
+                v = {"patterns": v}
+            return v if isinstance(v, dict) else None
 
         def heavy_repo_root(cwd):
             try:
@@ -100,8 +136,15 @@ public static class HeavyGate
             return None
 
         def heavy_patterns(cwd):
-            # (name, compiled regex, at) for the default list and the repo's own .agent/heavy-patterns.json, which adds to it.
+            # (name, compiled regex, at) for the default list, the HeavyProcessPatterns setting and the repo's own
+            # .agent/heavy-patterns.json, each adding to the default.
             sources = [HEAVY_DEFAULT]
+            try:
+                extra = heavy_setting_patterns()
+                if extra:
+                    sources.append(extra)
+            except Exception:
+                pass
             root = heavy_repo_root(cwd)
             if root:
                 try:
@@ -230,7 +273,7 @@ public static class HeavyGate
         def heavy_state(h, now, alive=None, processes=None):
             # ("live" | "free", the processes found for it or None). Live while a process it's known to run is alive. Before
             # one is known ("starting"): while the gate that took it still runs (it may hold the call for the pace), then for
-            # HEAVY_GRACE seconds while its CLI is alive; after that the machine's processes are asked for one running the
+            # heavy_grace() seconds while its CLI is alive; after that the machine's processes are asked for one running the
             # lease's command that started since the lease did: found, the lease is that process's; none, the call is over.
             alive = alive or heavy_alive
             if any(alive(p[0], p[1]) for p in (h.get("procs") or [])):
@@ -242,24 +285,25 @@ public static class HeavyGate
             if h.get("cli") and not alive(h.get("cli"), h.get("cli_started")):
                 return "free", None
             at = float(h.get("at") or 0)
-            if now - at < HEAVY_GRACE:
+            if now - at < heavy_grace():
                 return "live", None
             listed = (processes or heavy_processes)()
             if listed is None:
-                return ("live" if now - at < HEAVY_UNKNOWN_MAX else "free"), None
+                return ("live" if now - at < heavy_unknown_max() else "free"), None
+            slack = heavy_slack()
             try:
                 pattern = [(h.get("pattern"), re.compile(h["regex"], re.I), h.get("mode") or "command")]
             except Exception:
                 return "free", None
             found = [[int(pid), float(started)] for pid, started, line in listed
-                     if started >= at - HEAVY_SLACK and int(pid) != os.getpid() and heavy_match(line, pattern)]
+                     if started >= at - slack and int(pid) != os.getpid() and heavy_match(line, pattern)]
             return ("live", found) if found else ("free", None)
 
         def heavy_limit():
             # How many heavy processes may run at once; 0 turns the lease off.
             v = os.environ.get("__HEAVY_LIMIT_ENV__")
             if v is None or not str(v).strip():
-                v = orch_settings().get("__HEAVY_LIMIT_SETTING__", __HEAVY_LIMIT_DEFAULT__)
+                v = heavy_settings().get("__HEAVY_LIMIT_SETTING__", __HEAVY_LIMIT_DEFAULT__)
             return int(v)
 
         def heavy_rows(db):

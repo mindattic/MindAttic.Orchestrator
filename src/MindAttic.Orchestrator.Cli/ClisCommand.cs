@@ -59,8 +59,9 @@ internal sealed class ClisCommand : Command<ClisCommand.Settings>
     /// <summary>Who holds the heavy-process lease (M.ORCH-T1680): what the pace gate's refusal sends an agent here to see.</summary>
     private static void HeavyLeaseLines(DateTime now)
     {
-        var limit = Ctx.Store().TryLoadSettings(out var s) ? s.HeavyProcessLimit : MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultHeavyProcessLimit;
-        var held = HeavyLease.Held(Ctx.Store().Db, now);
+        var loaded = Ctx.Store().TryLoadSettings(out var s);
+        var limit = loaded ? s.HeavyProcessLimit : MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultHeavyProcessLimit;
+        var held = HeavyLease.Held(Ctx.Store().Db, now, loaded ? s.HeavyProcessGraceSeconds : null);
         if (limit <= 0)
         {
             AnsiConsole.MarkupLine("[grey]Heavy-process lease: off (orchestrator settings --heavy-processes 1 turns it on).[/]");

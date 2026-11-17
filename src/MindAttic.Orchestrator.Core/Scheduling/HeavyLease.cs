@@ -63,15 +63,17 @@ public static class HeavyLease
     /// <summary>What every heavy lease's row name starts with.</summary>
     public const string Prefix = "heavy-";
 
-    /// <summary>Seconds a lease just taken counts as held before a process running its command must be found: the time
-    /// between the hook letting the call through and the command's process existing.</summary>
-    public const int GraceSeconds = 60;
+    /// <summary>The default seconds a lease just taken counts as held before a process running its command must be found;
+    /// live, it's <see cref="OrchestratorSettings.HeavyProcessGraceSeconds"/>.</summary>
+    public const int GraceSeconds = OrchestratorSettings.DefaultHeavyProcessGraceSeconds;
 
-    /// <summary>Seconds a lease past its grace still counts as held while the machine's processes can't be listed.</summary>
-    public const int UnknownMaxSeconds = 900;
+    /// <summary>The default seconds a lease past its grace still counts as held while the machine's processes can't be listed;
+    /// live, it's <see cref="OrchestratorSettings.HeavyProcessUnknownMaxSeconds"/>.</summary>
+    public const int UnknownMaxSeconds = OrchestratorSettings.DefaultHeavyProcessUnknownMaxSeconds;
 
-    /// <summary>A lease's process may have started this many seconds before the lease's own time (clocks read apart).</summary>
-    public const int SlackSeconds = 5;
+    /// <summary>The default seconds a lease's process may have started before the lease's own time (clocks read apart); live,
+    /// it's <see cref="OrchestratorSettings.HeavyProcessSlackSeconds"/>.</summary>
+    public const int SlackSeconds = OrchestratorSettings.DefaultHeavyProcessSlackSeconds;
 
     /// <summary>Every heavy lease row, held or not; empty when the database can't be read or is from before the table.</summary>
     public static IReadOnlyList<HeavyHolder> Read(OrchestratorDb db)
@@ -92,8 +94,9 @@ public static class HeavyLease
     }
 
     /// <summary>The leases that are held now, each with where it stands.</summary>
-    public static IReadOnlyList<(HeavyHolder Holder, HeavyLeaseState State)> Held(OrchestratorDb db, DateTime nowUtc) =>
-        [.. Read(db).Select(h => (h, State(h, nowUtc))).Where(x => x.Item2 != HeavyLeaseState.Free)];
+    /// <param name="graceSeconds"><see cref="OrchestratorSettings.HeavyProcessGraceSeconds"/>; <see cref="GraceSeconds"/> when null.</param>
+    public static IReadOnlyList<(HeavyHolder Holder, HeavyLeaseState State)> Held(OrchestratorDb db, DateTime nowUtc, int? graceSeconds = null) =>
+        [.. Read(db).Select(h => (h, State(h, nowUtc, graceSeconds: graceSeconds))).Where(x => x.Item2 != HeavyLeaseState.Free)];
 
     /// <summary>A row's holder JSON as the hook wrote it; null when it isn't a JSON object (the hook frees such a row).</summary>
     internal static HeavyHolder? Parse(string name, string holderJson)
@@ -126,11 +129,13 @@ public static class HeavyLease
     /// <summary>
     /// Where a lease stands, by the hook's own rule: running while a process it's known to run is alive; before one is known,
     /// starting while the gate that took it still runs (it may be holding the call for the pace), then for
-    /// <see cref="GraceSeconds"/> while its CLI is alive; free once that CLI is gone. Past the grace with no process known it's
-    /// unconfirmed: only the hook lists the machine's processes to settle it, when the next heavy command asks.
+    /// <see cref="OrchestratorSettings.HeavyProcessGraceSeconds"/> while its CLI is alive; free once that CLI is gone. Past the
+    /// grace with no process known it's unconfirmed: only the hook lists the machine's processes to settle it, when the next
+    /// heavy command asks.
     /// </summary>
     /// <param name="alive">Whether the process with this pid and start time still runs; <see cref="DispatchLease.Alive"/> when null.</param>
-    public static HeavyLeaseState State(HeavyHolder holder, DateTime nowUtc, Func<long, double?, bool>? alive = null)
+    /// <param name="graceSeconds">The grace; <see cref="GraceSeconds"/> when null.</param>
+    public static HeavyLeaseState State(HeavyHolder holder, DateTime nowUtc, Func<long, double?, bool>? alive = null, int? graceSeconds = null)
     {
         alive ??= DispatchLease.Alive;
         if (holder.Procs.Any(p => alive(p.Pid, p.Started))) return HeavyLeaseState.Running;
@@ -138,7 +143,7 @@ public static class HeavyLease
         if (holder.GatePid is { } gate && alive(gate, holder.GateStarted)) return HeavyLeaseState.Starting;
         if (holder.CliPid is { } cli && !alive(cli, holder.CliStarted)) return HeavyLeaseState.Free;
         var age = (nowUtc - DateTime.UnixEpoch).TotalSeconds - holder.At;
-        return age < GraceSeconds ? HeavyLeaseState.Starting : HeavyLeaseState.Unconfirmed;
+        return age < (graceSeconds ?? GraceSeconds) ? HeavyLeaseState.Starting : HeavyLeaseState.Unconfirmed;
     }
 
     /// <summary>One line for a held lease: what is running, since when, and who holds it.</summary>

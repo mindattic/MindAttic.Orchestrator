@@ -463,6 +463,29 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 64)]
     public int HeavyProcessLimit { get; set; } = OrchestratorSettings.DefaultHeavyProcessLimit;
 
+    /// <summary>More heavy commands for the heavy-process lease, added to the built-in list.</summary>
+    [Setting("Heavy commands (extra)", Group = "Memory", Order = 1,
+        Help = "More commands that count as heavy processes, added to the built-in list (Unity/Unreal/s&box builds and editors, built game players, soak runners) and a repo's own .agent/heavy-patterns.json, never replacing them. JSON: {\"patterns\":[{\"name\":\"my soak\",\"regex\":\"mysoak\\\\.exe\",\"at\":\"command\"}]} or the bare list; at is command, program or anywhere. Empty adds nothing.")]
+    public string HeavyProcessPatterns { get; set; } = "";
+
+    /// <summary>Seconds a heavy lease just taken counts as held before a process running its command must be found.</summary>
+    [Setting("Heavy lease grace (seconds)", Group = "Memory", Order = 1,
+        Help = "Seconds a heavy-process lease just taken counts as held before a process running its command must be found: the time between the gate letting the command through and its process existing.")]
+    [SettingRange(5, 3600)]
+    public int HeavyProcessGraceSeconds { get; set; } = OrchestratorSettings.DefaultHeavyProcessGraceSeconds;
+
+    /// <summary>Seconds a heavy lease past its grace still counts as held while the machine's processes can't be listed.</summary>
+    [Setting("Heavy lease unverified hold (seconds)", Group = "Memory", Order = 1,
+        Help = "Seconds a heavy-process lease past its grace still counts as held while the machine's processes can't be listed to check it; after that it's freed.")]
+    [SettingRange(0, 86400)]
+    public int HeavyProcessUnknownMaxSeconds { get; set; } = OrchestratorSettings.DefaultHeavyProcessUnknownMaxSeconds;
+
+    /// <summary>Seconds a heavy lease's process may have started before the lease's own time.</summary>
+    [Setting("Heavy lease clock slack (seconds)", Group = "Memory", Order = 1,
+        Help = "Seconds a process may have started before its heavy-process lease was taken and still count as that lease's process (clocks read apart).")]
+    [SettingRange(0, 300)]
+    public int HeavyProcessSlackSeconds { get; set; } = OrchestratorSettings.DefaultHeavyProcessSlackSeconds;
+
     /// <summary>Physical RAM in use under which the guard does nothing: no holds and no subagent cap by free RAM.</summary>
     [Setting("Guard starts at (RAM used %)", Group = "Memory", Order = 1,
         Help = "Physical RAM in use under which the guard does nothing: no holds and no subagent cap by free RAM. Windows 11 keeps RAM full on purpose, so at this line the guard first collects garbage and trims working sets instead of holding work.")]
@@ -924,6 +947,10 @@ public sealed class OrchestratorVaultSettings
         ClosedTicketsReadLiveMinutes = s.ClosedTicketsReadLiveMinutes,
         MemoryGuard = s.MemoryGuard,
         HeavyProcessLimit = s.HeavyProcessLimit,
+        HeavyProcessPatterns = s.HeavyProcessPatterns,
+        HeavyProcessGraceSeconds = s.HeavyProcessGraceSeconds,
+        HeavyProcessUnknownMaxSeconds = s.HeavyProcessUnknownMaxSeconds,
+        HeavyProcessSlackSeconds = s.HeavyProcessSlackSeconds,
         MemoryGuardStartPercent = s.MemoryGuardStartPercent,
         MemoryTightGb = s.MemoryTightGb,
         MemoryCriticalGb = s.MemoryCriticalGb,
@@ -1074,6 +1101,10 @@ public sealed class OrchestratorVaultSettings
         ClosedTicketsReadLiveMinutes = ClosedTicketsReadLiveMinutes,
         MemoryGuard = MemoryGuard,
         HeavyProcessLimit = HeavyProcessLimit,
+        HeavyProcessPatterns = HeavyProcessPatterns ?? "",
+        HeavyProcessGraceSeconds = HeavyProcessGraceSeconds,
+        HeavyProcessUnknownMaxSeconds = HeavyProcessUnknownMaxSeconds,
+        HeavyProcessSlackSeconds = HeavyProcessSlackSeconds,
         MemoryGuardStartPercent = MemoryGuardStartPercent,
         MemoryTightGb = MemoryTightGb,
         MemoryCriticalGb = MemoryCriticalGb,

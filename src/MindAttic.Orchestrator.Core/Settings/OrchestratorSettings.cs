@@ -456,6 +456,31 @@ public sealed record OrchestratorSettings
     /// <summary>What <see cref="HeavyProcessLimit"/> is until it's set: the agent standard's one heavy process per machine.</summary>
     public const int DefaultHeavyProcessLimit = 1;
 
+    /// <summary>More heavy commands for the heavy-process lease (M.ORCH-T1680), added to <see cref="Setup.HeavyGate.DefaultPatternsJson"/>
+    /// and a repo's own <see cref="Setup.HeavyGate.RepoPatternsFile"/>, never replacing them: JSON in the same shape
+    /// (<c>{"patterns":[{"name":..,"regex":..,"at":..}]}</c>, or the bare list). Empty adds nothing.</summary>
+    public string HeavyProcessPatterns { get; init; } = "";
+
+    /// <summary>Seconds a heavy lease just taken counts as held before a process running its command must be found (M.ORCH-T1680):
+    /// the time between the hook letting the call through and the command's process existing.</summary>
+    public int HeavyProcessGraceSeconds { get; init; } = DefaultHeavyProcessGraceSeconds;
+
+    /// <summary>What <see cref="HeavyProcessGraceSeconds"/> is until it's set.</summary>
+    public const int DefaultHeavyProcessGraceSeconds = 60;
+
+    /// <summary>Seconds a heavy lease past its grace still counts as held while the machine's processes can't be listed (M.ORCH-T1680).</summary>
+    public int HeavyProcessUnknownMaxSeconds { get; init; } = DefaultHeavyProcessUnknownMaxSeconds;
+
+    /// <summary>What <see cref="HeavyProcessUnknownMaxSeconds"/> is until it's set.</summary>
+    public const int DefaultHeavyProcessUnknownMaxSeconds = 900;
+
+    /// <summary>Seconds a heavy lease's process may have started before the lease's own time and still count as its process
+    /// (clocks read apart, M.ORCH-T1680).</summary>
+    public int HeavyProcessSlackSeconds { get; init; } = DefaultHeavyProcessSlackSeconds;
+
+    /// <summary>What <see cref="HeavyProcessSlackSeconds"/> is until it's set.</summary>
+    public const int DefaultHeavyProcessSlackSeconds = 5;
+
     /// <summary>The memory guard (M.ORCH-T1494): when RAM runs low, new work stops (subagents, CLIs, main-line tests) and running
     /// work finishes, the way the 5-hour and weekly stops scale back; past <see cref="MemoryCriticalGb"/> the newest subagent is
     /// shed, past <see cref="MemoryEmergencyGb"/> tool calls are refused. /pacing off doesn't turn it off; only this does.</summary>

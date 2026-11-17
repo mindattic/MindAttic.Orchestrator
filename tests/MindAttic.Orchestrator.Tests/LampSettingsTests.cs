@@ -197,6 +197,10 @@ public sealed class LampSettingsTests
         // Memory
         Case("memoryGuard", s => s with { MemoryGuard = false }, false, v => v.MemoryGuard = true, true, s => s.MemoryGuard),
         Case("heavyProcessLimit", s => s with { HeavyProcessLimit = 1 }, 1, v => v.HeavyProcessLimit = 2, 2, s => s.HeavyProcessLimit),
+        Case("heavyProcessPatterns", s => s with { HeavyProcessPatterns = "[{\"regex\":\"a\"}]" }, "[{\"regex\":\"a\"}]", v => v.HeavyProcessPatterns = "[{\"regex\":\"b\"}]", "[{\"regex\":\"b\"}]", s => s.HeavyProcessPatterns),
+        Case("heavyProcessGraceSeconds", s => s with { HeavyProcessGraceSeconds = 60 }, 60, v => v.HeavyProcessGraceSeconds = 90, 90, s => s.HeavyProcessGraceSeconds),
+        Case("heavyProcessUnknownMaxSeconds", s => s with { HeavyProcessUnknownMaxSeconds = 900 }, 900, v => v.HeavyProcessUnknownMaxSeconds = 600, 600, s => s.HeavyProcessUnknownMaxSeconds),
+        Case("heavyProcessSlackSeconds", s => s with { HeavyProcessSlackSeconds = 5 }, 5, v => v.HeavyProcessSlackSeconds = 10, 10, s => s.HeavyProcessSlackSeconds),
         Case("memoryGuardStartPercent", s => s with { MemoryGuardStartPercent = 90 }, 90d, v => v.MemoryGuardStartPercent = 85, 85d, s => s.MemoryGuardStartPercent),
         Case("memoryTightGb", s => s with { MemoryTightGb = 4 }, 4d, v => v.MemoryTightGb = 6, 6d, s => s.MemoryTightGb),
         Case("memoryCriticalGb", s => s with { MemoryCriticalGb = 2 }, 2d, v => v.MemoryCriticalGb = 1.5, 1.5, s => s.MemoryCriticalGb),
