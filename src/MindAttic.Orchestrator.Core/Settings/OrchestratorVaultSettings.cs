@@ -852,6 +852,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 3600)]
     public double MeterStatesSeconds { get; set; } = 30;
 
+    /// <summary>Milliseconds the dashboard's UI thread may keep input waiting before the stall is logged with the work it was in; 0 turns the probe off.</summary>
+    [Setting("Log a UI stall over (ms)", Group = "Dashboard", Order = 24,
+        Help = "Milliseconds the dashboard's UI thread may keep input (your typing into a CLI tab) waiting before the stall is written to the log, with the work the thread was doing. 0 turns the probe off.")]
+    [SettingRange(0, 60000)]
+    public double UiStallLogMs { get; set; } = 100;
+
     /// <summary>The shortest gap in milliseconds from one tab blink to the next, so each still reads as a blink; it also caps how many blinks one refresh queues.</summary>
     [Setting("Blink spacing at least (ms)", Group = "Dashboard", Order = 14,
         Help = "The shortest gap in milliseconds from one tab blink to the next, so each still reads as a blink; it also caps how many blinks one refresh queues.")]
@@ -1009,6 +1015,7 @@ public sealed class OrchestratorVaultSettings
         LauncherRespawnSeconds = s.LauncherRespawnSeconds,
         ElevatedTermWaitSeconds = s.ElevatedTermWaitSeconds,
         MeterStatesSeconds = s.MeterStatesSeconds,
+        UiStallLogMs = s.UiStallLogMs,
         TestTermHostSweepMinutes = s.TestTermHostSweepMinutes,
         OrgReachSpacingMinutes = s.OrgReachSpacingMinutes,
         ApiCostReadMinutes = s.ApiCostReadMinutes,
@@ -1178,6 +1185,7 @@ public sealed class OrchestratorVaultSettings
         LauncherRespawnSeconds = LauncherRespawnSeconds,
         ElevatedTermWaitSeconds = ElevatedTermWaitSeconds,
         MeterStatesSeconds = MeterStatesSeconds,
+        UiStallLogMs = UiStallLogMs,
         TestTermHostSweepMinutes = TestTermHostSweepMinutes,
         OrgReachSpacingMinutes = OrgReachSpacingMinutes,
         ApiCostReadMinutes = ApiCostReadMinutes,

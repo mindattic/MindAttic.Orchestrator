@@ -202,7 +202,9 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
             if (pendingChars <= MaxPendingChars / 2) (room, roomForOutput) = (roomForOutput, null);
         }
         room?.TrySetResult();
-        if (!closed) TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(text));
+        if (closed) return;
+        using var stall = UiStallProbe.Doing("drawing CLI output");
+        TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(text));
     }
 
     /// <summary>Waits while too much output is waiting for the UI thread (M.ORCH-T1015); returns at once when there is room or

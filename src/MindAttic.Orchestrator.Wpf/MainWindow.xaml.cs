@@ -158,6 +158,10 @@ public partial class MainWindow : Window
             PinTerminalFocus();
         };
 
+        // Names whatever keeps typing waiting on this thread, for good (M.ORCH-T1733).
+        var stalls = new MindAttic.Orchestrator.Term.Wpf.UiStallProbe(Dispatcher, () => DashboardTimings.UiStallLog);
+        Closed += (_, _) => stalls.Dispose();
+
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = PollInterval };
         timer.Tick += async (_, _) =>
         {

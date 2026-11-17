@@ -656,6 +656,10 @@ public sealed record OrchestratorSettings
     /// <summary>Seconds between the dashboard's rereads of each login's meter state (when it was last read, who must sign in again).</summary>
     public double MeterStatesSeconds { get; init; } = 30;
 
+    /// <summary>Milliseconds the dashboard's UI thread may keep input waiting before the stall is logged with the work it was in
+    /// (M.ORCH-T1733, <c>UiStallProbe</c>); 0 turns the probe off.</summary>
+    public double UiStallLogMs { get; init; } = 100;
+
     // ── The rest of the sweep (M.ORCH-T1624): each was a constant; its value then is its default ──
 
     /// <summary>Minutes between the daemon's sweeps for TermHosts a test run leaked (M.ORCH-T1623; was

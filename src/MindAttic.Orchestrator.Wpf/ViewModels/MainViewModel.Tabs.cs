@@ -223,6 +223,7 @@ public sealed partial class MainViewModel
 
     private void ApplyTabs(Snapshot all, IReadOnlyList<LoginTab> tabs, OrgDirectory nextOrgs)
     {
+        using var stall = MindAttic.Orchestrator.Term.Wpf.UiStallProbe.Doing("applying a refresh to the tabs");
         workspace = all;
         ApplyOrgs(nextOrgs);
         var before = loginTabs.Count;

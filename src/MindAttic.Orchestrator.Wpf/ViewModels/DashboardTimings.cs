@@ -32,6 +32,10 @@ internal static class DashboardTimings
     /// <summary>The login meters' reread: <see cref="OrchestratorSettings.MeterStatesSeconds"/>.</summary>
     public static TimeSpan MeterStates { get; private set; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>How long the UI thread may keep input waiting before the stall is logged (M.ORCH-T1733); zero is off:
+    /// <see cref="OrchestratorSettings.UiStallLogMs"/>.</summary>
+    public static TimeSpan UiStallLog { get; private set; } = TimeSpan.FromMilliseconds(100);
+
     // The rest of the sweep (M.ORCH-T1624).
 
     /// <summary>The shortest gap from one tab blink to the next: <see cref="OrchestratorSettings.TabBlinkMinSpacingMs"/>.</summary>
@@ -67,6 +71,7 @@ internal static class DashboardTimings
         LauncherSpacing = OrchestratorSettings.SecondsSpan(s.LauncherRespawnSeconds, 1);
         ElevatedTermWait = OrchestratorSettings.SecondsSpan(s.ElevatedTermWaitSeconds, 5);
         MeterStates = OrchestratorSettings.SecondsSpan(s.MeterStatesSeconds, 1);
+        UiStallLog = TimeSpan.FromMilliseconds(Math.Max(0, s.UiStallLogMs));
         // At least 50ms, so a refresh's blink queue stays bounded.
         TabBlinkMinSpacing = OrchestratorSettings.SecondsSpan(s.TabBlinkMinSpacingMs / 1000, 0.05);
         ProjectsRefresh = OrchestratorSettings.SecondsSpan(s.ProjectsRefreshMinutes * 60, 1);

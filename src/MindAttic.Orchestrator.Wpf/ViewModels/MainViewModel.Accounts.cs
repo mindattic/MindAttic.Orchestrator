@@ -35,6 +35,7 @@ public sealed partial class MainViewModel
 
     private void ApplyAccounts(Snapshot next, DateTime nowUtc)
     {
+        using var stall = MindAttic.Orchestrator.Term.Wpf.UiStallProbe.Doing("a refresh: reading accounts, settings and meters");
         // The roster is read once a refresh, by the global login's tab, which is applied first; every login's tab shows the same.
         if (root is not null)
         {

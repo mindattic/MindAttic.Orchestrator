@@ -1165,6 +1165,7 @@ public sealed class TerminalsViewModel : ObservableObject
     /// one whose CLI exited, or whose host ended, is marked ended. Never throws.</summary>
     public void OnTermSession(TermSessionEvent message)
     {
+        using var stall = MindAttic.Orchestrator.Term.Wpf.UiStallProbe.Doing("a hosted-session message");
         try
         {
             var pane = Panes.FirstOrDefault(p => string.Equals(p.TermId, message.Id, StringComparison.OrdinalIgnoreCase));
@@ -1373,6 +1374,7 @@ public sealed class TerminalsViewModel : ObservableObject
     public void Update(Snapshot? snapshot)
     {
         if (Panes.Count == 0) return;
+        using var stall = MindAttic.Orchestrator.Term.Wpf.UiStallProbe.Doing("a refresh: updating the CLI tabs");
         PruneEnded(DateTime.UtcNow);
         if (Panes.Count == 0) return;
         ReadBroadcast();
