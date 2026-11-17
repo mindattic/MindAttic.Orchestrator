@@ -442,6 +442,7 @@ public sealed partial class MainViewModel : ObservableObject
                 consentsRead = ConsentsNow(settingsNow);
                 // What ApplyAccounts shows, read here rather than on the UI thread (M.ORCH-T1735).
                 accountsRead = ReadAccounts(built.Account, DateTime.UtcNow);
+                AllTerminals.ParentsRead = ReadParents();
                 planned = PlanOffUi(built);
                 // The owner inbox (M.ORCH-T1689): everything waiting on the owner, from the snapshot and plan just made.
                 if (InboxNow(built, planned?.Item2, settingsNow) is { } inbox) inboxRead = inbox;

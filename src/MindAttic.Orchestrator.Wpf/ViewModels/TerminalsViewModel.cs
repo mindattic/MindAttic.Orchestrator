@@ -1385,7 +1385,10 @@ public sealed class TerminalsViewModel : ObservableObject
         var hosts =snapshot?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
         var moved = false;
         var learned = false;
-        IReadOnlyDictionary<int, int>? parents = null;
+        // The process tree a refresh read off the UI thread (M.ORCH-T1738), when it did: a Launcher menu pane never finds a
+        // host, so some pane asks for it at every refresh, and reading it here cost 100-300ms under memory pressure.
+        var parents = ParentsRead;
+        ParentsRead = null;
         foreach (var pane in Panes.Where(p => !p.Ended).ToList())
         {
             if (pane.HasExited)
@@ -1420,6 +1423,9 @@ public sealed class TerminalsViewModel : ObservableObject
         if (moved) LoginsChanged?.Invoke();
         if (learned) SessionsLearned?.Invoke();
     }
+
+    /// <summary>The process tree, read off the UI thread for the next <see cref="Update"/>; null has it read there, when needed.</summary>
+    internal volatile IReadOnlyDictionary<int, int>? ParentsRead;
 
     /// <summary>The Launcher host that is the pane's own process or runs under it. The process tree is read once per refresh,
     /// for every pane (M.ORCH-T1735): it was read once per host per pane, on the UI thread, at every refresh.</summary>
