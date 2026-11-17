@@ -187,13 +187,18 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 notifyUrl = s.NotifyUrl;
 
                 EnsureHooks(s);
-                WatchHealth(allocate);
-                WatchMemory(s);
-                CapSqlServerMemory(s);
-                WatchPagefile();
-                WatchDisk(s);
-                CleanDiskIfLow(s, DateTime.UtcNow, options.WorkspaceRoot);
-                WatchDiskHold(s);
+                // Each in its own try (M.ORCH-T1009's lesson, missed when these were added M.ORCH-T1591..T1679): a machine
+                // reading that throws (a drive remapped, RAM or a pagefile resized, SQL Server capped or down) must not abort
+                // the rest of the tick, or the wake/rebalance/cool-off logic below (M.ORCH-T1749: it never ran for a whole
+                // 5-hour window, so an idle /allocate CLI stayed idle and a login the last-resort cool-off should have bent
+                // back under its pace target instead ran unchecked to 100%).
+                try { WatchHealth(allocate); } catch (Exception ex) { Say(LogEventLevel.Warning, $"machine health: couldn't read it (retrying next tick): {ex.Message}"); }
+                try { WatchMemory(s); } catch (Exception ex) { Say(LogEventLevel.Warning, $"memory guard: couldn't read it (retrying next tick): {ex.Message}"); }
+                try { CapSqlServerMemory(s); } catch (Exception ex) { Say(LogEventLevel.Warning, $"SQL Server memory cap: couldn't apply it (retrying next tick): {ex.Message}"); }
+                try { WatchPagefile(); } catch (Exception ex) { Say(LogEventLevel.Warning, $"pagefile check: couldn't read it (retrying next tick): {ex.Message}"); }
+                try { WatchDisk(s); } catch (Exception ex) { Say(LogEventLevel.Warning, $"disk space watch: couldn't read it (retrying next tick): {ex.Message}"); }
+                try { CleanDiskIfLow(s, DateTime.UtcNow, options.WorkspaceRoot); } catch (Exception ex) { Say(LogEventLevel.Warning, $"disk self-cleanup: couldn't check it (retrying next tick): {ex.Message}"); }
+                try { WatchDiskHold(s); } catch (Exception ex) { Say(LogEventLevel.Warning, $"disk floor: couldn't read it (retrying next tick): {ex.Message}"); }
                 tick.Lap("hooks, machine health and disk space");
                 try { if (ledgerLease.TryAcquire()) ledger.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"pace ledger: couldn't update it (retrying next minute): {ex.Message}"); }
