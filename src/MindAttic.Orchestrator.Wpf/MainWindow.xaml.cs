@@ -214,9 +214,10 @@ public partial class MainWindow : Window
     /// Reopens a Save all &amp; close run's tabs (M.ORCH-T1724), when one left its one-shot pending file: the same
     /// <see cref="MainViewModel.RestoreTabs"/> every crash recovery uses, so a tab whose session is known resumes with
     /// Claude's own <c>claude --resume</c> as always. The file is consumed (deleted) up front, whether or not this
-    /// succeeds, so a later start never replays it. Only the rare tab that can't natively resume (no session id) then gets
-    /// its captured handoff's <c>/quickload &lt;code&gt;</c> typed in, once given a moment to come up; matched to its live pane
-    /// by login and repo folder, since a freshly spawned CLI's own TermHost session id is new.
+    /// succeeds, so a later start never replays it. The rare tab that can't natively resume (no session id) has a captured
+    /// handoff of its own; <c>/quickload &lt;code&gt;</c> is typed into it only on an explicit Yes to a confirm prompt listing
+    /// them (M.ORCH-T1725) - never on its own, since that types into a live CLI the user didn't type into themselves. A No
+    /// loses nothing: every code stays valid in the shared registry for the user to <c>/quickload</c> by hand whenever.
     /// </summary>
     private bool RestoreSaveAllClose(MainViewModel owner)
     {
@@ -225,31 +226,41 @@ public partial class MainWindow : Window
         store.Delete();
         if (pending.State.Tabs.Count == 0) return false;
         owner.RestoreTabs(pending.State);
-        var toInject = new List<(string? Login, string Directory, string Code)>();
+        var toInject = new List<(string Title, string? Login, string Directory, string Code)>();
         for (var i = 0; i < pending.State.Tabs.Count; i++)
         {
             var tab = pending.State.Tabs[i];
             var code = i < pending.Codes.Count ? pending.Codes[i] : null;
-            if (code is { Length: > 0 } && !SessionRestoreStore.Resumes(tab)) toInject.Add((tab.Login, tab.Request.Directory, code));
+            if (code is { Length: > 0 } && !SessionRestoreStore.Resumes(tab))
+                toInject.Add((tab.Request.Title, tab.Login, tab.Request.Directory, code));
         }
         if (toInject.Count > 0)
         {
-            var settle = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(4) };
-            settle.Tick += (_, _) =>
+            var lines = toInject.Select(t => $"{t.Title} in {t.Directory}: /quickload {t.Code}");
+            var answer = MaMessageBox.Show(this,
+                "Save all & close reopened these without a resumable session of their own. Type their quicksave handoff " +
+                "back in now, so each picks up its last task, decisions and next steps?\n\n" + string.Join("\n", lines) +
+                "\n\nYes: type /quickload into each now.\nNo: leave them open fresh; every code above still works typed in by hand anytime.",
+                "Resume with /quickload?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+            if (answer == MessageBoxResult.Yes)
             {
-                settle.Stop();
-                var used = new HashSet<TerminalPaneViewModel>();
-                foreach (var (login, directory, code) in toInject)
+                var settle = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(4) };
+                settle.Tick += (_, _) =>
                 {
-                    var pane = owner.AllTerminals.Panes.FirstOrDefault(p => !p.Ended && !used.Contains(p)
-                        && string.Equals(p.Login, login, StringComparison.OrdinalIgnoreCase)
-                        && string.Equals(p.Request.Directory, directory, StringComparison.OrdinalIgnoreCase));
-                    if (pane is null) continue;
-                    used.Add(pane);
-                    if (pane.WriteInput(TerminalPaste.Payload($"/quickload {code}", pane.Bracketed))) pane.WriteInput("\r");
-                }
-            };
-            settle.Start();
+                    settle.Stop();
+                    var used = new HashSet<TerminalPaneViewModel>();
+                    foreach (var (_, login, directory, code) in toInject)
+                    {
+                        var pane = owner.AllTerminals.Panes.FirstOrDefault(p => !p.Ended && !used.Contains(p)
+                            && string.Equals(p.Login, login, StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(p.Request.Directory, directory, StringComparison.OrdinalIgnoreCase));
+                        if (pane is null) continue;
+                        used.Add(pane);
+                        if (pane.WriteInput(TerminalPaste.Payload($"/quickload {code}", pane.Bracketed))) pane.WriteInput("\r");
+                    }
+                };
+                settle.Start();
+            }
         }
         return true;
     }
