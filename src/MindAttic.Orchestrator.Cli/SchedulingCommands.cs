@@ -547,7 +547,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
     internal static string? LockedRule(Settings settings) =>
         settings.WeeklyAware is not null ? "--weekly-aware is locked off: no weekly-aware pacing, ever (the owner's rule, M.ORCH-T706)."
         : settings.Failover is not null ? "--failover is locked off: API billing is for emergencies and only the owner switches it on (M.ORCH-T706)."
-        : settings.ThrottleAgents is not null ? "--throttle-agents is locked off: hard cutoffs only, agents are never held (M.ORCH-T706)."
         : settings.PaceProfile is not null || settings.PaceCurveK is not null ? "Pace profiles are gone: hard cutoffs only, no front-loaded or throttled curve (M.ORCH-T706)."
         // The weekly and 5-hour cutoffs are per user, and org limit is the only way to change one (M.ORCH-T707): rejected
         // here, before anything is staged, so these can never half-apply or swallow other options given alongside them.
@@ -582,6 +581,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         if (settings.MaxDelay is < 0 or > MindAttic.Orchestrator.Setup.AgentGate.MaxHoldSeconds) { AnsiConsole.MarkupLine($"[red]--max-delay is 0 to {MindAttic.Orchestrator.Setup.AgentGate.MaxHoldSeconds}.[/]"); return 1; }
         s = s with
         {
+            ThrottleAgents = settings.ThrottleAgents ?? s.ThrottleAgents,
             MaxAgentDelaySeconds = settings.MaxDelay ?? s.MaxAgentDelaySeconds,
             MaxSubagents = settings.MaxSubagents ?? s.MaxSubagents,
         };
@@ -644,7 +644,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             if (!(s.MemoryResumeMarginGb >= 0 && s.MemoryResumeMarginCommit >= 0))
             { AnsiConsole.MarkupLine("[red]--memory-resume-margin-gb and --memory-resume-margin-commit can't be negative.[/]"); return 1; }
         }
-        var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
+        var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.ThrottleAgents is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
             || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null
             || settings.DiskHoldGb is not null || settings.DiskHoldResumeMarginGb is not null
             || settings.TempRetentionHours is not null || memoryChanged || settings.HeavyProcesses is not null;
@@ -870,7 +870,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%" +
             $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · no weekly-aware pacing, ever");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset, full speed until the 5-hour or weekly use reaches {s.PaceGuardStartPercent:0.#}%" :"off: the warn line holds new work")}" +
-            " · running agents never held" +
+            (s.ThrottleAgents ? $" · running agents wait before each tool call once the burn won't last, up to {s.MaxAgentDelaySeconds}s" : " · running agents never held (--throttle-agents true restores the per-call wait)") +
             $" · subagents: as many as the pace allows, at most {s.MaxSubagents}" +
             (s.AgentAbort ? $" · cool-off abort [green]on[/]: {s.AgentAbortAfterMinutes} min past the line before aborting subagents to bend it back under"
                 : " · cool-off abort off: the new-start cool-off only slows new subagents"));

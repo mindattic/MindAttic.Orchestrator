@@ -462,11 +462,24 @@ public sealed class CliCommandTests
         // M.ORCH-T707: the weekly line is each member's own cutoff (org limit); M.ORCH-T706: the retired options are refused.
         var before = Store.LoadSettings();
         foreach (var locked in new[] { new[] { "--weekly-target", "90" }, new[] { "--weekly-reserve", "5" }, new[] { "--weekly-line", "70" }, new[] { "--weekly-wind-down", "4" },
-                     new[] { "--weekly-aware", "true" }, new[] { "--failover", "true" }, new[] { "--throttle-agents", "true" }, new[] { "--pace-profile", "front-loaded" }, new[] { "--pace-curve-k", "0.5" } })
+                     new[] { "--weekly-aware", "true" }, new[] { "--failover", "true" }, new[] { "--pace-profile", "front-loaded" }, new[] { "--pace-curve-k", "0.5" } })
             Assert.That(Run(["settings", .. locked]), Is.EqualTo(1), string.Join(" ", locked));
         var after = Store.LoadSettings();
-        Assert.That((after.WeeklyReservePercent, after.WeeklyAwareLinePercent, after.WeeklyAwarePacing, after.ThrottleAgents, after.FailoverToApiKey, after.PaceProfile),
-            Is.EqualTo((before.WeeklyReservePercent, before.WeeklyAwareLinePercent, false, false, false, OrchestratorSettings.LinearProfile)));
+        Assert.That((after.WeeklyReservePercent, after.WeeklyAwareLinePercent, after.WeeklyAwarePacing, after.FailoverToApiKey, after.PaceProfile),
+            Is.EqualTo((before.WeeklyReservePercent, before.WeeklyAwareLinePercent, false, false, OrchestratorSettings.LinearProfile)));
+    }
+
+    [Test]
+    public void Throttle_agents_is_a_real_setting_again_and_round_trips()
+    {
+        // M.ORCH-T706 hard-coded ThrottleAgents off; M.ORCH-T1750 restored only this one (weekly-aware pacing, the pace
+        // profile and API failover stay retired, covered above).
+        Assert.That(Run("settings", "--throttle-agents", "false", "--max-delay", "45"), Is.EqualTo(0));
+        var off = Store.LoadSettings();
+        Assert.That(off.ThrottleAgents, Is.False);
+        Assert.That(off.MaxAgentDelaySeconds, Is.EqualTo(45));
+        Assert.That(Run("settings", "--throttle-agents", "true"), Is.EqualTo(0));
+        Assert.That(Store.LoadSettings().ThrottleAgents, Is.True);
     }
 
     [Test]

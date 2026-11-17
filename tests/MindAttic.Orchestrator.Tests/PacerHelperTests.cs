@@ -89,18 +89,19 @@ public sealed class PacerHelperTests
     // ── AgentDelay ──────────────────────────────────────────────────────────
 
     [Test]
-    public void Agents_are_never_held_whatever_the_burn_since_throttling_is_locked_off()
+    public void Agents_are_held_by_default_once_demand_outpaces_the_sustainable_rate()
     {
-        // M.ORCH-T706: hard cutoffs only; the hold is gone, so no setting or burn can bring it back.
-        Assert.That(new OrchestratorSettings().ThrottleAgents, Is.False);
-        Assert.That(Pacer.AgentDelay(100_000, 2000, 0, new OrchestratorSettings { MaxAgentDelaySeconds = 300 }), Is.Zero);
-        Assert.That(Pacer.AgentDelay(100, 0, 0, new OrchestratorSettings { MaxAgentDelaySeconds = 300 }), Is.Zero);
+        // M.ORCH-T706 hard-coded this off; restored by M.ORCH-T1750 (a lone CLI with no subagents to cap ran a window
+        // from ~20% to 91.6% while its pace line sat at 34%, since nothing else holds a CLI's own main thread back).
+        Assert.That(new OrchestratorSettings().ThrottleAgents, Is.True);
+        Assert.That(Pacer.AgentDelay(100_000, 2000, 0, new OrchestratorSettings { MaxAgentDelaySeconds = 300 }), Is.EqualTo(300), "far over demand hits the ceiling");
+        Assert.That(Pacer.AgentDelay(100, 0, 0, new OrchestratorSettings { MaxAgentDelaySeconds = 300 }), Is.EqualTo(300), "no room at all hits the ceiling too");
     }
 
     [Test]
     public void With_agent_throttling_off_nobody_is_held()
     {
-        var off = new OrchestratorSettings();
+        var off = new OrchestratorSettings { ThrottleAgents = false };
         Assert.That(Pacer.AgentDelay(100_000, 2000, 0, off), Is.Zero);
         Assert.That(Pacer.AgentDelay(100, 0, 0, off), Is.Zero, "not even out of room");
         Assert.That(Pacer.AgentDelay(100_000, 2000, 0, new OrchestratorSettings { MaxAgentDelaySeconds = 0 }), Is.Zero, "a zero ceiling is off too");

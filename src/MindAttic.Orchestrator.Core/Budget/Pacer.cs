@@ -258,7 +258,8 @@ public static class Pacer
         // And by the percent the spend since Claude's last reading and the next minute's burn put it at, not the last reading alone
         // (M.ORCH-T1110: the 98% stop landed at the next refresh's 99%, and the window ran on to 100%).
         var atTarget = windows.Any(w => w.Used >= w.Limit * target) || (b.CurrentBlock is not null && StopPercentOf(b) / 100.0 >= target);
-        // No wind-down (M.ORCH-T741): the owner's rule is to run to the cutoff, with nothing throttled or held before it.
+        // No wind-down note at the target itself (M.ORCH-T741): the per-call hold (ThrottleAgents) already slows agents on
+        // the way there; the owner's rule is just that nothing warns in advance of the cutoff, it simply refuses calls there.
 
         // What one more session costs: today's sessions if any are running, else your usual session. A
         // held session burns less than it will once let go, so judge it by what it would draw unheld.

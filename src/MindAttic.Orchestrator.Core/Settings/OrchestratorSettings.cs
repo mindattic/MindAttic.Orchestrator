@@ -145,10 +145,15 @@ public sealed record OrchestratorSettings
     [JsonIgnore]
     public double PaceExponent => FrontLoaded && double.IsFinite(PaceCurveK) ? Math.Clamp(PaceCurveK, 0.1, 1) : 1;
 
-    /// <summary>On: while the forecast says the burn won't last until the reset, running Claude Code agents
-    /// wait before each tool call (the pace-gate hook), so they slow down instead of hitting the wall.</summary>
-    [JsonIgnore]
-    public bool ThrottleAgents => false;
+    /// <summary>On (the default, restored M.ORCH-T1750): while the forecast says the burn won't last until the reset,
+    /// running Claude Code agents wait before each tool call (the pace-gate hook, up to <see cref="MaxAgentDelaySeconds"/>),
+    /// so they slow down instead of running the window well past its pace curve before the hard stop at
+    /// <see cref="PaceTargetPercent"/> even notices. M.ORCH-T706 hard-coded this off (2026-10-23, "run to the cutoff,
+    /// nothing throttled or held before it"); found live 2026-11-17: with no per-call hold, a lone CLI with no subagents to
+    /// cap (<see cref="Budget.Pacer.SubagentAllowance"/> only governs subagents) ran a window from ~20% to 91.6% while its
+    /// pace line sat at 34%, since nothing but the final stop could have caught it. Weekly-aware pacing, the front-loaded
+    /// profile and API-key failover stay hard-coded off, as the owner asked when only this one was restored.</summary>
+    public bool ThrottleAgents { get; init; } = true;
 
     /// <summary>The slash commands exempt from orchestration pacing (M.ORCH-T198): a turn whose prompt starts with one skips
     /// every pacing gate (no pace delay, no subagent hold) until it ends, and a Skill call naming one is let through anywhere;
