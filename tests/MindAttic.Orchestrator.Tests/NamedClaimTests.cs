@@ -88,6 +88,16 @@ public sealed class NamedClaimTests
     }
 
     [Test]
+    public void Reclaiming_its_own_claim_keeps_what_the_claim_already_carries()
+    {
+        store.UpdateAssignments(all => all.Add(new Assignment("A-T1", "A", @"D:\W\A", Providers.Claude, Now.AddHours(-1), true) { Cli = Mine, Model = "opus", Log = "x.log" }));
+
+        Assert.That(Claim(Mine, "sess").Claimed, Is.True);
+        var a = store.LoadAssignments().Single();
+        Assert.That((a.Model, a.Log, a.CliSession, a.StartedUtc), Is.EqualTo(("opus", "x.log", "sess", Now.AddHours(-1))));
+    }
+
+    [Test]
     public void Claim_is_refused_when_a_running_background_agent_holds_it()
     {
         store.UpdateAssignments(all => all.Add(new Assignment("A-T1", "A", @"D:\W\A", Providers.Claude, Now, true) { Pilot = 999, PilotStartedUtc = Now, Log = "x.log" }));

@@ -230,6 +230,8 @@ internal sealed class ClaimCommand : Command<ClaimCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var cli = Ctx.CallingCli();
+        // No CLI to hold it means nothing would ever release it, and a retry would find it "assigned to an unknown owner".
+        if (cli is null) { Console.Error.WriteLine("Can't tell which CLI is calling (no MINDATTIC_CLI_PID, not under claude.exe); run this from the CLI working the ticket."); return 1; }
         var (_, store, snapshot, _) = Ctx.Load(cli);
         var id = Ctx.Id(settings.Ticket);
         var root = OrchestratorOptions.Load(store).WorkspaceRoot;

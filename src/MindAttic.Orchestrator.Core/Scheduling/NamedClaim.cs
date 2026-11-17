@@ -34,8 +34,11 @@ public static class NamedClaim
                 if (refused is not null) return;
             }
             all.RemoveAll(a => a.TicketId.Equals(ticketId, StringComparison.OrdinalIgnoreCase));
-            all.Add(new Assignment(ticketId, repo, repoPath, Providers.Claude, nowUtc, true)
-                { Cli = cli, CliSession = session, Account = Sessions.AccountDirs.Normalize(login) });
+            // Its own claim is updated in place: a pilot, log, model or review it already carries (from next --claim) isn't lost.
+            var account = Sessions.AccountDirs.Normalize(login);
+            all.Add(held is not null && Mine(held, cli, session)
+                ? held with { Cli = cli ?? held.Cli, CliSession = session ?? held.CliSession, Account = account ?? held.Account }
+                : new Assignment(ticketId, repo, repoPath, Providers.Claude, nowUtc, true) { Cli = cli, CliSession = session, Account = account });
         });
         return refused is null
             ? new(true, $"{ticketId} is this CLI's: claimed" + (cli is { } c ? $" for CLI {c}" : "") +
