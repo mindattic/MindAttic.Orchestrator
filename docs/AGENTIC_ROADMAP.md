@@ -35,6 +35,35 @@ Claude first with a provider-neutral data model; borrow patterns, build native.
 - No throttles to protect the machine: the only holds are hard exhaustion floors, after reclaim.
 - Every number below is a setting (Settings modal + CLI) that self-corrects within owner bounds.
 
+## The design in one page
+
+ECC and Paperclip are two examples, not the boundary. The design also draws on durable-execution
+engines (every state change is an appended event, every step can be retried safely), blackboard
+systems (agents coordinate through shared written state, not chat), kanban pull (finish before
+starting), and spec-driven methods (goal → spec → plan → tasks, each handed on as a document).
+
+Five layers, each owning one question:
+
+| Layer | Question | Made of |
+|---|---|---|
+| **Direction** | What are we trying to reach, and are we there? | Goal → Milestone → Job → Unit; acceptance checks; forecast |
+| **Workforce** | Who is best placed to do this? | Roles, specialties, expert agents, repo teams, track record |
+| **Coordination** | Who does what, when, without colliding? | Scheduler, leases, mailbox, cross-repo contracts, shared lessons |
+| **Execution** | Where does it run, and what does it consume? | Workers, runtimes, resource ledger, budgets |
+| **Assurance** | Is it actually done and still working? | Build gates, independent review, integration builds, milestone acceptance |
+
+Four rules hold the whole thing together:
+
+1. **Work is pulled toward a milestone, not pushed from a queue.** Priority comes from what the
+   active milestone still needs, by its critical path. Other work still runs with spare room; it
+   never outranks milestone work except for fixes.
+2. **A ticket goes to the agent most likely to land it first time**, by declared specialty and by
+   measured record, and is reviewed by a different agent.
+3. **Done means evidence on `main`**, never "the ticket was closed": a passing build, a reviewer
+   verdict, and for a milestone its acceptance checks all passing at once.
+4. **Nothing is held in an agent's head.** Every handoff, decision, checkpoint and lesson is written
+   to the ticket or the database, so any agent on any login or machine can carry on.
+
 ## Target model
 
 | Concept | What it is | Where it lives |
@@ -44,6 +73,11 @@ Claude first with a provider-neutral data model; borrow patterns, build native.
 | **Pipeline** | A template: stages, the role each stage needs, fan-out rule, gate per stage | `shared/pipelines/*.json` + `pipelines` table |
 | **Job** | One run of a pipeline against a goal; owns an epic ticket | New `jobs` table (epic id, pipeline, state, goal text) |
 | **Unit** | One stage's piece of work = one ticket, plus run state | New `job_units` table (ticket id, job, stage, role, state, attempt, lease, checkpoint) |
+| **Goal** | A lasting aim ("ship the Unity games") | Tickets store |
+| **Milestone** | A checkable point on the way to a goal, across one or more repos, with acceptance checks | New in the Tickets store (MindAttic.Tickets), shown in Tickets Desktop |
+| **Specialty** | What an expert is good at: repos, `component:` labels, stack tags, paths | Role files + learned `expert_record` table |
+| **Lesson** | One thing learned on a unit that would have saved time, scoped to a repo or component | `lessons` table, fed into briefs |
+| **Worker** | A machine that runs agents and builds | `workers` table (Phase 8) |
 | **Adapter** | How an agent is actually run | `IAgentRuntime` in Core; first two: Claude subagent (today's `/allocate` handout) and Claude session (`orchestrator org start`) |
 
 Unit states: `pending → ready → leased → running → (pausing → paused) → done | handed-back | failed`.
@@ -89,6 +123,14 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
 - Goal ancestry: every unit's handout prompt carries job goal → stage → unit, built in `Briefing.cs`.
 - First pipelines: `feature` (plan → implement ×N → review → docs), `bugfix`, `research`,
   `launch` (spec → build → copy → release notes).
+- **Unit event log**: every state change is an appended `unit_events` row (who, when, from, to,
+  why); `job_units` state is derived from it and each transition is safe to apply twice. This is
+  what makes recovery, audit and "what happened to this unit" exact.
+- **Failure ladder**: a unit that is handed back goes to the same expert once more, then a stronger
+  model, then a different expert, then the owner. A unit that exhausts the ladder is quarantined
+  with its history, not retried forever. The attempt counts are settings.
+- `orchestrator jobs start --dry-run` prints the fan-out, the experts it would use and a token
+  estimate (from `tickets ticket estimate` and `TicketCosts`) before anything is filed.
 - Bounded fan-out: a planner pass creates at most `MaxUnitsPerPlan` units; more arrive as units close.
 
 ### Phase 3 — Job-centric scheduler (the "when")
@@ -244,6 +286,94 @@ that is one machine, always on, and all or nothing. It needs Phase 1 (agent iden
   and each VM carries an Azure-side auto-shutdown and budget alert, so a dead control plane can't
   leave machines running.
 
+### Phase 9 — Goals and milestones (reaching something, not just closing tickets)
+
+The ticket store has epics, stories, priorities, estimates and `requires` links, but nothing that
+says "this set of work, across these repos, adds up to a finished thing". That is why work can
+crank for weeks without arriving. Most of this phase needs only today's queue, so it can start early.
+
+- **Milestones in the Tickets store** (MindAttic.Tickets' own tickets): name, goal, repos, order,
+  state (`planned/active/accepting/reached/dropped`), acceptance checks. Epics and tickets link to
+  one with `part-of`. `tickets milestone new|list|show|activate|accept`; a Milestones view in
+  Tickets Desktop.
+- **Acceptance checks are evidence, not ticket counts.** Each is one of: a build that passes on
+  `main` in named repos; a file or package that exists; a harness run that reaches a named state;
+  the owner's sign-off. Build and existence checks run on their own. Test, soak and play checks run
+  only when the owner runs `orchestrator milestone accept`, which is the owner asking for them.
+- **Milestone-first ordering** in `Scheduler.Plan`: fixes, then units on an active milestone by
+  critical path (the longest remaining `requires` chain, from the existing `GraphWeight`), then
+  everything else. Ordering only: spare room always takes other work.
+- **Scope lock**: once a milestone is active, adding units to it needs the owner's approval, and the
+  dashboard shows how much it has grown since activation. Everything else asked for meanwhile is
+  still filed as a ticket, off the milestone.
+- **Milestone steward** role: on a schedule it compares each acceptance check with what is on
+  `main` and proposes the missing units (integration, packaging, polish, the parts nobody filed).
+  It also reads `tickets ticket hygiene` and reopens closed tickets that aren't done.
+- **Integration unit**: every job ends with one that builds the whole result on `main` in every
+  repo it touched. A job isn't done until it passes.
+- **Forecast**: remaining estimate against measured throughput (`tickets ticket stats`) gives each
+  milestone a projected date and token cost, and an at-risk flag when the projection slips.
+- **Owner inbox**: approvals, escalations, quarantined units and milestone acceptances in one
+  dashboard list, with a Psst alert for each new one.
+
+### Phase 10 — Expert agents (the right ticket to the right agent)
+
+- **Specialty on top of role**: an expert is a role plus a specialty, e.g. `implementer` for Unity
+  gameplay, WPF dashboards, Python hooks, SQL, or s&box. Declared in the role file as repos,
+  `component:` labels, stack tags and path globs.
+- **Knowledge pack**: each expert's brief carries its repo's `AGENTS.md` and bible, the component's
+  docs, and the lessons recorded for that repo and component, within a size limit.
+- **Lessons**: at close, each unit records one line on what would have saved time, scoped to its
+  repo and component. A lesson seen in two or more repos is promoted workspace-wide. Stored in
+  `lessons`; no background observer process.
+- **Triage role**: every new ticket gets a component, type, estimate and likely prerequisites
+  (`tickets ticket suggest-links`), and an oversized one is split, before it is routed.
+- **Routing score** per unit and expert: declared match (repo, component, type, the plan's key
+  files) plus track record for that component: first-pass rate (closed with no hand-back and no
+  reviewer block), build failures, cost against estimate, later reopen. The weights are settings
+  that correct themselves from results. `tickets ticket assign` and `divvy` stay as the manual
+  override.
+- **Model and effort follow the record**: a specialty that keeps bouncing on sonnet moves to opus
+  for that component; one that lands cleanly moves down. Replaces keyword matching in `ModelChoice`.
+- **Independent review**: a unit's reviewer is never its implementer, and where possible is on a
+  different login.
+- **Ask an expert**: an agent that hits another component's territory messages that component's
+  expert through the mailbox, with a deadline, instead of guessing.
+- **Coverage view**: components with no expert, and experts with a poor record, listed in the
+  dashboard.
+
+### Phase 11 — Jobs across repos
+
+- **One job, many repos**: the job's epic lives in its lead repo; each repo's share is its own unit
+  tickets in that repo's log, linked `part-of` and `requires` across repos.
+- **Repo graph**: which repo consumes which (project and package references, `C:\LocalNuGet`),
+  built by scanning the workspace. It orders units (library first, then its consumers) and names
+  the repos an integration build must cover.
+- **Contract first**: a change that crosses a repo boundary starts with a contract unit (the API,
+  package version or schema both sides will build against). The provider's unit lands and publishes
+  before the consumers' units become ready.
+- **Repo teams**: each repo gets standing experts spun up on demand, and a repo lead that owns its
+  triage and its integration build. A unit is always worked by an agent whose session is in that
+  repo, so "a repo's window works only that repo" still holds; crossing repos is done by routing,
+  not by one CLI reaching across. `/crossrepo` stays the explicit exception.
+- **Cross-repo integration gate**: after units land in several repos, each dependent repo is built
+  against the new packages. A failure files a fix ticket in the repo that broke.
+- **Workspace board**: every active milestone and job across all repos in one dashboard view.
+
+## Build order
+
+The phases are numbered by topic, not by order. Recommended order, with each row runnable in
+parallel:
+
+| Step | Phases | Why now |
+|---|---|---|
+| 1 | 4 (resource ownership), 9 (milestones, ordering, steward) | Both work on today's queue and fix today's two biggest problems: the host falling over, and work not arriving |
+| 2 | 1 (roles, agent identity, mailbox), 10 (triage, declared specialties) | The workforce the rest depends on |
+| 3 | 2 (jobs, event log, failure ladder), 3 (job scheduler) | Many units at once, routed by expertise |
+| 4 | 5 (pause/resume), 8a (many workers) | Load moves off the PC; work survives anything |
+| 5 | 11 (cross-repo jobs), 10 (learned routing) | Needs real job history to learn from |
+| 6 | 6 (governance), 8b–8d (cloud), 7 (other providers) | Scale and cost |
+
 ## Verification
 
 - Each ticket: `dotnet build` of the solution, nothing more.
@@ -256,4 +386,10 @@ that is one machine, always on, and all or nothing. It needs Phase 1 (agent iden
 - Phase 8: set this PC to take nothing, start a job, and confirm its units run on a second worker
   and land on `main` while the PC's RAM stays flat; let a cloud worker go idle and confirm it
   deallocates; set the cloud budget below current spend and confirm every cloud worker drains.
+- Phase 9: activate a milestone with one unmet build check, confirm its units jump the queue, the
+  steward proposes the missing unit, and the milestone only reads `reached` once every check passes.
+- Phase 10: file tickets in three components and confirm each goes to its declared expert, and
+  that a unit handed back twice climbs the failure ladder.
+- Phase 11: run a job that changes MindAttic.Helpers and one consumer, and confirm the consumer's
+  unit waits for the published package and the integration gate builds both.
 - The full test suite runs once per phase, only on the owner's `/test`.
