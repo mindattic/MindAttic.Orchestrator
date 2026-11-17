@@ -186,6 +186,64 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
 - `IAgentRuntime` adapters for Codex, Kimi and agy, with a readiness check per adapter; extend the
   per-member login model beyond Claude accounts. Roles and pipelines need no change.
 
+### Phase 8 — Off-host workers (move the load, don't just survive it)
+
+Phases 4 and 5 stop the host PC from falling over; this phase takes the load off it. Today
+`docs/REMOTE_HOST.md` can move *everything* to one other machine (`host`/`client`/`standalone`), but
+that is one machine, always on, and all or nothing. It needs Phase 1 (agent identity), Phase 3
+(leases in the database) and Phase 5 (checkpoints); 8a can start as soon as those land.
+
+**8a — Many workers instead of one host**
+- Split the control plane (daemon, databases, dashboard: light) from **workers** (any machine that
+  runs CLIs and builds: this PC, the existing host VM, a spare PC, a cloud VM).
+- `workers` table: name, kind (`local`/`owned`/`cloud`), capabilities (`windows`, `gpu`, `unity`,
+  `unreal`, `dotnet`, ...), measured RAM and cores, cost per hour, state
+  (`off/starting/ready/draining/stopped`), heartbeat.
+- A worker runs the pieces that already exist: TermHost, the gateway (TCP 7443, pinned certificate,
+  member keys) and the pace hooks. `setup-host.ps1` and the host kit become `setup-worker.ps1`.
+  Reached over Tailscale (`docs/TAILSCALE.md`).
+- Placement in `JobScheduler`: capability first, then cost. Planning, review, docs and research
+  units need no Windows toolchain; engine builds and game players need a labelled worker.
+- A setting says what this PC takes: nothing, light units only, or everything. Set to nothing, the
+  PC is only the dashboard.
+- Code still lands on `main`: each worker has its own clone, rebases onto `origin/main` and pushes
+  one ticket per commit, as the host does today. The one-checkout rule holds per machine. Soft file
+  claims move from the commit gate's per-machine files into the control plane's database so
+  workers see each other's.
+- Main-line tests and `/test` run on a worker, not the PC.
+
+**8b — Where the workers come from, cheapest first**
+1. **Claude cloud sessions**: the agent runs in Anthropic's own sandbox on the same subscription, so
+   there is no compute bill at all. A `claude_cloud` runtime for light units on repos that build on
+   Linux. Needs a spike first: Windows-only targets and `C:\LocalNuGet` packages won't build there.
+2. **Owned hardware**: a spare PC or Hyper-V VM as an always-on worker. No marginal cost.
+3. **Rented, flat rate**: a dedicated server at a fixed monthly price. Cheapest per hour when it is
+   busy most of the day.
+4. **Rented, by the hour**: Azure Spot VMs that run only while there is queue. An 8-core, 32 GB
+   `D8as_v5` listed at about $0.34/hour on demand and about $0.07/hour spot in November 2026
+   (likely Linux rates; Windows costs more). Eight hours a day on spot is roughly $17 a month plus
+   the disk, against roughly $250 always on. The price table is a setting, refreshed from Azure's
+   published prices, never hard-coded.
+
+**8c — Elastic cloud workers that scale to zero**
+- A small fixed pool of named VMs that are started and deallocated, not created from an image each
+  time: Claude tokens and Vault keys are sealed with DPAPI per machine and user, and a deallocated
+  VM keeps its disk and so its sign-ins.
+- Start a cloud worker when ready units it could take have waited longer than a set time and no
+  owned worker has room. Drain and deallocate it after a set idle time. A deallocated VM costs only
+  its disk.
+- Spot eviction uses the Phase 5 path: on Azure's eviction notice the worker checkpoints; with the
+  deallocate eviction policy the disk survives, so the unit resumes there when the VM returns, or
+  is restarted elsewhere from `origin/main` after its lease expires.
+
+**8d — Cloud spend can't run away**
+- A monthly cloud budget is a hard cutoff like the token cutoffs: at the limit every cloud worker
+  drains and deallocates and work falls back to owned workers. Never raised automatically.
+- An estimate is reserved before a worker starts; cost shows per job and per worker in the dashboard.
+- Two independent guards: the daemon deallocates any cloud worker holding no lease for a set time,
+  and each VM carries an Azure-side auto-shutdown and budget alert, so a dead control plane can't
+  leave machines running.
+
 ## Verification
 
 - Each ticket: `dotnet build` of the solution, nothing more.
@@ -195,4 +253,7 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
   deleted on the next tick; restart the daemon with a planted orphan and confirm the startup sweep.
 - Phase 5: pause a running job in both modes, restart the daemon, resume, and confirm each unit
   continues from its checkpoint on a different agent.
+- Phase 8: set this PC to take nothing, start a job, and confirm its units run on a second worker
+  and land on `main` while the PC's RAM stays flat; let a cloud worker go idle and confirm it
+  deallocates; set the cloud budget below current spend and confirm every cloud worker drains.
 - The full test suite runs once per phase, only on the owner's `/test`.
