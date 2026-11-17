@@ -42,6 +42,14 @@ internal sealed class TermSession
 
     private IntPtr hPC, hProcess;
 
+    // M.ORCH-T1674: the kill-on-close Job Object the CLI and everything it starts run in. Held until the CLI has exited (or
+    // this host goes, however it goes: Windows closes the handle with the process), which ends whatever is left of the tree.
+    // Null when Windows refused one or it is switched off: the tree is then found by parent pid, as before.
+    private JobObject? job;
+
+    /// <summary>The escape hatch (M.ORCH-T1674): <c>MINDATTIC_TERM_JOB=off</c> in the host's environment runs the CLI without a job.</summary>
+    internal const string JobSwitch = "MINDATTIC_TERM_JOB";
+
     // M.ORCH-T991: the pseudoconsole's lifetime. Every ResizePseudoConsole and the close take ptyGate; the close sets ptyClosed
     // and zeroes hPC first, so no resize ever reaches a closed (freed) pseudoconsole. Never taken while holding gate.
     private readonly object ptyGate = new();
@@ -122,6 +130,7 @@ internal sealed class TermSession
         else new Thread(() => Linger(exitCode)) { IsBackground = true, Name = "linger" }.Start();
 
         done.Wait();
+        EndJob();
         lock (gate)
         {
             foreach (var v in viewers) v.Dispose();
@@ -155,6 +164,7 @@ internal sealed class TermSession
             try { ptyOut?.Dispose(); } catch (Exception) { }
             ptyIn = null;
             ptyOut = null;
+            EndJob();
             lock (gate)
             {
                 exited = true;
@@ -191,35 +201,91 @@ internal sealed class TermSession
         ptyIn = new FileStream(new SafeFileHandle(inWrite, true), FileAccess.Write, 1, false);
         ptyOut = new FileStream(new SafeFileHandle(outRead, true), FileAccess.Read, 1, false);
 
-        var size = IntPtr.Zero;
-        InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref size);
-        var list = Marshal.AllocHGlobal(size);
+        job = CreateJob();
         try
         {
-            if (!InitializeProcThreadAttributeList(list, 1, 0, ref size)) throw new Win32Exception(Marshal.GetLastWin32Error(), "InitializeProcThreadAttributeList");
+            PROCESS_INFORMATION pi;
+            try { pi = CreateCli(commandLine, job); }
+            // Never refused for the job's sake (M.ORCH-T1674): a start that fails with it is tried once more without. A command
+            // that isn't there (2, 3) fails the same either way.
+            catch (Win32Exception ex) when (job is not null && ex.NativeErrorCode is not (2 or 3))
+            {
+                log.Write($"starting the CLI in its job object failed ({ex.Message}, error {ex.NativeErrorCode}); starting it without one");
+                EndJob();
+                pi = CreateCli(commandLine, null);
+            }
+            hProcess = pi.hProcess;
+            CloseHandle(pi.hThread);
+            log.Write($"cli started pid={pi.dwProcessId}" + (job is null ? " (no job object: its children are found by parent pid)" : " in a kill-on-close job object"));
+        }
+        finally
+        {
+            // The pseudoconsole holds its own ends now.
+            CloseHandle(inRead);
+            CloseHandle(outWrite);
+        }
+    }
+
+    /// <summary>Starts the CLI on the pseudoconsole and, with <paramref name="inJob"/>, inside that job from its first instruction
+    /// (<c>PROC_THREAD_ATTRIBUTE_JOB_LIST</c>, M.ORCH-T1674): no child it starts can be born outside it. This host is not in the
+    /// job, and neither is the pseudoconsole's own OpenConsole, which this host started.</summary>
+    private PROCESS_INFORMATION CreateCli(string commandLine, JobObject? inJob)
+    {
+        var attributes = inJob is null ? 1 : 2;
+        var size = IntPtr.Zero;
+        InitializeProcThreadAttributeList(IntPtr.Zero, attributes, 0, ref size);
+        var list = Marshal.AllocHGlobal(size);
+        // The job list's value is a pointer to the handles, which must outlive the attribute list.
+        var jobs = inJob is null ? IntPtr.Zero : Marshal.AllocHGlobal(IntPtr.Size);
+        try
+        {
+            if (!InitializeProcThreadAttributeList(list, attributes, 0, ref size)) throw new Win32Exception(Marshal.GetLastWin32Error(), "InitializeProcThreadAttributeList");
             try
             {
                 if (!UpdateProcThreadAttribute(list, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hPC, IntPtr.Size, IntPtr.Zero, IntPtr.Zero))
                     throw new Win32Exception(Marshal.GetLastWin32Error(), "UpdateProcThreadAttribute");
+                if (inJob is not null)
+                {
+                    Marshal.WriteIntPtr(jobs, inJob.Handle);
+                    if (!UpdateProcThreadAttribute(list, 0, JobObject.ProcThreadAttributeJobList, jobs, IntPtr.Size, IntPtr.Zero, IntPtr.Zero))
+                        throw new Win32Exception(Marshal.GetLastWin32Error(), "UpdateProcThreadAttribute (job list)");
+                }
                 var si = new STARTUPINFOEX { lpAttributeList = list };
                 si.StartupInfo.cb = Marshal.SizeOf<STARTUPINFOEX>();
                 var cwd = string.IsNullOrWhiteSpace(options.Cwd) ? null : options.Cwd;
                 if (!CreateProcessW(null, (commandLine + "\0").ToCharArray(), IntPtr.Zero, IntPtr.Zero, false,
                         EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT, IntPtr.Zero, cwd, ref si, out var pi))
                     throw new Win32Exception(Marshal.GetLastWin32Error(), "CreateProcess: " + commandLine);
-                hProcess = pi.hProcess;
-                CloseHandle(pi.hThread);
-                log.Write($"cli started pid={pi.dwProcessId}");
+                return pi;
             }
             finally { DeleteProcThreadAttributeList(list); }
         }
         finally
         {
             Marshal.FreeHGlobal(list);
-            // The pseudoconsole holds its own ends now.
-            CloseHandle(inRead);
-            CloseHandle(outWrite);
+            if (jobs != IntPtr.Zero) Marshal.FreeHGlobal(jobs);
         }
+    }
+
+    /// <summary>The CLI's job (M.ORCH-T1674), or null: switched off (<see cref="JobSwitch"/>) or refused by Windows, which is
+    /// logged and never stops the CLI from starting.</summary>
+    private JobObject? CreateJob()
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable(JobSwitch)?.Trim(), "off", StringComparison.OrdinalIgnoreCase))
+        {
+            log.Write($"no job object: {JobSwitch}=off");
+            return null;
+        }
+        var created = JobObject.TryCreate(out var why);
+        if (created is null) log.Write($"no job object ({why}); the CLI's children are found by parent pid, as before");
+        return created;
+    }
+
+    /// <summary>Closes the CLI's job, which ends every process still in it (M.ORCH-T1674). Safe to call twice, and from any thread.</summary>
+    private void EndJob()
+    {
+        try { Interlocked.Exchange(ref job, null)?.Dispose(); }
+        catch (Exception ex) { log.Error(ex, "closing the CLI's job object failed; contained"); }
     }
 
     private void PumpOutput()
@@ -271,6 +337,9 @@ internal sealed class TermSession
             CloseHandle(hProcess);
             hProcess = IntPtr.Zero;
             log.Write($"cli exited code={code}");
+            // Whatever the CLI left running goes with it (M.ORCH-T1674), before the pseudoconsole closes: a leftover child that
+            // still held the console would keep the pump from reaching EOF.
+            EndJob();
             // Closing the pseudoconsole flushes its last output; the pump keeps reading meanwhile and ends at EOF.
             ClosePty();
             WaitForPump();

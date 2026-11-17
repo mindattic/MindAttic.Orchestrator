@@ -147,6 +147,26 @@ Claude actually reports stops new work.
   processes are reaped. Memory commit has sat at 97-100% many times under full load without an agent crashing
   (M.ORCH-T374).
 
+## What guarantees cleanup: Job Objects
+
+A process tree the orchestrator starts is owned by a Windows Job Object with kill-on-close
+(`MindAttic.Orchestrator.Term/JobObject.cs`). Windows ends every process in the job, children and grandchildren
+included, the moment the job's last handle closes, and the only handle is held by the owner. So cleanup no longer
+depends on anyone walking parent pids in time.
+
+- **Hosted CLIs (M.ORCH-T1674).** Each TermHost starts its CLI inside its own job, from the CLI's first instruction
+  (`PROC_THREAD_ATTRIBUTE_JOB_LIST`), so nothing it starts (shells, builds, node, dotnet, git) can be born outside it.
+  The job closes when the CLI exits, and when the host exits, is stopped (`machine stop`, a closed tab) or is killed:
+  whatever was left of the tree ends with it. The host itself and the pseudoconsole's OpenConsole are not in the job.
+  Elevated hosts and hosts under a member's own account make their job the same way.
+- **What may outlive its CLI.** Only a process started with `CREATE_BREAKAWAY_FROM_JOB`, which the job allows. A
+  TermHost started from inside a hosted CLI does that (`Native.SpawnDetached`), so a CLI opened by another CLI outlives
+  it. Anything else started from a hosted CLI (a GUI app, a dashboard or daemon launched by a deploy) ends with that CLI.
+- **When there is no job.** If Windows refuses the job, or the CLI won't start in it, the host logs why and starts the
+  CLI without one; `MINDATTIC_TERM_JOB=off` in the host's environment switches it off. The tree is then found by
+  parent pid as before (`ProcessTree`, `ProcessReaper`, `TermHostKill`), which also still covers CLIs that run in the
+  dashboard's own process and hosts started before this change.
+
 ## Billing
 
 Every Claude CLI bills one of two things, set by one switch (M.ORCH-T436): the **Claude Team** login
