@@ -271,6 +271,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 8760)]
     public double TempRetentionHours { get; set; } = OrchestratorSettings.DefaultTempRetentionHours;
 
+    /// <summary>Hours a claimed ticket's own scratch dir (its agent's ORCH_SCRATCH) is leased for in the resource ledger; claiming it again renews it.</summary>
+    [Setting("Ticket scratch dir lease (hours)", Group = "Alerts", Order = 11,
+        Help = "Hours a claimed ticket's own scratch dir (its agent's ORCH_SCRATCH) is leased for in the resource ledger; claiming it again renews it. Past it, a sweeper may reclaim it even if the claim never ended. 0 means no expiry: kept until released.")]
+    [SettingRange(0, 8760)]
+    public double ScratchLeaseHours { get; set; } = OrchestratorSettings.DefaultScratchLeaseHours;
+
     /// <summary>Seconds the background daemon waits before starting its loop again after it died; doubles with each consecutive failure up to the cap below.</summary>
     [Setting("Daemon restart wait (s)", Group = "Scheduler", Order = 90, Help = "Seconds the background daemon waits before starting its loop again after it died; doubles with each consecutive failure up to the cap below.")]
     [SettingRange(1, 3600)]
@@ -841,6 +847,7 @@ public sealed class OrchestratorVaultSettings
         DiskCriticalGb = s.DiskCriticalGb,
         DiskCleanupGb = s.DiskCleanupGb,
         TempRetentionHours = s.TempRetentionHours,
+        ScratchLeaseHours = s.ScratchLeaseHours,
         DaemonRestartSeconds = s.DaemonRestartSeconds,
         DaemonRestartMaxSeconds = s.DaemonRestartMaxSeconds,
         DbBusyRetries = s.DbBusyRetries,
@@ -986,6 +993,7 @@ public sealed class OrchestratorVaultSettings
         DiskCriticalGb = DiskCriticalGb,
         DiskCleanupGb = DiskCleanupGb,
         TempRetentionHours = TempRetentionHours,
+        ScratchLeaseHours = ScratchLeaseHours,
         DaemonRestartSeconds = DaemonRestartSeconds,
         DaemonRestartMaxSeconds = DaemonRestartMaxSeconds,
         DbBusyRetries = DbBusyRetries,

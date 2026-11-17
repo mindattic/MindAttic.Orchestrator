@@ -126,7 +126,10 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
                 cli: cli, pilots: cycler.AllocateClis(), onSince: cycler.AllocateSince(), loginOf: cycler.LoginOfCli(),
                 login: login,
                 logins: logins, redelegate: Redelegate, canFallBack: own is not null && snapshot.Billing?.Mode == MindAttic.Orchestrator.Billing.BillingModes.Api,
-                orgs: MindAttic.Orchestrator.Sessions.OrgRouting.Load(store, orchestratorSettings, snapshot.GlobalEmail));
+                orgs: MindAttic.Orchestrator.Sessions.OrgRouting.Load(store, orchestratorSettings, snapshot.GlobalEmail),
+                // M.ORCH-T1676: each claimed ticket gets its own scratch dir, in the resource ledger, named in its prompt as ORCH_SCRATCH.
+                scratchFor: item => MindAttic.Orchestrator.Activity.TicketScratch.Prepare(
+                    new MindAttic.Orchestrator.Activity.ResourceLedger(store.Db), orchestratorSettings, item.Id, DateTime.UtcNow));
         }
         catch (IOException ex) when (ex.Message.Contains("stayed busy", StringComparison.Ordinal))
         {
@@ -147,6 +150,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
             // M.ORCH-T1633: on the remote host with branch builds on, its own work branch in a worktree of its own.
             if (h.Directory is not null && h.Branch is not null) Console.WriteLine($"worktree: {h.Directory} (on {h.Branch}, its own; pushed to origin/{h.Branch}, never main)");
             else if (h.Directory is not null) Console.WriteLine($"checkout: {h.Directory} (on main, shared with this repo's other agents)");
+            if (h.Scratch is not null) Console.WriteLine($"scratch: {h.Scratch} ({MindAttic.Orchestrator.Activity.TicketScratch.EnvVar}, its own)");
             if (h.Prompt is not null) Console.WriteLine("prompt:\n" + h.Prompt + "\n");
         }
         if (why is not null) Console.WriteLine($"Nothing handed out: {why}.");

@@ -482,6 +482,25 @@ public sealed class OrchestratorDb(string path)
         );
         CREATE INDEX term_audit_at ON term_audit (at_utc);
         """,
+        // 17: the resource ledger (M.ORCH-T1676, roadmap Phase 4; see Activity.ResourceLedger): every scratch dir, worktree and
+        // temp file the orchestrator creates, keyed by the machine it's on, its kind and its full path, with the owner holding it
+        // (ticket:<id>, session:<id>, pid:<n>, daemon), the ticket it's for, when it was registered, when its lease runs out
+        // (NULL: none) and when its owner released it (NULL: still held); times ISO-8601 UTC text. Not in the dump: it churns
+        // and its paths mean nothing on another machine.
+        """
+        CREATE TABLE resources (
+            machine      TEXT NOT NULL,
+            kind         TEXT NOT NULL,
+            path         TEXT NOT NULL,
+            owner        TEXT NOT NULL,
+            ticket       TEXT,
+            created_utc  TEXT NOT NULL,
+            expires_utc  TEXT,
+            released_utc TEXT,
+            PRIMARY KEY (machine, kind, path)
+        );
+        CREATE INDEX resources_owner ON resources (owner);
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

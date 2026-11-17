@@ -178,12 +178,18 @@ public sealed class OrchestratorServer(string connectionString)
             owner nvarchar(256) NULL, session nvarchar(64) NOT NULL, level nvarchar(16) NOT NULL, remote nvarchar(64) NULL,
             frames bigint NOT NULL, bytes bigint NOT NULL, detail nvarchar(max) NULL
             """, "CREATE INDEX term_audit_at ON term_audit (at_utc);"),
+        // The resource ledger (M.ORCH-T1676). The key's columns are sized to fit an index key (900 bytes): a longer path is refused
+        // by ResourceLedger.Normalize.
+        ("resources", """
+            machine nvarchar(64) NOT NULL, kind nvarchar(32) NOT NULL, path nvarchar(320) NOT NULL, owner nvarchar(450) NOT NULL,
+            ticket nvarchar(128) NULL, created_utc nvarchar(64) NOT NULL, expires_utc nvarchar(64) NULL, released_utc nvarchar(64) NULL
+            """, "ALTER TABLE resources ADD CONSTRAINT resources_key PRIMARY KEY (machine, kind, path); CREATE INDEX resources_owner ON resources (owner);"),
     ];
 
     /// <summary>The schema's version: 1, the tables of SQLite's first ten steps; 2, <c>members</c> (M.ORCH-T670); 3,
     /// <c>assignments.account</c> (M.ORCH-T668); 4, <c>organizations</c> and <c>org_members</c> (M.ORCH-T655); 5, <c>term_grants</c>
-    /// and <c>term_audit</c> (M.ORCH-T934).</summary>
-    public const int SchemaVersion = 5;
+    /// and <c>term_audit</c> (M.ORCH-T934); 6, <c>resources</c> (M.ORCH-T1676).</summary>
+    public const int SchemaVersion = 6;
 
     /// <summary>The changes to tables already there, one step per version past 1, as SQLite's migrations add them: a column
     /// added to a table there is one more step here (an <c>ALTER TABLE ... ADD</c>, also added to its <see cref="Tables"/> row so
@@ -194,6 +200,7 @@ public sealed class OrchestratorServer(string connectionString)
         ("assignments", "IF COL_LENGTH(N'assignments', N'account') IS NULL ALTER TABLE assignments ADD account nvarchar(450) NULL;"), // 3: the login each was dispatched on (M.ORCH-T668)
         ("organizations", ""), // 4: organizations and org_members, new tables (created with the rest below; M.ORCH-T655)
         ("term_grants", ""), // 5: term_grants and term_audit, new tables (created with the rest below; M.ORCH-T934)
+        ("resources", ""), // 6: resources, the resource ledger, a new table (created with the rest below; M.ORCH-T1676)
     ];
 
     private void EnsureSchema(SqlConnection connection)

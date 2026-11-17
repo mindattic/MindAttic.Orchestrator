@@ -413,6 +413,14 @@ public sealed record OrchestratorSettings
     /// <summary>The default temp retention hours constant.</summary>
     public const double DefaultTempRetentionHours = 48;
 
+    /// <summary>Hours a claimed ticket's own scratch dir (<see cref="Activity.TicketScratch"/>, its agent's <c>ORCH_SCRATCH</c>) is
+    /// leased for in the resource ledger (M.ORCH-T1676); claiming it again renews the lease. Past it, a sweeper may reclaim it
+    /// even if its ticket's claim never ended. 0 means no expiry: it's kept until released.</summary>
+    public double ScratchLeaseHours { get; init; } = DefaultScratchLeaseHours;
+
+    /// <summary>The default scratch lease hours constant.</summary>
+    public const double DefaultScratchLeaseHours = 48;
+
     /// <summary>Seconds the background daemon waits before starting its loop again after it died (M.ORCH-T1615); doubles with each
     /// consecutive failure up to <see cref="DaemonRestartMaxSeconds"/> (M.ORCH-T1619).</summary>
     public double DaemonRestartSeconds { get; init; } = 15;

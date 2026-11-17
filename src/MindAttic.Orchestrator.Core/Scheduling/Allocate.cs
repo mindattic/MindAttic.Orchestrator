@@ -235,15 +235,19 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     /// session is tied to the ticket), stages only its own files, lands on main itself, then closes the ticket in the ticket
     /// database.
     /// </summary>
-    internal static string PromptFor(QueueItem item, string checkout, string mainline = "main", ModelChoice.Choice? model = null, BranchWork? branch = null) =>
+    internal static string PromptFor(QueueItem item, string checkout, string mainline = "main", ModelChoice.Choice? model = null, BranchWork? branch = null,
+        string? scratch = null) =>
         // M.ORCH-T1633: on the remote host with branch builds on, the ticket is worked on its own work branch instead; everywhere
         // else (the setting off, or any machine but the host) the prompt below is unchanged, byte for byte.
-        branch is not null ? PromptOnBranch(item, checkout, mainline, model, branch) :
+        branch is not null ? PromptOnBranch(item, checkout, mainline, model, branch, scratch) :
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
         $"Work in {item.Repo}'s own checkout ({checkout}) on {mainline}, never a separate branch or worktree: run every command from that folder (cd there first). " +
         $"Other agents may be working {item.Repo} in this same checkout at the same time, so touch only the files this ticket needs and leave every change " +
         "you didn't make as it is (never git add -A or git add ., git stash, git reset, git checkout -- or git clean). " +
         $"If the checkout isn't on {mainline}, don't switch it: say so and stop. " +
+        // M.ORCH-T1676: the ticket's own scratch dir (ORCH_SCRATCH), only when the claim made one; without it (null) the prompt is
+        // the pinned one, byte for byte (BranchWorkTests).
+        (scratch is not null ? Activity.TicketScratch.Sentence(scratch) : "") +
         // Run headless (-p): the run ends with your last turn, so a subagent left running in the background is cut off with it.
         "Run any subagents in the foreground, never in the background. " +
         // M.ORCH-T561: the full suite (often 20+ minutes that spend no tokens) is the daemon's, run on main after the landing
@@ -337,7 +341,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     /// branch's tests, and the host merges a signed-off head into main itself (M.ORCH-T1501, T1637, T1636); a failed run comes back
     /// to this ticket, whose next round carries on on the same branch (with what failed, <see cref="BranchWork.Brief"/>).
     /// </summary>
-    private static string PromptOnBranch(QueueItem item, string checkout, string mainline, ModelChoice.Choice? model, BranchWork b)
+    private static string PromptOnBranch(QueueItem item, string checkout, string mainline, ModelChoice.Choice? model, BranchWork b, string? scratch = null)
     {
         var sonnet = model is { IsSonnet: true };
         return
@@ -353,6 +357,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             $"origin/{b.Branch} when origin has that branch (git -C \"{checkout}\" rev-parse --verify --quiet origin/{b.Branch}), else origin/{mainline}. " +
             "Then run every command from the worktree (cd there first), touching only the files this ticket needs " +
             "(never git stash, git reset --hard or git clean, and never a push to " + mainline + "). " +
+            (scratch is not null ? Activity.TicketScratch.Sentence(scratch) : "") + // M.ORCH-T1676
             "Run any subagents in the foreground, never in the background. " +
             "Do these steps in order: " +
             "1. When the work is done, build it to check it; do not run any tests (not even the ones your change touches), " +
@@ -387,6 +392,11 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         // queue forever. A claim by a CLI's subagent (orchestrator next) is the same; an old one's worktree is tidied by the sweep.
         var finishedTabs = plan.Finished.Where(a => a.Log is null).Select(a => a.TicketId).ToHashSet(StringComparer.Ordinal);
         if (finishedTabs.Count > 0) store.UpdateAssignments(all => all.RemoveAll(a => a.Log is null && finishedTabs.Contains(a.TicketId)));
+        // M.ORCH-T1676: its unit ended, so whatever the ticket held in the resource ledger (its scratch dir) is released for the
+        // sweeper to reclaim. Best effort: a busy database leaves it to its lease.
+        foreach (var id in finishedTabs)
+            try { new Activity.ResourceLedger(store.Db).ReleaseOwnedBy(Activity.ResourceLedger.TicketOwner(id), DateTime.UtcNow); }
+            catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or UnauthorizedAccessException) { }
         // Nobody works a finished ticket (M.ORCH-T766): cleared in the ticket database, as the daemon's sync would next tick.
         foreach (var a in plan.Finished.Where(a => a.Log is null))
             if (snapshot.Repos.FirstOrDefault(r => r.Path.Length > 0 && Same(r.Name, a.Repo))?.Path is { } finishedRepo)
@@ -556,6 +566,10 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         /// <summary>The work branch it's worked on (M.ORCH-T1633: on the remote host with branch builds on), whose own worktree
         /// is <see cref="Directory"/>; null when it's worked in the repo's own checkout on main.</summary>
         public string? Branch { get; init; }
+
+        /// <summary>Its own scratch dir (M.ORCH-T1676, <see cref="Activity.TicketScratch"/>), named in its prompt as
+        /// <c>ORCH_SCRATCH</c>; null when none was made.</summary>
+        public string? Scratch { get; init; }
     }
 
     /// <summary>What <c>orchestrator next --claim</c> ends with once it claimed some (M.ORCH-T529: a CLI held two claims unstarted
@@ -595,12 +609,12 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null,
         IReadOnlyDictionary<int, DateTime>? onSince = null, Func<int, string?>? loginOf = null,
         IReadOnlyList<LoginRoom>? logins = null, Func<QueueItem, LoginRoom, string?>? redelegate = null, string? login = null,
-        bool canFallBack = false, OrgRouting? orgs = null, MachineTopology? topology = null)
+        bool canFallBack = false, OrgRouting? orgs = null, MachineTopology? topology = null, Func<QueueItem, string?>? scratchFor = null)
     {
         // Org dispatch (M.ORCH-T753): an org's tickets go only to its own members' logins; with one org, nothing changes.
         orgs ??= OrgRouting.Load(store, settings);
         var (handed, why) = NextHere(plan, settings, store, repos, count, claim, nowUtc, mainlineOf, unthrottled, self,
-            pilotRunning, stillOpen, cli, pilots, cliRunning, onSince, loginOf, login, orgs, topology ?? MachineTopology.Current);
+            pilotRunning, stillOpen, cli, pilots, cliRunning, onSince, loginOf, login, orgs, topology ?? MachineTopology.Current, scratchFor);
         // Weekly-aware pacing (M.ORCH-T666): what this CLI's login can't fit goes to a login that can, else the fallback login, so
         // no ticket waits on a full account. Only for a claim (a dry run hands nothing out), and never for a /pacing off CLI,
         // whose own room isn't held to.
@@ -676,7 +690,8 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         Func<string, string>? mainlineOf, bool unthrottled,
         string? self, Func<Assignment, bool>? pilotRunning, Func<string, string, bool>? stillOpen,
         int? cli, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots, Func<int, bool>? cliRunning,
-        IReadOnlyDictionary<int, DateTime>? onSince, Func<int, string?>? loginOf, string? login, OrgRouting orgs, MachineTopology topology)
+        IReadOnlyDictionary<int, DateTime>? onSince, Func<int, string?>? loginOf, string? login, OrgRouting orgs, MachineTopology topology,
+        Func<QueueItem, string?>? scratchFor)
     {
         cliRunning ??= ContextCycler.IsClaude;
         stillOpen ??= StillOpen;
@@ -858,8 +873,11 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             // M.ORCH-T1633: on the remote host with branch builds on, on its own work branch in a worktree of its own; the claim
             // still names the repo's checkout, as every claim does.
             var onBranch = BranchWorkFor(settings, topology, store, item);
-            handed.Add(new Handout(item, onBranch?.Worktree ?? tree, carried + PromptFor(item, tree, mainlineOf(item.RepoPath), model, onBranch), model)
-                { Branch = onBranch?.Branch });
+            // M.ORCH-T1676: its own scratch dir, registered in the resource ledger and named in its prompt as ORCH_SCRATCH; none (the
+            // seam not given, or it couldn't be made) leaves the prompt as it was.
+            var scratch = scratchFor?.Invoke(item);
+            handed.Add(new Handout(item, onBranch?.Worktree ?? tree, carried + PromptFor(item, tree, mainlineOf(item.RepoPath), model, onBranch, scratch), model)
+                { Branch = onBranch?.Branch, Scratch = scratch });
             inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
             committed += item.Estimate?.Fresh ?? 0;
         }
