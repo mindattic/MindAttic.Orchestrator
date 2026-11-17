@@ -2552,6 +2552,10 @@ public sealed class HookScriptTests
     public void A_hook_reading_while_a_write_holds_the_database_falls_back_to_the_file_and_its_event_is_read_in_later()
     {
         StatusRow(new { pace_delay_seconds = 0 }, DateTime.UtcNow.AddSeconds(-30));
+        // The same call with no hold and the database free is the yardstick: a loaded machine slows a bare python start by tens
+        // of seconds (M.ORCH-T1693), so "stuck on the database" is measured against it, not against a fixed number of seconds.
+        Status(new { pace_delay_seconds = 0 });
+        var baseline = Gate(ReadCall).Took;
         Status(new { pace_delay_seconds = 3 });
         (string Output, TimeSpan Took) result;
         using (var connection = OrchDb.Open())
@@ -2561,7 +2565,7 @@ public sealed class HookScriptTests
             result = Gate(ReadCall);
             MindAttic.Orchestrator.Settings.OrchestratorDb.Execute(connection, "ROLLBACK;");
         }
-        Assert.That(result.Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(2.9)).And.LessThan(TimeSpan.FromSeconds(25)), "held by the file, not stuck on the database");
+        Assert.That(result.Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(2.9)).And.LessThan(baseline + TimeSpan.FromSeconds(3 + 15)), "held by the file, not stuck on the database");
         Assert.That(result.Output, Does.Not.Contain("deny"));
         var log = Path.Combine(Marks, AgentGate.GateLogName);
         Assert.That(File.ReadAllLines(log).Single(), Does.Contain("\"decision\": \"held\""), "the event fell back to the old log");
