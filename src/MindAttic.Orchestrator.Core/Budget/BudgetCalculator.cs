@@ -281,7 +281,10 @@ public static class BudgetCalculator
             // Claude actually reported too (M.ORCH-T801).
             reportedBlockPercent = Math.Min(100, reported5h.Percent);
         }
-        var blockPercent = reportedBlockPercent ?? (limit > 0 ? 100.0 * currentFresh / limit : 0);
+        // With no reading and no earlier block to compare against, the "limit" is this window's own spend (peak is 0), which made any
+        // fresh window read exactly 100% of itself (M.ORCH-T1664: a login's new window showed "5hr limit: 100%" and a chart
+        // jump to 100% two minutes in, while Claude's meter said 0-2%). With nothing to compare to, there is no percent yet.
+        var blockPercent = reportedBlockPercent ?? (isPeak && peak <= 0 ? 0 : limit > 0 ? 100.0 * currentFresh / limit : 0);
 
         // The week Claude itself reports (its seven_day reset) comes first; failing that, the configured reset
         // day/time, then the one your weekly hits taught; otherwise it rolls. An unparseable setting is skipped
