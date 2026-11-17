@@ -85,6 +85,10 @@ public sealed record MachineTopology(TopologyKind Kind)
     /// <see cref="OrchestratorSettings.RemoteBranchBuilds"/> is on (off by default).</summary>
     public bool RunsBranchBuilds(bool remoteBranchBuildsSetting) => RunsDaemon && remoteBranchBuildsSetting;
 
+    /// <summary>Whether this machine pulls its host's ready-to-test queue on a Scheduler job (M.ORCH-T1634): only a client, and only
+    /// with the same <see cref="OrchestratorSettings.RemoteBranchBuilds"/> switch on here (off by default).</summary>
+    public bool FetchesBranchQueue(bool remoteBranchBuildsSetting) => IsClient && remoteBranchBuildsSetting;
+
     /// <summary>Whether this machine's gateway listens beyond loopback: only where the daemon runs, the gateway is turned on and
     /// bound to a non-loopback address. With default settings this is false on every machine.</summary>
     public bool GatewayListensOnNetwork(GatewaySettings gateway) =>

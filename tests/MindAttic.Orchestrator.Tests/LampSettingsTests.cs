@@ -160,6 +160,8 @@ public sealed class LampSettingsTests
         Case("branchBuildsMaxRunning", s => s with { BranchBuildsMaxRunning = 2 }, 2d, v => v.BranchBuildsMaxRunning = 4, 4d, s => s.BranchBuildsMaxRunning),
         Case("branchBuildsTimeoutMinutes", s => s with { BranchBuildsTimeoutMinutes = 30 }, 30d, v => v.BranchBuildsTimeoutMinutes = 45, 45d, s => s.BranchBuildsTimeoutMinutes),
         Case("branchBuildsCheckSeconds", s => s with { BranchBuildsCheckSeconds = 60 }, 60d, v => v.BranchBuildsCheckSeconds = 120, 120d, s => s.BranchBuildsCheckSeconds),
+        // The client's fetch of the host's ready-to-test queue (M.ORCH-T1634)
+        Case("branchQueueFetchMinutes", s => s with { BranchQueueFetchMinutes = 10 }, 10d, v => v.BranchQueueFetchMinutes = 30, 30d, s => s.BranchQueueFetchMinutes),
         Case("tabBlinkMinSpacingMs", s => s with { TabBlinkMinSpacingMs = 320 }, 320d, v => v.TabBlinkMinSpacingMs = 500, 500d, s => s.TabBlinkMinSpacingMs),
         Case("projectsRefreshMinutes", s => s with { ProjectsRefreshMinutes = 10 }, 10d, v => v.ProjectsRefreshMinutes = 30, 30d, s => s.ProjectsRefreshMinutes),
         Case("projectChangesRefreshSeconds", s => s with { ProjectChangesRefreshSeconds = 30 }, 30d, v => v.ProjectChangesRefreshSeconds = 60, 60d,

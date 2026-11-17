@@ -421,7 +421,10 @@ public partial class App : Application
             // A client paces nothing and runs no daemon (M.ORCH-T1473): its hooks would only warn that the daemon is down.
             if (!MachineTopology.Current.InstallsPaceHooks)
             {
-                foreach (var did in new[] { Installer.EnsureShortcuts(self), AgentGateRemoval.Remove() })
+                var clientStore = new MindAttic.Orchestrator.Settings.JsonStore();
+                // The host's ready-to-test queue on a Scheduler job (M.ORCH-T1634), only while RemoteBranchBuilds is on here.
+                var queueJob = MindAttic.Orchestrator.Scheduling.BranchQueue.EnsureJob(clientStore, clientStore.LoadSettings(), OrchestratorOptions.Load(clientStore).WorkspaceRoot);
+                foreach (var did in new[] { Installer.EnsureShortcuts(self), AgentGateRemoval.Remove(), queueJob })
                     if (did is not null) log.Information("Setup (client): {Did:l}", did);
                 return;
             }

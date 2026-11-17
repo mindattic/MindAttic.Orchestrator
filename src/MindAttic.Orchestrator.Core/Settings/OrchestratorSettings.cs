@@ -702,6 +702,13 @@ public sealed record OrchestratorSettings
     /// <summary>The default branch builds check seconds constant.</summary>
     public const double DefaultBranchBuildsCheckSeconds = 60;
 
+    /// <summary>Minutes between the client's Scheduler job's fetches of its host's ready-to-test queue (M.ORCH-T1634,
+    /// <see cref="Scheduling.BranchQueue"/>); only on a client with <see cref="RemoteBranchBuilds"/> on.</summary>
+    public double BranchQueueFetchMinutes { get; init; } = DefaultBranchQueueFetchMinutes;
+
+    /// <summary>The default branch queue fetch minutes constant.</summary>
+    public const double DefaultBranchQueueFetchMinutes = 10;
+
     /// <summary>The max server memory (MB) the daemon keeps localhost's SQL Server at (M.ORCH-T1621): 0 (the default) leaves SQL
     /// Server's own setting alone; any other value under <see cref="SqlServerMaxMemoryFloorMb"/> is raised to it, never applied
     /// lower, since 1024 MB crashed the instance (error 17300) and only an admin restart in minimal mode recovered it.</summary>

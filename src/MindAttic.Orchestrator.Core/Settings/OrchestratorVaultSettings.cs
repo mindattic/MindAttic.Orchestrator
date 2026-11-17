@@ -381,6 +381,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(5, 86400)]
     public double BranchBuildsCheckSeconds { get; set; } = OrchestratorSettings.DefaultBranchBuildsCheckSeconds;
 
+    /// <summary>Minutes between the client's Scheduler job's fetches of its host's ready-to-test work branches.</summary>
+    [Setting("Fetch the host's ready-to-test branches every (min)", Group = "Scheduler", Order = 114,
+        Help = "On the owner's PC (a client) with \"Build work branches (remote host)\" on: minutes between the Scheduler job's fetches of the host's queue of work branches built clean and waiting for a local test run. Fetching runs no test.")]
+    [SettingRange(1, 1440)]
+    public double BranchQueueFetchMinutes { get; set; } = OrchestratorSettings.DefaultBranchQueueFetchMinutes;
+
     /// <summary>How many extra times a write retries taking SQL Server's write lock after it stayed busy past its timeout (each wait longer than the last) before the command fails.</summary>
     [Setting("Database busy retries", Group = "Scheduler", Order = 92, Help = "How many extra times a write retries taking SQL Server's write lock after it stayed busy past its timeout (each wait longer than the last) before the command fails. Raise it when many CLIs and subagents write at once.")]
     [SettingRange(0, 100)]
@@ -814,6 +820,7 @@ public sealed class OrchestratorVaultSettings
         BranchBuildsMaxRunning = s.BranchBuildsMaxRunning,
         BranchBuildsTimeoutMinutes = s.BranchBuildsTimeoutMinutes,
         BranchBuildsCheckSeconds = s.BranchBuildsCheckSeconds,
+        BranchQueueFetchMinutes = s.BranchQueueFetchMinutes,
         TabBlinkMinSpacingMs = s.TabBlinkMinSpacingMs,
         ProjectsRefreshMinutes = s.ProjectsRefreshMinutes,
         ProjectChangesRefreshSeconds = s.ProjectChangesRefreshSeconds,
@@ -948,6 +955,7 @@ public sealed class OrchestratorVaultSettings
         BranchBuildsMaxRunning = BranchBuildsMaxRunning,
         BranchBuildsTimeoutMinutes = BranchBuildsTimeoutMinutes,
         BranchBuildsCheckSeconds = BranchBuildsCheckSeconds,
+        BranchQueueFetchMinutes = BranchQueueFetchMinutes,
         TabBlinkMinSpacingMs = TabBlinkMinSpacingMs,
         ProjectsRefreshMinutes = ProjectsRefreshMinutes,
         ProjectChangesRefreshSeconds = ProjectChangesRefreshSeconds,
