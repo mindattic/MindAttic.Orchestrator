@@ -33,6 +33,37 @@ public sealed partial class MainViewModel
         ? rows.FirstOrDefault(r => r.Account == current)
         : rows.FirstOrDefault(r => string.Equals(r.Email, email, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>What <see cref="ApplyAccounts"/> shows, read from the database, the settings and the logins' files; each part
+    /// null when it couldn't be read now, so what is shown stays.</summary>
+    private sealed record AccountsRead(string? Account, IReadOnlyList<AccountRow>? Rows, MindAttic.Orchestrator.Settings.OrchestratorSettings? Settings,
+        (IReadOnlyList<UsageCutoff> Cutoffs, IReadOnlyList<WeeklyAllowance> Allowances)? Limits);
+
+    /// <summary>The read a refresh made off the UI thread for the next <see cref="ApplyAccounts"/> (M.ORCH-T1735): these reads
+    /// ran on the UI thread at every refresh, and typing into a CLI tab waited behind them.</summary>
+    private volatile AccountsRead? accountsRead;
+
+    /// <summary>The settings as of the last refresh, for what is shown between refreshes; null before the first.</summary>
+    private MindAttic.Orchestrator.Settings.OrchestratorSettings? shownSettings;
+
+    /// <summary>The settings shown: the last refresh's (the global login's tab reads them for every tab), read now before the first.</summary>
+    private MindAttic.Orchestrator.Settings.OrchestratorSettings ShownSettings => (root ?? this).shownSettings ?? store.LoadSettings();
+
+    /// <summary>Reads what <see cref="ApplyAccounts"/> shows, and each login's meter state; safe off the UI thread. Never throws.</summary>
+    private AccountsRead ReadAccounts(string? account, DateTime nowUtc)
+    {
+        IReadOnlyList<AccountRow>? rows = null;
+        MindAttic.Orchestrator.Settings.OrchestratorSettings? settings = null;
+        (IReadOnlyList<UsageCutoff>, IReadOnlyList<WeeklyAllowance>)? limits = null;
+        try { rows = AccountRoster.Load(aggregator.Db, account); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
+        try { settings = store.LoadSettings(); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
+        try { limits = (UsageCutoffs.Load(store), WeeklyAllowances.Active(store, nowUtc)); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
+        LoadMeterStates(nowUtc);
+        return new(account, rows, settings, limits);
+    }
+
     private void ApplyAccounts(Snapshot next, DateTime nowUtc)
     {
         using var stall = MindAttic.Orchestrator.Term.Wpf.UiStallProbe.Doing("a refresh: reading accounts, settings and meters");
@@ -47,14 +78,16 @@ public sealed partial class MainViewModel
         }
         else
         {
+            // Read off the UI thread with the snapshot when the refresh did (M.ORCH-T1735); read here otherwise.
+            var read = accountsRead is { } ready && ready.Account == next.Account ? ready : ReadAccounts(next.Account, nowUtc);
+            accountsRead = null;
             // Kept as it was when the roster can't be read now (M.ORCH-T1280): the settings/cutoffs/allowances/currentAccount
             // loads below are independent of it and must still run, and RaiseOwnNumbers() must still fire, so a transient
             // failure here doesn't also stall every other tile this method keeps current.
-            try { accountRows = AccountRoster.Load(aggregator.Db, next.Account); }
-            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
-            try
+            if (read.Rows is { } rows) accountRows = rows;
+            if (read.Settings is { } settings)
             {
-                var settings = store.LoadSettings();
+                shownSettings = settings;
                 weeklyStopPercent = settings.WeeklyStopPercent; paceTargetPercent = settings.PaceTargetPercent;
                 tabBlinkTokens = settings.TabBlinkTokens;
                 symbolTabLabels = settings.SymbolTabLabels;
@@ -66,11 +99,9 @@ public sealed partial class MainViewModel
                 DashboardTimings.Apply(settings);
                 launcherRespawn.Spacing = DashboardTimings.LauncherSpacing;
             }
-            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
             // Each login's own cutoffs and who's allowed past the weekly one, for the tabs' disabled icon (M.ORCH-T757); kept as
             // they were when the store can't be read now.
-            try { cutoffs = UsageCutoffs.Load(store); allowances = WeeklyAllowances.Active(store, nowUtc); }
-            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
+            if (read.Limits is { } limits) (cutoffs, allowances) = limits;
             currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;
             LoadMeterStates(nowUtc);
         }

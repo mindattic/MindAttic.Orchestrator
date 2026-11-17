@@ -238,7 +238,7 @@ public sealed partial class MainViewModel
     {
         null or { IsPaced: false } or { Mode: PaceMode.Open } => "",
         // The reset with its weekday when it's another day: the week can govern (M.ORCH-T408).
-        { Mode: PaceMode.Throttled } p => $"Paced to {p.SessionCap} of {store.LoadSettings().MaxConcurrentSessions} · resets {(p.ResetUtc is { } r ? Formatting.ResetTime(r, DateTime.UtcNow) : "")}",
+        { Mode: PaceMode.Throttled } p => $"Paced to {p.SessionCap} of {ShownSettings.MaxConcurrentSessions} · resets {(p.ResetUtc is { } r ? Formatting.ResetTime(r, DateTime.UtcNow) : "")}",
         { Mode: PaceMode.Coast } p => $"Coasting · resets {(p.ResetUtc is { } r ? Formatting.ResetTime(r, DateTime.UtcNow) : "")}",
         // Which limit, and its weekday when it's days off (a weekly wall), as the pace note agents see says it.
         { } p => $"At the {p.Governing ?? "5-hour"} limit until {(p.ResetUtc is { } r ? Formatting.ResetTime(r, DateTime.UtcNow) : "the reset")}",
@@ -473,7 +473,7 @@ public sealed partial class MainViewModel
     // /allocate is on per CLI (its marks, M.ORCH-T164), as `orchestrator settings` reports it: the dashboard's own Allocate
     // has no order to read, so it always read as off.
     /// <summary>The allocate text.</summary>
-    public string AllocateText => AllocateLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AllocateClis(), store.LoadSettings().Allocate) +
+    public string AllocateText => AllocateLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AllocateClis(), ShownSettings.Allocate) +
         (allocate.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", allocate.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
 
     internal static string AllocateLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis, bool on = true) =>

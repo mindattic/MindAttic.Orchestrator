@@ -440,6 +440,8 @@ public sealed partial class MainViewModel : ObservableObject
                 connectedMembersRead = ConnectedMembersNow(settingsNow);
                 // On a member's PC, consent requests on their own CLIs on the host (hub phase 2, M.ORCH-T1641): toasts.
                 consentsRead = ConsentsNow(settingsNow);
+                // What ApplyAccounts shows, read here rather than on the UI thread (M.ORCH-T1735).
+                accountsRead = ReadAccounts(built.Account, DateTime.UtcNow);
                 planned = PlanOffUi(built);
                 // The owner inbox (M.ORCH-T1689): everything waiting on the owner, from the snapshot and plan just made.
                 if (InboxNow(built, planned?.Item2, settingsNow) is { } inbox) inboxRead = inbox;

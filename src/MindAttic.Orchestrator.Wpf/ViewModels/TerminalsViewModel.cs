@@ -1393,7 +1393,7 @@ public sealed class TerminalsViewModel : ObservableObject
                 continue;
             }
             if (snapshot is null || pane.RootPid is not { } root) continue;
-            pane.HostPid ??= hosts.FirstOrDefault(h => h.ProcessId == root || ProcessTree.IsAncestor(root, h.ProcessId))?.ProcessId;
+            pane.HostPid ??= HostOf(root, hosts, ref parents);
             var session = SessionOf(pane, root, snapshot, ref parents);
             if (session is { Length: > 0 } && !string.Equals(session, pane.SessionId, StringComparison.Ordinal))
             {
@@ -1418,6 +1418,20 @@ public sealed class TerminalsViewModel : ObservableObject
         }
         if (moved) LoginsChanged?.Invoke();
         if (learned) SessionsLearned?.Invoke();
+    }
+
+    /// <summary>The Launcher host that is the pane's own process or runs under it. The process tree is read once per refresh,
+    /// for every pane (M.ORCH-T1735): it was read once per host per pane, on the UI thread, at every refresh.</summary>
+    private static int? HostOf(int root, List<HostSession> hosts, ref IReadOnlyDictionary<int, int>? parents)
+    {
+        if (hosts.Count == 0) return null;
+        if (hosts.FirstOrDefault(h => h.ProcessId == root) is { } own) return own.ProcessId;
+        try
+        {
+            var tree = parents ??= ProcessTree.ParentMap();
+            return hosts.FirstOrDefault(h => ProcessTree.IsAncestor(root, h.ProcessId, tree))?.ProcessId;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { return null; }
     }
 
     /// <summary>A pane's CLI's session was learned or changed (M.ORCH-T862): the session-restore file is rewritten.</summary>

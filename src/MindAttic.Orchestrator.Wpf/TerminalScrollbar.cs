@@ -15,8 +15,23 @@ internal static class TerminalScrollbar
     public static void Hide(FrameworkElement terminal)
     {
         if (!Collapse(terminal)) terminal.Loaded += (_, _) => Collapse(terminal);
-        terminal.LayoutUpdated += (_, _) => Collapse(terminal);
+        // LayoutUpdated fires for every layout pass of the whole window, for every pane (M.ORCH-T1735): the bars found are kept,
+        // so a pass only looks at them, and the tree is walked again only once one has left it (a rebuilt template).
+        List<ScrollBar>? bars = null;
+        terminal.LayoutUpdated += (_, _) =>
+        {
+            if (bars is { Count: > 0 } && bars.TrueForAll(b => VisualTreeHelper.GetParent(b) is not null))
+            {
+                foreach (var bar in bars)
+                    if (bar.Visibility != Visibility.Collapsed) bar.Visibility = Visibility.Collapsed;
+                return;
+            }
+            bars = [.. Descendants(terminal).OfType<ScrollBar>().Where(Ours)];
+            foreach (var bar in bars) bar.Visibility = Visibility.Collapsed;
+        };
     }
+
+    private static bool Ours(ScrollBar bar) => bar is { Name: "scrollbar", Orientation: System.Windows.Controls.Orientation.Vertical };
 
     /// <summary>Collapses every vertical ScrollBar named "scrollbar" under <paramref name="root"/>; true when one was found.</summary>
     internal static bool Collapse(DependencyObject root)
