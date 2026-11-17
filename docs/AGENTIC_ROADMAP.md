@@ -64,6 +64,62 @@ Four rules hold the whole thing together:
 4. **Nothing is held in an agent's head.** Every handoff, decision, checkpoint and lesson is written
    to the ticket or the database, so any agent on any login or machine can carry on.
 
+## What the field does, and what was taken from it
+
+Surveyed 2026-11-16 (about fifty tools and frameworks; star counts and vendor claims not repeated
+here). Each row is the one pattern worth having and where it lands in this roadmap.
+
+| Source | Pattern taken | Phase |
+|---|---|---|
+| ECC | Role files with tools and model; reviewer verdict contract; stall escalation | 1, 3, 5 |
+| Paperclip | Goal ancestry; wake queue; independent holds; adapter shape; delete only what is delivered | 2, 3, 4, 5, 7 |
+| Claude Code agent teams | Self-claim of unblocked tasks; a hook that can refuse "done" | 3 |
+| Claude Code workflows | Deterministic replay of finished steps; automatic wait at a usage limit | 2, 5 |
+| Beads / Gas Town | Ready queue with atomic claim; a ledger outside any agent's context; merge queue that bisects to the breaking change; watchdog roles with an escalation chain | 2, 3, 9 |
+| OpenAI Symphony | A proof-of-work bundle before work lands | 3 |
+| Task Master | A complexity score decides how far a ticket is split | 10 |
+| Kiro | Waves: concurrent inside a wave, ordered between waves | 3 |
+| Spec Kit, BMAD, gstack, Superpowers | Spec → plan → tasks, each a document; a standing constitution; review by role; two-stage review (does it meet the spec, then is it good) | 2, 3 |
+| Devin | Per-child budget with pause; the coordinator is woken when a child finishes | 3, 6 |
+| Factory droids | Light/medium/heavy tiers routed to different models | 7 |
+| Amp, Roo orchestrator | A dispatcher that holds no workspace; instructions go down, only a summary comes up | 2 |
+| Aider, Anthropic's advisor pattern | Strong model plans or advises, cheaper model edits | 7 |
+| Magentic-One (Microsoft Agent Framework) | Task ledger (facts, guesses, plan) and progress ledger; replan when progress stalls | 5 |
+| MetaGPT, Pydantic AI | Typed documents as handoffs, checked against a schema, not chat | 2 |
+| LangGraph, Mastra | Checkpoint at every step boundary; typed input required to resume | 5 |
+| Temporal, Restate, DBOS | Every step journaled and safe to repeat; only the in-flight step re-runs | 2 |
+| CrewAI, Google ADK | Fixed pipeline outside, model freedom only inside a step | 2 |
+| A2A | Standard task states including "input required" | 7 |
+| Multica, Copilot Agent HQ, Warp Oz | Agents as assignees in the tracker; several vendors' agents under one policy | 7, 10 |
+| Claude Code Game Studios | Directors, leads and specialists, with a named arbiter per domain | 2, 10 |
+| Cursor, Codex, Jules cloud agents | A cloud machine per task; published concurrency and spend limits | 8 |
+
+**Where this design deliberately differs.** Nearly every tool isolates each unit in its own branch,
+worktree or cloud machine and merges through a pull request. Here the rule is one checkout on
+`main` per machine. That removes merge queues and stale branches, and costs something real: two
+agents can edit the same file at once. The design pays for it with file claims, per-machine
+clones (Phase 8), a reviewer on every unit, and an integration build that bisects to the unit that
+broke `main` (Phase 9).
+
+**What the evidence says, and the rules that follow from it.**
+
+- Many agents win on broad work that splits cleanly, and lose on work that is one chain of
+  reasoning. Published studies found sequential tasks got 39–70% worse under every multi-agent
+  setup, and parallel agents that each make their own choices multiply errors about four times
+  more than a centrally directed team. **Rule: parallelism is across units, never inside one. One
+  writer per unit; the orchestrator, not the agents, decides who does what.**
+- Agents working in parallel make conflicting unstated decisions. **Rule: decisions that span
+  units are written down first** (the plan, the contract unit, the constitution) and every brief
+  carries them.
+- A study of 1,642 failed multi-agent runs put 44% down to system design, 32% to agents
+  misunderstanding each other and 24% to missing verification; adding one verification step raised
+  success by about 16%. A reviewer that shares no context with the author catches the most.
+  **Rule: every unit gets a clean-context review, and every job a final integration check.**
+- A multi-agent run uses roughly 15 times the tokens of a chat. **Rule: a ticket small enough for
+  one agent stays one unit.** Triage decides by complexity score; fan-out is for work that needs it.
+- Running several models as a council has no evidence behind it for coding; a second opinion from
+  a *different vendor* does. **Rule: no councils; cross-vendor review where a second vendor exists.**
+
 ## Target model
 
 | Concept | What it is | Where it lives |
@@ -121,6 +177,14 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
   tickets (`part-of` the job's epic, `requires` between stages, stage/role labels) through the
   Tickets store, so the whole job is visible in Tickets Desktop.
 - Goal ancestry: every unit's handout prompt carries job goal → stage → unit, built in `Briefing.cs`.
+- **Handoffs are typed documents**: spec, plan, contract, review and checkpoint each have a schema,
+  and a stage can't start on a document that fails it. Agents never hand off by chat.
+- **Constitution**: each repo's standing rules (its `AGENTS.md`, bible and golden rules) are one
+  document every brief carries, so parallel units don't make conflicting choices.
+- **The coordinator holds no workspace**: it plans, routes and reads summaries; only unit agents
+  touch files. Instructions go down, a summary and the proof bundle come up.
+- A `game` pipeline for the Unity projects: directors (design, art, tech) set direction, leads
+  split it per discipline, specialists build; each domain has one named arbiter for disputes.
 - First pipelines: `feature` (plan → implement ×N → review → docs), `bugfix`, `research`,
   `launch` (spec → build → copy → release notes).
 - **Unit event log**: every state change is an appended `unit_events` row (who, when, from, to,
@@ -151,6 +215,15 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
 - Wakeup queue with coalescing (a `wakeups` state row) replaces ad hoc wakes in `AllocateWaker`.
 - Soft file claims: the plan's Key Files feed the commit gate's existing per-path record so disjoint
   units are preferred first; nothing waits because of overlap.
+- **Waves**: units with no unmet prerequisite form a wave and run together; the next wave starts as
+  its prerequisites close.
+- **Proof before close**: a unit closes only with its bundle attached to the ticket: the commit on
+  `origin/main`, the build result, the reviewer's verdict, and what was checked by hand if
+  anything. The commit gate's existing close check refuses a close without it.
+- **Two-stage review**: first "does it do what the unit's spec says", then "is it good". A unit
+  that fails the first never reaches the second.
+- **Per-unit budget**: each unit carries a token ceiling from its estimate; passing it pauses that
+  unit for the failure ladder, not the whole job.
 - Stage gates: build-only verify; `DiffReview` generalised into a `reviewer` stage.
 - Reviewer contract (from ECC's `code-reviewer`): a verdict of `approve`, `warning` or `block`; each
   blocking finding names the exact line and the failure scenario; only findings the reviewer is
@@ -220,7 +293,31 @@ Each phase is its own epic with one ticket per bullet, landed on `main` one tick
   links to Tickets Desktop.
 - Role and pipeline definitions are versioned files, so a bad change is a revert.
 
-### Phase 7 — Other providers
+### Phase 7 — Many models, each doing what it does best
+- **Capability table as data**: for each kind of work (planning, large implementation, review,
+  long reading, UI, bulk edits, image and asset generation) the models allowed and preferred, with
+  price. Shipped with a starting set and corrected by this workspace's own record, never by a
+  benchmark number hard-coded in C#. Model names and prices change monthly; the table is a setting.
+- **Record per model**: the Phase 10 track record is kept per model as well as per expert, so
+  routing learns which model lands which component first time, at what cost.
+- **Three routing patterns, in order of evidence**:
+  1. *Planner and editor*: a strong model plans and advises, a cheaper one writes.
+  2. *Escalate on failure*: the failure ladder's "stronger model" step.
+  3. *Cross-vendor review*: the reviewer runs on a different vendor from the author when one is
+     signed in.
+- **Tiers**: triage marks each unit light, medium or heavy; light units go to the cheapest model
+  allowed for that kind of work.
+- **Runtimes drive each vendor's own unmodified CLI under each person's own sign-in** (Claude Code,
+  Codex, Kimi, agy). The Orchestrator starts and watches them; it does not sit between a vendor and
+  its login. Work that can't be done that way (image generation, a model with no CLI) uses an API
+  key from the Vault, on the owner's say-so only.
+- **Check each vendor's plan terms before turning a runtime on.** As read on 2026-11-16: Anthropic
+  allows a person's own sign-in to the unmodified Claude Code and says plan limits assume ordinary
+  individual use; OpenAI allows plan sign-in for approved partner tools only; Google treats plan
+  sign-in through third-party tools as a breach and recommends API keys. Each runtime carries a
+  `TestEnvironment` note of the terms it was checked against and the date.
+- Units report in A2A's task states (`submitted`, `working`, `input-required`, `completed`) so a
+  runtime that needs a person shows up in the owner inbox instead of hanging.
 - `IAgentRuntime` follows Paperclip's adapter shape: `Execute` (returns usage, cost and session
   state), `TestEnvironment` (info/warn/error checks, each marked retryable or not) and a session
   codec that saves and restores the runtime's session between wakes, with a way to drop a session
@@ -311,6 +408,9 @@ crank for weeks without arriving. Most of this phase needs only today's queue, s
   It also reads `tickets ticket hygiene` and reopens closed tickets that aren't done.
 - **Integration unit**: every job ends with one that builds the whole result on `main` in every
   repo it touched. A job isn't done until it passes.
+- **Bisect to the breaker**: when an integration or main-line build goes red, the commits since the
+  last green build are bisected to the unit that broke it; that unit is reopened with the failure
+  as its brief, and everything else carries on.
 - **Forecast**: remaining estimate against measured throughput (`tickets ticket stats`) gives each
   milestone a projected date and token cost, and an at-risk flag when the projection slips.
 - **Owner inbox**: approvals, escalations, quarantined units and milestone acceptances in one
@@ -326,8 +426,13 @@ crank for weeks without arriving. Most of this phase needs only today's queue, s
 - **Lessons**: at close, each unit records one line on what would have saved time, scoped to its
   repo and component. A lesson seen in two or more repos is promoted workspace-wide. Stored in
   `lessons`; no background observer process.
-- **Triage role**: every new ticket gets a component, type, estimate and likely prerequisites
-  (`tickets ticket suggest-links`), and an oversized one is split, before it is routed.
+- **Triage role**: every new ticket gets a component, type, estimate, a complexity score and likely
+  prerequisites (`tickets ticket suggest-links`) before it is routed. The score decides the
+  treatment: a simple ticket stays one unit for one agent; only a complex one is split or becomes a
+  job.
+- **Ledgers for long units**: an expert on a heavy unit keeps a task ledger (facts, open guesses,
+  plan) and a progress ledger on the ticket. When the progress ledger stops moving, the unit is
+  replanned by a planner, not retried as it was.
 - **Routing score** per unit and expert: declared match (repo, component, type, the plan's key
   files) plus track record for that component: first-pass rate (closed with no hand-back and no
   reviewer block), build failures, cost against estimate, later reopen. The weights are settings
