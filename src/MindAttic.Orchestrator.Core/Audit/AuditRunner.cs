@@ -45,6 +45,7 @@ public sealed class AuditRunner(OrchestratorOptions options, JsonStore store)
         }
     }
 
+    /// <summary>Latest.</summary>
     public AuditReport? Latest()
     {
         TryLatest(out var report);

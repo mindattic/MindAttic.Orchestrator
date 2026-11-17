@@ -11,6 +11,7 @@ namespace MindAttic.Orchestrator.Settings;
 /// </summary>
 public static class OrchestratorSettingsManifest
 {
+    /// <summary>The switch constant.</summary>
     public const string Switch = SettingsManifestCommand.Switch;
 
     /// <summary>When <paramref name="args"/> holds <see cref="Switch"/>: imports, writes the manifest, prints where, and returns

@@ -46,6 +46,7 @@ public static class StateBus
     /// <summary>Every kind of these.</summary>
     public static IReadOnlyList<string> Kinds { get; } = [Members, Orgs, Settings, Reminders, Cutoffs, Allowances];
 
+    /// <summary>Whether state kind.</summary>
     public static bool IsStateKind(string? kind) => kind is Members or Orgs or Settings or Reminders or Cutoffs or Allowances;
 
     /// <summary>The store <paramref name="db"/> is, as payloads name it: its full path.</summary>

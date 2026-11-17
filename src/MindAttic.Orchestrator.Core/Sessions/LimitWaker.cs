@@ -50,6 +50,7 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
     /// stopped and when it resets, and when it was recorded. Due at <see cref="ResumeDelay"/> past the reset.</summary>
     public sealed record ScheduledResume(string SessionId, string Window, DateTime UntilUtc, DateTime StoppedUtc)
     {
+        /// <summary>The due utc.</summary>
         public DateTime DueUtc => UntilUtc + ResumeDelay;
     }
 

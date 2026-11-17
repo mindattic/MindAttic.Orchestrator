@@ -18,7 +18,9 @@ public sealed record Member
     public string Tier { get; init; } = MemberRoster.Tiers[0];
     /// <summary>One of <see cref="MemberRoster.Statuses"/>: active once joined, pending while invited.</summary>
     public string Status { get; init; } = MemberRoster.Statuses[0];
+    /// <summary>The joined utc.</summary>
     public DateTime JoinedUtc { get; init; }
+    /// <summary>The updated utc.</summary>
     public DateTime UpdatedUtc { get; init; }
 }
 

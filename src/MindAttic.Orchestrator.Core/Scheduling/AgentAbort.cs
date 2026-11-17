@@ -287,6 +287,7 @@ public sealed class AgentAborter(JsonStore store, string globalMarksDirectory, s
         return new AbortedAgent(from.Email, pick.AgentId, pick.TicketId, 0, 0, 0);
     }
 
+    /// <summary>Tick.</summary>
     public IReadOnlyList<AbortedAgent> Tick(Snapshot snapshot, OrchestratorSettings settings, DateTime nowUtc)
     {
         var logins = Logins(snapshot);

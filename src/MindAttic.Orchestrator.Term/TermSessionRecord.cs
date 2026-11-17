@@ -102,8 +102,10 @@ public static class TermSessionEvents
 /// <see cref="Event"/>.</summary>
 public sealed record TermSessionEvent : TermSessionRecord
 {
+    /// <summary>Creates the term session event.</summary>
     public TermSessionEvent() { }
 
+    /// <summary>Creates the term session event.</summary>
     public TermSessionEvent(TermSessionRecord session, string sessionEvent) : base(session) => Event = sessionEvent;
 
     /// <summary><see cref="TermSessionEvents.Started"/>, <see cref="TermSessionEvents.Changed"/>, <see cref="TermSessionEvents.Ended"/>,

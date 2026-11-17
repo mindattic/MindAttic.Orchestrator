@@ -9,6 +9,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class CliNudges
 {
+    /// <summary>The prefix constant.</summary>
     public const string Prefix = "nudge-";
 
     /// <summary>Leaves (replacing any of the same kind) the nudge for the CLI process <paramref name="pid"/>.</summary>

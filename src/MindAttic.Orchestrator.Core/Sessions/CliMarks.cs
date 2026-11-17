@@ -12,11 +12,16 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class CliMarks
 {
+    /// <summary>The allocate constant.</summary>
     public const string Allocate = "allocate";
+    /// <summary>The no allocate constant.</summary>
     public const string NoAllocate = "noallocate";
+    /// <summary>The crossrepo constant.</summary>
     public const string Crossrepo = "crossrepo";
+    /// <summary>The kinds.</summary>
     public static readonly string[] Kinds = [Allocate, NoAllocate, Crossrepo];
 
+    /// <summary>The cleared suffix constant.</summary>
     public const string ClearedSuffix = ".cleared";
 
     /// <summary>The database the marks are kept in; replaceable for tests.</summary>

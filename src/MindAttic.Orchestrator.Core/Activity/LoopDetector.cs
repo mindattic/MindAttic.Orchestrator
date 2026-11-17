@@ -6,6 +6,7 @@ public sealed record ToolCall(DateTime AtUtc, string Name, string Input);
 /// <summary>A session repeating itself: the call it keeps making, how often in the recent window, and since when.</summary>
 public sealed record Loop(string Tool, string Input, int Repeats, DateTime SinceUtc)
 {
+    /// <summary>Describes.</summary>
     public string Describe() => $"{Tool} {(Input.Length > 60 ? Input[..60] + "…" : Input)} ×{Repeats}";
 }
 
@@ -17,9 +18,12 @@ public sealed record Loop(string Tool, string Input, int Repeats, DateTime Since
 /// </summary>
 public static class LoopDetector
 {
+    /// <summary>The window constant.</summary>
     public const int Window = 12;
+    /// <summary>The threshold constant.</summary>
     public const int Threshold = 5;
 
+    /// <summary>Finds.</summary>
     public static Loop? Find(IReadOnlyList<ToolCall> calls)
     {
         var recent = calls.Skip(Math.Max(0, calls.Count - Window)).ToList();

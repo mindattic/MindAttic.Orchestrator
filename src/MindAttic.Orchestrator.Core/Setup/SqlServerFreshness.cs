@@ -15,6 +15,7 @@ namespace MindAttic.Orchestrator.Setup;
 /// </summary>
 public sealed partial class SqlServerFreshness(IProcessRunner runner, JsonStore store)
 {
+    /// <summary>The script name constant.</summary>
     public const string ScriptName = "setup-host.ps1";
 
     /// <summary>The store's record of the last day it ran and the newer majors already told.</summary>
@@ -25,6 +26,7 @@ public sealed partial class SqlServerFreshness(IProcessRunner runner, JsonStore 
     internal static readonly TimeSpan WingetTimeout = TimeSpan.FromMinutes(3);
     internal static readonly TimeSpan GitTimeout = TimeSpan.FromMinutes(2);
 
+    /// <summary>The state type.</summary>
     public sealed class State
     {
         /// <summary>The local day (yyyy-MM-dd) the check last ran.</summary>

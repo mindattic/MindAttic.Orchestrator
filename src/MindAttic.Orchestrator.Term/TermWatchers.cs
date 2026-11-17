@@ -27,7 +27,9 @@ public sealed record TermWatcher
 /// <summary>What happened: <see cref="TermWatchersEvent.Event"/>'s values.</summary>
 public static class TermWatchersEvents
 {
+    /// <summary>The attached constant.</summary>
     public const string Attached = "attached";
+    /// <summary>The detached constant.</summary>
     public const string Detached = "detached";
 
     /// <summary>The gateway started or stopped: <see cref="TermWatchersEvent.Watchers"/> is the whole truth (empty).</summary>
@@ -58,16 +60,22 @@ public sealed record TermWatchersEvent
 /// </summary>
 public static class TermWatchersBus
 {
+    /// <summary>The kind constant.</summary>
     public const string Kind = "term-watchers";
+    /// <summary>The version constant.</summary>
     public const int Version = 1;
+    /// <summary>The file name constant.</summary>
     public const string FileName = "watchers.json";
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 
+    /// <summary>Path in.</summary>
     public static string PathIn(string? directory = null) => Path.Combine(directory ?? TermGateway.DefaultDirectory, FileName);
 
+    /// <summary>Envelope.</summary>
     public static string Envelope(TermWatchersEvent message, DateTime atUtc, int pid) => TermBus.Envelope(Kind, Version, message, atUtc, pid);
 
+    /// <summary>Parses.</summary>
     public static TermWatchersEvent? Parse(string line) => TermBus.ParsePayload<TermWatchersEvent>(line, Kind, Version);
 
     /// <summary>Sends <paramref name="message"/> to the daemon's inbox (50 ms at most, a miss tried again off this thread,
@@ -95,6 +103,7 @@ public static class TermWatchersBus
         }
     }
 
+    /// <summary>Deletes.</summary>
     public static void Delete(string? directory = null)
     {
         try { File.Delete(PathIn(directory)); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }

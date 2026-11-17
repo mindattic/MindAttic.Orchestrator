@@ -6,6 +6,7 @@ namespace MindAttic.Orchestrator.Setup;
 /// </summary>
 public static class ExtractionPruner
 {
+    /// <summary>Base dir.</summary>
     public static string BaseDir() =>
         Environment.GetEnvironmentVariable("DOTNET_BUNDLE_EXTRACT_BASE_DIR") is { Length: > 0 } dir
             ? dir

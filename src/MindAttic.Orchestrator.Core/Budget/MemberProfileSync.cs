@@ -26,7 +26,9 @@ public sealed class MemberProfileSync
     /// <summary>After a failed fetch (offline, an expired token), how long before trying that login again.</summary>
     public static readonly TimeSpan Backoff = TimeSpan.FromMinutes(10);
 
+    /// <summary>The profile endpoint constant.</summary>
     public const string ProfileEndpoint = "https://api.anthropic.com/api/oauth/profile";
+    /// <summary>The roles endpoint constant.</summary>
     public const string RolesEndpoint = "https://api.anthropic.com/api/oauth/claude_cli/roles";
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };

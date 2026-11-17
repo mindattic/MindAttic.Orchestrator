@@ -19,25 +19,33 @@ public sealed record LoginReading(string Email, string? Account, string? Alias, 
 /// writes + output) the orchestrator's CLIs on this machine spent on the member's login.</summary>
 public sealed record UsageReportRow
 {
+    /// <summary>The name.</summary>
     public string Name { get; init; } = "";
+    /// <summary>The email.</summary>
     public string Email { get; init; } = "";
     /// <summary>Whether the email is in the members table; false for a login on this machine nobody entered as a member.</summary>
     public bool IsMember { get; init; } = true;
     /// <summary>The global (fallback) login, <c>~/.claude</c>, is signed in as this member.</summary>
     public bool IsGlobalLogin { get; init; }
+    /// <summary>The five hour used.</summary>
     public double? FiveHourUsed { get; init; }
     /// <summary>The 5-hour window last read has reset since, and nothing newer is known: its use now is unknown, not 0.</summary>
     public bool FiveHourUnknown { get; init; }
+    /// <summary>The five hour reset utc.</summary>
     public DateTime? FiveHourResetUtc { get; init; }
+    /// <summary>The week used.</summary>
     public double? WeekUsed { get; init; }
+    /// <summary>The week left.</summary>
     public double? WeekLeft => WeekUsed is { } u ? Math.Max(0, 100 - u) : null;
     /// <summary>Points left before the weekly target (<see cref="UsageReport.WeeklyTargetPercent"/>); negative once past it.</summary>
     public double? LeftToTarget { get; init; }
     /// <summary>This member's cutoffs (M.ORCH-T707): the percent of its week and of its 5-hour window where its access is cut off (90 and 96 unless the user set others with <c>org limit</c>).</summary>
     public int WeeklyCutoff { get; init; } = UsageCutoffs.DefaultWeeklyPercent;
+    /// <summary>The five hour cutoff.</summary>
     public int FiveHourCutoff { get; init; } = UsageCutoffs.DefaultFiveHourPercent;
     /// <summary>The cutoffs differ from the defaults.</summary>
     public bool CustomCutoff => WeeklyCutoff != UsageCutoffs.DefaultWeeklyPercent || FiveHourCutoff != UsageCutoffs.DefaultFiveHourPercent;
+    /// <summary>The week reset utc.</summary>
     public DateTime? WeekResetUtc { get; init; }
 
     /// <summary>Read fresh with no 5-hour window running (none started since the last ended): both 5-hour columns read "—".</summary>
@@ -50,7 +58,9 @@ public sealed record UsageReportRow
     public string? StaleReason { get; init; }
     /// <summary><see cref="UsageReport.Meter"/> or <see cref="UsageReport.Estimated"/>; null with no reading at all.</summary>
     public string? Source { get; init; }
+    /// <summary>The cli today.</summary>
     public long CliToday { get; init; }
+    /// <summary>The cli week.</summary>
     public long CliWeek { get; init; }
     /// <summary>Since <see cref="UsageReport.Since"/>; null when no --since was given.</summary>
     public long? CliSince { get; init; }
@@ -71,16 +81,24 @@ public sealed record UsageReport
     /// <summary>A reading older than this is marked stale.</summary>
     public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(15);
 
+    /// <summary>The meter constant.</summary>
     public const string Meter = "Claude's meter";
+    /// <summary>The estimated constant.</summary>
     public const string Estimated = "estimated";
 
+    /// <summary>The generated utc.</summary>
     public DateTime GeneratedUtc { get; init; }
+    /// <summary>The since.</summary>
     public DateOnly? Since { get; init; }
+    /// <summary>The weekly target percent.</summary>
     public int WeeklyTargetPercent { get; init; }
+    /// <summary>The rows.</summary>
     public IReadOnlyList<UsageReportRow> Rows { get; init; } = [];
     /// <summary>Tokens billed to the API key (or any other off-subscription billing) today, over the last 7 days, and since <see cref="Since"/>.</summary>
     public long ApiKeyToday { get; init; }
+    /// <summary>The api key week.</summary>
     public long ApiKeyWeek { get; init; }
+    /// <summary>The api key since.</summary>
     public long? ApiKeySince { get; init; }
 
     /// <summary>
@@ -389,6 +407,7 @@ public sealed record UsageReport
     public IReadOnlyList<string> DetailHeaders =>
         ["Member", "Email", "Source", "CLIs today", "CLIs this week", .. Since is { } s ? [$"CLIs since {s:yyyy-MM-dd}"] : Array.Empty<string>()];
 
+    /// <summary>Detail cells.</summary>
     public IReadOnlyList<IReadOnlyList<string>> DetailCells() => [.. Rows.Select(r => (IReadOnlyList<string>)
     [
         MemberText(r), r.Email, r.Source ?? "no reading",
@@ -402,6 +421,7 @@ public sealed record UsageReport
 
     private const string SpendNote = "CLI spend is uncached tokens (input + cache writes + output) the orchestrator's CLIs spent on that login.";
 
+    /// <summary>The title.</summary>
     public string Title => $"Usage report, {GeneratedUtc.ToLocalTime().ToString("ddd M/d/yyyy h:mm tt", CultureInfo.InvariantCulture)}";
 
     // ---- Formats -----------------------------------------------------------------------------------------------------------

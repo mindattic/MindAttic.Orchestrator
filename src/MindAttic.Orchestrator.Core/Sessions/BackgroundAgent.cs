@@ -11,8 +11,10 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class BackgroundAgent
 {
+    /// <summary>The fallback command constant.</summary>
     public const string FallbackCommand = "claude --dangerously-skip-permissions --model claude-sonnet-5-5";
 
+    /// <summary>The log directory.</summary>
     public static string LogDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MindAttic", "MindAttic.Orchestrator", "allocate");
 

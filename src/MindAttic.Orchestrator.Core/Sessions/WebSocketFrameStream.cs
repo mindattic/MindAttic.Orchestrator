@@ -86,10 +86,15 @@ public sealed class WebSocketFrameStream : Stream
         && GatewayRemotes.ExpiresUtc(candidate) is { } expires && expires > nowUtc
         && (GatewayRemotes.ExpiresUtc(sent) is not { } old || expires > old);
 
+    /// <summary>Whether read.</summary>
     public override bool CanRead => !disposed;
+    /// <summary>Whether write.</summary>
     public override bool CanWrite => !disposed && !broken;
+    /// <summary>Whether seek.</summary>
     public override bool CanSeek => false;
+    /// <summary>The length.</summary>
     public override long Length => throw new NotSupportedException();
+    /// <summary>The position.</summary>
     public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
     private async Task SendLoopAsync()
@@ -106,6 +111,7 @@ public sealed class WebSocketFrameStream : Stream
         }
     }
 
+    /// <summary>Reads the async.</summary>
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
@@ -117,9 +123,11 @@ public sealed class WebSocketFrameStream : Stream
         return n;
     }
 
+    /// <summary>Reads the async.</summary>
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
         ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
+    /// <summary>Reads.</summary>
     public override int Read(byte[] buffer, int offset, int count) => ReadAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
 
     /// <summary>Receives the next whole, non-empty message into the buffer; false when the gateway closed the socket.</summary>
@@ -146,8 +154,10 @@ public sealed class WebSocketFrameStream : Stream
         }
     }
 
+    /// <summary>Writes.</summary>
     public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
 
+    /// <summary>Writes.</summary>
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
@@ -157,22 +167,28 @@ public sealed class WebSocketFrameStream : Stream
         wrote = true;
     }
 
+    /// <summary>Writes the async.</summary>
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         Write(buffer.AsSpan(offset, count));
         return Task.CompletedTask;
     }
 
+    /// <summary>Writes the async.</summary>
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
         Write(buffer.Span);
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>Flush.</summary>
     public override void Flush() { }
+    /// <summary>Seek.</summary>
     public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    /// <summary>Sets the length.</summary>
     public override void SetLength(long value) => throw new NotSupportedException();
 
+    /// <summary>Releases.</summary>
     protected override void Dispose(bool disposing)
     {
         if (disposing && !disposed)

@@ -10,8 +10,10 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public sealed partial class HostSessionScanner(OrchestratorOptions options)
 {
+    /// <summary>The pipe name prefix constant.</summary>
     public const string PipeNamePrefix = "mindattic-host-";
 
+    /// <summary>Scans.</summary>
     public IReadOnlyList<HostSession> Scan()
     {
         var pipes = EnumeratePipes()

@@ -26,6 +26,7 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
     /// <summary>The file in an account's folder that says when it was last picked for a new CLI (UTC, round-trip format).</summary>
     public const string ClaimName = "cli-picked-at.txt";
 
+    /// <summary>The dirs.</summary>
     public AccountDirs Dirs { get; } = dirs ?? new AccountDirs();
 
     private static int DefaultWeeklyStop => Settings.OrchestratorSettings.WeeklyStopFor(Settings.OrchestratorSettings.DefaultWeeklyReservePercent);

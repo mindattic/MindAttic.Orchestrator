@@ -13,6 +13,7 @@ public sealed record GatewaySettings
     /// address (or 0.0.0.0).</summary>
     public string Bind { get; init; } = "127.0.0.1";
 
+    /// <summary>The port.</summary>
     public int Port { get; init; } = Term.TermGateway.DefaultPort;
 
     /// <summary>A PFX certificate to serve.</summary>

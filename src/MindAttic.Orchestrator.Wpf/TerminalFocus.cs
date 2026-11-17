@@ -7,6 +7,7 @@ namespace MindAttic.Orchestrator.Wpf;
 /// <summary>How far "Go to tab" got: the tab itself, its window only, or nothing (with why).</summary>
 public enum GoToOutcome { Tab, Window, NotFound }
 
+/// <summary>The outcome record.</summary>
 public sealed record GoToResult(GoToOutcome Outcome, string Note);
 
 /// <summary>
@@ -16,6 +17,7 @@ public sealed record GoToResult(GoToOutcome Outcome, string Note);
 /// </summary>
 public static partial class TerminalFocus
 {
+    /// <summary>Go to.</summary>
     public static GoToResult GoTo(HostSession host, IEnumerable<HostSession> allHosts)
     {
         try

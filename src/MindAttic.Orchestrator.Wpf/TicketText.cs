@@ -12,10 +12,13 @@ namespace MindAttic.Orchestrator.Wpf;
 /// </summary>
 public static class TicketText
 {
+    /// <summary>The text property.</summary>
     public static readonly DependencyProperty TextProperty = DependencyProperty.RegisterAttached(
         "Text", typeof(string), typeof(TicketText), new PropertyMetadata(null, OnTextChanged));
 
+    /// <summary>Gets the text.</summary>
     public static string? GetText(DependencyObject o) => (string?)o.GetValue(TextProperty);
+    /// <summary>Sets the text.</summary>
     public static void SetText(DependencyObject o, string? value) => o.SetValue(TextProperty, value);
 
     private static void OnTextChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)

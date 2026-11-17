@@ -266,8 +266,11 @@ public sealed partial class MainViewModel
         weekUsed >= weeklyCutoff || fiveHourUsed >= fiveHourCutoff;
 
     // Every tab shows its activity icon (the API key's person too, since M.ORCH-T906), its word in the tooltip and accessible name.
+    /// <summary>Whether tab idle.</summary>
     public bool IsTabIdle => IsPersonTab && TabActivity == TabActivity.Idle && !TabAllStopped;
+    /// <summary>Whether tab busy.</summary>
     public bool IsTabBusy => IsPersonTab && TabActivity == TabActivity.Busy && !TabAllStopped;
+    /// <summary>Whether tab disabled.</summary>
     public bool IsTabDisabled => IsPersonTab && TabActivity == TabActivity.Disabled;
 
     /// <summary>The disabled icon's glyph (M.ORCH-T1254): a small lock while the login is signed in but past its own cutoff --

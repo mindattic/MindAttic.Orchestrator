@@ -2,6 +2,7 @@ using System.Globalization;
 
 namespace MindAttic.Orchestrator;
 
+/// <summary>The formatting type.</summary>
 public static class Formatting
 {
     /// <summary>When a limit resets, local time: the clock alone today, with the weekday on any other day (a weekly wall's
@@ -38,6 +39,7 @@ public static class Formatting
             : Math.Min(Math.Round(percent, MidpointRounding.AwayFromZero), 89).ToString("0", CultureInfo.InvariantCulture)) + "%";
 
     // The thresholds are where the smaller unit would round up to 1000 (999,999 is "1M", not "1000k").
+    /// <summary>Tokens.</summary>
     public static string Tokens(long n) => n switch
     {
         >= 999_950_000 => (n / 1e9).ToString("0.##", CultureInfo.InvariantCulture) + "B",
@@ -53,6 +55,7 @@ public static class Formatting
         : d.TotalDays < 1 ? $"{(int)d.TotalHours}h"
         : $"{(int)d.TotalDays}d";
 
+    /// <summary>Ago.</summary>
     public static string Ago(DateTime? utc, DateTime nowUtc)
     {
         if (utc is null) return "";

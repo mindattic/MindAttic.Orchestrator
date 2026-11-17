@@ -112,6 +112,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>The name it has when not renamed.</summary>
     public string DefaultName => Request.IsMenu ? SessionControl.ShortName(Request.Name) : $"{SessionControl.ShortName(Request.Name)}{SessionControl.ProviderTag(Request.Provider)}";
 
+    /// <summary>The tooltip.</summary>
     public string Tooltip => (Request.CustomName is { Length: > 0 } custom ? $"{custom}\n{Request.Title}" : Request.Title)
         + $"\n{Request.Directory}\n{Request.Alias ?? Login ?? "global login"}";
 
@@ -260,6 +261,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// A restored tab starts with the session it resumes.</summary>
     public string? SessionId { get; internal set; }
 
+    /// <summary>Whether selected.</summary>
     public bool IsSelected
     {
         get => isSelected;
@@ -304,8 +306,10 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// (M.ORCH-T1511): never a real CLI's, never attached to a process. Shown ahead of every other state in
     /// <see cref="StateText"/>, so a placeholder that's also marked <see cref="Ended"/> still reads "redeploying…", not "ended".</summary>
     public bool Redeploying { get => redeploying; internal set { if (Set(ref redeploying, value)) Raise(nameof(StateText)); } }
+    /// <summary>The state text.</summary>
     private bool redeploying;
 
+    /// <summary>The state text.</summary>
     public string StateText => Redeploying ? "redeploying…" : Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
 
     private bool paneKnown, paneBusy, paneAsking;
@@ -316,8 +320,10 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// or before its session is learned, <see cref="TerminalsViewModel.Update"/>).</summary>
     public bool ShowsPaneBusyBadge => IsPresumedBusy || (paneKnown && paneBusy && !paneAsking);
 
+    /// <summary>The shows pane asking badge.</summary>
     public bool ShowsPaneAskingBadge => !IsPresumedBusy && paneKnown && paneAsking;
 
+    /// <summary>The shows pane idle badge.</summary>
     public bool ShowsPaneIdleBadge => !IsPresumedBusy && paneKnown && !paneBusy && !paneAsking;
 
     /// <summary>The icon in words, so it's never only a picture.</summary>
@@ -438,11 +444,13 @@ public sealed class TerminalPaneViewModel : ObservableObject
     // ── remote broadcast (M.ORCH-T935) ──────────────────────────────────────────
 
     private IReadOnlyList<TermWatcher> watchers = [];
+    /// <summary>The is watched.</summary>
     private bool shared, broadcastPaused, masked = true;
 
     /// <summary>The remote viewers attached to it through the team gateway now.</summary>
     public IReadOnlyList<TermWatcher> Watchers => watchers;
 
+    /// <summary>Whether watched.</summary>
     public bool IsWatched => watchers.Count > 0;
 
     /// <summary>Shared with remote viewers (on its own, or by "share my sessions"). Off by default.</summary>
@@ -470,6 +478,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         }
     }
 
+    /// <summary>The pause button text.</summary>
     public string PauseButtonText => broadcastPaused ? "Resume broadcast" : "Pause broadcast";
 
     /// <summary>Applies the owner's broadcast choices and the gateway's attached viewers to this tab.</summary>
@@ -706,6 +715,7 @@ public sealed class TerminalsViewModel : ObservableObject
     private readonly HashSet<string> launching = new(StringComparer.OrdinalIgnoreCase);
     private TerminalPaneViewModel? selected;
 
+    /// <summary>Creates the terminals view model.</summary>
     public TerminalsViewModel(string? pipeName = null)
     {
         this.pipeName = pipeName;
@@ -759,6 +769,7 @@ public sealed class TerminalsViewModel : ObservableObject
     /// orphan, ended, never given a second tab (M.ORCH-T971).</summary>
     private readonly HashSet<string> abandoned = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>The panes.</summary>
     public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];
 
     /// <summary>How long showing a newly-chosen pane may take, past the click itself, before it's logged (M.ORCH-T1537):
@@ -806,6 +817,7 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <summary>A terminal's CLI was seen on another login than the one it was on (moved): it goes to that person's page.</summary>
     public event Action? LoginsChanged;
 
+    /// <summary>The close command.</summary>
     public ICommand CloseCommand { get; }
 
     // ── remote broadcast (M.ORCH-T935) ──────────────────────────────────────────
@@ -894,6 +906,7 @@ public sealed class TerminalsViewModel : ObservableObject
         Raise(nameof(PauseAllText));
     }
 
+    /// <summary>The pause all text.</summary>
     public string PauseAllText => broadcast.PauseAll ? "Resume all" : "Pause all";
 
     /// <summary>Ticks as of construction, then up by one each call: a tab opened later always sorts after one opened earlier
@@ -1435,6 +1448,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     private TerminalPaneViewModel? selected;
     private bool usageShown;
 
+    /// <summary>Creates the person terminals view model.</summary>
     public PersonTerminalsViewModel(TerminalsViewModel all)
     {
         this.all = all;
@@ -1524,6 +1538,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         }
     }
 
+    /// <summary>Whether panes.</summary>
     public bool HasPanes => Panes.Count > 0;
 
     /// <summary>The pinned Usage tab (M.ORCH-T1446, at index 0 of the strip, never one of <see cref="Panes"/>) is chosen:
@@ -1569,6 +1584,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     /// <summary>Raised when this person's chosen terminal changes, so the window shows it.</summary>
     internal event Action? SelectionChanged;
 
+    /// <summary>The close command.</summary>
     public ICommand CloseCommand => all.CloseCommand;
 
     private ICommand? nextCommand, previousCommand;
@@ -1576,6 +1592,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     /// <summary>Ctrl+Left and Ctrl+Right (M.ORCH-T824): the next and the previous CLI tab of this person's, cycling, so
     /// switching works even while a terminal holds keyboard focus (plain Left/Right there move the CLI's own cursor).</summary>
     public ICommand NextCommand => nextCommand ??= new RelayCommand(() => Step(+1));
+    /// <summary>The previous command.</summary>
     public ICommand PreviousCommand => previousCommand ??= new RelayCommand(() => Step(-1));
 
     /// <summary>Chooses the tab of TermHost session <paramref name="termId"/> (M.ORCH-T1436, a remembered choice coming back after

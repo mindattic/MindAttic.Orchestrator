@@ -11,6 +11,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class OrgScope
 {
+    /// <summary>For.</summary>
     public static Snapshot For(Snapshot all, OrgDirectory orgs, string orgId, TimeSpan workingWindow, TimeSpan waitingWindow)
     {
         if (!orgs.HasOrgs) return all;

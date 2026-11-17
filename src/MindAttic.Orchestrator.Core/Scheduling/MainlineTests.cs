@@ -46,10 +46,13 @@ public sealed partial class MainlineTests(JsonStore store)
     /// <summary>What a repo's main line was last tested at, and last passed at.</summary>
     public sealed class RepoState
     {
+        /// <summary>Gets or sets the tested.</summary>
         public string? Tested { get; set; }
+        /// <summary>Gets or sets the green.</summary>
         public string? Green { get; set; }
     }
 
+    /// <summary>The test record.</summary>
     public sealed record Failure(string Test, string Message);
 
     /// <summary>A suite's outcome. <see cref="Completed"/> is false when it couldn't run or ran past its time (<see cref="Note"/>

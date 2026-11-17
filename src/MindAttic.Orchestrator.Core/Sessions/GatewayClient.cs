@@ -36,6 +36,7 @@ public sealed record RemoteSessionInfo
 /// <summary>What one look at a gateway found: its sessions, or why it couldn't be read (offline, refused, no token).</summary>
 public sealed record GatewayListing(bool Online, IReadOnlyList<RemoteSessionInfo> Sessions, string? Problem)
 {
+    /// <summary>Offline.</summary>
     public static GatewayListing Offline(string problem) => new(false, [], problem);
 }
 
@@ -83,6 +84,7 @@ public sealed class GatewayClient : IDisposable
         http = new HttpClient(handler) { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
     }
 
+    /// <summary>The remote.</summary>
     public GatewayRemote Remote { get; }
 
     /// <summary><c>https://host:port</c>, or null when the remote's URL isn't one.</summary>
@@ -284,6 +286,7 @@ public sealed class GatewayClient : IDisposable
         return GatewayRemotes.Token(now);
     }
 
+    /// <summary>Releases.</summary>
     public void Dispose()
     {
         http.Dispose();

@@ -12,6 +12,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// Windows DPAPI for this Windows user, never the token itself.</summary>
 public sealed record LoginToken(string Email, DateTime MintedUtc, DateTime ExpiresUtc, string Protected)
 {
+    /// <summary>Expired.</summary>
     public bool Expired(DateTime nowUtc) => nowUtc >= ExpiresUtc;
 
     /// <summary>Within <see cref="LoginTokens.WarnBefore"/> of its expiry (and not past it).</summary>
@@ -24,8 +25,10 @@ public sealed record LoginToken(string Email, DateTime MintedUtc, DateTime Expir
 /// <summary>How a <see cref="LoginTokens.MintFor"/> went.</summary>
 public enum MintOutcome { Minted, NoToken, WrongAccount, Failed }
 
+/// <summary>The token record.</summary>
 public sealed record MintResult(MintOutcome Outcome, string Message, LoginToken? Token = null)
 {
+    /// <summary>The ok.</summary>
     public bool Ok => Outcome == MintOutcome.Minted;
 }
 
@@ -69,6 +72,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
 
     private static bool IsToken(string joined) => joined.Length is >= MinTokenLength and <= MaxTokenLength && TokenPattern.IsMatch(joined);
 
+    /// <summary>The default.</summary>
     public static LoginTokens Default { get; } = new();
 
     /// <summary>One store for the whole process (M.ORCH-T711): the Vault's in-process lock is per instance, so a store built per
@@ -269,6 +273,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     /// browser or mints a token.</summary>
     internal static TimeSpan MintTimeout { get; set; } = TimeSpan.FromMinutes(10);
 
+    /// <summary>Gets or sets the run.</summary>
     public static Func<AccountDir, string?, string> Run { get; set; } = (dir, opener) =>
     {
         var psi = Psi(dir, null, "setup-token");

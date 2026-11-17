@@ -21,6 +21,7 @@ public enum OwnLoginOutcome
 /// <see cref="Notes"/> are what preparing its folder had to say.</summary>
 public sealed record OwnLoginResult(string Label, string? Email, string? Directory, OwnLoginOutcome Outcome, string Message, IReadOnlyList<string> Notes)
 {
+    /// <summary>The ok.</summary>
     public bool Ok => Outcome is OwnLoginOutcome.SignedIn or OwnLoginOutcome.AlreadySignedIn;
 
     /// <summary>How minting the login's long-lived token went (M.ORCH-T696); null when none was minted (one was kept already,

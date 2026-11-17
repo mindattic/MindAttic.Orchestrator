@@ -24,6 +24,7 @@ public sealed record AccountPace(string Email, string Directory, string? Account
 /// </summary>
 public sealed class AccountPacer
 {
+    /// <summary>The dirs.</summary>
     public AccountDirs Dirs { get; init; } = new();
 
     /// <summary>Where transcripts are, to tell a subagent's mark from one whose transcript went quiet.</summary>

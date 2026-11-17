@@ -5,8 +5,11 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// past its 5-hour or weekly cutoff, or signed out; on the 'API key' tab, API billing off).</summary>
 public enum TabActivity
 {
+    /// <summary>The idle value.</summary>
     Idle,
+    /// <summary>The busy value.</summary>
     Busy,
+    /// <summary>The disabled value.</summary>
     Disabled,
 }
 

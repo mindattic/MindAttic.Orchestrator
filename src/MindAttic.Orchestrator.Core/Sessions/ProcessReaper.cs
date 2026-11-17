@@ -37,8 +37,10 @@ public static class ProcessReaper
 
     private static readonly string[] TargetNames = ["find", "rg", "grep", "git", "bash", "python", "node", "dotnet"];
 
+    /// <summary>The start utc record.</summary>
     public sealed record ProcessInfo(int Pid, string Name, int ParentPid, long HandleCount, DateTime StartUtc, string? CommandLine);
 
+    /// <summary>The reason record.</summary>
     public sealed record Reaped(ProcessInfo Process, string Reason);
 
     /// <summary>

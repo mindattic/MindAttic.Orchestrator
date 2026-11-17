@@ -18,6 +18,7 @@ namespace MindAttic.Orchestrator.Billing;
 /// </summary>
 public static class AnthropicCostReport
 {
+    /// <summary>The url constant.</summary>
     public const string Url = "https://api.anthropic.com/v1/organizations/cost_report";
 
     /// <summary>The <c>anthropic-version</c> header sent.</summary>
@@ -41,6 +42,7 @@ public static class AnthropicCostReport
     /// <summary>A whole read: the days from the window's start to now, and when it was read.</summary>
     public sealed record Billed(DateTime ReadAtUtc, IReadOnlyList<Day> Days)
     {
+        /// <summary>The total usd.</summary>
         public double TotalUsd => Days.Sum(d => d.Usd);
     }
 
@@ -195,6 +197,7 @@ public static class AnthropicCostReport
 /// </summary>
 public sealed class ApiCostWatch(string directory, Action<LogEventLevel, string> say)
 {
+    /// <summary>The lease name constant.</summary>
     public const string LeaseName = "api-cost";
 
     /// <summary>The Admin API key (seam): the Vault's, read fresh at each read.</summary>
@@ -203,6 +206,7 @@ public sealed class ApiCostWatch(string directory, Action<LogEventLevel, string>
     /// <summary>How a read is sent (seam): tests answer with sample JSON; nothing in a test reaches Anthropic.</summary>
     public HttpMessageHandler? Handler { get; init; }
 
+    /// <summary>The path.</summary>
     public string Path { get; } = System.IO.Path.Combine(directory, AnthropicCostReport.FileName);
 
     private Task? running;

@@ -26,9 +26,11 @@ public sealed record LimitStop(string Window, DateTime UntilUtc, DateTime Stoppe
 /// </summary>
 public sealed class ContextCycler(string? directory = null)
 {
+    /// <summary>The directory.</summary>
     public string Directory { get; } = directory ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "session-context");
 
+    /// <summary>Loads.</summary>
     public IEnumerable<SessionContext> Load()
     {
         if (!System.IO.Directory.Exists(Directory)) return [];

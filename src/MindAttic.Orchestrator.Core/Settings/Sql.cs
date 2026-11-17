@@ -12,8 +12,10 @@ namespace MindAttic.Orchestrator.Settings;
 /// </summary>
 public static class Sql
 {
+    /// <summary>Whether server.</summary>
     public static bool IsServer(DbConnection connection) => connection is SqlConnection;
 
+    /// <summary>Command.</summary>
     public static DbCommand Command(DbConnection connection, DbTransaction? tx, string sql, params (string Name, object? Value)[] parameters)
     {
         var command = connection.CreateCommand();
@@ -29,18 +31,21 @@ public static class Sql
         return command;
     }
 
+    /// <summary>Runs.</summary>
     public static int Run(DbConnection connection, DbTransaction? tx, string sql, params (string Name, object? Value)[] parameters)
     {
         using var command = Command(connection, tx, sql, parameters);
         return command.ExecuteNonQuery();
     }
 
+    /// <summary>Scalar.</summary>
     public static object? Scalar(DbConnection connection, DbTransaction? tx, string sql, params (string Name, object? Value)[] parameters)
     {
         using var command = Command(connection, tx, sql, parameters);
         return command.ExecuteScalar() is { } v and not DBNull ? v : null;
     }
 
+    /// <summary>The read.</summary>
     public static List<T> Read<T>(DbConnection connection, DbTransaction? tx, string sql, Func<DbDataReader, T> row, params (string Name, object? Value)[] parameters)
     {
         using var command = Command(connection, tx, sql, parameters);
@@ -87,9 +92,14 @@ public static class Sql
 
     // ---- reading a column, whichever store it came from ----
 
+    /// <summary>Long.</summary>
     public static long Long(DbDataReader r, int i) => Convert.ToInt64(r.GetValue(i), System.Globalization.CultureInfo.InvariantCulture);
+    /// <summary>Int.</summary>
     public static int Int(DbDataReader r, int i) => Convert.ToInt32(r.GetValue(i), System.Globalization.CultureInfo.InvariantCulture);
+    /// <summary>Real.</summary>
     public static double Real(DbDataReader r, int i) => Convert.ToDouble(r.GetValue(i), System.Globalization.CultureInfo.InvariantCulture);
+    /// <summary>Optional real.</summary>
     public static double? OptionalReal(DbDataReader r, int i) => r.IsDBNull(i) ? null : Real(r, i);
+    /// <summary>Optional text.</summary>
     public static string? OptionalText(DbDataReader r, int i) => r.IsDBNull(i) ? null : r.GetString(i);
 }

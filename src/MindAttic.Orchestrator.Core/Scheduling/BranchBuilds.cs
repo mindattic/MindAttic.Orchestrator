@@ -31,11 +31,17 @@ public sealed partial class BranchBuilds(JsonStore store)
     /// that build passed; <see cref="Building"/> the head a build is running at now.</summary>
     public sealed class BranchState
     {
+        /// <summary>Gets or sets the head.</summary>
         public string Head { get; set; } = "";
+        /// <summary>Gets or sets the built.</summary>
         public string? Built { get; set; }
+        /// <summary>Gets or sets the ok.</summary>
         public bool Ok { get; set; }
+        /// <summary>Gets or sets the note.</summary>
         public string? Note { get; set; }
+        /// <summary>Gets or sets the built utc.</summary>
         public DateTime? BuiltUtc { get; set; }
+        /// <summary>Gets or sets the building.</summary>
         public string? Building { get; set; }
     }
 

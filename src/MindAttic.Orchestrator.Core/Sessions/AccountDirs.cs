@@ -14,8 +14,11 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public sealed record AccountDir(string Email, string Directory)
 {
+    /// <summary>The config path.</summary>
     public string ConfigPath => Path.Combine(Directory, ".claude.json");
+    /// <summary>The credentials path.</summary>
     public string CredentialsPath => Path.Combine(Directory, ".credentials.json");
+    /// <summary>The settings path.</summary>
     public string SettingsPath => Path.Combine(Directory, "settings.json");
 
     /// <summary>The account's pace, as the daemon writes it for the hooks of the CLIs on this login.</summary>
@@ -35,6 +38,7 @@ public sealed record AccountDir(string Email, string Directory)
     /// 100%", even once the transcript line that reported it has scrolled out of the reader's window.</summary>
     public string LimitsPath => Path.Combine(Directory, "limits.json");
 
+    /// <summary>The statusline path.</summary>
     public string StatuslinePath => Path.Combine(Directory, AccountDirs.StatuslineName);
 
     /// <summary>The script <c>claude auth login</c> opens this account's sign-in through (<c>BROWSER</c>, M.ORCH-T610).</summary>
@@ -79,6 +83,7 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
     /// <summary>What tells Claude Code where its config lives.</summary>
     public const string EnvVar = "CLAUDE_CONFIG_DIR";
 
+    /// <summary>The statusline name constant.</summary>
     public const string StatuslineName = "statusline.ps1";
 
     private static string UserProfile => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);

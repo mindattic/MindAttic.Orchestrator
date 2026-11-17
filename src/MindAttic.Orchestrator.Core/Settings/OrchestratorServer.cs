@@ -17,6 +17,7 @@ namespace MindAttic.Orchestrator.Settings;
 /// </summary>
 public sealed class OrchestratorServer(string connectionString)
 {
+    /// <summary>The default database constant.</summary>
     public const string DefaultDatabase = "MindAttic.Orchestrator";
 
     /// <summary>A connection string to use instead of <see cref="ConfigFile"/>'s; "off" keeps everything in SQLite.</summary>
@@ -37,8 +38,10 @@ public sealed class OrchestratorServer(string connectionString)
         ApplicationName = "MindAttic.Orchestrator",
     }.ConnectionString;
 
+    /// <summary>The connection string.</summary>
     public string ConnectionString { get; } = connectionString;
 
+    /// <summary>Describes.</summary>
     public string Describe() => new SqlConnectionStringBuilder(ConnectionString) is var b ? $"{b.DataSource}/{b.InitialCatalog}" : ConnectionString;
 
     private static (DateTime Stamp, string? Connection) cached = (DateTime.MinValue, null);

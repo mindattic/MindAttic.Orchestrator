@@ -72,6 +72,7 @@ public sealed class AppPresences
     /// <summary>How much later than its presence a process may seem to have started (clock reads differ a little).</summary>
     internal static readonly TimeSpan StartSlack = TimeSpan.FromSeconds(2);
 
+    /// <summary>Note.</summary>
     public void Note(AppPresence presence)
     {
         if (presence.App.Length == 0 || presence.Pid <= 0) return;

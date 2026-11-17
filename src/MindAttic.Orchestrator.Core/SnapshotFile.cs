@@ -13,6 +13,7 @@ namespace MindAttic.Orchestrator;
 /// </summary>
 public sealed class SnapshotFile(string path)
 {
+    /// <summary>The format version constant.</summary>
     public const int FormatVersion = 2;
 
     /// <summary>A published snapshot older than this is ignored (its writer stopped or hung) and the reader builds its own.</summary>
@@ -24,6 +25,7 @@ public sealed class SnapshotFile(string path)
         Converters = { new ReadOnlySetConverter() },
     };
 
+    /// <summary>The path.</summary>
     public string Path { get; } = path;
 
     private DateTime readStamp;
@@ -40,6 +42,7 @@ public sealed class SnapshotFile(string path)
 
     private static UsageEvent Unpack(long[] e) => new(new DateTime(e[0], DateTimeKind.Utc), new TokenUsage(e[1], e[2], e[3], e[4]));
 
+    /// <summary>Writes.</summary>
     public void Write(Snapshot snapshot)
     {
         var events = snapshot.Repos.Select(r => r.Sessions.Select(s => s.Events.Select(Pack).ToArray()).ToList()).ToList();

@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     /// <summary>The login's tab on screen: the window shows its view model.</summary>
     private MainViewModel Shown => DataContext as MainViewModel ?? model;
 
+    /// <summary>Creates the main window.</summary>
     public MainWindow()
     {
         InitializeComponent();

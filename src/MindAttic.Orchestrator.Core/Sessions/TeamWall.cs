@@ -18,15 +18,25 @@ public sealed record WallSession
     /// <summary>Whose CLI it is, as the tile says.</summary>
     public required string Person { get; init; }
 
+    /// <summary>The id.</summary>
     public required string Id { get; init; }
+    /// <summary>The title.</summary>
     public string? Title { get; init; }
+    /// <summary>The login.</summary>
     public string? Login { get; init; }
+    /// <summary>The repo.</summary>
     public string? Repo { get; init; }
+    /// <summary>The state.</summary>
     public string State { get; init; } = TermSessionStates.Running;
+    /// <summary>The exit code.</summary>
     public int? ExitCode { get; init; }
+    /// <summary>The protocol.</summary>
     public int Protocol { get; init; }
+    /// <summary>The cols.</summary>
     public int Cols { get; init; }
+    /// <summary>The rows.</summary>
     public int Rows { get; init; }
+    /// <summary>The started utc.</summary>
     public DateTime StartedUtc { get; init; }
 
     /// <summary>Whether its pop-out may be interactive: a remote's grant allows it (<c>access: interact</c>), or it is this
@@ -40,6 +50,7 @@ public sealed record WallSession
     /// per the ExcludeLauncherFromTeamWall setting.</summary>
     public bool IsMenu { get; init; }
 
+    /// <summary>Whether local.</summary>
     public bool IsLocal => Gateway == TeamWall.LocalGateway;
 
     /// <summary>A tile can stream it without disturbing anyone: its host serves several viewers (protocol 2, M.ORCH-T930). A
@@ -74,6 +85,7 @@ public static class TeamWall
     /// <summary>The smallest a tile is drawn, in device-independent pixels: the grid fits as many as these allow.</summary>
     public const double MinTileWidth = 420, MinTileHeight = 260;
 
+    /// <summary>Key of.</summary>
     public static string KeyOf(string gateway, string id) => gateway + "/" + id;
 
     /// <summary>One of this machine's hosted sessions as a tile.</summary>
@@ -182,6 +194,7 @@ public static class TeamWall
         return (cols, (count + cols - 1) / cols);
     }
 
+    /// <summary>Page count.</summary>
     public static int PageCount(int count, int pageSize) => count <= 0 ? 1 : (count + Math.Max(1, pageSize) - 1) / Math.Max(1, pageSize);
 
     /// <summary><paramref name="page"/> (0-based) kept within the pages there are.</summary>

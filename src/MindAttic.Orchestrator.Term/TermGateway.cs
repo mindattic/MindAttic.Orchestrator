@@ -60,6 +60,7 @@ public static class TermGateway
     public static string DefaultDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", "MindAttic.Orchestrator", "gateway");
 
+    /// <summary>Status path.</summary>
     public static string StatusPath(string? directory = null) => Path.Combine(directory ?? DefaultDirectory, "gateway.json");
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };

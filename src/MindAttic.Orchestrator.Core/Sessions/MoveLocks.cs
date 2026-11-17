@@ -13,13 +13,17 @@ public sealed record MoveLock
 {
     /// <summary>The moving CLI's session, and its claude.exe as it was when the move was sent.</summary>
     public string SessionId { get; init; } = "";
+    /// <summary>The pid.</summary>
     public int Pid { get; init; }
 
     /// <summary>The Launcher tab it runs in (its host process and input pipe): the same tab restarts it on the new login.</summary>
     public int? HostPid { get; init; }
+    /// <summary>The host pipe.</summary>
     public string? HostPipe { get; init; }
 
+    /// <summary>The repo.</summary>
     public string Repo { get; init; } = "";
+    /// <summary>The cwd.</summary>
     public string? Cwd { get; init; }
 
     /// <summary>The per-CLI login it was on (its email), null for the global login.</summary>
@@ -27,8 +31,10 @@ public sealed record MoveLock
 
     /// <summary>The login it's moving to: its email (null for the global login) and its name as the dashboard shows it.</summary>
     public string? ToEmail { get; init; }
+    /// <summary>The to name.</summary>
     public string ToName { get; init; } = "";
 
+    /// <summary>The started utc.</summary>
     public DateTime StartedUtc { get; init; }
 
     /// <summary>The tickets it and its subagents hold: its claims (<c>orchestrator next --claim</c>), kept claimed for it.</summary>
@@ -52,6 +58,7 @@ public sealed record MoveEnd(MoveLock Lock, bool Landed, AgentBoardRow? Cli, str
 /// </summary>
 public sealed class MoveLocks(JsonStore store)
 {
+    /// <summary>The state name constant.</summary>
     public const string StateName = "account-moves";
 
     /// <summary>A move restarts the CLI at its next idle point, which can wait out a long turn.</summary>
@@ -60,6 +67,7 @@ public sealed class MoveLocks(JsonStore store)
     /// <summary>How long a move whose CLI has ended may take to come back on the new login before it has failed.</summary>
     public static readonly TimeSpan GoneAfter = TimeSpan.FromMinutes(5);
 
+    /// <summary>The store.</summary>
     public JsonStore Store { get; } = store;
 
     /// <summary>Whether a claude.exe is still running (seam).</summary>
@@ -165,6 +173,7 @@ public sealed class MoveHandback(JsonStore store)
     /// <param name="Left">The nudge was left for the CLI's hook; false with tickets: it's said to you to do.</param>
     public sealed record Result(MoveEnd End, IReadOnlyList<string> Tickets, bool Left, string Line);
 
+    /// <summary>Deliver.</summary>
     public Result Deliver(MoveEnd end)
     {
         var m = end.Lock;

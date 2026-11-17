@@ -19,6 +19,7 @@ public enum WindowGrade
 /// <summary>A stretch with no report from Claude's own meter while the transcripts show tokens being spent.</summary>
 public sealed record MeterGap(DateTime FromUtc, DateTime ToUtc, long Fresh)
 {
+    /// <summary>The length.</summary>
     public TimeSpan Length => ToUtc - FromUtc;
 }
 
@@ -54,6 +55,7 @@ public sealed record LedgerWindow(
     int Exempt = 0,
     string? Account = null)
 {
+    /// <summary>The blind.</summary>
     public TimeSpan Blind => Gaps.Aggregate(TimeSpan.Zero, (t, g) => t + g.Length);
 }
 
@@ -77,6 +79,7 @@ public static class PaceLedger
 
     /// <summary>A gap in Claude's reports is blind once it's this long and this much of the window was spent in it.</summary>
     public static readonly TimeSpan MinGap = TimeSpan.FromMinutes(15);
+    /// <summary>The min gap percent constant.</summary>
     public const double MinGapPercent = 2;
 
     /// <summary>How long after its reset a window is closed: late samples and limit hits read from transcripts land by then.</summary>
@@ -190,6 +193,7 @@ public static class PaceLedger
         return utc => history.LastOrDefault(s => utc >= s.From && (s.To is not { } to || utc < to))?.Account;
     }
 
+    /// <summary>Serialize.</summary>
     public static string Serialize(LedgerWindow w) => JsonSerializer.Serialize(w, Json);
 
     /// <summary>Every row in a <c>pace-ledger.jsonl</c> as the ledger was kept before orchestrator.db (read once by

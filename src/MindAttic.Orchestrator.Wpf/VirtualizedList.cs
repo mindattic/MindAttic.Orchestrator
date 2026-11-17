@@ -284,13 +284,18 @@ public sealed class VirtualizedBody
     /// <summary>One row of the body's list: some of <see cref="List"/>'s items (one, or a line of tiles).</summary>
     public sealed class Row(ItemsControl list, object[] items, Thickness margin)
     {
+        /// <summary>The list.</summary>
         public ItemsControl List { get; } = list;
+        /// <summary>The items.</summary>
         public object[] Items { get; } = items;
+        /// <summary>The margin.</summary>
         public Thickness Margin { get; } = margin;
 
+        /// <summary>Equals.</summary>
         public override bool Equals(object? obj) => obj is Row r && r.List == List && r.Margin == Margin
             && r.Items.Length == Items.Length && r.Items.Zip(Items).All(p => ReferenceEquals(p.First, p.Second));
 
+        /// <summary>Gets the hash code.</summary>
         public override int GetHashCode() => HashCode.Combine(List, Items.Length, Items.Length > 0 ? RuntimeHelpers.GetHashCode(Items[0]) : 0);
     }
 

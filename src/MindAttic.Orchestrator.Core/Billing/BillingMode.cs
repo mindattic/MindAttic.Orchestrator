@@ -7,7 +7,9 @@ namespace MindAttic.Orchestrator.Billing;
 /// key in the MindAttic Vault keyring, for emergencies only.</summary>
 public static class BillingModes
 {
+    /// <summary>The team constant.</summary>
     public const string Team = "team";
+    /// <summary>The api constant.</summary>
     public const string Api = "api";
 
     /// <summary>A typed mode ("team", "api", "claude team", "api key", "key"…) as <see cref="Team"/> or <see cref="Api"/>; null when it's neither.</summary>
@@ -50,12 +52,14 @@ public sealed record BillingState(string Mode, DateTime SinceUtc, string? Login,
 /// </summary>
 public sealed class BillingModeFile(string? path = null)
 {
+    /// <summary>The file name constant.</summary>
     public const string FileName = "billing.json";
 
     /// <summary>The <c>state</c> row of the orchestrator's database the mode is kept in (M.ORCH-T528), left out of the dump;
     /// <see cref="FileName"/> is still written beside it for the Launcher (<see cref="Settings.ExportedState"/>).</summary>
     public const string StateName = "billing";
 
+    /// <summary>The path.</summary>
     public string Path { get; } = path ?? System.IO.Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", FileName);
 
     /// <summary>The database the mode is kept in.</summary>
@@ -82,6 +86,7 @@ public sealed class BillingModeFile(string? path = null)
         }
     }
 
+    /// <summary>Writes.</summary>
     public void Write(BillingState state)
     {
         var o = new JsonObject

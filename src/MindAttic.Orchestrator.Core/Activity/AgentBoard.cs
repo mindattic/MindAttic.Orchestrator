@@ -3,6 +3,7 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Activity;
 
+/// <summary>The agent state values.</summary>
 public enum AgentState
 {
     /// <summary>Wrote to its transcript within the working window.</summary>
@@ -30,6 +31,7 @@ public sealed record AgentBoardRow(
 {
     /// <summary>Its latest tool call in plain words, and when.</summary>
     public string? Doing { get; init; }
+    /// <summary>The doing at utc.</summary>
     public DateTime? DoingAtUtc { get; init; }
 
     /// <summary>What its CLI bills, in words, and whether it's being restarted for the billing mode (M.ORCH-T436); null when unknown.</summary>
@@ -78,6 +80,7 @@ public sealed record AgentBoardRow(
 /// </summary>
 public static class AgentBoard
 {
+    /// <summary>Builds.</summary>
     public static IReadOnlyList<AgentBoardRow> Build(
         IReadOnlyList<RepoStatus> repos,
         Pace? pace,

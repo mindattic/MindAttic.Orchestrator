@@ -13,6 +13,7 @@ public sealed class Notifier(HttpClient? http = null)
     private readonly HttpClient http = http ?? new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
     private readonly Serilog.ILogger log = OrchestratorLog.For("Notify");
 
+    /// <summary>Sends the async.</summary>
     public async Task<bool> SendAsync(string? url, string title, string message, bool urgent = false)
     {
         if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http")) return false;

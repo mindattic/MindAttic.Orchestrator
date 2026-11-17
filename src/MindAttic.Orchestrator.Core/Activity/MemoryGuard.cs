@@ -6,6 +6,7 @@ namespace MindAttic.Orchestrator.Activity;
 /// <summary>How short the machine is of RAM, worst last; each level does what the one before it does and more.</summary>
 public enum MemoryLevel
 {
+    /// <summary>The ok value.</summary>
     Ok,
     /// <summary>Nothing new starts (subagents, CLIs, main-line tests); running work finishes.</summary>
     Tight,
@@ -25,6 +26,7 @@ public sealed record MemoryReading(double FreeGb, double CommitPercent, bool Com
     /// (<see cref="MemoryReclaim"/>); it only scales work back if the free-RAM lines are still crossed.</summary>
     public bool Dormant(OrchestratorSettings s) => UsedPercent < s.MemoryGuardStartPercent;
 
+    /// <summary>Describes.</summary>
     public string Describe() =>
         $"{FreeGb.ToString("0.0", CultureInfo.InvariantCulture)} GB RAM free" +
         (CommitCounted ? $", commit {CommitPercent.ToString("0", CultureInfo.InvariantCulture)}%" : "") +
@@ -34,6 +36,7 @@ public sealed record MemoryReading(double FreeGb, double CommitPercent, bool Com
 /// <summary>The guard's judgment: its level, the reading it was judged on, and why in a few words.</summary>
 public sealed record MemoryState(MemoryLevel Level, MemoryReading Reading, string Why)
 {
+    /// <summary>The key.</summary>
     public string Key => Level.ToString().ToLowerInvariant();
 
     /// <summary>The settings' free-RAM lines it was judged against, for the hooks' own live check.</summary>
@@ -46,6 +49,7 @@ public sealed record MemoryLines(double TightGb, double CriticalGb, double Emerg
     double TightCommitPercent, double CriticalCommitPercent, double EmergencyCommitPercent,
     double ResumeMarginGb, double ResumeMarginCommit, double StartPercent)
 {
+    /// <summary>Of.</summary>
     public static MemoryLines Of(OrchestratorSettings s) => new(s.MemoryTightGb, s.MemoryCriticalGb, s.MemoryEmergencyGb, s.MemoryPerSubagentGb,
         s.MemoryTightCommitPercent, s.MemoryCriticalCommitPercent, s.MemoryEmergencyCommitPercent,
         s.MemoryResumeMarginGb, s.MemoryResumeMarginCommit, s.MemoryGuardStartPercent);
@@ -77,6 +81,7 @@ public sealed class MemoryGuard
     public static string SimulatePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", "Orchestrator", "memory-simulate.txt");
 
+    /// <summary>The simulate for.</summary>
     public static readonly TimeSpan SimulateFor = TimeSpan.FromMinutes(30);
 
     /// <summary>The guard this process judges by: the daemon's carries the hysteresis; a short-lived CLI's reads raw.</summary>

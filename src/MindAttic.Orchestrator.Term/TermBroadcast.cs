@@ -42,12 +42,16 @@ public sealed record TermBroadcastSettings
     /// <summary>Per session, by id (lower case).</summary>
     [JsonPropertyName("sessions")] public Dictionary<string, TermBroadcastSession> Sessions { get; init; } = [];
 
+    /// <summary>Of.</summary>
     public TermBroadcastSession? Of(string id) => Sessions.GetValueOrDefault(Key(id));
 
+    /// <summary>Whether shared.</summary>
     public bool IsShared(string id) => Of(id)?.Shared ?? ShareAll;
 
+    /// <summary>Whether paused.</summary>
     public bool IsPaused(string id) => PauseAll || Of(id)?.Paused == true;
 
+    /// <summary>Whether masked.</summary>
     public bool IsMasked(string id) => Of(id)?.Masked ?? true;
 
     /// <summary>Whether a remote attach to the session started at <paramref name="startedUtc"/> gets its history: not once it has
@@ -62,10 +66,13 @@ public sealed record TermBroadcastSettings
         return this with { Sessions = sessions };
     }
 
+    /// <summary>Share.</summary>
     public TermBroadcastSettings Share(string id, bool shared) => WithSession(id, s => s with { Shared = shared });
 
+    /// <summary>Mask.</summary>
     public TermBroadcastSettings Mask(string id, bool masked) => WithSession(id, s => s with { Masked = masked });
 
+    /// <summary>Pause.</summary>
     public TermBroadcastSettings Pause(string id, bool paused, DateTime nowUtc) =>
         WithSession(id, s => s with { Paused = paused, LastPausedUtc = paused ? nowUtc : s.LastPausedUtc ?? nowUtc });
 
@@ -92,8 +99,10 @@ public sealed record TermBroadcastSettings
 /// <summary>Reads and writes <see cref="TermBroadcastSettings"/> (M.ORCH-T935). Nothing here throws on an I/O failure.</summary>
 public static class TermBroadcast
 {
+    /// <summary>The file name constant.</summary>
     public const string FileName = "broadcast.json";
 
+    /// <summary>Path in.</summary>
     public static string PathIn(string? directory = null) => Path.Combine(directory ?? TermGateway.DefaultDirectory, FileName);
 
     private static readonly JsonSerializerOptions Json = new()

@@ -7,8 +7,11 @@ public sealed partial class MainViewModel
 {
     private IReadOnlyList<string> reminders = [];
 
+    /// <summary>The reminders.</summary>
     public IReadOnlyList<string> Reminders { get => reminders; private set => Set(ref reminders, value); }
+    /// <summary>Whether reminders.</summary>
     public bool HasReminders => Reminders.Count > 0;
+    /// <summary>The reminders title.</summary>
     public string RemindersTitle => Reminders.Count == 1 ? "1 reminder pending" : $"{Reminders.Count} reminders pending";
 
     private void ApplyReminders(DateTime nowUtc)

@@ -10,8 +10,10 @@ public sealed record RosterProject(string Name, string Path, string? RepoUrl);
 /// <summary>A row of the project tree menu: a branch of dot-named projects sharing a segment, or a project.</summary>
 public abstract record ProjectNode(string Label);
 
+/// <summary>The project leaf record.</summary>
 public sealed record ProjectLeaf(string Label, RosterProject Project) : ProjectNode(Label);
 
+/// <summary>The project branch record.</summary>
 public sealed record ProjectBranch(string Label, IReadOnlyList<ProjectNode> Children) : ProjectNode(Label);
 
 /// <summary>
@@ -22,8 +24,10 @@ public sealed record ProjectBranch(string Label, IReadOnlyList<ProjectNode> Chil
 /// </summary>
 public static class ProjectRoster
 {
+    /// <summary>The topic constant.</summary>
     public const string Topic = "wip";
 
+    /// <summary>The settings path.</summary>
     public static string SettingsPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MindAttic", "MindAttic.Launcher", "settings.json");
 

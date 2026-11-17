@@ -13,6 +13,7 @@ namespace MindAttic.Orchestrator.Activity;
 /// </summary>
 public sealed class ProviderLogReader(string codexSessionsDir, string geminiTmpDir)
 {
+    /// <summary>Default.</summary>
     public static ProviderLogReader Default()
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -38,6 +39,7 @@ public sealed class ProviderLogReader(string codexSessionsDir, string geminiTmpD
     /// <summary>The latest limits each provider reported (Codex: its 5-hour and weekly used percent).</summary>
     public IReadOnlyList<ProviderLimit> Limits => [.. limits.Values];
 
+    /// <summary>Polls.</summary>
     public IReadOnlyList<TranscriptSession> Poll(DateTime sinceUtc)
     {
         if (sinceUtc != countingSinceUtc) { files.Clear(); countingSinceUtc = sinceUtc; }

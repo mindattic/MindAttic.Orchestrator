@@ -21,8 +21,10 @@ public static class TestTermHostReaper
     /// <summary>The host's process name, as WMI lists it.</summary>
     private const string HostProcessName = "MindAttic.Orchestrator.TermHost.exe";
 
+    /// <summary>The start utc record.</summary>
     public sealed record HostInfo(int Pid, DateTime StartUtc, string? CommandLine);
 
+    /// <summary>The reason record.</summary>
     public sealed record Ended(HostInfo Host, string Cwd, string Reason);
 
     private static readonly Regex CwdArgument = new("""(?:^|\s)--cwd\s+(?:"(?<q>[^"]*)"|(?<p>\S+))""", RegexOptions.Compiled | RegexOptions.CultureInvariant);

@@ -2,6 +2,7 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Budget;
 
+/// <summary>The pace mode values.</summary>
 public enum PaceMode
 {
     /// <summary>No limit to pace against, or pacing is off: the warn line decides, as before.</summary>
@@ -28,6 +29,7 @@ public sealed record Pace(
     string Note,
     string AgentNote = "")
 {
+    /// <summary>Whether paced.</summary>
     public bool IsPaced => Mode != PaceMode.Unpaced;
 
     /// <summary>Uncached tokens left before the tightest window reaches its pace target; null when unpaced.</summary>
@@ -134,6 +136,7 @@ public sealed record Pace(
     /// later); <see cref="AgentNote"/> then says to wrap up instead.</summary>
     public bool WindDown { get; init; }
 
+    /// <summary>The key.</summary>
     public string Key => Mode.ToString().ToLowerInvariant();
 
     /// <summary>Running agents should conserve: past a limit, out of room, or burning faster than fits.

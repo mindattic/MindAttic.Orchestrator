@@ -13,12 +13,18 @@ public sealed class OrgViewModel(Organization org) : ObservableObject
     private string summary = "";
     private int waiting;
 
+    /// <summary>The id.</summary>
     public string Id => org.Id;
+    /// <summary>The name.</summary>
     public string Name => org.Name;
+    /// <summary>The summary.</summary>
     public string Summary => summary;
+    /// <summary>The badge.</summary>
     public string Badge => waiting > 0 ? waiting.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+    /// <summary>The tip.</summary>
     public string Tip => $"{Name}: {summary}" + (waiting == 0 ? "" : $". {waiting} need{(waiting == 1 ? "s" : "")} you.");
 
+    /// <summary>Updates.</summary>
     public void Update(Organization next, string nextSummary, int nextWaiting)
     {
         if (next == org && nextSummary == summary && nextWaiting == waiting) return;
@@ -68,6 +74,7 @@ public sealed partial class MainViewModel
     /// <summary>An org with no Claude login yet (only another LLM's, or nobody): the window says so instead of a person's tab.</summary>
     public bool IsOrgEmpty => HasOrgs && OrgTabs.Count == 0;
 
+    /// <summary>The org empty text.</summary>
     public string OrgEmptyText => SelectedOrg is { } o
         ? $"{o.Name} has no Claude login yet ({o.Summary}). Add one with: orchestrator orgs member {o.Id} \"<person>\" <email>"
         : "";

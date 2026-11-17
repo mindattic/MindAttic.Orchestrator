@@ -39,13 +39,16 @@ public sealed class ClaudeMeterProbe
     /// refreshes its token as it expires, so one this stale has none running.</summary>
     public static readonly TimeSpan RefreshAfterExpired = TimeSpan.FromMinutes(10);
 
+    /// <summary>The token endpoint constant.</summary>
     public const string TokenEndpoint = "https://console.anthropic.com/v1/oauth/token";
     private const string ClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
 
+    /// <summary>The endpoint constant.</summary>
     public const string Endpoint = "https://api.anthropic.com/api/oauth/usage";
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
 
+    /// <summary>The default credentials path.</summary>
     public static string DefaultCredentialsPath { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", ".credentials.json");
 
@@ -58,6 +61,7 @@ public sealed class ClaudeMeterProbe
     public Settings.OrchestratorDb? Db { get; init; }
     private Settings.OrchestratorDb? Store => Db ?? (UsagePath == ReportedUsage.DefaultPath ? ReportedUsage.DefaultDb : null);
 
+    /// <summary>The credentials path.</summary>
     public string CredentialsPath { get; init; } = DefaultCredentialsPath;
 
     /// <summary>The account signed in now (<see cref="ClaudeAccount.Current"/>), which each reading is tagged with: after a
@@ -216,7 +220,9 @@ public sealed class ClaudeMeterProbe
 
     /// <summary>When the last ask started, how many have, and how many failed in a row since the last reading.</summary>
     public DateTime? LastAskUtc { get; private set; }
+    /// <summary>Gets or sets the asks.</summary>
     public int Asks { get; private set; }
+    /// <summary>Gets or sets the failures in row.</summary>
     public int FailuresInRow { get; private set; }
 
     /// <summary>Whether the last ask found a sign-in only the person can mend (M.ORCH-T1119): none saved, refused, or one that

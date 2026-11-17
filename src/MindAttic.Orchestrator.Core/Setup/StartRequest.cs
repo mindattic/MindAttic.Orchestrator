@@ -10,6 +10,7 @@ namespace MindAttic.Orchestrator.Setup;
 /// </summary>
 public static partial class StartRequest
 {
+    /// <summary>The arg constant.</summary>
     public const string Arg = "--start";
 
     /// <summary>The repo <paramref name="args"/> asks to start, or null when there's no <c>--start</c>, it names nothing, or what it
@@ -28,6 +29,7 @@ public static partial class StartRequest
         return null;
     }
 
+    /// <summary>Repo.</summary>
     public static string? Repo(IReadOnlyList<string> args) => Repo(args, out _);
 
     /// <summary>Whether <paramref name="args"/> carry a <c>--start</c> at all, valid or not.</summary>

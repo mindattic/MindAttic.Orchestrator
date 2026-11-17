@@ -36,6 +36,7 @@ public static class ClaudeKeyChoice
     /// <summary>The copy of <c>~/.claude.json</c> as it was before the last change made here.</summary>
     public const string BackupSuffix = ".billing-backup";
 
+    /// <summary>The default config path.</summary>
     public static string DefaultConfigPath { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude.json");
 
     /// <summary>The part of a key Claude Code records.</summary>

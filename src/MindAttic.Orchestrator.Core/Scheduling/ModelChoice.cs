@@ -22,6 +22,7 @@ public static class ModelChoice
     /// <summary>The model chosen and, in a few words, why.</summary>
     public sealed record Choice(string Model, string Why)
     {
+        /// <summary>Whether sonnet.</summary>
         public bool IsSonnet => Model == Sonnet;
     }
 

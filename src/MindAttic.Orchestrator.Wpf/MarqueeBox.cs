@@ -36,7 +36,9 @@ public static class MarqueeBox
     public static readonly DependencyProperty EnabledProperty = DependencyProperty.RegisterAttached(
         "Enabled", typeof(bool), typeof(MarqueeBox), new PropertyMetadata(false, OnEnabledChanged));
 
+    /// <summary>Sets the enabled.</summary>
     public static void SetEnabled(Canvas canvas, bool value) => canvas.SetValue(EnabledProperty, value);
+    /// <summary>Gets the enabled.</summary>
     public static bool GetEnabled(Canvas canvas) => (bool)canvas.GetValue(EnabledProperty);
 
     private static void OnEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

@@ -9,8 +9,10 @@ namespace MindAttic.Orchestrator.Activity;
 /// context gate's activity records share.</summary>
 public static class ToolCallText
 {
+    /// <summary>The max length constant.</summary>
     public const int MaxLength = 70;
 
+    /// <summary>Describes.</summary>
     public static string Describe(string name, string inputJson)
     {
         JsonElement input = default;

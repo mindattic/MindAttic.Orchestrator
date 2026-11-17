@@ -27,6 +27,7 @@ public sealed class ReminderSender(JsonStore store, PsstClient psst, Action<LogE
     /// daemon's tick for up to <see cref="PsstClient.SendTimeout"/>, and the gates go stale past a few minutes of it.</summary>
     internal static readonly TimeSpan AfterTimeout = TimeSpan.FromMinutes(10);
 
+    /// <summary>Tick.</summary>
     public void Tick(DateTime nowUtc)
     {
         if (!store.TryLoad<List<Reminder>>(ReminderBook.Name, out var all))

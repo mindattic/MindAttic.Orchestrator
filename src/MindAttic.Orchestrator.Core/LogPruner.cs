@@ -9,10 +9,12 @@ namespace MindAttic.Orchestrator;
 /// </summary>
 public sealed class LogPruner
 {
+    /// <summary>The every.</summary>
     public static readonly TimeSpan Every = TimeSpan.FromHours(1);
 
     private DateTime? lastUtc;
 
+    /// <summary>Runs the if due.</summary>
     public void RunIfDue(OrchestratorSettings s, Action<string> say) => RunIfDue(s, say, DateTime.UtcNow, Term.TermSessions.DefaultDirectory);
 
     internal void RunIfDue(OrchestratorSettings s, Action<string> say, DateTime now, string termsDir)

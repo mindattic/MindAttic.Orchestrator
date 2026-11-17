@@ -18,6 +18,7 @@ public sealed record OrchestratorOptions
         return read;
     }
 
+    /// <summary>The workspace root.</summary>
     public string WorkspaceRoot { get; init; } = MindAttic.Tickets.Workspace.DefaultRoot;
 
     /// <summary>Claude Code's per-project transcript store (one folder per working directory).</summary>

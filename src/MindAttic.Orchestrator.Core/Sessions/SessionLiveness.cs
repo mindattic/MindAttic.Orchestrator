@@ -28,6 +28,7 @@ public sealed class SessionLiveness(
     Func<string, string?>? referencedBy = null,
     Func<string, string?>? usedBy = null)
 {
+    /// <summary>Running.</summary>
     public SessionVerdict Running(string sessionId) => running(sessionId);
 
     /// <summary>What still points into the session's folder (a handoff, a running session's transcript); null when nothing.</summary>

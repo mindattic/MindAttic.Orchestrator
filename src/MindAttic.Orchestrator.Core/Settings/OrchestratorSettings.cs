@@ -67,6 +67,7 @@ public sealed record OrchestratorSettings
     /// <see cref="MaxWeeklyReservePercent"/>; applies to each login on its own.</summary>
     public int WeeklyReservePercent { get; init; } = DefaultWeeklyReservePercent;
 
+    /// <summary>The max weekly reserve percent constant.</summary>
     public const int DefaultWeeklyReservePercent = 10, MaxWeeklyReservePercent = 50;
 
     /// <summary>The percent of an account's week at which its CLIs stop: 100 minus <see cref="WeeklyReservePercent"/>
@@ -75,6 +76,7 @@ public sealed record OrchestratorSettings
     [JsonIgnore]
     public int WeeklyStopPercent => WeeklyStopFor(WeeklyReservePercent);
 
+    /// <summary>Weekly stop for.</summary>
     public static int WeeklyStopFor(int reservePercent) => 100 - Math.Clamp(reservePercent, 0, MaxWeeklyReservePercent);
 
     /// <summary>Weekly-aware pacing (M.ORCH-T666), per login: each 5-hour window still aims at <see cref="PaceTargetPercent"/>, and
@@ -92,6 +94,7 @@ public sealed record OrchestratorSettings
     /// <summary>The week's percent from which weekly-aware pacing takes the week in (M.ORCH-T680); below the weekly target.</summary>
     public int WeeklyAwareLinePercent { get; init; } = DefaultWeeklyAwareLinePercent;
 
+    /// <summary>The default weekly aware line percent constant.</summary>
     public const int DefaultWeeklyAwareLinePercent = 75;
 
     /// <summary>Weekly-aware pacing's numbers, the one place they're read from (M.ORCH-T669), each from the settings
@@ -118,8 +121,10 @@ public sealed record OrchestratorSettings
     /// <summary>The front-loaded curve's exponent: under 1 bends it up early (0.55 by default); 1 is a straight line.</summary>
     public double PaceCurveK { get; init; } = 0.55;
 
+    /// <summary>The linear profile constant.</summary>
     public const string LinearProfile = "linear", FrontLoadedProfile = "front-loaded";
 
+    /// <summary>The pace profiles.</summary>
     public static IReadOnlyList<string> PaceProfiles { get; } = [LinearProfile, FrontLoadedProfile];
 
     /// <summary>A typed profile ("Front-Loaded", "frontloaded", "front") as saved, or null when it's neither.</summary>
@@ -153,6 +158,7 @@ public sealed record OrchestratorSettings
     public List<string> ExemptCommands { get => exemptCommands; init => exemptCommands = RenameRetired(value); }
     private readonly List<string> exemptCommands = [.. DefaultExemptCommands];
 
+    /// <summary>The default exempt commands.</summary>
     public static IReadOnlyList<string> DefaultExemptCommands { get; } = ["/pacing", "/deploy", "/run", "/allocate", "/commit", "/quicksave", "/quickload"];
 
     private static List<string> RenameRetired(List<string>? commands) =>
@@ -185,12 +191,14 @@ public sealed record OrchestratorSettings
     /// "Off" records nothing.</summary>
     public string EditClaims { get; init; } = DefaultEditClaims;
 
+    /// <summary>The default edit claims constant.</summary>
     public const string DefaultEditClaims = "Warn";
 
     /// <summary>Minutes a file's edit claim stands after its agent's last edit of it (M.ORCH-T1193), so a crashed agent's claim lapses;
     /// a commit naming the file, the subagent's stop or its CLI's exit releases it sooner.</summary>
     public double EditClaimMinutes { get; init; } = DefaultEditClaimMinutes;
 
+    /// <summary>The default edit claim minutes constant.</summary>
     public const double DefaultEditClaimMinutes = 30;
 
     /// <summary>Context fill at which a session is wrapped up and cycled; high enough to use most of the
@@ -208,6 +216,7 @@ public sealed record OrchestratorSettings
     /// goes back in the queue as stale. 0 keeps assignments until the ticket closes or is released.</summary>
     public int StaleAfterHours { get; init; } = 12;
 
+    /// <summary>The default provider.</summary>
     public string DefaultProvider { get; init; } = "Claude";
 
     /// <summary>Where the tools' own clean worktrees of origin/main live (MainlineTests' main-tests, deploy, /test's verify-main),
@@ -244,6 +253,7 @@ public sealed record OrchestratorSettings
     /// <summary>Sessions one repo may run at once (all in its own checkout, M.ORCH-T1122), unless <see cref="RepoMaxSessions"/> says otherwise.</summary>
     public int MaxSessionsPerRepo { get; init; } = 2;
 
+    /// <summary>The repo max sessions.</summary>
     public Dictionary<string, int> RepoMaxSessions { get; init; } = [];
 
     /// <summary><paramref name="repo"/>'s entry in a per-repo map, its name matched ignoring case as everywhere else repos are
@@ -273,6 +283,7 @@ public sealed record OrchestratorSettings
     /// it spends (uncached), so busy tabs blink at their own rate. <see cref="MinTabBlinkTokens"/> to <see cref="MaxTabBlinkTokens"/>.</summary>
     public int TabBlinkTokens { get; init; } = DefaultTabBlinkTokens;
 
+    /// <summary>The min tab blink tokens constant.</summary>
     public const int DefaultTabBlinkTokens = 1000, MinTabBlinkTokens = 1, MaxTabBlinkTokens = 10_000_000;
 
     /// <summary>The dashboard's tab trailing text (M.ORCH-T1255): symbols, "Σ: 15% | λ: 29%" (the default, M.ORCH-T1251), or
@@ -317,6 +328,7 @@ public sealed record OrchestratorSettings
     /// <see cref="PsstAlertTo"/> stands for the override itself; see <see cref="OrchestratorVaultSettings.WithPsstAlertTo"/>.</summary>
     public string? PsstAlertToOverride { get; init; }
 
+    /// <summary>The default psst alert to constant.</summary>
     public const string DefaultPsstAlertTo = "ryan";
 
     /// <summary>The API key person's starting credit in US dollars (M.ORCH-T906): what its burndown starts from, entered by you with
@@ -333,6 +345,7 @@ public sealed record OrchestratorSettings
     /// <see cref="ApiCreditUsd"/> is then Anthropic's own figures up to the last read and the list-price estimate since.</summary>
     public double ApiCostReadMinutes { get; init; } = DefaultApiCostReadMinutes;
 
+    /// <summary>The default api cost read minutes constant.</summary>
     public const double DefaultApiCostReadMinutes = 15;
 
     /// <summary>The dashboard's theme (M.ORCH-T678): "Light" or "Dark", as its sun/moon switch saved it. Null (never switched),
@@ -343,6 +356,7 @@ public sealed record OrchestratorSettings
     /// the dashboard (Fonts/). Every window, menu and tooltip follows it, live; the terminal panes keep their monospace font.</summary>
     public string Font { get; init; } = DefaultFont;
 
+    /// <summary>The default font constant.</summary>
     public const string DefaultFont = "Segoe UI";
 
     /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so allocate
@@ -396,6 +410,7 @@ public sealed record OrchestratorSettings
     /// that quiet go. 0 turns it off.</summary>
     public double TempRetentionHours { get; init; } = DefaultTempRetentionHours;
 
+    /// <summary>The default temp retention hours constant.</summary>
     public const double DefaultTempRetentionHours = 48;
 
     /// <summary>Seconds the background daemon waits before starting its loop again after it died (M.ORCH-T1615); doubles with each
@@ -585,6 +600,7 @@ public sealed record OrchestratorSettings
     /// 24 hours, M.ORCH-T1177): each holds its native renderer (~50 MB) until then.</summary>
     public double EndedTabMinutes { get; init; } = DefaultEndedTabMinutes;
 
+    /// <summary>The default ended tab minutes constant.</summary>
     public const double DefaultEndedTabMinutes = 60;
 
     /// <summary>Minutes a TermHost running in an orch-test-* temp folder may live before the daemon ends it (M.ORCH-T1623): a test that
@@ -592,53 +608,62 @@ public sealed record OrchestratorSettings
     /// at once; a host in any other folder is never touched.</summary>
     public double TestTermHostMaxMinutes { get; init; } = DefaultTestTermHostMaxMinutes;
 
+    /// <summary>The default test term host max minutes constant.</summary>
     public const double DefaultTestTermHostMaxMinutes = 60;
 
     /// <summary>Seconds after an Enter typed in a CLI tab that a status read still saying idle ends its presumed busy (M.ORCH-T1413):
     /// the context gate marks a submitted prompt busy within a hook's first moments, so a read this much later that says idle is real.</summary>
     public double PresumeBusyConfirmSeconds { get; init; } = DefaultPresumeBusyConfirmSeconds;
 
+    /// <summary>The default presume busy confirm seconds constant.</summary>
     public const double DefaultPresumeBusyConfirmSeconds = 8;
 
     /// <summary>The grace period (M.ORCH-T1413): the longest, in seconds, an Enter typed in a CLI tab keeps it and its person's tab
     /// presumed busy with no status read at all.</summary>
     public double PresumeBusyMaxSeconds { get; init; } = DefaultPresumeBusyMaxSeconds;
 
+    /// <summary>The default presume busy max seconds constant.</summary>
     public const double DefaultPresumeBusyMaxSeconds = 60;
 
     /// <summary>Minutes an idle CLI may go unseen before its Team Wall activity line ages to stale and is drawn dimmed (M.ORCH-T965);
     /// 0 never ages one. A CLI waiting on you never ages.</summary>
     public double ActivityStaleMinutes { get; init; } = DefaultActivityStaleMinutes;
 
+    /// <summary>The default activity stale minutes constant.</summary>
     public const double DefaultActivityStaleMinutes = 20;
 
     /// <summary>The least seconds between two activity bus messages for one CLI session (M.ORCH-T962): a busy CLI's newer pictures
     /// inside the gap are held and the latest goes out when it passes. 0 sends each at once.</summary>
     public double ActivityCoalesceSeconds { get; init; } = DefaultActivityCoalesceSeconds;
 
+    /// <summary>The default activity coalesce seconds constant.</summary>
     public const double DefaultActivityCoalesceSeconds = 0.5;
 
     /// <summary>Seconds between the daemon's slow rescans of the activity records folder (M.ORCH-T962): a change its file watcher
     /// missed is read then, and silent sessions are checked for an end.</summary>
     public double ActivityRescanSeconds { get; init; } = DefaultActivityRescanSeconds;
 
+    /// <summary>The default activity rescan seconds constant.</summary>
     public const double DefaultActivityRescanSeconds = 30;
 
     /// <summary>Minutes a CLI session may send no activity, with its process gone, before the bus says it ended and stops keeping it
     /// (M.ORCH-T962).</summary>
     public double ActivityEndedMinutes { get; init; } = DefaultActivityEndedMinutes;
 
+    /// <summary>The default activity ended minutes constant.</summary>
     public const double DefaultActivityEndedMinutes = 10;
 
     /// <summary>How many more times a main-line suite's build is tried when it fails copying a file another process held (MSB3027/MSB3021),
     /// ending that worktree's own leftover test processes first (M.ORCH-T1632; was MainlineTests.FileLockRetries).</summary>
     public double MainTestsLockRetries { get; init; } = DefaultMainTestsLockRetries;
 
+    /// <summary>The default main tests lock retries constant.</summary>
     public const double DefaultMainTestsLockRetries = 2;
 
     /// <summary>Seconds waited before each such retry (M.ORCH-T1632; was a fixed 30).</summary>
     public double MainTestsLockRetrySeconds { get; init; } = DefaultMainTestsLockRetrySeconds;
 
+    /// <summary>The default main tests lock retry seconds constant.</summary>
     public const double DefaultMainTestsLockRetrySeconds = 30;
 
     /// <summary>Off by default, since it commits setup-host.ps1 and texts the admin (M.ORCH-T1488): once a day at
@@ -651,6 +676,7 @@ public sealed record OrchestratorSettings
     /// its next tick that day.</summary>
     public string SqlFreshnessCheckAt { get; init; } = DefaultSqlFreshnessCheckAt;
 
+    /// <summary>The default sql freshness check at constant.</summary>
     public const string DefaultSqlFreshnessCheckAt = "04:00";
 
     /// <summary>Off by default (M.ORCH-T1501): on the remote host, build each <c>origin/work/*</c> branch in a worktree of its own
@@ -661,16 +687,19 @@ public sealed record OrchestratorSettings
     /// <summary>Work-branch builds at once across every repo (M.ORCH-T1501): the host's extra RAM decides it.</summary>
     public double BranchBuildsMaxRunning { get; init; } = DefaultBranchBuildsMaxRunning;
 
+    /// <summary>The default branch builds max running constant.</summary>
     public const double DefaultBranchBuildsMaxRunning = 2;
 
     /// <summary>Minutes one work-branch build may run before it's stopped and recorded failed (M.ORCH-T1501).</summary>
     public double BranchBuildsTimeoutMinutes { get; init; } = DefaultBranchBuildsTimeoutMinutes;
 
+    /// <summary>The default branch builds timeout minutes constant.</summary>
     public const double DefaultBranchBuildsTimeoutMinutes = 30;
 
     /// <summary>Seconds between the daemon's looks at the work branches for heads that moved (M.ORCH-T1501).</summary>
     public double BranchBuildsCheckSeconds { get; init; } = DefaultBranchBuildsCheckSeconds;
 
+    /// <summary>The default branch builds check seconds constant.</summary>
     public const double DefaultBranchBuildsCheckSeconds = 60;
 
     /// <summary>The max server memory (MB) the daemon keeps localhost's SQL Server at (M.ORCH-T1621): 0 (the default) leaves SQL
@@ -678,6 +707,7 @@ public sealed record OrchestratorSettings
     /// lower, since 1024 MB crashed the instance (error 17300) and only an admin restart in minimal mode recovered it.</summary>
     public double SqlServerMaxMemoryMb { get; init; } = DefaultSqlServerMaxMemoryMb;
 
+    /// <summary>The default sql server max memory mb constant.</summary>
     public const double DefaultSqlServerMaxMemoryMb = 0;
 
     /// <summary>The least <see cref="SqlServerMaxMemoryMb"/> ever applied: a lower value set is raised to this.</summary>
@@ -725,6 +755,7 @@ public sealed record OrchestratorSettings
     /// landing. Wildcards (<c>*</c>, <c>?</c>) match against the path as git prints it, folders included.</summary>
     public List<string> RiskyFiles { get; init; } = [.. DefaultRiskyFiles];
 
+    /// <summary>The default risky files.</summary>
     public static IReadOnlyList<string> DefaultRiskyFiles { get; } =
     [
         // The gates: the hooks every CLI runs, and what writes them.

@@ -16,9 +16,13 @@ public static class ApiPricing
     /// <summary>(input, output, cache write, cache read) dollars per million tokens.</summary>
     public sealed record Rates(double Input, double Output, double CacheWrite, double CacheRead);
 
+    /// <summary>The opus.</summary>
     public static readonly Rates Opus = new(4.00, 20.00, 5.00, 0.20);
+    /// <summary>The sonnet.</summary>
     public static readonly Rates Sonnet = new(2.00, 10.00, 2.50, 0.20);
+    /// <summary>The haiku.</summary>
     public static readonly Rates Haiku = new(0.10, 0.50, 0.125, 0.01);
+    /// <summary>The fable.</summary>
     public static readonly Rates Fable = new(10.00, 50.00, 12.50, 0.25);
 
     /// <summary>The rates for <paramref name="model"/> (a model id or family); an unknown one is priced as Opus, the default
@@ -93,11 +97,13 @@ public sealed record ApiSpend(double? CreditUsd, DateTime? SinceUtc, double Spen
 /// </summary>
 public sealed class ApiSpendLedger(string path)
 {
+    /// <summary>The file name constant.</summary>
     public const string FileName = "api-spend.json";
 
     /// <summary>How long an hour's spend is kept with no credit date to bound it.</summary>
     public static readonly TimeSpan Keep = TimeSpan.FromDays(120);
 
+    /// <summary>The path.</summary>
     public string Path { get; } = path;
 
     /// <summary>Session → hour (Unix seconds at its start) → dollars.</summary>

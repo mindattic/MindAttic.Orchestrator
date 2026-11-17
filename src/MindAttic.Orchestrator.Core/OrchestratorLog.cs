@@ -17,6 +17,7 @@ namespace MindAttic.Orchestrator;
 /// </summary>
 public static class OrchestratorLog
 {
+    /// <summary>The application constant.</summary>
     public const string Application = "MindAttic.Orchestrator";
 
     /// <summary>Phase 1's rolled-file directory — kept only so <see cref="Start"/> can migrate any
@@ -28,6 +29,7 @@ public static class OrchestratorLog
     /// <summary>The log database every orchestrator process writes (open it with MindAttic.Log.Reader).</summary>
     public static string DbPath => VaultPaths.LoggingDbPath(Application);
 
+    /// <summary>Starts.</summary>
     public static void Start(string component)
     {
         var dbPath = DbPath;
@@ -82,5 +84,6 @@ public static class OrchestratorLog
         catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { return 0; }
     }
 
+    /// <summary>Stops.</summary>
     public static void Stop() => Serilog.Log.CloseAndFlush();
 }

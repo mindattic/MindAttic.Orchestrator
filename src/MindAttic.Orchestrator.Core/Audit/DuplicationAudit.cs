@@ -11,8 +11,11 @@ namespace MindAttic.Orchestrator.Audit;
 /// </summary>
 public static class DuplicationAudit
 {
+    /// <summary>The window constant.</summary>
     public const int Window = 6;
+    /// <summary>The min shared windows constant.</summary>
     public const int MinSharedWindows = 8;
+    /// <summary>The min similarity constant.</summary>
     public const double MinSimilarity = 0.5;
     private const int MaxFileBytes = 400 * 1024;
     private const int MaxFilesPerWindow = 12;
@@ -31,6 +34,7 @@ public static class DuplicationAudit
 
     private sealed record Source(int Id, string Repo, string Path, int Lines, ulong[] Windows, ulong Whole);
 
+    /// <summary>Runs.</summary>
     public static (IReadOnlyList<DuplicateGroup> Groups, int FilesScanned) Run(IReadOnlyList<(string Name, string Path)> repos, CancellationToken ct = default)
     {
         var sources = new List<Source>();

@@ -20,6 +20,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
 {
     /// <summary>The font EasyTerminalControl set with its theme.</summary>
     public const string FontFamilyName = "Cascadia Code";
+    /// <summary>The font size points constant.</summary>
     public const short FontSizePoints = 12;
 
     private string? pipeName;
@@ -33,6 +34,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
     private Size? letterboxedAt;
     private int sizeGeneration;
 
+    /// <summary>Creates the relay terminal.</summary>
     public RelayTerminal(TerminalTheme theme)
     {
         Theme = theme;
@@ -84,6 +86,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
         };
     }
 
+    /// <summary>The theme.</summary>
     public TerminalTheme Theme { get; }
 
     /// <summary>The renderer: its selection is what copy and cut take (T866/T867).</summary>

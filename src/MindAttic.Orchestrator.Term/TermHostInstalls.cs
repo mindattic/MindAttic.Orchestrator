@@ -13,13 +13,17 @@ namespace MindAttic.Orchestrator.Term;
 /// </summary>
 public static class TermHostInstalls
 {
+    /// <summary>The folder name constant.</summary>
     public const string FolderName = "TermHost";
+    /// <summary>The exe name constant.</summary>
     public const string ExeName = "MindAttic.Orchestrator.TermHost.exe";
+    /// <summary>The stamp format constant.</summary>
     public const string StampFormat = "yyyyMMddHHmmss";
 
     /// <summary>One installed version folder.</summary>
     public sealed record Installed(string Name, Version Version, string Stamp, string Directory, string ExeFile = ExeName)
     {
+        /// <summary>The exe.</summary>
         public string Exe => Path.Combine(Directory, ExeFile);
     }
 
@@ -190,18 +194,24 @@ public static class TermHostInstalls
 /// </summary>
 public static class GatewayInstalls
 {
+    /// <summary>The folder name constant.</summary>
     public const string FolderName = "Gateway";
+    /// <summary>The exe name constant.</summary>
     public const string ExeName = TermGateway.ExeName;
 
+    /// <summary>Root.</summary>
     public static string Root(string installDir) => Path.Combine(installDir, FolderName);
 
+    /// <summary>Lists.</summary>
     public static IReadOnlyList<TermHostInstalls.Installed> List(string root) => TermHostInstalls.List(root, ExeName);
 
+    /// <summary>Newest.</summary>
     public static TermHostInstalls.Installed? Newest(string root) => TermHostInstalls.Newest(root, ExeName);
 
     /// <summary>The newest Gateway exe under the install dir, or null.</summary>
     public static string? ResolveExe(string installDir) => Newest(Root(installDir))?.Exe;
 
+    /// <summary>Cleanup.</summary>
     public static IReadOnlyList<string> Cleanup(string root) => TermHostInstalls.Cleanup(root, ExeName);
 }
 
@@ -212,17 +222,23 @@ public static class GatewayInstalls
 /// </summary>
 public static class TermViewerInstalls
 {
+    /// <summary>The folder name constant.</summary>
     public const string FolderName = "TermViewer";
+    /// <summary>The exe name constant.</summary>
     public const string ExeName = "MindAttic.Orchestrator.TermViewer.exe";
 
+    /// <summary>Root.</summary>
     public static string Root(string installDir) => Path.Combine(installDir, FolderName);
 
+    /// <summary>Lists.</summary>
     public static IReadOnlyList<TermHostInstalls.Installed> List(string root) => TermHostInstalls.List(root, ExeName);
 
+    /// <summary>Newest.</summary>
     public static TermHostInstalls.Installed? Newest(string root) => TermHostInstalls.Newest(root, ExeName);
 
     /// <summary>The newest TermViewer exe under the install dir, or null.</summary>
     public static string? ResolveExe(string installDir) => Newest(Root(installDir))?.Exe;
 
+    /// <summary>Cleanup.</summary>
     public static IReadOnlyList<string> Cleanup(string root) => TermHostInstalls.Cleanup(root, ExeName);
 }

@@ -19,6 +19,7 @@ public static partial class ConventionAudit
     /// <summary>Repos lacking a file count as "missing" when this share of agent-enabled repos have it.</summary>
     public const double MissingThreshold = 0.6;
 
+    /// <summary>Runs.</summary>
     public static (IReadOnlyList<DriftFinding> Drift, IReadOnlyList<MissingFinding> Missing) Run(IReadOnlyList<(string Name, string Path)> repos)
     {
         var byKey = new Dictionary<string, List<(string Repo, string RepoPath, string File, string Normalized)>>(StringComparer.OrdinalIgnoreCase);

@@ -62,12 +62,19 @@ public sealed record AccountRow
 {
     /// <summary>The account key: <c>accountUuid/organizationUuid</c>, as <see cref="ClaudeAccount"/> keys its spans.</summary>
     public string Account { get; init; } = "";
+    /// <summary>The email.</summary>
     public string? Email { get; init; }
+    /// <summary>The org.</summary>
     public string? Org { get; init; }
+    /// <summary>The plan.</summary>
     public string? Plan { get; init; }
+    /// <summary>The week percent.</summary>
     public double? WeekPercent { get; init; }
+    /// <summary>The week reset utc.</summary>
     public DateTime? WeekResetUtc { get; init; }
+    /// <summary>The five hour percent.</summary>
     public double? FiveHourPercent { get; init; }
+    /// <summary>The five hour reset utc.</summary>
     public DateTime? FiveHourResetUtc { get; init; }
     /// <summary>When the percents were read from Claude's meter; null while only the resets are known.</summary>
     public DateTime? ReadUtc { get; init; }
@@ -80,6 +87,7 @@ public sealed record AccountRow
     /// <summary>The weekly percent used now: 0 once its reset has passed, null when it was never read.</summary>
     public double? WeekUsedAt(DateTime nowUtc) => WeekResetUtc is { } r && r <= nowUtc ? 0 : WeekPercent;
 
+    /// <summary>Week left at.</summary>
     public double? WeekLeftAt(DateTime nowUtc) => WeekUsedAt(nowUtc) is { } used ? Math.Max(0, 100 - used) : null;
 
     /// <summary>The next weekly reset: the known one, rolled on a week at a time once it has passed.</summary>

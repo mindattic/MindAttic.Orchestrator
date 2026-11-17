@@ -10,15 +10,24 @@ namespace MindAttic.Orchestrator.Reminders;
 /// </summary>
 public sealed record Reminder
 {
+    /// <summary>The id.</summary>
     public string Id { get; init; } = "";
+    /// <summary>The text.</summary>
     public string Text { get; init; } = "";
+    /// <summary>The due utc.</summary>
     public DateTime DueUtc { get; init; }
+    /// <summary>The to.</summary>
     public string? To { get; init; }
+    /// <summary>The created utc.</summary>
     public DateTime CreatedUtc { get; init; }
+    /// <summary>The sent utc.</summary>
     public DateTime? SentUtc { get; init; }
+    /// <summary>The failures.</summary>
     public int Failures { get; init; }
+    /// <summary>The last error.</summary>
     public string? LastError { get; init; }
 
+    /// <summary>The pending.</summary>
     public bool Pending => SentUtc is null;
 
     /// <summary>Who it goes to, as said back: the contact or number, or "you" for the owner.</summary>
@@ -35,11 +44,13 @@ public sealed record Reminder
 /// </summary>
 public static class ReminderBook
 {
+    /// <summary>The name constant.</summary>
     public const string Name = "reminders";
 
     /// <summary>How long a sent reminder stays in the file before the daemon drops it.</summary>
     public static readonly TimeSpan KeepSent = TimeSpan.FromDays(30);
 
+    /// <summary>Path of.</summary>
     public static string PathOf(JsonStore store) => store.Describe(Name);
 
     /// <summary>Saves a new reminder (under the store's lock, so one added while the daemon marks another sent isn't lost).</summary>

@@ -32,6 +32,7 @@ public sealed partial class MainViewModel
     /// <summary>This tab's per-CLI login (its email); null on the global login's tab.</summary>
     public string? ScopeEmail => tab.Email;
 
+    /// <summary>Whether global tab.</summary>
     public bool IsGlobalTab => root is null;
 
     /// <summary>What fit on no person's page (M.ORCH-T763), now shown on the global login's tab instead of its own
@@ -39,10 +40,13 @@ public sealed partial class MainViewModel
     /// workspace's problems.</summary>
     public bool ShowsWorkspaceExtras => IsGlobalTab;
 
+    /// <summary>The shows reminders.</summary>
     public bool ShowsReminders => IsGlobalTab && HasReminders;
 
+    /// <summary>The shows warnings section.</summary>
     public bool ShowsWarningsSection => IsGlobalTab && HasWarnings;
 
+    /// <summary>The shows hold.</summary>
     public bool ShowsHold => IsGlobalTab && HasHold;
 
     /// <summary>The login's name ("Jordan", "Ryan (fallback)").</summary>
@@ -173,6 +177,7 @@ public sealed partial class MainViewModel
 
     /// <summary>Ctrl+Tab and Ctrl+Shift+Tab: the next and the previous login's tab in the shown org.</summary>
     public ICommand NextTabCommand => nextTabCommand ??= new RelayCommand(() => Root.Step(+1));
+    /// <summary>The previous tab command.</summary>
     public ICommand PreviousTabCommand => previousTabCommand ??= new RelayCommand(() => Root.Step(-1));
 
     private void Select(MainViewModel? next)

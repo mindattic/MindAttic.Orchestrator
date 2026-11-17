@@ -70,6 +70,7 @@ public sealed class OpenTicketSource
     /// <summary>Who each ticket is assigned to and what's reserved for it, as the ticket database's <c>ticket_work</c> holds them.</summary>
     public sealed record WorkState(IReadOnlyDictionary<string, string> Assignees, IReadOnlyDictionary<string, long> Reservations)
     {
+        /// <summary>The empty.</summary>
         public static readonly WorkState Empty = new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase));
 
@@ -90,6 +91,7 @@ public sealed class OpenTicketSource
     /// stand on: their open tickets are unknown, not empty (M.ORCH-T727).</summary>
     public IReadOnlySet<string> Unknown => unknown;
 
+    /// <summary>Opens the for.</summary>
     public IReadOnlyList<Ticket> OpenFor(Repo repo, ICollection<string> warnings)
     {
         unknown.Remove(repo.Name);

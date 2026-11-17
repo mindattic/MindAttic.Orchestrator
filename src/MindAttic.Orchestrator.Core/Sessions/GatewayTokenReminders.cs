@@ -12,6 +12,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class GatewayTokenReminders
 {
+    /// <summary>The days before.</summary>
     public static readonly int[] DaysBefore = [30, 14, 7, 5, 3, 2, 1];
 
     /// <summary>One reminder to schedule: its Psst name, local run time and message.</summary>

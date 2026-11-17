@@ -5,6 +5,7 @@ namespace MindAttic.Orchestrator;
 /// <summary>How a child process ended: its exit code, its stdout and stderr, and whether it was killed for running past its timeout.</summary>
 public sealed record ProcessResult(int ExitCode, string Output, string Error, bool TimedOut)
 {
+    /// <summary>The killed.</summary>
     public static ProcessResult Killed { get; } = new(-1, "", "", TimedOut: true);
 
     /// <summary>The process itself exited (its <see cref="ExitCode"/> is real); with <see cref="TimedOut"/> it's only its output
@@ -23,12 +24,14 @@ public interface IProcessRunner
 /// <summary>The real runner: no window, output captured, the process tree killed at the timeout without waiting on its pipes.</summary>
 public sealed class ProcessRunner : IProcessRunner
 {
+    /// <summary>The default.</summary>
     public static ProcessRunner Default { get; } = new();
 
     /// <summary>How long the pipes are waited on once the process exited: a held pipe won't come free by waiting out the rest of a
     /// long timeout (a test run's, say), and a finished pipe drains at once (bughunt 2026-10-27).</summary>
     public static readonly TimeSpan PipeGrace = TimeSpan.FromSeconds(30);
 
+    /// <summary>Runs.</summary>
     public ProcessResult Run(string file, IReadOnlyList<string> args, TimeSpan timeout)
     {
         var psi = new ProcessStartInfo(file) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };

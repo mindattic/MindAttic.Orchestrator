@@ -16,10 +16,15 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// at once and none is left in the other theme's colour. Outside the app (tests) it is the library theme's own, frozen.</para></summary>
 public static class Palette
 {
+    /// <summary>The working.</summary>
     public static Brush Working => Theme("MaGood");
+    /// <summary>The waiting.</summary>
     public static Brush Waiting => Theme("MaWarn");
+    /// <summary>The tickets.</summary>
     public static Brush Tickets => Theme("MaLink");
+    /// <summary>The quiet.</summary>
     public static Brush Quiet => Theme("MaMuted");
+    /// <summary>The over.</summary>
     public static Brush Over => Theme("MaBad");
 
     /// <summary>The theme's own body-text colour (the emergency billing toggle's key glyph while it's off, M.ORCH-T775).</summary>
@@ -32,6 +37,7 @@ public static class Palette
     /// <summary>The theme's MaAccent (the chart's target line).</summary>
     public static Brush Accent => Theme("MaAccent");
 
+    /// <summary>For.</summary>
     public static Brush For(RepoState state, bool hasTickets) => state switch
     {
         RepoState.Working => Working,

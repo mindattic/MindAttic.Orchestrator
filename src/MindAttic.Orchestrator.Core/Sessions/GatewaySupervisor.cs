@@ -14,6 +14,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
 {
+    /// <summary>The process name constant.</summary>
     public const string ProcessName = "MindAttic.Orchestrator.Gateway";
     internal static readonly TimeSpan FirstRetry = TimeSpan.FromMinutes(1), MaxRetry = TimeSpan.FromMinutes(30), Healthy = TimeSpan.FromMinutes(10);
 
@@ -38,6 +39,7 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
     private int failures;
     private string? lastSaid;
 
+    /// <summary>Tick.</summary>
     public void Tick(GatewaySettings settings, DateTime nowUtc)
     {
         var running = TermGateway.Running(StatusDirectory);

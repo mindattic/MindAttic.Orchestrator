@@ -6,9 +6,13 @@ namespace MindAttic.Orchestrator.Budget;
 /// access is cut off. Set only with <c>orchestrator org limit &lt;who&gt; --weekly &lt;pct&gt; --5h &lt;pct&gt;</c>.</summary>
 public sealed class UsageCutoff
 {
+    /// <summary>Gets or sets the email.</summary>
     public string Email { get; set; } = "";
+    /// <summary>Gets or sets the name.</summary>
     public string Name { get; set; } = "";
+    /// <summary>Gets or sets the weekly percent.</summary>
     public int WeeklyPercent { get; set; } = UsageCutoffs.DefaultWeeklyPercent;
+    /// <summary>Gets or sets the five hour percent.</summary>
     public int FiveHourPercent { get; set; } = UsageCutoffs.DefaultFiveHourPercent;
     /// <summary>True when this member never set a weekly cutoff of their own (only a 5-hour one): <see cref="WeeklyPercent"/>
     /// is then a placeholder and the login follows the live global weekly target. Absent (false) on rows written before
@@ -23,6 +27,7 @@ public sealed class UsageCutoff
 /// equal to the defaults: an explicit cutoff is pinned, while a member without one follows the live global dial).</summary>
 public sealed class UsageCutoffBook
 {
+    /// <summary>Gets or sets the cutoffs.</summary>
     public List<UsageCutoff> Cutoffs { get; set; } = [];
 }
 
@@ -33,11 +38,14 @@ public sealed class UsageCutoffBook
 /// </summary>
 public static class UsageCutoffs
 {
+    /// <summary>The state name constant.</summary>
     public const string StateName = "usage-cutoffs";
+    /// <summary>The default weekly percent constant.</summary>
     public const int DefaultWeeklyPercent = 90, DefaultFiveHourPercent = 96;
     /// <summary>The lowest weekly cutoff (the weekly reserve's own limit, 50) and the lowest 5-hour one.</summary>
     public const int MinWeeklyPercent = 100 - OrchestratorSettings.MaxWeeklyReservePercent, MinFiveHourPercent = 1;
 
+    /// <summary>Loads the book.</summary>
     public static UsageCutoffBook LoadBook(JsonStore? store)
     {
         if (store is null) return new();
@@ -45,8 +53,10 @@ public static class UsageCutoffs
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return new(); }
     }
 
+    /// <summary>Loads.</summary>
     public static IReadOnlyList<UsageCutoff> Load(JsonStore? store) => LoadBook(store).Cutoffs;
 
+    /// <summary>Custom.</summary>
     public static UsageCutoff? Custom(IEnumerable<UsageCutoff>? cutoffs, string? email) =>
         email is not { Length: > 0 } ? null
         : cutoffs?.FirstOrDefault(c => string.Equals(c.Email, email, StringComparison.OrdinalIgnoreCase));
@@ -125,5 +135,6 @@ public static class UsageCutoffs
     public static string Text(UsageCutoff cutoff, int globalWeekly, int globalFiveHour) =>
         Text(cutoff.WeeklyFollowsGlobal ? globalWeekly : cutoff.WeeklyPercent, cutoff.FiveHourFollowsGlobal ? globalFiveHour : cutoff.FiveHourPercent);
 
+    /// <summary>Text.</summary>
     public static string Text(int weekly, int fiveHour) => $"{weekly}% of the week, {fiveHour}% of the 5-hour window";
 }

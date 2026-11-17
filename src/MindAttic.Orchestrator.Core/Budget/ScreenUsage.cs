@@ -305,6 +305,7 @@ public sealed class ScreenUsageScanner(Action<ReportedUsage> found, Func<DateTim
         found(reading);
     }
 
+    /// <summary>Releases.</summary>
     public void Dispose()
     {
         lock (gate)

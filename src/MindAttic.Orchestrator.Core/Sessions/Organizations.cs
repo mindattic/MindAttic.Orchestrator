@@ -9,11 +9,13 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public sealed record Organization(string Id, string Name, int Position = 0)
 {
+    /// <summary>The default id constant.</summary>
     public const string DefaultId = "default";
 
     /// <summary>The org every login belongs to until another names it; renamed by saving a row with its id.</summary>
     public static readonly Organization Default = new(DefaultId, "MindAttic", 0);
 
+    /// <summary>Whether default.</summary>
     public bool IsDefault => Id == DefaultId;
 
     /// <summary>An org's id from its name: lower case, words joined by '-' ("Sales East" is sales-east).</summary>
@@ -46,6 +48,7 @@ public sealed record OrgMember(string OrgId, string Person, string Login, string
         new[] { Providers.Claude, Providers.Codex, Providers.Gemini }.FirstOrDefault(p => p.Equals(provider?.Trim(), StringComparison.OrdinalIgnoreCase))
         ?? (string.IsNullOrWhiteSpace(provider) ? Providers.Claude : provider.Trim());
 
+    /// <summary>Whether claude.</summary>
     public bool IsClaude => Provider == Providers.Claude;
 }
 
@@ -57,6 +60,7 @@ public sealed class OrgDirectory
 {
     private readonly Dictionary<(string Provider, string Login), OrgMember> byLogin;
 
+    /// <summary>Creates the org directory.</summary>
     public OrgDirectory(IEnumerable<Organization> orgs, IEnumerable<OrgMember> members)
     {
         var list = orgs.Where(o => !o.IsDefault).ToList();
@@ -71,12 +75,15 @@ public sealed class OrgDirectory
     /// <summary>One org, the default, with nobody placed: the setup before any org is added.</summary>
     public static OrgDirectory Single { get; } = new([], []);
 
+    /// <summary>The orgs.</summary>
     public IReadOnlyList<Organization> Orgs { get; }
+    /// <summary>The members.</summary>
     public IReadOnlyList<OrgMember> Members { get; }
 
     /// <summary>Whether there's more than the default org, so the dashboard shows its org switcher.</summary>
     public bool HasOrgs => Orgs.Count > 1;
 
+    /// <summary>Finds.</summary>
     public Organization? Find(string? id) => Orgs.FirstOrDefault(o => o.Id == id);
 
     /// <summary>The org <paramref name="idOrName"/> names (M.ORCH-T755): its id, else its name, either in any case.</summary>
@@ -101,6 +108,7 @@ public sealed class OrgDirectory
     /// <summary>Whether <paramref name="tab"/> shows under <paramref name="orgId"/>: its person's org.</summary>
     public bool InOrg(string orgId, LoginTab tab) => OrgOfTab(tab) == orgId;
 
+    /// <summary>Members of.</summary>
     public IReadOnlyList<OrgMember> MembersOf(string orgId) => [.. Members.Where(m => m.OrgId == orgId)];
 
     /// <summary>The people in <paramref name="orgId"/>, by name, each with their logins.</summary>
@@ -122,6 +130,7 @@ public static class OrgSelection
     /// <summary>The store state the dashboard keeps its chosen org in.</summary>
     public const string ViewName = "dashboard-org";
 
+    /// <summary>The org type.</summary>
     public sealed class View { public string? Org { get; init; } }
 
     /// <summary>The org last chosen in the dashboard, or null when none was (or it can't be read now).</summary>
@@ -131,6 +140,7 @@ public static class OrgSelection
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return null; }
     }
 
+    /// <summary>Remember.</summary>
     public static void Remember(JsonStore store, string orgId) => store.Save(ViewName, new View { Org = orgId });
 
     /// <summary>The org a command works on: the one <paramref name="requested"/> names (id or name, any case), else the
@@ -156,6 +166,7 @@ public static class OrgSelection
 /// </summary>
 public static class OrgStore
 {
+    /// <summary>Loads the orgs.</summary>
     public static OrgDirectory LoadOrgs(this OrchestratorDb db)
     {
         using var connection = db.OpenData();

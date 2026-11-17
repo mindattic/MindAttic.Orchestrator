@@ -25,11 +25,13 @@ public enum MachineRoleKind
 /// </summary>
 public sealed record MachineRole
 {
+    /// <summary>The env var constant.</summary>
     public const string EnvVar = "MINDATTIC_ORCHESTRATOR_ROLE";
 
     /// <summary>The name a client gives the host's gateway on its Team Wall.</summary>
     public const string HostRemoteName = "host";
 
+    /// <summary>The role.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public MachineRoleKind Role { get; init; } = MachineRoleKind.Standalone;
 
@@ -42,12 +44,16 @@ public sealed record MachineRole
     /// <summary>When the role was last set (UTC).</summary>
     public DateTime? ChangedUtc { get; init; }
 
+    /// <summary>Whether client.</summary>
     public bool IsClient => Role == MachineRoleKind.Client;
+    /// <summary>Whether host.</summary>
     public bool IsHost => Role == MachineRoleKind.Host;
 
+    /// <summary>The directory.</summary>
     public static string Directory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", "MindAttic.Orchestrator");
 
+    /// <summary>The file path.</summary>
     public static string FilePath => Path.Combine(Directory, "machine.json");
 
     /// <summary>A client's own copy of the orchestrator database, off the git checkout.</summary>
@@ -99,6 +105,7 @@ public sealed record MachineRole
             _ => null,
         };
 
+    /// <summary>Saves.</summary>
     public void Save()
     {
         Save(FilePath);
@@ -115,6 +122,7 @@ public sealed record MachineRole
         File.Move(temp, path, overwrite: true);
     }
 
+    /// <summary>To string.</summary>
     public override string ToString() => Role switch
     {
         MachineRoleKind.Host => "host (runs the daemon, every CLI and the gateway)",

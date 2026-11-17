@@ -8,6 +8,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// the login it was on by then (it may have moved) and whether it was its person's chosen tab.</summary>
 public sealed record RestoreTab
 {
+    /// <summary>The request.</summary>
     public required PaneRequest Request { get; init; }
 
     /// <summary>The Claude session its CLI was in, when known: it reopens with <c>claude --resume</c> on it.</summary>
@@ -28,8 +29,10 @@ public sealed record RestoreTab
 /// changes, so a crash or a kill (which can run no code) still leaves what to reopen.</summary>
 public sealed record RestoreState
 {
+    /// <summary>The version.</summary>
     public int Version { get; init; } = 1;
 
+    /// <summary>The saved utc.</summary>
     public DateTime SavedUtc { get; init; }
 
     /// <summary>The dashboard exited on its own (closed): nothing to offer at the next start.</summary>
@@ -38,6 +41,7 @@ public sealed record RestoreState
     /// <summary>Why it was last written: "change", "exit", "crash", "upgrade"...</summary>
     public string? Reason { get; init; }
 
+    /// <summary>The pid.</summary>
     public int Pid { get; init; }
 
     /// <summary>The person shown: their login tab's key (the email, "" for the global login); null when unknown.</summary>
@@ -46,6 +50,7 @@ public sealed record RestoreState
     /// <summary>The tab on screen, an index into <see cref="Tabs"/>; null for none.</summary>
     public int? SelectedTab { get; init; }
 
+    /// <summary>The tabs.</summary>
     public IReadOnlyList<RestoreTab> Tabs { get; init; } = [];
 
     /// <summary>Where the dashboard's window was (M.ORCH-T1510), put back at the next start; null when unknown.</summary>
@@ -73,13 +78,16 @@ public sealed record RestoreWindow(double Left, double Top, double Width, double
 /// </summary>
 public sealed class SessionRestoreStore(string? directory = null)
 {
+    /// <summary>The file name constant.</summary>
     public const string FileName = "session.json";
 
     /// <summary>How many earlier runs' files are kept beside the current one.</summary>
     public const int Keep = 5;
 
+    /// <summary>The directory.</summary>
     public string Directory { get; } = directory ?? Path.Combine(Settings.JsonStore.LiveDirectory, "session-restore");
 
+    /// <summary>The current path.</summary>
     public string CurrentPath => Path.Combine(Directory, FileName);
 
     /// <summary>The <paramref name="n"/>th run back's file, <c>session.n.json</c>.</summary>
@@ -94,8 +102,10 @@ public sealed class SessionRestoreStore(string? directory = null)
 
     private readonly Lock gate = new();
 
+    /// <summary>Serialize.</summary>
     public static string Serialize(RestoreState state) => JsonSerializer.Serialize(state, Json);
 
+    /// <summary>Deserialize.</summary>
     public static RestoreState? Deserialize(string json) => JsonSerializer.Deserialize<RestoreState>(json, Json);
 
     /// <summary>Writes <paramref name="state"/> as the current file: to a temp file first, then moved over it, so a crash
@@ -125,6 +135,7 @@ public sealed class SessionRestoreStore(string? directory = null)
     /// <summary>The current file (the last run's, at a start before <see cref="Rotate"/>); null when there's none or it can't be read.</summary>
     public RestoreState? Load() => Load(CurrentPath);
 
+    /// <summary>Loads.</summary>
     public static RestoreState? Load(string path)
     {
         try { return File.Exists(path) ? Deserialize(File.ReadAllText(path)) : null; }

@@ -13,9 +13,11 @@ public sealed record ManifestRepo(string Name, string Remote);
 /// </summary>
 public sealed record WorkspaceManifest(string Root, IReadOnlyList<ManifestRepo> Repos)
 {
+    /// <summary>The relative path constant.</summary>
     public const string RelativePath = @"docs\workspace-repos.json";
 }
 
+/// <summary>The failed record.</summary>
 public sealed record BootstrapResult(int Cloned, int AlreadyThere, IReadOnlyList<string> Failed);
 
 /// <summary>
@@ -47,6 +49,7 @@ public static class WorkspaceBootstrap
         return new WorkspaceManifest(rootCode == 0 && rootUrl.Trim().Length > 0 ? rootUrl.Trim() : DefaultRootRemote, repos);
     }
 
+    /// <summary>Saves.</summary>
     public static void Save(WorkspaceManifest manifest, string root)
     {
         var path = Path.Combine(root, WorkspaceManifest.RelativePath);
@@ -54,6 +57,7 @@ public static class WorkspaceBootstrap
         File.WriteAllText(path, JsonSerializer.Serialize(manifest, Json) + Environment.NewLine);
     }
 
+    /// <summary>Loads.</summary>
     public static WorkspaceManifest? Load(string root)
     {
         var path = Path.Combine(root, WorkspaceManifest.RelativePath);

@@ -74,6 +74,7 @@ public enum TermFrameKind : byte
 [Flags]
 public enum TermHelloFlags : byte
 {
+    /// <summary>The none value.</summary>
     None = 0,
     /// <summary>The viewer may type and own the size; without it the host drops its Input, Resize and TakeSize frames.</summary>
     Interactive = 1,
@@ -86,6 +87,7 @@ public sealed record TermHello(ushort Protocol, ushort Cols, ushort Rows, bool I
 [Flags]
 public enum TermModes : uint
 {
+    /// <summary>The none value.</summary>
     None = 0,
     /// <summary><c>?2004</c>: a paste should be wrapped in <c>ESC[200~</c> and <c>ESC[201~</c>.</summary>
     BracketedPaste = 1,
@@ -111,6 +113,7 @@ public enum TermCompatStatus { Compatible, HostTooNew, HostTooOld }
 /// <summary>The result of <see cref="TermProtocol.Check"/>: <see cref="Message"/> is empty when compatible, else a clear status for the user.</summary>
 public sealed record TermCompatibility(TermCompatStatus Status, ushort HostProtocol, string Message)
 {
+    /// <summary>The ok.</summary>
     public bool Ok => Status == TermCompatStatus.Compatible;
 }
 
@@ -226,6 +229,7 @@ public static class TermProtocol
         return ((TermFrameKind)head[0], payload);
     }
 
+    /// <summary>Hello.</summary>
     public static byte[] Hello(ushort protocol, ushort cols, ushort rows)
     {
         var payload = new byte[6];
@@ -292,6 +296,7 @@ public static class TermProtocol
     public static (ushort Cols, ushort Rows)? ReadSize(ReadOnlySpan<byte> payload) =>
         payload.Length < 4 ? null : (BinaryPrimitives.ReadUInt16LittleEndian(payload), BinaryPrimitives.ReadUInt16LittleEndian(payload[2..]));
 
+    /// <summary>Modes.</summary>
     public static byte[] Modes(TermModes modes)
     {
         var payload = new byte[4];
@@ -299,9 +304,11 @@ public static class TermProtocol
         return payload;
     }
 
+    /// <summary>Reads the modes.</summary>
     public static TermModes ReadModes(ReadOnlySpan<byte> payload) =>
         payload.Length < 4 ? TermModes.None : (TermModes)BinaryPrimitives.ReadUInt32LittleEndian(payload);
 
+    /// <summary>Exit.</summary>
     public static byte[] Exit(int code)
     {
         var payload = new byte[4];
@@ -309,12 +316,16 @@ public static class TermProtocol
         return payload;
     }
 
+    /// <summary>Reads the exit.</summary>
     public static int ReadExit(ReadOnlySpan<byte> payload) => payload.Length < 4 ? -1 : BinaryPrimitives.ReadInt32LittleEndian(payload);
 
+    /// <summary>Title.</summary>
     public static byte[] Title(string title) => Encoding.UTF8.GetBytes(title);
 
+    /// <summary>Reads the title.</summary>
     public static string ReadTitle(ReadOnlySpan<byte> payload) => Encoding.UTF8.GetString(payload);
 
+    /// <summary>Replay.</summary>
     public static byte[] Replay(ushort cols, ushort rows, TermModes modes, ReadOnlySpan<byte> data, ReadOnlySpan<byte> reassert)
     {
         var payload = new byte[12 + data.Length + reassert.Length];

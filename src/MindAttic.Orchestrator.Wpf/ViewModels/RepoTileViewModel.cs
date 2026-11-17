@@ -7,22 +7,32 @@ using MindAttic.Tickets.Log;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
+/// <summary>The repo tile view model type.</summary>
 public sealed class RepoTileViewModel(string name) : ObservableObject
 {
     private RepoStatus? status;
     private DateTime nowUtc;
     private bool isSelected;
 
+    /// <summary>The name.</summary>
     public string Name { get; } = name;
+    /// <summary>The status.</summary>
     public RepoStatus? Status => status;
+    /// <summary>The path.</summary>
     public string Path => status?.Path ?? "";
+    /// <summary>Whether folder.</summary>
     public bool HasFolder => Path.Length > 0;
+    /// <summary>The state.</summary>
     public RepoState State => status?.State ?? RepoState.Dormant;
+    /// <summary>The open ticket count.</summary>
     public int OpenTicketCount => status?.OpenTickets.Count ?? 0;
+    /// <summary>The tokens today.</summary>
     public long TokensToday => status?.UsageToday.Total ?? 0;
 
+    /// <summary>The accent.</summary>
     public Brush Accent => Palette.For(State, OpenTicketCount > 0);
 
+    /// <summary>The state label.</summary>
     public string StateLabel => State switch
     {
         RepoState.Working => "Working",
@@ -45,6 +55,7 @@ public sealed class RepoTileViewModel(string name) : ObservableObject
         }
     }
 
+    /// <summary>The tokens text.</summary>
     public string TokensText => TokensToday == 0 ? "" : Formatting.Tokens(TokensToday);
 
     /// <summary>The detail pane's headline: what this repo is doing and for how long.</summary>
@@ -66,24 +77,35 @@ public sealed class RepoTileViewModel(string name) : ObservableObject
         }
     }
 
+    /// <summary>Whether selected.</summary>
     public bool IsSelected { get => isSelected; set => Set(ref isSelected, value); }
 
+    /// <summary>The hosts.</summary>
     public ObservableCollection<HostRowViewModel> Hosts { get; } = [];
+    /// <summary>The sessions.</summary>
     public ObservableCollection<SessionRowViewModel> Sessions { get; } = [];
+    /// <summary>The tickets.</summary>
     public ObservableCollection<TicketRowViewModel> Tickets { get; } = [];
 
+    /// <summary>The usage input.</summary>
     public string UsageInput => Formatting.Tokens(status?.UsageToday.Input ?? 0);
+    /// <summary>The usage cache write.</summary>
     public string UsageCacheWrite => Formatting.Tokens(status?.UsageToday.CacheCreation ?? 0);
+    /// <summary>The usage cache read.</summary>
     public string UsageCacheRead => Formatting.Tokens(status?.UsageToday.CacheRead ?? 0);
+    /// <summary>The usage output.</summary>
     public string UsageOutput => Formatting.Tokens(status?.UsageToday.Output ?? 0);
+    /// <summary>Whether usage.</summary>
     public bool HasUsage => TokensToday > 0;
 
+    /// <summary>Matches.</summary>
     public bool Matches(string search) =>
         string.IsNullOrWhiteSpace(search) ||
         Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
         (status?.OpenTickets.Any(t => t.Id.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                                        t.Summary.Contains(search, StringComparison.OrdinalIgnoreCase)) ?? false);
 
+    /// <summary>Updates.</summary>
     public void Update(RepoStatus next, DateTime snapshotUtc)
     {
         status = next;
@@ -99,12 +121,16 @@ public sealed class RepoTileViewModel(string name) : ObservableObject
     }
 }
 
+/// <summary>The host row view model type.</summary>
 public sealed class HostRowViewModel : ObservableObject
 {
     private HostSession host;
+    /// <summary>The draft.</summary>
     private string draft = "";
+    /// <summary>The feedback.</summary>
     private string feedback = "";
 
+    /// <summary>Creates the host row view model.</summary>
     public HostRowViewModel(HostSession host)
     {
         this.host = host;
@@ -113,25 +139,34 @@ public sealed class HostRowViewModel : ObservableObject
 
     /// <summary>Its CLI is moving to another login (M.ORCH-T637): Send and Go to tab are off until the move lands.</summary>
     public bool IsMoving => PendingMoves.ForHost(host.ProcessId) is not null;
+    /// <summary>Whether unlocked.</summary>
     public bool IsUnlocked => !IsMoving;
+    /// <summary>The moving text.</summary>
     public string MovingText => PendingMoves.ForHost(host.ProcessId)?.Text ?? "";
+    /// <summary>Raises the moving.</summary>
     public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(IsUnlocked)); Raise(nameof(MovingText)); }
 
+    /// <summary>The pipe name.</summary>
     public string PipeName => host.PipeName;
     /// <summary>The tab itself, for "Go to tab" (M.ORCH-T619).</summary>
     public HostSession Host => host;
+    /// <summary>The title.</summary>
     public string Title => $"{host.Provider} tab";
     /// <summary>"PID 1234 · a@b.com": the tab's process and the Claude login its CLI bills (M.ORCH-T606), when known.</summary>
     public string Detail => host.Login is { } l ? $"PID {host.ProcessId} · {l}" : $"PID {host.ProcessId}";
     /// <summary>The email behind the login's name (M.ORCH-T614); null when the login isn't known.</summary>
     public string? DetailTip => host.LoginEmail is { } e ? $"Bills the Claude login {e}" : null;
+    /// <summary>The draft.</summary>
     public string Draft { get => draft; set => Set(ref draft, value); }
+    /// <summary>The feedback.</summary>
     public string Feedback { get => feedback; private set => Set(ref feedback, value); }
+    /// <summary>The send command.</summary>
     public ICommand SendCommand { get; }
 
     /// <summary>Says under the row why "Go to tab" didn't land on the tab itself.</summary>
     internal void ShowFeedback(string note) => Feedback = note;
 
+    /// <summary>Updates.</summary>
     public void Update(HostSession next)
     {
         host = next;
@@ -162,17 +197,24 @@ public sealed class HostRowViewModel : ObservableObject
     }
 }
 
+/// <summary>The session row view model type.</summary>
 public sealed class SessionRowViewModel(TranscriptSession session, DateTime nowUtc) : ObservableObject
 {
     private TranscriptSession session = session;
     private DateTime nowUtc = nowUtc;
 
+    /// <summary>The session id.</summary>
     public string SessionId => session.SessionId;
+    /// <summary>The short id.</summary>
     public string ShortId => session.SessionId.Length > 8 ? session.SessionId[..8] : session.SessionId;
+    /// <summary>The model.</summary>
     public string Model => session.Model ?? "";
+    /// <summary>The last write.</summary>
     public string LastWrite => Formatting.Ago(session.LastWriteUtc, nowUtc);
+    /// <summary>The tokens.</summary>
     public string Tokens => session.UsageToday.Total == 0 ? "" : Formatting.Tokens(session.UsageToday.Total);
 
+    /// <summary>Updates.</summary>
     public void Update(TranscriptSession next, DateTime snapshotUtc)
     {
         session = next;
@@ -181,21 +223,30 @@ public sealed class SessionRowViewModel(TranscriptSession session, DateTime nowU
     }
 }
 
+/// <summary>The ticket row view model type.</summary>
 public sealed class TicketRowViewModel(Ticket ticket) : ObservableObject
 {
     private Ticket ticket = ticket;
 
+    /// <summary>The id.</summary>
     public string Id => ticket.Id;
+    /// <summary>The type.</summary>
     public string Type => ticket.Type;
+    /// <summary>The summary.</summary>
     public string Summary => ticket.Summary;
+    /// <summary>The date.</summary>
     public string Date => ticket.Date;
 
     /// <summary>Held by a CLI moving to another login (M.ORCH-T637): "Use as prompt" is off until the move lands.</summary>
     public bool IsMoving => PendingMoves.ForTicket(Id) is not null;
+    /// <summary>Whether unlocked.</summary>
     public bool IsUnlocked => !IsMoving;
+    /// <summary>The moving text.</summary>
     public string MovingText => PendingMoves.ForTicket(Id)?.Text ?? "";
+    /// <summary>Raises the moving.</summary>
     public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(IsUnlocked)); Raise(nameof(MovingText)); }
 
+    /// <summary>Updates.</summary>
     public void Update(Ticket next)
     {
         ticket = next;

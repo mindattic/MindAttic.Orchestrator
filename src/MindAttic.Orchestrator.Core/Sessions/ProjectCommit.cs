@@ -11,6 +11,7 @@ public enum ProjectCommitOutcome
     Failed,
 }
 
+/// <summary>The project commit result record.</summary>
 public sealed record ProjectCommitResult(RosterProject Project, ProjectCommitOutcome Outcome, string Detail);
 
 /// <summary>
@@ -20,6 +21,7 @@ public sealed record ProjectCommitResult(RosterProject Project, ProjectCommitOut
 /// </summary>
 public static class ProjectCommit
 {
+    /// <summary>The git timeout.</summary>
     public static readonly TimeSpan GitTimeout = TimeSpan.FromMinutes(2);
 
     /// <summary>How many files <paramref name="path"/>'s working tree has changed (git status --porcelain), or null when it

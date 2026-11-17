@@ -11,6 +11,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public sealed class SessionControl(OrchestratorOptions options)
 {
+    /// <summary>The providers.</summary>
     public static readonly IReadOnlyList<string> Providers = ["Claude", "Codex", "Gemini", "Kimi"];
 
     /// <summary>Opens a new tab for <paramref name="directory"/>; returns an error, or null on success.</summary>
@@ -382,6 +383,7 @@ public sealed class SessionControl(OrchestratorOptions options)
         }
     }
 
+    /// <summary>Opens the folder.</summary>
     public static void OpenFolder(string directory)
     {
         if (Directory.Exists(directory))

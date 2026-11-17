@@ -13,8 +13,11 @@ namespace MindAttic.Orchestrator.Term;
 /// </summary>
 public static class TermGatewayTokens
 {
+    /// <summary>The prefix constant.</summary>
     public const string Prefix = "v1.";
+    /// <summary>The watch constant.</summary>
     public const string Watch = "watch", Interact = "interact";
+    /// <summary>The signing key file constant.</summary>
     public const string SigningKeyFile = "signing.key", OwnerKeyFile = "owner.key";
 
     /// <summary>The longest a session token may live.</summary>
@@ -28,6 +31,7 @@ public static class TermGatewayTokens
     /// <summary>The payload kind of a member token.</summary>
     public const string MemberKind = "member";
 
+    /// <summary>Whether scope.</summary>
     public static bool IsScope(string? scope) => scope?.ToLowerInvariant() is Watch or Interact;
 
     /// <summary>The longest <paramref name="kind"/> of token may live.</summary>
@@ -50,6 +54,7 @@ public static class TermGatewayTokens
         return (body + "." + Base64Url(Sign(signingKey, body)), DateTimeOffset.FromUnixTimeSeconds(payload.Exp).UtcDateTime);
     }
 
+    /// <summary>Signs.</summary>
     public static byte[] Sign(byte[] signingKey, string body) => HMACSHA256.HashData(signingKey, Encoding.ASCII.GetBytes(body));
 
     /// <summary>The key in <paramref name="file"/> under <paramref name="directory"/>: 32 random bytes, made on first use.</summary>
@@ -98,8 +103,10 @@ public static class TermGatewayTokens
         }
     }
 
+    /// <summary>Base 64 url.</summary>
     public static string Base64Url(ReadOnlySpan<byte> bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
+    /// <summary>From base 64 url.</summary>
     public static byte[]? FromBase64Url(string text)
     {
         if (text.Length == 0 || text.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))) return null;
@@ -109,6 +116,7 @@ public static class TermGatewayTokens
         catch (FormatException) { return null; }
     }
 
+    /// <summary>To unix.</summary>
     public static long ToUnix(DateTime utc) => new DateTimeOffset(DateTime.SpecifyKind(utc, DateTimeKind.Utc)).ToUnixTimeSeconds();
 }
 

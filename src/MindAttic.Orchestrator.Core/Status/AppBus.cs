@@ -113,22 +113,29 @@ public sealed record ActivityPayload
 /// <summary>What happened to a ticket: <see cref="TicketBusEvent.Event"/>'s values.</summary>
 public static class TicketEvents
 {
+    /// <summary>The filed constant.</summary>
     public const string Filed = "filed";
+    /// <summary>The approved constant.</summary>
     public const string Approved = "approved";
     /// <summary>Its approval was taken back (proposed again).</summary>
     public const string Unapproved = "unapproved";
+    /// <summary>The rejected constant.</summary>
     public const string Rejected = "rejected";
     /// <summary>Someone started working it: <see cref="TicketBusEvent.Login"/> and/or <see cref="TicketBusEvent.Session"/> say who.</summary>
     public const string Claimed = "claimed";
     /// <summary>Nobody works it any more (landed, released, given back).</summary>
     public const string Released = "released";
+    /// <summary>The closed constant.</summary>
     public const string Closed = "closed";
+    /// <summary>The wont do constant.</summary>
     public const string WontDo = "wont-do";
+    /// <summary>The reopened constant.</summary>
     public const string Reopened = "reopened";
     /// <summary>Its summary changed: <see cref="TicketBusEvent.New"/> is the new one.</summary>
     public const string Reworded = "reworded";
     /// <summary>Assigned to someone (<see cref="TicketBusEvent.New"/>, a login email) or unassigned (null).</summary>
     public const string Assigned = "assigned";
+    /// <summary>The prioritized constant.</summary>
     public const string Prioritized = "prioritized";
     /// <summary>Its links changed.</summary>
     public const string Linked = "linked";

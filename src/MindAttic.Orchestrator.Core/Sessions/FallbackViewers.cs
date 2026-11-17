@@ -12,6 +12,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class DashboardPresence
 {
+    /// <summary>Whether up.</summary>
     public static bool IsUp() => IsUp(SingleInstance.DashboardName);
 
     /// <summary>Whether the dashboard's mutex or its show event exists (M.ORCH-T1050): looser than <see cref="IsUp"/>, which
@@ -63,10 +64,12 @@ public static class DashboardPresence
 /// </summary>
 public sealed class DashboardDownWatch(TimeSpan? threshold = null)
 {
+    /// <summary>The default threshold.</summary>
     public static readonly TimeSpan DefaultThreshold = TimeSpan.FromSeconds(5);
 
     private DateTime? downSinceUtc;
 
+    /// <summary>The threshold.</summary>
     public TimeSpan Threshold { get; } = threshold ?? DefaultThreshold;
 
     /// <summary>When it was first seen down in the current run of downs; null while up.</summary>
@@ -97,6 +100,7 @@ public sealed class DashboardDownWatch(TimeSpan? threshold = null)
 /// </summary>
 public static class TermViewerSlot
 {
+    /// <summary>Mutex name.</summary>
     public static string MutexName(string sessionId) => @"Local\MindAttic.Orchestrator.TermViewer." + TermProtocol.Sanitize(sessionId);
 
     /// <summary>Whether a viewer holds <paramref name="sessionId"/>'s slot. One that can't be read counts as held: no window
@@ -126,12 +130,14 @@ public static class TermViewerSlot
 /// </summary>
 public sealed class FallbackViewers
 {
+    /// <summary>The exe name constant.</summary>
     public const string ExeName = TermViewerInstalls.ExeName;
     /// <summary>The folder under the install dir its versions are deployed to (<c>C:\Apps\MindAttic.Orchestrator\TermViewer\&lt;version&gt;\</c>).</summary>
     public const string FolderName = TermViewerInstalls.FolderName;
     /// <summary>A dev override: the full path of the TermViewer exe to start.</summary>
     public const string ExeVariable = "MINDATTIC_TERMVIEWER";
 
+    /// <summary>The every.</summary>
     public static readonly TimeSpan Every = TimeSpan.FromSeconds(1);
 
     /// <summary>How long a started viewer has to claim its slot before the session counts as unviewed again.</summary>
@@ -147,6 +153,7 @@ public sealed class FallbackViewers
     private DateTime exeResolvedUtc = DateTime.MinValue;
     private bool saidMissing;
 
+    /// <summary>Creates the fallback viewers.</summary>
     public FallbackViewers(TimeSpan? threshold = null) => watch = new DashboardDownWatch(threshold);
 
     /// <summary>One started viewer: when, and its process (null when the launcher gave none).</summary>
@@ -170,11 +177,17 @@ public sealed class FallbackViewers
     public static TimeSpan CrashDelay(int crashes) =>
         TimeSpan.FromSeconds(Math.Min(Math.Pow(2, Math.Clamp(crashes, 1, 16)), MaxCrashDelay.TotalSeconds));
 
+    /// <summary>The dashboard up.</summary>
     public Func<bool> DashboardUp { get; init; } = DashboardPresence.IsUp;
+    /// <summary>The sessions.</summary>
     public Func<IReadOnlyList<TermSessionRecord>> Sessions { get; init; } = TermSessions.Enumerate;
+    /// <summary>Whether viewer.</summary>
     public Func<string, bool> HasViewer { get; init; } = TermViewerSlot.IsHeld;
+    /// <summary>The resolve exe.</summary>
     public Func<string?> ResolveExe { get; init; } = DefaultExe;
+    /// <summary>The launch.</summary>
     public Func<string, TermSessionRecord, Process?> Launch { get; init; } = StartViewer;
+    /// <summary>The say.</summary>
     public Action<LogEventLevel, string>? Say { get; init; }
 
     /// <summary>

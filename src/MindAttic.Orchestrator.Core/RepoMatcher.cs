@@ -9,6 +9,7 @@ public sealed class RepoMatcher
 {
     private readonly (string Name, string Path)[] repos;
 
+    /// <summary>Creates the repo matcher.</summary>
     public RepoMatcher(IEnumerable<(string Name, string Path)> repos)
     {
         this.repos = [.. repos
@@ -16,6 +17,7 @@ public sealed class RepoMatcher
             .OrderByDescending(r => r.Item2.Length)];
     }
 
+    /// <summary>Match.</summary>
     public string? Match(string? directory)
     {
         if (string.IsNullOrWhiteSpace(directory)) return null;

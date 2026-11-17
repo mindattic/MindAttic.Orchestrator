@@ -17,6 +17,7 @@ public static partial class TicketAttribution
     [GeneratedRegex(@"[\\/]MindAttic\.worktrees[\\/][^\\/]+[\\/](?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)(?:[\\/]|$)", RegexOptions.IgnoreCase)]
     private static partial Regex Worktree();
 
+    /// <summary>From prompt.</summary>
     public static (string Id, string Type)? FromPrompt(string text) =>
         Prompt().Match(text) is { Success: true } m ? (m.Groups["id"].Value, m.Groups["type"].Value) : null; // type "" when the prompt names none
 

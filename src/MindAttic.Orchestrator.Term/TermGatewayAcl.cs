@@ -84,14 +84,17 @@ public sealed record TermGatewayAuditRecord
 /// </summary>
 public static class TermGatewayAudit
 {
+    /// <summary>The refused constant.</summary>
     public const string Attach = "attach", Detach = "detach", Input = "input", Refused = "refused";
 
+    /// <summary>The spool file constant.</summary>
     public const string AclFile = "acl.json", SpoolFile = "audit.jsonl";
     private const string DrainingSuffix = ".draining";
 
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
     private static readonly object AppendGate = new();
 
+    /// <summary>Acl path.</summary>
     public static string AclPath(string? directory = null) => Path.Combine(directory ?? TermGateway.DefaultDirectory, AclFile);
 
     /// <summary>Writes the snapshot atomically when its text changed; true when it wrote.</summary>

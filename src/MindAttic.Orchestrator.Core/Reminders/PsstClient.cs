@@ -13,13 +13,16 @@ public sealed record PsstStatus(bool Installed, bool Configured, string? OwnerNu
 /// </summary>
 public sealed class PsstClient(IProcessRunner runner, string exe = "psst")
 {
+    /// <summary>The ping timeout.</summary>
     public static readonly TimeSpan PingTimeout = TimeSpan.FromSeconds(30);
+    /// <summary>The send timeout.</summary>
     public static readonly TimeSpan SendTimeout = TimeSpan.FromMinutes(2);
 
     /// <summary>Psst's contact book, for checking a <c>--to</c> name when the reminder is made rather than at its time.</summary>
     public static string DefaultContactsPath { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MindAttic", "Psst", "contacts.json");
 
+    /// <summary>Probes.</summary>
     public PsstStatus Probe()
     {
         ProcessResult r;

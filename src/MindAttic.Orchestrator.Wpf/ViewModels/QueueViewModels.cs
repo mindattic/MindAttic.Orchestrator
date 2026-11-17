@@ -25,24 +25,38 @@ public sealed class QueueRowViewModel : ObservableObject
 
     /// <summary>Held by a CLI moving to another login (M.ORCH-T637): its controls are off until the move lands.</summary>
     public bool IsMoving => item.Moving is not null || PendingMoves.ForTicket(item.Id) is not null;
+    /// <summary>The moving text.</summary>
     public string MovingText => (PendingMoves.ForTicket(item.Id) ?? item.Moving)?.Text ?? "";
+    /// <summary>Raises the moving.</summary>
     public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(MovingText)); Raise(nameof(Status)); }
 
+    /// <summary>The id.</summary>
     public string Id => item.Id;
+    /// <summary>The item.</summary>
     public QueueItem Item => item;
+    /// <summary>The rank.</summary>
     public int Rank => rank;
+    /// <summary>The repo.</summary>
     public string Repo => item.Repo;
+    /// <summary>The type.</summary>
     public string Type => item.Ticket.Type;
+    /// <summary>The summary.</summary>
     public string Summary => item.Ticket.Summary;
+    /// <summary>The date.</summary>
     public string Date => item.Ticket.Date;
+    /// <summary>The priority.</summary>
     public string Priority => item.Priority == 0 ? "" : item.Priority.ToString("+#;-#");
+    /// <summary>Whether assigned.</summary>
     public bool IsAssigned => item.IsAssigned;
 
     /// <summary>An assigned row is dimmed (it's someone's already): the row card's opacity, so the view needs no style of its own.</summary>
     public double RowOpacity => IsAssigned ? 0.6 : 1;
+    /// <summary>Whether next.</summary>
     public bool IsNext => proposal is not null;
+    /// <summary>The reason.</summary>
     public string Reason => proposal?.Reason ?? "";
 
+    /// <summary>The status.</summary>
     public string Status => IsMoving ? MovingText : item switch
     {
         { BlockedBy.Count: > 0 } => $"Waits for {string.Join(", ", item.BlockedBy)}",
@@ -58,7 +72,9 @@ public sealed class QueueRowViewModel : ObservableObject
              (item.Assignee is { } who ? $" · for {who}" : ""),
     };
 
+    /// <summary>The start command.</summary>
     public ICommand StartCommand { get; }
+    /// <summary>The release command.</summary>
     public ICommand ReleaseCommand { get; }
 
     /// <summary>Whether <paramref name="a"/> has a worktree of its own: only one made before M.ORCH-T1122, in a folder named after its
@@ -66,6 +82,7 @@ public sealed class QueueRowViewModel : ObservableObject
     internal static bool OldWorktree(Assignment a) =>
         a.Worktree && System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(a.Directory)).Equals(a.TicketId, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Updates.</summary>
     public void Update(QueueItem next, int nextRank, Proposal? nextProposal, string? nextDelegation = null)
     {
         item = next;
@@ -79,16 +96,20 @@ public sealed class QueueRowViewModel : ObservableObject
 /// <summary>A ticket whose work is closed but whose assignment (and maybe an old worktree, made before M.ORCH-T1122) is still around.</summary>
 public sealed class FinishedViewModel(Assignment assignment, MainViewModel owner) : ObservableObject
 {
+    /// <summary>The ticket id.</summary>
     public string TicketId => assignment.TicketId;
+    /// <summary>The text.</summary>
     public string Text => assignment.TicketId + TextAfterId;
 
     /// <summary><see cref="Text"/> after the id, which the card shows as a link into Tickets Desktop (M.ORCH-T500).</summary>
     public string TextAfterId => QueueRowViewModel.OldWorktree(assignment)
         ? $" in {assignment.Repo} is closed. Its worktree is still at {assignment.Directory}."
         : $" in {assignment.Repo} is closed.";
+    /// <summary>The action label.</summary>
     public string ActionLabel => QueueRowViewModel.OldWorktree(assignment) ? "Remove worktree" : "Clear";
     /// <summary>Off while a CLI moving to another login holds the ticket (M.ORCH-T637): its claim is handed back to it.</summary>
     public ICommand ActionCommand { get; } = new RelayCommand(() => owner.Shown.Finish(assignment), () => PendingMoves.ForTicket(assignment.TicketId) is null);
+    /// <summary>The details command.</summary>
     public ICommand DetailsCommand { get; } = new RelayCommand(() => owner.Shown.ShowDetails(assignment));
 
     /// <summary>The ticket's assignment as the latest refresh has it (reopened, dispatched again elsewhere and closed): its

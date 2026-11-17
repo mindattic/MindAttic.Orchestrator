@@ -14,6 +14,7 @@ public static partial class TicketsDesktop
     [GeneratedRegex(@"^[A-Z][A-Z0-9]*(\.[A-Z0-9]+)*-T\d+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex TicketId();
 
+    /// <summary>Whether ticket id.</summary>
     public static bool IsTicketId(string? id) => id is { Length: > 0 and <= 64 } && TicketId().IsMatch(id);
 
     /// <summary>A ticket id inside running text ("M.ORCH-T5 waits for M.TIX-T2"): upper case, as tickets are filed, whole words.</summary>

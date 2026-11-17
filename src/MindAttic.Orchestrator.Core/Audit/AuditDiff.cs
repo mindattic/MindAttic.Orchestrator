@@ -3,8 +3,10 @@ namespace MindAttic.Orchestrator.Audit;
 /// <summary>What a new audit found that the previous one didn't: drifted copies and duplicated code.</summary>
 public sealed record AuditNews(IReadOnlyList<DriftFinding> Drift, IReadOnlyList<DuplicateGroup> Duplicates)
 {
+    /// <summary>The any.</summary>
     public bool Any => Drift.Count > 0 || Duplicates.Count > 0;
 
+    /// <summary>To string.</summary>
     public override string ToString() => string.Join("; ", new[]
     {
         Drift.Count == 0 ? null : $"{Drift.Count} newly drifted agent file{(Drift.Count == 1 ? "" : "s")} ({string.Join(", ", Drift.Take(3).Select(d => $"{d.Repo}/{d.File}"))}{(Drift.Count > 3 ? ", …" : "")})",

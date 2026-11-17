@@ -41,6 +41,7 @@ public static class CliRoster
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
+    /// <summary>Builds.</summary>
     public static IReadOnlyList<CliRow> Build(IReadOnlyList<CliBilling> clis, IReadOnlyDictionary<int, IReadOnlyList<string>> allocate,
         IEnumerable<SessionContext> sessions)
     {

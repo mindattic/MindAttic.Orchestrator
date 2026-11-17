@@ -7,12 +7,14 @@ namespace MindAttic.Orchestrator.Wpf;
 /// <summary>Hands files and folders to the tools you already use.</summary>
 public static class Opener
 {
+    /// <summary>Reveal.</summary>
     public static void Reveal(string path)
     {
         if (File.Exists(path)) Start("explorer.exe", $"/select,\"{path}\"");
         else if (Directory.Exists(path)) Start("explorer.exe", $"\"{path}\"");
     }
 
+    /// <summary>Opens.</summary>
     public static void Open(string path)
     {
         if (!File.Exists(path)) { Reveal(path); return; }

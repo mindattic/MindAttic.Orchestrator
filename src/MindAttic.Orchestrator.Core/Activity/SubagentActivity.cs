@@ -29,6 +29,7 @@ public static class SubagentTranscripts
     private static readonly ConcurrentDictionary<string, string> Found = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<string, DateTime> Missed = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Finds.</summary>
     public static string? Find(string projectsDir, string agentId) => Find(projectsDir, agentId, DateTime.UtcNow);
 
     /// <summary><see cref="Find(string, string)"/> as of <paramref name="now"/> (a seam for tests of the retry wait).</summary>
@@ -98,6 +99,7 @@ public sealed class SubagentActivityReader(string projectsDir)
     public static IReadOnlyList<SubagentActivity> Running(ContextCycler cycler, string projectsDir, DateTime nowUtc) =>
         new SubagentActivityReader(projectsDir).Poll(cycler, nowUtc);
 
+    /// <summary>Polls.</summary>
     public IReadOnlyList<SubagentActivity> Poll(ContextCycler cycler, DateTime nowUtc) => Poll([cycler], nowUtc);
 
     /// <summary>A CLI on its own login has the context gate mark its subagents in that login's folder, not the global one

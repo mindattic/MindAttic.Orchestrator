@@ -16,6 +16,7 @@ public sealed class WeeklyAllowance
     /// <summary>The member's name, as the report and the log say it.</summary>
     public string Name { get; set; } = "";
 
+    /// <summary>Gets or sets the since utc.</summary>
     public DateTime SinceUtc { get; set; }
 
     /// <summary>When it ends: the login's weekly reset by default, or the time the user gave.</summary>
@@ -30,6 +31,7 @@ public sealed class WeeklyAllowance
     /// <summary>When it stops applying: <see cref="UntilUtc"/>, or the weekly reset when that comes first.</summary>
     public DateTime EndsUtc => WeekResetUtc is { } r && r < UntilUtc ? r : UntilUtc;
 
+    /// <summary>Active at.</summary>
     public bool ActiveAt(DateTime nowUtc) => nowUtc >= SinceUtc.AddMinutes(-1) && nowUtc < EndsUtc;
 
     /// <summary>"Erin: allowed past the target by you until Tue 5:00 PM" (local time).</summary>
@@ -39,14 +41,18 @@ public sealed class WeeklyAllowance
 /// <summary>One line of the allowances' log: given, taken back, or ended at its reset.</summary>
 public sealed class WeeklyAllowanceEvent
 {
+    /// <summary>Gets or sets the at utc.</summary>
     public DateTime AtUtc { get; set; }
+    /// <summary>Gets or sets the text.</summary>
     public string Text { get; set; } = "";
 }
 
 /// <summary>What the database keeps (<see cref="WeeklyAllowances.StateName"/>): the allowances and their log.</summary>
 public sealed class WeeklyAllowanceBook
 {
+    /// <summary>Gets or sets the allowances.</summary>
     public List<WeeklyAllowance> Allowances { get; set; } = [];
+    /// <summary>Gets or sets the log.</summary>
     public List<WeeklyAllowanceEvent> Log { get; set; } = [];
 }
 
@@ -62,6 +68,7 @@ public static class WeeklyAllowances
     /// <summary>The <c>state</c> row they're kept in.</summary>
     public const string StateName = "weekly-allowances";
 
+    /// <summary>The by you constant.</summary>
     public const string ByYou = "you";
 
     /// <summary>How many log lines are kept.</summary>

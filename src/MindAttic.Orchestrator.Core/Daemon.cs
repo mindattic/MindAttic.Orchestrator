@@ -37,6 +37,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
     }
 
+    /// <summary>Runs.</summary>
     public void Run(TimeSpan interval, CancellationToken cancel)
     {
         var options = OrchestratorOptions.Load(store);
@@ -933,6 +934,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// <summary>What else orchestrator next holds back, for the context gate's keep-going (rewritten with the stale list).</summary>
     public const string AllocateHoldsName = "allocate-holds";
 
+    /// <summary>The worked record.</summary>
     public sealed record AllocateHolds(bool Quiet, IReadOnlyList<Scheduling.WorkedTicket> Worked, IReadOnlyList<string> LivePilot);
     private IReadOnlyList<string>? publishedStale;
     private DateTime publishedStaleUtc;

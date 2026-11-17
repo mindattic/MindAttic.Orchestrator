@@ -23,6 +23,7 @@ public sealed record LoginTab(string? Email, string Title, string ToolTip, strin
     /// <summary>Whether this is the API key's person tab rather than a Claude login's.</summary>
     public bool IsApiKey { get; init; }
 
+    /// <summary>Whether global.</summary>
     public bool IsGlobal => Email is null && !IsApiKey;
 
     /// <summary>The key a tab is kept by across refreshes: "" for the global login, else its email.</summary>
