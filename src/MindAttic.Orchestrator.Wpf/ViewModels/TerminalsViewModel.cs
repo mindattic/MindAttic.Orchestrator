@@ -789,6 +789,7 @@ public sealed class TerminalsViewModel : ObservableObject
         {
             if (value is not null && !Panes.Contains(value)) return;
             if (selected == value) return;
+            using var stall = MindAttic.Orchestrator.Term.Wpf.UiStallProbe.Doing("selecting a CLI tab");
             if (selected is not null) selected.IsSelected = false;
             selected = value;
             if (selected is not null)

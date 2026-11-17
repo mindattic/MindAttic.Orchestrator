@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows.Threading;
 
 namespace MindAttic.Orchestrator.Term.Wpf;
@@ -10,7 +11,7 @@ namespace MindAttic.Orchestrator.Term.Wpf;
 /// work the thread was in (<see cref="Doing"/>) while it waited. The timer runs at half the threshold, so a stall that long is
 /// always seen in progress. A threshold of zero turns it off.
 /// </summary>
-public sealed class UiStallProbe : IDisposable
+public sealed partial class UiStallProbe : IDisposable
 {
     private static volatile string? work;
 
@@ -36,6 +37,12 @@ public sealed class UiStallProbe : IDisposable
     private readonly Timer timer;
     private long sent;
     private volatile string? seen;
+    // What the dispatcher is running (M.ORCH-T1738): the priority of its current operation, or -1 between operations, where a
+    // stall is a native window message (a terminal's own window) or the thread held outside it (a GC, a page fault).
+    private volatile int running = -1;
+    private volatile int seenRunning = -2;
+    private TimeSpan gcAtSend;
+    private uint faultsAtSend;
     private long lastLine;
     private int unlogged;
     private TimeSpan worst;
@@ -47,6 +54,10 @@ public sealed class UiStallProbe : IDisposable
     {
         this.dispatcher = dispatcher;
         this.threshold = threshold;
+        // On the dispatcher's own thread (the window's constructor): its hooks are raised there.
+        dispatcher.Hooks.OperationStarted += (_, e) => running = (int)e.Operation.Priority;
+        dispatcher.Hooks.OperationCompleted += (_, _) => running = -1;
+        dispatcher.Hooks.OperationAborted += (_, _) => running = -1;
         timer = new Timer(_ => Tick(), null, OffRecheck, Timeout.InfiniteTimeSpan);
     }
 
@@ -60,9 +71,13 @@ public sealed class UiStallProbe : IDisposable
             {
                 // Still unanswered: what the thread is in right now is what the ping waits behind.
                 if (work is { } now) seen = now;
+                seenRunning = running;
                 return;
             }
             seen = null;
+            seenRunning = -2;
+            gcAtSend = GC.GetTotalPauseDuration();
+            faultsAtSend = PageFaults();
             Interlocked.Exchange(ref sent, Stopwatch.GetTimestamp());
             dispatcher.BeginInvoke(DispatcherPriority.Input, () => Answered(limit));
         }
@@ -79,14 +94,52 @@ public sealed class UiStallProbe : IDisposable
         var took = Stopwatch.GetElapsedTime(Interlocked.Exchange(ref sent, 0));
         if (took < limit) return;
         unlogged++;
-        if (took > worst) (worst, worstWork) = (took, seen);
+        if (took > worst)
+        {
+            var gc = GC.GetTotalPauseDuration() - gcAtSend;
+            worst = took;
+            worstWork = $"{seen ?? Where(seenRunning)}; the GC paused {(long)gc.TotalMilliseconds}ms of it, {PageFaults() - faultsAtSend} page faults";
+        }
         // One line per ten thresholds at most, so a jammed thread doesn't flood the log; the line carries the worst of the rest.
         var now = Stopwatch.GetTimestamp();
         if (lastLine != 0 && Stopwatch.GetElapsedTime(lastLine, now) < limit * 10) return;
         OrchestratorLog.For("UiStall").Warning("The UI thread kept input waiting {Ms}ms during {Work:l} ({Count} stall(s) since the last line)",
-            (long)worst.TotalMilliseconds, worstWork ?? "unnamed work (layout, render or a handler)", unlogged);
+            (long)worst.TotalMilliseconds, worstWork ?? "unnamed work", unlogged);
         (lastLine, unlogged, worst, worstWork) = (now, 0, TimeSpan.Zero, null);
     }
+
+    /// <summary>What unlabelled work was, from the dispatcher operation seen while input waited.</summary>
+    private static string Where(int priority) => priority switch
+    {
+        -2 => "unnamed work, over before it was looked at",
+        -1 => "no dispatcher operation (a native window message, or the thread held: GC, paging)",
+        (int)DispatcherPriority.Render => "layout and render",
+        (int)DispatcherPriority.Loaded => "a Loaded-priority operation (after layout)",
+        (int)DispatcherPriority.DataBind => "data binding",
+        (int)DispatcherPriority.Input => "an input handler",
+        _ => $"an unnamed {(DispatcherPriority)priority}-priority operation",
+    };
+
+    /// <summary>This process's page faults so far; 0 when it can't be read.</summary>
+    private static uint PageFaults()
+    {
+        var counters = new ProcessMemoryCounters { cb = (uint)Marshal.SizeOf<ProcessMemoryCounters>() };
+        return K32GetProcessMemoryInfo(Self.Handle, ref counters, counters.cb) ? counters.PageFaultCount : 0;
+    }
+
+    private static readonly Process Self = Process.GetCurrentProcess();
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ProcessMemoryCounters
+    {
+        public uint cb, PageFaultCount;
+        public nuint PeakWorkingSetSize, WorkingSetSize, QuotaPeakPagedPoolUsage, QuotaPagedPoolUsage, QuotaPeakNonPagedPoolUsage,
+            QuotaNonPagedPoolUsage, PagefileUsage, PeakPagefileUsage;
+    }
+
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool K32GetProcessMemoryInfo(IntPtr process, ref ProcessMemoryCounters counters, uint size);
 
     /// <inheritdoc/>
     public void Dispose() => timer.Dispose();
