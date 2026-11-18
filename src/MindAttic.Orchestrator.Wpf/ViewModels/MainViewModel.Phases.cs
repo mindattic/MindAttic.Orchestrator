@@ -63,13 +63,22 @@ public sealed partial class MainViewModel
 
     private void WindDown()
     {
-        var reached = CliMarks.WindDownEverywhere(new ContextCycler().Directory);
-        var s = store.LoadSettingsToChange();
-        store.SaveSettings(s with { Pacing = false });
-        Toasts.Insert(0, new ToastViewModel("Winding down",
-            reached == 0 ? "Pacing is off. No CLI had /allocate on."
-                : $"Pacing is off and /allocate off was recorded for {reached} CLI{(reached == 1 ? "" : "s")}; each finishes its own subagents, then quicksaves.",
-            Palette.Working, null));
+        try
+        {
+            var reached = CliMarks.WindDownEverywhere(new ContextCycler().Directory);
+            var s = store.LoadSettingsToChange();
+            store.SaveSettings(s with { Pacing = false });
+            Toasts.Insert(0, new ToastViewModel("Winding down",
+                reached == 0 ? "Pacing is off. No CLI had /allocate on."
+                    : $"Pacing is off and /allocate off was recorded for {reached} CLI{(reached == 1 ? "" : "s")}; each finishes its own subagents, then quicksaves.",
+                Palette.Working, null));
+        }
+        // Every other settings-writing command in this class shows a toast or status message on failure; this one didn't.
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException)
+        {
+            Toasts.Insert(0, new ToastViewModel("Wind down failed", ex.Message, Palette.Over, null));
+            OrchestratorLog.For("Dashboard").Error(ex, "Wind down failed");
+        }
     }
 
     // ── Settings (LAMP, M.ORCH-T1308) ───────────────────────────────────────
