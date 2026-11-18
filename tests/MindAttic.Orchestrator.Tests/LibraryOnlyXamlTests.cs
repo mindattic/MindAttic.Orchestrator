@@ -290,7 +290,10 @@ public sealed class LibraryOnlyXamlTests
         var strip = main.Descendants().Single(e => (string?)e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")) == "LoginTabStrip");
         var setters = strip.Descendants().Where(e => e.Name.LocalName == "Setter")
             .ToDictionary(e => (string)e.Attribute("Property")!, e => (string?)e.Attribute("Value"));
-        Assert.That(setters, Does.ContainKey("mc:MaCallout.ToolTip").WithValue("{Binding TabHoverTip}"));
+        // M.ORCH-T1814: the callout draws the login itself with a template (a thumbnail of its 5-hour chart over the hover text).
+        Assert.That(setters, Does.ContainKey("mc:MaCallout.ToolTip").WithValue("{Binding}"));
+        Assert.That(setters, Does.ContainKey("mc:MaCallout.ToolTipTemplate").WithValue("{StaticResource LoginHoverTipTemplate}"));
+        Assert.That(main.ToString(), Does.Contain("{Binding TabHoverTip}"), "the template keeps the hover text under the chart");
         Assert.That(setters, Does.ContainKey("mc:MaCallout.Placement").WithValue("Right"));
         Assert.That(setters, Does.Not.ContainKey("ToolTip"), "one tooltip: the callout");
     }
