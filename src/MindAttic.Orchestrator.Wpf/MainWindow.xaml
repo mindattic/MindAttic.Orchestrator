@@ -478,7 +478,7 @@
                                        Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
                         </Grid>
-                        <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding TabFaceTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <!-- This login's own menu, reachable with a tap or a left click (M.ORCH-T1793): the exact same menu the
                              tab's own right-click opens (OnLoginTabContextMenu), the flat strip's twin of the tree header's own
                              LoginTreeMoreButton above. -->
@@ -569,7 +569,7 @@
                                                Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                                Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
                                 </Grid>
-                                <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding TabFaceTitle}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                             </DockPanel>
                             <!-- The same sigma/lambda bars as LoginUsageBarsTemplate (the flat strip's TrailingContentTemplate),
                                  written out here: the library has no bare content host to put that template in. -->
@@ -591,6 +591,11 @@
                                  (LoginTreeHeader_ContextMenuOpening), which doesn't work well on touch or in the phone layout to begin
                                  with. Shown for every login (same as the row's own context menu); ShowLoginMenu itself still refuses a
                                  non-person tab. -->
+                            <!-- The API key's row (M.ORCH-T1816): today's spend and its share of the starting credit, where a
+                                 Claude login's row has its bars. Empty, so collapsed, on every other row. -->
+                            <TextBlock Grid.Column="3" Text="{Binding ApiSpendFace}" Style="{StaticResource MaMutedText}" FontSize="11" VerticalAlignment="Center"
+                                       HorizontalAlignment="Right" Margin="{StaticResource SpaceLS}"
+                                       Visibility="{Binding ApiSpendFace, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                             <!-- The same size as a row's own ellipsis and Close X below, and in the X's column (M.ORCH-T1812). -->
                             <Button x:Name="LoginTreeMoreButton" Grid.Column="4" Style="{StaticResource MaToolButton}" Content="&#xE712;"
                                     Width="22" Height="18" FontSize="10" VerticalAlignment="Center"

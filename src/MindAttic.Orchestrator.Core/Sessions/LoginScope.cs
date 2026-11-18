@@ -16,7 +16,7 @@ public sealed record LoginTab(string? Email, string Title, string ToolTip, strin
     /// MindAttic Vault holds a Claude key.</summary>
     public static LoginTab ApiKey(bool hasKey) =>
         new(Billing.ApiKeyPerson.Email, Billing.ApiKeyPerson.Name,
-            hasKey ? "The Vault's API key, as a person: its own Launcher and CLIs bill API credits, never a Claude Team seat"
+            hasKey ? "The Vault's API key, as a person: its own Launcher and CLIs bill API credits, never a Claude Team seat. Billed per token from the Console's prepaid credits, separate from the Team subscription"
                    : "The Vault's API key, as a person: there's no Claude key in the MindAttic Vault keyring yet",
             Billing.ApiKeyPerson.Color, hasKey) { IsApiKey = true };
 

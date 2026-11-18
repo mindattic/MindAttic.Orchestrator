@@ -124,6 +124,10 @@ public sealed class BillingSwitch
     /// <summary>Whether the MindAttic Vault holds a Claude key to bill.</summary>
     public bool HasKey => SafeKey() is not null;
 
+    /// <summary>The last four characters of the Vault's Claude key, to tell which key is billed (M.ORCH-T1816); null with no
+    /// key. Never more than four, and nothing of a key too short for four to be a small part of it.</summary>
+    public string? KeyTail => SafeKey() is { } key ? key.Length >= 16 ? key[^4..] : "" : null;
+
     /// <summary>
     /// Approves (<paramref name="approve"/>) or rejects the Vault key in one login's Claude Code config (<paramref name="configPath"/>:
     /// a per-CLI login's <c>.claude.json</c>, or <see cref="ConfigPath"/>), for one CLI moved onto or off the key on its own while the

@@ -530,7 +530,7 @@ public sealed partial class MainViewModel
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabUsageLine), nameof(TabTip), nameof(TabHoverTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge), nameof(TabActivityWord),
                                      nameof(TabCliCount), nameof(TabThinkingCount), nameof(ShowsTabThinkingCount), nameof(TabThinkingCountText), nameof(TabThinkingWord),
-                                     nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
+                                     nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(TabFaceTitle), nameof(ApiSpendFace), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
                                      nameof(ApiBurnText), nameof(ShowsClaudeMeters), nameof(ApiCreditPlaceholder),
                                      nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip),

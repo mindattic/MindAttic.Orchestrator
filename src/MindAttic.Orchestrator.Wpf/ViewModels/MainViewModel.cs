@@ -425,9 +425,11 @@ public sealed partial class MainViewModel : ObservableObject
                 var orgDirectory = aggregator.Db.TryLoadOrgs();
                 // The API key's person (M.ORCH-T906): its tab is "signed in" while the Vault holds a Claude key.
                 var hasKey = false;
-                try { hasKey = aggregator.BillingSwitch.HasKey; }
+                string? keyTail = null;
+                try { keyTail = aggregator.BillingSwitch.KeyTail; hasKey = keyTail is not null; }
                 catch (Exception ex) when (ex is not OutOfMemoryException) { }
                 lastApiKey = hasKey;
+                lastApiKeyTail = keyTail;
                 // The menu bar's own host readout (M.ORCH-T1499): this machine's C: free space and RAM load, not any login's,
                 // reused from the same cheap stat calls the disk-space and memory alerts already read (M.ORCH-T471/M.ORCH-T1494).
                 var diskFreeGb = DiskWatch.Read(["C:\\"]) is [{ } drive, ..] ? drive.FreeGb : 0;
@@ -489,6 +491,10 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Whether the Vault held a Claude key at the last read (M.ORCH-T906): the API key's person tab's "signed in",
     /// reused when the stream's figures are laid over the last read.</summary>
     private bool lastApiKey;
+
+    /// <summary>The Vault key's last four characters at the last read (M.ORCH-T1816), null with no key: the API key's row
+    /// shows them so it's clear which key is billed.</summary>
+    private volatile string? lastApiKeyTail;
 
     /// <summary>A refresh was asked for while one ran.</summary>
     private bool refreshQueued;

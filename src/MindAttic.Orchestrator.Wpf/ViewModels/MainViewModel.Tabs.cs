@@ -52,6 +52,31 @@ public sealed partial class MainViewModel
     /// <summary>The login's name ("Jordan", "Ryan (fallback)").</summary>
     public string TabTitle => tab.Title;
 
+    /// <summary>The name its row shows (M.ORCH-T1816): <see cref="TabTitle"/>, and on the API key's person which key it
+    /// is, "API key (…4921)" or "API key (none)". Only the face: everything that names the login keeps TabTitle.</summary>
+    public string TabFaceTitle => tab.IsApiKey ? ApiKeyTitleOf(tab.Title, Root.lastApiKeyTail) : tab.Title;
+
+    /// <summary>"API key (…4921)"; "API key (none)" with no key in the Vault; the bare title for a key too short to show part of.</summary>
+    internal static string ApiKeyTitleOf(string title, string? tail) =>
+        tail is null ? $"{title} (none)" : tail.Length == 0 ? title : $"{title} (…{tail})";
+
+    /// <summary>The API key's row's money (M.ORCH-T1816), where a Claude login's row has its usage bars: what it spent today
+    /// and, with a starting credit set, that as a share of the credit, "$0.17 (3%)"; "" on every other row, with no key, or
+    /// before the first read.</summary>
+    public string ApiSpendFace => tab.IsApiKey && tab.SignedIn ? ApiSpendFaceOf(Spend) : "";
+
+    /// <summary>"$0.17 (3%)", or "$0.17" with no starting credit to take a percent of.</summary>
+    internal static string ApiSpendFaceOf(ApiSpend? spend) => spend is null ? ""
+        : spend.CreditUsd is > 0 and var credit
+            ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{ApiSpend.Usd(spend.TodayUsd)} ({spend.TodayUsd / credit * 100:0}%)")
+            : ApiSpend.Usd(spend.TodayUsd);
+
+    /// <summary>The API key's row's own tooltip line: what the figure beside its name means and what is left.</summary>
+    internal string ApiSpendTipLine => !tab.IsApiKey || Spend is not { } s ? ""
+        : s.CreditUsd is > 0 and var credit
+            ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"\n• Today: {ApiSpend.Usd(s.TodayUsd)}, {s.TodayUsd / credit * 100:0}% of the {ApiSpend.Usd(credit)} starting credit; {ApiSpend.Usd(s.LeftUsd ?? 0)} left")
+            : $"\n• Today: {ApiSpend.Usd(s.TodayUsd)} (no starting credit set: orchestrator billing credit <usd>)";
+
     /// <summary>Its title, its status icon's word (M.ORCH-T757) and its light's word (M.ORCH-T630: colour is never the only cue), its week left, its email and which
     /// login it is, and, with its red flag (M.ORCH-T790), how many of its CLIs are blocked waiting on your answer.</summary>
     public string TabTip =>
@@ -67,7 +92,7 @@ public sealed partial class MainViewModel
     /// hover delay (MainWindow.xaml's ToolTipService.InitialShowDelay="0" on the tab strip) so it's there to read the
     /// instant the pointer lands, not after the usual tooltip pause. A tab with no cutoffs (signed out, the API key, the
     /// global login's) keeps the full <see cref="TabTip"/>, which stays the accessible name of every tab.</summary>
-    public string TabHoverTip => TabHoverTipOf(TabUsageLine, TabCutoffsLine, FiveHourResetUtc, WeekReset, DateTime.UtcNow, ActiveCliTitles) ?? TabTip;
+    public string TabHoverTip => TabHoverTipOf(TabUsageLine, TabCutoffsLine, FiveHourResetUtc, WeekReset, DateTime.UtcNow, ActiveCliTitles) ?? TabTip + ApiSpendTipLine;
 
     /// <summary>This tab's own open CLI tabs' names, in tab order: the hover tip's "Active CLIs" line. The Launcher's own
     /// menu pane is always open (M.ORCH-T855) but is never a CLI (M.ORCH-T1430), so it's left out here the same way
@@ -701,7 +726,7 @@ public sealed partial class MainViewModel
     {
         if (next == tab) return;
         tab = next;
-        Raise(nameof(Tab)); Raise(nameof(TabTitle)); Raise(nameof(TabTip)); Raise(nameof(TabHoverTip)); Raise(nameof(TabBrush));
+        Raise(nameof(Tab)); Raise(nameof(TabTitle)); Raise(nameof(TabFaceTitle)); Raise(nameof(TabTip)); Raise(nameof(TabHoverTip)); Raise(nameof(TabBrush));
         Raise(nameof(IsTabSignedIn)); Raise(nameof(SignInPrompt));
         Raise(nameof(IsApiKeyTab)); Raise(nameof(IsPersonTab)); Raise(nameof(ShowsSignIn)); RaiseTabStatus();
         CommandManager.InvalidateRequerySuggested();

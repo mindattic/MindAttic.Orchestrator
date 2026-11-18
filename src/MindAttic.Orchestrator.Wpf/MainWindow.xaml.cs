@@ -1319,6 +1319,8 @@ public partial class MainWindow : Window
 
     /// <summary>A login's root-node right-click menu at <paramref name="container"/>, shared by the flat login tab strip's
     /// header and the tree sidebar's own (<see cref="OnLoginTabContextMenu"/>/<see cref="LoginTreeHeader_ContextMenuOpening"/>).</summary>
+    private const string ApiCreditsUrl = "https://platform.claude.com/settings/billing";
+
     private void ShowLoginMenu(FrameworkElement container, MainViewModel tab, PlacementMode placement)
     {
         var menu = DropdownMenu(container, $"{tab.TabTitle}'s login", placement);
@@ -1344,6 +1346,22 @@ public partial class MainWindow : Window
         Add("", "User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
             tab.UserSettingsCommand);
         menu.Items.Add(LoginColorMenu(tab)); // Change Color (M.ORCH-T1594)
+        // The API key's person (M.ORCH-T1816): where its prepaid credits are bought, since nothing here can top them up.
+        if (tab.IsApiKeyTab)
+        {
+            menu.Items.Add(DropdownSeparator());
+            var buy = DropdownItem("", "Buy API credits");
+            buy.ToolTip = $"Opens {ApiCreditsUrl} in your browser: the Console's billing page, where the key's prepaid credits are bought";
+            buy.Click += (_, _) =>
+            {
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ApiCreditsUrl) { UseShellExecute = true })?.Dispose(); }
+                catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+                {
+                    OrchestratorLog.For("Dashboard").Warning("Couldn't open {Url:l}: {Error:l}", ApiCreditsUrl, ex.Message);
+                }
+            };
+            menu.Items.Add(buy);
+        }
         menu.IsOpen = true;
     }
 
