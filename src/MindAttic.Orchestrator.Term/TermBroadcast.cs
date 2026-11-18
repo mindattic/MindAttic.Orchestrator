@@ -72,9 +72,11 @@ public sealed record TermBroadcastSettings
     /// <summary>Mask.</summary>
     public TermBroadcastSettings Mask(string id, bool masked) => WithSession(id, s => s with { Masked = masked });
 
-    /// <summary>Pause.</summary>
+    /// <summary>Pause. Resuming a session that was never individually paused (<c>s.Paused</c> false - it may still be under
+    /// <see cref="PauseAll"/>) leaves <see cref="TermBroadcastSession.LastPausedUtc"/> alone instead of fencing its history
+    /// for a pause that never happened; resuming one that was moves the fence to now, same reasoning as <see cref="PauseEvery"/>.</summary>
     public TermBroadcastSettings Pause(string id, bool paused, DateTime nowUtc) =>
-        WithSession(id, s => s with { Paused = paused, LastPausedUtc = paused ? nowUtc : s.LastPausedUtc ?? nowUtc });
+        WithSession(id, s => s with { Paused = paused, LastPausedUtc = paused || s.Paused ? nowUtc : s.LastPausedUtc });
 
     /// <summary>Pauses or resumes every session. Resuming all also resumes each session paused on its own.</summary>
     public TermBroadcastSettings PauseEvery(bool paused, DateTime nowUtc)
