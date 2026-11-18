@@ -433,7 +433,18 @@ public sealed class TerminalPanesTests
         Assert.That(Named("TerminalTabs").Ancestors().Contains(Named("TerminalsPanel")), Is.True);
         var rows = rootGrid.Elements().Single(e => e.Name.LocalName == "Grid.RowDefinitions").Elements().Select(r => (string?)r.Attribute("Height")).ToList();
         Assert.That(rows[2], Is.EqualTo("Auto"), "the CLI tab bar's own row");
-        Assert.That((string?)Named("AgentsBody").Attribute("Grid.Row"), Is.EqualTo(rows.IndexOf("*").ToString()), "everything under the CLI tab bar scrolls");
+        // AgentsBody's row follows the layout (M.ORCH-T1759): the flat layout keeps it in the star row, right under the CLI
+        // tab bar; the tree sidebar hides that bar (TerminalsPanel's own Visibility) and starts the body under the menu bar,
+        // spanning down through the star row.
+        var star = rows.IndexOf("*");
+        Assert.That((string?)Named("AgentsBody").Attribute("Grid.Row"), Is.EqualTo("{Binding TreeMenuLayout, Converter={x:Static vm:Converters.BodyRow}}"));
+        Assert.That((string?)Named("AgentsBody").Attribute("Grid.RowSpan"), Is.EqualTo("{Binding TreeMenuLayout, Converter={x:Static vm:Converters.BodyRowSpan}}"));
+        int Rows(System.Windows.Data.IValueConverter converter, bool tree) => (int)converter.Convert(tree, typeof(int), null, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.That(Rows(Converters.BodyRow, false), Is.EqualTo(star), "everything under the CLI tab bar scrolls");
+        Assert.That(Rows(Converters.BodyRowSpan, false), Is.EqualTo(1), "the flat layout's body is the star row alone");
+        Assert.That(Rows(Converters.BodyRow, true), Is.EqualTo(1), "the tree layout's body starts under the menu bar");
+        Assert.That(Rows(Converters.BodyRow, true) + Rows(Converters.BodyRowSpan, true) - 1, Is.EqualTo(star), "and ends in the star row, so it still scrolls");
+        Assert.That((string?)Named("TerminalsPanel").Attribute("Visibility"), Is.EqualTo("{Binding ShowsFlatTerminalsPanel, Converter={StaticResource Visible}}"), "the CLI tab bar gives its row up in the tree layout");
         foreach (var name in new[] { "TerminalsPanel", "TerminalTabs" })
             Assert.That(Named(name).Ancestors().Contains(Named("AgentsBody")), Is.False, $"{name} stays fixed");
         Assert.That(Named("TerminalFrame").Ancestors().Contains(Named("AgentsBody")), Is.True, "the chosen terminal scrolls with the body");
