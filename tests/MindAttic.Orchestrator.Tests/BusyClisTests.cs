@@ -158,4 +158,15 @@ public sealed class BusyClisTests
         Assert.That(report.Blocking.Single().Why, Does.Contain("2 background job(s) running"));
         Assert.That(report.Clis.Single(c => c.Pid == 2).Activity, Is.EqualTo(CliActivity.Idle), "another CLI's job isn't its");
     }
+
+    /// <summary>M.ORCH-T1813: the Claude Desktop app drives the real CLI binary headlessly for its own agent features, over
+    /// stdio with --input-format stream-json; such a process keeps no session state and isn't a terminal a redeploy could cut
+    /// off, so it must never be excluded (silently) as "a CLI of unknown state".</summary>
+    [TestCase("\"C:\\Users\\ryand\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\claude.exe\" --input-format stream-json --output-format stream-json", true)]
+    [TestCase("\"C:\\Users\\ryand\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\claude.exe\" --output-format stream-json --input-format stream-json", true)]
+    [TestCase("\"C:\\Users\\ryand\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\claude.exe\"", false)]
+    [TestCase("\"C:\\...\\claude.exe\" --input-format text", false)]
+    [TestCase(null, false)]
+    public void IsDesktopSdkSession_matches_only_a_command_line_with_both_flags(string? commandLine, bool expected) =>
+        Assert.That(BusyClis.IsDesktopSdkSession(commandLine), Is.EqualTo(expected));
 }

@@ -213,7 +213,8 @@ public static class BusyClis
     private static string LoginOf(string? configDir, AccountDirs accounts) =>
         string.IsNullOrWhiteSpace(configDir) ? "global login" : accounts.Of(configDir)?.Email ?? configDir;
 
-    /// <summary>Every Claude CLI process (not the Claude Desktop app), with when it started and the CLI above it.</summary>
+    /// <summary>Every Claude CLI process (not the Claude Desktop app, nor a claude.exe it drives as its own headless SDK session,
+    /// M.ORCH-T1813), with when it started and the CLI above it.</summary>
     private static List<Proc> Processes(List<string> problems, Func<IReadOnlyList<Term.TermSessionRecord>>? hosts = null)
     {
         var found = new List<Proc>();
@@ -223,6 +224,7 @@ public static class BusyClis
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { problems.Add($"the TermHost sessions couldn't be read: {ex.Message}"); }
         try { tree = ProcessTree.Snapshot(); }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { tree = new Dictionary<int, (int, string)>(); problems.Add($"the process tree couldn't be read: {ex.Message}"); }
+        var commandLines = CommandLinesOf(problems);
         // When each pid's process started, read once a scan: the host walk checks each step up with it (M.ORCH-T1006).
         var starts = new Dictionary<int, DateTime?>();
         DateTime? StartOf(int pid)
@@ -255,6 +257,11 @@ public static class BusyClis
                 try { path = p.MainModule?.FileName; }
                 catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
                 if (!IsCli(path)) continue;
+                // The Claude Desktop app also drives the real CLI binary headlessly, for its own agent features, over stdio with
+                // --input-format stream-json: no terminal, no interactive turn, and so no session state ever written for it. Taken
+                // for a CLI of unknown state, it refused every redeploy while the app had one open, though it isn't hosted in any
+                // TermHost and a dashboard restart can't touch it (M.ORCH-T1813).
+                if (IsDesktopSdkSession(commandLines.GetValueOrDefault(p.Id))) continue;
                 DateTime? started = null;
                 try { started = p.StartTime.ToUniversalTime(); }
                 catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
@@ -349,4 +356,33 @@ public static class BusyClis
     internal static bool IsCli(string? path) => path is null ||
         (path.IndexOf("AnthropicClaude", StringComparison.OrdinalIgnoreCase) < 0 &&
          path.IndexOf(@"\WindowsApps\", StringComparison.OrdinalIgnoreCase) < 0);
+
+    /// <summary>Whether a claude.exe's command line marks it as a headless SDK session (the Claude Desktop app's own agent
+    /// features drive the CLI binary this way, over stdio): started with <c>--input-format stream-json</c>. It keeps no session
+    /// state, isn't a terminal, and isn't hosted in any TermHost, so it never counts toward the busy gate (M.ORCH-T1813). A
+    /// command line that couldn't be read doesn't match: never excused for a reason that couldn't be confirmed.</summary>
+    internal static bool IsDesktopSdkSession(string? commandLine) => commandLine is not null &&
+        commandLine.Contains("--input-format", StringComparison.OrdinalIgnoreCase) &&
+        commandLine.Contains("stream-json", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Every running claude.exe's command line, by pid (WMI); empty when it can't be read, so nothing is ever excused by
+    /// a command line that wasn't actually seen.</summary>
+    private static IReadOnlyDictionary<int, string> CommandLinesOf(List<string> problems)
+    {
+        var map = new Dictionary<int, string>();
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher("SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'claude.exe'");
+            using var found = searcher.Get();
+            foreach (var o in found)
+                using (o)
+                    if (o["ProcessId"] is uint pid && o["CommandLine"] is string cmd)
+                        map[(int)pid] = cmd;
+        }
+        catch (Exception ex) when (ex is System.Management.ManagementException or System.Runtime.InteropServices.COMException or PlatformNotSupportedException or UnauthorizedAccessException)
+        {
+            problems.Add($"claude.exe command lines couldn't be read: {ex.Message}");
+        }
+        return map;
+    }
 }
