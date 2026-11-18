@@ -32,6 +32,10 @@ public sealed class LiveActivityRowViewModel(AgentBoardRow row, MainViewModel? o
     /// <summary>The card's accessible name: no "Open in Tickets" (there's nothing to open), unlike <see cref="UserTicketRowViewModel.OpenName"/>.</summary>
     public string OpenName => $"{Repo}: {Summary}. No ticket attributed yet";
 
+    /// <summary>The Play button's accessible name (M.ORCH-T1770): there's always a live session to jump to, unlike a ticket
+    /// card's <see cref="UserTicketRowViewModel.CanPlay"/>.</summary>
+    public string PlayName => $"Jump to the CLI on {Repo}";
+
     /// <summary>Flagged (M.ORCH-T1520): running this long with no ticket attributed, past the grace period early
     /// reading/exploring gets before the GOLDEN RULE's "every request is a ticket" is worth calling out. A UI-only nudge,
     /// not a block: the pace gate it would otherwise share already gates every tool call for every login with no staged
@@ -79,6 +83,8 @@ public sealed partial class MainViewModel
             a => new LiveActivityRowViewModel(a, this), (r, a) => r.Update(a));
         Raise(nameof(HasLiveActivity));
         Raise(nameof(HasOpenTickets));
+        // The unified Active section includes this login's own live activity (M.ORCH-T1770).
+        RaiseActiveSections();
 
         foreach (var row in LiveActivity.Where(r => r.IsOverdue && knownTicketless.Add(r.SessionId)))
             Toasts.Insert(0, new ToastViewModel("Working with no ticket", $"{row.Repo}'s CLI has been running {Formatting.Span(TicketlessFlagAfter)}+ with no ticket attributed.", Palette.Waiting, null));

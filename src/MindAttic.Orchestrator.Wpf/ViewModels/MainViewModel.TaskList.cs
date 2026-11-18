@@ -7,6 +7,7 @@ using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
+using MindAttic.Orchestrator.Status;
 using MindAttic.Tickets.Data;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
@@ -41,6 +42,11 @@ public sealed class TaskRowViewModel : ObservableObject
     public AgentBoardRow Cli => cli;
     /// <summary>The subagent.</summary>
     public SubagentActivity? Subagent => subagent;
+    /// <summary>The CLI's session (a subagent's own parent): the Play button's target (M.ORCH-T1770), always known for a
+    /// live row.</summary>
+    public string SessionId => cli.SessionId;
+    /// <summary>The Play button's accessible name.</summary>
+    public string PlayName => $"Jump to {Owner}'s {Kind}";
     /// <summary>Whether subagent.</summary>
     public bool IsSubagent => subagent is not null;
     /// <summary>A subagent row sits indented under its owner (the border margin the card binds).</summary>
@@ -118,6 +124,94 @@ public sealed partial class MainViewModel
     /// <summary>"Task List  3", its section label's count.</summary>
     public string TaskListCount => Root.taskList.Count.ToString(CultureInfo.InvariantCulture);
 
+    private ICommand? jumpToCliCommand;
+
+    // The sidebar's unified Active / Pending / top-priority sections (M.ORCH-T1770): a live task (a CLI or subagent, or a
+    // live session with no ticket yet) and an open ticket sit in the same "Active" group instead of two separately labelled
+    // ones - unified by binding one ItemsControl to a mixed collection and letting WPF pick each row's DataTemplate by its
+    // own runtime type (MainWindow.xaml's SidebarTaskTemplate/SidebarActivityTemplate/SidebarTicketTemplate, each now
+    // implicit - no x:Key - instead of only reachable by an explicit ItemTemplate). Every row has two independent click
+    // targets: its Play button jumps to the CLI and the person working it (JumpToCliCommand, reusing the same lookup
+    // Tickets Desktop's own "Show who is working X" uses), its Ticket button opens it in Tickets (OpenInTicketsCommand).
+
+    /// <summary>The unified "Active" section: every live task first (the Task List, then a live session with no ticket
+    /// attributed yet), then this login's own open tickets being worked that aren't already shown as one of those (so a
+    /// ticket a live CLI already carries isn't listed twice).</summary>
+    public IReadOnlyList<object> ActiveItems
+    {
+        get
+        {
+            var shown = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var items = new List<object>(TaskList.Count + LiveActivity.Count + ActiveTab.Tickets.Count);
+            foreach (var row in TaskList) { items.Add(row); if (row.TicketId is { } id) shown.Add(id); }
+            foreach (var row in LiveActivity) items.Add(row);
+            foreach (var row in ActiveTab.Tickets) if (shown.Add(row.Id)) items.Add(row);
+            return items;
+        }
+    }
+
+    /// <summary>Whether active items.</summary>
+    public bool HasActiveItems => ActiveItems.Count > 0;
+    /// <summary>"Active  5", the section label's count.</summary>
+    public string ActiveCount => ActiveItems.Count.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>The ticket id <paramref name="row"/> names, for the top-priority section's dedupe; null for a task row with
+    /// none attributed yet.</summary>
+    private static string? IdOf(object row) => row switch
+    {
+        TaskRowViewModel t => t.TicketId,
+        UserTicketRowViewModel u => u.Id,
+        _ => null,
+    };
+
+    /// <summary>The first 100 highest-priority open tickets (M.ORCH-T1770), in the scheduler's own priority order (explicit
+    /// priority, then milestone, then graph weight, then recency - the same order <c>plan.Queue</c> is already built in):
+    /// the workspace-wide backlog, after whatever's already shown above for this login in Active or Pending.</summary>
+    public IReadOnlyList<UserTicketRowViewModel> Top100Items
+    {
+        get
+        {
+            var shown = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var row in ActiveItems) if (IdOf(row) is { } id) shown.Add(id);
+            foreach (var row in PendingTab.Tickets) shown.Add(row.Id);
+            return [.. (Root.plan?.Queue ?? []).Where(q => !shown.Contains(q.Id)).Take(100).Select(q => new UserTicketRowViewModel(q, this))];
+        }
+    }
+
+    /// <summary>Whether top100 items.</summary>
+    public bool HasTop100Items => Top100Items.Count > 0;
+    /// <summary>"Top priority  100", the section label's count.</summary>
+    public string Top100Count => Top100Items.Count.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Every tab reads the unified sections again: after the Task List, the live activity or the ticket queues
+    /// change.</summary>
+    private void RaiseActiveSections()
+    {
+        Raise(nameof(ActiveItems)); Raise(nameof(HasActiveItems)); Raise(nameof(ActiveCount));
+        Raise(nameof(Top100Items)); Raise(nameof(HasTop100Items)); Raise(nameof(Top100Count));
+    }
+
+    /// <summary>The Play button (M.ORCH-T1770): jumps to the CLI and the person working <paramref name="row"/> - a Task
+    /// List row, a live session with no ticket yet, or a ticket card - reusing the same lookup Tickets Desktop's own "Show
+    /// who is working X" uses (<see cref="ShowWorker"/>). A no-op for anything else, or a row with neither a session nor a
+    /// ticket to look one up by.</summary>
+    internal void JumpToCli(object? row)
+    {
+        var (session, login, ticket) = row switch
+        {
+            TaskRowViewModel t => (t.SessionId, t.Cli.OwnLogin, t.TicketId),
+            LiveActivityRowViewModel a => ((string?)a.SessionId, (string?)null, (string?)null),
+            UserTicketRowViewModel u => (u.SessionId, u.Assignee.Email, (string?)u.Id),
+            _ => ((string?)null, (string?)null, (string?)null),
+        };
+        if (session is null && ticket is null) return;
+        Root.ShowWorker(new ShowWorkerRequest { Id = ticket ?? "", Session = session, Login = login });
+    }
+
+    /// <summary>The Play button's command, bound to the clicked row itself (its type says which of Task List row, live
+    /// activity row or ticket row it is).</summary>
+    public ICommand JumpToCliCommand => Root.jumpToCliCommand ??= new RelayCommand(p => Root.JumpToCli(p));
+
     /// <summary>Whether task detail open.</summary>
     public bool IsTaskDetailOpen { get => Root.isTaskDetailOpen; set { Root.isTaskDetailOpen = value; RaiseOnEveryTab(nameof(IsTaskDetailOpen)); } }
 
@@ -186,6 +280,9 @@ public sealed partial class MainViewModel
         }
         RaiseOnEveryTab(nameof(HasTaskList));
         RaiseOnEveryTab(nameof(TaskListCount));
+        // The unified Active section includes the Task List (M.ORCH-T1770): every tab's own reads it again.
+        foreach (var t in Root.loginTabs) t.RaiseActiveSections();
+        if (!Root.loginTabs.Contains(Root)) Root.RaiseActiveSections();
     }
 
     /// <summary>The open ticket's queue row, or null when it isn't in the open queue.</summary>

@@ -56,12 +56,15 @@ public sealed class TicketsDesktopTests
         Assert.That(links, Has.None.Matches<XElement>(h => h.Attribute("Command") is not null));
         Assert.That(links, Has.All.Matches<XElement>(h => h.Attribute(XName.Get("AutomationProperties.Name")) is not null));
 
-        // No ticket id left as plain text: a Run or TextBlock bound to an id outside a link.
+        // No ticket id left as plain text: a Run or TextBlock bound to an id outside a link, and not in a card whose own
+        // template has a dedicated Ticket button opening it (M.ORCH-T1770: the sidebar's cards split their old single
+        // whole-card button into a separate Play button and Ticket button, so the ticket's title/summary text itself is no
+        // longer inside either one - the open-in-Tickets command now lives on a sibling button in the same template).
         var plain = doc.Descendants().Where(e => e.Name == p + "Run" || e.Name == p + "TextBlock")
             .Where(e => (string?)e.Attribute("Text") is { } t && (t.StartsWith("{Binding Id") || t.StartsWith("{Binding TicketId") || t.StartsWith("{Binding Summary")))
             .Where(e => e.Parent?.Name != p + "Hyperlink")
-            // The sidebar's ticket card (M.ORCH-T1439) is itself the link: one button opening it through the same command.
-            .Where(e => !e.Ancestors(p + "Button").Any(b => ((string?)b.Attribute("Command"))?.Contains("OpenInTicketsCommand") == true))
+            .Where(e => e.Ancestors(p + "DataTemplate").FirstOrDefault() is not { } template
+                || !template.Descendants(p + "Button").Any(b => ((string?)b.Attribute("Command"))?.Contains("OpenInTicketsCommand") == true))
             // An organization's summary isn't a ticket's, nor is the "working, no ticket yet" card's (M.ORCH-T1519): it's the
             // session's own Doing text, with no ticket to open (M.ORCH-T1580).
             .Where(e => e.Ancestors(p + "DataTemplate").FirstOrDefault()?.Attribute("DataType")?.Value is not { } type

@@ -84,6 +84,16 @@ public sealed class UserTicketRowViewModel : ObservableObject
     /// <summary>The sidebar card's accessible name (M.ORCH-T1439): "M.ORCH-T1439, MindAttic.Orchestrator: its title. Open in Tickets".</summary>
     public string OpenName => $"{Id}, {Repo}: {Summary}. Open in Tickets";
 
+    /// <summary>The CLI session claiming it, if any (M.ORCH-T1770): the Play button's target, null for a ticket nobody has
+    /// claimed right now.</summary>
+    public string? SessionId => item.Assignment?.CliSession;
+
+    /// <summary>Whether the Play button has anywhere to jump to.</summary>
+    public bool CanPlay => SessionId is not null;
+
+    /// <summary>The Play button's accessible name.</summary>
+    public string PlayName => $"Jump to the CLI working {Caption}";
+
     /// <summary>"ID · friendly name", or "ID · summary" cut short with no name yet (M.ORCH-T1450, the same friendly-name system
     /// <c>tickets ticket names</c> backfills): what the sidebar card's bold line shows instead of a bare, unlabeled id.</summary>
     public string Caption => TicketsDb.Caption(Id, owner.FriendlyNameOf(Id), Summary);
@@ -389,6 +399,8 @@ public sealed partial class MainViewModel
         Raise(nameof(HasOpenTickets));
         Raise(nameof(HasNoQueueTickets));
         Raise(nameof(NoQueueTicketsText));
+        // The unified Active, Pending and top-priority sections include this login's own queue (M.ORCH-T1770).
+        RaiseActiveSections();
     }
 
     /// <summary>A ticket id as a sync key (M.ORCH-T1450): trimmed and upper-cased, so the same ticket read in two different

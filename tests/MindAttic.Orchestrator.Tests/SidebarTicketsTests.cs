@@ -4,9 +4,10 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>The sidebar lists the shown person's Active, then Pending tickets as cards under the logins, each opening in
-/// Tickets Desktop (M.ORCH-T1439); the logins keep their room and the cards take the rest (the window tools are in the menu
-/// bar since M.ORCH-T1499).</summary>
+/// <summary>The sidebar lists the shown person's Active, then Pending, then the top-priority tickets as cards under the
+/// logins (M.ORCH-T1439, restructured by M.ORCH-T1770 to unify tasks and tickets into one Active group and add the
+/// top-priority backlog); the logins keep their room and the cards take the rest (the window tools are in the menu bar
+/// since M.ORCH-T1499).</summary>
 public sealed class SidebarTicketsTests
 {
     private static readonly XNamespace X = "http://schemas.microsoft.com/winfx/2006/xaml";
@@ -40,16 +41,28 @@ public sealed class SidebarTicketsTests
         var list = Named(doc, "SidebarTickets");
         Assert.That((string?)list.Attribute("KeyboardNavigation.TabNavigation"), Is.EqualTo("Once"));
         Assert.That((string?)list.Attribute("KeyboardNavigation.DirectionalNavigation"), Is.EqualTo("Contained"));
-        Assert.That((string?)Named(doc, "SidebarActiveTickets").Attribute("ItemsSource"), Is.EqualTo("{Binding ActiveTab.Tickets}"));
+        // The unified Active section (M.ORCH-T1770) mixes the Task List with this login's own open tickets, so it binds a
+        // mixed collection with no explicit ItemTemplate: WPF picks each row's DataTemplate by its own runtime type.
+        var active = Named(doc, "SidebarActiveItems");
+        Assert.That((string?)active.Attribute("ItemsSource"), Is.EqualTo("{Binding ActiveItems}"));
+        Assert.That(active.Attribute("ItemTemplate"), Is.Null, "mixed task/ticket rows: each picks its own template by type");
         Assert.That((string?)Named(doc, "SidebarPendingTickets").Attribute("ItemsSource"), Is.EqualTo("{Binding PendingTab.Tickets}"));
-        Assert.That(list.ToString().IndexOf("SidebarActiveTickets", StringComparison.Ordinal),
+        Assert.That((string?)Named(doc, "SidebarTop100Tickets").Attribute("ItemsSource"), Is.EqualTo("{Binding Top100Items}"));
+        Assert.That(list.ToString().IndexOf("SidebarActiveItems", StringComparison.Ordinal),
             Is.LessThan(list.ToString().IndexOf("SidebarPendingTickets", StringComparison.Ordinal)), "Active first");
+        Assert.That(list.ToString().IndexOf("SidebarPendingTickets", StringComparison.Ordinal),
+            Is.LessThan(list.ToString().IndexOf("SidebarTop100Tickets", StringComparison.Ordinal)), "Pending before the top-priority backlog");
 
+        // Each card is a Border (M.ORCH-T1770), not a button: its two independent click targets are its own Play and
+        // Ticket buttons (jump to its CLI, or open it in Tickets), not the whole row.
         var card = Named(doc, "SidebarTicketCard");
-        Assert.That(card.Name.LocalName, Is.EqualTo("Button"), "a click, Enter or Space opens it");
-        Assert.That((string?)card.Attribute("Command"), Does.Contain("OpenInTicketsCommand"), "the same command as every ticket link");
-        Assert.That((string?)card.Attribute("CommandParameter"), Is.EqualTo("{Binding Id}"));
-        Assert.That((string?)card.Attribute("AutomationProperties.Name"), Is.EqualTo("{Binding OpenName}"));
+        Assert.That(card.Name.LocalName, Is.EqualTo("Border"), "the row itself isn't a click target any more");
+        var playButton = Named(doc, "SidebarTicketPlayButton");
+        Assert.That((string?)playButton.Attribute("Command"), Does.Contain("JumpToCliCommand"));
+        var openButton = Named(doc, "SidebarTicketOpenButton");
+        Assert.That((string?)openButton.Attribute("Command"), Does.Contain("OpenInTicketsCommand"), "the same command as every ticket link");
+        Assert.That((string?)openButton.Attribute("CommandParameter"), Is.EqualTo("{Binding Id}"));
+        Assert.That((string?)openButton.Attribute("AutomationProperties.Name"), Is.EqualTo("{Binding OpenName}"));
     }
 
     [Test]
