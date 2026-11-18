@@ -35,10 +35,19 @@ internal sealed class SecretMasker
     // terminal screen's prose and identifiers unmasked stay here.
     private static Regex Compile(string pattern) => new(pattern, Options, RegexTimeout);
 
+    /// <summary>The OpenAI shape's own prefix, matched again so its validator strips exactly what matched - <c>sk-</c>,
+    /// <c>sk-proj-</c>, <c>sk-svcacct-</c> or <c>sk-admin-</c> - instead of a fixed 3 characters, which folded the longer
+    /// prefixes' literal text into the entropy check and could dilute a borderline key below the threshold.</summary>
+    private static readonly Regex OpenAiPrefix = new(@"^sk-(?:proj-|svcacct-|admin-)?", Options, RegexTimeout);
+
     private static readonly Shape[] Shapes =
     [
         new(Compile(SecretShapes.Anthropic), v => HasDigit(v) && HasLetter(v)),
-        new(Compile(SecretShapes.OpenAi), v => HasDigit(v[3..]) && HasLetter(v[3..]) && Entropy(v[3..]) >= 3.5),
+        new(Compile(SecretShapes.OpenAi), v =>
+        {
+            var rest = v[OpenAiPrefix.Match(v).Length..];
+            return HasDigit(rest) && HasLetter(rest) && Entropy(rest) >= 3.5;
+        }),
         new(Compile(SecretShapes.GitHub), v => HasDigit(v)),
         new(Compile(SecretShapes.GitHubPat)),
         new(Compile(SecretShapes.AwsKeyId)),
