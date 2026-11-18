@@ -63,7 +63,6 @@ public static class TermMemberKeys
     public const string Prefix = "mk1_";
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
-    private static readonly object WriteGate = new();
 
     /// <summary>The keys file's path.</summary>
     public static string KeysPath(string? directory = null) => Path.Combine(directory ?? TermGateway.DefaultDirectory, KeysFile);
@@ -213,15 +212,26 @@ public static class TermMemberKeys
             .Order(StringComparer.Ordinal)];
     }
 
+    /// <summary>Changes the member keys file under a lock shared by every writer: an in-process lock alone gave
+    /// no protection against a separate <c>orchestrator machine invite|revoke|isolate</c> process doing its own
+    /// read-modify-write at the same time, which could silently lose this one's change (e.g. a revoke reverted by a
+    /// concurrent invite/isolate that read the file before the revoke wrote it) - the same hazard <see cref="TermBroadcast.Update"/>
+    /// already guards against with a named cross-process mutex (bughunt 2026-10-27).</summary>
     private static void Update(string? directory, Func<TermMemberKeyFile, TermMemberKeyFile> change)
     {
-        lock (WriteGate)
+        using var mutex = new Mutex(false, @"Local\mindattic-orchestrator-member-keys");
+        var owned = false;
+        try
         {
+            try { owned = mutex.WaitOne(TimeSpan.FromSeconds(2)); }
+            catch (AbandonedMutexException) { owned = true; }
+            if (!owned) throw new IOException($"{KeysPath(directory)} is locked by another process; try again.");
             if (!TryRead(directory, out var file)) throw new IOException($"{KeysPath(directory)} can't be read just now; try again.");
             var next = change(file ?? new TermMemberKeyFile());
             if (!WriteAtomic(KeysPath(directory), JsonSerializer.Serialize(next, Json)))
                 throw new IOException($"{KeysPath(directory)} couldn't be written.");
         }
+        finally { if (owned) mutex.ReleaseMutex(); }
     }
 
     private static bool WriteAtomic(string path, string text)
