@@ -30,8 +30,16 @@ public static partial class TermPaneFile
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var temp = path + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
-            File.WriteAllText(temp, PaneBroker.Serialize(request), new UTF8Encoding(false));
-            File.Move(temp, path, overwrite: true);
+            try
+            {
+                File.WriteAllText(temp, PaneBroker.Serialize(request), new UTF8Encoding(false));
+                File.Move(temp, path, overwrite: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                try { File.Delete(temp); } catch (Exception delEx) when (delEx is IOException or UnauthorizedAccessException) { }
+                throw;
+            }
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { return false; }
