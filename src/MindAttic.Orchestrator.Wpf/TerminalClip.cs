@@ -59,7 +59,14 @@ internal static partial class TerminalClip
         if (Nullable.Equals(last.Value, region)) return;
         var handle = IntPtr.Zero;
         if (region is { } r)
+        {
             handle = r.IsEmpty ? CreateRectRgn(0, 0, 0, 0) : CreateRectRgn(r.X, r.Y, r.X + r.Width, r.Y + r.Height);
+            // CreateRectRgn failing (GDI handle exhaustion) must not fall through to SetWindowRgn with a null handle: that
+            // call succeeds too, but it means "no region" (fully unclipped), the opposite of the wanted clip, and the code
+            // below would then record it as applied and never retry. Leave the window's actual clip and `last` alone instead,
+            // so the next layout pass tries again.
+            if (handle == IntPtr.Zero) return;
+        }
         // On success the window owns the region; on failure it's still ours to free.
         if (SetWindowRgn(terminal.Handle, handle, true) == 0 && handle != IntPtr.Zero) DeleteObject(handle);
         else last.Value = region;
