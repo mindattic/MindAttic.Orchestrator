@@ -100,6 +100,9 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>The hosted session's id, set before its host starts; null for an in-process tab.</summary>
     public string? TermId { get; internal set; }
 
+    /// <summary>When this tab is next considered for a name of its work (M.ORCH-T1817); null until it is first seen.</summary>
+    internal DateTime? AutoNameDueUtc { get; set; }
+
     /// <summary>The hosted session once its host registered (or the one reattached to).</summary>
     public TermSessionRecord? Session { get; private set; }
 
@@ -185,13 +188,17 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>Renames the tab in place (M.ORCH-T1432): <paramref name="text"/>, trimmed, becomes its name; empty or blank keeps
     /// the name it had (false), and its own default name clears the custom one. Its id and session are untouched. Raised for the
     /// tab, its tooltip and automation name; the caller persists it (<see cref="TerminalsViewModel.Rename"/>).</summary>
-    internal bool Rename(string? text)
+    /// <para><paramref name="auto"/> (M.ORCH-T1817): the dashboard's own name for what the CLI is doing, marked as such
+    /// (<see cref="PaneRequest.AutoNamed"/>) so a later pass may change it again; a rename by hand clears the mark, even
+    /// when the person types the very name the dashboard had given.</para>
+    internal bool Rename(string? text, bool auto = false)
     {
         var name = text?.Trim();
         if (string.IsNullOrEmpty(name)) return false;
         var custom = name == DefaultName ? null : name;
-        if (custom == Request.CustomName) return false;
-        Request = Request with { CustomName = custom };
+        var marked = auto && custom is not null;
+        if (custom == Request.CustomName && marked == Request.AutoNamed) return false;
+        Request = Request with { CustomName = custom, AutoNamed = marked };
         System.Windows.Automation.AutomationProperties.SetName(Control, Title);
         Raise(nameof(Request)); Raise(nameof(Name)); Raise(nameof(Title)); Raise(nameof(Tooltip)); Raise(nameof(TabHoverTip));
         return true;
@@ -1244,15 +1251,57 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <summary>Where the hosted sessions' tab files are (<see cref="TermPaneFile"/>); tests use their own.</summary>
     internal string? PaneDirectory { get; init; }
 
+    /// <summary>How often a workspace CLI tab is named for its work (M.ORCH-T1817,
+    /// <see cref="OrchestratorSettings.AutoTabNameMinutes"/>); zero never names one.</summary>
+    internal TimeSpan AutoNameEvery { get; set; } = TimeSpan.FromMinutes(MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultAutoTabNameMinutes);
+
+    /// <summary>The longest auto-given name (<see cref="OrchestratorSettings.AutoTabNameMaxChars"/>).</summary>
+    internal int AutoNameMaxChars { get; set; } = (int)MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultAutoTabNameMaxChars;
+
+    /// <summary>The workspace's root folder: a CLI running in it, not in a repo, is a workspace tab (<see cref="AutoTabName"/>).</summary>
+    internal string? WorkspaceRoot { get; set; }
+
+    /// <summary>A ticket's friendly name by its ID, null when it has none; null here has names fall back to the ID.</summary>
+    internal Func<string, string?>? TicketName { get; set; }
+
+    /// <summary>
+    /// Names <paramref name="pane"/> for what its CLI is doing when it is due (M.ORCH-T1817): a workspace tab nobody renamed
+    /// by hand (<see cref="AutoTabName.IsEligible"/>), first considered <see cref="AutoNameEvery"/> after it was first seen
+    /// and again that often. Only a CLI that is working, or worked since the last pass, is renamed; an idle one keeps its
+    /// name. The name is kept the way a rename by hand is (<see cref="Rename"/>), marked as the dashboard's own.
+    /// </summary>
+    internal void ConsiderAutoName(TerminalPaneViewModel pane, AgentBoardRow? row, DateTime nowUtc)
+    {
+        if (AutoNameEvery <= TimeSpan.Zero || !AutoTabName.IsEligible(pane.Request, WorkspaceRoot)) return;
+        if (pane.AutoNameDueUtc is not { } due)
+        {
+            pane.AutoNameDueUtc = nowUtc + AutoNameEvery;
+            return;
+        }
+        if (nowUtc < due) return;
+        pane.AutoNameDueUtc = nowUtc + AutoNameEvery;
+        if (row is null || !(row.IsBusy || nowUtc - row.LastActivityUtc <= AutoNameEvery)) return;
+        string? ticketName = null;
+        if (row.TicketId is { Length: > 0 } ticket)
+        {
+            try { ticketName = TicketName?.Invoke(ticket); }
+            catch (Exception ex) when (ex is System.IO.IOException or InvalidOperationException or System.Data.Common.DbException) { }
+        }
+        if (AutoTabName.NameFor(row.TicketId, ticketName, row.Doing, AutoNameMaxChars) is not { } name || name == pane.Name) return;
+        var was = pane.Name;
+        if (Rename(pane, name, auto: true))
+            OrchestratorLog.For("Terminals").Information("Named the workspace tab {Was:l} {Name:l} for its work ({Id:l})", was, name, pane.TermId ?? "in-process");
+    }
+
     /// <summary>Renames <paramref name="pane"/> in place (M.ORCH-T1432, <see cref="TerminalPaneViewModel.Rename"/>) and keeps the
     /// name by its identity: a hosted tab's <see cref="TermPaneFile"/> under its TermHost session id, which reattach, a pop-out
     /// window and a restarted dashboard all read, and the session-restore file (<see cref="Changed"/>). False when the name
     /// didn't change (blank, or the same). Never throws.</summary>
-    public bool Rename(TerminalPaneViewModel pane, string? text)
+    public bool Rename(TerminalPaneViewModel pane, string? text, bool auto = false)
     {
         try
         {
-            if (!pane.Rename(text)) return false;
+            if (!pane.Rename(text, auto)) return false;
             if (pane.TermId is { Length: > 0 } id && !TermPaneFile.Write(id, pane.Request, PaneDirectory))
                 OrchestratorLog.For("Terminals").Warning("Couldn't save {Title:l}'s new name to its tab file {Id:l}", pane.Title, id);
             Changed?.Invoke();
@@ -1417,7 +1466,9 @@ public sealed class TerminalsViewModel : ObservableObject
             // gate's agent rows not caught up yet), the pane's own already-known one (bughunt 2026-11-02, M.ORCH-T1407) -- so a
             // momentary miss doesn't blank an already-known CLI's badge back to "unknown" every time SessionOf has a bad tick.
             var badgeSession = BadgeSessionOf(session, pane.SessionId);
-            pane.ApplyAgentStatus(badgeSession is { Length: > 0 } ? snapshot.Agents.FirstOrDefault(a => a.SessionId == badgeSession) : null, snapshot.TakenUtc);
+            var agent = badgeSession is { Length: > 0 } ? snapshot.Agents.FirstOrDefault(a => a.SessionId == badgeSession) : null;
+            pane.ApplyAgentStatus(agent, snapshot.TakenUtc);
+            ConsiderAutoName(pane, agent, DateTime.UtcNow);
             if (pane.HostPid is not { } || session is not { Length: > 0 }) continue;
             // Its person is the login its CLI is on now: moved to another, it moves to that one's page.
             var login = LoginScope.LoginOf(snapshot, session);

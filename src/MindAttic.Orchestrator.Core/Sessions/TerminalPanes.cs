@@ -78,6 +78,11 @@ public sealed record PaneRequest(string Title, string Directory)
     /// so a renamed CLI keeps its name across a pop-out window, reattach and a dashboard restart.</summary>
     public string? CustomName { get; init; }
 
+    /// <summary><see cref="CustomName"/> was given by the dashboard for what the CLI is doing (M.ORCH-T1817,
+    /// <see cref="AutoTabName"/>), not typed by the person: such a name is reconsidered on the next pass, and a rename by hand
+    /// clears this for good. Rides in the request with the name, so the difference survives a reattach and a restart.</summary>
+    public bool AutoNamed { get; init; }
+
     /// <summary>The colour the person chose for this one tab with Change Color (M.ORCH-T1594), "#RRGGBB"; null follows its
     /// login's <see cref="TabColor"/>. Rides in the request like <see cref="CustomName"/>, so it's kept across reattach, a
     /// pop-out window and a dashboard restart.</summary>

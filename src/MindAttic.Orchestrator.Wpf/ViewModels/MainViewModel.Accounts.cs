@@ -104,6 +104,11 @@ public sealed partial class MainViewModel
                 AllTerminals.ConfirmCloseEnabled = settings.ConfirmCliClose;
                 AllTerminals.EndedLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedTabMinutes));
                 AllTerminals.EndedMenuLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedLauncherTabMinutes));
+                // Workspace CLI tabs named for their work (M.ORCH-T1817): the interval and the name's length, live from the Vault.
+                AllTerminals.AutoNameEvery = TimeSpan.FromMinutes(Math.Max(0, settings.AutoTabNameMinutes));
+                AllTerminals.AutoNameMaxChars = (int)Math.Max(8, settings.AutoTabNameMaxChars);
+                AllTerminals.WorkspaceRoot = WorkspaceRoot;
+                AllTerminals.TicketName ??= id => nameSource.Names(WorkspaceRoot).GetValueOrDefault(id);
                 // The dashboard's intervals, live from the Vault (M.ORCH-T1595): the poll and resync timers read them at their next tick.
                 DashboardTimings.Apply(settings);
                 launcherRespawn.Spacing = DashboardTimings.LauncherSpacing;

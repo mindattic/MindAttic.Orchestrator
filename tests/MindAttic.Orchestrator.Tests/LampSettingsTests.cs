@@ -240,6 +240,8 @@ public sealed class LampSettingsTests
             s => s.ExcludeLauncherFromTeamWall),
         Case("endedTabMinutes", s => s with { EndedTabMinutes = 60 }, 60d, v => v.EndedTabMinutes = 15, 15d, s => s.EndedTabMinutes),
         Case("hiddenRendererMinutes", s => s with { HiddenRendererMinutes = 10 }, 10d, v => v.HiddenRendererMinutes = 30, 30d, s => s.HiddenRendererMinutes),
+        Case("autoTabNameMinutes", s => s with { AutoTabNameMinutes = 5 }, 5d, v => v.AutoTabNameMinutes = 15, 15d, s => s.AutoTabNameMinutes),
+        Case("autoTabNameMaxChars", s => s with { AutoTabNameMaxChars = 20 }, 20d, v => v.AutoTabNameMaxChars = 30, 30d, s => s.AutoTabNameMaxChars),
         Case("testTermHostMaxMinutes", s => s with { TestTermHostMaxMinutes = 60 }, 60d, v => v.TestTermHostMaxMinutes = 30, 30d, s => s.TestTermHostMaxMinutes),
         Case("presumeBusyConfirmSeconds", s => s with { PresumeBusyConfirmSeconds = 12 }, 12d, v => v.PresumeBusyConfirmSeconds = 5, 5d, s => s.PresumeBusyConfirmSeconds),
         Case("presumeBusyMaxSeconds", s => s with { PresumeBusyMaxSeconds = 90 }, 90d, v => v.PresumeBusyMaxSeconds = 30, 30d, s => s.PresumeBusyMaxSeconds),

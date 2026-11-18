@@ -739,6 +739,18 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 10080)]
     public double HiddenRendererMinutes { get; set; } = OrchestratorSettings.DefaultHiddenRendererMinutes;
 
+    /// <summary>Minutes between the passes that name a workspace CLI tab for what its CLI is doing; 0 never renames one.</summary>
+    [Setting("Name a workspace CLI tab for its work every (minutes)", Group = "Dashboard", Order = 6,
+        Help = "A CLI tab opened at the workspace root (General, MindAttic) is given a short name for what its CLI is doing: its ticket's name, else its latest activity. The first naming comes this many minutes after the tab opens, and it is reconsidered this often for as long as the CLI is working and you have not renamed the tab yourself. Tabs opened on a repo keep their name. 0 never renames a tab.")]
+    [SettingRange(0, 1440)]
+    public double AutoTabNameMinutes { get; set; } = OrchestratorSettings.DefaultAutoTabNameMinutes;
+
+    /// <summary>The most characters an auto-given tab name has.</summary>
+    [Setting("Longest auto-given tab name (characters)", Group = "Dashboard", Order = 6,
+        Help = "The most characters a name the dashboard gives a workspace CLI tab may have. Names are cut between words, at most three of them.")]
+    [SettingRange(8, 60)]
+    public double AutoTabNameMaxChars { get; set; } = OrchestratorSettings.DefaultAutoTabNameMaxChars;
+
     /// <summary>How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once.</summary>
     [Setting("Leaked test TermHost lifetime (minutes)", Group = "Dashboard", Order = 90,
         Help = "How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once. A host in any other folder is never touched.")]
@@ -1106,6 +1118,8 @@ public sealed class OrchestratorVaultSettings
         UiAutomation = s.UiAutomation,
         EndedTabMinutes = s.EndedTabMinutes,
         HiddenRendererMinutes = s.HiddenRendererMinutes,
+        AutoTabNameMinutes = s.AutoTabNameMinutes,
+        AutoTabNameMaxChars = s.AutoTabNameMaxChars,
         TestTermHostMaxMinutes = s.TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = s.PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = s.PresumeBusyMaxSeconds,
@@ -1280,6 +1294,8 @@ public sealed class OrchestratorVaultSettings
         UiAutomation = UiAutomation,
         EndedTabMinutes = EndedTabMinutes,
         HiddenRendererMinutes = HiddenRendererMinutes,
+        AutoTabNameMinutes = AutoTabNameMinutes,
+        AutoTabNameMaxChars = AutoTabNameMaxChars,
         TestTermHostMaxMinutes = TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = PresumeBusyMaxSeconds,

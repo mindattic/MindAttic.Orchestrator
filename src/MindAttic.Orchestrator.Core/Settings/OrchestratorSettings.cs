@@ -756,6 +756,20 @@ public sealed record OrchestratorSettings
     /// <summary>The default hidden renderer minutes constant.</summary>
     public const double DefaultHiddenRendererMinutes = 10;
 
+    /// <summary>Minutes between the dashboard's passes that name a workspace CLI tab ("General", "MindAttic") for what its CLI
+    /// is doing (M.ORCH-T1817, <c>AutoTabName</c>): the first pass comes this long after the tab is first seen, and a tab not
+    /// renamed by hand is reconsidered at every one. 0 never renames a tab.</summary>
+    public double AutoTabNameMinutes { get; init; } = DefaultAutoTabNameMinutes;
+
+    /// <summary>The default auto tab name minutes constant.</summary>
+    public const double DefaultAutoTabNameMinutes = 5;
+
+    /// <summary>The most characters an auto-given tab name has (M.ORCH-T1817).</summary>
+    public double AutoTabNameMaxChars { get; init; } = DefaultAutoTabNameMaxChars;
+
+    /// <summary>The default auto tab name length constant.</summary>
+    public const double DefaultAutoTabNameMaxChars = 20;
+
     /// <summary>Minutes a TermHost running in an orch-test-* temp folder may live before the daemon ends it (M.ORCH-T1623): a test that
     /// opened a real hosted tab and never closed it (it failed first) leaves one running all night. One whose folder is gone is ended
     /// at once; a host in any other folder is never touched.</summary>
