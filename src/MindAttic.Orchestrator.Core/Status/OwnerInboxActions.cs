@@ -5,7 +5,8 @@ namespace MindAttic.Orchestrator.Status;
 
 /// <summary>
 /// What the dashboard's Inbox (M.ORCH-T1732) can do to a ticket right there, without leaving for Tickets Desktop: approve it,
-/// clear its <c>waiting-on-owner</c> label, or delegate it to someone (or back to nobody). Each opens the workspace's ticket
+/// clear its <c>waiting-on-owner</c> label, or delegate it to someone (or back to nobody); and to an addition waiting to join
+/// a locked milestone (M.ORCH-T1685): approve or decline it. Each opens the workspace's ticket
 /// database for the one call and closes it again; <see cref="InvalidOperationException"/> when it isn't migrated yet, the same
 /// as a stale Inbox row pointing at a ticket that's since gone.
 /// </summary>
@@ -33,6 +34,22 @@ public static class OwnerInboxActions
     {
         using var db = Open(workspaceRoot);
         return email is null ? db.Unassign(id) : db.Assign(id, email);
+    }
+
+    /// <summary>The owner approves a pending milestone addition (M.ORCH-T1685, <see cref="TicketsDb.ApproveMilestoneAddition"/>):
+    /// <paramref name="item"/> becomes a member of <paramref name="milestone"/>, approved by <paramref name="by"/>.</summary>
+    public static void ApproveAddition(string workspaceRoot, string milestone, string item, string by)
+    {
+        using var db = Open(workspaceRoot);
+        db.ApproveMilestoneAddition(milestone, item, by);
+    }
+
+    /// <summary>The owner declines a pending milestone addition (<see cref="TicketsDb.DeclineMilestoneAddition"/>): it stops
+    /// waiting and never was a member, declined by <paramref name="by"/> with <paramref name="reason"/> when one is given.</summary>
+    public static void DeclineAddition(string workspaceRoot, string milestone, string item, string by, string? reason = null)
+    {
+        using var db = Open(workspaceRoot);
+        db.DeclineMilestoneAddition(milestone, item, by, reason);
     }
 
     private static TicketsDb Open(string workspaceRoot) =>

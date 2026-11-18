@@ -12,7 +12,8 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// <summary>One row of the owner inbox (M.ORCH-T1689): what waits on the owner, since when, and what to do about it. A ticket's
 /// row links its id into Tickets Desktop, like every ticket id in the window. It can also act right there (M.ORCH-T1732):
 /// Approve, Clear, Release and Delegate run against the ticket database directly, the Copy button stays for whoever would
-/// rather paste the command into a terminal, and Sign in / Consent (not tickets) keep Copy as their only way.</summary>
+/// rather paste the command into a terminal, and Sign in / Consent (not tickets) keep Copy as their only way. An addition
+/// waiting to join a milestone (M.ORCH-T1685) can be approved or declined; a milestone's growth is only told.</summary>
 public sealed class InboxRowViewModel(OwnerInboxItem item, DateTime nowUtc, IReadOnlyList<PersonOptionViewModel>? people = null)
 {
     /// <summary>What names it across refreshes.</summary>
@@ -47,6 +48,13 @@ public sealed class InboxRowViewModel(OwnerInboxItem item, DateTime nowUtc, IRea
     /// <summary>Whether it can be delegated to someone else, or back to nobody: any ticket item.</summary>
     public bool CanDelegate => IsTicket;
 
+    /// <summary>The milestone a waiting addition would join (M.ORCH-T1685); null for any other row.</summary>
+    public string? MilestoneId { get; } = item.MilestoneId;
+    /// <summary>The ticket or epic waiting to join <see cref="MilestoneId"/>; null for any other row.</summary>
+    public string? MilestoneItem { get; } = item.MilestoneItem;
+    /// <summary>Whether "Approve" and "Decline" for a milestone addition apply: a ticket or epic waiting to join a milestone.</summary>
+    public bool CanAnswerAddition => RawKind == OwnerInbox.MilestoneAddition && MilestoneId is not null && MilestoneItem is not null;
+
     /// <summary>The Delegate picker's choice: starts on whoever already has it (<see cref="OwnerInboxItem.Assignee"/>), else
     /// "Unassigned". The ComboBox sets it as the row is browsed; only the Delegate button commits it, so browsing the list
     /// doesn't change anything by itself.</summary>
@@ -67,6 +75,7 @@ public sealed partial class MainViewModel
     private bool isInboxOpen;
     private ICommand? toggleInboxCommand, closeInboxCommand, copyInboxActionCommand;
     private ICommand? approveInboxCommand, clearWaitingInboxCommand, releaseInboxCommand, delegateInboxCommand, workInboxNowCommand;
+    private ICommand? approveAdditionInboxCommand, declineAdditionInboxCommand;
 
     /// <summary>The inbox for <paramref name="built"/> and its <paramref name="plan"/>; null (the last one stays) when the refresh
     /// made no plan or a repo's tickets couldn't be read, when the list would be partial. Never throws.</summary>
@@ -155,6 +164,39 @@ public sealed partial class MainViewModel
     public ICommand DelegateInboxCommand => Root.delegateInboxCommand ??= new RelayCommand(p => { if (p is InboxRowViewModel row) Root.Shown.DelegateInbox(row); });
     /// <summary>Approves or clears the row, then starts it at once if it's workable.</summary>
     public ICommand WorkInboxNowCommand => Root.workInboxNowCommand ??= new RelayCommand(p => { if (p is InboxRowViewModel row) Root.Shown.WorkInboxNow(row); });
+
+    /// <summary>Approves the row's waiting milestone addition.</summary>
+    public ICommand ApproveAdditionInboxCommand => Root.approveAdditionInboxCommand ??= new RelayCommand(p => { if (p is InboxRowViewModel row) Root.Shown.AnswerAdditionInbox(row, approve: true); });
+    /// <summary>Declines the row's waiting milestone addition.</summary>
+    public ICommand DeclineAdditionInboxCommand => Root.declineAdditionInboxCommand ??= new RelayCommand(p => { if (p is InboxRowViewModel row) Root.Shown.AnswerAdditionInbox(row, approve: false); });
+
+    /// <summary>Approves or declines <paramref name="row"/>'s waiting milestone addition (M.ORCH-T1685,
+    /// <see cref="OwnerInboxActions.ApproveAddition"/>, <see cref="OwnerInboxActions.DeclineAddition"/>) as this tab's person
+    /// (<see cref="PersonEmail"/>), then refreshes: the row leaves the Inbox once nothing waits. A decline here gives no
+    /// reason; <c>orchestrator milestone decline --reason</c> records one. With no person known it says so and changes nothing.</summary>
+    public async void AnswerAdditionInbox(InboxRowViewModel row, bool approve)
+    {
+        if (!row.CanAnswerAddition) return;
+        var what = approve ? "Approve" : "Decline";
+        if (PersonEmail is not { } by)
+        {
+            QueueMessage = $"{what} failed: nobody is signed in on this tab, so there is no one to record. Run the command below with --by instead.";
+            return;
+        }
+        try
+        {
+            if (approve) OwnerInboxActions.ApproveAddition(WorkspaceRoot, row.MilestoneId!, row.MilestoneItem!, by);
+            else OwnerInboxActions.DeclineAddition(WorkspaceRoot, row.MilestoneId!, row.MilestoneItem!, by);
+            QueueMessage = approve ? $"{row.MilestoneItem} is on {row.MilestoneId} now." : $"{row.MilestoneItem} is declined for {row.MilestoneId}.";
+            await RefreshAsync();
+            if (full is not null) Root.ApplyPlan(full);
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException or KeyNotFoundException or InvalidOperationException)
+        {
+            QueueMessage = $"{what} failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "Answering a milestone addition from the Inbox failed");
+        }
+    }
 
     /// <summary>Approves <paramref name="row"/>'s ticket (<see cref="OwnerInboxActions.Approve"/>), then refreshes: the row
     /// leaves the Inbox once the plan no longer counts it as awaiting approval.</summary>

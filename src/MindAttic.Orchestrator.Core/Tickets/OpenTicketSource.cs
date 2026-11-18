@@ -31,7 +31,11 @@ public sealed class OpenTicketSource
         IReadOnlySet<string> Approved, IReadOnlySet<string> Epics, IReadOnlyDictionary<string, long> Priorities, WorkState Work,
         IReadOnlyDictionary<string, IReadOnlyList<string>> PartOf, IReadOnlySet<string> OwnerWaiting,
         IReadOnlyDictionary<string, long> GraphWeights, IReadOnlyDictionary<string, string> Names,
-        IReadOnlyDictionary<string, TicketMilestone> Milestones)? fromDb;
+        IReadOnlyDictionary<string, TicketMilestone> Milestones, IReadOnlyList<MilestoneScope> MilestoneScopes)? fromDb;
+
+    /// <summary>Each active and accepting milestone's scope (M.ORCH-T1685): what waits for its owner's approval and how much it
+    /// has grown since activation; empty with none, or with a database that predates the scope lock.</summary>
+    public IReadOnlyList<MilestoneScope> MilestoneScopes => fromDb?.MilestoneScopes ?? [];
 
     /// <summary>Open ticket → its graph weight (<see cref="TicketsDb.GraphWeights"/>, M.TIX-T316): dispatch's order after explicit
     /// priority (M.ORCH-T1457); missing means 0.</summary>
@@ -181,7 +185,8 @@ public sealed class OpenTicketSource
                     db.AllLabels().Where(l => l.Value.Contains(WaitingOnOwnerLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     db.GraphWeights().Where(w => w.Value.Value != 0).ToDictionary(w => w.Key, w => (long)w.Value.Value, StringComparer.OrdinalIgnoreCase),
                     db.Names().ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
-                    MilestonesOf(db, open.Select(t => t.Ticket.Id).ToHashSet(StringComparer.OrdinalIgnoreCase), fromDb is { } before && before.Path == path ? before.Milestones : null));
+                    MilestonesOf(db, open.Select(t => t.Ticket.Id).ToHashSet(StringComparer.OrdinalIgnoreCase), fromDb is { } before && before.Path == path ? before.Milestones : null),
+                    MilestoneScope.ReadOr(db, fromDb is { } earlier && earlier.Path == path ? earlier.MilestoneScopes : null));
                 dbReadUtc = DateTime.UtcNow;
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)

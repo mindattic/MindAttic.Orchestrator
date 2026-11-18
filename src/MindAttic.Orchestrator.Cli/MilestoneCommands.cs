@@ -4,6 +4,7 @@ using MindAttic.Orchestrator;
 using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Settings;
+using MindAttic.Orchestrator.Tickets;
 using MindAttic.Tickets.Data;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -55,6 +56,17 @@ internal static class MilestoneCli
     /// <summary>A projected date as the owner reads it: the local day.</summary>
     public static string Day(DateTime utc) => utc.ToLocalTime().ToString("ddd yyyy-MM-dd", System.Globalization.CultureInfo.CurrentCulture);
 
+    /// <summary>Each active and accepting milestone's scope by its ID (M.ORCH-T1685); empty when the database can't say (one
+    /// from before the scope lock), so a list still prints without its growth.</summary>
+    public static IReadOnlyDictionary<string, MilestoneScope> Scopes(TicketsDb db)
+    {
+        try { return MilestoneScope.Read(db).ToDictionary(m => m.Id, StringComparer.OrdinalIgnoreCase); }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or KeyNotFoundException or System.Data.Common.DbException)
+        {
+            return new Dictionary<string, MilestoneScope>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
     public static object Json(MilestoneAcceptance.Checked c) => new
     {
         number = c.Check.Number, kind = c.Check.Kind, description = c.Check.Description, repos = c.Check.Repos, target = c.Check.Target,
@@ -75,7 +87,8 @@ internal static class MilestoneCli
 }
 
 /// <summary><c>orchestrator milestone [list] [--json]</c> (M.ORCH-T1684): the active and accepting milestones, each with its
-/// tickets done of total, its acceptance checks passed of total, and the date the daemon last projected for it (M.ORCH-T1688).</summary>
+/// tickets done of total, its acceptance checks passed of total, the date the daemon last projected for it (M.ORCH-T1688), and
+/// how much it has grown since it was activated with what waits for approval (M.ORCH-T1685).</summary>
 internal sealed class MilestoneListCommand : Command<MilestoneListCommand.Settings>
 {
     public sealed class Settings : CommandSettings
@@ -96,11 +109,12 @@ internal sealed class MilestoneListCommand : Command<MilestoneListCommand.Settin
         }
         var graph = db.Graph();
         var forecasts = new MilestoneForecasts(Ctx.Store()).Records();
+        var scopes = MilestoneCli.Scopes(db);
         var rows = open.Select(m =>
         {
             var (done, total) = TicketsDb.MilestoneProgress(db.MilestoneMembers(m.Id, graph));
             var checks = db.MilestoneChecks(m.Id);
-            return (Milestone: m, Done: done, Total: total, Passed: checks.Count(c => c.Passed), Checks: checks.Count, Forecast: forecasts.GetValueOrDefault(m.Id));
+            return (Milestone: m, Done: done, Total: total, Passed: checks.Count(c => c.Passed), Checks: checks.Count, Forecast: forecasts.GetValueOrDefault(m.Id), Scope: scopes.GetValueOrDefault(m.Id));
         }).ToList();
         if (settings.Json)
         {
@@ -109,13 +123,18 @@ internal sealed class MilestoneListCommand : Command<MilestoneListCommand.Settin
                 id = r.Milestone.Id, name = r.Milestone.Name, state = r.Milestone.State, repos = r.Milestone.Repos,
                 ticketsDone = r.Done, tickets = r.Total, checksPassed = r.Passed, checks = r.Checks,
                 projected = r.Forecast?.LatestProjectedUtc, atRisk = r.Forecast?.AtRisk,
+                growth = r.Scope is not { } g ? null : new
+                {
+                    atActivation = g.AtActivation, added = g.Added, removed = g.Removed, now = g.Now, grown = g.Grown,
+                    waiting = g.Waiting.Count, waitingTickets = g.WaitingTickets,
+                },
             }), BranchesCommand.Indented));
             return 0;
         }
-        var table = new Table().Border(TableBorder.Rounded).AddColumns("Milestone", "Name", "State", "Tickets", "Checks", "Projected", "Repos");
+        var table = new Table().Border(TableBorder.Rounded).AddColumns("Milestone", "Name", "State", "Tickets", "Checks", "Grown", "Projected", "Repos");
         foreach (var r in rows)
             table.AddRow(Markup.Escape(r.Milestone.Id), Markup.Escape(r.Milestone.Name), Markup.Escape(r.Milestone.State),
-                $"{r.Done}/{r.Total} done", $"{r.Passed}/{r.Checks} passed",
+                $"{r.Done}/{r.Total} done", $"{r.Passed}/{r.Checks} passed", Markup.Escape(r.Scope?.GrownText ?? ""),
                 (r.Forecast?.LatestProjectedUtc is { } at ? MilestoneCli.Day(at) : "[grey]unknown[/]") + (r.Forecast?.AtRisk == true ? " [red](at risk)[/]" : ""),
                 Markup.Escape(string.Join(", ", r.Milestone.Repos)));
         AnsiConsole.Write(table);
@@ -294,4 +313,112 @@ internal sealed class MilestoneForecastCommand : Command<MilestoneForecastComman
             AnsiConsole.MarkupLine($"[grey]{Markup.Escape(r.Milestone.Id)}: {Markup.Escape(r.Forecast.Basis)}[/]");
         return 0;
     });
+}
+
+/// <summary><c>orchestrator milestone pending [&lt;ID&gt;] [--json]</c> (M.ORCH-T1685): the tickets and epics waiting to join an
+/// active or accepting milestone (one milestone's, or every milestone's), oldest first, each with who proposed it and when.</summary>
+internal sealed class MilestonePendingCommand : Command<MilestonePendingCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "[ID]")]
+        [Description("The milestone (MS-n or its name); every milestone when left out.")]
+        public string? Id { get; init; }
+
+        [CommandOption("--json")]
+        [Description("Print the waiting additions as JSON: milestone, item, proposedAt, proposedBy.")]
+        public bool Json { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings) => MilestoneCli.WithTickets(db =>
+    {
+        var pending = db.MilestonePending(string.IsNullOrWhiteSpace(settings.Id) ? null : settings.Id);
+        if (settings.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(pending.Select(p => new
+            {
+                milestone = p.MilestoneId, item = p.Item, proposedAt = MilestoneScope.At(p.At), proposedBy = p.By,
+            }), BranchesCommand.Indented));
+            return 0;
+        }
+        if (pending.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[grey]Nothing is waiting to join a milestone.[/]");
+            return 0;
+        }
+        var now = DateTime.UtcNow;
+        var table = new Table().Border(TableBorder.Rounded).AddColumns("Milestone", "Item", "Proposed by", "Since", "Approve");
+        foreach (var p in pending)
+            table.AddRow(Markup.Escape(p.MilestoneId), Markup.Escape(p.Item), Markup.Escape(p.By ?? ""),
+                MilestoneScope.At(p.At) is { } at ? Markup.Escape(Format.Ago(at, now)) : "",
+                $"[aqua]{Markup.Escape($"orchestrator milestone approve {p.MilestoneId} {p.Item} --by <WHO>")}[/]");
+        AnsiConsole.Write(table);
+        AnsiConsole.MarkupLine("[grey]Decline one with orchestrator milestone decline <ID> <ITEM> --by <WHO> [[--reason <TEXT>]].[/]");
+        return 0;
+    });
+}
+
+/// <summary>What <c>orchestrator milestone approve</c> and <c>decline</c> take: the milestone, what waits, and who answers.</summary>
+internal class MilestoneAdditionSettings : CommandSettings
+{
+    [CommandArgument(0, "<ID>")]
+    [Description("The milestone (MS-n or its name).")]
+    public string Id { get; init; } = "";
+
+    [CommandArgument(1, "<ITEM>")]
+    [Description("The ticket or epic waiting to join it.")]
+    public string Item { get; init; } = "";
+
+    [CommandOption("--by <WHO>")]
+    [Description("Who answers: recorded in the milestone's history.")]
+    public string? By { get; init; }
+}
+
+/// <summary><c>orchestrator milestone approve &lt;ID&gt; &lt;ITEM&gt; --by &lt;WHO&gt;</c> (M.ORCH-T1685): the owner approves a
+/// waiting addition, which becomes a member of the milestone.</summary>
+internal sealed class MilestoneApproveCommand : Command<MilestoneAdditionSettings>
+{
+    public override int Execute(CommandContext context, MilestoneAdditionSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.By))
+        {
+            AnsiConsole.MarkupLine("[red]Say who approves the addition: orchestrator milestone approve <ID> <ITEM> --by <who>.[/]");
+            return 1;
+        }
+        return MilestoneCli.WithTickets(db =>
+        {
+            var m = db.Milestone(settings.Id) ?? throw new KeyNotFoundException($"There is no milestone {settings.Id}.");
+            db.ApproveMilestoneAddition(m.Id, settings.Item, settings.By);
+            AnsiConsole.MarkupLine($"[green]{Markup.Escape(settings.Item.Trim())} is on {Markup.Escape(m.Id)} ({Markup.Escape(m.Name)}) now. Approved by {Markup.Escape(settings.By.Trim())}.[/]");
+            return 0;
+        });
+    }
+}
+
+/// <summary><c>orchestrator milestone decline &lt;ID&gt; &lt;ITEM&gt; --by &lt;WHO&gt; [--reason &lt;TEXT&gt;]</c> (M.ORCH-T1685):
+/// the owner declines a waiting addition, which stops waiting and never was a member.</summary>
+internal sealed class MilestoneDeclineCommand : Command<MilestoneDeclineCommand.Settings>
+{
+    public sealed class Settings : MilestoneAdditionSettings
+    {
+        [CommandOption("--reason <TEXT>")]
+        [Description("Why it is declined: recorded in the milestone's history.")]
+        public string? Reason { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.By))
+        {
+            AnsiConsole.MarkupLine("[red]Say who declines the addition: orchestrator milestone decline <ID> <ITEM> --by <who>.[/]");
+            return 1;
+        }
+        return MilestoneCli.WithTickets(db =>
+        {
+            var m = db.Milestone(settings.Id) ?? throw new KeyNotFoundException($"There is no milestone {settings.Id}.");
+            db.DeclineMilestoneAddition(m.Id, settings.Item, settings.By, settings.Reason);
+            AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(settings.Item.Trim())} is declined for {Markup.Escape(m.Id)} ({Markup.Escape(m.Name)}): it no longer waits. Declined by {Markup.Escape(settings.By.Trim())}.[/]");
+            return 0;
+        });
+    }
 }

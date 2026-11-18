@@ -232,6 +232,10 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// milestones, or a database without them) leaves the order as it was.</summary>
     public IReadOnlyDictionary<string, TicketMilestone>? Milestones { get; init; }
 
+    /// <summary>Each active and accepting milestone's scope in the ticket database (M.ORCH-T1685): the additions waiting for its
+    /// owner's approval and how much it has grown since activation. Null or empty with none, or a database without the lock.</summary>
+    public IReadOnlyList<Tickets.MilestoneScope>? MilestoneScopes { get; init; }
+
     /// <summary>Ticket → the member it's assigned to, by login email (the ticket database's <c>ticket_work</c>, written by
     /// <c>tickets ticket assign</c> and Tickets Desktop, read through the engine, M.ORCH-T762); missing means unassigned.</summary>
     public IReadOnlyDictionary<string, string> Assignees { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

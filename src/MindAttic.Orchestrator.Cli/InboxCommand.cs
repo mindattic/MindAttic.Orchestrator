@@ -16,7 +16,7 @@ internal sealed class InboxCommand : Command<InboxCommand.Settings>
     public sealed class Settings : CommandSettings
     {
         [CommandOption("--json")]
-        [Description("Write the items as JSON: kind, id, title, repo, sinceUtc, action, ticketId.")]
+        [Description("Write the items as JSON: kind, id, title, repo, sinceUtc, action, ticketId, milestoneId, milestoneItem.")]
         public bool Json { get; init; }
     }
 
@@ -33,7 +33,7 @@ internal sealed class InboxCommand : Command<InboxCommand.Settings>
         var items = OwnerInbox.Build(OwnerInbox.Read(store, snapshot, plan, s, now, ConsentsOverride?.Invoke() ?? Consents()));
         if (settings.Json)
         {
-            Console.WriteLine(JsonSerializer.Serialize(items.Select(i => new { i.Kind, i.Id, i.Title, i.Repo, i.SinceUtc, i.Action, i.TicketId }), BranchesCommand.Indented));
+            Console.WriteLine(JsonSerializer.Serialize(items.Select(i => new { i.Kind, i.Id, i.Title, i.Repo, i.SinceUtc, i.Action, i.TicketId, i.MilestoneId, i.MilestoneItem }), BranchesCommand.Indented));
             return 0;
         }
         if (items.Count == 0)

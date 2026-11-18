@@ -27,8 +27,18 @@ public sealed record OwnerInboxItem(string Kind, string Id, string Title, string
     /// ticket item); null when it isn't a ticket or isn't assigned. What the Inbox's "Delegate" picker starts from.</summary>
     public string? Assignee { get; init; }
 
+    /// <summary>The milestone it is about (M.ORCH-T1685); null when it isn't about one.</summary>
+    public string? MilestoneId { get; init; }
+
+    /// <summary>The ticket or epic waiting to join <see cref="MilestoneId"/>; null for anything but a pending addition.</summary>
+    public string? MilestoneItem { get; init; }
+
+    /// <summary>The figure an informational item reports, when it has one: a new figure is a new <see cref="Key"/>, so it is
+    /// alerted once per change and not again while it stands.</summary>
+    public string? Revision { get; init; }
+
     /// <summary>What names it across ticks: the alert is sent once per key (<see cref="OwnerInboxAlerts"/>).</summary>
-    public string Key => $"{Kind}|{Id}";
+    public string Key => Revision is null ? $"{Kind}|{Id}" : $"{Kind}|{Id}|{Revision}";
 }
 
 /// <summary>What the inbox is built from: all of it already loaded by the tick, the dashboard's refresh or the CLI, so building
@@ -77,11 +87,17 @@ public static class OwnerInbox
     /// <summary>A member's consent request on the host.</summary>
     public const string Consent = "consent";
 
+    /// <summary>A ticket or epic waiting to join an active or accepting milestone, until the owner approves or declines it.</summary>
+    public const string MilestoneAddition = "milestone-addition";
+
+    /// <summary>An active or accepting milestone that has grown since it was activated: told, not asked.</summary>
+    public const string MilestoneGrowth = "milestone-growth";
+
     /// <summary>A source of items.</summary>
     public delegate IEnumerable<OwnerInboxItem> Provider(OwnerInboxInputs inputs);
 
     /// <summary>Every source, most pressing first: a ticket two of them name is listed once, by the first.</summary>
-    public static IReadOnlyList<Provider> Providers { get; } = [Orphans, OwnerWaiting, StaleClaims, Approvals, SignIns, Consents];
+    public static IReadOnlyList<Provider> Providers { get; } = [Orphans, OwnerWaiting, StaleClaims, Approvals, MilestoneAdditions, SignIns, Consents, MilestoneGrowths];
 
     /// <summary>The items waiting on the owner, in <paramref name="providers"/>' order (<see cref="Providers"/> when null), each
     /// provider's own order kept; a ticket is listed once and so is a key. A provider that throws adds nothing.</summary>
@@ -176,6 +192,34 @@ public static class OwnerInbox
         }
     }
 
+    /// <summary>Additions waiting for a locked milestone's owner (<see cref="Snapshot.MilestoneScopes"/>, M.ORCH-T1685), oldest
+    /// first. Not a ticket item even when what waits is a ticket: the same ticket may also wait for its own approval.</summary>
+    internal static IEnumerable<OwnerInboxItem> MilestoneAdditions(OwnerInboxInputs i)
+    {
+        var waiting = (i.Snapshot.MilestoneScopes ?? []).SelectMany(m => m.Waiting.Select(w => (Milestone: m, Waiting: w)));
+        foreach (var (m, w) in waiting.OrderBy(x => x.Waiting.SinceUtc ?? DateTime.MaxValue))
+        {
+            var name = i.Snapshot.Names?.GetValueOrDefault(w.Item) is { Length: > 0 } named ? $" ({OneLine(named)})" : "";
+            yield return new OwnerInboxItem(MilestoneAddition, $"{m.Id}/{w.Item}",
+                $"{w.Item}{name} is waiting to join milestone {m.Id} ({m.Name}){(w.By is { } by ? $", proposed by {OneLine(by)}" : "")}", null, w.SinceUtc,
+                $"tickets milestone approve|decline {m.Id} {w.Item} --by <WHO>") { MilestoneId = m.Id, MilestoneItem = w.Item };
+        }
+    }
+
+    /// <summary>Active and accepting milestones that have grown since they were activated (M.ORCH-T1685), in milestone order:
+    /// for the owner to know, with nothing to answer. The figure is its <see cref="OwnerInboxItem.Revision"/>.</summary>
+    internal static IEnumerable<OwnerInboxItem> MilestoneGrowths(OwnerInboxInputs i)
+    {
+        foreach (var m in i.Snapshot.MilestoneScopes ?? [])
+        {
+            if (m.Grown <= 0) continue;
+            var more = m.WaitingTickets > 0 ? $", {m.WaitingTickets} more waiting for approval" : "";
+            yield return new OwnerInboxItem(MilestoneGrowth, m.Id,
+                $"Milestone {m.Id} ({m.Name}) has grown by {m.Grown} ticket{(m.Grown == 1 ? "" : "s")} since it was activated{more}", null, null,
+                "orchestrator milestone list") { MilestoneId = m.Id, Revision = $"+{m.Grown}/{m.WaitingTickets}" };
+        }
+    }
+
     /// <summary>Logins whose meter can't be read until the person signs in again (M.ORCH-T1119).</summary>
     internal static IEnumerable<OwnerInboxItem> SignIns(OwnerInboxInputs i)
     {
@@ -207,6 +251,8 @@ public static class OwnerInbox
         Orphaned => "Orphaned",
         SignIn => "Sign in",
         Consent => "Consent",
+        MilestoneAddition => "Milestone addition",
+        MilestoneGrowth => "Milestone growth",
         _ => kind,
     };
 

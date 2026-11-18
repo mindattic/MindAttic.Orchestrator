@@ -249,6 +249,9 @@ internal static class CliApp
                 m.AddCommand<MilestoneForecastCommand>("forecast").WithDescription("Each active and accepting milestone's forecast (forecast [[<ID>]], M.ORCH-T1688): tickets and tokens left, the projected date from tickets closed per day, and whether it is at risk (the date slipped past its first forecast, or it grows faster than it closes); --json as data.");
                 m.AddCommand<MilestoneCheckCommand>("check").WithDescription("Run the build and exists checks of a milestone (check [[<ID>]], every active and accepting one when none) and record each result with its evidence; exit code 1 when one ran and failed.");
                 m.AddCommand<MilestoneAcceptCommand>("accept").WithDescription("The owner asking for every check: accept <ID> --by <who> moves an active milestone into acceptance, runs its build and exists checks, records its sign-off checks as passed, and marks it reached only when every check has passed. It never forces.");
+                m.AddCommand<MilestonePendingCommand>("pending").WithDescription("The tickets and epics waiting to join an active or accepting milestone (pending [[<ID>]], M.ORCH-T1685): its scope is locked, so each waits until the owner approves or declines it; --json as data.");
+                m.AddCommand<MilestoneApproveCommand>("approve").WithDescription("The owner approving a waiting addition: approve <ID> <ITEM> --by <who> makes the ticket or epic a member of the milestone.");
+                m.AddCommand<MilestoneDeclineCommand>("decline").WithDescription("The owner declining a waiting addition: decline <ID> <ITEM> --by <who> [[--reason <text>]] stops it waiting; it never was a member.");
             });
             config.AddBranch("branches", b =>
             {
