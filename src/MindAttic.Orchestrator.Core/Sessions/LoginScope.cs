@@ -76,25 +76,36 @@ public static class LoginScope
     /// </summary>
     internal static Snapshot Keep(Snapshot all, Func<string?, bool> keep, TimeSpan workingWindow, TimeSpan waitingWindow)
     {
+        // A repo whose CLI's own turn is idle counts as working too while one of its (kept login's) subagents is still
+        // running (M.ORCH-T1824): the same "busy" a CLI's own badge already means (AgentBoardRow.IsBusy), not only
+        // Classify's transcript-age window, which a subagent's own activity never touches.
+        var workingBySubagent = all.Agents.Where(a => a.Subagents.Count > 0 && keep(a.OwnLogin)).Select(a => a.Repo)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var repos = all.Repos.Select(r =>
         {
             var sessions = r.Sessions.Where(s => keep(LoginOf(all, s.SessionId))).ToList();
             var hosts = r.Hosts.Where(h => keep(h.OwnLogin)).ToList();
-            if (sessions.Count == r.Sessions.Count && hosts.Count == r.Hosts.Count) return r;
+            var hasActiveSubagent = workingBySubagent.Contains(r.Name);
+            if (sessions.Count == r.Sessions.Count && hosts.Count == r.Hosts.Count)
+                return hasActiveSubagent && r.State != RepoState.Working ? r with { State = RepoState.Working } : r;
             DateTime? last = sessions.Count > 0 ? sessions.Max(s => s.LastWriteUtc) : null;
             var usage = sessions.Aggregate(default(TokenUsage), (sum, s) => sum + s.UsageToday);
             return r with
             {
-                State = Classify(last, hosts.Count, all.TakenUtc, workingWindow, waitingWindow),
+                State = Classify(last, hosts.Count, all.TakenUtc, workingWindow, waitingWindow, hasActiveSubagent),
                 Hosts = hosts, Sessions = sessions, LastActivityUtc = last, UsageToday = usage,
             };
         }).ToList();
         return all with { Repos = repos, Agents = [.. all.Agents.Where(a => keep(a.OwnLogin))] };
     }
 
-    /// <summary>A repo's state from its last write and its open Launcher tabs, as <see cref="StatusAggregator"/> classifies it.</summary>
-    public static RepoState Classify(DateTime? lastActivityUtc, int hostCount, DateTime nowUtc, TimeSpan workingWindow, TimeSpan waitingWindow)
+    /// <summary>A repo's state from its last write and its open Launcher tabs, as <see cref="StatusAggregator"/> classifies it;
+    /// <paramref name="hasActiveSubagent"/> (M.ORCH-T1824) always reads Working, even past the working window or with no
+    /// host open, since a subagent still running is itself the CLI working, whatever its own turn's transcript age says.</summary>
+    public static RepoState Classify(DateTime? lastActivityUtc, int hostCount, DateTime nowUtc, TimeSpan workingWindow, TimeSpan waitingWindow,
+        bool hasActiveSubagent = false)
     {
+        if (hasActiveSubagent) return RepoState.Working;
         var age = lastActivityUtc is null ? TimeSpan.MaxValue : nowUtc - lastActivityUtc.Value;
         if (age <= workingWindow) return RepoState.Working;
         if (hostCount > 0 || age <= waitingWindow) return RepoState.Waiting;
