@@ -82,21 +82,29 @@
             </Border>
         </DataTemplate>
 
-        <!-- A ticket card in the sidebar (M.ORCH-T1439): the whole card is one button that opens the ticket in Tickets Desktop,
-             through the same command as every TicketLink. Its id and friendly name as "ID · name" (M.ORCH-T1450, falling back
-             to a cut summary with no name yet), then its repo with its type and priority, muted (one line each: the column is
-             too narrow for both, and the caption is never the one trimmed), the title up to two lines (all of it in the
-             tooltip), then its status or why it waits. The library's MaSmallStat tile: hover fill, a 2px MaFocus border and
-             ring on keyboard focus, Enter or Space opens it. -->
-        <DataTemplate x:Key="SidebarTicketTemplate" DataType="{x:Type vm:UserTicketRowViewModel}">
-            <Button x:Name="SidebarTicketCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="10,8" HorizontalContentAlignment="Stretch"
-                    Command="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}"
-                    mc:MaCallout.ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
-                <!-- Its Task List colour (M.ORCH-T1594): a bar down its leading edge in the colour of the CLI working it, else
-                     its person's, both set with Change Color on their tab's right-click menu. -->
+        <!-- A ticket card in the unified sidebar list (M.ORCH-T1770, replacing M.ORCH-T1439's single whole-card button): two
+             independent click targets, a Play button that jumps to the CLI and person working it (JumpToCliCommand, hidden
+             while nobody is) and a Ticket button that opens it in Tickets Desktop (OpenInTicketsCommand) - no x:Key, so this
+             (and the two templates below) apply implicitly by DataType wherever ItemTemplate isn't set, letting one
+             ItemsControl mix task rows and ticket rows in the same "Active" list (MainViewModel.TaskList.cs's ActiveItems).
+             Its id and friendly name as "ID · name" (M.ORCH-T1450, falling back to a cut summary with no name yet), then its
+             repo with its type and priority, muted, the title up to two lines, then its status or why it waits. The
+             library's MaRowCard: a Border, not a button, so the two buttons below are its only click targets (the pattern
+             UserTicketTemplate above already uses for its own Hyperlinks). -->
+        <DataTemplate DataType="{x:Type vm:UserTicketRowViewModel}">
+            <Border x:Name="SidebarTicketCard" Style="{StaticResource MaRowCard}">
                 <DockPanel>
                 <mc:MaBadge x:Name="SidebarTicketAccent" DockPanel.Dock="Left" Style="{StaticResource MaTag}" Width="4" MinWidth="0" Padding="0" BorderThickness="0"
                             Background="{Binding Accent}" VerticalAlignment="Stretch" Margin="{StaticResource SpaceRS}" Focusable="False" />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceLM}">
+                    <Button x:Name="SidebarTicketPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE768;" Margin="{StaticResource SpaceRXS}"
+                            Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                            mc:MaCallout.ToolTip="Jump to the CLI working it" AutomationProperties.Name="{Binding PlayName}"
+                            Visibility="{Binding CanPlay, Converter={StaticResource Visible}}" />
+                    <Button x:Name="SidebarTicketOpenButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;"
+                            Command="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}"
+                            mc:MaCallout.ToolTip="Open it in Tickets Desktop" AutomationProperties.Name="{Binding OpenName}" />
+                </StackPanel>
                 <StackPanel>
                     <TextBlock Text="{Binding Caption}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <DockPanel>
@@ -115,20 +123,22 @@
                     </Grid>
                 </StackPanel>
                 </DockPanel>
-            </Button>
+            </Border>
         </DataTemplate>
 
-        <!-- A live, ticket-less activity card in the sidebar (M.ORCH-T1519): the same MaSmallStat look as a ticket card, but
-             with nothing to open - no ticket id, no OpenInTicketsCommand - and its title the session's current "Doing" text
-             instead of a ticket summary, so a busy member never reads as having "no active or pending tickets" just because
-             nothing's been attributed to a ticket yet. -->
-        <DataTemplate x:Key="SidebarActivityTemplate" DataType="{x:Type vm:LiveActivityRowViewModel}">
-            <Button x:Name="SidebarActivityCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="10,8" HorizontalContentAlignment="Stretch"
-                    Focusable="False" mc:MaCallout.ToolTip="{Binding Summary}" AutomationProperties.Name="{Binding OpenName}">
-                <!-- Its CLI's Task List colour (M.ORCH-T1594), as on a ticket card. -->
+        <!-- A live, ticket-less activity card in the unified sidebar list (M.ORCH-T1519, restructured by M.ORCH-T1770): one
+             click target, a Play button that jumps to its CLI - there's no ticket yet, so no Ticket button - and its title
+             the session's current "Doing" text instead of a ticket summary, so a busy member never reads as having nothing
+             active just because nothing's been attributed to a ticket yet. No x:Key: implicit by DataType, like the ticket
+             template above. -->
+        <DataTemplate DataType="{x:Type vm:LiveActivityRowViewModel}">
+            <Border x:Name="SidebarActivityCard" Style="{StaticResource MaRowCard}">
                 <DockPanel>
                 <mc:MaBadge x:Name="SidebarActivityAccent" DockPanel.Dock="Left" Style="{StaticResource MaTag}" Width="4" MinWidth="0" Padding="0" BorderThickness="0"
                             Background="{Binding Accent}" VerticalAlignment="Stretch" Margin="{StaticResource SpaceRS}" Focusable="False" />
+                <Button x:Name="SidebarActivityPlayButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE768;" VerticalAlignment="Top" Margin="{StaticResource SpaceLM}"
+                        Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                        mc:MaCallout.ToolTip="Jump to its CLI" AutomationProperties.Name="{Binding PlayName}" />
                 <StackPanel>
                     <TextBlock Text="{Binding Repo}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Summary}" FontSize="12.5" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Margin="{StaticResource RowGutter}"
@@ -138,33 +148,40 @@
                                TextWrapping="Wrap" Margin="{StaticResource RowGutter}" Visibility="{Binding IsOverdue, Converter={StaticResource Visible}}" />
                 </StackPanel>
                 </DockPanel>
-            </Button>
+            </Border>
         </DataTemplate>
 
-        <!-- A Task List row in the sidebar (M.ORCH-T1593): one process spending tokens right now (a working CLI, or one of its
-             subagents, indented under it), its owner's name in their tab colour and the same colour as its left stripe (so
-             colour is never the only cue: the name is there too), then its ticket ("ID · name", or "No ticket") and what it's
-             doing. The whole row is one button that opens the detail modal. -->
-        <DataTemplate x:Key="SidebarTaskTemplate" DataType="{x:Type vm:TaskRowViewModel}">
-            <Button x:Name="SidebarTaskCard" Style="{StaticResource MaSmallStat}" Height="Auto" Padding="0" HorizontalContentAlignment="Stretch"
-                    Command="{Binding DataContext.OpenTaskDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
-                    mc:MaCallout.ToolTip="{Binding OpenName}" AutomationProperties.Name="{Binding OpenName}">
+        <!-- A Task List row in the unified sidebar list (M.ORCH-T1593, restructured by M.ORCH-T1770): one process spending
+             tokens right now (a working CLI, or one of its subagents, indented under it), its owner's name in their tab
+             colour and the same colour as its left stripe, then its ticket ("ID · name", or "No ticket"). Two independent
+             click targets: a Play button that jumps to its own CLI, and a Ticket button that opens its ticket in Tickets
+             Desktop, hidden while it has none. No x:Key: implicit by DataType, like the two templates above, so it sits in
+             the same ItemsControl as a ticket row with no ItemTemplate split by kind. -->
+        <DataTemplate DataType="{x:Type vm:TaskRowViewModel}">
+            <Border x:Name="SidebarTaskCard" Style="{StaticResource MaRowCard}" Padding="0">
                 <DockPanel Margin="{Binding Indent}">
                     <!-- The owner's-colour stripe (M.ORCH-T1626): the library's MaAccentBar, 3px and square to keep the row's look. -->
                     <Border Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding OwnerBrush}" />
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceLM}">
+                        <Button x:Name="SidebarTaskPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE768;" Margin="{StaticResource SpaceRXS}"
+                                Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                mc:MaCallout.ToolTip="Jump to its CLI" AutomationProperties.Name="{Binding PlayName}" />
+                        <Button x:Name="SidebarTaskOpenButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;"
+                                Command="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding TicketId}"
+                                mc:MaCallout.ToolTip="Open its ticket in Tickets Desktop" AutomationProperties.Name="{Binding TicketText, StringFormat='Open {0} in Tickets Desktop'}"
+                                Visibility="{Binding HasTicket, Converter={StaticResource Visible}}" />
+                    </StackPanel>
                     <StackPanel Margin="8,6,8,6">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding Tokens}" Style="{StaticResource MaTileSubtitle}" Margin="{StaticResource SpaceLS}" />
-                            <TextBlock FontSize="12" TextTrimming="CharacterEllipsis">
-                                <Run Text="{Binding Owner, Mode=OneWay}" Foreground="{Binding OwnerBrush, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" · " /><Run Text="{Binding Kind, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
-                            </TextBlock>
-                        </DockPanel>
+                        <TextBlock FontSize="12" TextTrimming="CharacterEllipsis">
+                            <Run Text="{Binding Owner, Mode=OneWay}" Foreground="{Binding OwnerBrush, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" · " /><Run Text="{Binding Kind, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
+                            <Run Text="  " /><Run Text="{Binding Tokens, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
+                        </TextBlock>
                         <TextBlock Text="{Binding TicketText}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="{StaticResource RowGutter}" />
                         <TextBlock Text="{Binding Repo}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding Doing}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </DockPanel>
-            </Button>
+            </Border>
         </DataTemplate>
 
         <!-- The login tab strip's own sigma/lambda bars (M.ORCH-T1536), the same pair as the pinned Usage tab's own header,
@@ -308,9 +325,13 @@
                 <Button x:Name="WindDownButton" Style="{StaticResource MaToolButton}" Content="&#xE769;" Command="{Binding WindDownCommand}"
                         mc:MaCallout.ToolTip="Wind down: /allocate off and pacing off for every CLI across every login, each finishing its own subagents first"
                         AutomationProperties.Name="Wind down every CLI" />
-                <Button x:Name="SaveAllCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE74E;" Command="{Binding SaveAllCloseCommand}"
-                        mc:MaCallout.ToolTip="Save all &amp; close: force-quicksave every open CLI, then close every one and exit (frees their memory); each reopens at the next start, resuming where it left off"
-                        AutomationProperties.Name="Save all CLIs and close" />
+                <!-- Save (M.ORCH-T1769, replacing Save all &amp; close's M.ORCH-T1724 force-close-and-exit, now retired):
+                     left click quicksaves the shown CLI alone; right click opens Quick Save All / Quick Load All
+                     (OnSaveButtonContextMenu), each confirmed first and reporting how long it took once it's done. -->
+                <Button x:Name="SaveButton" Style="{StaticResource MaToolButton}" Content="&#xE74E;" Command="{Binding QuicksaveShownCommand}"
+                        ContextMenuOpening="OnSaveButtonContextMenu"
+                        mc:MaCallout.ToolTip="Quicksave the shown CLI; right-click for Quick Save All or Quick Load All"
+                        AutomationProperties.Name="Quicksave the shown CLI (right-click for Quick Save All or Quick Load All)" />
             </StackPanel>
             </Grid>
         </Border>
@@ -444,23 +465,27 @@
         </mc:MaTabControl>
         </ScrollViewer>
         <!-- The collapsible tree sidebar (M.ORCH-T1759, TreeMenuLayout, default on, in place of LoginTabScroller above): each
-             login a node with a chevron that expands to its own pinned Usage entry and open CLI/Launcher panes, so the CLI
-             tab bar (TerminalsPanel) stays hidden and AgentsBody spans the whole right side (its Grid.Row/RowSpan, bound to
+             login a node with a chevron that expands to its own open CLI/Launcher panes, so the CLI tab bar
+             (TerminalsPanel) stays hidden and AgentsBody spans the whole right side (its Grid.Row/RowSpan, bound to
              TreeMenuLayout via Converters.BodyRow/BodyRowSpan, further down). Only the selected login starts expanded
              (MainViewModel.IsExpanded, forced true by Select); the chevron alone toggles it, never selection, so another
-             login's panes can be peeked at without leaving the one shown. v1 scope (not asked for, and the flat strip above
-             keeps them): no drag-reorder, no rename-in-place, no per-pane close button here; switch the setting off for
-             those. -->
+             login's panes can be peeked at without leaving the one shown. Clicking the login's own header row shows its
+             Usage, which is why there's no separate nested Usage row among the children below any more (M.ORCH-T1768: it
+             was left over from before that header click did this, so it was redundant - removed, not merely hidden, by
+             binding straight to Terminals.Panes instead of Terminals.StripItems, which still carries the pinned Usage
+             marker for the flat strip below). v1 scope (not asked for, and the flat strip above keeps them): no
+             drag-reorder, no rename-in-place, no per-pane close button here; switch the setting off for those. -->
         <ScrollViewer x:Name="LoginTreeScroller" Grid.Row="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                       MaxHeight="{Binding ActualHeight, ElementName=TopRow, Converter={x:Static vm:Converters.Share}, ConverterParameter=0.5}"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding ShowsLoginTree, Converter={StaticResource Visible}}">
         <ItemsControl x:Name="LoginTree" Style="{StaticResource MaList}" ItemsSource="{Binding OrgTabs}"
-                      AutomationProperties.Name="Claude logins, each expanding to its Usage entry and open CLI panes">
+                      AutomationProperties.Name="Claude logins, each expanding to its open CLI panes">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MainViewModel}">
                     <StackPanel x:Name="LoginTreeNode" Margin="0,0,0,2">
                         <Grid x:Name="LoginTreeHeader" Cursor="Hand" Background="Transparent" MouseLeftButtonDown="LoginTreeHeader_MouseLeftButtonDown"
+                              ContextMenuOpening="LoginTreeHeader_ContextMenuOpening"
                               ToolTipService.InitialShowDelay="0" mc:MaCallout.ToolTip="{Binding TabHoverTip}" AutomationProperties.Name="{Binding TabTip}">
                             <Grid.Style>
                                 <Style TargetType="Grid">
@@ -513,12 +538,20 @@
                             </StackPanel>
                             <ContentControl Grid.Column="2" HorizontalAlignment="Right" Content="{Binding}" ContentTemplate="{StaticResource LoginUsageBarsTemplate}" />
                         </Grid>
-                        <ItemsControl x:Name="LoginTreeChildren" Style="{StaticResource MaList}" ItemsSource="{Binding Terminals.StripItems}"
+                        <ItemsControl x:Name="LoginTreeChildren" Style="{StaticResource MaList}" ItemsSource="{Binding Terminals.Panes}"
                                       Margin="10,2,0,2" Visibility="{Binding IsExpanded, Converter={StaticResource Visible}}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid x:Name="LoginTreeChildRow" Margin="0,2,0,2" Cursor="Hand" Background="Transparent"
-                                          MouseLeftButtonDown="LoginTreeChild_MouseLeftButtonDown">
+                                    <!-- Plain (no Ctrl) drag reorders this pane among its login's own CLI tabs (M.ORCH-T1768 note 6:
+                                         the flat CLI tab strip's own AllowReorder/Reordered had no counterpart here at all); Ctrl held
+                                         instead hands the press to LoginDragDrop's own quick-switch-login drag (MainWindow.xaml.cs,
+                                         its own doc comment explains the handoff). -->
+                                    <Grid x:Name="LoginTreeChildRow" Margin="0,2,0,2" Cursor="Hand" Background="Transparent" AllowDrop="True"
+                                          MouseLeftButtonDown="LoginTreeChild_MouseLeftButtonDown"
+                                          ContextMenuOpening="LoginTreeChild_ContextMenuOpening"
+                                          PreviewMouseLeftButtonDown="LoginTreeChildRow_PreviewMouseLeftButtonDown"
+                                          PreviewMouseMove="LoginTreeChildRow_PreviewMouseMove"
+                                          DragOver="LoginTreeChildRow_DragOver" Drop="LoginTreeChildRow_Drop">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="16" />
                                             <ColumnDefinition Width="*" />
@@ -539,17 +572,23 @@
                                             <Path Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="8,0,0,0"
                                                   Fill="{DynamicResource MaChromeBorder}" />
                                         </Grid>
-                                        <!-- The pinned Usage row (M.ORCH-T1446): its figures live on the owning login's own
-                                             MainViewModel, not the UsageTabMarker item itself, hence AncestorType=ItemsControl to
-                                             reach back to the (inherited) DataContext of this child list's own control. -->
-                                        <StackPanel x:Name="TreeUsageRow" Grid.Column="1" Orientation="Horizontal" Visibility="Collapsed">
-                                            <TextBlock Text="Usage" VerticalAlignment="Center" />
-                                            <ContentControl Margin="{StaticResource SpaceLS}"
-                                                            Content="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            ContentTemplate="{StaticResource LoginUsageBarsTemplate}" />
-                                        </StackPanel>
-                                        <!-- A real CLI/Launcher pane: the same per-pane badges as the flat CLI tab bar's own header. -->
-                                        <StackPanel x:Name="TreePaneRow" Grid.Column="1" Orientation="Horizontal" mc:MaCallout.ToolTip="{Binding TabHoverTip}" AutomationProperties.Name="{Binding Title}">
+                                        <!-- A real CLI/Launcher pane: the same per-pane badges as the flat CLI tab bar's own header,
+                                             plus its own Close X (M.ORCH-T1768 note 6: the flat CLI tab list's close button had no
+                                             equivalent here at all, so a CLI opened only in tree mode couldn't be closed from the
+                                             tree, same CloseCommand/CommandParameter wiring and DockPanel.Dock="Right" placement as
+                                             the flat strip's own TerminalCloseButton, just reached via AncestorType=ItemsControl
+                                             (this row's nearest ItemsControl, LoginTreeChildren above, inherits the owning login's
+                                             MainViewModel as its DataContext). There is no nested Usage row here any more
+                                             (M.ORCH-T1768): it's gone entirely, not merely hidden, since LoginTreeChildren above
+                                             binds straight to Terminals.Panes, which never holds the pinned Usage marker to begin
+                                             with (that's Terminals.StripItems alone, still used by the flat strip below). -->
+                                        <DockPanel x:Name="TreePaneRow" Grid.Column="1" mc:MaCallout.ToolTip="{Binding TabHoverTip}" AutomationProperties.Name="{Binding Title}">
+                                            <Button DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-2,0,-2"
+                                                    Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
+                                                    Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
+                                                    mc:MaCallout.ToolTip="Close this terminal, ending its CLI" />
                                             <Grid Width="18" Height="18" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
                                                 <mc:MaBadge Style="{StaticResource MaTag}" Width="16" Height="16" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
                                                             Foreground="{DynamicResource MaOnAccent}" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -563,19 +602,24 @@
                                                             Foreground="{DynamicResource MaOnAccent}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             Visibility="{Binding ShowsPaneAskingBadge, Converter={StaticResource Visible}}" />
                                             </Grid>
+                                            <!-- The Launcher pane's own rocket icon (M.ORCH-T1768), so a Launcher node reads as one at
+                                                 a glance among its login's CLI panes: the exact same Viewbox/Path as the flat CLI tab
+                                                 strip's own TerminalTabLauncherIcon below (M.LNCH-T77/M.ORCH-T805's Material
+                                                 rocket_launch glyph, since no rocket is confirmed in the Segoe icon font this window
+                                                 otherwise draws glyphs from), not a second icon source. -->
+                                            <Viewbox Width="14" Height="14" Margin="{StaticResource SpaceRS}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                     Visibility="{Binding Request.IsMenu, Converter={StaticResource Visible}}"
+                                                     mc:MaCallout.ToolTip="The Launcher's own menu" AutomationProperties.Name="Launcher">
+                                                <Path Data="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12C4.42 15.34 5.17 15 6 15c1.66 0 3 1.34 3 3zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
+                                                      Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
+                                            </Viewbox>
                                             <!-- Name, not Title (M.ORCH-T1768): Title still carries the login's initials
                                                  ("RD: Prose"), redundant here since this row already sits nested under
                                                  that very login's own header, the same reason the flat CLI tab bar's own
                                                  TerminalTabName already binds Name instead. -->
                                             <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                                        </StackPanel>
+                                        </DockPanel>
                                     </Grid>
-                                    <DataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding}" Value="{x:Static vm:PersonTerminalsViewModel.UsageTab}">
-                                            <Setter TargetName="TreeUsageRow" Property="Visibility" Value="Visible" />
-                                            <Setter TargetName="TreePaneRow" Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </DataTemplate.Triggers>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -584,52 +628,45 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
         </ScrollViewer>
-        <!-- The shown person's tickets as cards (M.ORCH-T1439): Active first, then Pending, each with its count; the same rows as
-             the body's Queue tabs (ActiveTab / PendingTab). On the global login's tab, that login's own (the unassigned queue
-             stays in the body). It takes the height the logins leave and scrolls on its own (the window tools' own row moved
-             into the menu bar, M.ORCH-T1499). The Canvas wants no size of its own, so a long title never widens the column: the
-             scroller is sized to the Canvas, i.e. the column the logins set. Tab enters the list once; Up and Down move between
-             the cards; Enter or Space opens one. -->
+        <!-- The shown person's Active, Pending, then the 100 highest-priority open tickets, as cards (M.ORCH-T1770,
+             replacing M.ORCH-T1439/M.ORCH-T1593's separately labelled Task List, live activity and ticket groups): Active
+             is everything active right now, a task or a ticket side by side in the one list (ActiveItems: the global
+             Task List, this login's own live activity, then its own open tickets being worked, already deduplicated so a
+             ticket a live row already carries isn't repeated) - not split into groups by kind. Pending is this login's own
+             queued tickets, as before. Then the workspace-wide backlog: the first 100 highest-priority open tickets,
+             whoever's, after whatever already showed above (Top100Items). Each row has two independent click targets, a
+             Play button and a Ticket button (the three DataTemplates above, DataType-implicit so one ItemsControl can mix
+             task and ticket rows). It takes the height the logins leave and scrolls on its own (the window tools' own row
+             moved into the menu bar, M.ORCH-T1499). The Canvas wants no size of its own, so a long title never widens the
+             column: the scroller is sized to the Canvas, i.e. the column the logins set. Tab enters the list once; Up and
+             Down move between the cards; each card's own Play/Ticket buttons are reached with a further Tab. -->
         <Canvas x:Name="SidebarTicketArea" Grid.Row="2" Margin="{StaticResource SpaceTM}" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
         <ScrollViewer x:Name="SidebarTicketScroller" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="3"
                       Width="{Binding ActualWidth, ElementName=SidebarTicketArea}" Height="{Binding ActualHeight, ElementName=SidebarTicketArea}">
         <StackPanel x:Name="SidebarTickets" KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Contained"
-                    AutomationProperties.Name="Tickets: active, then pending. Each opens in Tickets">
-            <!-- The Task List (M.ORCH-T1593): every process spending tokens right now across every login (the global login's
-                 tab's list, which every tab proxies), each with its owner and ticket, colour-coded by owner; clicking one opens
-                 TaskDetailModal. Hidden while nothing is spending. -->
-            <StackPanel x:Name="SidebarTaskList" Margin="{StaticResource SpaceBS}" Visibility="{Binding HasTaskList, Converter={StaticResource Visible}}">
-                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="Task List: every process spending tokens now">
-                    <Run Text="Task List" /><Run Text="  " /><Run Text="{Binding TaskListCount, Mode=OneWay}" />
+                    AutomationProperties.Name="Active, then pending, then the 100 highest-priority tickets. Each has its own Play and Ticket buttons">
+            <TextBlock Text="Nothing active or pending" Style="{StaticResource MaMutedText}"
+                       Visibility="{Binding HasActiveItems, Converter={x:Static vm:Converters.FalseToVisible}}" />
+            <StackPanel Margin="{StaticResource SpaceBS}" Visibility="{Binding HasActiveItems, Converter={StaticResource Visible}}">
+                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="Active: everything being worked right now, tasks and tickets together">
+                    <Run Text="Active" /><Run Text="  " /><Run Text="{Binding ActiveCount, Mode=OneWay}" />
                 </TextBlock>
-                <ItemsControl x:Name="SidebarTasks" Style="{StaticResource MaRowList}" ItemsSource="{Binding TaskList}"
-                              ItemTemplate="{StaticResource SidebarTaskTemplate}" AutomationProperties.Name="Every process spending tokens now, with its owner and ticket" />
+                <ItemsControl x:Name="SidebarActiveItems" Style="{StaticResource MaRowList}" ItemsSource="{Binding ActiveItems}"
+                              AutomationProperties.Name="Active: everything being worked right now, tasks and tickets together" />
             </StackPanel>
-            <TextBlock Text="No active or pending tickets" Style="{StaticResource MaMutedText}"
-                       Visibility="{Binding HasOpenTickets, Converter={x:Static vm:Converters.FalseToVisible}}" />
-            <StackPanel Visibility="{Binding HasOpenTickets, Converter={StaticResource Visible}}">
-                <!-- Live activity with no ticket attributed yet (M.ORCH-T1519): above Active, since it's happening right now
-                     too - just not yet tied to a ticket id. Hidden entirely once nothing untracked is running. -->
-                <StackPanel Visibility="{Binding HasLiveActivity, Converter={StaticResource Visible}}">
-                    <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" Text="Working, no ticket yet"
-                               AutomationProperties.Name="Working with no ticket attributed yet" />
-                    <ItemsControl x:Name="SidebarLiveActivity" Style="{StaticResource MaRowList}" ItemsSource="{Binding LiveActivity}"
-                                  ItemTemplate="{StaticResource SidebarActivityTemplate}" AutomationProperties.Name="Working, no ticket attributed yet" />
-                </StackPanel>
-                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="{Binding ActiveTab.AccessibleName}">
-                    <Run Text="{Binding ActiveTab.Name, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding ActiveTab.CountText, Mode=OneWay}" />
-                </TextBlock>
-                <TextBlock Text="{Binding ActiveTab.EmptyText}" Style="{StaticResource MaMutedText}"
-                           Visibility="{Binding ActiveTab.HasTickets, Converter={x:Static vm:Converters.FalseToVisible}}" />
-                <ItemsControl x:Name="SidebarActiveTickets" Style="{StaticResource MaRowList}" ItemsSource="{Binding ActiveTab.Tickets}"
-                              ItemTemplate="{StaticResource SidebarTicketTemplate}" AutomationProperties.Name="{Binding ActiveTab.AccessibleName}" />
-                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceTSBXS}" AutomationProperties.Name="{Binding PendingTab.AccessibleName}">
+            <StackPanel Margin="{StaticResource SpaceTSBXS}" Visibility="{Binding PendingTab.HasTickets, Converter={StaticResource Visible}}">
+                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="{Binding PendingTab.AccessibleName}">
                     <Run Text="{Binding PendingTab.Name, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding PendingTab.CountText, Mode=OneWay}" />
                 </TextBlock>
-                <TextBlock Text="{Binding PendingTab.EmptyText}" Style="{StaticResource MaMutedText}"
-                           Visibility="{Binding PendingTab.HasTickets, Converter={x:Static vm:Converters.FalseToVisible}}" />
                 <ItemsControl x:Name="SidebarPendingTickets" Style="{StaticResource MaRowList}" ItemsSource="{Binding PendingTab.Tickets}"
-                              ItemTemplate="{StaticResource SidebarTicketTemplate}" AutomationProperties.Name="{Binding PendingTab.AccessibleName}" />
+                              AutomationProperties.Name="{Binding PendingTab.AccessibleName}" />
+            </StackPanel>
+            <StackPanel Margin="{StaticResource SpaceTSBXS}" Visibility="{Binding HasTop100Items, Converter={StaticResource Visible}}">
+                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="The 100 highest-priority open tickets workspace-wide">
+                    <Run Text="Top priority" /><Run Text="  " /><Run Text="{Binding Top100Count, Mode=OneWay}" />
+                </TextBlock>
+                <ItemsControl x:Name="SidebarTop100Tickets" Style="{StaticResource MaRowList}" ItemsSource="{Binding Top100Items}"
+                              AutomationProperties.Name="The 100 highest-priority open tickets workspace-wide" />
             </StackPanel>
         </StackPanel>
         </ScrollViewer>

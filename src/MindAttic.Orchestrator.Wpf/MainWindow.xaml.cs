@@ -159,8 +159,9 @@ public partial class MainWindow : Window
         TerminalClip.Attach(TerminalPanesHost, () => model.AllTerminals.SelectedPane?.Control);
         TerminalKeyboard.Attach(this, TerminalPanesHost);
         TerminalMouse.Attach(this, TerminalPanesHost);
-        // Ctrl+drag a CLI/Launcher tab or a login's own header onto another login's row to switch to it (M.ORCH-T1757).
-        LoginDragDrop.Attach(this, LoginTabStrip, TerminalTabs);
+        // Ctrl+drag a CLI/Launcher tab or a login's own header onto another login's row to switch to it (M.ORCH-T1757),
+        // the tree sidebar's own rows too (M.ORCH-T1768 note 6: TreeMenuLayout, on by default, had no equivalent at all).
+        LoginDragDrop.Attach(this, LoginTabStrip, TerminalTabs, LoginTree);
         PreviewKeyDown += TerminalPaste.OnPreviewKeyDown;
         // Ctrl+C / Ctrl+X with a selection copy / cut it (M.ORCH-T867, M.ORCH-T866); with none they still reach the CLI (^C, ^X).
         PreviewKeyDown += TerminalCopy.OnPreviewKeyDown;
@@ -218,7 +219,6 @@ public partial class MainWindow : Window
                 Closed += (_, _) => resync.Stop();
             }
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
-            if (restoreOnLoad) restored |= RestoreSaveAllClose(model);
             await model.RefreshAsync();
             // Each person back on the CLI tab they last had chosen (M.ORCH-T1436), kept by TermHost session in the restore file.
             if (restoreOnLoad) model.ReselectRemembered(SessionRestore.Previous);
@@ -240,59 +240,40 @@ public partial class MainWindow : Window
         StateChanged += async (_, _) => await OnShownOrHidden();
     }
 
-    /// <summary>
-    /// Reopens a Save all &amp; close run's tabs (M.ORCH-T1724), when one left its one-shot pending file: the same
-    /// <see cref="MainViewModel.RestoreTabs"/> every crash recovery uses, so a tab whose session is known resumes with
-    /// Claude's own <c>claude --resume</c> as always. The file is consumed (deleted) up front, whether or not this
-    /// succeeds, so a later start never replays it. The rare tab that can't natively resume (no session id) has a captured
-    /// handoff of its own; <c>/quickload &lt;code&gt;</c> is typed into it only on an explicit Yes to a confirm prompt listing
-    /// them (M.ORCH-T1725) - never on its own, since that types into a live CLI the user didn't type into themselves. A No
-    /// loses nothing: every code stays valid in the shared registry for the user to <c>/quickload</c> by hand whenever.
-    /// </summary>
-    private bool RestoreSaveAllClose(MainViewModel owner)
+    /// <summary>The Save button's right-click menu (M.ORCH-T1769, replacing Save all &amp; close's M.ORCH-T1724
+    /// force-quicksave-then-close-and-exit, now retired): Quick Save All and Quick Load All, the library's dark dropdown
+    /// like every other menu in this window.</summary>
+    private void OnSaveButtonContextMenu(object sender, ContextMenuEventArgs e)
     {
-        var store = new SaveAllCloseStore();
-        if (store.Load() is not { } pending) return false;
-        store.Delete();
-        if (pending.State.Tabs.Count == 0) return false;
-        owner.RestoreTabs(pending.State);
-        var toInject = new List<(string Title, string? Login, string Directory, string Code)>();
-        for (var i = 0; i < pending.State.Tabs.Count; i++)
-        {
-            var tab = pending.State.Tabs[i];
-            var code = i < pending.Codes.Count ? pending.Codes[i] : null;
-            if (code is { Length: > 0 } && !SessionRestoreStore.Resumes(tab))
-                toInject.Add((tab.Request.Title, tab.Login, tab.Request.Directory, code));
-        }
-        if (toInject.Count > 0)
-        {
-            var lines = toInject.Select(t => $"{t.Title} in {t.Directory}: /quickload {t.Code}");
-            var answer = MaMessageBox.Show(this,
-                "Save all & close reopened these without a resumable session of their own. Type their quicksave handoff " +
-                "back in now, so each picks up its last task, decisions and next steps?\n\n" + string.Join("\n", lines) +
-                "\n\nYes: type /quickload into each now.\nNo: leave them open fresh; every code above still works typed in by hand anytime.",
-                "Resume with /quickload?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (answer == MessageBoxResult.Yes)
-            {
-                var settle = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(4) };
-                settle.Tick += (_, _) =>
-                {
-                    settle.Stop();
-                    var used = new HashSet<TerminalPaneViewModel>();
-                    foreach (var (_, login, directory, code) in toInject)
-                    {
-                        var pane = owner.AllTerminals.Panes.FirstOrDefault(p => !p.Ended && !used.Contains(p)
-                            && string.Equals(p.Login, login, StringComparison.OrdinalIgnoreCase)
-                            && string.Equals(p.Request.Directory, directory, StringComparison.OrdinalIgnoreCase));
-                        if (pane is null) continue;
-                        used.Add(pane);
-                        if (pane.WriteInput(TerminalPaste.Payload($"/quickload {code}", pane.Bracketed))) pane.WriteInput("\r");
-                    }
-                };
-                settle.Start();
-            }
-        }
-        return true;
+        if (sender is not Button button) return;
+        e.Handled = true;
+        var menu = DropdownMenu(button, "Quick save or load every open CLI", PlacementMode.Bottom);
+        var saveAll = DropdownItem("Quick Save All");
+        saveAll.ToolTip = "Force-quicksave every open CLI (confirmed first), reporting how long it took once every one lands";
+        saveAll.Click += async (_, _) => await RunQuickAllAsync(isSave: true);
+        menu.Items.Add(saveAll);
+        var loadAll = DropdownItem("Quick Load All");
+        loadAll.ToolTip = "Type /quickload into every open CLI (confirmed first), reporting how long it took once sent";
+        loadAll.Click += async (_, _) => await RunQuickAllAsync(isSave: false);
+        menu.Items.Add(loadAll);
+        menu.IsOpen = true;
+    }
+
+    /// <summary>Confirms Quick Save All or Quick Load All (<see cref="MaMessageBox"/>, a themed Yes/No defaulting to No,
+    /// the same pattern the API key billing switch already confirms with, M.ORCH-T773), then runs it
+    /// (<see cref="MainViewModel.QuickSaveAllAsync"/>/<see cref="MainViewModel.QuickLoadAllAsync"/>) and reports how long
+    /// the confirmed operation actually took once it's done.</summary>
+    private async Task RunQuickAllAsync(bool isSave)
+    {
+        var verb = isSave ? "quick save" : "quick load";
+        var noun = isSave ? "Quick Save All" : "Quick Load All";
+        if (MaMessageBox.Show(this, $"Are you sure you want to {verb} all open CLIs?", $"{noun}?",
+                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        var (elapsed, acted, total) = isSave ? await model.QuickSaveAllAsync() : await model.QuickLoadAllAsync();
+        var report = total == 0 ? $"No open CLI tabs to {verb}."
+            : isSave ? $"{acted} of {total} quicksave{(total == 1 ? "" : "s")} captured in {elapsed.TotalSeconds:0.0}s."
+            : $"{acted} of {total} quickload{(total == 1 ? "" : "s")} sent in {elapsed.TotalSeconds:0.0}s.";
+        MaMessageBox.Show(this, report, noun, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     /// <summary><c>--start &lt;repo&gt;</c> (M.ORCH-T767): a CLI in that workspace repo, as Start opens one; anything else is refused.</summary>
@@ -715,13 +696,94 @@ public partial class MainWindow : Window
         if (sender is FrameworkElement { DataContext: MainViewModel vm }) vm.IsExpanded = !vm.IsExpanded;
     }
 
-    /// <summary>The tree sidebar's child row click (M.ORCH-T1759): selects this item's login, then shows the clicked pane or
-    /// the pinned Usage marker, exactly as choosing it from the flat CLI tab bar would.</summary>
+    /// <summary>The tree sidebar's child row click (M.ORCH-T1759): selects this item's login, then shows the clicked pane,
+    /// exactly as choosing it from the flat CLI tab bar would. There's no pinned Usage marker among these children any
+    /// more (M.ORCH-T1768): the tree binds this list to <see cref="PersonTerminalsViewModel.Panes"/>, not
+    /// <see cref="PersonTerminalsViewModel.StripItems"/>, since the login's own header row now shows Usage on a click.</summary>
     private void LoginTreeChild_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: { } item } fe) return;
         if (FindAncestorDataContext<MainViewModel>(VisualTreeHelper.GetParent(fe)) is not { } vm) return;
         vm.SelectTreeChildCommand.Execute(item);
+    }
+
+    /// <summary>The tree sidebar's CLI/Launcher pane row right-click menu (M.ORCH-T1768 note 5): the exact same menu a CLI
+    /// node gets as the flat CLI tab strip's own row (<see cref="OnTerminalTabContextMenu"/>/<see cref="ShowTerminalMenuAsync"/>),
+    /// since the ticket's consistency ask is per CLI node, tree or tab. The owning
+    /// login is found the same way its own click handler above does (<see cref="FindAncestorDataContext{T}"/>), rather than
+    /// assuming the currently-shown tab (<see cref="Shown"/>): the tree can have another login's panes expanded at once, and
+    /// the right-clicked pane's status message/toast must land on its own login, not whichever tab happens to be selected.</summary>
+    private async void LoginTreeChild_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        try
+        {
+            if (sender is not FrameworkElement { DataContext: TerminalPaneViewModel pane } container) return;
+            if (FindAncestorDataContext<MainViewModel>(VisualTreeHelper.GetParent(container)) is not { } owner) return;
+            e.Handled = true;
+            await ShowTerminalMenuAsync(container, pane, e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint, owner);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Building the tree's CLI context menu failed; contained"); }
+    }
+
+    /// <summary>The tree sidebar's own CLI-pane row drag start (M.ORCH-T1768 note 6) and the pane it started on; null
+    /// between drags. A manual <see cref="DragDrop"/> pair in place of a library AllowReorder, since ItemsControl (unlike
+    /// the library's MaTabControl the flat CLI tab strip already uses) has none of its own.</summary>
+    private Point? treeDragStart;
+    private TerminalPaneViewModel? treeDragPane;
+
+    /// <summary>Records the press that might become a reorder drag (<see cref="LoginTreeChildRow_PreviewMouseMove"/>); a
+    /// Ctrl-held press is left alone for <see cref="LoginDragDrop"/>'s own quick-switch-login drag to pick up instead
+    /// (its window-level PreviewMouseLeftButtonDown runs first in the tunnel and marks it handled when Ctrl is down, so
+    /// this one never even sees it then).</summary>
+    private void LoginTreeChildRow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        treeDragPane = sender is FrameworkElement { DataContext: TerminalPaneViewModel pane } ? pane : null;
+        treeDragStart = treeDragPane is null ? null : e.GetPosition(null);
+    }
+
+    /// <summary>Past the system drag threshold with the left button still down, starts the actual drag
+    /// (<see cref="LoginTreeChildRow_Drop"/> applies it); one drag per press.</summary>
+    private void LoginTreeChildRow_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || treeDragStart is not { } start || treeDragPane is not { } pane
+            || sender is not FrameworkElement row) return;
+        var pos = e.GetPosition(null);
+        if (Math.Abs(pos.X - start.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(pos.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        treeDragStart = null;
+        try { DragDrop.DoDragDrop(row, pane, DragDropEffects.Move); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Starting a tree CLI reorder drag failed; contained"); }
+        finally { treeDragPane = null; }
+    }
+
+    private void LoginTreeChildRow_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(typeof(TerminalPaneViewModel)) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    /// <summary>Applies a tree reorder drag dropped on <paramref name="sender"/>'s row (M.ORCH-T1768 note 6), the tree's own
+    /// version of <see cref="TerminalTabs_Reordered"/>: moves the dragged pane to just before the row dropped on, among its
+    /// own login's panes alone (<see cref="PersonTerminalsViewModel.Reorder"/>, found via the dropped-on row's own ancestor
+    /// login, not <see cref="Shown"/>, for the same reason <see cref="LoginTreeChild_ContextMenuOpening"/> doesn't use it
+    /// either: another login's panes can be the ones shown expanded here). A no-op, not a crash, for a drop from a
+    /// different login's rows (<c>Panes.Contains</c> guards it); there's no pinned Usage row among these children to drop
+    /// onto any more either (M.ORCH-T1768: the tree's own child list is <see cref="PersonTerminalsViewModel.Panes"/>
+    /// itself now, which never held it to begin with).</summary>
+    private void LoginTreeChildRow_Drop(object sender, DragEventArgs e)
+    {
+        try
+        {
+            if (e.Data.GetData(typeof(TerminalPaneViewModel)) is not TerminalPaneViewModel moved
+                || sender is not FrameworkElement row || row.DataContext is not { } targetItem) return;
+            e.Handled = true;
+            if (FindAncestorDataContext<MainViewModel>(VisualTreeHelper.GetParent(row)) is not { } owner
+                || !owner.Terminals.Panes.Contains(moved)) return;
+            var stripIndex = owner.Terminals.StripItems.IndexOf(targetItem);
+            if (stripIndex < 0) return;
+            owner.Terminals.Reorder(moved, stripIndex - 1);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Dropping a tree CLI reorder failed; contained"); }
     }
 
     /// <summary>The nearest ancestor in the visual tree whose own DataContext is a <typeparamref name="T"/>; null past the root.</summary>
@@ -1021,8 +1083,11 @@ public partial class MainWindow : Window
     private void DrawerButton_Click(object sender, RoutedEventArgs e) =>
         Sidebar.Visibility = Sidebar.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
 
-    /// <summary>A CLI tab's right-click menu at <paramref name="container"/>.</summary>
-    private async Task ShowTerminalMenuAsync(FrameworkElement container, TerminalPaneViewModel pane, PlacementMode placement)
+    /// <summary>A CLI tab's right-click menu at <paramref name="container"/>, for <paramref name="owner"/>'s login (its
+    /// StatusMessage/AccountsMessage/Toasts land there); defaults to <see cref="Shown"/> for the flat tab strip, where
+    /// that's always the pane's own login anyway, but the tree sidebar (<see cref="LoginTreeChild_ContextMenuOpening"/>)
+    /// passes the pane's actual owning login explicitly, since another login's panes can be expanded there too.</summary>
+    private async Task ShowTerminalMenuAsync(FrameworkElement container, TerminalPaneViewModel pane, PlacementMode placement, MainViewModel? owner = null)
     {
         {
             var undocked = await Task.Run(TerminalsViewModel.UndockedSessions);
@@ -1035,7 +1100,7 @@ public partial class MainWindow : Window
                 dockMenu.IsOpen = true;
                 return;
             }
-            var tab = Shown;
+            var tab = owner ?? Shown;
             var agent = pane.HostPid is { } host ? tab.AgentOfHost(host) : null;
             var menu = DropdownMenu(container, $"Move the {pane.Name} CLI to", placement);
             // Copy PID (M.ORCH-T1518): the CLI's own pid, which CLIs address each other by (MINDATTIC_CLI_PID, nudge-<pid>-*.txt).
@@ -1178,8 +1243,27 @@ public partial class MainWindow : Window
             || ItemsControl.ContainerFromElement(LoginTabStrip, source) is not FrameworkElement { DataContext: MainViewModel tab } container
             || !tab.IsPersonTab) return;
         e.Handled = true;
-        var menu = DropdownMenu(container, $"{tab.TabTitle}'s login",
-            e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint); // from the keyboard: under the tab
+        ShowLoginMenu(container, tab, e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint); // from the keyboard: under the tab
+    }
+
+    /// <summary>The tree sidebar's login header right-click menu (M.ORCH-T1768 note 6): the root-node menu the flat login
+    /// tab strip's own header offers (<see cref="OnLoginTabContextMenu"/>) - Open Project, Run Launcher, New Launcher,
+    /// User Settings, Change Color - which the tree view (TreeMenuLayout, on by default since M.ORCH-T1759) left with no
+    /// way to reach at all: right-clicking a tree header did nothing before this, since it had no ContextMenuOpening wired.
+    /// A root node's menu is expected to differ from a CLI node's own (ticket note 5's own clarification); this just
+    /// restores the root menu itself to the layout that's now most people's default.</summary>
+    private void LoginTreeHeader_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: MainViewModel tab } container || !tab.IsPersonTab) return;
+        e.Handled = true;
+        ShowLoginMenu(container, tab, e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint);
+    }
+
+    /// <summary>A login's root-node right-click menu at <paramref name="container"/>, shared by the flat login tab strip's
+    /// header and the tree sidebar's own (<see cref="OnLoginTabContextMenu"/>/<see cref="LoginTreeHeader_ContextMenuOpening"/>).</summary>
+    private void ShowLoginMenu(FrameworkElement container, MainViewModel tab, PlacementMode placement)
+    {
+        var menu = DropdownMenu(container, $"{tab.TabTitle}'s login", placement);
         void Add(string header, string tip, ICommand command)
         {
             var item = DropdownItem(header);
