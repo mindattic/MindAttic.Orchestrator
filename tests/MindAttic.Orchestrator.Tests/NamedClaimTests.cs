@@ -18,14 +18,10 @@ public sealed class NamedClaimTests
     [SetUp]
     public void SetUp() => store = new JsonStore(Path.Combine(dir = Path.Combine(Path.GetTempPath(), "named-claim-" + Guid.NewGuid().ToString("N")), "store"));
 
+    /// <summary>Nothing makes <see cref="dir"/> (M.ORCH-T1711): the store keeps its assignments in the test's own scratch
+    /// database (<see cref="OrchestratorDbPerTestAttribute"/>), not in its folder, so there is usually no folder to delete.</summary>
     [TearDown]
-    public void TearDown()
-    {
-        // M.ORCH-T1711: the store may never have written anything (or something else already reclaimed %TEMP%), so the folder can be missing.
-        // M.ORCH-T1713: an Exists check alone still races a folder vanishing mid-delete; TempDirs.Delete re-checks and retries.
-        // M.ORCH-T1716: same failure on every test in this class (seen on Claim_is_refused_when_a_running_background_agent_holds_it), so the one TearDown covers them all.
-        Assert.That(TempDirs.Delete(dir), Is.True, "couldn't delete " + dir);
-    }
+    public void TearDown() => Assert.That(TempDirs.Delete(dir), Is.True, "couldn't delete " + dir);
 
     private NamedClaim.Result Claim(int? cli, string? session = "s", Func<int, bool>? running = null) =>
         NamedClaim.Claim(store, "A-T1", "A", @"D:\W\A", cli, session, "me@x.com", running ?? (_ => true), _ => false, Now);
