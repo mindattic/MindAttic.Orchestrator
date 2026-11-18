@@ -757,14 +757,6 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 2000)]
     public double CliTooltipDelayMs { get; set; } = OrchestratorSettings.DefaultCliTooltipDelayMs;
 
-    /// <summary>How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once.</summary>
-    [Setting("Leaked test TermHost lifetime (minutes)", Group = "Dashboard", Order = 90,
-        Help = "How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once. A host in any other folder is never touched.")]
-    [SettingRange(1, 10080)]
-    public double TestTermHostMaxMinutes { get; set; } = OrchestratorSettings.DefaultTestTermHostMaxMinutes;
-
-    /// <summary>After an Enter in a CLI tab lights it and its person's tab busy at once, a status read taken this many seconds or more later that still says idle ends it (nothing started).</summary>
-    [Setting("Presumed busy confirm after (seconds)", Group = "Dashboard", Order = 21,
     /// <summary>The folder, under the workspace root and each repo, whose markdown files the Plans button lists.</summary>
     [Setting("Plans folder", Group = "Dashboard", Order = 40,
         Help = "The folder, under the workspace root and under each repo, whose markdown files are the saved plans the menu bar's Plans button lists: half-formed ideas and features with no implementation ticket yet. Empty uses docs\\plans.")]
@@ -782,6 +774,14 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(OrchestratorSettings.MinPlanHeadKb, OrchestratorSettings.MaxPlanHeadKb)]
     public int PlanHeadKb { get; set; } = OrchestratorSettings.DefaultPlanHeadKb;
 
+    /// <summary>How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once.</summary>
+    [Setting("Leaked test TermHost lifetime (minutes)", Group = "Dashboard", Order = 90,
+        Help = "How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once. A host in any other folder is never touched.")]
+    [SettingRange(1, 10080)]
+    public double TestTermHostMaxMinutes { get; set; } = OrchestratorSettings.DefaultTestTermHostMaxMinutes;
+
+    /// <summary>After an Enter in a CLI tab lights it and its person's tab busy at once, a status read taken this many seconds or more later that still says idle ends it (nothing started).</summary>
+    [Setting("Presumed busy confirm after (seconds)", Group = "Dashboard", Order = 21,
         Help = "After an Enter in a CLI tab lights it and its person's tab busy at once, a status read taken this many seconds or more later that still says idle ends it (nothing started).")]
     [SettingRange(1, 600)]
     public double PresumeBusyConfirmSeconds { get; set; } = OrchestratorSettings.DefaultPresumeBusyConfirmSeconds;
@@ -1144,6 +1144,9 @@ public sealed class OrchestratorVaultSettings
         AutoTabNameMinutes = s.AutoTabNameMinutes,
         AutoTabNameMaxChars = s.AutoTabNameMaxChars,
         CliTooltipDelayMs = s.CliTooltipDelayMs,
+        PlansFolder = s.PlansFolder,
+        PlanSummaryMaxChars = s.PlanSummaryMaxChars,
+        PlanHeadKb = s.PlanHeadKb,
         TestTermHostMaxMinutes = s.TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = s.PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = s.PresumeBusyMaxSeconds,
@@ -1152,9 +1155,6 @@ public sealed class OrchestratorVaultSettings
         ActivityRescanSeconds = s.ActivityRescanSeconds,
         ActivityEndedMinutes = s.ActivityEndedMinutes,
         MainTestsLockRetries = s.MainTestsLockRetries,
-        PlansFolder = s.PlansFolder,
-        PlanSummaryMaxChars = s.PlanSummaryMaxChars,
-        PlanHeadKb = s.PlanHeadKb,
         MainTestsLockRetrySeconds = s.MainTestsLockRetrySeconds,
         MainTestsTimeoutMinutes = s.MainTestsTimeoutMinutes,
         MainBisectMaxSteps = s.MainBisectMaxSteps,
@@ -1324,6 +1324,9 @@ public sealed class OrchestratorVaultSettings
         AutoTabNameMinutes = AutoTabNameMinutes,
         AutoTabNameMaxChars = AutoTabNameMaxChars,
         CliTooltipDelayMs = CliTooltipDelayMs,
+        PlansFolder = string.IsNullOrWhiteSpace(PlansFolder) ? s.PlansFolder : PlansFolder,
+        PlanSummaryMaxChars = PlanSummaryMaxChars,
+        PlanHeadKb = PlanHeadKb,
         TestTermHostMaxMinutes = TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = PresumeBusyMaxSeconds,
@@ -1332,9 +1335,6 @@ public sealed class OrchestratorVaultSettings
         ActivityRescanSeconds = ActivityRescanSeconds,
         ActivityEndedMinutes = ActivityEndedMinutes,
         MainTestsLockRetries = MainTestsLockRetries,
-        PlansFolder = string.IsNullOrWhiteSpace(PlansFolder) ? s.PlansFolder : PlansFolder,
-        PlanSummaryMaxChars = PlanSummaryMaxChars,
-        PlanHeadKb = PlanHeadKb,
         MainTestsLockRetrySeconds = MainTestsLockRetrySeconds,
         MainTestsTimeoutMinutes = MainTestsTimeoutMinutes,
         MainBisectMaxSteps = MainBisectMaxSteps,
