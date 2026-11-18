@@ -208,6 +208,9 @@ internal sealed class ViewerWindow : Window
         };
         r.Detached += OnDetached;
         r.InputDropped += ShowNotSent;
+        // The renderer's own 10px scroll bar column never does anything here either (M.ORCH-T1792, as the dashboard's tabs,
+        // M.ORCH-T1325): the wheel over the CLI scrolls its scrollback directly, never through that bar.
+        TerminalScrollbar.Hide(r);
         host.Child = r;
         relay = r;
         // A --stay pop-out reconnects a dropped link while its host lives (M.ORCH-T976). A fallback window does too, but only

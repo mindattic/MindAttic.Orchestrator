@@ -255,7 +255,7 @@ public sealed class TabSwitchTests
         var terminal = new Grid { Children = { new Border(), bar, other } };
         terminal.Measure(new Size(400, 300));
         terminal.Arrange(new Rect(0, 0, 400, 300));
-        Assert.That(MindAttic.Orchestrator.Wpf.TerminalScrollbar.Collapse(terminal), Is.True);
+        Assert.That(MindAttic.Orchestrator.Term.Wpf.TerminalScrollbar.Collapse(terminal), Is.True);
         Assert.That(bar.Visibility, Is.EqualTo(Visibility.Collapsed));
         Assert.That(other.Visibility, Is.EqualTo(Visibility.Visible), "only the terminal's own bar");
     }
