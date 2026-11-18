@@ -8,12 +8,21 @@ internal sealed class WorkspaceExportCommand : Command
 {
     public override int Execute(CommandContext context)
     {
-        var root = OrchestratorOptions.Load().WorkspaceRoot;
-        var manifest = WorkspaceBootstrap.Export(root);
-        WorkspaceBootstrap.Save(manifest, root);
-        AnsiConsole.MarkupLine($"Wrote {manifest.Repos.Count} repos to {Markup.Escape(Path.Combine(root, WorkspaceManifest.RelativePath))}.");
-        AnsiConsole.MarkupLine("[grey]Commit and push it in the workspace root repo so a new machine can build from it.[/]");
-        return 0;
+        try
+        {
+            var root = OrchestratorOptions.Load().WorkspaceRoot;
+            var manifest = WorkspaceBootstrap.Export(root);
+            WorkspaceBootstrap.Save(manifest, root);
+            AnsiConsole.MarkupLine($"Wrote {manifest.Repos.Count} repos to {Markup.Escape(Path.Combine(root, WorkspaceManifest.RelativePath))}.");
+            AnsiConsole.MarkupLine("[grey]Commit and push it in the workspace root repo so a new machine can build from it.[/]");
+            return 0;
+        }
+        // An unusable workspace root (no such drive, no write access) is said in one line, not a stack trace.
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]");
+            return 1;
+        }
     }
 }
 
@@ -94,11 +103,21 @@ internal sealed class WorkspaceInstallAppsCommand : AsyncCommand
 
     public static async Task<int> Run(string folder)
     {
-        var apps = WorkspaceBootstrap.Apps(folder);
-        AnsiConsole.MarkupLine($"Installing {apps.Count} apps: {Markup.Escape(string.Join(", ", apps))}");
-        var failed = await WorkspaceBootstrap.InstallAppsAsync(folder, new Progress<string>(line => AnsiConsole.MarkupLine(Markup.Escape(line))));
-        foreach (var f in failed) AnsiConsole.MarkupLine($"  [red]{Markup.Escape(f)}[/]");
-        AnsiConsole.MarkupLine(failed.Count == 0 ? "[green]All installed.[/]" : $"[red]{failed.Count} failed.[/]");
-        return failed.Count;
+        try
+        {
+            var apps = WorkspaceBootstrap.Apps(folder);
+            AnsiConsole.MarkupLine($"Installing {apps.Count} apps: {Markup.Escape(string.Join(", ", apps))}");
+            var failed = await WorkspaceBootstrap.InstallAppsAsync(folder, new Progress<string>(line => AnsiConsole.MarkupLine(Markup.Escape(line))));
+            foreach (var f in failed) AnsiConsole.MarkupLine($"  [red]{Markup.Escape(f)}[/]");
+            AnsiConsole.MarkupLine(failed.Count == 0 ? "[green]All installed.[/]" : $"[red]{failed.Count} failed.[/]");
+            return failed.Count;
+        }
+        // An unusable folder (no such drive, no write access), caught here so both this command's own entry point and
+        // WorkspaceBuildCommand's call into this same method get the clean one-line message instead of a stack trace.
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]");
+            return 1;
+        }
     }
 }
