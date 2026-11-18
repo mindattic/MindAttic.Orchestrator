@@ -36,11 +36,26 @@ internal sealed class BusyCommand : Command<BusyCommand.Settings>
         [CommandOption("--self <PID>")]
         [Description("The CLI to leave out (default: MINDATTIC_CLI_PID, else the claude.exe this runs under).")]
         public int? Self { get; init; }
+
+        [CommandOption("--all")]
+        [Description("Judge CLIs hosted in a TermHost by their real state too (a redeploy leaves them alone, so by default they never count).")]
+        public bool All { get; init; }
+
+        [CommandOption("--running-only")]
+        [Description("Only work actually running counts: a turn, a subagent, a background job. A held claim, a prompt waiting on you and a CLI nobody has typed in yet don't.")]
+        public bool RunningOnly { get; init; }
+
+        [CommandOption("--skip-goal")]
+        [Description("Leave out every CLI on a /goal.")]
+        public bool SkipGoal { get; init; }
     }
 
     public override int Execute(CommandContext context, Settings settings)
     {
         BusyReport report;
+        // The redeploy gate passes none of these, so its answer is unchanged (M.ORCH-T1827).
+        var scope = new BusyScope(settings.All, settings.RunningOnly, settings.SkipGoal);
+        var deploy = scope == BusyScope.Deploy;
         if (settings.Wait)
         {
             using var cancel = new CancellationTokenSource();
@@ -54,11 +69,11 @@ internal sealed class BusyCommand : Command<BusyCommand.Settings>
                     settings.Timeout is { } m ? TimeSpan.FromMinutes(Math.Max(0, m)) : null,
                     r => AnsiConsole.MarkupLine($"[grey]{DateTime.Now:HH:mm:ss}[/] waiting on {r.Blocking.Count} CLI(s): " +
                         Markup.Escape(string.Join(" | ", BusyClis.Describe(r)))),
-                    cancel.Token, settings.Self);
+                    cancel.Token, settings.Self, scope);
             }
             finally { Console.CancelKeyPress -= onCancel; }
         }
-        else report = BusyClis.Scan(settings.Self);
+        else report = BusyClis.Scan(settings.Self, scope: scope);
 
         if (settings.Json)
         {
@@ -70,7 +85,7 @@ internal sealed class BusyCommand : Command<BusyCommand.Settings>
         if (report.Clis.Count > 0)
         {
             var table = new Table().Border(TableBorder.Rounded).AddColumns("Repo", "Login", "Pid", "State", "Doing");
-            foreach (var c in report.Clis.OrderBy(c => c.Activity switch { CliActivity.Working => 0, CliActivity.Unknown => 1, CliActivity.Self => 2, CliActivity.Hosted => 3, _ => 4 })
+            foreach (var c in report.Clis.OrderBy(c => c.Activity switch { CliActivity.Working => 0, CliActivity.Unknown => 1, CliActivity.Self => 2, CliActivity.Hosted => 3, CliActivity.OnGoal => 4, _ => 5 })
                          .ThenBy(c => c.Repo, StringComparer.OrdinalIgnoreCase))
                 table.AddRow(
                     Markup.Escape(c.Repo),
@@ -82,6 +97,7 @@ internal sealed class BusyCommand : Command<BusyCommand.Settings>
                         CliActivity.Unknown => "[yellow]unknown[/]",
                         CliActivity.Self => "[grey]this CLI (left out)[/]",
                         CliActivity.Hosted => "[blue]hosted, unaffected by deploy[/]",
+                        CliActivity.OnGoal => "[grey]on a /goal (left out)[/]",
                         _ => "[green]idle[/]",
                     },
                     Markup.Escape(c.Why.Count == 0 ? "done" : string.Join("; ", c.Why)));
@@ -89,10 +105,10 @@ internal sealed class BusyCommand : Command<BusyCommand.Settings>
         }
         if (report.AllIdle)
         {
-            AnsiConsole.MarkupLine("[green]No other unhosted Claude CLI is working: safe to redeploy.[/]");
+            AnsiConsole.MarkupLine(deploy ? "[green]No other unhosted Claude CLI is working: safe to redeploy.[/]" : "[green]No Claude CLI counted here is working.[/]");
             return 0;
         }
-        AnsiConsole.MarkupLine($"[red]{report.Blocking.Count} CLI(s) unhosted and still working or unknown:[/]");
+        AnsiConsole.MarkupLine(deploy ? $"[red]{report.Blocking.Count} CLI(s) unhosted and still working or unknown:[/]" : $"[red]{report.Blocking.Count} CLI(s) still working or unknown:[/]");
         foreach (var line in BusyClis.Describe(report)) AnsiConsole.WriteLine("  " + line);
         return BusyExit;
     }
