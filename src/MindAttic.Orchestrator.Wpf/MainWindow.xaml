@@ -503,22 +503,18 @@
                         <Grid x:Name="LoginTreeHeader" Cursor="Hand" Background="Transparent" MouseLeftButtonDown="LoginTreeHeader_MouseLeftButtonDown"
                               ContextMenuOpening="LoginTreeHeader_ContextMenuOpening"
                               ToolTipService.InitialShowDelay="0" mc:MaCallout.ToolTip="{Binding TabHoverTip}" AutomationProperties.Name="{Binding TabTip}">
-                            <Grid.Style>
-                                <Style TargetType="Grid">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsTabSelected}" Value="True">
-                                            <Setter Property="Background" Value="{DynamicResource MaChromeBorder}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Grid.Style>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <Rectangle Grid.Column="0" Width="3" Fill="{Binding TabBrush}" Margin="0,2,6,2" />
+                            <!-- The selected login's highlight: the library's MaChromeBorder fill (MaDivider, sized to the whole
+                                 row) behind the row's content, shown only for the selected login. -->
+                            <Border Grid.ColumnSpan="4" Style="{StaticResource MaDivider}" Height="Auto" Margin="0" SnapsToDevicePixels="False"
+                                    Visibility="{Binding IsTabSelected, Converter={StaticResource Visible}}" />
+                            <Border Grid.Column="0" Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" SnapsToDevicePixels="False"
+                                    Background="{Binding TabBrush}" Margin="0,2,6,2" />
                             <!-- The expand/collapse chevron alone (M.ORCH-T1759): its own click is marked handled so it never
                                  also selects this login via the header's handler above it in the visual tree. -->
                             <TextBlock Grid.Column="1" Text="{Binding IsExpanded, Converter={x:Static vm:Converters.Chevron}}" Width="14"
@@ -553,7 +549,21 @@
                                 </Grid>
                                 <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                             </StackPanel>
-                            <ContentControl Grid.Column="2" HorizontalAlignment="Right" Content="{Binding}" ContentTemplate="{StaticResource LoginUsageBarsTemplate}" />
+                            <!-- The same sigma/lambda bars as LoginUsageBarsTemplate (the flat strip's TrailingContentTemplate),
+                                 written out here: the library has no bare content host to put that template in. -->
+                            <StackPanel Grid.Column="2" HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center"
+                                        Visibility="{Binding ShowsTabUsageBars, Converter={StaticResource Visible}}">
+                                <TextBlock Text="{Binding UsageSigmaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" />
+                                <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
+                                             Margin="{StaticResource SpaceLXS}" Value="{Binding WeeklyLimitPercent, Mode=OneWay}"
+                                             Foreground="{Binding WeeklyLimitBrush}" />
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}">
+                                    <TextBlock Text="{Binding UsageLambdaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
+                                    <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
+                                                 Margin="{StaticResource SpaceLXS}" Value="{Binding FiveHourLimitPercent, Mode=OneWay}"
+                                                 Foreground="{Binding FiveHourLimitBrush}" />
+                                </StackPanel>
+                            </StackPanel>
                             <!-- This login's own menu (Open Project, Run Launcher, New Launcher, User Settings, Change Color), reachable
                                  with a tap or a left click (M.ORCH-T1793): the exact same menu the row's own right-click opens
                                  (LoginTreeHeader_ContextMenuOpening), which doesn't work well on touch or in the phone layout to begin
@@ -585,23 +595,28 @@
                                              this also requires the owning login's own IsTabSelected, reached via LoginTreeChildren
                                              (the nearest ItemsControl up from this row), the same AncestorType=ItemsControl climb
                                              TreePaneRow's own CloseCommand binding below already uses to reach the login. -->
-                                        <Grid.Style>
-                                            <Style TargetType="Grid">
-                                                <Style.Triggers>
-                                                    <MultiDataTrigger>
-                                                        <MultiDataTrigger.Conditions>
-                                                            <Condition Binding="{Binding IsSelected}" Value="True" />
-                                                            <Condition Binding="{Binding DataContext.IsTabSelected, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="True" />
-                                                        </MultiDataTrigger.Conditions>
-                                                        <Setter Property="Background" Value="{DynamicResource MaChromeBorder}" />
-                                                    </MultiDataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Grid.Style>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="16" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
+                                        <!-- The highlight itself: the library's MaChromeBorder fill (MaDivider, sized to the whole
+                                             row) behind the row's content, its style only showing or hiding it. -->
+                                        <Border Grid.ColumnSpan="2" Height="Auto" Margin="0" SnapsToDevicePixels="False">
+                                            <Border.Style>
+                                                <Style TargetType="Border" BasedOn="{StaticResource MaDivider}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding IsSelected}" Value="True" />
+                                                                <Condition Binding="{Binding DataContext.IsTabSelected, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="True" />
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
                                         <!-- The branch's own connector lines (M.ORCH-T1768): a vertical line down this column, the
                                              same one every sibling row draws, so together they read as one continuous spine down
                                              the login's open panes, each with a short horizontal tee into its own icon - so it's
@@ -1623,10 +1638,10 @@
                                                     Command="{Binding DataContext.WorkInboxNowCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                                                     mc:MaCallout.ToolTip="Approve (or clear) it, then start it at once if it's workable" AutomationProperties.Name="{Binding Id, StringFormat='Work {0} now'}" />
                                             <StackPanel Orientation="Horizontal" Visibility="{Binding CanDelegate, Converter={StaticResource Visible}}">
-                                                <ComboBox Width="150" Margin="0,0,6,6" VerticalAlignment="Center"
-                                                          ItemsSource="{Binding DataContext.InboxAssignees, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                          DisplayMemberPath="Name" SelectedItem="{Binding Assignee}"
-                                                          AutomationProperties.Name="{Binding Id, StringFormat='Delegate {0} to'}" />
+                                                <mc:MaPicker Width="150" Margin="0,0,6,6" VerticalAlignment="Center"
+                                                             ItemsSource="{Binding DataContext.InboxAssignees, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                             DisplayMemberPath="Name" SelectedItem="{Binding Assignee}"
+                                                             AutomationProperties.Name="{Binding Id, StringFormat='Delegate {0} to'}" />
                                                 <Button Style="{StaticResource MaButton}" Content="Delegate" Padding="{StaticResource SpaceHLVS}" Margin="0,0,6,6"
                                                         Command="{Binding DataContext.DelegateInboxCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                                                         mc:MaCallout.ToolTip="Assign it to the picker's choice (Unassigned hands it out again)" AutomationProperties.Name="{Binding Id, StringFormat='Delegate {0}'}" />
