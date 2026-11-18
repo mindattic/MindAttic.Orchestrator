@@ -98,7 +98,7 @@ public sealed class WelcomeWindow : Window
 
         var recheck = new Button { Content = "Recheck" };
         recheck.SetResourceReference(StyleProperty, "MaButton");
-        recheck.Click += (_, _) => Refresh();
+        recheck.Click += async (_, _) => await Refresh();
         open.SetResourceReference(StyleProperty, "MaPrimaryButton");
         open.Click += (_, _) => Close();
         var buttons = new MaStackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
@@ -112,9 +112,9 @@ public sealed class WelcomeWindow : Window
         var scroll = new ScrollViewer { Content = steps, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, PanningMode = PanningMode.VerticalOnly };
         scroll.SetResourceReference(StyleProperty, "MaBodyScroll");
         Content = scroll;
-        Loaded += (_, _) =>
+        Loaded += async (_, _) =>
         {
-            Refresh();
+            await Refresh();
             // Whatever's missing installs as soon as the window opens, without waiting for a click.
             if (AutoInstall && SetupTools.Missing().Count > 0) Busy(InstallToolsAsync);
         };
@@ -127,13 +127,16 @@ public sealed class WelcomeWindow : Window
 
     private static void AutomationNames(FrameworkElement e, string name) => System.Windows.Automation.AutomationProperties.SetName(e, name);
 
-    /// <summary>Reads every step again and says what's left.</summary>
-    private void Refresh()
+    /// <summary>Reads every step again and says what's left. <see cref="SetupTools.GitHubSignedIn"/> spawns <c>gh auth status</c>
+    /// and blocks on it for up to 15 seconds, so that one check runs off the UI thread (M.ORCH-T1778): called synchronously,
+    /// Refresh froze the whole window - every open, every Recheck click, and every step's own completion - for as long as
+    /// `gh` took to answer.</summary>
+    private async Task Refresh()
     {
         var missing = SetupTools.Missing();
         tools.Show(missing.Count == 0, missing.Count == 0 ? "git, the GitHub CLI, Claude Code, Python and the .NET 10 runtimes are installed."
             : $"Missing: {string.Join(", ", missing.Select(t => t.Name))}. Installs them with winget and Claude Code's own installer.");
-        var gh = missing.All(t => t.Exe != "gh") && SetupTools.GitHubSignedIn();
+        var gh = missing.All(t => t.Exe != "gh") && await Task.Run(SetupTools.GitHubSignedIn);
         github.Show(gh, gh ? "Signed in to GitHub: the workspace's repos clone and push as you."
             : "Sign in to GitHub in your browser, so your repos clone and your CLIs can push.");
         var root = WorkspaceRoot();
@@ -216,7 +219,7 @@ public sealed class WelcomeWindow : Window
         {
             busy = false;
             foreach (var step in new[] { tools, github, workspace, claude, firstRepo }) step.Action.IsEnabled = true;
-            Refresh();
+            await Refresh();
         }
     }
 
