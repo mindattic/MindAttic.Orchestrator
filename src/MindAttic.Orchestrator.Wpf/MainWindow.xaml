@@ -612,7 +612,7 @@
                                          the flat CLI tab strip's own AllowReorder/Reordered had no counterpart here at all); Ctrl held
                                          instead hands the press to LoginDragDrop's own quick-switch-login drag (MainWindow.xaml.cs,
                                          its own doc comment explains the handoff). -->
-                                    <Grid x:Name="LoginTreeChildRow" Margin="0,2,0,2" Cursor="Hand" Background="Transparent" AllowDrop="True"
+                                    <Grid x:Name="LoginTreeChildRow" Cursor="Hand" Background="Transparent" AllowDrop="True"
                                           MouseLeftButtonDown="LoginTreeChild_MouseLeftButtonDown"
                                           ContextMenuOpening="LoginTreeChild_ContextMenuOpening"
                                           PreviewMouseLeftButtonDown="LoginTreeChildRow_PreviewMouseLeftButtonDown"
@@ -654,8 +654,18 @@
                                              none should exist for a one-off shape like this), so like every other one-off vector
                                              in this window these are Path, not a raw Line/Rectangle/Border (M.ORCH-T667's
                                              library-only rule's own exception for exactly that): a unit square stretched to fill
-                                             its box, which for a 1px-thin box reads as a line, filled with the same MaChromeBorder
-                                             token the header's own selection highlight and the window's hairlines already use. -->
+                                             its box, which for a 1px-thin box reads as a line. Filled with MaMuted (M.ORCH-T1822),
+                                             the same muted gray the "zzz" idle badge's own Background already uses a few lines
+                                             down - not MaChromeBorder, which is also the selected row's own highlight fill
+                                             (MaDivider, above) and so washed the spine out to invisible on a selected login.
+                                             MaMuted isn't itself selection-dependent (it's the same brush on IsTabDisabled's icon
+                                             and every muted label in this window, selected row or not), so the spine stays
+                                             visible either way. LoginTreeChildRow carries no vertical Margin of its own any more
+                                             (M.ORCH-T1822): that margin used to gap each row from the next, breaking this spine
+                                             at every sibling boundary, so the breathing room moved onto TreePaneRow below
+                                             instead - only the row's actual content insets now, while this connector column and
+                                             the selection highlight both run edge-to-edge, sibling rows' spines touching to read
+                                             as one continuous line, its last segment an "L" (HiddenOnLastRow below), never a "T". -->
                                         <!-- Where they sit (M.ORCH-T1812, the owner's mockup): the list starts where the header's
                                              chevron starts (right after the login's stripe), this column is as wide as the header's chevron (14) and
                                              the spine runs down its middle, so it drops straight from the chevron; the tee
@@ -672,9 +682,9 @@
                                                  always shows: it is this row's own link up to the one above it (or the login
                                                  header, for the first row). -->
                                             <Path Grid.Row="0" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="7,0,0,0" VerticalAlignment="Stretch"
-                                                  Fill="{DynamicResource MaChromeBorder}" />
+                                                  Fill="{DynamicResource MaMuted}" />
                                             <Path Grid.Row="1" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="7,0,0,0" VerticalAlignment="Stretch"
-                                                  Fill="{DynamicResource MaChromeBorder}">
+                                                  Fill="{DynamicResource MaMuted}">
                                                 <Path.Visibility>
                                                     <MultiBinding Converter="{x:Static vm:Converters.HiddenOnLastRow}">
                                                         <Binding />
@@ -683,7 +693,7 @@
                                                 </Path.Visibility>
                                             </Path>
                                             <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="7,0,0,0"
-                                                  Fill="{DynamicResource MaChromeBorder}" />
+                                                  Fill="{DynamicResource MaMuted}" />
                                         </Grid>
                                         <!-- A real CLI/Launcher pane: the same per-pane badges as the flat CLI tab bar's own header,
                                              plus its own Close X (M.ORCH-T1768 note 6: the flat CLI tab list's close button had no
@@ -695,7 +705,11 @@
                                              (M.ORCH-T1768): it's gone entirely, not merely hidden, since LoginTreeChildren above
                                              binds straight to Terminals.Panes, which never holds the pinned Usage marker to begin
                                              with (that's Terminals.StripItems alone, still used by the flat strip below). -->
-                                        <DockPanel x:Name="TreePaneRow" Grid.Column="1" mc:MaCallout.ToolTip="{Binding TabHoverTip}" AutomationProperties.Name="{Binding Title}">
+                                        <!-- The branch spine above needs zero vertical margin to run edge-to-edge and touch the
+                                             next sibling's own spine (M.ORCH-T1822), so the row's old breathing room (dropped from
+                                             LoginTreeChildRow itself) lives here instead - only the actual content (icon, name,
+                                             buttons) insets from the row's top/bottom, not the connector column beside it. -->
+                                        <DockPanel x:Name="TreePaneRow" Grid.Column="1" Margin="0,2,0,2" mc:MaCallout.ToolTip="{Binding TabHoverTip}" AutomationProperties.Name="{Binding Title}">
                                             <Button DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-2,0,-2"
                                                     Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
                                                     Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
