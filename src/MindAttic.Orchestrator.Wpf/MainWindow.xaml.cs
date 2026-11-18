@@ -219,7 +219,6 @@ public partial class MainWindow : Window
                 Closed += (_, _) => resync.Stop();
             }
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
-            if (restoreOnLoad) restored |= RestoreSaveAllClose(model);
             await model.RefreshAsync();
             // Each person back on the CLI tab they last had chosen (M.ORCH-T1436), kept by TermHost session in the restore file.
             if (restoreOnLoad) model.ReselectRemembered(SessionRestore.Previous);
@@ -241,59 +240,40 @@ public partial class MainWindow : Window
         StateChanged += async (_, _) => await OnShownOrHidden();
     }
 
-    /// <summary>
-    /// Reopens a Save all &amp; close run's tabs (M.ORCH-T1724), when one left its one-shot pending file: the same
-    /// <see cref="MainViewModel.RestoreTabs"/> every crash recovery uses, so a tab whose session is known resumes with
-    /// Claude's own <c>claude --resume</c> as always. The file is consumed (deleted) up front, whether or not this
-    /// succeeds, so a later start never replays it. The rare tab that can't natively resume (no session id) has a captured
-    /// handoff of its own; <c>/quickload &lt;code&gt;</c> is typed into it only on an explicit Yes to a confirm prompt listing
-    /// them (M.ORCH-T1725) - never on its own, since that types into a live CLI the user didn't type into themselves. A No
-    /// loses nothing: every code stays valid in the shared registry for the user to <c>/quickload</c> by hand whenever.
-    /// </summary>
-    private bool RestoreSaveAllClose(MainViewModel owner)
+    /// <summary>The Save button's right-click menu (M.ORCH-T1769, replacing Save all &amp; close's M.ORCH-T1724
+    /// force-quicksave-then-close-and-exit, now retired): Quick Save All and Quick Load All, the library's dark dropdown
+    /// like every other menu in this window.</summary>
+    private void OnSaveButtonContextMenu(object sender, ContextMenuEventArgs e)
     {
-        var store = new SaveAllCloseStore();
-        if (store.Load() is not { } pending) return false;
-        store.Delete();
-        if (pending.State.Tabs.Count == 0) return false;
-        owner.RestoreTabs(pending.State);
-        var toInject = new List<(string Title, string? Login, string Directory, string Code)>();
-        for (var i = 0; i < pending.State.Tabs.Count; i++)
-        {
-            var tab = pending.State.Tabs[i];
-            var code = i < pending.Codes.Count ? pending.Codes[i] : null;
-            if (code is { Length: > 0 } && !SessionRestoreStore.Resumes(tab))
-                toInject.Add((tab.Request.Title, tab.Login, tab.Request.Directory, code));
-        }
-        if (toInject.Count > 0)
-        {
-            var lines = toInject.Select(t => $"{t.Title} in {t.Directory}: /quickload {t.Code}");
-            var answer = MaMessageBox.Show(this,
-                "Save all & close reopened these without a resumable session of their own. Type their quicksave handoff " +
-                "back in now, so each picks up its last task, decisions and next steps?\n\n" + string.Join("\n", lines) +
-                "\n\nYes: type /quickload into each now.\nNo: leave them open fresh; every code above still works typed in by hand anytime.",
-                "Resume with /quickload?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (answer == MessageBoxResult.Yes)
-            {
-                var settle = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(4) };
-                settle.Tick += (_, _) =>
-                {
-                    settle.Stop();
-                    var used = new HashSet<TerminalPaneViewModel>();
-                    foreach (var (_, login, directory, code) in toInject)
-                    {
-                        var pane = owner.AllTerminals.Panes.FirstOrDefault(p => !p.Ended && !used.Contains(p)
-                            && string.Equals(p.Login, login, StringComparison.OrdinalIgnoreCase)
-                            && string.Equals(p.Request.Directory, directory, StringComparison.OrdinalIgnoreCase));
-                        if (pane is null) continue;
-                        used.Add(pane);
-                        if (pane.WriteInput(TerminalPaste.Payload($"/quickload {code}", pane.Bracketed))) pane.WriteInput("\r");
-                    }
-                };
-                settle.Start();
-            }
-        }
-        return true;
+        if (sender is not Button button) return;
+        e.Handled = true;
+        var menu = DropdownMenu(button, "Quick save or load every open CLI", PlacementMode.Bottom);
+        var saveAll = DropdownItem("Quick Save All");
+        saveAll.ToolTip = "Force-quicksave every open CLI (confirmed first), reporting how long it took once every one lands";
+        saveAll.Click += async (_, _) => await RunQuickAllAsync(isSave: true);
+        menu.Items.Add(saveAll);
+        var loadAll = DropdownItem("Quick Load All");
+        loadAll.ToolTip = "Type /quickload into every open CLI (confirmed first), reporting how long it took once sent";
+        loadAll.Click += async (_, _) => await RunQuickAllAsync(isSave: false);
+        menu.Items.Add(loadAll);
+        menu.IsOpen = true;
+    }
+
+    /// <summary>Confirms Quick Save All or Quick Load All (<see cref="MaMessageBox"/>, a themed Yes/No defaulting to No,
+    /// the same pattern the API key billing switch already confirms with, M.ORCH-T773), then runs it
+    /// (<see cref="MainViewModel.QuickSaveAllAsync"/>/<see cref="MainViewModel.QuickLoadAllAsync"/>) and reports how long
+    /// the confirmed operation actually took once it's done.</summary>
+    private async Task RunQuickAllAsync(bool isSave)
+    {
+        var verb = isSave ? "quick save" : "quick load";
+        var noun = isSave ? "Quick Save All" : "Quick Load All";
+        if (MaMessageBox.Show(this, $"Are you sure you want to {verb} all open CLIs?", $"{noun}?",
+                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        var (elapsed, acted, total) = isSave ? await model.QuickSaveAllAsync() : await model.QuickLoadAllAsync();
+        var report = total == 0 ? $"No open CLI tabs to {verb}."
+            : isSave ? $"{acted} of {total} quicksave{(total == 1 ? "" : "s")} captured in {elapsed.TotalSeconds:0.0}s."
+            : $"{acted} of {total} quickload{(total == 1 ? "" : "s")} sent in {elapsed.TotalSeconds:0.0}s.";
+        MaMessageBox.Show(this, report, noun, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     /// <summary><c>--start &lt;repo&gt;</c> (M.ORCH-T767): a CLI in that workspace repo, as Start opens one; anything else is refused.</summary>
