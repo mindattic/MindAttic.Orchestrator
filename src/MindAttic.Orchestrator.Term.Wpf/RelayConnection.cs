@@ -202,8 +202,10 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         return opened;
     }
 
-    /// <summary>The most output (chars) a paused connection holds for its catch-up; past it the catch-up is the host's replay.</summary>
-    internal const int MaxHeldChars = MaxPendingChars / 4;
+    /// <summary>The most output (chars) a paused connection holds for its catch-up; past it the catch-up is the host's replay.
+    /// Small on purpose (M.ORCH-T1738): the host's replay of a screen is a few KB, while drawing a quarter of a megabyte of
+    /// held redraws took the UI thread five seconds when a Launcher tab was shown again.</summary>
+    internal const int MaxHeldChars = 16 * 1024;
 
     // Paused (M.ORCH-T1734): a viewer nobody is looking at (a hidden tab) reads on, so the taps, the modes and the exit still
     // work, but what it would draw is held, not posted: drawing every hidden tab's output on the one UI thread is what typing
