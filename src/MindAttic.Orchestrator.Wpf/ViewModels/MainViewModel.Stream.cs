@@ -53,6 +53,12 @@ public sealed partial class MainViewModel
     private IReadOnlyList<Member> lastMembers = [];
     private OrgDirectory? lastOrgs;
 
+    /// <summary>Whether a call to <see cref="ApplyFiguresAsync"/> is already in its background read (which writes the shared
+    /// <c>accountsRead</c>/<c>AllTerminals.ParentsRead</c> fields): <see cref="refreshing"/> alone didn't cover two pushes
+    /// close enough together that the first's Task.Run was still in flight when the second's began, letting both write
+    /// those fields from two thread-pool threads at once.</summary>
+    private bool applyingFigures;
+
     /// <summary>
     /// Lays a snapshot's pushed figures (M.ORCH-T872) over the snapshot shown, on the UI thread: pace, budget, the graph, each
     /// login's meter and pace, the agents and CLIs, billing, moves, counts and warnings go straight to every tab, with no read of
@@ -67,22 +73,27 @@ public sealed partial class MainViewModel
         if (workspace is not { } shown || figures.TakenUtc <= shown.TakenUtc) return false;
         restWanted = figures.Rest;
         if (hidden) return false;
-        if (refreshing || lastOrgs is null || restShown is null || restShown != figures.Rest) return true;
-        var patched = aggregator.WithLiveBilling(figures.Over(shown), DateTime.UtcNow);
-        var dirs = OwnLoginDirs();
-        var members = lastMembers;
-        // Each login's tab and its signed-in state, off the UI thread, as a read does it.
-        var tabs = await Task.Run(() =>
+        if (refreshing || applyingFigures || lastOrgs is null || restShown is null || restShown != figures.Rest) return true;
+        applyingFigures = true;
+        try
         {
-            // What ApplyAccounts shows, read here rather than on the UI thread (M.ORCH-T1735).
-            accountsRead = ReadAccounts(patched.Account, DateTime.UtcNow);
-            AllTerminals.ParentsRead = ReadParents();
-            return LoginScope.Tabs(patched, dirs, members, lastApiKey);
-        });
-        // A read that landed meanwhile showed something as new or newer.
-        if (refreshing || workspace is not { } now || now.TakenUtc >= patched.TakenUtc) return false;
-        ApplyTabs(patched, tabs, lastOrgs);
-        return false;
+            var patched = aggregator.WithLiveBilling(figures.Over(shown), DateTime.UtcNow);
+            var dirs = OwnLoginDirs();
+            var members = lastMembers;
+            // Each login's tab and its signed-in state, off the UI thread, as a read does it.
+            var tabs = await Task.Run(() =>
+            {
+                // What ApplyAccounts shows, read here rather than on the UI thread (M.ORCH-T1735).
+                accountsRead = ReadAccounts(patched.Account, DateTime.UtcNow);
+                AllTerminals.ParentsRead = ReadParents();
+                return LoginScope.Tabs(patched, dirs, members, lastApiKey);
+            });
+            // A read that landed meanwhile showed something as new or newer.
+            if (refreshing || workspace is not { } now || now.TakenUtc >= patched.TakenUtc) return false;
+            ApplyTabs(patched, tabs, lastOrgs);
+            return false;
+        }
+        finally { applyingFigures = false; }
     }
 
     /// <summary>
