@@ -94,6 +94,11 @@ public sealed partial class MainViewModel
     /// global login's) keeps the full <see cref="TabTip"/>, which stays the accessible name of every tab.</summary>
     public string TabHoverTip => TabHoverTipOf(TabUsageLine, TabCutoffsLine, FiveHourResetUtc, WeekReset, DateTime.UtcNow, ActiveCliTitles) ?? TabTip + ApiSpendTipLine;
 
+    /// <summary>Milliseconds before this tab's hover tooltip (its usage chart, MainWindow.xaml's LoginHoverTipTemplate) opens:
+    /// <see cref="MindAttic.Orchestrator.Settings.OrchestratorSettings.CliTooltipDelayMs"/>, live from the Vault (M.ORCH-T1823)
+    /// in place of the old hardcoded <c>ToolTipService.InitialShowDelay="0"</c>.</summary>
+    public double CliTooltipDelayMs => ShownSettings.CliTooltipDelayMs;
+
     /// <summary>This tab's own open CLI tabs' names, in tab order: the hover tip's "Active CLIs" line. The Launcher's own
     /// menu pane is always open (M.ORCH-T855) but is never a CLI (M.ORCH-T1430), so it's left out here the same way
     /// <c>Presume</c> and the Team Wall already leave it out elsewhere; a login with nothing else open reads "none open".</summary>

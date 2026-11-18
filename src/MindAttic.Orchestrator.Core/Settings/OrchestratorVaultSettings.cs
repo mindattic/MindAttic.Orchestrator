@@ -751,6 +751,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(8, 60)]
     public double AutoTabNameMaxChars { get; set; } = OrchestratorSettings.DefaultAutoTabNameMaxChars;
 
+    /// <summary>Milliseconds before the CLI row's hover tooltip (its usage chart) opens; 0 opens it instantly.</summary>
+    [Setting("CLI tooltip popup delay (ms)", Group = "Dashboard", Order = 6,
+        Help = "Milliseconds before the CLI row's hover tooltip (the one with its usage chart) opens once the pointer lands on it. 0, the default, opens it instantly with no wait.")]
+    [SettingRange(0, 2000)]
+    public double CliTooltipDelayMs { get; set; } = OrchestratorSettings.DefaultCliTooltipDelayMs;
+
     /// <summary>How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once.</summary>
     [Setting("Leaked test TermHost lifetime (minutes)", Group = "Dashboard", Order = 90,
         Help = "How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once. A host in any other folder is never touched.")]
@@ -1120,6 +1126,7 @@ public sealed class OrchestratorVaultSettings
         HiddenRendererMinutes = s.HiddenRendererMinutes,
         AutoTabNameMinutes = s.AutoTabNameMinutes,
         AutoTabNameMaxChars = s.AutoTabNameMaxChars,
+        CliTooltipDelayMs = s.CliTooltipDelayMs,
         TestTermHostMaxMinutes = s.TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = s.PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = s.PresumeBusyMaxSeconds,
@@ -1296,6 +1303,7 @@ public sealed class OrchestratorVaultSettings
         HiddenRendererMinutes = HiddenRendererMinutes,
         AutoTabNameMinutes = AutoTabNameMinutes,
         AutoTabNameMaxChars = AutoTabNameMaxChars,
+        CliTooltipDelayMs = CliTooltipDelayMs,
         TestTermHostMaxMinutes = TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = PresumeBusyMaxSeconds,

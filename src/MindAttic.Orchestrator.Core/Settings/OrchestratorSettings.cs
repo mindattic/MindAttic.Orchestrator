@@ -770,6 +770,13 @@ public sealed record OrchestratorSettings
     /// <summary>The default auto tab name length constant.</summary>
     public const double DefaultAutoTabNameMaxChars = 20;
 
+    /// <summary>Milliseconds before the CLI row's hover tooltip (its usage chart, M.ORCH-T1814) opens (<c>ToolTipService.InitialShowDelay</c>
+    /// on the owning tab/row, M.ORCH-T1823): 0 opens it the instant the pointer lands, with no hover-delay wait.</summary>
+    public double CliTooltipDelayMs { get; init; } = DefaultCliTooltipDelayMs;
+
+    /// <summary>The default CLI tooltip delay constant: 20% below its old hardcoded 0ms (M.ORCH-T1823) - still 0, now live-dialable.</summary>
+    public const double DefaultCliTooltipDelayMs = 0;
+
     /// <summary>Minutes a TermHost running in an orch-test-* temp folder may live before the daemon ends it (M.ORCH-T1623): a test that
     /// opened a real hosted tab and never closed it (it failed first) leaves one running all night. One whose folder is gone is ended
     /// at once; a host in any other folder is never touched.</summary>
