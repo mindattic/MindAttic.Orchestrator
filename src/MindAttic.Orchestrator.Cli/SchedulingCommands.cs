@@ -132,7 +132,8 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
                 : q.TooBig ? "[yellow]too big for now[/]" : q.IsStale ? $"[yellow]stale since {Formatting.Ago(q.StaleSinceUtc, DateTime.UtcNow)}[/]"
                 : q.IsAssigned ? $"[aqua]assigned {Formatting.Ago(q.Assignment!.StartedUtc, DateTime.UtcNow)}[/]"
                 : plan.Proposals.Any(p => p.Item == q) ? "[green]next[/]"
-                : q.RequiredBy.Count > 0 ? $"[grey]required by {string.Join(", ", q.RequiredBy)}[/]" : "";
+                : q.RequiredBy.Count > 0 ? $"[grey]required by {string.Join(", ", q.RequiredBy)}[/]"
+                : q.Milestone is { } ms ? $"[grey]milestone {ms.Id}[/]" : "";
             table.AddRow((++i).ToString(), Markup.Escape(q.Id), Markup.Escape(q.Repo), Markup.Escape(q.Ticket.Type), q.Priority == 0 ? "" : q.Priority.ToString("+#;-#"),
                 Markup.Escape(q.Ticket.Date), Markup.Escape(Trim(q.Ticket.Summary, 60)), note);
         }

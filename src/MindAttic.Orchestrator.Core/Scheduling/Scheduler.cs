@@ -62,6 +62,13 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
 
     /// <summary>Its friendly name in the ticket database (<see cref="Snapshot.Names"/>, M.TIX-T313); null while it has none.</summary>
     public string? Name { get; init; }
+
+    /// <summary>The active milestone it's on (<see cref="Snapshot.Milestones"/>, M.TIX-T335), null when on none: after explicit
+    /// priority and fixes, milestone work runs before the rest (M.ORCH-T1683).</summary>
+    public TicketMilestone? Milestone { get; init; }
+
+    /// <summary>Whether it's on an active milestone (<see cref="Milestone"/>).</summary>
+    public bool OnMilestone => Milestone is not null;
 }
 
 /// <summary>An open ticket a live agent is working though no assignment says so (M.ORCH-T255): the session (and subagent,
@@ -175,6 +182,11 @@ public static partial class Scheduler
         int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.GetValueOrDefault(id), int.MinValue, int.MaxValue);
         // Who each ticket is assigned to (M.ORCH-T668), from the ticket database (M.ORCH-T762), whatever case its id was saved in.
         var assignees = TicketPins.Assignees(snapshot);
+        // Milestone-first (M.ORCH-T1683, roadmap Phase 9), only while an active milestone has open tickets: fixes, then the
+        // tickets on an active milestone (the earlier milestone first), then everything else. Ordering only: nothing is held
+        // back or reserved for it. With no active milestone every ticket is in one tier and the order is what it was.
+        var milestoneFirst = snapshot.Milestones is { Count: > 0 };
+        int Tier(QueueItem q) => !milestoneFirst || q.Ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) ? 0 : q.OnMilestone ? 1 : 2;
         bool IsOld(Ticket t) => DateOnly.TryParse(t.Date, System.Globalization.CultureInfo.InvariantCulture, out var opened) && opened < groomBefore;
         // Only fixes and tickets you approved are work; the rest wait for your yes outside the queue (one already
         // being worked stays, so its agent is still tracked). One whose assignment went stale waits for it too (M.ORCH-T394).
@@ -202,6 +214,7 @@ public static partial class Scheduler
                     Assignee = assignees.GetValueOrDefault(t.Id),
                     GraphWeight = snapshot.GraphWeights?.GetValueOrDefault(t.Id) ?? 0,
                     Name = snapshot.Names?.GetValueOrDefault(t.Id),
+                    Milestone = snapshot.Milestones?.GetValueOrDefault(t.Id),
                 }))
             .OrderBy(q => q.IsAssigned)
             // A ticket the last-resort cool-off aborted mid-run goes back at the front for the next round (M.ORCH-T786).
@@ -210,6 +223,10 @@ public static partial class Scheduler
             // An explicit priority (tickets ticket bump/priority, or the daemon lifting a failing-test fix above the rest,
             // M.ORCH-T562) still outranks recency (M.ORCH-T863).
             .ThenByDescending(q => q.Priority)
+            // Then milestone-first (M.ORCH-T1683): below an explicit priority, above weight and recency, so newer unrelated work
+            // doesn't pass a milestone ticket. Within the milestone tier the graph weight below is its critical path.
+            .ThenBy(Tier)
+            .ThenBy(q => Tier(q) == 1 ? q.Milestone!.Rank : 0)
             // Then the Tickets graph weight, heaviest first (GraphWeight.Order's rule, M.TIX-T316, M.ORCH-T1457): what most other
             // open work leans on goes first; today's order breaks ties.
             .ThenByDescending(q => q.GraphWeight)
@@ -307,7 +324,8 @@ public static partial class Scheduler
             reposTaken.Add(item.Repo);
             var why = reserved ? $"reserved {Formatting.Tokens(item.Reserved)}"
                 : item.RequiredBy.Count > 0 ? $"required by {string.Join(", ", item.RequiredBy)}"
-                : item.Priority != 0 ? $"priority {item.Priority:+#;-#}" : $"newest {item.Ticket.Type}";
+                : item.Priority != 0 ? $"priority {item.Priority:+#;-#}"
+                : milestoneFirst && Tier(item) == 1 ? $"on active milestone {item.Milestone!.Id}" : $"newest {item.Ticket.Type}";
             if (item.IsStale) why += $"; its last session went quiet {Formatting.Ago(item.StaleSinceUtc, snapshot.TakenUtc)}";
             if (item.Estimate is { } cost) why += $"; {cost}";
             var clash = (snapshot.LinkedRepos.GetValueOrDefault(item.Repo) ?? (IEnumerable<string>)[])

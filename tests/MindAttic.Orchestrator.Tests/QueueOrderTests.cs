@@ -136,6 +136,106 @@ public sealed class QueueOrderTests
         Assert.That(plan.Proposals.Single().Item.Id, Is.EqualTo("A-T3"), "A-T5 still waits for both");
     }
 
+    // M.ORCH-T1683: fixes, then tickets on an active milestone by critical path, then everything else. Ordering only.
+
+    private static Dictionary<string, TicketMilestone> OnMilestones(params (string Ticket, string Milestone, int Rank)[] on) =>
+        on.ToDictionary(m => m.Ticket, m => new TicketMilestone(m.Milestone, m.Rank), StringComparer.OrdinalIgnoreCase);
+
+    private static HashSet<string> Approve(params string[] ids) => new(ids, StringComparer.OrdinalIgnoreCase);
+
+    [Test]
+    public void A_milestone_ticket_goes_ahead_of_newer_work_off_the_milestone_and_behind_fixes()
+    {
+        var snap = Snap(("A", [T("A-T1", "2026-10-01", "feature"), T("A-T2", "2026-10-02", "fix"), T("A-T8", "2026-10-08", "feature"), T("A-T9", "2026-10-09", "fix")])) with
+        {
+            Approved = Approve("A-T1", "A-T8"),
+            Milestones = OnMilestones(("A-T1", "MS-1", 0)),
+        };
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings(), []);
+
+        Assert.That(plan.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T9", "A-T2", "A-T1", "A-T8" }),
+            "fixes newest first, then the milestone's old feature, then the newer feature off it");
+        Assert.That(plan.Queue.Single(q => q.Id == "A-T1").Milestone, Is.EqualTo(new TicketMilestone("MS-1", 0)));
+        Assert.That(plan.Queue.Where(q => q.OnMilestone).Select(q => q.Id), Is.EqualTo(new[] { "A-T1" }));
+    }
+
+    [Test]
+    public void Milestone_tickets_run_by_graph_weight_then_newest_and_the_earlier_milestone_first()
+    {
+        var snap = Snap(("A", [T("A-T1", "2026-10-01", "feature"), T("A-T2", "2026-10-02", "feature"), T("A-T3", "2026-10-03", "feature"),
+            T("A-T4", "2026-10-04", "feature"), T("A-T5", "2026-10-05", "feature")])) with
+        {
+            Approved = Approve("A-T1", "A-T2", "A-T3", "A-T4", "A-T5"),
+            Milestones = OnMilestones(("A-T1", "MS-1", 0), ("A-T2", "MS-1", 0), ("A-T3", "MS-1", 0), ("A-T4", "MS-2", 1)),
+            // A-T5, off the milestones, is the heaviest of all; A-T4, on the later milestone, outweighs the first one's.
+            GraphWeights = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase) { ["A-T1"] = 30, ["A-T4"] = 500, ["A-T5"] = 900 },
+        };
+
+        Assert.That(Order(snap), Is.EqualTo(new[] { "A-T1", "A-T3", "A-T2", "A-T4", "A-T5" }),
+            "MS-1 first (the longest chain, then newest), then MS-2, then the rest whatever its weight");
+    }
+
+    [Test]
+    public void An_explicit_priority_still_outranks_a_milestone_and_a_milestone_tickets_prerequisite_comes_with_it()
+    {
+        var snap = Snap(("A", [T("A-T1", "2026-10-01", "feature"), T("A-T2", "2026-10-02", "feature"), T("A-T3", "2026-10-03", "feature"), T("A-T4", "2026-10-04", "feature")])) with
+        {
+            Approved = Approve("A-T1", "A-T2", "A-T3", "A-T4"),
+            Milestones = OnMilestones(("A-T2", "MS-1", 0)),
+            Priorities = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase) { ["A-T3"] = 5 },
+            Requires = Requires(("A-T2", ["A-T1"])),
+        };
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings(), []);
+
+        Assert.That(plan.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T3", "A-T1", "A-T2", "A-T4" }),
+            "the bumped A-T3 first; A-T1, off the milestone, is pulled ahead of the milestone ticket that needs it");
+        Assert.That(plan.Queue[1].RequiredBy, Is.EqualTo(new[] { "A-T2" }));
+    }
+
+    [Test]
+    public void Milestone_first_is_ordering_only_spare_room_still_takes_other_work()
+    {
+        var snap = Snap(("A", [T("A-T1", "2026-10-01", "feature")]), ("B", [T("B-T1", "2026-10-09", "feature")]), ("C", [T("C-T1", "2026-10-05", "feature")])) with
+        {
+            Approved = Approve("A-T1", "B-T1", "C-T1"),
+            Milestones = OnMilestones(("A-T1", "MS-1", 0)),
+        };
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings { MaxConcurrentSessions = 3 }, []);
+
+        Assert.That(plan.Proposals.Select(p => p.Item.Id), Is.EqualTo(new[] { "A-T1", "B-T1", "C-T1" }), "the milestone's first, and the rest start too");
+        Assert.That(plan.Proposals[0].Reason, Does.StartWith("on active milestone MS-1"));
+        Assert.That(plan.Proposals[1].Reason, Does.StartWith("newest feature"));
+
+        var one = Scheduler.Plan(snap, new OrchestratorSettings { MaxConcurrentSessions = 1 }, []);
+        Assert.That(one.Proposals.Single().Item.Id, Is.EqualTo("A-T1"), "with one slot the milestone ticket takes it");
+    }
+
+    [Test]
+    public void Without_an_active_milestone_the_order_is_unchanged()
+    {
+        Ticket[] open = [T("A-T1", "2026-10-01", "fix"), T("A-T2", "2026-10-10", "feature"), T("A-T3", "2026-10-05", "docs")];
+        var approved = Approve("A-T2", "A-T3");
+        string[] asBefore = ["A-T2", "A-T3", "A-T1"];
+
+        Assert.That(Order(Snap(("A", open)) with { Approved = approved }), Is.EqualTo(asBefore), "no milestones read (an older database)");
+        Assert.That(Order(Snap(("A", open)) with { Approved = approved, Milestones = OnMilestones() }), Is.EqualTo(asBefore), "none active");
+    }
+
+    [Test]
+    public void The_milestones_survive_the_published_snapshot_file()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "orch-order-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var file = new SnapshotFile(path);
+            file.Write(Snap(("A", [T("A-T1")])) with { Milestones = OnMilestones(("A-T1", "MS-2", 1)) });
+            var read = new SnapshotFile(path).Read(Now);
+
+            Assert.That(read?.Milestones?.GetValueOrDefault("a-t1"), Is.EqualTo(new TicketMilestone("MS-2", 1)));
+        }
+        finally { File.Delete(path); }
+    }
+
     [Test]
     public void The_newest_comparer_breaks_ties_by_repo()
     {

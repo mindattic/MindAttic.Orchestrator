@@ -30,11 +30,40 @@ public sealed class OpenTicketSource
     private (string Path, DateTime WriteUtc, ILookup<string, Ticket> Open, HashSet<string> Repos, IReadOnlyDictionary<string, IReadOnlyList<string>> Requires,
         IReadOnlySet<string> Approved, IReadOnlySet<string> Epics, IReadOnlyDictionary<string, long> Priorities, WorkState Work,
         IReadOnlyDictionary<string, IReadOnlyList<string>> PartOf, IReadOnlySet<string> OwnerWaiting,
-        IReadOnlyDictionary<string, long> GraphWeights, IReadOnlyDictionary<string, string> Names)? fromDb;
+        IReadOnlyDictionary<string, long> GraphWeights, IReadOnlyDictionary<string, string> Names,
+        IReadOnlyDictionary<string, TicketMilestone> Milestones)? fromDb;
 
     /// <summary>Open ticket → its graph weight (<see cref="TicketsDb.GraphWeights"/>, M.TIX-T316): dispatch's order after explicit
     /// priority (M.ORCH-T1457); missing means 0.</summary>
     public IReadOnlyDictionary<string, long> GraphWeights => fromDb?.GraphWeights ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Open ticket → the first active milestone it's on (<see cref="TicketsDb.ActiveMilestoneTickets"/>, M.TIX-T335):
+    /// what the queue puts ahead of other work that isn't a fix (M.ORCH-T1683); empty with no active milestone.</summary>
+    public IReadOnlyDictionary<string, TicketMilestone> Milestones => fromDb?.Milestones ?? NoMilestones;
+
+    private static readonly IReadOnlyDictionary<string, TicketMilestone> NoMilestones = new Dictionary<string, TicketMilestone>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Read from <paramref name="db"/> for the tickets in <paramref name="open"/>. A read that fails (a database from
+    /// before milestones, or one locked) gives <paramref name="last"/>, the read before it, or none: never a failed ticket read.</summary>
+    internal static IReadOnlyDictionary<string, TicketMilestone> MilestonesOf(TicketsDb db, IReadOnlySet<string> open,
+        IReadOnlyDictionary<string, TicketMilestone>? last = null)
+    {
+        try
+        {
+            var on = db.ActiveMilestoneTickets();
+            if (on.Count == 0) return NoMilestones;
+            var rank = db.Milestones(MilestoneStates.Active).Select((m, i) => (m.Id, Rank: i))
+                .ToDictionary(m => m.Id, m => m.Rank, StringComparer.OrdinalIgnoreCase);
+            return on.Where(t => open.Contains(t.Key))
+                .Select(t => (t.Key, First: t.Value.Where(rank.ContainsKey).OrderBy(id => rank[id]).FirstOrDefault()))
+                .Where(t => t.First is not null)
+                .ToDictionary(t => t.Key, t => new TicketMilestone(t.First!, rank[t.First!]), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)
+        {
+            return last ?? NoMilestones;
+        }
+    }
 
     /// <summary>Ticket → its friendly name (<see cref="TicketsDb.Names"/>, M.TIX-T313).</summary>
     public IReadOnlyDictionary<string, string> Names => fromDb?.Names ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -141,8 +170,9 @@ public sealed class OpenTicketSource
                     .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
                 var queue = db.QueueStates();
+                var open = db.Tickets().Where(t => t.Ticket.Status == TicketRules.Open).ToList();
                 fromDb = (path, written,
-                    db.Tickets().Where(t => t.Ticket.Status == TicketRules.Open).ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
+                    open.ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
                     db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires,
                     queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     db.AllLabels().Where(l => l.Value.Contains(EpicLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
@@ -150,7 +180,8 @@ public sealed class OpenTicketSource
                     WorkState.Of(db), partOf,
                     db.AllLabels().Where(l => l.Value.Contains(WaitingOnOwnerLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     db.GraphWeights().Where(w => w.Value.Value != 0).ToDictionary(w => w.Key, w => (long)w.Value.Value, StringComparer.OrdinalIgnoreCase),
-                    db.Names().ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase));
+                    db.Names().ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
+                    MilestonesOf(db, open.Select(t => t.Ticket.Id).ToHashSet(StringComparer.OrdinalIgnoreCase), fromDb is { } before && before.Path == path ? before.Milestones : null));
                 dbReadUtc = DateTime.UtcNow;
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)

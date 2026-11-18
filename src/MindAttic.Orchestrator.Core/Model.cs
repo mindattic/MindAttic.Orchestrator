@@ -145,6 +145,10 @@ public sealed record RepoStatus(
     DateTime? LastActivityUtc,
     TokenUsage UsageToday);
 
+/// <summary>The active milestone a ticket is on (M.ORCH-T1683): its <c>MS-n</c> ID and its place among the active
+/// milestones in milestone order, 0 first.</summary>
+public sealed record TicketMilestone(string Id, int Rank);
+
 /// <summary>One look at every repo and the budget around them: what the daemon publishes, and the dashboard and
 /// scheduler read. <c>TakenUtc</c> is when it was taken, <c>Repos</c> each repo's status and <c>Warnings</c> anything that
 /// went wrong building it.</summary>
@@ -222,6 +226,11 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
 
     /// <summary>Ticket → its friendly name in the ticket database (<c>TicketsDb.Names</c>, M.TIX-T313); missing means none.</summary>
     public IReadOnlyDictionary<string, string>? Names { get; init; }
+
+    /// <summary>Open ticket → the first active milestone it's on in the ticket database (<c>TicketsDb.ActiveMilestoneTickets</c>,
+    /// M.TIX-T335). While any is here the queue runs fixes, then these, then the rest (M.ORCH-T1683); null or empty (no
+    /// milestones, or a database without them) leaves the order as it was.</summary>
+    public IReadOnlyDictionary<string, TicketMilestone>? Milestones { get; init; }
 
     /// <summary>Ticket → the member it's assigned to, by login email (the ticket database's <c>ticket_work</c>, written by
     /// <c>tickets ticket assign</c> and Tickets Desktop, read through the engine, M.ORCH-T762); missing means unassigned.</summary>
