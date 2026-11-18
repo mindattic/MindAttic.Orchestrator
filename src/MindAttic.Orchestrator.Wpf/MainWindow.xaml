@@ -499,7 +499,16 @@
                       AutomationProperties.Name="Claude logins, each expanding to its open CLI panes">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MainViewModel}">
-                    <StackPanel x:Name="LoginTreeNode" Margin="0,0,0,2">
+                    <!-- The login's colour stripe runs the whole height of its tree, header and open panes alike
+                         (M.ORCH-T1812, the owner's mockup), so it sits beside both rather than in the header alone. -->
+                    <Grid x:Name="LoginTreeNode" Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" SnapsToDevicePixels="False"
+                                Background="{Binding TabBrush}" Margin="0,2,6,2" />
+                    <StackPanel Grid.Column="1">
                         <Grid x:Name="LoginTreeHeader" Cursor="Hand" Background="Transparent" MouseLeftButtonDown="LoginTreeHeader_MouseLeftButtonDown"
                               ContextMenuOpening="LoginTreeHeader_ContextMenuOpening"
                               ToolTipService.InitialShowDelay="0" mc:MaCallout.ToolTip="{Binding TabHoverTip}" AutomationProperties.Name="{Binding TabTip}">
@@ -513,8 +522,6 @@
                                  row) behind the row's content, shown only for the selected login. -->
                             <Border Grid.ColumnSpan="4" Style="{StaticResource MaDivider}" Height="Auto" Margin="0" SnapsToDevicePixels="False"
                                     Visibility="{Binding IsTabSelected, Converter={StaticResource Visible}}" />
-                            <Border Grid.Column="0" Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" SnapsToDevicePixels="False"
-                                    Background="{Binding TabBrush}" Margin="0,2,6,2" />
                             <!-- The expand/collapse chevron alone (M.ORCH-T1759): its own click is marked handled so it never
                                  also selects this login via the header's handler above it in the visual tree. -->
                             <TextBlock Grid.Column="1" Text="{Binding IsExpanded, Converter={x:Static vm:Converters.Chevron}}" Width="14"
@@ -576,7 +583,7 @@
                                     Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}" />
                         </Grid>
                         <ItemsControl x:Name="LoginTreeChildren" Style="{StaticResource MaList}" ItemsSource="{Binding Terminals.Panes}"
-                                      Margin="10,2,0,2" Visibility="{Binding IsExpanded, Converter={StaticResource Visible}}">
+                                      Margin="0,2,0,2" Visibility="{Binding IsExpanded, Converter={StaticResource Visible}}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <!-- Plain (no Ctrl) drag reorders this pane among its login's own CLI tabs (M.ORCH-T1768 note 6:
@@ -596,7 +603,7 @@
                                              (the nearest ItemsControl up from this row), the same AncestorType=ItemsControl climb
                                              TreePaneRow's own CloseCommand binding below already uses to reach the login. -->
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="14" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <!-- The highlight itself: the library's MaChromeBorder fill (MaDivider, sized to the whole
@@ -627,7 +634,11 @@
                                              library-only rule's own exception for exactly that): a unit square stretched to fill
                                              its box, which for a 1px-thin box reads as a line, filled with the same MaChromeBorder
                                              token the header's own selection highlight and the window's hairlines already use. -->
-                                        <Grid Grid.Column="0" IsHitTestVisible="False">
+                                        <!-- Where they sit (M.ORCH-T1812, the owner's mockup): the list starts where the header's
+                                             chevron starts (right after the login's stripe), this column is as wide as the header's chevron (14) and
+                                             the spine runs down its middle, so it drops straight from the chevron; the tee
+                                             reaches 6 past the column, towards the icon. -->
+                                        <Grid Grid.Column="0" IsHitTestVisible="False" Margin="0,0,-6,0">
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="*" />
                                                 <RowDefinition Height="*" />
@@ -638,9 +649,9 @@
                                                  of a tee that reads as though a further sibling followed below it. The top half
                                                  always shows: it is this row's own link up to the one above it (or the login
                                                  header, for the first row). -->
-                                            <Path Grid.Row="0" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                                            <Path Grid.Row="0" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="7,0,0,0" VerticalAlignment="Stretch"
                                                   Fill="{DynamicResource MaChromeBorder}" />
-                                            <Path Grid.Row="1" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                                            <Path Grid.Row="1" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="7,0,0,0" VerticalAlignment="Stretch"
                                                   Fill="{DynamicResource MaChromeBorder}">
                                                 <Path.Visibility>
                                                     <MultiBinding Converter="{x:Static vm:Converters.HiddenOnLastRow}">
@@ -649,7 +660,7 @@
                                                     </MultiBinding>
                                                 </Path.Visibility>
                                             </Path>
-                                            <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="8,0,0,0"
+                                            <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="7,0,0,0"
                                                   Fill="{DynamicResource MaChromeBorder}" />
                                         </Grid>
                                         <!-- A real CLI/Launcher pane: the same per-pane badges as the flat CLI tab bar's own header,
@@ -678,7 +689,9 @@
                                                     Click="TreePaneMoreButton_Click"
                                                     AutomationProperties.Name="{Binding Title, StringFormat='More actions for {0}'}"
                                                     mc:MaCallout.ToolTip="Move, rename, change color, undock/dock, pop out, broadcast, or copy its PID" />
-                                            <Grid Width="18" Height="18" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
+                                            <!-- 9 in from the chevron column's end puts this 18-wide cell's centre exactly under the
+                                                 header's own 20-wide icon cell (8 in), M.ORCH-T1812. -->
+                                            <Grid Width="18" Height="18" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="9,0,8,0">
                                                 <mc:MaBadge Style="{StaticResource MaTag}" Width="16" Height="16" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
                                                             Foreground="{DynamicResource MaOnAccent}" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             Visibility="{Binding ShowsPaneIdleBadge, Converter={StaticResource Visible}}" />
@@ -715,6 +728,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
+                    </Grid>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
