@@ -103,6 +103,22 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>When this tab is next considered for a name of its work (M.ORCH-T1817); null until it is first seen.</summary>
     internal DateTime? AutoNameDueUtc { get; set; }
 
+    /// <summary>The workspace root as last pushed by the owning <see cref="TerminalsViewModel"/> (its own
+    /// <see cref="TerminalsViewModel.WorkspaceRoot"/>, M.ORCH-T1819); null until a settings read has set it.</summary>
+    private string? workspaceRoot;
+
+    /// <summary>The workspace root; see <see cref="workspaceRoot"/>. Raises <see cref="IsWorkspacePane"/> on a change, so a
+    /// pane opened before the Vault settings load still gets its identity icon once they arrive.</summary>
+    internal string? WorkspaceRoot { get => workspaceRoot; set { if (Set(ref workspaceRoot, value)) Raise(nameof(IsWorkspacePane)); } }
+
+    /// <summary>Whether this tab runs at the workspace root instead of on a repo (M.ORCH-T1819): "General", or the workspace
+    /// folder's own name ("MindAttic"), opened by <see cref="MainViewModel.OpenGeneralPromptAsync"/> and its sibling. Its
+    /// <see cref="Activity.AgentBoardRow"/> is never found: <see cref="Activity.AgentBoard.Build"/> only walks sessions under
+    /// registered repos, never the workspace root itself, so none of the three status badges (<see cref="ShowsPaneIdleBadge"/>
+    /// and its siblings) ever light for it. This stands in for them in the tree sidebar and tab strip, the same overlaid-cell
+    /// idiom the Launcher pane's own rocket already uses for a pane with no AgentBoardRow at all.</summary>
+    public bool IsWorkspacePane => AutoTabName.IsWorkspaceTab(Request, WorkspaceRoot);
+
     /// <summary>The hosted session once its host registered (or the one reattached to).</summary>
     public TermSessionRecord? Session { get; private set; }
 
@@ -958,6 +974,7 @@ public sealed class TerminalsViewModel : ObservableObject
             OrchestratorLog.For("Terminals").Error(ex, "Couldn't open a terminal for {Repo:l}", request.Name);
             return $"Couldn't open a terminal: {ex.Message}";
         }
+        pane.WorkspaceRoot = WorkspaceRoot; // M.ORCH-T1819: so a General/MindAttic tab gets its workspace identity icon.
         Panes.Add(pane);
         Opened?.Invoke(pane);
         if (hosted) _ = StartHostedAsync(pane);
@@ -1168,6 +1185,7 @@ public sealed class TerminalsViewModel : ObservableObject
             if (request is { Undocked: true }) return null;
             request ??= TermPaneFile.FromRecord(session);
             var pane = new TerminalPaneViewModel(request, session);
+            pane.WorkspaceRoot = WorkspaceRoot; // M.ORCH-T1819: so a reattached General/MindAttic tab gets its icon too.
             Panes.Add(pane);
             OrchestratorLog.For("Terminals").Information("Reattached {Title:l} to its TermHost {Id:l} (pid {Pid})", request.Title, session.Id, session.HostPid);
             return pane;
@@ -1258,8 +1276,20 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <summary>The longest auto-given name (<see cref="OrchestratorSettings.AutoTabNameMaxChars"/>).</summary>
     internal int AutoNameMaxChars { get; set; } = (int)MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultAutoTabNameMaxChars;
 
-    /// <summary>The workspace's root folder: a CLI running in it, not in a repo, is a workspace tab (<see cref="AutoTabName"/>).</summary>
-    internal string? WorkspaceRoot { get; set; }
+    /// <summary>The workspace's root folder: a CLI running in it, not in a repo, is a workspace tab (<see cref="AutoTabName"/>).
+    /// Setting this also pushes the new value onto every open pane's own <see cref="TerminalPaneViewModel.WorkspaceRoot"/>
+    /// (M.ORCH-T1819), so a pane opened before the Vault settings load still gets its workspace identity icon once they do.</summary>
+    internal string? WorkspaceRoot
+    {
+        get => workspaceRoot;
+        set
+        {
+            if (workspaceRoot == value) return;
+            workspaceRoot = value;
+            foreach (var pane in Panes) pane.WorkspaceRoot = value;
+        }
+    }
+    private string? workspaceRoot;
 
     /// <summary>A ticket's friendly name by its ID, null when it has none; null here has names fall back to the ID.</summary>
     internal Func<string, string?>? TicketName { get; set; }
