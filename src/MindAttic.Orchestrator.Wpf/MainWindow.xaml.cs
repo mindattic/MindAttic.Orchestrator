@@ -1337,6 +1337,15 @@ public partial class MainWindow : Window
             };
             menu.Items.Add(item);
         }
+        // Login (M.ORCH-T1820): every real Claude login - not the API key pseudo-account, which has Buy API credits below
+        // instead - can be re-authenticated from here without opening the Logins modal. Always shows, not only once signed
+        // out, so a login nearing its expiry can be renewed ahead of it.
+        if (!tab.IsApiKeyTab)
+        {
+            Add("", "Login", "Re-authenticates this one login (the same sign-in Sign in uses) without opening the Logins modal or touching any other login",
+                tab.LoginCommand);
+            menu.Items.Add(DropdownSeparator());
+        }
         menu.Items.Add(ProjectsMenu(tab));
         menu.Items.Add(DropdownSeparator());
         Add("", "Run Launcher", "Opens this login's standalone Launcher (its own process): the project menu above does the same in-app",
