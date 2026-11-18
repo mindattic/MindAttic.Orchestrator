@@ -516,6 +516,17 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now),
             contextCycler.Load().Where(c => c.Pid is not null).ToDictionary(c => c.SessionId, c => c.Pid!.Value, StringComparer.Ordinal),
             contextCycler.AskingSessions(now), Sessions.BackgroundJobs.RunningByCli(contextCycler.Directory, now));
+        // A repo whose CLI's own turn sits idle still counts as working while one of its subagents runs on (M.ORCH-T1824):
+        // Classify (above, building result/Repo()) only read each session's own last write and open Launcher tabs, blind to
+        // a subagent the context gate already knows is alive -- the same "busy" a CLI's own badge already means
+        // (AgentBoardRow.IsBusy) -- so a CLI whose subagents kept it busy read Waiting (or worse, Dormant) here, which fed a
+        // false "needs you" alert below and every dashboard tab's repo card (LoginScope.Keep re-derives from this same
+        // Snapshot, M.ORCH-T1824 fixed there too).
+        var workingBySubagent = agentBoard.Where(a => a.Subagents.Count > 0).Select(a => a.Repo).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (workingBySubagent.Count > 0)
+            for (var i = 0; i < result.Count; i++)
+                if (result[i].State != RepoState.Working && workingBySubagent.Contains(result[i].Name))
+                    result[i] = result[i] with { State = RepoState.Working };
         // The Claude login each CLI bills, on its card (M.ORCH-T606): its own login's name, else the global login's, by the
         // name each login's folder gives it (M.ORCH-T614) with the email for the tooltip.
         var globalLogin = SignIn?.Profile?.Email;
