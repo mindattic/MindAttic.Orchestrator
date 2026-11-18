@@ -81,7 +81,10 @@ internal static class VaultSecrets
     private static bool SecretName(string name)
     {
         var n = name.ToLowerInvariant();
-        return n.Contains("key") || n.Contains("secret") || n.Contains("token") || n.Contains("password");
+        // "pool" too: a provider's pool of alternate keys sits as its own sibling field, e.g. "pool": [...],
+        // not nested under a "key"-named object, so without this its entries never inherit the secret flag and this file's
+        // own doc comment's promise to mask "each provider's key, its pool" is only half true.
+        return n.Contains("key") || n.Contains("secret") || n.Contains("token") || n.Contains("password") || n.Contains("pool");
     }
 
     /// <summary>A label names a key, it isn't one; nor is a model, a URL or a limit.</summary>
