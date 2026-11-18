@@ -308,9 +308,9 @@ public sealed partial class MainViewModel
         }
     }
 
-    // ── Login, from a login's right-click menu (M.ORCH-T1820) ──────────────
+    // ── Login / Log out, from a login's right-click menu (M.ORCH-T1820, M.ORCH-T1821) ──────
 
-    private ICommand? loginCommand;
+    private ICommand? loginCommand, logOutCommand;
 
     /// <summary>
     /// "Login", on every real login's right-click menu (<c>MainWindow.ShowLoginMenu</c>), not just the API key pseudo-account's
@@ -360,4 +360,38 @@ public sealed partial class MainViewModel
         NoteLocalChange();
         await RefreshAsync();
     }
+
+    /// <summary>
+    /// "Log out" (M.ORCH-T1821), on a signed-in login's right-click menu: signs this one account out, so its CLIs can't be
+    /// used until Login (above) signs it back in. A per-CLI login's own folder (<see cref="AccountDirs.SignOut(AccountDir)"/>)
+    /// goes through the exact file state <see cref="IsTabSignedIn"/> already reads back (the tree's "Disabled: signed out"
+    /// badge and the sign-in-only panel a roster account not yet signed in here shows): no flag of its own, so it grays out
+    /// and its menu reduces to just Login the same way, once its tab has no live CLI of its own left to keep it looking
+    /// signed in. The global login's tab (<see cref="AccountDirs.SignOutGlobal"/>) really does sign out too, but
+    /// <c>LoginScope.Tabs</c> always calls its tab "signed in" (M.ORCH-T613 predates per-login sign-out), so that one tab's
+    /// own look and menu don't reflect it - a known gap left on M.ORCH-T1821 rather than widened into that shared snapshot code.
+    /// </summary>
+    public ICommand LogOutCommand => logOutCommand ??= new RelayCommand(() =>
+    {
+        if (IsApiKeyTab || !IsTabSignedIn) return;
+        string label;
+        string? error;
+        if (ScopeEmail is { } email)
+        {
+            label = email;
+            error = AccountDirs.SignOut(OwnLoginDirs().For(email));
+        }
+        else
+        {
+            var dirs = OwnLoginDirs();
+            label = Root.workspace?.GlobalEmail ?? TabTitle;
+            error = AccountDirs.SignOutGlobal(dirs.ClaudeDir, dirs.HomeConfigPath);
+        }
+        AccountsMessage = error is null
+            ? $"{label} is signed out: its CLIs are inaccessible until Login (above) signs it back in."
+            : $"Couldn't sign {label} out: {error}";
+        if (error is not null) Toasts.Insert(0, new ToastViewModel($"Couldn't sign {label} out", error, Palette.Over, null));
+        NoteLocalChange();
+        _ = RefreshAsync();
+    }, () => !IsApiKeyTab && IsTabSignedIn);
 }

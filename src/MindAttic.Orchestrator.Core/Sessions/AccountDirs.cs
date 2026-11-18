@@ -249,7 +249,8 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
     /// <summary>
     /// Signs <paramref name="account"/>'s folder out (M.ORCH-T610): its token (<c>.credentials.json</c>) goes, and its
     /// <c>.claude.json</c> forgets who was signed in, keeping everything else. Used when its sign-in landed on another account
-    /// than the folder's, so no CLI started on it spends that other account's tokens. Returns why it couldn't, or null.
+    /// than the folder's, so no CLI started on it spends that other account's tokens; also what the dashboard's own "Log out"
+    /// menu item runs for a per-CLI login (M.ORCH-T1821). Returns why it couldn't, or null.
     /// </summary>
     public static string? SignOut(AccountDir account)
     {
@@ -260,6 +261,29 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
             {
                 foreach (var key in SignInKeys) config.Remove(key);
                 WriteIfChanged(account.ConfigPath, config.ToJsonString());
+            }
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return ex.Message; }
+    }
+
+    /// <summary>
+    /// As <see cref="SignOut(AccountDir)"/>, for the global login instead of a per-CLI one: its token is
+    /// <paramref name="claudeDir"/>'s own <c>.credentials.json</c> (<c>~/.claude</c>), but its sign-in is
+    /// <paramref name="homeConfigPath"/>'s (<c>~/.claude.json</c>, at the profile root, not under <c>~/.claude</c>) - a
+    /// mismatched layout that is why the global login isn't one <see cref="AccountDir"/> to begin with. Returns why it
+    /// couldn't, or null.
+    /// </summary>
+    public static string? SignOutGlobal(string claudeDir, string homeConfigPath)
+    {
+        try
+        {
+            var credentials = Path.Combine(claudeDir, ".credentials.json");
+            if (File.Exists(credentials)) File.Delete(credentials);
+            if (File.Exists(homeConfigPath) && JsonNode.Parse(File.ReadAllText(homeConfigPath)) is JsonObject config)
+            {
+                foreach (var key in SignInKeys) config.Remove(key);
+                WriteIfChanged(homeConfigPath, config.ToJsonString());
             }
             return null;
         }

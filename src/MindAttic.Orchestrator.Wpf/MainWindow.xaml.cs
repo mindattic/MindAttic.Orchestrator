@@ -1337,13 +1337,25 @@ public partial class MainWindow : Window
             };
             menu.Items.Add(item);
         }
-        // Login (M.ORCH-T1820): every real Claude login - not the API key pseudo-account, which has Buy API credits below
-        // instead - can be re-authenticated from here without opening the Logins modal. Always shows, not only once signed
-        // out, so a login nearing its expiry can be renewed ahead of it.
+        // Login/Log out (M.ORCH-T1820, M.ORCH-T1821): every real Claude login - not the API key pseudo-account, which has
+        // Buy API credits below instead - can be re-authenticated from here without opening the Logins modal. Login always
+        // shows, so a login nearing its expiry can be renewed ahead of it; Log out joins it only while actually signed in.
+        // Once signed out, the rest of this menu (Projects, Run/New Launcher, User Settings, Change Color) is left off
+        // entirely: IsTabSignedIn is the same real signed-in state those already gate (the sign-in-only panel and the tree's
+        // muted "Disabled: signed out" badge), not a flag of its own, so a logged-out login looks and acts exactly like a
+        // roster account never signed in here to begin with.
         if (!tab.IsApiKeyTab)
         {
             Add("", "Login", "Re-authenticates this one login (the same sign-in Sign in uses) without opening the Logins modal or touching any other login",
                 tab.LoginCommand);
+            if (tab.ScopeEmail is not null && tab.IsTabSignedIn)
+                Add("", "Log out", "Signs this login out: its CLIs become inaccessible and its row grays out until Login (above) signs it back in",
+                    tab.LogOutCommand);
+            if (!tab.IsTabSignedIn)
+            {
+                menu.IsOpen = true;
+                return;
+            }
             menu.Items.Add(DropdownSeparator());
         }
         menu.Items.Add(ProjectsMenu(tab));
