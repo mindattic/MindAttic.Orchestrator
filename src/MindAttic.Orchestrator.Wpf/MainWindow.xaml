@@ -194,6 +194,19 @@
              always set ({Binding}, the login's own MainViewModel), so the trigger that collapses PART_TrailingContent on a
              null TrailingContent never fires here - this is what hides it instead. The lambda pair collapses on its own
              (ShowsFiveHourChart, M.ORCH-T1540) for a solo Ultra login, which has no 5-hour window to show. -->
+        <!-- A person's hover tooltip (M.ORCH-T1814, M.COMP-T193's MaCallout.ToolTipTemplate): a thumbnail of their 5-hour
+             window chart (the same data as UtilizationChart further down, drawn Compact: its only text is the percent the
+             window is predicted to end at) over the text the tooltip always had (figures, resets, cutoffs, active CLIs).
+             A login with no 5-hour window (a solo Ultra, ShowsFiveHourChart) shows the text alone. The tooltip isn't in
+             the row's visual tree, so these bind to the tooltip's own value: the login's MainViewModel. -->
+        <DataTemplate x:Key="LoginHoverTipTemplate" DataType="{x:Type vm:MainViewModel}">
+            <StackPanel>
+                <mc:MaLineChart Compact="True" Width="200" Height="64" HorizontalAlignment="Left" Margin="{StaticResource SpaceBXS}"
+                                Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.CompactConverter}}"
+                                Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}" />
+                <TextBlock Text="{Binding TabHoverTip}" TextWrapping="Wrap" />
+            </StackPanel>
+        </DataTemplate>
         <DataTemplate x:Key="LoginUsageBarsTemplate" DataType="{x:Type vm:MainViewModel}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                         Visibility="{Binding ShowsTabUsageBars, Converter={StaticResource Visible}}">
@@ -420,7 +433,8 @@
                          instantly (M.ORCH-T1532, ToolTipService's own delay on the owning tab - MaCalloutToolTip is still a
                          plain ToolTip underneath, so that delay still governs it): no hover-delay wait to read a login's usage. -->
                     <Setter Property="ToolTipService.InitialShowDelay" Value="0" />
-                    <Setter Property="mc:MaCallout.ToolTip" Value="{Binding TabHoverTip}" />
+                    <Setter Property="mc:MaCallout.ToolTip" Value="{Binding}" />
+                    <Setter Property="mc:MaCallout.ToolTipTemplate" Value="{StaticResource LoginHoverTipTemplate}" />
                     <Setter Property="mc:MaCallout.Placement" Value="Right" />
                     <Setter Property="AutomationProperties.Name" Value="{Binding TabTip}" />
                 </Style>
@@ -511,7 +525,7 @@
                     <StackPanel Grid.Column="1">
                         <Grid x:Name="LoginTreeHeader" Cursor="Hand" Background="Transparent" MouseLeftButtonDown="LoginTreeHeader_MouseLeftButtonDown"
                               ContextMenuOpening="LoginTreeHeader_ContextMenuOpening"
-                              ToolTipService.InitialShowDelay="0" mc:MaCallout.ToolTip="{Binding TabHoverTip}" AutomationProperties.Name="{Binding TabTip}">
+                              ToolTipService.InitialShowDelay="0" mc:MaCallout.ToolTip="{Binding}" mc:MaCallout.ToolTipTemplate="{StaticResource LoginHoverTipTemplate}" AutomationProperties.Name="{Binding TabTip}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />

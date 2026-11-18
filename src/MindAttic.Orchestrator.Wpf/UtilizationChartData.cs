@@ -28,8 +28,21 @@ public static class UtilizationChartData
     /// <summary>The theme's MaAccent, MaGood, MaWarn and MaBad (the library theme's own outside the app, in tests).</summary>
     public static ChartBrushes ThemeBrushes() => new(Palette.Accent, Palette.Working, Palette.Waiting, Palette.Over);
 
-    /// <summary>What the chart draws for <paramref name="u"/>.</summary>
-    public static MaLineChartData From(Utilization u, ChartBrushes brushes)
+    /// <summary>What the chart draws for <paramref name="u"/>. <paramref name="compact"/> (M.ORCH-T1814, the person
+    /// tooltip's thumbnail) is the same lines with one label only: the percent the window is predicted to end at.</summary>
+    public static MaLineChartData From(Utilization u, ChartBrushes brushes, bool compact = false)
+    {
+        var data = Full(u, brushes);
+        if (!compact) return data;
+        return data with
+        {
+            EndLabel = null,
+            Projection = data.Projection is { } p ? p with { Label = Formatting.FiveHourPercent(u.ProjectedEndPercent) } : null,
+            ReferenceLines = data.ReferenceLines is { } lines ? [.. lines.Select(l => l with { Label = null })] : null,
+        };
+    }
+
+    private static MaLineChartData Full(Utilization u, ChartBrushes brushes)
     {
         // No window running and none on record: just the empty axis; the caption says the next starts with the next prompt.
         if (u.Ended && u.Actual.Count == 0) return new MaLineChartData(u.StartUtc, u.EndUtc, []);
@@ -66,10 +79,13 @@ public static class UtilizationChartData
     /// <summary>Binds the view model's <see cref="Utilization"/> to <see cref="MaLineChart.Data"/>.</summary>
     public static IValueConverter Converter { get; } = new UtilizationConverter();
 
-    private sealed class UtilizationConverter : IValueConverter
+    /// <summary>The same for the person tooltip's thumbnail: the predicted percent is its only label.</summary>
+    public static IValueConverter CompactConverter { get; } = new UtilizationConverter(compact: true);
+
+    private sealed class UtilizationConverter(bool compact = false) : IValueConverter
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-            value is Utilization u ? From(u, ThemeBrushes()) : null;
+            value is Utilization u ? From(u, ThemeBrushes(), compact) : null;
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
             throw new NotSupportedException();
