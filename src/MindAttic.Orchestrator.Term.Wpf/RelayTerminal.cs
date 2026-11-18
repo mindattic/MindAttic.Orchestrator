@@ -34,12 +34,17 @@ public sealed class RelayTerminal : UserControl, IDisposable
     private Size? letterboxedAt;
     private int sizeGeneration;
 
+    // The renderer the connection is set on (its TerminalOutput feeds it); null while the renderer is released (M.ORCH-T1737)
+    // or before the connection exists. A renderer made on show differs from it until it loads and takes the connection.
+    private TerminalControl? boundRenderer;
+    private readonly Grid grid = new();
+    private System.Windows.Threading.DispatcherTimer? releaseTimer;
+
     /// <summary>Creates the relay terminal.</summary>
     public RelayTerminal(TerminalTheme theme)
     {
         Theme = theme;
-        Terminal = new TerminalControl { Focusable = true, AutoResize = true };
-        var grid = new Grid();
+        Terminal = NewRenderer();
         grid.Children.Add(Terminal);
         Content = grid;
         Focusable = true;
@@ -47,8 +52,15 @@ public sealed class RelayTerminal : UserControl, IDisposable
         KeyboardNavigation.SetDirectionalNavigation(this, KeyboardNavigationMode.Contained);
         // Only focus that lands on this control itself is handed on: the renderer's own GotFocus bubbles through here too.
         GotFocus += (_, e) => { if (ReferenceEquals(e.OriginalSource, this)) Terminal.Focus(); };
+    }
+
+    /// <summary>A renderer wired to this viewer: the one made with it, or one made again when a released tab is shown
+    /// (M.ORCH-T1737). Once loaded it is themed and takes the connection (a new one, or the paused one kept).</summary>
+    private TerminalControl NewRenderer()
+    {
+        var renderer = new TerminalControl { Focusable = true, AutoResize = true };
         // Focus on the renderer is this viewer being used: it takes the session's size (M.ORCH-T930, spike section 3).
-        Terminal.GotFocus += (_, _) =>
+        renderer.GotFocus += (_, _) =>
         {
             try { Connection?.TakeSize(); }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Taking the size failed; contained"); }
@@ -64,9 +76,9 @@ public sealed class RelayTerminal : UserControl, IDisposable
         // M.ORCH-T1604: only a row that actually GROWS past what it was when this viewer lost the size reclaims it. Any layout
         // pass (including one landing just after the loss) used to reclaim at once, so two viewers could ping-pong the size and
         // a letterbox lasted only an instant.
-        Terminal.SizeChanged += (_, e) =>
+        renderer.SizeChanged += (_, e) =>
         {
-            if (!IsVisible) return;
+            if (!IsVisible || !ReferenceEquals(renderer, boundRenderer)) return;
             // M.ORCH-T1631: the loss (OwnsSize false) is set on the read thread, letterboxedAt only once FollowSizeAsync runs on the UI thread;
             // a layout pass in between used to reclaim at once, so the letterbox never showed (the flaky letterboxed-viewer test).
             if (Connection is { OwnsSize: false } && (letterboxedAt is not { } at
@@ -74,23 +86,116 @@ public sealed class RelayTerminal : UserControl, IDisposable
             try { Connection?.TakeSize(); }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Taking the size on resize failed; contained"); }
         };
-        Terminal.Loaded += (_, _) =>
+        renderer.Loaded += (_, _) =>
         {
             try
             {
-                Terminal.SetTheme(Theme, FontFamilyName, fontPoints);
+                if (disposed || !ReferenceEquals(renderer, Terminal)) return;
+                renderer.SetTheme(Theme, FontFamilyName, fontPoints);
                 loaded = true;
-                Connect();
+                if (Connection is { } kept)
+                {
+                    if (!ReferenceEquals(renderer, boundRenderer)) Rebind(renderer, kept);
+                }
+                else Connect();
             }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Setting up a relay terminal failed; contained"); }
         };
+        return renderer;
     }
+
+    /// <summary>A renderer made again for a released tab (M.ORCH-T1737) takes the kept connection: the connection's own
+    /// <see cref="RelayConnection.Start"/> sees it is running already and only re-asserts the input mode, and unpausing it now
+    /// attaches again for the host's whole screen, since what it held was forgotten with the old renderer. UI thread.</summary>
+    private void Rebind(TerminalControl renderer, RelayConnection connection)
+    {
+        boundRenderer = renderer;
+        letterboxedAt = null;
+        renderer.Connection = connection;
+        if (renderer.Rows > 0 && renderer.Columns > 0) connection.Resize((uint)renderer.Rows, (uint)renderer.Columns);
+        connection.Paused = paused;
+        // Focus that landed on this control while the renderer was still being made is handed on now.
+        if (IsKeyboardFocused) renderer.Focus();
+        // Hidden again before it loaded: the release clock starts over.
+        ArmRelease();
+        OrchestratorLog.For("Terminals").Information("{Pipe:l}: made its renderer again on show; redrawing from the host's screen", pipeName);
+    }
+
+    /// <summary>How long this viewer may stay <see cref="Paused"/> before its renderer is released (M.ORCH-T1737): the native
+    /// terminal window and its buffers (about 50 MB) are freed, the connection stays (paused, reading on, the taps working), and
+    /// showing it again makes a new renderer that redraws the host's screen. Zero (the default) never releases it. Read when
+    /// it is paused. UI thread.</summary>
+    public TimeSpan ReleaseHiddenAfter { get; set; }
+
+    /// <summary>Whether its renderer is released right now (M.ORCH-T1737).</summary>
+    public bool IsRendererReleased => Connection is not null && boundRenderer is null;
+
+    private void ArmRelease()
+    {
+        releaseTimer?.Stop();
+        if (!paused || disposed || ReleaseHiddenAfter <= TimeSpan.Zero || boundRenderer is null) return;
+        if (releaseTimer is null)
+        {
+            releaseTimer = new System.Windows.Threading.DispatcherTimer();
+            releaseTimer.Tick += (_, _) =>
+            {
+                releaseTimer.Stop();
+                ReleaseRenderer();
+            };
+        }
+        releaseTimer.Interval = ReleaseHiddenAfter;
+        releaseTimer.Start();
+    }
+
+    /// <summary>Releases the renderer of a viewer still paused (M.ORCH-T1737): its connection forgets what it held (the catch-up
+    /// becomes the host's whole screen) and is unhooked from it, then the renderer leaves the tree and its native window is
+    /// disposed. Not while the host can't be asked for its screen any more (an ended CLI keeps its last lines). UI thread;
+    /// never throws.</summary>
+    internal bool ReleaseRenderer()
+    {
+        try
+        {
+            if (disposed || !paused || Connection is not { } connection || boundRenderer is not { } renderer
+                || !ReferenceEquals(renderer, Terminal) || !TerminalWindows.AreLive(renderer)) return false;
+            if (!connection.ForgetScreen()) return false;
+            boundRenderer = null;
+            letterboxedAt = null;
+            try { renderer.Connection = null!; }
+            catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Unhooking a hidden renderer failed; contained"); }
+            // Out of the window first: its native window is released only once it's no longer shown.
+            grid.Children.Remove(renderer);
+            TerminalWindows.DisposeAll(renderer);
+            OrchestratorLog.For("Terminals").Information("{Pipe:l}: hidden {Minutes:0.#} min; released its renderer", pipeName, ReleaseHiddenAfter.TotalMinutes);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            OrchestratorLog.For("Terminals").Error(ex, "Releasing a hidden renderer failed; contained");
+            return false;
+        }
+    }
+
+    /// <summary>A released renderer is made again (M.ORCH-T1737); it takes the connection once it loads (<see cref="Rebind"/>).</summary>
+    private void RestoreRenderer()
+    {
+        try
+        {
+            Terminal = NewRenderer();
+            grid.Children.Add(Terminal);
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Making a released renderer again failed; contained"); }
+    }
+
+    /// <summary>The renderer's selected text, or null while it has no live window (released, or not yet made): reading a
+    /// renderer whose window is gone is a native access violation (M.ORCH-T1613).</summary>
+    public string? ReadSelection() => TerminalWindows.AreLive(Terminal) ? Terminal.GetSelectedText() : null;
 
     /// <summary>The theme.</summary>
     public TerminalTheme Theme { get; }
 
-    /// <summary>The renderer: its selection is what copy and cut take (T866/T867).</summary>
-    public TerminalControl Terminal { get; }
+    /// <summary>The renderer: its selection is what copy and cut take (T866/T867). A tab hidden long enough releases it and makes
+    /// a new one when shown (M.ORCH-T1737, <see cref="ReleaseHiddenAfter"/>), so it is read fresh, never kept.</summary>
+    public TerminalControl Terminal { get; private set; }
 
     /// <summary>The live connection; null before <see cref="Attach"/> and the renderer's window exist.</summary>
     public RelayConnection? Connection { get; private set; }
@@ -168,14 +273,22 @@ public sealed class RelayTerminal : UserControl, IDisposable
     public Action<string>? InputTap { get; set; }
 
     /// <summary>Whether this viewer is out of sight (M.ORCH-T1734, <see cref="RelayConnection.Paused"/>): it draws nothing and
-    /// resizes nothing until it is shown again, then catches up. Kept for a connection made later. UI thread.</summary>
+    /// resizes nothing until it is shown again, then catches up. Kept for a connection made later. Paused past
+    /// <see cref="ReleaseHiddenAfter"/>, its renderer is released, and made again when it is shown (M.ORCH-T1737). UI thread.</summary>
     public bool Paused
     {
         get => paused;
         set
         {
             paused = value;
-            try { if (Connection is { } c) c.Paused = value; }
+            try
+            {
+                if (!value && IsRendererReleased && !disposed) RestoreRenderer();
+                // A renderer made again takes the connection (and unpauses it) only once it loads: output drawn before that
+                // would reach no renderer.
+                if (Connection is { } c && boundRenderer is not null && ReferenceEquals(boundRenderer, Terminal)) c.Paused = value;
+                ArmRelease();
+            }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Pausing a relay terminal failed; contained"); }
         }
     }
@@ -203,8 +316,10 @@ public sealed class RelayTerminal : UserControl, IDisposable
         connection.InputTap = data => InputTap?.Invoke(data);
         connection.Paused = paused;
         Connection = connection;
+        boundRenderer = Terminal;
         // Resets the renderer (ESC c), then Start()s the connection; the host's replay follows.
         Terminal.Connection = connection;
+        ArmRelease();
         // Phase 0 lesson 2: the renderer reported its grid before this connection existed, so tell the host the real one now.
         if (Terminal.Rows > 0 && Terminal.Columns > 0) connection.Resize((uint)Terminal.Rows, (uint)Terminal.Columns);
     }
@@ -253,9 +368,10 @@ public sealed class RelayTerminal : UserControl, IDisposable
     {
         if (disposed) return;
         disposed = true;
+        releaseTimer?.Stop();
         try { Connection?.Close(); }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Closing a relay connection failed; contained"); }
-        try { if (loaded) Terminal.Connection = null!; }
+        try { if (loaded && boundRenderer is { } bound) bound.Connection = null!; }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Detaching a relay terminal failed; contained"); }
         TerminalWindows.DisposeAll(this);
     }

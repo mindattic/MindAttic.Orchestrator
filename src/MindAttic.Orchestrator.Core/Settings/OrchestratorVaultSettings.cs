@@ -733,6 +733,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 10080)]
     public double EndedTabMinutes { get; set; } = OrchestratorSettings.DefaultEndedTabMinutes;
 
+    /// <summary>How long a CLI tab may stay hidden before its terminal renderer is released; 0 never releases one.</summary>
+    [Setting("Release a hidden tab's renderer after (minutes)", Group = "Dashboard", Order = 6,
+        Help = "How long a CLI tab may stay hidden before its terminal renderer (~50 MB) is released. Its CLI keeps running and its connection stays; showing the tab again makes a new renderer and redraws the CLI's screen from its host. 0 never releases one.")]
+    [SettingRange(0, 10080)]
+    public double HiddenRendererMinutes { get; set; } = OrchestratorSettings.DefaultHiddenRendererMinutes;
+
     /// <summary>How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once.</summary>
     [Setting("Leaked test TermHost lifetime (minutes)", Group = "Dashboard", Order = 90,
         Help = "How long a TermHost whose folder is an orch-test-* temp folder (left by a test that never closed its tab) may run before the daemon ends it; one whose folder is gone is ended at once. A host in any other folder is never touched.")]
@@ -1099,6 +1105,7 @@ public sealed class OrchestratorVaultSettings
         ConfirmCliClose = s.ConfirmCliClose,
         UiAutomation = s.UiAutomation,
         EndedTabMinutes = s.EndedTabMinutes,
+        HiddenRendererMinutes = s.HiddenRendererMinutes,
         TestTermHostMaxMinutes = s.TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = s.PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = s.PresumeBusyMaxSeconds,
@@ -1272,6 +1279,7 @@ public sealed class OrchestratorVaultSettings
         ConfirmCliClose = ConfirmCliClose,
         UiAutomation = UiAutomation,
         EndedTabMinutes = EndedTabMinutes,
+        HiddenRendererMinutes = HiddenRendererMinutes,
         TestTermHostMaxMinutes = TestTermHostMaxMinutes,
         PresumeBusyConfirmSeconds = PresumeBusyConfirmSeconds,
         PresumeBusyMaxSeconds = PresumeBusyMaxSeconds,

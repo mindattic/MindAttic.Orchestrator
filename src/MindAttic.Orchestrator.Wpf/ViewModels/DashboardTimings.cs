@@ -61,6 +61,10 @@ internal static class DashboardTimings
     /// <see cref="OrchestratorSettings.PresumeBusyMaxSeconds"/>.</summary>
     public static TimeSpan PresumeLife { get; private set; } = TimeSpan.FromSeconds(OrchestratorSettings.DefaultPresumeBusyMaxSeconds);
 
+    /// <summary>How long a CLI tab stays hidden before its renderer is released (M.ORCH-T1737); zero never releases one:
+    /// <see cref="OrchestratorSettings.HiddenRendererMinutes"/>.</summary>
+    public static TimeSpan HiddenRenderer { get; private set; } = TimeSpan.FromMinutes(OrchestratorSettings.DefaultHiddenRendererMinutes);
+
     /// <summary>Takes the intervals from <paramref name="s"/>, each kept to at least a second so no timer spins.</summary>
     public static void Apply(OrchestratorSettings s)
     {
@@ -80,5 +84,7 @@ internal static class DashboardTimings
         ClosedReadLive = OrchestratorSettings.SecondsSpan(s.ClosedTicketsReadLiveMinutes * 60, 1);
         PresumeConfirmAfter = OrchestratorSettings.SecondsSpan(s.PresumeBusyConfirmSeconds, 1);
         PresumeLife = OrchestratorSettings.SecondsSpan(s.PresumeBusyMaxSeconds, 1);
+        // Zero (or less) is off; otherwise at least a second.
+        HiddenRenderer = s.HiddenRendererMinutes > 0 ? OrchestratorSettings.SecondsSpan(s.HiddenRendererMinutes * 60, 1) : TimeSpan.Zero;
     }
 }

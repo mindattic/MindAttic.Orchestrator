@@ -271,7 +271,13 @@ public sealed class TerminalPaneViewModel : ObservableObject
             // Hidden, not collapsed: a hidden terminal keeps its size, so its CLI's lines don't rewrap at every tab switch.
             Control.Visibility = value ? Visibility.Visible : Visibility.Hidden;
             // Out of sight, it draws nothing (M.ORCH-T1734): every hidden tab's output on the UI thread is what typing waited behind.
-            if (Relay is { } relay) relay.Paused = !value;
+            if (Relay is { } relay)
+            {
+                // Hidden long enough, its renderer (~50 MB) is released and made again on show (M.ORCH-T1737): the
+                // HiddenRendererMinutes Vault setting, as of the last refresh.
+                relay.ReleaseHiddenAfter = DashboardTimings.HiddenRenderer;
+                relay.Paused = !value;
+            }
         }
     }
 
@@ -539,7 +545,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     }
 
     /// <summary>The renderer's selected text, clearing it (copy and cut, T866/T867).</summary>
-    internal string? ReadSelection() => (Relay?.Terminal ?? Local?.Terminal)?.GetSelectedText();
+    internal string? ReadSelection() => Relay is { } relay ? relay.ReadSelection() : Local?.Terminal?.GetSelectedText();
 
     /// <summary>Set by <see cref="TerminalCopy"/> after a copy or cut on this pane, so the auto-repeats of the held chord don't
     /// go on to interrupt its CLI; per pane, so holding the chord here and shifting focus to another pane mid-repeat can't
@@ -567,6 +573,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         // Claude's usage figures read off its screen (M.ORCH-T1118): fed on the relay's reader thread, parsed on the pool.
         if (Request.Provider == "Claude") relay.OutputTap = (screen ??= new Budget.ScreenUsageScanner(OnScreenUsage)).Feed;
         relay.InputTap = OnInputSent;
+        relay.ReleaseHiddenAfter = DashboardTimings.HiddenRenderer;
         relay.Paused = !isSelected;
         Relay = relay;
         ((TerminalView)Control).Child = relay;

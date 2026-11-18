@@ -748,6 +748,14 @@ public sealed record OrchestratorSettings
     /// <summary>The default ended tab minutes constant.</summary>
     public const double DefaultEndedTabMinutes = 60;
 
+    /// <summary>Minutes a CLI tab may stay hidden before its native terminal renderer (~50 MB) is released (M.ORCH-T1737): its
+    /// connection to the host stays, paused, and a new renderer is made and given the host's screen when the tab is shown
+    /// again. 0 never releases one.</summary>
+    public double HiddenRendererMinutes { get; init; } = DefaultHiddenRendererMinutes;
+
+    /// <summary>The default hidden renderer minutes constant.</summary>
+    public const double DefaultHiddenRendererMinutes = 10;
+
     /// <summary>Minutes a TermHost running in an orch-test-* temp folder may live before the daemon ends it (M.ORCH-T1623): a test that
     /// opened a real hosted tab and never closed it (it failed first) leaves one running all night. One whose folder is gone is ended
     /// at once; a host in any other folder is never touched.</summary>

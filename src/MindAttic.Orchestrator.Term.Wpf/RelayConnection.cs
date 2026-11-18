@@ -116,6 +116,8 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         ui = SynchronizationContext.Current;
         // Phase 0 lesson 4: win32-input-mode on the renderer, as EasyTerminalControl does, since the setter's reset cleared it.
         Raise(Win32InputMode);
+        // Set on a renderer made again for a released tab (M.ORCH-T1737): the loops run already, and the link stays.
+        if (Interlocked.Exchange(ref started, 1) != 0) return;
         _ = Task.Run(WriteLoopAsync);
         _ = Task.Run(RunAsync);
     }
@@ -266,6 +268,25 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
             // No link right now: it is being attached already, and that attach's replay unmutes.
             try { p?.Dispose(); }
             catch (Exception) { }
+        }
+    }
+
+    private int started;
+
+    /// <summary>
+    /// The renderer of this paused connection is being released (M.ORCH-T1737): whatever it showed goes with it, so what was
+    /// held (a catch-up for that screen) is forgotten and the catch-up on resume becomes the host's whole screen, by attaching
+    /// again (as when too much was held). False, changing nothing, unless it is paused and the host can still be asked: an
+    /// ended or exited CLI's renderer keeps its last lines. UI thread.
+    /// </summary>
+    public bool ForgetScreen()
+    {
+        lock (pendingGate)
+        {
+            if (!paused || !muted || ended || exited || closed) return false;
+            held.Clear();
+            heldOverflowed = true;
+            return true;
         }
     }
 
