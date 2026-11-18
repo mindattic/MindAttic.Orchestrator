@@ -241,6 +241,14 @@ internal static class CliApp
                 m.AddCommand<MachineConsentCommand>("consent").WithDescription("On a member's PC (hub phase 2): consent <id> allow|deny answers one; no answer in time leaves them watching.");
                 m.AddCommand<MachineTicketsCommand>("tickets").WithDescription("On a client: run a tickets command on the host (tickets -- <args>); the tickets shim on this PC does it for you.");
             });
+            config.AddBranch("milestone", m =>
+            {
+                m.SetDescription("Milestones and their acceptance checks (M.ORCH-T1684): bare or list shows the active and accepting ones with tickets done and checks passed; check runs the build and exists checks; accept <ID> --by <who> runs every check and marks the milestone reached only when all pass.");
+                m.SetDefaultCommand<MilestoneListCommand>();
+                m.AddCommand<MilestoneListCommand>("list").WithDescription("The active and accepting milestones: tickets done of total and checks passed of total; --json as data.");
+                m.AddCommand<MilestoneCheckCommand>("check").WithDescription("Run the build and exists checks of a milestone (check [[<ID>]], every active and accepting one when none) and record each result with its evidence; exit code 1 when one ran and failed.");
+                m.AddCommand<MilestoneAcceptCommand>("accept").WithDescription("The owner asking for every check: accept <ID> --by <who> moves an active milestone into acceptance, runs its build and exists checks, records its sign-off checks as passed, and marks it reached only when every check has passed. It never forces.");
+            });
             config.AddBranch("branches", b =>
             {
                 b.SetDescription("On the remote host: each origin/work/* branch, its isolated build (M.ORCH-T1501, off unless the Vault's RemoteBranchBuilds) and its local test run (M.ORCH-T1637); --ready lists the ones built clean and waiting for a local test run, --returned the ones whose run failed and are back with their work unit, --json as data.");

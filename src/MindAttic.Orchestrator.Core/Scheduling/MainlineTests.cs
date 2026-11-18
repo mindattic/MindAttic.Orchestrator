@@ -453,7 +453,7 @@ public sealed partial class MainlineTests(JsonStore store)
     }
 
     /// <summary>Puts the suite's worktree at <paramref name="head"/>, detached, making it the first time; the error, if it couldn't.</summary>
-    private string? Prepare(string repo, string tree, string head)
+    internal string? Prepare(string repo, string tree, string head)
     {
         if (System.IO.File.Exists(Path.Combine(tree, ".git")) && Git(tree, ["checkout", "--detach", "--force", "-q", head]).Code == 0)
         {
