@@ -867,9 +867,13 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         }
         if (changed) store.SaveSettings(s);
         // Only once it's saved: a later option refused, or a settings.json that can't be written over, saves nothing.
-        if (settings.Notify is not null && s.NotifyUrl is { } url &&
-            new Notifier().SendAsync(url, "MindAttic Orchestrator", "Alerts will arrive here.").GetAwaiter().GetResult())
-            AnsiConsole.MarkupLine("[green]Sent a test alert.[/]");
+        if (settings.Notify is not null && s.NotifyUrl is { } url)
+        {
+            if (new Notifier().SendAsync(url, "MindAttic Orchestrator", "Alerts will arrive here.").GetAwaiter().GetResult())
+                AnsiConsole.MarkupLine("[green]Sent a test alert.[/]");
+            else
+                AnsiConsole.MarkupLine($"[red]Couldn't send a test alert to {Markup.Escape(url)}: check the URL and the machine's network access.[/]");
+        }
 
         var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AllocateClis();
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(store.Describe(JsonStore.SettingsName))}");
