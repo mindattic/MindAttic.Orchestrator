@@ -12,7 +12,10 @@ public sealed partial class MainViewModel
     /// <summary>The move (seam: tests replace it, never sending to a real tab).</summary>
     internal Func<AccountMove> AccountMover { get; set; } = () => AccountMove.Default();
 
-    private bool moving;
+    /// <summary>Session ids with a move in flight from this tab right now (between the guard check below and its own
+    /// `finally`), so a second "Move to" on an unrelated CLI pane while one move is in flight is never blocked by it: the
+    /// old single `moving` bool here guarded every session on the tab, not just the one actually moving.</summary>
+    private readonly HashSet<string> movingSessions = [];
 
     /// <summary>The logins a CLI on <paramref name="ownLogin"/> (null: the global login) can move to, read off the UI thread
     /// (a login's <c>.claude.json</c> can run to megabytes).</summary>
@@ -31,8 +34,11 @@ public sealed partial class MainViewModel
     /// <paramref name="target"/>, saying what it did in the status bar and the Accounts view, and a toast when it couldn't.</summary>
     public async Task MoveToAccountAsync(string repo, string sessionId, int? cliPid, MoveTarget target)
     {
-        if (moving || PendingMoves.For(sessionId) is not null) return;
-        moving = true;
+        if (PendingMoves.For(sessionId) is not null || !movingSessions.Add(sessionId))
+        {
+            StatusMessage = $"The CLI in {repo} is already moving to another account; try again once it lands.";
+            return;
+        }
         // The tickets it and its subagents hold (M.ORCH-T637): its claims, and the one it was started on.
         var row = full?.Agents.FirstOrDefault(a => a.SessionId == sessionId);
         List<string> holding = [.. (row?.Claims ?? []).Concat(row?.TicketId is { Length: > 0 } own ? [own] : []).Distinct(StringComparer.OrdinalIgnoreCase)];
@@ -63,7 +69,7 @@ public sealed partial class MainViewModel
             result = new AccountMoveResult(false, $"Couldn't move the CLI in {repo}: {ex.Message}");
             OrchestratorLog.For("Dashboard").Error(ex, "move to account failed");
         }
-        finally { moving = false; }
+        finally { movingSessions.Remove(sessionId); }
         StatusMessage = result.Message;
         AccountsMessage = result.Message;
         if (!result.Ok)
