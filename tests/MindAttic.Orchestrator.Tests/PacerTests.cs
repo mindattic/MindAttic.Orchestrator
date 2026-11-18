@@ -158,6 +158,28 @@ public sealed class PacerTests
     }
 
     [Test]
+    public void A_burst_is_held_down_to_exactly_the_rate_that_lands_on_the_98_percent_target_at_the_reset()
+    {
+        // M.ORCH-T1750's whole point, end to end: 20% used an hour in (the real incident's own starting point),
+        // a burst running at 97,500/h (five times what fits), held by the per-call delay down to precisely the rate
+        // that spends the rest of the window on the 98% target by its reset - the 45-degree line, not a guess at it.
+        var sustainable = Pacer.SustainableRate(limit: 100_000, used: 20_000, target: 0.98, startUtc: Day, resetUtc: Day.AddHours(5), nowUtc: Day.AddHours(1), k: 1);
+        Assert.That(sustainable, Is.EqualTo(19_500).Within(0.5), "78,000 left to the 98% target over the 4 hours left");
+
+        const double burst = 97_500;
+        var settings = new OrchestratorSettings { MaxAgentDelaySeconds = 300 };
+        var delay = Pacer.AgentDelay(burst, sustainable, 0, settings);
+        Assert.That(delay, Is.EqualTo(80).And.LessThan(settings.MaxAgentDelaySeconds), "proportional to the overage, not pegged to the ceiling");
+
+        // Held this long between 20-second steps, the burst's own next measured rate becomes exactly the sustainable one.
+        var held = burst * Pacer.StepSeconds / (Pacer.StepSeconds + delay);
+        Assert.That(held, Is.EqualTo(sustainable).Within(0.5));
+
+        // Spent at exactly that held rate for the 4 hours left, the window lands on the target, not over it.
+        Assert.That(20_000 + held * 4, Is.EqualTo(100_000 * 0.98).Within(0.5));
+    }
+
+    [Test]
     public void Coasting_only_closes_new_sessions_it_doesnt_slow_the_running_ones()
     {
         var coast = new Pace(PaceMode.Coast, 0, 2000, 1500, 3000, "5-hour", Day, "Coasting: not even one more session fits.");

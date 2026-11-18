@@ -27,8 +27,8 @@ public sealed class UsageCutoffTests
         var cutoffs = UsageCutoffs.Load(store);
         var erin = UsageCutoffs.Apply(cutoffs, Erin, settings);
         var other = UsageCutoffs.Apply(cutoffs, "honey@mindattic.com", settings);
-        Assert.That((erin.WeeklyStopPercent, erin.PaceTargetPercent), Is.EqualTo((80, 96)));
-        Assert.That((other.WeeklyStopPercent, other.PaceTargetPercent), Is.EqualTo((90, 96)));
+        Assert.That((erin.WeeklyStopPercent, erin.PaceTargetPercent), Is.EqualTo((80, 98)), "no 5h override: tracks the global dial (98, M.ORCH-T1750)");
+        Assert.That((other.WeeklyStopPercent, other.PaceTargetPercent), Is.EqualTo((90, 98)));
         // The warn line keeps the same 10-point gap to Erin's own (lowered) weekly cutoff that the org-wide default
         // keeps to its own (90 - 80 = 10); her untouched 5-hour cutoff keeps the org-wide 80 (bughunt 2026-11-01).
         Assert.That((erin.WeeklyWarnPercent, erin.FiveHourWarnPercent), Is.EqualTo((70, 80)));
@@ -88,7 +88,7 @@ public sealed class UsageCutoffTests
         {
             var said = Cli(out var exit, "org", "limit");
             Assert.That(exit, Is.Zero, said);
-            Assert.That(said, Does.Contain("Erin").And.Contain("90% of the week, 96% of the 5-hour window (default)"));
+            Assert.That(said, Does.Contain("Erin").And.Contain("90% of the week, 98% of the 5-hour window (default)"), "no override: tracks the live global dial (98, M.ORCH-T1750)");
 
             said = Cli(out exit, "org", "limit", "erin", "--weekly", "80", "--5h", "95");
             Assert.That(exit, Is.Zero, said);

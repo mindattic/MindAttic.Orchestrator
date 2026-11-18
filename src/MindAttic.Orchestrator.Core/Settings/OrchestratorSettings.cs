@@ -51,8 +51,12 @@ public sealed record OrchestratorSettings
     public bool Pacing { get; init; } = true;
 
     /// <summary>How much of each limit pacing aims to use by the reset; the rest is margin for usage
-    /// the orchestrator can't see (claude.ai, other machines).</summary>
-    public int PaceTargetPercent { get; init; } = 96;
+    /// the orchestrator can't see (claude.ai, other machines). M.ORCH-T1462 lowered this to 96% (2026-11-05) as a
+    /// burst-overshoot safety margin, since a single tool call's size can't be predicted before it runs; M.ORCH-T1750
+    /// (2026-11-17) put it back to 98% at the user's explicit, repeated request ("ending almost perfectly on 98%...
+    /// nothing else is acceptable"), now that the restored per-call hold (<see cref="ThrottleAgents"/>) slows a CLI
+    /// down throughout the window again, not just at this target.</summary>
+    public int PaceTargetPercent { get; init; } = 98;
 
     /// <summary>A login's 5-hour or weekly use (percent) under which the pace guards are dormant (M.ORCH-T1592): no pace holds,
     /// no subagent allowance cap and no cool-off, so work runs full speed until either window reaches it. The hard stops

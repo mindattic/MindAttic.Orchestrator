@@ -384,8 +384,12 @@ public static class Pacer
     /// four subagents started together at 88% burned the window to Claude's 100% in the 7 minutes the 99% stop needed to land).</summary>
     public const double HeadroomPerSubagentPercent = 3;
 
-    /// <summary>The points the 96% default stop already keeps under the old 98% one for a burst (M.ORCH-T1462); the subagent
-    /// headroom counts them as room, not a second margin (M.ORCH-T1608).</summary>
+    /// <summary>The burst-overshoot margin M.ORCH-T1462 built by lowering the default stop to 96%, under the 98% line
+    /// (M.ORCH-T1608: the subagent headroom counts it as room, not a second margin). M.ORCH-T1750 (2026-11-17) put the
+    /// default stop back to 98% at the user's explicit request, now that the restored per-call hold (ThrottleAgents)
+    /// is the real defense against a burst throughout the window; this constant is left wired to
+    /// <see cref="UsageCutoffs.DefaultFiveHourPercent"/> (96, M.ORCH-T707's unrelated per-member cutoff default) so a
+    /// member whose own 5-hour cutoff still sits at or above it keeps the same ±2-point room up to the hooks' hard line.</summary>
     public const double StopBurstMarginPercent = 98 - UsageCutoffs.DefaultFiveHourPercent;
 
     /// <summary>
@@ -398,10 +402,10 @@ public static class Pacer
     /// </summary>
     public static Pace CapByStopHeadroom(Pace pace, double? percent, double stopPercent)
     {
-        // M.ORCH-T1608: the 96% default (M.ORCH-T1462) already holds a 2-point margin under the old 98% stop for exactly the burst
-        // this headroom guards, so counting the room to the stop alone charged that margin twice: wind-down began at 93% and the
-        // subagents were capped 2 points sooner, and windows ended near 94-95%. The room counts to the stop plus that margin
-        // (never past the hooks' own line), which is the old 98%-stop behaviour, while the stop itself stays at the target.
+        // M.ORCH-T1608: counting the room to the stop alone charged M.ORCH-T1462's 96%-under-98% margin twice (wind-down
+        // began at 93%, subagents capped 2 points sooner, windows ended near 94-95%), so the room counts to the stop plus
+        // that margin instead (never past the hooks' own line). M.ORCH-T1750 put the stop itself back to 98%, so this
+        // margin now just extends the room to the hooks' 99% line for anyone at or above the old 96% default.
         // Only a stop at the default or above has that margin: a lower, member-set cutoff (org limit --5h) keeps its own room unchanged.
         var room = stopPercent >= UsageCutoffs.DefaultFiveHourPercent
             ? Math.Min(stopPercent + StopBurstMarginPercent, Math.Max(stopPercent, PaceLedger.TargetPercent))

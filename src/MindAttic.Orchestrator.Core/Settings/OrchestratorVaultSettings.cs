@@ -72,7 +72,7 @@ public sealed class OrchestratorVaultSettings
     /// <summary>How much of each 5-hour limit pacing aims to use by its reset.</summary>
     [Setting("Pace target (%)", Group = "Pacing", Order = 2, Help = "How much of each 5-hour limit pacing aims to use by its reset.")]
     [SettingRange(1, 100)]
-    public int PaceTargetPercent { get; set; } = 96;
+    public int PaceTargetPercent { get; set; } = 98;
 
     /// <summary>A login's 5-hour or weekly use under which no pace guard is considered: no pace holds, no subagent allowance cap, no cool-off.</summary>
     [Setting("Pace guards start at (% used)", Group = "Pacing", Order = 2,
@@ -994,6 +994,11 @@ public sealed class OrchestratorVaultSettings
         DiskHoldResumeMarginGb = s.DiskHoldResumeMarginGb,
         TempRetentionHours = s.TempRetentionHours,
         ScratchLeaseHours = s.ScratchLeaseHours,
+        LedgerSweepDryRun = s.LedgerSweepDryRun,
+        LedgerSweepQuietMinutes = s.LedgerSweepQuietMinutes,
+        LedgerSweepLeftoverHours = s.LedgerSweepLeftoverHours,
+        LedgerSweepBuildOutputHours = s.LedgerSweepBuildOutputHours,
+        LedgerSweepHistoryDays = s.LedgerSweepHistoryDays,
         DaemonRestartSeconds = s.DaemonRestartSeconds,
         DaemonRestartMaxSeconds = s.DaemonRestartMaxSeconds,
         DbBusyRetries = s.DbBusyRetries,
@@ -1006,11 +1011,6 @@ public sealed class OrchestratorVaultSettings
         SessionTempPruneMinutes = s.SessionTempPruneMinutes,
         MirrorSeconds = s.MirrorSeconds,
         TicketsDbSyncMinutes = s.TicketsDbSyncMinutes,
-        LedgerSweepDryRun = s.LedgerSweepDryRun,
-        LedgerSweepQuietMinutes = s.LedgerSweepQuietMinutes,
-        LedgerSweepLeftoverHours = s.LedgerSweepLeftoverHours,
-        LedgerSweepBuildOutputHours = s.LedgerSweepBuildOutputHours,
-        LedgerSweepHistoryDays = s.LedgerSweepHistoryDays,
         OrchestratorDbSyncMinutes = s.OrchestratorDbSyncMinutes,
         MemorySampleSeconds = s.MemorySampleSeconds,
         MemorySettleSeconds = s.MemorySettleSeconds,
@@ -1166,6 +1166,11 @@ public sealed class OrchestratorVaultSettings
         DiskHoldResumeMarginGb = DiskHoldResumeMarginGb,
         TempRetentionHours = TempRetentionHours,
         ScratchLeaseHours = ScratchLeaseHours,
+        LedgerSweepDryRun = LedgerSweepDryRun,
+        LedgerSweepQuietMinutes = LedgerSweepQuietMinutes,
+        LedgerSweepLeftoverHours = LedgerSweepLeftoverHours,
+        LedgerSweepBuildOutputHours = LedgerSweepBuildOutputHours,
+        LedgerSweepHistoryDays = LedgerSweepHistoryDays,
         DaemonRestartSeconds = DaemonRestartSeconds,
         DaemonRestartMaxSeconds = DaemonRestartMaxSeconds,
         DbBusyRetries = DbBusyRetries,
@@ -1180,11 +1185,6 @@ public sealed class OrchestratorVaultSettings
         TicketsDbSyncMinutes = TicketsDbSyncMinutes,
         OrchestratorDbSyncMinutes = OrchestratorDbSyncMinutes,
         MemorySampleSeconds = MemorySampleSeconds,
-        LedgerSweepDryRun = LedgerSweepDryRun,
-        LedgerSweepQuietMinutes = LedgerSweepQuietMinutes,
-        LedgerSweepLeftoverHours = LedgerSweepLeftoverHours,
-        LedgerSweepBuildOutputHours = LedgerSweepBuildOutputHours,
-        LedgerSweepHistoryDays = LedgerSweepHistoryDays,
         MemorySettleSeconds = MemorySettleSeconds,
         HealthSampleSeconds = HealthSampleSeconds,
         PagefileCheckHours = PagefileCheckHours,
