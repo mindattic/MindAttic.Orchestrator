@@ -785,6 +785,36 @@ public sealed record OrchestratorSettings
     /// <summary>The default test term host max minutes constant.</summary>
     public const double DefaultTestTermHostMaxMinutes = 60;
 
+    /// <summary>The folder, under the workspace root and under each repo, whose markdown files are the saved plans the
+    /// dashboard's Plans button lists (M.ORCH-T1826, <see cref="Status.PlanCatalog"/>): half-formed ideas and features not
+    /// ready for an implementation ticket yet.</summary>
+    public string PlansFolder { get; init; } = DefaultPlansFolder;
+
+    /// <summary>The default plans folder constant.</summary>
+    public const string DefaultPlansFolder = @"docs\plans";
+
+    /// <summary>The most characters of a plan's summary (and of its status) the Plans list shows (M.ORCH-T1826); a longer one
+    /// is cut at a word and ended with an ellipsis.</summary>
+    public int PlanSummaryMaxChars { get; init; } = DefaultPlanSummaryMaxChars;
+
+    /// <summary>The default plan summary length constant.</summary>
+    public const int DefaultPlanSummaryMaxChars = 200;
+    /// <summary>The shortest plan summary length.</summary>
+    public const int MinPlanSummaryMaxChars = 20;
+    /// <summary>The longest plan summary length.</summary>
+    public const int MaxPlanSummaryMaxChars = 2000;
+
+    /// <summary>KB read from the start of each plan file to find its title, status and summary (M.ORCH-T1826): the rest of a
+    /// very large file is never read.</summary>
+    public int PlanHeadKb { get; init; } = DefaultPlanHeadKb;
+
+    /// <summary>The default plan head size constant.</summary>
+    public const int DefaultPlanHeadKb = 8;
+    /// <summary>The smallest plan head size.</summary>
+    public const int MinPlanHeadKb = 1;
+    /// <summary>The largest plan head size.</summary>
+    public const int MaxPlanHeadKb = 1024;
+
     /// <summary>Seconds after an Enter typed in a CLI tab that a status read still saying idle ends its presumed busy (M.ORCH-T1413):
     /// the context gate marks a submitted prompt busy within a hook's first moments, so a read this much later that says idle is real.</summary>
     public double PresumeBusyConfirmSeconds { get; init; } = DefaultPresumeBusyConfirmSeconds;

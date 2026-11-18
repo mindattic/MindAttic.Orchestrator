@@ -448,6 +448,8 @@ public sealed partial class MainViewModel : ObservableObject
                 planned = PlanOffUi(built);
                 // The owner inbox (M.ORCH-T1689): everything waiting on the owner, from the snapshot and plan just made.
                 if (InboxNow(built, planned?.Item2, settingsNow) is { } inbox) inboxRead = inbox;
+                // The saved plans (M.ORCH-T1826): the markdown files under docs\plans in the workspace and each repo just read.
+                plansRead = PlansNow(built, settingsNow);
                 return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, diskFreeGb, ramUtilizationPercent, paused);
             }), () => localChanges);
             precomputedPlan = planned;
@@ -456,6 +458,7 @@ public sealed partial class MainViewModel : ObservableObject
             // And the disk floor's hold (M.ORCH-T1692): the daemon's, as the snapshot's pace carries it; else this process's own.
             SetHostStats(diskFree, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow, next.Pace?.Disk ?? DiskGuard.Shared.Last);
             ApplyInbox();
+            ApplyPlans();
             // What a pushed snapshot's figures are laid over until the next read (M.ORCH-T872).
             (lastMembers, lastOrgs, restShown) = (readMembers, nextOrgs, rest);
             await TickAllocateAsync(next);

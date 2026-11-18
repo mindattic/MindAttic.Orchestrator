@@ -348,6 +348,11 @@
                         mc:MaCallout.ToolTip="Quicksave the shown CLI; right-click (or the chevron beside it) for Quick Save All or Quick Load All"
                         AutomationProperties.Name="Quicksave the shown CLI (right-click, or the chevron beside it, for Quick Save All or Quick Load All)" />
                 <!-- The Save button's own menu, reachable with a left click (M.ORCH-T1793): a right-click-only menu isn't
+                <!-- The saved plans (M.ORCH-T1826): half-formed ideas and features not ready for an implementation ticket yet,
+                     each a markdown file under docs\plans in the workspace or a repo; the tooltip says how many, and it
+                     opens PlansModal. Segoe's Lightbulb glyph. In the menu bar, so it stays in the phone layout too. -->
+                <Button x:Name="PlansButton" Style="{StaticResource MaToolButton}" Content="&#xE82F;" Command="{Binding TogglePlansCommand}"
+                        mc:MaCallout.ToolTip="{Binding PlansToolTip}" AutomationProperties.Name="{Binding PlansToolTip}" />
                      reachable on touch or in the phone layout, so this tiny chevron opens the exact same Quick Save
                      All / Quick Load All menu the button's own right-click does (ShowSaveMenu). -->
                 <Button x:Name="SaveMoreButton" Style="{StaticResource MaToolButton}" Content="&#xE70D;" Width="16" FontSize="8" Margin="2,0,8,0"
@@ -1751,3 +1756,48 @@
         </mc:MaModal>
     </Grid>
 </Window>
+
+        <!-- The saved plans (M.ORCH-T1826): one card per markdown file under docs\plans in the workspace or a repo, newest
+             first: its title (a link that opens the file), a Show in folder button, its repo and when it was last
+             written, its status when the file has a "Status:" line, and its summary. Every line wraps, so the cards read
+             in the phone layout too. Esc, its close button and the backdrop close it. -->
+        <mc:MaModal x:Name="PlansModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="{Binding PlansTitle}" AutomationProperties.Name="Plans" DialogWidth="560"
+                    IsOpen="{Binding IsPlansOpen}" CloseCommand="{Binding ClosePlansCommand}">
+            <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,0,12,0" MaxHeight="520">
+                <StackPanel>
+                    <TextBlock x:Name="PlansEmpty" Text="{Binding PlansEmptyText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                               Visibility="{Binding HasPlans, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                    <ItemsControl x:Name="PlansList" Style="{StaticResource MaRowList}" ItemsSource="{Binding PlansItems}" Focusable="False" AutomationProperties.Name="Saved plans">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:PlanRowViewModel}">
+                                <Border Style="{StaticResource MaRowCard}" AutomationProperties.Name="{Binding AccessibleName}">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Show in folder" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Top"
+                                                    Command="{Binding DataContext.RevealPlanCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                    mc:MaCallout.ToolTip="{Binding Path}" AutomationProperties.Name="{Binding Title, StringFormat='Show in folder: {0}'}" />
+                                            <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
+                                                <Hyperlink Style="{StaticResource MaHyperlink}" CommandParameter="{Binding}"
+                                                           Command="{Binding DataContext.OpenPlanCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           AutomationProperties.Name="{Binding Title, StringFormat='Open the plan: {0}'}"><Run Text="{Binding Title, Mode=OneWay}" /></Hyperlink>
+                                            </TextBlock>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Where}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
+                                        <TextBlock TextWrapping="Wrap" Margin="{StaticResource RowGutter}" Visibility="{Binding HasStatus, Converter={StaticResource Visible}}">
+                                            <Run Text="Status" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" /><Run Text="  " /><Run Text="{Binding Status, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}"
+                                                   Visibility="{Binding HasSummary, Converter={StaticResource Visible}}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+            <mc:MaModal.Footer>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource MaPrimaryButton}" Content="Close" Padding="{StaticResource SpaceHLVS}" Command="{Binding ClosePlansCommand}" />
+                </StackPanel>
+            </mc:MaModal.Footer>
+        </mc:MaModal>

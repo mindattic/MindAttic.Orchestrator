@@ -127,6 +127,25 @@ texted. The Vault's "Text new inbox items" setting (`InboxAlerts`, on by default
 recorded as seen, so turning it back on texts no backlog. Consent requests are not texted (the daemon doesn't ask the
 host for them; the dashboard already shows a toast for each).
 
+## Plans: ideas that aren't tickets yet (M.ORCH-T1826)
+
+A plan is a half-formed idea, or a feature that isn't ready for an implementation ticket: a markdown file saved under
+`docs\plans` at the workspace root or in any repo. The dashboard's Plans button in the menu bar (the lightbulb, after
+the Inbox) says how many there are and opens the list, newest first. Each card shows:
+
+| Part | Where it comes from |
+| --- | --- |
+| Title | The file's first `# ` heading, else its file name. It is a link that opens the file |
+| Repo and age | The repo it was saved in (the workspace folder's name for the root), and when it was last written |
+| Status | What follows `Status:` on the line that starts with it, when the file has one |
+| Summary | The first paragraph that is not a heading or the status |
+| Show in folder | Selects the file in Explorer |
+
+The list is read with each refresh by `PlanCatalog` (`Core/Status/PlanCatalog.cs`) from the repos the snapshot already
+lists; it keeps no state of its own, and only the head of each file is read. Three Vault settings (Dashboard group) dial
+it: "Plans folder" (`PlansFolder`, `docs\plans`), "Plan summary length (characters)" (`PlanSummaryMaxChars`, 200) and
+"Plan file head read (KB)" (`PlanHeadKb`, 8).
+
 ## Ticket attribution: flagged, not blocked (M.ORCH-T1520)
 
 MINDATTIC_AGENT.md's GOLDEN RULE says every request is a ticket, filed before any code is written for
