@@ -2556,6 +2556,9 @@ public sealed class HookScriptTests
         // of seconds (M.ORCH-T1693), so "stuck on the database" is measured against it, not against a fixed number of seconds.
         Status(new { pace_delay_seconds = 0 });
         var baseline = Gate(ReadCall).Took;
+        // On a loaded machine the yardstick call itself spends a second or more in the gate, which the gate logs as held too
+        // (M.ORCH-T1806): its event, written to the free database, is counted here and not taken for the fallback's.
+        var before = OrchDb.LoadGateEvents(DateTime.UtcNow.AddMinutes(-5)).Count;
         Status(new { pace_delay_seconds = 3 });
         (string Output, TimeSpan Took) result;
         using (var connection = OrchDb.Open())
@@ -2571,7 +2574,9 @@ public sealed class HookScriptTests
         Assert.That(File.ReadAllLines(log).Single(), Does.Contain("\"decision\": \"held\""), "the event fell back to the old log");
 
         OrchDb.ImportGateLog(log);
-        Assert.That(OrchDb.LoadGateEvents(DateTime.UtcNow.AddMinutes(-5)).Single().Decision, Is.EqualTo("held"), "read in once the database is free");
+        var readIn = OrchDb.LoadGateEvents(DateTime.UtcNow.AddMinutes(-5)).Skip(before).Single();
+        Assert.That(readIn.Decision, Is.EqualTo("held"), "read in once the database is free, and only once");
+        Assert.That(readIn.HeldSeconds, Is.GreaterThanOrEqualTo(2.9), "the fallback's own event, not the yardstick's");
         Assert.That(File.Exists(log), Is.False);
     }
 
