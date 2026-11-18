@@ -31544,7 +31544,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "049382aeac8b2fee14251fc21ba6f35e11db5dcb"
   },
   "IdiotProof": {
-    "Tested": "6c2e8d666875787a6dfd830823433cbcba487d0b",
+    "Tested": "d8cdf25f1dba0488dd9925bf5dd5256ce43d0f67",
     "Green": "cc0644026a3a05fb5ba9b1e9799ace344454454d"
   },
   "JobHunt": {
