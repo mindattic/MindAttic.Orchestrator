@@ -184,8 +184,16 @@ public sealed partial class MainViewModel
     private ICommand? selectLoginCommand, selectTreeChildCommand;
 
     /// <summary>A tree header row's click (M.ORCH-T1759): selects this login (which also expands it, via <see cref="Select"/>).
-    /// Re-clicking an already-selected, already-expanded header is a no-op, matching the flat strip's click behaviour.</summary>
-    public ICommand SelectLoginCommand => selectLoginCommand ??= new RelayCommand(() => StripSelection = this);
+    /// Re-clicking an already-selected, already-expanded header is a no-op, matching the flat strip's click behaviour.
+    /// Clicking a person is the whole act of seeing their usage now (M.ORCH-T1768): there's no separate Usage tab left to
+    /// activate afterward in tree mode (<see cref="ShowsFlatTerminalsPanel"/>'s strip, which held the one reachable
+    /// without first expanding the node and finding its nested Usage row, isn't even on screen there) - this alone shows
+    /// it, unless a CLI tab of theirs is already chosen, which it leaves alone.</summary>
+    public ICommand SelectLoginCommand => selectLoginCommand ??= new RelayCommand(() =>
+    {
+        StripSelection = this;
+        if (Terminals.SelectedPane is null) Terminals.ShowUsageCommand.Execute(null);
+    });
 
     /// <summary>A tree child row's click (M.ORCH-T1759): selects this login, then shows the clicked pane or the pinned Usage
     /// marker, exactly as choosing it from the flat CLI tab bar would.</summary>

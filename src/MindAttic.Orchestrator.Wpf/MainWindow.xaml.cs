@@ -98,6 +98,11 @@ public partial class MainWindow : Window
         // can select one off screen.
         model.SelectedTabChanged += (_, _) => BringSelectedTabIntoView();
         model.OrgTabs.CollectionChanged += (_, _) => BringSelectedTabIntoView();
+        // The tree sidebar grows with its widest row instead of clipping it (M.ORCH-T1768, SizeSidebarToContent): a badge
+        // or a longer name appearing has no SizeChanged of its own to catch (LoginTreeScroller's own
+        // HorizontalScrollBarVisibility="Disabled" squeezes LoginTree to whatever width it's already given rather than
+        // reporting its content's true desired width upward), so this re-measures on every layout pass instead.
+        LoginTree.LayoutUpdated += (_, _) => SizeSidebarToContent();
         DataContextChanged += (_, e) =>
         {
             if (e.OldValue is MainViewModel was)
@@ -592,6 +597,35 @@ public partial class MainWindow : Window
                 viewport - gutter.Top - gutter.Bottom - TerminalFrame.Margin.Top - TerminalFrame.Margin.Bottom);
         }
         catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
+    }
+
+    /// <summary>The tree sidebar's floor (M.ORCH-T1431): <see cref="Sidebar"/>'s own XAML <c>MinWidth</c>, mirrored here so
+    /// <see cref="SizeSidebarToContent"/> never sets it any narrower, only wider.</summary>
+    private const double SidebarMinWidth = 170;
+
+    /// <summary>What <see cref="SizeSidebarToContent"/> adds to the tree's own widest row: <see cref="Sidebar"/>'s left and
+    /// right Padding (12 a side) plus its right BorderThickness (1) plus a few px of slack for measurement rounding.</summary>
+    private const double SidebarContentPadding = 36;
+
+    /// <summary>Grows <see cref="Sidebar"/> to fit the tree's widest row (M.ORCH-T1768), so a status badge or a longer name
+    /// never overlaps it: <see cref="LoginTreeScroller"/>'s own <c>HorizontalScrollBarVisibility="Disabled"</c> (so nothing
+    /// ever needs to scroll sideways under a name) squeezes <see cref="LoginTree"/> to whatever width the sidebar already
+    /// has instead of reporting its rows' true desired width upward the way an unconstrained panel would, so a row that
+    /// needs more room than the sidebar's current width used to just overlap instead of growing it. Measuring LoginTree
+    /// with infinite available width and applying that, plus <see cref="SidebarContentPadding"/>, as <see cref="Sidebar"/>'s
+    /// own MinWidth (never under <see cref="SidebarMinWidth"/>) fixes that; a no-op while the flat strip shows instead
+    /// (<see cref="MainViewModel.TabStatus.ShowsLoginTree"/> false), which sizes its own column differently. Never throws.</summary>
+    private void SizeSidebarToContent()
+    {
+        try
+        {
+            if (!model.ShowsLoginTree) return;
+            LoginTree.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var want = Math.Ceiling(LoginTree.DesiredSize.Width) + SidebarContentPadding;
+            var min = Math.Max(SidebarMinWidth, want);
+            if (double.IsNaN(Sidebar.MinWidth) || Math.Abs(Sidebar.MinWidth - min) > 0.5) Sidebar.MinWidth = min;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the sidebar to its tree failed; contained"); }
     }
 
     /// <summary>Redirects a wheel tick anywhere over the window into <see cref="AgentsBody"/>'s own scroll (M.ORCH-T1299),
