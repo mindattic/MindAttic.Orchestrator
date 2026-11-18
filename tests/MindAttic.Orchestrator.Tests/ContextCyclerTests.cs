@@ -99,6 +99,9 @@ public sealed class ContextCyclerTests
             // OrchestratorSettings' exempt-commands list names these as commands pacing lets through, never as text typed
             // into a session (nothing there reaches SendAsync/SubmitAsync): the one legitimate quoted occurrence.
             .Where(f => !f.EndsWith($"{Path.DirectorySeparatorChar}OrchestratorSettings.cs", StringComparison.Ordinal))
+            // The dashboard's Save button (M.ORCH-T1724/T1769): types /quicksave or /quickload only when the user clicks
+            // Save, or confirms Quick Save All / Quick Load All - an explicit user action, never the daemon on its own.
+            .Where(f => !f.EndsWith($"{Path.DirectorySeparatorChar}MainViewModel.Save.cs", StringComparison.Ordinal))
             // The dashboard's reply box sends only what you type yourself; nothing may send these on its own.
             .Where(f => File.ReadAllText(f) is var t && (t.Contains("\"/quicksave\"") || t.Contains("\"/clear\"") || t.Contains("\"/quickload\"")))
             .ToList();
