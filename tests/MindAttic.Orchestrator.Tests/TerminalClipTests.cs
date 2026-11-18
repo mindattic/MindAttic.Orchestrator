@@ -38,6 +38,9 @@ public sealed class TerminalClipTests
         {
             var calls = 0;
             TerminalClip.Attach(host, () => { calls++; return null; });
+            // Show already laid the window out, and UpdateLayout raises LayoutUpdated only when something is waiting to be
+            // laid out again: invalidate the host first, as a scroll or a resize would.
+            host.InvalidateMeasure();
             window.UpdateLayout();
             Assert.That(calls, Is.GreaterThan(0), "a real layout pass must read selected(), not walk the visual tree for it");
         }
