@@ -159,7 +159,7 @@ public static class OwnerInbox
         var after = PickupGrace(i.Settings);
         foreach (var q in i.Plan.Stale.OrderBy(q => q.StaleSinceUtc))
         {
-            if (q.StaleSinceUtc is not { } quietSince || i.NowUtc - quietSince < after + after) continue;
+            if (q.StaleSinceUtc is not { } quietSince || i.NowUtc - quietSince < after) continue;
             yield return new OwnerInboxItem(Stale, q.Id, $"{TitleOf(q)}: its session went quiet and nobody has picked it up again", q.Repo, quietSince,
                 $"orchestrator release {q.Id}") { TicketId = q.Id };
         }
