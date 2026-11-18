@@ -10,9 +10,15 @@ namespace MindAttic.Orchestrator.Wpf;
 /// <summary>
 /// Keeps the Terminals panel's native terminal windows inside the scroll view they sit in (M.ORCH-T810). A terminal is a child
 /// window (an <see cref="HwndHost"/>) drawn over WPF, and WPF never clips one to a scroll view: scrolled part way out of the
-/// person's page it would paint over the toolbar and the tabs above. After each layout pass (a scroll is one) every terminal
-/// window under <c>host</c> is given a window region of just the part of it inside the scroll view's viewport, none when it's
-/// fully inside, and an empty one when it's scrolled out of sight.
+/// person's page it would paint over the toolbar and the tabs above. After each layout pass (a scroll is one) the one selected
+/// terminal window is given a window region of just the part of it inside the scroll view's viewport, none when it's fully
+/// inside, and an empty one when it's scrolled out of sight.
+/// <para><c>host</c> (<c>TerminalPanesHost</c>) holds every CLI's terminal ever opened, across every login, for the life of
+/// the tab (M.ORCH-T810's own reattach design keeps each one parented); only one is ever visible at a time
+/// (<c>TerminalPaneViewModel.IsSelected</c>). Walking every one of them on every <c>LayoutUpdated</c> (M.ORCH-T1756: it used to,
+/// via a recursive <c>VisualTreeHelper</c> descent of the whole panel) cost scaled with the total number of CLIs ever opened
+/// rather than with what's actually on screen; <paramref name="selected"/> (the shown login's one selected pane) is all that
+/// still needs a region each pass.</para>
 /// </summary>
 internal static partial class TerminalClip
 {
@@ -20,18 +26,19 @@ internal static partial class TerminalClip
     /// sets nothing.</summary>
     private static readonly ConditionalWeakTable<HwndHost, StrongBox<Int32Rect?>> Applied = new();
 
-    public static void Attach(FrameworkElement host) => host.LayoutUpdated += (_, _) => Clip(host);
+    /// <summary><paramref name="selected"/> is read fresh on every layout pass: the shown login's currently selected pane's
+    /// <c>Control</c> (its <see cref="HwndHost"/> found inside it), or null while nothing is selected.</summary>
+    public static void Attach(FrameworkElement host, Func<FrameworkElement?> selected) => host.LayoutUpdated += (_, _) => Clip(host, selected);
 
-    private static void Clip(FrameworkElement host)
+    private static void Clip(FrameworkElement host, Func<FrameworkElement?> selected)
     {
         if (!host.IsVisible || PresentationSource.FromVisual(host) is null) return;
+        if (selected() is not { } shown) return;
+        if (Descendants<HwndHost>(shown).FirstOrDefault() is not { } terminal) return;
+        if (terminal.Handle == IntPtr.Zero || !terminal.IsVisible || terminal.ActualWidth <= 0 || terminal.ActualHeight <= 0) return;
         if (Viewport(host) is not { } viewport) return;
-        foreach (var terminal in Descendants<HwndHost>(host))
-        {
-            if (terminal.Handle == IntPtr.Zero || !terminal.IsVisible || terminal.ActualWidth <= 0 || terminal.ActualHeight <= 0) continue;
-            var bounds = ScreenRect(terminal, new Rect(terminal.RenderSize));
-            Apply(terminal, Region(bounds, viewport));
-        }
+        var bounds = ScreenRect(terminal, new Rect(terminal.RenderSize));
+        Apply(terminal, Region(bounds, viewport));
     }
 
     /// <summary>The part of a window at <paramref name="bounds"/> (screen pixels) inside <paramref name="viewport"/>, in the

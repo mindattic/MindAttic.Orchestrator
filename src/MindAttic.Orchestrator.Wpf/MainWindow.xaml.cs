@@ -146,7 +146,9 @@ public partial class MainWindow : Window
         CloseCliModal.Closed += (_, _) => { if (closingTab is not null) CloseCliModalFor(false); };
         // The Rename tab modal closed by its own X or backdrop is a cancel (M.ORCH-T1509).
         RenameTabModal.Closed += (_, _) => { if (renamingTab is not null) CloseRenameTab(null); };
-        TerminalClip.Attach(TerminalPanesHost);
+        // Only the shown login's selected pane is ever visible (TerminalPaneViewModel.IsSelected); clipping walks just that
+        // one each layout pass rather than every CLI ever opened across every login (M.ORCH-T1756).
+        TerminalClip.Attach(TerminalPanesHost, () => model.AllTerminals.SelectedPane?.Control);
         TerminalKeyboard.Attach(this, TerminalPanesHost);
         TerminalMouse.Attach(this, TerminalPanesHost);
         PreviewKeyDown += TerminalPaste.OnPreviewKeyDown;
