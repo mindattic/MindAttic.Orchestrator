@@ -307,4 +307,57 @@ public sealed partial class MainViewModel
             RefreshLogins();
         }
     }
+
+    // ── Login, from a login's right-click menu (M.ORCH-T1820) ──────────────
+
+    private ICommand? loginCommand;
+
+    /// <summary>
+    /// "Login", on every real login's right-click menu (<c>MainWindow.ShowLoginMenu</c>), not just the API key pseudo-account's
+    /// (which has Buy API credits instead): re-authenticates this one account without opening the Logins modal or touching any
+    /// other login. Always runnable, not only once signed out (<see cref="SignInTabCommand"/> is only that), so a login nearing
+    /// its token's expiry can be renewed ahead of it. A per-CLI login runs the exact sign-in <see cref="SignInOwnAsync"/> already
+    /// uses; the global login's tab (no <see cref="ScopeEmail"/>) runs <see cref="AccountSwitch.Login"/> for it instead, the same
+    /// <c>claude auth login --email</c> <c>orchestrator login &lt;account&gt;</c> itself runs.
+    /// </summary>
+    public ICommand LoginCommand => loginCommand ??= new RelayCommand(async () =>
+    {
+        if (IsApiKeyTab) return;
+        if (ScopeEmail is { } email) { if (await SignInOwnAsync(email)) await RefreshAsync(); }
+        else if (Root.workspace?.GlobalEmail is { Length: > 0 } global) await RenewGlobalLoginAsync(global);
+    }, () => !IsApiKeyTab && !IsSigningIn && (ScopeEmail is not null || Root.workspace?.GlobalEmail is { Length: > 0 }));
+
+    /// <summary>Opens <paramref name="email"/>'s login again for the global login's tab: the same seam <see cref="AccountSwitch.Login"/>
+    /// and <c>orchestrator login &lt;account&gt;</c> run, off the UI thread (it waits on the browser), with no roster row or
+    /// billing switch to weigh in here (the global login is never the API key).</summary>
+    private async Task RenewGlobalLoginAsync(string email)
+    {
+        if (IsSigningIn) return;
+        IsSigningIn = true;
+        SetSigningInEmail(email);
+        CommandManager.InvalidateRequerySuggested();
+        var command = AccountSwitch.LoginCommand(email, sso: false);
+        AccountsMessage = $"Opening {email}'s login in the browser ({command}).";
+        try
+        {
+            var code = await Task.Run(() => AccountSwitch.Login(email, false));
+            AccountsMessage = code == 0
+                ? $"Signed in as {email}: every CLI follows at its next turn."
+                : $"{command} ended with exit code {code}; the account wasn't switched.";
+            if (code != 0) Toasts.Insert(0, new ToastViewModel($"{email} not signed in", AccountsMessage, Palette.Over, null));
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            AccountsMessage = $"Couldn't run {command}: {ex.Message}";
+            Toasts.Insert(0, new ToastViewModel($"{email} not signed in", AccountsMessage, Palette.Over, null));
+        }
+        finally
+        {
+            IsSigningIn = false;
+            SetSigningInEmail(null);
+            CommandManager.InvalidateRequerySuggested();
+        }
+        NoteLocalChange();
+        await RefreshAsync();
+    }
 }
