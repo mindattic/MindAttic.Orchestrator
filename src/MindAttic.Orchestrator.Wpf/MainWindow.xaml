@@ -331,6 +331,11 @@
                                 HorizontalAlignment="Right" VerticalAlignment="Top" IsHitTestVisible="False" Focusable="False"
                                 Visibility="{Binding HasInbox, Converter={StaticResource Visible}}" />
                 </Grid>
+                <!-- The saved plans (M.ORCH-T1826): half-formed ideas and features not ready for an implementation ticket yet,
+                     each a markdown file under docs\plans in the workspace or a repo; the tooltip says how many, and it
+                     opens PlansModal. Segoe's Lightbulb glyph. In the menu bar, so it stays in the phone layout too. -->
+                <Button x:Name="PlansButton" Style="{StaticResource MaToolButton}" Content="&#xE82F;" Command="{Binding TogglePlansCommand}"
+                        mc:MaCallout.ToolTip="{Binding PlansToolTip}" AutomationProperties.Name="{Binding PlansToolTip}" />
                 <Button x:Name="TicketsButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Command="{Binding OpenTicketsAppCommand}"
                         mc:MaCallout.ToolTip="Open Tickets" AutomationProperties.Name="Open Tickets" />
                 <Button x:Name="LoginsButton" Style="{StaticResource MaToolButton}" Content="&#xE77B;" Command="{Binding ToggleLoginsCommand}"
@@ -348,11 +353,6 @@
                         mc:MaCallout.ToolTip="Quicksave the shown CLI; right-click (or the chevron beside it) for Quick Save All or Quick Load All"
                         AutomationProperties.Name="Quicksave the shown CLI (right-click, or the chevron beside it, for Quick Save All or Quick Load All)" />
                 <!-- The Save button's own menu, reachable with a left click (M.ORCH-T1793): a right-click-only menu isn't
-                <!-- The saved plans (M.ORCH-T1826): half-formed ideas and features not ready for an implementation ticket yet,
-                     each a markdown file under docs\plans in the workspace or a repo; the tooltip says how many, and it
-                     opens PlansModal. Segoe's Lightbulb glyph. In the menu bar, so it stays in the phone layout too. -->
-                <Button x:Name="PlansButton" Style="{StaticResource MaToolButton}" Content="&#xE82F;" Command="{Binding TogglePlansCommand}"
-                        mc:MaCallout.ToolTip="{Binding PlansToolTip}" AutomationProperties.Name="{Binding PlansToolTip}" />
                      reachable on touch or in the phone layout, so this tiny chevron opens the exact same Quick Save
                      All / Quick Load All menu the button's own right-click does (ShowSaveMenu). -->
                 <Button x:Name="SaveMoreButton" Style="{StaticResource MaToolButton}" Content="&#xE70D;" Width="16" FontSize="8" Margin="2,0,8,0"
@@ -1754,8 +1754,6 @@
                 </StackPanel>
             </mc:MaModal.Footer>
         </mc:MaModal>
-    </Grid>
-</Window>
 
         <!-- The saved plans (M.ORCH-T1826): one card per markdown file under docs\plans in the workspace or a repo, newest
              first: its title (a link that opens the file), a Show in folder button, its repo and when it was last
@@ -1801,3 +1799,5 @@
                 </StackPanel>
             </mc:MaModal.Footer>
         </mc:MaModal>
+    </Grid>
+</Window>
