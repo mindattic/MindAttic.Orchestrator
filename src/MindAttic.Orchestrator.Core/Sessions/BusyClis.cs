@@ -22,6 +22,20 @@ public enum CliActivity
 
     /// <summary>Running inside a live TermHost (M.ORCH-T928): it survives a dashboard redeploy, so it never blocks one.</summary>
     Hosted,
+
+    /// <summary>On a <c>/goal</c> and left out because the caller asked for that (<see cref="BusyScope.SkipGoal"/>, M.ORCH-T1827).</summary>
+    OnGoal,
+}
+
+/// <summary>What a busy check counts (M.ORCH-T1827). The default is the redeploy gate's: hosted CLIs never count, and a claim, a
+/// prompt or an unrecorded state does. <paramref name="Hosted"/>: judge a CLI in a TermHost by its real state too.
+/// <paramref name="RunningOnly"/>: only work actually running counts (a turn, a subagent, a background job); a held claim, a
+/// prompt waiting on the user and a CLI nobody has typed in yet are all "not working". <paramref name="SkipGoal"/>: leave out a
+/// CLI on a <c>/goal</c>, which keeps itself going.</summary>
+public sealed record BusyScope(bool Hosted = false, bool RunningOnly = false, bool SkipGoal = false)
+{
+    /// <summary>The redeploy gate's scope.</summary>
+    public static readonly BusyScope Deploy = new();
 }
 
 /// <summary>One open Claude CLI as the busy check sees it: its process, repo, login, and why it counts as working or unknown.</summary>
@@ -77,7 +91,7 @@ public static class BusyClis
 
     /// <summary>One session's recorded state: null <see cref="Pid"/> and <see cref="Unreadable"/> when it couldn't be parsed.</summary>
     public sealed record State(string SessionId, int? Pid, DateTime WrittenUtc, string? Turn, DateTime? AtUtc, DateTime? AskingSinceUtc,
-        string? Cwd, string? ConfigDir, bool Unreadable = false, DateTime? DecidingUtc = null);
+        string? Cwd, string? ConfigDir, bool Unreadable = false, DateTime? DecidingUtc = null, string? Goal = null);
 
     /// <summary>A running subagent mark: its agent id and the CLI it runs in (null when the mark names none or can't be read).</summary>
     public sealed record Subagent(string Agent, int? Cli, string Login);
@@ -90,7 +104,7 @@ public static class BusyClis
         int.TryParse(Environment.GetEnvironmentVariable("MINDATTIC_CLI_PID"), out var pid) && pid > 0 ? pid : ProcessTree.ClaudeAncestor(Environment.ProcessId);
 
     /// <summary>Every Claude CLI on this machine now, as it stands. <paramref name="self"/> defaults to <see cref="CallingCli"/>.</summary>
-    public static BusyReport Scan(int? self = null, ContextCycler? cycler = null, AccountDirs? accounts = null, JsonStore? store = null)
+    public static BusyReport Scan(int? self = null, ContextCycler? cycler = null, AccountDirs? accounts = null, JsonStore? store = null, BusyScope? scope = null)
     {
         var now = DateTime.UtcNow;
         cycler ??= new ContextCycler();
@@ -121,15 +135,16 @@ public static class BusyClis
         // Background shells (M.ORCH-T1528): marked in the shared session-context, whatever login the CLI runs on.
         var background = BackgroundJobs.RunningByCli(cycler.Directory, now);
 
-        return Judge(procs, states, subagents, claims, self ?? CallingCli(), accounts, problems, now, background);
+        return Judge(procs, states, subagents, claims, self ?? CallingCli(), accounts, problems, now, background, scope);
     }
 
     /// <summary>The judgement itself, over what <see cref="Scan"/> read (a seam for tests). <paramref name="background"/>: how many
     /// background jobs each CLI (by process id) has running (<see cref="BackgroundJobs.RunningByCli"/>).</summary>
     public static BusyReport Judge(IReadOnlyList<Proc> procs, IReadOnlyList<State> states, IReadOnlyList<Subagent> subagents,
         IReadOnlyList<Assignment> claims, int? self, AccountDirs accounts, IReadOnlyList<string> problems, DateTime nowUtc,
-        IReadOnlyDictionary<int, int>? background = null)
+        IReadOnlyDictionary<int, int>? background = null, BusyScope? scope = null)
     {
+        scope ??= BusyScope.Deploy;
         var clis = new List<BusyCli>();
         var live = procs.Select(p => p.Pid).ToHashSet();
         // A claude.exe started by another (a child it runs) isn't a CLI of its own: it's part of the one above it.
@@ -144,8 +159,14 @@ public static class BusyClis
                 clis.Add(new BusyCli(p.Pid, repo, login, state?.SessionId, CliActivity.Self, ["the CLI running this check"]));
                 continue;
             }
+            // On a /goal it keeps itself going, so a caller waiting for "everyone is done" leaves it out (M.ORCH-T1827).
+            if (scope.SkipGoal && state?.Goal is { Length: > 0 } goal)
+            {
+                clis.Add(new BusyCli(p.Pid, repo, login, state.SessionId, CliActivity.OnGoal, [$"on a /goal ({(goal.Length > 60 ? goal[..59] + "…" : goal).ReplaceLineEndings(" ")}), left out"]));
+                continue;
+            }
             // In a live TermHost it outlives the dashboard: hosted, unaffected by deploy, never blocking.
-            if (p.HostPid is { } host)
+            if (!scope.Hosted && p.HostPid is { } host)
             {
                 clis.Add(new BusyCli(p.Pid, repo, login, state?.SessionId, CliActivity.Hosted, [$"hosted in TermHost pid {host}, unaffected by deploy"]));
                 continue;
@@ -157,7 +178,7 @@ public static class BusyClis
             if (state is { Turn: "busy" } && !ContextCycler.IsBusyTurn(state.Turn, state.DecidingUtc, nowUtc)) state = state with { Turn = "idle" };
             if (state is null)
             {
-                unknown = true;
+                unknown = !scope.RunningOnly;
                 why.Add("no session state recorded for it (no prompt typed yet, or the context gate hook isn't installed in it)");
             }
             else if (state.Turn == "busy") why.Add("mid-turn" + Since(state.AtUtc, nowUtc));
@@ -166,6 +187,7 @@ public static class BusyClis
                 unknown = true;
                 why.Add($"its turn state reads \"{state.Turn ?? "(none)"}\"");
             }
+            var asks = state?.AskingSinceUtc is not null;
             if (state?.AskingSinceUtc is { } asking) why.Add("holding on a prompt for you" + Since(asking, nowUtc));
             var mine = subagents.Where(s => s.Cli == p.Pid).ToList();
             if (mine.Count > 0) why.Add($"{mine.Count} subagent(s) running");
@@ -174,7 +196,10 @@ public static class BusyClis
             var held = claims.Where(a => a.Cli == p.Pid || (state is not null && a.CliSession is not null && a.CliSession == state.SessionId))
                 .Select(a => a.TicketId).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList();
             if (held.Count > 0) why.Add("/allocate claims in flight: " + string.Join(", ", held));
-            var working = state?.Turn == "busy" || state?.AskingSinceUtc is not null || mine.Count > 0 || jobs > 0 || held.Count > 0;
+            // A turn stopped on a prompt runs nothing; with RunningOnly neither it nor a held claim counts (M.ORCH-T1827).
+            var working = scope.RunningOnly
+                ? (state?.Turn == "busy" && !asks) || mine.Count > 0 || jobs > 0
+                : state?.Turn == "busy" || asks || mine.Count > 0 || jobs > 0 || held.Count > 0;
             var activity = working ? CliActivity.Working : unknown ? CliActivity.Unknown : CliActivity.Idle;
             clis.Add(new BusyCli(p.Pid, repo, login, state?.SessionId, activity, why));
         }
@@ -183,7 +208,7 @@ public static class BusyClis
         // It is dropped only when it is provably a hosted CLI's (or the asking one's), which the redeploy doesn't touch: an unreadable
         // state whose session is one of theirs (M.ORCH-T1042: dropped whenever every CLI the scan found was hosted, an unhosted CLI
         // the scan missed let a deploy pass; M.ORCH-T1006). A subagent mark naming no CLI can't be tied to one, so it always counts.
-        var hostedSessions = clis.Where(c => c.Activity is (CliActivity.Self or CliActivity.Hosted) && c.SessionId is { Length: > 0 })
+        var hostedSessions = clis.Where(c => c.Activity is (CliActivity.Self or CliActivity.Hosted or CliActivity.OnGoal) && c.SessionId is { Length: > 0 })
             .Select(c => c.SessionId!).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var s in subagents.Where(s => s.Cli is null))
             clis.Add(new BusyCli(null, "?", s.Login, null, CliActivity.Unknown, [$"subagent {s.Agent} is running, and its mark names no CLI"]));
@@ -328,7 +353,7 @@ public static class BusyClis
             DateTime.TryParse(t, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var w) ? w : null;
         int? pid = r.TryGetProperty("pid", out var p) && p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out var n) && n > 0 ? n : null;
         return new State(session, pid, writtenUtc, Text("state"), When("at"), ContextCycler.IsAsking(r) ? When("asking") : null, Text("cwd"), Text("config_dir"),
-            DecidingUtc: When("deciding"));
+            DecidingUtc: When("deciding"), Goal: Text("goal") is { } g && g.Trim().Length > 0 ? g.Trim() : null);
     }
 
     private static string ReadShared(string path)
@@ -339,12 +364,12 @@ public static class BusyClis
     }
 
     /// <summary>Polls <see cref="Scan"/> until every CLI is idle or <paramref name="timeout"/> passes; the last report either way.</summary>
-    public static BusyReport WaitForIdle(TimeSpan poll, TimeSpan? timeout, Action<BusyReport>? progress, CancellationToken cancel, int? self = null)
+    public static BusyReport WaitForIdle(TimeSpan poll, TimeSpan? timeout, Action<BusyReport>? progress, CancellationToken cancel, int? self = null, BusyScope? scope = null)
     {
         var until = timeout is { } t ? DateTime.UtcNow + t : DateTime.MaxValue;
         while (true)
         {
-            var report = Scan(self);
+            var report = Scan(self, scope: scope);
             if (report.AllIdle || DateTime.UtcNow >= until || cancel.IsCancellationRequested) return report;
             progress?.Invoke(report);
             if (cancel.WaitHandle.WaitOne(poll)) return report;
