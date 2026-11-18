@@ -61,6 +61,9 @@ public partial class MainWindow : Window
         // One dashboard tab per Claude login (M.ORCH-T613): the whole window shows the chosen login's tab, while the tab strip
         // keeps the global login's, which lists them all.
         LoginTabStrip.DataContext = model;
+        // The tree sidebar (M.ORCH-T1759, TreeMenuLayout's default-on view) is scoped the same way: the global login's tab,
+        // which lists every login.
+        LoginTree.DataContext = model;
         // The org switcher above it, and what an org with no Claude login says, are the global login's tab's too (M.ORCH-T655).
         OrgStrip.DataContext = model;
         OrgEmptyPanel.DataContext = model;
@@ -662,6 +665,41 @@ public partial class MainWindow : Window
     }
 
     private void OnTabPartSizeChanged(object sender, SizeChangedEventArgs e) => SizeTerminalTabs();
+
+    /// <summary>The tree sidebar's header row click (M.ORCH-T1759): selects that login (which also expands it).</summary>
+    private void LoginTreeHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: MainViewModel vm }) vm.SelectLoginCommand.Execute(null);
+    }
+
+    /// <summary>The tree sidebar's chevron click (M.ORCH-T1759): toggles this login's node alone, never its selection, so
+    /// another login's panes can be peeked at without leaving the one shown. Marks the event handled so it doesn't also
+    /// reach <see cref="LoginTreeHeader_MouseLeftButtonDown"/> on its way up.</summary>
+    private void LoginTreeChevron_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is FrameworkElement { DataContext: MainViewModel vm }) vm.IsExpanded = !vm.IsExpanded;
+    }
+
+    /// <summary>The tree sidebar's child row click (M.ORCH-T1759): selects this item's login, then shows the clicked pane or
+    /// the pinned Usage marker, exactly as choosing it from the flat CLI tab bar would.</summary>
+    private void LoginTreeChild_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: { } item } fe) return;
+        if (FindAncestorDataContext<MainViewModel>(VisualTreeHelper.GetParent(fe)) is not { } vm) return;
+        vm.SelectTreeChildCommand.Execute(item);
+    }
+
+    /// <summary>The nearest ancestor in the visual tree whose own DataContext is a <typeparamref name="T"/>; null past the root.</summary>
+    private static T? FindAncestorDataContext<T>(DependencyObject? node) where T : class
+    {
+        while (node is not null)
+        {
+            if (node is FrameworkElement { DataContext: T match }) return match;
+            node = VisualTreeHelper.GetParent(node);
+        }
+        return null;
+    }
 
     /// <summary>A double-click on a CLI tab's name renames it in place (M.ORCH-T1432): its TextBox, in the same cell, takes the
     /// name, all selected. A single click falls through, so it still selects the tab.</summary>
