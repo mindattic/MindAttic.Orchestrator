@@ -159,7 +159,7 @@ public sealed partial class MainViewModel : ObservableObject
         OpenInTicketsCommand = root?.OpenInTicketsCommand ?? new RelayCommand(p => Shown.OpenInTickets(p as string));
         OpenTicketsAppCommand = root?.OpenTicketsAppCommand ?? new RelayCommand(() => Shown.OpenTicketsApp());
         InitPhases();
-        InitSaveAllClose();
+        InitSave();
         InitTerminals();
         PendingMoves.Changed += OnMovesChanged;
         if (store.Load<ReposView>(ReposViewName).Sort is { } sort && RepoSorts.Contains(sort)) repoSort = sort;

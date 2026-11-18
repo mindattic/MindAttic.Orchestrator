@@ -64,7 +64,7 @@ public sealed class SettingsModalTests
         Assert.That(tools.Ancestors().Contains(Named(doc, "MenuBar")), Is.True);
         var row = tools.Elements().Where(e => (string?)e.Attribute(X + "Name") is { } n && n.EndsWith("Button", StringComparison.Ordinal))
             .Select(e => (string?)e.Attribute(X + "Name")).ToList();
-        Assert.That(row, Is.EqualTo(new[] { "TeamWallButton", "TicketsButton", "LoginsButton", "SettingsButton", "WindDownButton" }));
+        Assert.That(row, Is.EqualTo(new[] { "TeamWallButton", "TicketsButton", "LoginsButton", "SettingsButton", "WindDownButton", "SaveButton" }));
         Assert.That(tools.Descendants(Mc + "MaToggleIcon").Where(t => (string?)t.Attribute("IsThemeToggle") == "True"), Is.Empty,
             "no theme toggle of its own any more");
         // No phone/desktop toggle (M.ORCH-T1560, removed by M.ORCH-T1567): the window's size alone switches the layout.
