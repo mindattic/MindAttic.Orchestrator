@@ -117,8 +117,12 @@ public static partial class MemoryReclaim
     {
         foreach (var name in ForeignKillAllowList)
         {
-            using var p = Process.GetProcessesByName(name).FirstOrDefault();
-            if (p is not null && Kill(p.Id)) return $"closed {name} (pid {p.Id})";
+            var processes = Process.GetProcessesByName(name);
+            try
+            {
+                if (processes.FirstOrDefault() is { } p && Kill(p.Id)) return $"closed {name} (pid {p.Id})";
+            }
+            finally { foreach (var p in processes) p.Dispose(); }
         }
         return "nothing left to flush";
     }
