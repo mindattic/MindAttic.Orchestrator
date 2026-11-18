@@ -299,7 +299,7 @@ public sealed class TabStatusTests
             .And.Contain("Property=\"TrailingContentTemplate\" Value=\"{StaticResource LoginUsageBarsTemplate}\"")
             .And.Contain("Property=\"Accent\" Value=\"{Binding TabBrush}\"")
             .And.Contain("Property=\"AutomationProperties.Name\" Value=\"{Binding TabTip}\"")
-            .And.Contain("{Binding TabTitle}"));
+            .And.Contain("{Binding TabFaceTitle}")); // the face title: TabTitle, plus which key on the API key's row (M.ORCH-T1816)
 
         // M.ORCH-T906: no 'API key' billing body or switch; the API key's person page shows money in place of the meters.
         Assert.That(xaml, Does.Not.Contain("x:Name=\"ApiKeyBody\"").And.Not.Contain("x:Name=\"BillingToggleButton\""));
