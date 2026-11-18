@@ -173,6 +173,7 @@ internal static class CliApp
                 o.AddCommand<OrgHelpCommand>("help").WithDescription("List the org subcommands.");
                 o.AddCommand<UsageReportCommand>("usage").WithDescription("The usage report, as orchestrator report prints it: --detail, --since <date>, --csv, --json, --md/--html <file>.");
                 o.AddCommand<OrgLoginCommand>("login").WithDescription("Sign a member's own login in (orchestrator login --account <their email>); opens the browser.");
+                o.AddCommand<OrgOpenCommand>("open").WithDescription("Open claude.ai in a member's own browser profile, already signed in as them (M.ORCH-T1835).");
                 o.AddBranch<MembersBranchSettings>("members", m =>
                 {
                     m.SetDescription("The members, as orchestrator members lists them; add, set and remove change them.");

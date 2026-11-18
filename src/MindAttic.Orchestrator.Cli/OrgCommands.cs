@@ -18,6 +18,7 @@ internal sealed class OrgHelpCommand : Command
     [
         ("usage [--detail] [--since <date>] [--csv|--json] [--md|--html <file>]", "every member's 5-hour and weekly use, resets, points left to the weekly target, reading age and whether it's accurate"),
         ("login <who>", "sign that member's own login in (opens the browser: run it in your own terminal)"),
+        ("open <who>", "open claude.ai in that member's own browser profile, already signed in as them (no email or code after the first time)"),
         ("members", "list the members; members add|set|remove change them"),
         ("start <repo> <who>", "start a CLI in <repo> on that member's login"),
         ("allow <who> [--until <reset|time>]", "let that member's login take work past its weekly target, until its weekly reset (the default) or the time given"),
@@ -127,6 +128,35 @@ internal sealed class OrgLoginCommand : Command<OrgLoginCommand.Settings>
         OrgChoice.Resolve(settings.Org) is { } scope && OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is { } who
             ? new LoginCommand().Execute(context, new LoginCommand.Settings { OwnLogin = who.Email, Sso = settings.Sso })
             : 1;
+}
+
+/// <summary>
+/// <c>orchestrator org open &lt;who&gt;</c> (M.ORCH-T1835): claude.ai in that member's own browser profile, the one their sign-ins
+/// use, so it opens signed in as them: one pick, no email or code, no stored password.
+/// </summary>
+internal sealed class OrgOpenCommand : Command<OrgOpenCommand.Settings>
+{
+    public sealed class Settings : OrgSettings
+    {
+        [CommandArgument(0, "<WHO>")]
+        [Description("The member: email, the part before the @, name (Ryan DeBraal, quoted or not), first name, login alias or initials.")]
+        public string[] Who { get; init; } = [];
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        if (OrgChoice.Resolve(settings.Org) is not { } scope || OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is not { } who)
+            return 1;
+        var dir = (LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs()).For(who.Email);
+        if (LoginBrowser.OpenClaude(dir) is { } why)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(why)}[/]");
+            return 1;
+        }
+        AnsiConsole.MarkupLine($"Opened claude.ai as [bold]{Markup.Escape(who.Email)}[/] in its own browser profile. " +
+            "[grey]The first time there it asks for the email and code; after that it stays signed in.[/]");
+        return 0;
+    }
 }
 
 /// <summary>

@@ -65,6 +65,29 @@ public static class LoginBrowser
         "--new-window %1\r\n";
 
     /// <summary>
+    /// Opens claude.ai in <paramref name="account"/>'s own browser profile (M.ORCH-T1835): the profile its sign-ins use, which
+    /// keeps that person's claude.ai session, so the page opens signed in as them with no password stored anywhere and no
+    /// email code (after their first sign-in there). Null when it opened; otherwise why not.
+    /// </summary>
+    public static string? OpenClaude(AccountDir account, string url = "https://claude.ai/")
+    {
+        if (Find() is not { } browser) return "No Chrome, Edge or Brave is installed, and only those can open a browser profile of the account's own.";
+        try
+        {
+            Directory.CreateDirectory(account.BrowserProfileDirectory);
+            var psi = new System.Diagnostics.ProcessStartInfo(browser.Exe) { UseShellExecute = false };
+            foreach (var arg in new[] { $"--user-data-dir={account.BrowserProfileDirectory}", "--no-first-run", "--no-default-browser-check", "--new-window", url })
+                psi.ArgumentList.Add(arg);
+            using var started = System.Diagnostics.Process.Start(psi);
+            return started is null ? $"{browser.Name} didn't start." : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return $"Couldn't open {browser.Name} for {account.Email} ({ex.Message}).";
+        }
+    }
+
+    /// <summary>
     /// Deletes <paramref name="account"/>'s login browser profile, and with it any claude.ai session in it: after a sign-in that
     /// landed on somebody else, so their session can't authorize the next sign-in too (M.ORCH-T1834). Null when it's gone;
     /// otherwise why not (e.g. its browser window is still open and holds the files).
