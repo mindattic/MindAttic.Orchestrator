@@ -330,8 +330,14 @@
                      (OnSaveButtonContextMenu), each confirmed first and reporting how long it took once it's done. -->
                 <Button x:Name="SaveButton" Style="{StaticResource MaToolButton}" Content="&#xE74E;" Command="{Binding QuicksaveShownCommand}"
                         ContextMenuOpening="OnSaveButtonContextMenu"
-                        mc:MaCallout.ToolTip="Quicksave the shown CLI; right-click for Quick Save All or Quick Load All"
-                        AutomationProperties.Name="Quicksave the shown CLI (right-click for Quick Save All or Quick Load All)" />
+                        mc:MaCallout.ToolTip="Quicksave the shown CLI; right-click (or the chevron beside it) for Quick Save All or Quick Load All"
+                        AutomationProperties.Name="Quicksave the shown CLI (right-click, or the chevron beside it, for Quick Save All or Quick Load All)" />
+                <!-- The Save button's own menu, reachable with a left click (M.ORCH-T1793): a right-click-only menu isn't
+                     reachable on touch or in the phone layout, so this tiny chevron opens the exact same Quick Save
+                     All / Quick Load All menu the button's own right-click does (ShowSaveMenu). -->
+                <Button x:Name="SaveMoreButton" Style="{StaticResource MaToolButton}" Content="&#xE70D;" Width="16" FontSize="8" Margin="2,0,8,0"
+                        Click="SaveMoreButton_Click"
+                        mc:MaCallout.ToolTip="Quick Save All or Quick Load All" AutomationProperties.Name="Quick Save All or Quick Load All" />
             </StackPanel>
             </Grid>
         </Border>
@@ -459,6 +465,14 @@
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
                         </Grid>
                         <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <!-- This login's own menu, reachable with a tap or a left click (M.ORCH-T1793): the exact same menu the
+                             tab's own right-click opens (OnLoginTabContextMenu), the flat strip's twin of the tree header's own
+                             LoginTreeMoreButton above. -->
+                        <Button x:Name="LoginTabMoreButton" Style="{StaticResource MaToolButton}" Content="&#xE712;" Margin="{StaticResource SpaceLS}"
+                                Click="LoginTabMoreButton_Click"
+                                mc:MaCallout.ToolTip="Open Project, Run Launcher, New Launcher, User Settings, Change Color"
+                                AutomationProperties.Name="{Binding TabTitle, StringFormat='More actions for {0}'}"
+                                Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}" />
                     </StackPanel>
                 </DataTemplate>
             </mc:MaTabControl.ItemTemplate>
@@ -500,6 +514,7 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Rectangle Grid.Column="0" Width="3" Fill="{Binding TabBrush}" Margin="0,2,6,2" />
                             <!-- The expand/collapse chevron alone (M.ORCH-T1759): its own click is marked handled so it never
@@ -537,6 +552,16 @@
                                 <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                             </StackPanel>
                             <ContentControl Grid.Column="2" HorizontalAlignment="Right" Content="{Binding}" ContentTemplate="{StaticResource LoginUsageBarsTemplate}" />
+                            <!-- This login's own menu (Open Project, Run Launcher, New Launcher, User Settings, Change Color), reachable
+                                 with a tap or a left click (M.ORCH-T1793): the exact same menu the row's own right-click opens
+                                 (LoginTreeHeader_ContextMenuOpening), which doesn't work well on touch or in the phone layout to begin
+                                 with. Shown for every login (same as the row's own context menu); ShowLoginMenu itself still refuses a
+                                 non-person tab. -->
+                            <Button x:Name="LoginTreeMoreButton" Grid.Column="3" Style="{StaticResource MaToolButton}" Content="&#xE712;"
+                                    Margin="{StaticResource SpaceLS}" Click="LoginTreeMoreButton_Click"
+                                    mc:MaCallout.ToolTip="Open Project, Run Launcher, New Launcher, User Settings, Change Color"
+                                    AutomationProperties.Name="{Binding TabTitle, StringFormat='More actions for {0}'}"
+                                    Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}" />
                         </Grid>
                         <ItemsControl x:Name="LoginTreeChildren" Style="{StaticResource MaList}" ItemsSource="{Binding Terminals.Panes}"
                                       Margin="10,2,0,2" Visibility="{Binding IsExpanded, Converter={StaticResource Visible}}">
@@ -608,6 +633,15 @@
                                                     CommandParameter="{Binding}"
                                                     AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
                                                     mc:MaCallout.ToolTip="Close this terminal, ending its CLI" />
+                                            <!-- This CLI's own menu (Move to, Copy PID, Rename, Change Color, Undock/Dock, Pop out,
+                                                 broadcast), reachable with a tap or a left click (M.ORCH-T1793): the exact same menu
+                                                 the row's own right-click opens (LoginTreeChild_ContextMenuOpening), which doesn't
+                                                 work well on touch or in the phone layout to begin with. -->
+                                            <Button x:Name="TreePaneMoreButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE712;" Margin="4,-2,0,-2"
+                                                    Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
+                                                    Click="TreePaneMoreButton_Click"
+                                                    AutomationProperties.Name="{Binding Title, StringFormat='More actions for {0}'}"
+                                                    mc:MaCallout.ToolTip="Move, rename, change color, undock/dock, pop out, broadcast, or copy its PID" />
                                             <Grid Width="18" Height="18" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
                                                 <mc:MaBadge Style="{StaticResource MaTag}" Width="16" Height="16" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
                                                             Foreground="{DynamicResource MaOnAccent}" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -795,6 +829,15 @@
                                                 CommandParameter="{Binding}"
                                                 AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
                                                 mc:MaCallout.ToolTip="Close this terminal, ending its CLI" />
+                                        <!-- This CLI's own menu, reachable with a tap or a left click (M.ORCH-T1793): the exact same
+                                             menu the tab's own right-click opens (OnTerminalTabContextMenu), the flat strip's twin
+                                             of the tree pane row's own TreePaneMoreButton. Collapsed for the pinned Usage tab along
+                                             with the rest of RealTabHeader (the DataTrigger below). -->
+                                        <Button x:Name="TerminalMoreButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE712;" Margin="4,-4,0,-4"
+                                                Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
+                                                Click="TerminalMoreButton_Click"
+                                                AutomationProperties.Name="{Binding Title, StringFormat='More actions for {0}'}"
+                                                mc:MaCallout.ToolTip="Move, rename, change color, undock/dock, pop out, broadcast, or copy its PID" />
                                     <StackPanel x:Name="TerminalTabParts" Orientation="Horizontal" HorizontalAlignment="Left">
                                         <!-- This one CLI's own status (M.ORCH-T1272): the same language as the login tab's aggregate
                                              badge (M.ORCH-T1270) but scoped to this pane alone, from its matched AgentBoardRow

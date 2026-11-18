@@ -247,12 +247,27 @@ public partial class MainWindow : Window
     {
         if (sender is not Button button) return;
         e.Handled = true;
-        var menu = DropdownMenu(button, "Quick save or load every open CLI", PlacementMode.Bottom);
-        var saveAll = DropdownItem("Quick Save All");
+        ShowSaveMenu(button, PlacementMode.Bottom);
+    }
+
+    /// <summary>The Save button's own "more" chevron (M.ORCH-T1793, SaveMoreButton): the same Quick Save All / Quick Load
+    /// All menu as the right-click above, opened with a left click, since a right-click (or Shift+F10 on a button with no
+    /// keyboard equivalent at all) isn't reachable on touch or in the phone layout.</summary>
+    private void SaveMoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not UIElement target) return;
+        e.Handled = true;
+        ShowSaveMenu(target, PlacementMode.Bottom);
+    }
+
+    private void ShowSaveMenu(UIElement target, PlacementMode placement)
+    {
+        var menu = DropdownMenu(target, "Quick save or load every open CLI", placement);
+        var saveAll = DropdownItem("", "Quick Save All");
         saveAll.ToolTip = "Force-quicksave every open CLI (confirmed first), reporting how long it took once every one lands";
         saveAll.Click += async (_, _) => await RunQuickAllAsync(isSave: true);
         menu.Items.Add(saveAll);
-        var loadAll = DropdownItem("Quick Load All");
+        var loadAll = DropdownItem("", "Quick Load All");
         loadAll.ToolTip = "Type /quickload into every open CLI (confirmed first), reporting how long it took once sent";
         loadAll.Click += async (_, _) => await RunQuickAllAsync(isSave: false);
         menu.Items.Add(loadAll);
@@ -1080,6 +1095,54 @@ public partial class MainWindow : Window
     private void DrawerButton_Click(object sender, RoutedEventArgs e) =>
         Sidebar.Visibility = Sidebar.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
 
+    /// <summary>The tree sidebar's own "more" button on a login's header row (M.ORCH-T1793, LoginTreeMoreButton): the exact
+    /// same root-node menu a right-click on the header opens (<see cref="LoginTreeHeader_ContextMenuOpening"/>), reachable
+    /// with a tap or a left click - the icon that makes the drawer's own menu usable without a right-click, which doesn't
+    /// work well on touch or in the narrow layout to begin with.</summary>
+    private void LoginTreeMoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: MainViewModel tab } button || !tab.IsPersonTab) return;
+        e.Handled = true;
+        ShowLoginMenu(button, tab, PlacementMode.Bottom);
+    }
+
+    /// <summary>The tree sidebar's own "more" button on a CLI/Launcher pane row (M.ORCH-T1793, TreePaneMoreButton): the
+    /// exact same menu a right-click on the row opens (<see cref="LoginTreeChild_ContextMenuOpening"/>), reachable with a
+    /// tap or a left click. The owning login is found the same way the row's own right-click handler finds it.</summary>
+    private async void TreePaneMoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (sender is not FrameworkElement { DataContext: TerminalPaneViewModel pane } button) return;
+            if (FindAncestorDataContext<MainViewModel>(VisualTreeHelper.GetParent(button)) is not { } owner) return;
+            e.Handled = true;
+            await ShowTerminalMenuAsync(button, pane, PlacementMode.Bottom, owner);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening the tree's CLI menu from its icon button failed; contained"); }
+    }
+
+    /// <summary>The flat login tab strip's own "more" button (M.ORCH-T1793, LoginTabMoreButton): the exact same menu a
+    /// right-click on the tab opens (<see cref="OnLoginTabContextMenu"/>), reachable with a tap or a left click.</summary>
+    private void LoginTabMoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: MainViewModel tab } button || !tab.IsPersonTab) return;
+        e.Handled = true;
+        ShowLoginMenu(button, tab, PlacementMode.Bottom);
+    }
+
+    /// <summary>The flat CLI tab strip's own "more" button (M.ORCH-T1793, TerminalMoreButton): the exact same menu a
+    /// right-click on the tab opens (<see cref="OnTerminalTabContextMenu"/>), reachable with a tap or a left click.</summary>
+    private async void TerminalMoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (sender is not FrameworkElement { DataContext: TerminalPaneViewModel pane } button) return;
+            e.Handled = true;
+            await ShowTerminalMenuAsync(button, pane, PlacementMode.Bottom);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening the CLI tab's menu from its icon button failed; contained"); }
+    }
+
     /// <summary>A CLI tab's right-click menu at <paramref name="container"/>, for <paramref name="owner"/>'s login (its
     /// StatusMessage/AccountsMessage/Toasts land there); defaults to <see cref="Shown"/> for the flat tab strip, where
     /// that's always the pane's own login anyway, but the tree sidebar (<see cref="LoginTreeChild_ContextMenuOpening"/>)
@@ -1103,14 +1166,14 @@ public partial class MainWindow : Window
             // Copy PID (M.ORCH-T1518): the CLI's own pid, which CLIs address each other by (MINDATTIC_CLI_PID, nudge-<pid>-*.txt).
             AddCopyPidItems(menu, agent?.CliPid, pane.HostPid);
             // Rename… (M.ORCH-T1509): a little modal for the tab's own name, kept across reattach, undock/dock and restarts.
-            var rename = DropdownItem("Rename…");
+            var rename = DropdownItem("", "Rename…");
             rename.ToolTip = "Give this tab a name of your own (double-clicking its name does too)";
             rename.Click += (_, _) => OpenRenameTab(pane);
             menu.Items.Add(rename);
             menu.Items.Add(PaneColorMenu(pane)); // Change Color (M.ORCH-T1594)
             if (pane.IsHosted)
             {
-                var undock = DropdownItem("Undock");
+                var undock = DropdownItem("", "Undock");
                 undock.ToolTip = "Drop this tab but keep its CLI running headless; Dock (on the Launcher's tab) or /dock brings it back";
                 undock.Click += (_, _) =>
                 {
@@ -1125,7 +1188,7 @@ public partial class MainWindow : Window
             AddBroadcastItems(menu, pane);
             if (agent is null)
             {
-                var wait = DropdownItem("Move to");
+                var wait = DropdownItem("", "Move to");
                 wait.IsEnabled = false;
                 wait.ToolTip = "This CLI isn't known to the Orchestrator yet: it shows up once its first turn starts";
                 ToolTipService.SetShowOnDisabled(wait, true);
@@ -1136,13 +1199,13 @@ public partial class MainWindow : Window
             var targets = await tab.MoveTargetsAsync(agent.OwnLogin);
             if (targets.Count == 0)
             {
-                var none = DropdownItem("Move to: no other signed-in login");
+                var none = DropdownItem("", "Move to: no other signed-in login");
                 none.IsEnabled = false;
                 menu.Items.Add(none);
             }
             foreach (var target in targets)
             {
-                var item = DropdownItem($"Move to {target.Label}");
+                var item = DropdownItem("", $"Move to {target.Label}");
                 item.ToolTip = target.IsGlobal ? "The global login (~/.claude)" : $"{target.Email}'s own login (~/.claude-accounts)";
                 item.Click += async (_, _) =>
                 {
@@ -1160,7 +1223,7 @@ public partial class MainWindow : Window
     {
         foreach (var (session, title) in undocked)
         {
-            var item = DropdownItem($"Dock {title}");
+            var item = DropdownItem("", $"Dock {title}");
             item.ToolTip = "Give this undocked CLI its tab back; it was never stopped";
             item.Click += (_, _) =>
             {
@@ -1174,7 +1237,7 @@ public partial class MainWindow : Window
     /// Then "Copy host PID n" when the tab's TermHost is known, which helps meanwhile.</summary>
     private static void AddCopyPidItems(ContextMenu menu, int? cliPid, int? hostPid)
     {
-        var cli = DropdownItem(cliPid is { } pid ? $"Copy PID {pid}" : "Copy PID");
+        var cli = DropdownItem("", cliPid is { } pid ? $"Copy PID {pid}" : "Copy PID");
         if (cliPid is { } known)
         {
             cli.ToolTip = "This CLI's process id, the one other CLIs address it by (MINDATTIC_CLI_PID, nudge-<pid>-*.txt): click to copy it";
@@ -1188,7 +1251,7 @@ public partial class MainWindow : Window
         }
         menu.Items.Add(cli);
         if (hostPid is not { } host) return;
-        var hostItem = DropdownItem($"Copy host PID {host}");
+        var hostItem = DropdownItem("", $"Copy host PID {host}");
         hostItem.ToolTip = "The TermHost process that hosts this CLI (not the CLI itself): click to copy it";
         hostItem.Click += (_, _) => CopyPid(host);
         menu.Items.Add(hostItem);
@@ -1205,9 +1268,9 @@ public partial class MainWindow : Window
     /// which stays attached. Needs a hosted CLI on a protocol 2 host (one that serves several viewers).</summary>
     private static void AddPopOutItems(ContextMenu menu, TerminalPaneViewModel pane)
     {
-        foreach (var (header, watchOnly) in new[] { ("Pop out (interactive)", false), ("Pop out (watch only)", true) })
+        foreach (var (icon, header, watchOnly) in new[] { ("", "Pop out (interactive)", false), ("", "Pop out (watch only)", true) })
         {
-            var item = DropdownItem(header);
+            var item = DropdownItem(icon, header);
             var session = pane.Session;
             if (session is null || session.Protocol < TermProtocol.MultiViewer)
             {
@@ -1261,9 +1324,9 @@ public partial class MainWindow : Window
     private void ShowLoginMenu(FrameworkElement container, MainViewModel tab, PlacementMode placement)
     {
         var menu = DropdownMenu(container, $"{tab.TabTitle}'s login", placement);
-        void Add(string header, string tip, ICommand command)
+        void Add(string icon, string header, string tip, ICommand command)
         {
-            var item = DropdownItem(header);
+            var item = DropdownItem(icon, header);
             item.ToolTip = tip;
             ToolTipService.SetShowOnDisabled(item, true);
             item.IsEnabled = command.CanExecute(null);
@@ -1276,11 +1339,11 @@ public partial class MainWindow : Window
         }
         menu.Items.Add(ProjectsMenu(tab));
         menu.Items.Add(DropdownSeparator());
-        Add("Run Launcher", "Opens this login's standalone Launcher (its own process): the project menu above does the same in-app",
+        Add("", "Run Launcher", "Opens this login's standalone Launcher (its own process): the project menu above does the same in-app",
             tab.RunLauncherCommand);
-        Add("New Launcher", "Opens another Launcher tab for this login, after its other tabs, even with one open already; /launcher cycles through them (M.ORCH-T1487)",
+        Add("", "New Launcher", "Opens another Launcher tab for this login, after its other tabs, even with one open already; /launcher cycles through them (M.ORCH-T1487)",
             tab.NewLauncherCommand);
-        Add("User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
+        Add("", "User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
             tab.UserSettingsCommand);
         menu.Items.Add(LoginColorMenu(tab)); // Change Color (M.ORCH-T1594)
         menu.IsOpen = true;
@@ -1295,7 +1358,7 @@ public partial class MainWindow : Window
     private MenuItem ProjectsMenu(MainViewModel tab)
     {
         _ = MainViewModel.RefreshProjectsAsync(DashboardTimings.ProjectsRefresh); // 10 minutes by default (M.ORCH-T1624)
-        var root = DropdownItem("Open Project");
+        var root = DropdownItem("", "Open Project");
         root.ToolTip = "Open a CLI for a project on this login (the Launcher's Open Project Tab, in-app). Right-click: commit + push every dirty project under one message";
         root.IsEnabled = tab.IsTabSignedIn;
         ToolTipService.SetShowOnDisabled(root, true);
@@ -1312,7 +1375,7 @@ public partial class MainWindow : Window
             model.SelectedTab = tab;
             _ = start();
         }
-        var general = DropdownItem("General Prompt");
+        var general = DropdownItem("", "General Prompt");
         general.ToolTip = "A CLI at the workspace root, every project in reach";
         general.Click += (_, e) => { e.Handled = true; Open(tab.OpenGeneralPromptAsync); };
         root.Items.Add(general);
@@ -1326,27 +1389,31 @@ public partial class MainWindow : Window
             var labels = new List<(MenuItem Item, ProjectNode Node)>();
             foreach (var node in tree) root.Items.Add(ProjectItem(node, tab, Open, labels));
             // Each project's uncommitted file count (M.ORCH-T1587): the last read now, the fresh one once git status is read.
-            void ShowChanges() { foreach (var (item, node) in labels) item.Header = ProjectHeader(node); }
+            void ShowChanges() { foreach (var (item, node) in labels) SetIconHeader(item, ProjectIcon(node), ProjectHeader(node)); }
             ShowChanges();
             _ = MainViewModel.RefreshProjectChangesAsync(DashboardTimings.ProjectChangesRefresh).ContinueWith(
                 _ => Dispatcher.BeginInvoke(ShowChanges), TaskScheduler.Default);
         }
         root.Items.Add(DropdownSeparator());
-        var commit = DropdownItem("Commit and push projects…");
+        var commit = DropdownItem("", "Commit and push projects…");
         commit.ToolTip = "Pick projects in this tree and commit and push each one under one message (M.ORCH-T1589)";
         commit.IsEnabled = MainViewModel.ProjectTree is { Count: > 0 };
         commit.Click += (_, e) => { e.Handled = true; OpenCommitProjects(); };
         root.Items.Add(commit);
-        var refresh = DropdownItem("Refresh projects");
+        var refresh = DropdownItem("", "Refresh projects");
         refresh.ToolTip = "Read the Launcher's roster and GitHub's wip-tagged repos again";
         refresh.Click += (_, e) => { e.Handled = true; _ = tab.RefreshProjectListAsync(); };
         root.Items.Add(refresh);
-        var commitAll = DropdownItem("Commit + push all dirty projects…");
+        var commitAll = DropdownItem("", "Commit + push all dirty projects…");
         commitAll.ToolTip = "One commit message for every project with changes, each pushed (also: right-click Open Project)";
         commitAll.Click += (_, e) => { e.Handled = true; CommitAllProjects(root, tab); };
         root.Items.Add(commitAll);
         return root;
     }
+
+    /// <summary>A folder glyph for a branch (a dot-named group), a page glyph for a leaf (M.ORCH-T1793): what
+    /// <see cref="ProjectItem"/> gives each row and <see cref="ProjectsMenu"/>'s own <c>ShowChanges</c> keeps on a refresh.</summary>
+    private static string ProjectIcon(ProjectNode node) => node is ProjectBranch ? "" : "";
 
     /// <summary>The nearest MenuItem at or above <paramref name="source"/> (visual tree, then logical across a popup).</summary>
     private static MenuItem? OwningMenuItem(DependencyObject? source)
@@ -1394,7 +1461,7 @@ public partial class MainWindow : Window
 
     private MenuItem ProjectItem(ProjectNode node, MainViewModel tab, Action<Func<Task>> open, List<(MenuItem Item, ProjectNode Node)> labels)
     {
-        var item = DropdownItem(node.Label);
+        var item = DropdownItem(ProjectIcon(node), node.Label);
         labels.Add((item, node));
         switch (node)
         {
@@ -1451,19 +1518,19 @@ public partial class MainWindow : Window
     {
         if (!pane.IsHosted || pane.TermId is null) return;
         var all = model.AllTerminals;
-        void Add(string header, bool isChecked, string tip, ICommand command, object? parameter)
+        void Add(string icon, string header, bool isChecked, string tip, ICommand command, object? parameter)
         {
-            var item = DropdownItem(header);
+            var item = DropdownItem(icon, header);
             item.IsCheckable = true;
             item.IsChecked = isChecked;
             item.ToolTip = tip;
             item.Click += (_, _) => { if (command.CanExecute(parameter)) command.Execute(parameter); };
             menu.Items.Add(item);
         }
-        Add("Share with remote viewers", pane.IsShared, "Let the team gateway show this CLI to remote viewers you've granted (off by default)", all.ToggleShareCommand, pane);
-        Add("Mask secrets for remote viewers", pane.IsMasked, "Hide API keys, tokens, private keys and Vault-held values on remote streams (on by default; never on this screen)", all.ToggleMaskCommand, pane);
-        Add("Pause broadcast", pane.IsBroadcastPaused, "Remote viewers see \"paused by owner\" and nothing else until you resume (Ctrl+Shift+B)", all.TogglePauseCommand, pane);
-        Add("Share all my sessions", all.ShareAll, "Share every CLI with remote viewers unless one says otherwise", all.ShareAllCommand, null);
+        Add("", "Share with remote viewers", pane.IsShared, "Let the team gateway show this CLI to remote viewers you've granted (off by default)", all.ToggleShareCommand, pane);
+        Add("", "Mask secrets for remote viewers", pane.IsMasked, "Hide API keys, tokens, private keys and Vault-held values on remote streams (on by default; never on this screen)", all.ToggleMaskCommand, pane);
+        Add("", "Pause broadcast", pane.IsBroadcastPaused, "Remote viewers see \"paused by owner\" and nothing else until you resume (Ctrl+Shift+B)", all.TogglePauseCommand, pane);
+        Add("", "Share all my sessions", all.ShareAll, "Share every CLI with remote viewers unless one says otherwise", all.ShareAllCommand, null);
         menu.Items.Add(DropdownSeparator());
     }
 
@@ -1481,6 +1548,45 @@ public partial class MainWindow : Window
         var item = new MenuItem { Header = header };
         item.SetResourceReference(StyleProperty, "MaDropdownMenuItem");
         return item;
+    }
+
+    /// <summary>The font every menu-item glyph below draws from: the same family the window's own toolbar icons and
+    /// status badges already use (M.ORCH-T1793).</summary>
+    private const string MenuIconFont = "Segoe Fluent Icons, Segoe MDL2 Assets";
+
+    /// <summary>The glyph for every "more actions" button this window adds beside a row that owns a context menu
+    /// (M.ORCH-T1793): a tap or a left click opens the exact same menu a right-click on the row would, so the menu is
+    /// reachable without one - the sidebar's phone layout (MainWindow.Compact.cs) and any touch session otherwise had no
+    /// way to reach these menus at all.</summary>
+    private const string MoreGlyph = "";
+
+    /// <summary>A dropdown row's header with a leading icon glyph before its label (M.ORCH-T1793: every context menu this
+    /// window builds gets an icon per item, the same composite-header idiom <see cref="ColorMenu"/> already used for its
+    /// colour dot, generalized here so it isn't the only one). <see cref="MaDropdownMenuItem"/>'s own template has no Icon
+    /// presenter of its own (it draws whatever <c>Header</c> is, plain text or a built-up visual), which is why the icon
+    /// is part of the header content rather than <see cref="MenuItem.Icon"/>, which this template never reads.</summary>
+    private static object IconHeader(string icon, string label)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(new TextBlock { Text = icon, FontFamily = new FontFamily(MenuIconFont), Width = 18, VerticalAlignment = VerticalAlignment.Center });
+        row.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) });
+        return row;
+    }
+
+    /// <summary>An icon-led dropdown item (M.ORCH-T1793); see <see cref="IconHeader"/>.</summary>
+    private static MenuItem DropdownItem(string icon, string label)
+    {
+        var item = DropdownItem(IconHeader(icon, label));
+        AutomationProperties.SetName(item, label); // the glyph alone says nothing to a screen reader
+        return item;
+    }
+
+    /// <summary>Replaces an existing item's header with a fresh icon-led one (M.ORCH-T1793), for a label that's rebuilt
+    /// after the item was first created (<see cref="ProjectItem"/>'s uncommitted-count refresh).</summary>
+    private static void SetIconHeader(MenuItem item, string icon, string label)
+    {
+        item.Header = IconHeader(icon, label);
+        AutomationProperties.SetName(item, label);
     }
 
     /// <summary>A full-width, light-gray rule between a dropdown's groups (a bare Separator draws WPF's

@@ -42,7 +42,7 @@ public partial class MainWindow
     /// checked (unless <paramref name="isDefault"/>), then the default item, checked while it's in force.</summary>
     private static MenuItem ColorMenu(string? current, bool isDefault, string defaultHeader, string defaultTip, Action<string?> apply)
     {
-        var root = DropdownItem("Change Color");
+        var root = DropdownItem("", "Change Color");
         var now = LoginLook.CleanColor(current);
         foreach (var (name, hex) in LoginLook.Swatches)
         {
@@ -58,7 +58,7 @@ public partial class MainWindow
             root.Items.Add(item);
         }
         root.Items.Add(DropdownSeparator());
-        var reset = DropdownItem(defaultHeader);
+        var reset = DropdownItem("", defaultHeader);
         reset.IsCheckable = true;
         reset.IsChecked = isDefault;
         reset.ToolTip = defaultTip;
