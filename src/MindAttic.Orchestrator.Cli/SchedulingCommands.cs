@@ -318,6 +318,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("A login's 5-hour or weekly use under which no pace guard is considered: no pace holds, no subagent allowance cap, no cool-off (default 90).")]
         public double? PaceGuardStartPercent { get; init; }
 
+        [CommandOption("--pace-target-percent <PERCENT>")]
+        [Description("How much of the 5-hour or weekly limit pacing aims to use by the reset, for a login with no cutoff of its own (org limit --5h overrides it per member); the rest is margin for usage the orchestrator can't see (default 98). There was no flag for this before M.ORCH-T1754: an already-initialized settings store keeps whatever value it last persisted, so a source default change alone never reaches it.")]
+        public int? PaceTargetPercent { get; init; }
+
         [CommandOption("--agent-abort <ON>")]
         [Description("true (default): when a login's live 5-hour trend stays past its pace line with new subagents already slowed for --agent-abort-after minutes, the orchestrator aborts just enough of that login's ticket subagents to bend it back under, releasing their claims and putting their tickets first in the queue; false leaves the cool-off to slow new starts only.")]
         public bool? AgentAbort { get; init; }
@@ -688,6 +692,12 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         {
             if (!(guardStart >= 0 && guardStart <= 100)) { AnsiConsole.MarkupLine("[red]--pace-start-percent is 0 to 100.[/]"); return 1; }
             s = s with { PaceGuardStartPercent = guardStart };
+            changed = true;
+        }
+        if (settings.PaceTargetPercent is { } paceTarget)
+        {
+            if (!(paceTarget >= 1 && paceTarget <= 100)) { AnsiConsole.MarkupLine("[red]--pace-target-percent is 1 to 100.[/]"); return 1; }
+            s = s with { PaceTargetPercent = paceTarget };
             changed = true;
         }
         if (settings.HandMinutes is { } hand)

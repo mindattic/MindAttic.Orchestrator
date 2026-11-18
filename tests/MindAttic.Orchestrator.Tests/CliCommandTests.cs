@@ -483,6 +483,19 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void Pace_target_percent_is_a_real_setting_and_round_trips()
+    {
+        // M.ORCH-T1754: there was no flag for this at all before today, so an already-initialized settings store kept
+        // whatever it last persisted (96, from M.ORCH-T1462) however the compiled default changed out from under it.
+        Assert.That(Run("settings", "--pace-target-percent", "98"), Is.EqualTo(0));
+        Assert.That(Store.LoadSettings().PaceTargetPercent, Is.EqualTo(98));
+
+        Assert.That(Run("settings", "--pace-target-percent", "0"), Is.EqualTo(1), "1 to 100");
+        Assert.That(Run("settings", "--pace-target-percent", "101"), Is.EqualTo(1), "1 to 100");
+        Assert.That(Store.LoadSettings().PaceTargetPercent, Is.EqualTo(98), "a refused value changes nothing");
+    }
+
+    [Test]
     public void The_retired_weekly_options_are_refused_before_anything_is_staged_even_with_a_bad_value_or_a_valid_option_alongside()
     {
         // Previously --weekly-reserve (and the other three retired options) were validated and staged into the settings
