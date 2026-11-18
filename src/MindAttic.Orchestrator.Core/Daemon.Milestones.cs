@@ -11,6 +11,7 @@ public sealed partial class Daemon
     private DateTime milestonesCheckedUtc = DateTime.MinValue;
     private MilestoneForecasts? milestoneForecasts;
     private DateTime milestonesForecastUtc = DateTime.MinValue;
+    private MilestoneStewards? milestoneStewards;
     private volatile bool milestoneSuiteRunning;
     private volatile int milestoneHeavyLimit;
     private volatile int milestoneHeavyGrace = OrchestratorSettings.DefaultHeavyProcessGraceSeconds;
@@ -20,7 +21,8 @@ public sealed partial class Daemon
     /// cadence (<see cref="MainlineTests.CheckEvery"/>) by the daemon that runs those (<paramref name="mayStart"/>). A pass runs
     /// off the tick, one at a time: with no such milestone it's one read of the ticket database. A build starts only while
     /// the machine isn't held (memory, disk), no main-line suite runs and the heavy-process lease is free. Once every
-    /// <see cref="MilestoneForecasts.Every"/> the same pass also works out and records each one's forecast (M.ORCH-T1688).
+    /// <see cref="MilestoneForecasts.Every"/> the same pass also works out and records each one's forecast (M.ORCH-T1688), and
+    /// then lets the steward look (M.ORCH-T1686), which acts on a milestone at most once every <see cref="MilestoneStewards.Every"/>.
     /// </summary>
     private void RunMilestoneChecks(bool mayStart, bool suiteRunning, Snapshot snapshot, OrchestratorSettings s, string workspaceRoot)
     {
@@ -50,11 +52,13 @@ public sealed partial class Daemon
         checks.WorktreeRoot = s.WorktreeRoot;
         checks.Timeout = MilestoneAcceptance.TimeoutOf(s);
         var forecasts = milestoneForecasts ??= new MilestoneForecasts(store);
+        var stewards = milestoneStewards ??= new MilestoneStewards(store);
         var forecastDue = now - milestonesForecastUtc >= MilestoneForecasts.Every;
         if (forecastDue) milestonesForecastUtc = now;
         Func<MindAttic.Tickets.Data.TicketsDb?> open = () => MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(workspaceRoot);
         milestonePass = Task.Factory.StartNew<IReadOnlyList<MilestoneAcceptance.Line>>(
-            () => forecastDue ? [.. checks.RunDue(open), .. forecasts.RecordDue(open, DateTime.UtcNow)] : checks.RunDue(open),
+            () => forecastDue ? [.. checks.RunDue(open), .. forecasts.RecordDue(open, DateTime.UtcNow), .. stewards.RunDue(open, DateTime.UtcNow)]
+                : checks.RunDue(open),
             CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
 }

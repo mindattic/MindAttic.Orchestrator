@@ -252,6 +252,7 @@ internal static class CliApp
                 m.AddCommand<MilestonePendingCommand>("pending").WithDescription("The tickets and epics waiting to join an active or accepting milestone (pending [[<ID>]], M.ORCH-T1685): its scope is locked, so each waits until the owner approves or declines it; --json as data.");
                 m.AddCommand<MilestoneApproveCommand>("approve").WithDescription("The owner approving a waiting addition: approve <ID> <ITEM> --by <who> makes the ticket or epic a member of the milestone.");
                 m.AddCommand<MilestoneDeclineCommand>("decline").WithDescription("The owner declining a waiting addition: decline <ID> <ITEM> --by <who> [[--reason <text>]] stops it waiting; it never was a member.");
+                m.AddCommand<MilestoneStewardCommand>("steward").WithDescription("The milestone steward (steward [[<ID>]], M.ORCH-T1686): files one ticket for each failed build or exists check no open ticket covers and puts it forward for the milestone, and lists the milestone's closed tickets that came back or cite no evidence; --dry-run prints the plan and changes nothing; --json as data.");
             });
             config.AddBranch("branches", b =>
             {

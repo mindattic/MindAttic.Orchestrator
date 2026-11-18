@@ -422,3 +422,79 @@ internal sealed class MilestoneDeclineCommand : Command<MilestoneDeclineCommand.
         });
     }
 }
+
+/// <summary><c>orchestrator milestone steward [&lt;ID&gt;] [--dry-run] [--json]</c> (M.ORCH-T1686): the steward's pass over one
+/// milestone, or over every active and accepting one. It files one ticket for each failed build or exists check that no open
+/// ticket covers and puts it forward for the milestone (a pending addition the owner approves), and lists the milestone's
+/// closed tickets that came back or cite no evidence. With <c>--dry-run</c> it prints the plan and changes nothing.</summary>
+internal sealed class MilestoneStewardCommand : Command<MilestoneStewardCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "[ID]")]
+        [Description("The milestone (MS-n or its name); every active and accepting milestone when left out.")]
+        public string? Id { get; init; }
+
+        [CommandOption("--dry-run")]
+        [Description("Print what the steward would do and change nothing.")]
+        public bool DryRun { get; init; }
+
+        [CommandOption("--json")]
+        [Description("Print the actions as JSON.")]
+        public bool Json { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings) => MilestoneCli.WithTickets(db =>
+    {
+        IReadOnlyList<Milestone> chosen;
+        if (settings.Id is { } id)
+        {
+            var m = db.Milestone(id) ?? throw new KeyNotFoundException($"There is no milestone {id}.");
+            if (!m.IsLocked) throw new InvalidOperationException($"{m.Id} is {m.State}; the steward looks only at an active or accepting milestone.");
+            chosen = [m];
+        }
+        else chosen = MilestoneStewards.Locked(db);
+
+        var plan = MilestoneStewards.Read(db, chosen);
+        IReadOnlyList<MilestoneStewards.Outcome> outcomes = settings.DryRun
+            ? [.. plan.Select(a => new MilestoneStewards.Outcome(a, false,
+                a.Kind == StewardActionKind.Reopen ? $"{a.Text} {MilestoneStewards.CannotReopen}" : a.Text))]
+            : MilestoneStewards.Apply(db, plan);
+        if (settings.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(outcomes.Select(o => new
+            {
+                action = o.Action.Kind.ToString().ToLowerInvariant(), milestone = o.Action.MilestoneId, check = o.Action.Check,
+                ticket = o.Filed ?? o.Action.TicketId, because = o.Action.Because, repo = o.Action.Repo, type = o.Action.Type,
+                summary = o.Action.Summary, marker = o.Action.Marker, applied = o.Applied, failed = o.Failed, dryRun = settings.DryRun, text = o.Text,
+            }), BranchesCommand.Indented));
+            return outcomes.Any(o => o.Failed) ? 1 : 0;
+        }
+        if (chosen.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[grey]No milestone is active or in acceptance, so the steward has nothing to do.[/]");
+            return 0;
+        }
+        if (outcomes.Count == 0)
+        {
+            AnsiConsole.MarkupLine($"[green]The steward has nothing to do for {Markup.Escape(string.Join(", ", chosen.Select(m => m.Id)))}: every failed check has an open ticket, and no closed ticket on it is in doubt.[/]");
+            return 0;
+        }
+        if (settings.DryRun) AnsiConsole.MarkupLine("[grey]Dry run: nothing is changed.[/]");
+        foreach (var o in outcomes)
+        {
+            var (colour, word) = o switch
+            {
+                { Failed: true } => ("red", "failed"),
+                { Applied: true } => ("green", "done"),
+                { Action.Kind: StewardActionKind.Propose } => ("aqua", "would propose"),
+                { Action.Kind: StewardActionKind.Reopen } => ("yellow", "came back"),
+                _ => ("yellow", "report"),
+            };
+            AnsiConsole.MarkupLine($"[aqua]{Markup.Escape(o.Action.MilestoneId)}[/] [{colour}]{word}[/]: {Markup.Escape(o.Text)}");
+            if (settings.DryRun && o.Action.Kind == StewardActionKind.Propose)
+                AnsiConsole.MarkupLine($"     [grey]{Markup.Escape($"{o.Action.Repo} {o.Action.Type}, labels {MilestoneSteward.Label} and {o.Action.Marker}: {o.Action.Summary}")}[/]");
+        }
+        return outcomes.Any(o => o.Failed) ? 1 : 0;
+    });
+}
