@@ -223,9 +223,19 @@ public sealed partial class MainViewModel
         // Timed (M.ORCH-T1537): a user report of one login's tab taking ~30s to switch to, unlike the rest, with nothing
         // in the log to say where the time goes. Logged only past SlowSelectThreshold so an ordinary switch stays silent.
         var clock = System.Diagnostics.Stopwatch.StartNew();
+        var previous = SelectedTab;
         selectedTab = next;
         next.IsExpanded = true;
-        foreach (var t in loginTabs) { t.Raise(nameof(SelectedTab)); t.Raise(nameof(StripSelection)); t.Raise(nameof(IsTabSelected)); }
+        // SelectedTab and StripSelection read the one shared field, so every tab's own answer to them changes here and every
+        // one needs telling. IsTabSelected (M.ORCH-T1801) already does its own ReferenceEquals(this, SelectedTab) compare,
+        // so only the tab that was true and the one that's true now actually flip value; raising it for every login tab on
+        // every switch (M.ORCH-T1797) made each one's tree sidebar - every login's header highlight and every one of its
+        // open panes' MultiDataTrigger, none of whose own value had changed - re-run its trigger and measure its rows again,
+        // which a dotnet-trace across Launcher tab switches showed costing seconds of TextBlock measuring under the tree's
+        // MaStackPanel/DockPanel/Border/ContentPresenter chains. Telling only the two tabs whose value truly moved is enough.
+        foreach (var t in loginTabs) { t.Raise(nameof(SelectedTab)); t.Raise(nameof(StripSelection)); }
+        previous.Raise(nameof(IsTabSelected));
+        next.Raise(nameof(IsTabSelected));
         SelectedTabChanged?.Invoke(this, EventArgs.Empty);
         // The person shown is the one whose chosen terminal shows (M.ORCH-T810).
         ShowChosenPane();
