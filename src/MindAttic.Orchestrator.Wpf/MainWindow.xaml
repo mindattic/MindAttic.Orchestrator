@@ -517,21 +517,24 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <!-- The selected login's highlight: the library's MaChromeBorder fill (MaDivider, sized to the whole
                                  row) behind the row's content, shown only for the selected login. -->
-                            <Border Grid.ColumnSpan="4" Style="{StaticResource MaDivider}" Height="Auto" Margin="0" SnapsToDevicePixels="False"
+                            <Border Grid.ColumnSpan="5" Style="{StaticResource MaDivider}" Height="Auto" Margin="0" SnapsToDevicePixels="False"
                                     Visibility="{Binding IsTabSelected, Converter={StaticResource Visible}}" />
                             <!-- The expand/collapse chevron alone (M.ORCH-T1759): its own click is marked handled so it never
                                  also selects this login via the header's handler above it in the visual tree. -->
                             <TextBlock Grid.Column="1" Text="{Binding IsExpanded, Converter={x:Static vm:Converters.Chevron}}" Width="14"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"
                                        MouseLeftButtonDown="LoginTreeChevron_MouseLeftButtonDown" />
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="{StaticResource SpaceLS}">
+                            <!-- The name has its own column and trims with an ellipsis (M.ORCH-T1812): it used to share
+                                 one with the usage bars, so in a narrow sidebar the two drew over each other. -->
+                            <DockPanel Grid.Column="2" Margin="{StaticResource SpaceLS}">
                                 <!-- The same status-at-a-glance badges as the flat strip's own header (M.ORCH-T630/757/1173/1261/1270),
                                      copied rather than shared: that template is inline in LoginTabStrip's ItemTemplate above, not a
                                      keyed resource, and must stay exactly as it is for the flat layout. -->
-                                <Grid x:Name="TreeTabStatusIcon" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
+                                <Grid x:Name="TreeTabStatusIcon" DockPanel.Dock="Left" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
                                     <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
                                                 Foreground="{DynamicResource MaOnAccent}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                                 Visibility="{Binding ShowsIdleBadge, Converter={StaticResource Visible}}" />
@@ -554,11 +557,11 @@
                                                Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                                Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
                                 </Grid>
-                                <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            </StackPanel>
+                                <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
                             <!-- The same sigma/lambda bars as LoginUsageBarsTemplate (the flat strip's TrailingContentTemplate),
                                  written out here: the library has no bare content host to put that template in. -->
-                            <StackPanel Grid.Column="2" HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center"
+                            <StackPanel Grid.Column="3" HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}"
                                         Visibility="{Binding ShowsTabUsageBars, Converter={StaticResource Visible}}">
                                 <TextBlock Text="{Binding UsageSigmaLabel}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" />
                                 <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
@@ -576,7 +579,9 @@
                                  (LoginTreeHeader_ContextMenuOpening), which doesn't work well on touch or in the phone layout to begin
                                  with. Shown for every login (same as the row's own context menu); ShowLoginMenu itself still refuses a
                                  non-person tab. -->
-                            <Button x:Name="LoginTreeMoreButton" Grid.Column="3" Style="{StaticResource MaToolButton}" Content="&#xE712;"
+                            <!-- The same size as a row's own ellipsis and Close X below, and in the X's column (M.ORCH-T1812). -->
+                            <Button x:Name="LoginTreeMoreButton" Grid.Column="4" Style="{StaticResource MaToolButton}" Content="&#xE712;"
+                                    Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
                                     Margin="{StaticResource SpaceLS}" Click="LoginTreeMoreButton_Click"
                                     mc:MaCallout.ToolTip="Open Project, Run Launcher, New Launcher, User Settings, Change Color"
                                     AutomationProperties.Name="{Binding TabTitle, StringFormat='More actions for {0}'}"
