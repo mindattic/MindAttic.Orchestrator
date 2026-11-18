@@ -269,20 +269,18 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <!-- The phone layout's first row (M.ORCH-T1568, M.ORCH-T1571): who, top left, with the tools staying top right; the
-                 shown person's own CLI tab strip (scroll arrows and all) is the row under it, as on the desktop. The person
-                 picker is the global login's tab's, like the sidebar (PersonPicker.DataContext = model). The menu button opens
-                 the sidebar itself as a drawer (M.ORCH-T1570: orgs, every person with their badges and right-click menu, their
-                 ticket cards). Collapsed on the desktop (MainWindow.Compact.cs shows it). -->
+            <!-- The phone layout's first row (M.ORCH-T1568, M.ORCH-T1571): the menu button top left, with the tools staying
+                 top right; the shown person's own CLI tab strip (scroll arrows and all) is the row under it, as on the
+                 desktop. The menu button opens the sidebar itself as a drawer (M.ORCH-T1570: orgs, every person with their
+                 badges and right-click menu, their ticket cards), which is why the person picker that used to sit beside it
+                 is gone (M.ORCH-T1815): the drawer lists the same logins (OrgTabs) and more. Collapsed on the desktop
+                 (MainWindow.Compact.cs shows it). -->
             <Grid x:Name="PhonePickers" Grid.Column="0" Visibility="Collapsed" Margin="{StaticResource SpaceRS}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" MaxWidth="220" />
                 </Grid.ColumnDefinitions>
                 <Button x:Name="DrawerButton" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE700;" Click="DrawerButton_Click"
                         Margin="{StaticResource SpaceRS}" mc:MaCallout.ToolTip="People, organizations and their tickets" AutomationProperties.Name="Show people and tickets" />
-                <mc:MaPicker x:Name="PersonPicker" Grid.Column="1" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding StripSelection}"
-                             DisplayMemberPath="TabTitle" StatusMemberPath="TabLightStatus" StatusLabelMemberPath="TabStatusWord" AutomationProperties.Name="Person" />
             </Grid>
             <StackPanel x:Name="MenuBarTools" Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" HorizontalAlignment="Right" AutomationProperties.Name="Window tools and host status">
                 <!-- On the host, the org members connected from their own PCs with their member keys (hub phase 1, M.ORCH-T1640):
