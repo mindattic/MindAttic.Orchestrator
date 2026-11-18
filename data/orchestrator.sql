@@ -1200,6 +1200,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-17T23:40:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T18:40:00Z', 'Over', 'Claude reported 100%', 100, 100, 4844280, 108, 198.9, NULL, NULL, 2, 0.4, 5, 6, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-17T23:50:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T18:50:00Z', 'Under', 'ended at 92%', 92, 92, 5816221, 102, 0, NULL, NULL, 11, 3.5, 0, 0, 1, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-18T01:30:00Z', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T20:30:00Z', 'Under', 'ended at 36%', 36, 36, 4355279, 79, 0, NULL, NULL, 13, 4.1, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-18T01:50:00Z', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T20:50:00Z', 'Over', 'Claude reported 100%', 100, 100, 3819745, 60, 163.1, NULL, NULL, 41, 26.9, 1, 1, 6, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -1655,13 +1656,13 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(outside workspace)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T22:00:00Z', 6756687);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T22:00:00Z', 906857);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 294552);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3839679);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4097528);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T22:00:00Z', 1186361);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1872489);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1887639);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', '2026-11-17T22:00:00Z', 1740737);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2582443);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2609023);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T22:00:00Z', 4865409);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', 'Corobs', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 344660);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', 'Corobs', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 348421);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', 'IdiotProof', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T22:00:00Z', 232453);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', 'IdiotProof', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2657965);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', 'IdiotProof', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T22:00:00Z', 4844280);
@@ -4709,6 +4710,7 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (45, 'M.TIX-T175', 'MindAttic.Tickets', 'D:\Projects\MindAttic\MindAttic.Tickets', 'Claude', '2026-11-11T11:30:47.0076617Z', 1, NULL, NULL, NULL, 74704, 'f7c19f3f-0e2c-4e23-b19e-302833de86b8', 'opus', NULL, 'ohleo199@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (46, 'M.ORCH-T1738', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-17T20:40:31.7268436Z', 1, NULL, NULL, NULL, 36304, 'd1df465e-8bc3-450f-8874-3e5decdc58c8', NULL, NULL, 'ryandebraal@gmail.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (47, 'M.TIX-T347', 'MindAttic.Tickets', 'D:\Projects\MindAttic\MindAttic.Tickets', 'Claude', '2026-11-18T01:14:31.7193585Z', 1, NULL, NULL, NULL, 36304, 'd1df465e-8bc3-450f-8874-3e5decdc58c8', NULL, NULL, 'ryandebraal@gmail.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (48, 'M.TIX-T346', 'MindAttic.Tickets', 'D:\Projects\MindAttic\MindAttic.Tickets', 'Claude', '2026-11-18T01:56:34.2663445Z', 1, NULL, NULL, NULL, 36304, 'd1df465e-8bc3-450f-8874-3e5decdc58c8', NULL, NULL, 'ryandebraal@gmail.com');
 
 -- organizations
 
@@ -31325,100 +31327,17 @@ INSERT INTO state (name, value) VALUES ('audit', '{
 INSERT INTO state (name, value) VALUES ('dashboard-repos', '{
   "Sort": "Open tickets"
 }');
-INSERT INTO state (name, value) VALUES ('limit-resumes', '{
-  "45356": {
-    "SessionId": "04ebe23b-384e-491e-9934-b90d8e2c7dba",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-17T23:04:54.0582343Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "53144": {
-    "SessionId": "1d5e6ae3-3c9b-4bae-ae6e-bc30eaa0754e",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-17T23:04:54.0582343Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "52864": {
-    "SessionId": "50466b38-759f-41d7-9bbb-4ddbea893da4",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-17T23:04:54.0582343Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "57820": {
-    "SessionId": "784a2833-4cff-4a31-a57f-1ff7864adfe3",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-17T23:04:54.0582343Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "21328": {
-    "SessionId": "d0e6a753-fe28-4c4a-9c39-365b34e62209",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-17T23:04:54.0582343Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "51212": {
-    "SessionId": "7912cc3e-bc0c-4c70-9bfd-71ee4ab25288",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-17T23:06:53.4632137Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "39044": {
-    "SessionId": "79f48ff5-62b2-4ce7-9721-81b71ec86304",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-18T00:53:23.3581476Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "56072": {
-    "SessionId": "eb1b844d-aac5-4d6f-b09e-568f63bab16b",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-18T00:53:23.3581476Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "32996": {
-    "SessionId": "f462c151-9494-4fa8-ae52-0483677420c2",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-18T00:53:23.3581476Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "36304": {
-    "SessionId": "d1df465e-8bc3-450f-8874-3e5decdc58c8",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-18T01:00:47.2527507Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "70748": {
-    "SessionId": "003377bf-641b-45b5-9d8c-3b7cb3faa64f",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-18T01:19:23.5460149Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "51300": {
-    "SessionId": "08290c60-f9fe-42f5-b290-b76be813b0d3",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-18T01:19:23.5460149Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  },
-  "32884": {
-    "SessionId": "92d4ade2-20d6-4c3f-a3a2-dc0e7aa7318e",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-18T01:50:00Z",
-    "StoppedUtc": "2026-11-18T01:19:23.5460149Z",
-    "DueUtc": "2026-11-18T01:52:00Z"
-  }
+INSERT INTO state (name, value) VALUES ('limit-resumes', '{}');
+INSERT INTO state (name, value) VALUES ('limit-wakes', '{
+  "04ebe23b-384e-491e-9934-b90d8e2c7dba@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
+  "1d5e6ae3-3c9b-4bae-ae6e-bc30eaa0754e@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
+  "79f48ff5-62b2-4ce7-9721-81b71ec86304@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
+  "eb1b844d-aac5-4d6f-b09e-568f63bab16b@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
+  "f462c151-9494-4fa8-ae52-0483677420c2@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
+  "d1df465e-8bc3-450f-8874-3e5decdc58c8@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
+  "08290c60-f9fe-42f5-b290-b76be813b0d3@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
+  "92d4ade2-20d6-4c3f-a3a2-dc0e7aa7318e@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z"
 }');
-INSERT INTO state (name, value) VALUES ('limit-wakes', '{}');
 INSERT INTO state (name, value) VALUES ('limits', '[
   {
     "Kind": 0,
@@ -32780,7 +32699,8 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|COR-T19": "2026-11-18T01:20:57.0599396Z",
     "approval|M.ORCH-T1756": "2026-11-18T01:32:11.8153108Z",
     "approval|M.ORCH-T1757": "2026-11-18T01:32:11.8153108Z",
-    "approval|M.ORCH-T1759": "2026-11-18T01:35:27.0597186Z"
+    "approval|M.ORCH-T1759": "2026-11-18T01:35:27.0597186Z",
+    "approval|M.DPLY-T27": "2026-11-18T01:51:32.7525279Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
