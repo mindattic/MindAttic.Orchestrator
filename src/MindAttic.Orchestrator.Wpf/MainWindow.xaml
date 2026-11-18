@@ -577,6 +577,25 @@
                                           PreviewMouseLeftButtonDown="LoginTreeChildRow_PreviewMouseLeftButtonDown"
                                           PreviewMouseMove="LoginTreeChildRow_PreviewMouseMove"
                                           DragOver="LoginTreeChildRow_DragOver" Drop="LoginTreeChildRow_Drop">
+                                        <!-- The pane actually shown in the body right now (M.ORCH-T1801): its own IsSelected (the
+                                             same flag that drives its HwndHost's Visibility) alone isn't enough, since a login
+                                             keeps its last-active pane's IsSelected true even while another login is shown - so
+                                             this also requires the owning login's own IsTabSelected, reached via LoginTreeChildren
+                                             (the nearest ItemsControl up from this row), the same AncestorType=ItemsControl climb
+                                             TreePaneRow's own CloseCommand binding below already uses to reach the login. -->
+                                        <Grid.Style>
+                                            <Style TargetType="Grid">
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding IsSelected}" Value="True" />
+                                                            <Condition Binding="{Binding DataContext.IsTabSelected, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="True" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Background" Value="{DynamicResource MaChromeBorder}" />
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Grid.Style>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="16" />
                                             <ColumnDefinition Width="*" />
