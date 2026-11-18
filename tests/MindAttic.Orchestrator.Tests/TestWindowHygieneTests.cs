@@ -27,9 +27,14 @@ public sealed class TestWindowHygieneTests
         (new(@"Orchestrator\.Wpf\.exe"), "launches the real dashboard"),
     ];
 
+    /// <summary>A line ending in this marker, followed by the reason, is one a reviewer has seen never reaches the screen
+    /// (e.g. a start refused before any process runs).</summary>
+    private const string Exempt = "// window-hygiene: safe,";
+
     private static IEnumerable<string> Violations(string file, string source) =>
         source.Split('\n').Select((line, i) => (line, i))
             .Where(l => !l.line.TrimStart().StartsWith("//") && !l.line.TrimStart().StartsWith("///"))
+            .Where(l => !l.line.Contains(Exempt, StringComparison.Ordinal))
             .SelectMany(l => Rules.Where(r => r.Pattern.IsMatch(l.line)).Select(r => $"{file}:{l.i + 1}: {r.Why}: {l.line.Trim()}"));
 
     [Test]
@@ -73,6 +78,7 @@ public sealed class TestWindowHygieneTests
             "        private static LedgerWindow Window(int n, string? account = null) =>",
             "        DashboardWindow.Restore(window, w => calls.Add(\"a\"), w => calls.Add(\"f\"));",
             "        var psi = new ProcessStartInfo(\"python\") { UseShellExecute = false, CreateNoWindow = true };",
+            "        Assert.Throws<NotSupportedException>(() => Breakaway.Start(new ProcessStartInfo(\"notepad.exe\") { UseShellExecute = true })); " + Exempt + " refused before it starts",
         ];
         foreach (var line in fine) Assert.That(Violations("x.cs", line), Is.Empty, line);
     }

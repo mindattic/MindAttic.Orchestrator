@@ -94,7 +94,7 @@ public sealed class BreakawayTests
     [Test]
     public void A_shell_start_or_redirected_streams_are_refused_before_anything_starts()
     {
-        Assert.Throws<NotSupportedException>(() => Breakaway.Start(new ProcessStartInfo("notepad.exe") { UseShellExecute = true }));
+        Assert.Throws<NotSupportedException>(() => Breakaway.Start(new ProcessStartInfo("notepad.exe") { UseShellExecute = true })); // window-hygiene: safe, refused before anything starts
         Assert.Throws<NotSupportedException>(() => Breakaway.Start(new ProcessStartInfo("cmd.exe") { UseShellExecute = false, RedirectStandardOutput = true }));
     }
 
