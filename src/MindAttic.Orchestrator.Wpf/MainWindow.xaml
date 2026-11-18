@@ -1566,6 +1566,16 @@
                                                         mc:MaCallout.ToolTip="Assign it to the picker's choice (Unassigned hands it out again)" AutomationProperties.Name="{Binding Id, StringFormat='Delegate {0}'}" />
                                             </StackPanel>
                                         </WrapPanel>
+                                        <!-- An addition waiting on an active milestone (M.ORCH-T1685): the owner approves or declines it here;
+                                             a decline with a reason is the CLI's (the command below). -->
+                                        <WrapPanel Margin="{StaticResource RowGutter}" Visibility="{Binding CanAnswerAddition, Converter={StaticResource Visible}}">
+                                            <Button Style="{StaticResource MaPrimaryButton}" Content="Approve" Padding="{StaticResource SpaceHLVS}" Margin="0,0,6,6"
+                                                    Command="{Binding DataContext.ApproveAdditionInboxCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                    mc:MaCallout.ToolTip="Let it join the milestone" AutomationProperties.Name="{Binding Title, StringFormat='Approve: {0}'}" />
+                                            <Button Style="{StaticResource MaButton}" Content="Decline" Padding="{StaticResource SpaceHLVS}" Margin="0,0,6,6"
+                                                    Command="{Binding DataContext.DeclineAdditionInboxCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                    mc:MaCallout.ToolTip="Keep it off the milestone; it stays a ticket of its own" AutomationProperties.Name="{Binding Title, StringFormat='Decline: {0}'}" />
+                                        </WrapPanel>
                                         <DockPanel Margin="{StaticResource RowGutter}">
                                             <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Copy" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Top"
                                                     Command="{Binding DataContext.CopyInboxActionCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
