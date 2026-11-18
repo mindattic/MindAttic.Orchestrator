@@ -137,7 +137,7 @@ public static class HeavyLease
     /// <param name="graceSeconds">The grace; <see cref="GraceSeconds"/> when null.</param>
     public static HeavyLeaseState State(HeavyHolder holder, DateTime nowUtc, Func<long, double?, bool>? alive = null, int? graceSeconds = null)
     {
-        alive ??= DispatchLease.Alive;
+        alive ??= (pid, started) => DispatchLease.Alive(pid, started);
         if (holder.Procs.Any(p => alive(p.Pid, p.Started))) return HeavyLeaseState.Running;
         if (holder.Phase != "starting") return HeavyLeaseState.Free;
         if (holder.GatePid is { } gate && alive(gate, holder.GateStarted)) return HeavyLeaseState.Starting;
