@@ -198,10 +198,12 @@
              window chart (the same data as UtilizationChart further down, drawn Compact: its only text is the percent the
              window is predicted to end at) over the text the tooltip always had (figures, resets, cutoffs, active CLIs).
              A login with no 5-hour window (a solo Ultra, ShowsFiveHourChart) shows the text alone. The tooltip isn't in
-             the row's visual tree, so these bind to the tooltip's own value: the login's MainViewModel. -->
+             the row's visual tree, so these bind to the tooltip's own value: the login's MainViewModel. The chart stretches
+             to the tooltip's own full width (M.ORCH-T1823, HorizontalAlignment="Stretch", no fixed Width) rather than the
+             old hardcoded 200px, which left it short of the tooltip's own (wider) text line below it. -->
         <DataTemplate x:Key="LoginHoverTipTemplate" DataType="{x:Type vm:MainViewModel}">
             <StackPanel>
-                <mc:MaLineChart Compact="True" Width="200" Height="64" HorizontalAlignment="Left" Margin="{StaticResource SpaceBXS}"
+                <mc:MaLineChart Compact="True" Height="64" HorizontalAlignment="Stretch" Margin="{StaticResource SpaceBXS}"
                                 Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.CompactConverter}}"
                                 Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}" />
                 <TextBlock Text="{Binding TabHoverTip}" TextWrapping="Wrap" />
@@ -428,9 +430,10 @@
                     <Setter Property="TrailingContentTemplate" Value="{StaticResource LoginUsageBarsTemplate}" />
                     <!-- A callout pointing at the sidebar (M.ORCH-T1441): its arrow touches the tab's right edge, and it flips, or slides
                          up or down, to stay on the tab's monitor (the library's MaCallout, M.COMP-T167). Its figures show up
-                         instantly (M.ORCH-T1532, ToolTipService's own delay on the owning tab - MaCalloutToolTip is still a
-                         plain ToolTip underneath, so that delay still governs it): no hover-delay wait to read a login's usage. -->
-                    <Setter Property="ToolTipService.InitialShowDelay" Value="0" />
+                         with no more than CliTooltipDelayMs's wait (M.ORCH-T1532, M.ORCH-T1823: a Vault setting in place of the
+                         old hardcoded 0 - ToolTipService's own delay on the owning tab, since MaCalloutToolTip is still a plain
+                         ToolTip underneath, so that delay still governs it) to read a login's usage. -->
+                    <Setter Property="ToolTipService.InitialShowDelay" Value="{Binding CliTooltipDelayMs}" />
                     <Setter Property="mc:MaCallout.ToolTip" Value="{Binding}" />
                     <Setter Property="mc:MaCallout.ToolTipTemplate" Value="{StaticResource LoginHoverTipTemplate}" />
                     <Setter Property="mc:MaCallout.Placement" Value="Right" />
@@ -523,7 +526,7 @@
                     <StackPanel Grid.Column="1">
                         <Grid x:Name="LoginTreeHeader" Cursor="Hand" Background="Transparent" MouseLeftButtonDown="LoginTreeHeader_MouseLeftButtonDown"
                               ContextMenuOpening="LoginTreeHeader_ContextMenuOpening"
-                              ToolTipService.InitialShowDelay="0" mc:MaCallout.ToolTip="{Binding}" mc:MaCallout.ToolTipTemplate="{StaticResource LoginHoverTipTemplate}" AutomationProperties.Name="{Binding TabTip}">
+                              ToolTipService.InitialShowDelay="{Binding CliTooltipDelayMs}" mc:MaCallout.ToolTip="{Binding}" mc:MaCallout.ToolTipTemplate="{StaticResource LoginHoverTipTemplate}" AutomationProperties.Name="{Binding TabTip}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
@@ -752,6 +755,16 @@
                                                     <Path Data="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12C4.42 15.34 5.17 15 6 15c1.66 0 3 1.34 3 3zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
                                                           Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
                                                 </Viewbox>
+                                                <!-- A workspace-root tab ("General", or the workspace folder's own name "MindAttic": opened at the
+                                                     workspace root, not on a repo, M.ORCH-T1819) has no AgentBoardRow of its own (AgentBoard.Build
+                                                     only walks registered repos' own sessions), so none of the three status badges above it ever
+                                                     light, leaving this cell blank. A plain home glyph stands in for them, the same overlaid-cell
+                                                     idiom as the Launcher rocket above. -->
+                                                <Viewbox Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                         Visibility="{Binding IsWorkspacePane, Converter={StaticResource Visible}}"
+                                                         mc:MaCallout.ToolTip="A workspace tab: opened at the workspace root, not on a repo" AutomationProperties.Name="Workspace">
+                                                    <Path Data="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
+                                                </Viewbox>
                                             </Grid>
                                             <!-- Name, not Title (M.ORCH-T1768): Title still carries the login's initials
                                                  ("RD: Prose"), redundant here since this row already sits nested under
@@ -954,6 +967,16 @@
                                                      mc:MaCallout.ToolTip="The Launcher's own menu" AutomationProperties.Name="Launcher">
                                                 <Path Data="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12C4.42 15.34 5.17 15 6 15c1.66 0 3 1.34 3 3zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
                                                       Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
+                                            </Viewbox>
+                                            <!-- A workspace-root tab ("General", or the workspace folder's own name "MindAttic": opened at the
+                                                 workspace root, not on a repo, M.ORCH-T1819) has no AgentBoardRow of its own (AgentBoard.Build
+                                                 only walks registered repos' own sessions), so none of the three status badges above it ever
+                                                 light, leaving this cell blank. A plain home glyph stands in for them, the same overlaid-cell
+                                                 idiom as the Launcher rocket above. -->
+                                            <Viewbox x:Name="TerminalTabWorkspaceIcon" Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                     Visibility="{Binding IsWorkspacePane, Converter={StaticResource Visible}}"
+                                                     mc:MaCallout.ToolTip="A workspace tab: opened at the workspace root, not on a repo" AutomationProperties.Name="Workspace">
+                                                <Path Data="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
                                             </Viewbox>
                                         </Grid>
                                         <!-- Double-click the name to rename it in place (M.ORCH-T1432): the TextBox swaps in for the TextBlock in
