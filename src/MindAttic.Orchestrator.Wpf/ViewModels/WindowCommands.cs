@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -45,6 +46,26 @@ public static class Converters
 
     /// <summary>A tree node's expand/collapse chevron glyph (M.ORCH-T1759): "▾" expanded, "▸" collapsed.</summary>
     public static readonly IValueConverter Chevron = new ChevronConverter();
+
+    /// <summary>The tree sidebar's own branch spine (M.ORCH-T1768 follow-up): hides a row's bottom-half connector when
+    /// that row is the last item in its ItemsControl's own list, so the last branch draws an elbow (stopping at its own
+    /// tee) instead of a tee that reads as though a further sibling followed below it. Values: the row's own item
+    /// (<see cref="Binding"/>, inherited DataContext) and the owning ItemsControl's ItemsSource.</summary>
+    public static readonly IMultiValueConverter HiddenOnLastRow = new HiddenOnLastRowConverter();
+
+    private sealed class HiddenOnLastRowConverter : IMultiValueConverter
+    {
+        public object Convert(object[] values, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (values is not [var item, IEnumerable items]) return Visibility.Visible;
+            object? last = null;
+            foreach (var candidate in items) last = candidate;
+            return Equals(item, last) ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
 
     private sealed class ChevronConverter : IValueConverter
     {
