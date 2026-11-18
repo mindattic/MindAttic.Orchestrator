@@ -242,7 +242,7 @@ public sealed class ClaudeMeterProbe
     {
         var again = SignInAgain(email);
         JsonObject? oauth;
-        try { oauth = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path))?["claudeAiOauth"] as JsonObject : null; }
+        try { oauth = ReadCredentials(path)?["claudeAiOauth"] as JsonObject; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return ($"its saved sign-in couldn't be read ({ex.GetType().Name})", false); }
         if (oauth is null || Text(oauth, "accessToken") is null) return ($"none is saved in {Path.GetFileName(Path.GetDirectoryName(path))}: {again}", true);
         var expires = Millis(oauth, "expiresAt");
@@ -408,7 +408,7 @@ public sealed class ClaudeMeterProbe
     private async Task<string?> RefreshStaleAsync()
     {
         var now = DateTime.UtcNow;
-        if (!File.Exists(CredentialsPath) || JsonNode.Parse(File.ReadAllText(CredentialsPath)) is not JsonObject root ||
+        if (ReadCredentials(CredentialsPath) is not { } root ||
             root["claudeAiOauth"] is not JsonObject oauth ||
             oauth["refreshToken"] is not JsonValue rv || !rv.TryGetValue<string>(out var refresh) || refresh.Length == 0 ||
             oauth["expiresAt"] is not JsonValue xv || !xv.TryGetValue<long>(out var expiresAt) ||
@@ -421,7 +421,7 @@ public sealed class ClaudeMeterProbe
             return null;
         }
         // A CLI may have refreshed it while this asked: its tokens are the live ones, not these.
-        if (JsonNode.Parse(File.ReadAllText(CredentialsPath)) is not JsonObject again || again["claudeAiOauth"] is not JsonObject current ||
+        if (ReadCredentials(CredentialsPath) is not { } again || again["claudeAiOauth"] is not JsonObject current ||
             current["refreshToken"]?.GetValue<string>() != refresh)
             return Token(CredentialsPath, DateTime.UtcNow);
         current["accessToken"] = fresh.AccessToken;
@@ -462,15 +462,35 @@ public sealed class ClaudeMeterProbe
     /// <summary>Claude Code's saved access token, or null when there's none or it has expired.</summary>
     internal static string? Token(string path, DateTime nowUtc)
     {
-        if (!File.Exists(path)) return null;
-        using var doc = JsonDocument.Parse(File.ReadAllText(path));
-        if (!doc.RootElement.TryGetProperty("claudeAiOauth", out var o) || o.ValueKind != JsonValueKind.Object ||
-            !o.TryGetProperty("accessToken", out var t) || t.ValueKind != JsonValueKind.String || t.GetString() is not { Length: > 0 } token)
-            return null;
-        if (o.TryGetProperty("expiresAt", out var x) && x.ValueKind == JsonValueKind.Number &&
-            DateTimeOffset.FromUnixTimeMilliseconds(x.GetInt64()).UtcDateTime <= nowUtc)
+        if (ReadCredentials(path) is not { } root || root["claudeAiOauth"] is not JsonObject o) return null;
+        if (o["accessToken"] is not JsonValue t || !t.TryGetValue<string>(out var token) || token.Length == 0) return null;
+        if (o["expiresAt"] is JsonValue x && x.TryGetValue<long>(out var ms) &&
+            DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime <= nowUtc)
             return null;
         return token;
+    }
+
+    /// <summary>Reads and parses <c>.credentials.json</c>, retrying briefly past a read that lands on a torn write
+    /// (M.ORCH-T1723): under heavy concurrent load (many subagents on the same login, each refreshing or racing for its
+    /// token) a read here can land mid-write, the same class of bug <see cref="ClaudeAccount.Current"/> found for
+    /// <c>.claude.json</c> (M.ORCH-T784: a 46-minute blind window from the same torn-read-taken-for-failure). Without
+    /// this, every caller here took the torn read for "no usable sign-in" or "refreshing failed" and backed off, right
+    /// when the load that tore the write meant tokens were actively being spent. Null when the file doesn't exist.</summary>
+    private static JsonObject? ReadCredentials(string path)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                if (!File.Exists(path)) return null;
+                return JsonNode.Parse(File.ReadAllText(path)) as JsonObject;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+                if (attempt >= 7) throw;
+                Thread.Sleep(40);
+            }
+        }
     }
 
     private static async Task<string?> FetchAsync(string token, CancellationToken ct)
