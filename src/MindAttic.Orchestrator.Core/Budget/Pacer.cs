@@ -466,25 +466,33 @@ public static class Pacer
         return disk is null ? pace : pace with { Disk = disk, Note = $"{pace.Note} {disk.Why}.".TrimStart() };
     }
 
-    /// <summary>The fewest CLIs spending on one login for <see cref="CoolOff"/> to apply: it's for a login split across many CLIs.</summary>
+    /// <summary>The fewest independent streams on one login for <see cref="CoolOff"/> to apply: <paramref name="clis"/> CLIs
+    /// spending at once, or that many of a single CLI's own subagents already running (M.ORCH-T1767) - either way, several
+    /// streams whose own per-call hold can't see what the others add up to.</summary>
     public const int CoolOffMinClis = 2;
 
     /// <summary>
-    /// The cool-off for one login split across many CLIs (M.ORCH-T785, a user-approved narrow exception, 2026-10-24, to
-    /// M.ORCH-T706/T707's hard-cutoffs-only rule): with <paramref name="clis"/> (at least <see cref="CoolOffMinClis"/>) spending on
-    /// the login and its live aggregated 5-hour trend (<paramref name="window"/>, all their spend together) on course past its pace
-    /// target, new subagent starts are slowed: the allowance drops to the ones running less one for every 10 points over (at least
-    /// one), so the excess drains as they finish. It never stops: never below one, nothing running is held, and the window's hard
-    /// cutoff (<see cref="Pace.Stop"/>) is left to do that. Off (the pace as it is) under the line, with one CLI, at the stop, when
-    /// the pace says none new or is unpaced, and when no window is running.
+    /// The cool-off for a login running hot across several independent streams at once (M.ORCH-T785, a user-approved narrow
+    /// exception, 2026-10-24, to M.ORCH-T706/T707's hard-cutoffs-only rule; broadened by M.ORCH-T1767, 2026-11-18, to a single
+    /// CLI's own subagents too - found live: 11 subagents under one CLI ran a window to 100% with the per-call hold maxed out,
+    /// because <paramref name="clis"/> only counted distinct CLIs and this never even looked): with at least
+    /// <see cref="CoolOffMinClis"/> of either <paramref name="clis"/> or <see cref="Pace.Subagents"/> and the live aggregated
+    /// 5-hour trend (<paramref name="window"/>, all their spend together) on course past its pace target, new subagent starts
+    /// are slowed: the allowance drops to the ones running less one for every 10 points over (at least one), so the excess
+    /// drains as they finish. It never stops: never below one, nothing running is held, and the window's hard cutoff
+    /// (<see cref="Pace.Stop"/>) is left to do that - the last-resort <see cref="Scheduling.AgentAbort"/> is what can act on
+    /// already-running subagents if this alone doesn't bend the trend back in time. Off (the pace as it is) under the line,
+    /// with one stream, at the stop, when the pace says none new or is unpaced, and when no window is running.
     /// </summary>
     public static Pace CoolOff(Pace pace, Utilization? window, int clis)
     {
-        if (clis < CoolOffMinClis || pace is not { IsPaced: true, Stop: false, SubagentAllowance: { } allowed and > 0 }) return pace;
+        var streams = Math.Max(clis, pace.Subagents);
+        if (streams < CoolOffMinClis || pace is not { IsPaced: true, Stop: false, SubagentAllowance: { } allowed and > 0 }) return pace;
         if (window is not { Ended: false, Idle: false } u || u.EndUtc <= u.NowUtc || u.ProjectedEndPercent <= u.TargetPercent) return pace;
         var overBy = u.ProjectedEndPercent - u.TargetPercent;
         var slowed = (int)Math.Clamp((long)pace.Subagents - Math.Max(1, (long)Math.Ceiling(Math.Min(overBy, 1000) / 10)), 1, allowed);
-        var note = $"{pace.Note} Cooling off: {clis} CLIs on this login are on course for {u.ProjectedEndPercent:0}% of the 5-hour window, " +
+        var who = clis >= CoolOffMinClis ? $"{clis} CLIs on this login are" : $"{pace.Subagents} subagents on this login are";
+        var note = $"{pace.Note} Cooling off: {who} on course for {u.ProjectedEndPercent:0}% of the 5-hour window, " +
                    $"past its {u.TargetPercent:0}% pace line, so new subagents start slower ({slowed} at once) until it bends back under.";
         return pace with { SubagentAllowance = slowed, CoolOffPercent = u.ProjectedEndPercent, CoolOffClis = clis, TargetPercent = u.TargetPercent, Note = note };
     }

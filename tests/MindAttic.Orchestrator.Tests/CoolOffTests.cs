@@ -38,12 +38,13 @@ public sealed class CoolOffTests
     }
 
     [Test]
-    public void It_stays_off_under_the_line_on_one_cli_and_at_the_cutoff()
+    public void It_stays_off_under_the_line_with_one_stream_and_at_the_cutoff()
     {
         var pace = Paced(8, 6);
         Assert.That(Pacer.CoolOff(pace, Trend(97), 3), Is.SameAs(pace), "under the line");
         Assert.That(Pacer.CoolOff(pace, Trend(98), 3), Is.SameAs(pace), "on the line is not past it");
-        Assert.That(Pacer.CoolOff(pace, Trend(130), 1), Is.SameAs(pace), "one CLI: the exception is only for a login split across many");
+        var one = Paced(8, 1);
+        Assert.That(Pacer.CoolOff(one, Trend(130), 1), Is.SameAs(one), "one CLI and one subagent: truly a single stream");
         var stopped = pace with { Stop = true };
         Assert.That(Pacer.CoolOff(stopped, Trend(130), 3), Is.SameAs(stopped), "the hard cutoff decides at the stop");
         var none = pace with { SubagentAllowance = 0 };
@@ -53,6 +54,20 @@ public sealed class CoolOffTests
         Assert.That(Pacer.CoolOff(pace, null, 3), Is.SameAs(pace), "no window");
         Assert.That(Pacer.CoolOff(pace, Trend(130) with { Ended = true }, 3), Is.SameAs(pace), "the window has ended");
         Assert.That(Pacer.CoolOff(pace, Trend(130) with { Idle = true }, 3), Is.SameAs(pace), "nothing running on the login");
+    }
+
+    [Test]
+    public void Many_subagents_under_one_cli_cool_off_too()
+    {
+        // M.ORCH-T1767: found live, 11 subagents under one CLI ran a window to 100% with the per-call hold maxed out,
+        // because this only ever looked at distinct CLI count (1) and never considered it. clis=1 here throughout.
+        var pace = Paced(16, 11);
+        var slowed = Pacer.CoolOff(pace, Trend(118), 1);
+        Assert.That(slowed.SubagentAllowance, Is.EqualTo(9), "11 running less 2 for 20 points over: the excess drains as they finish");
+        Assert.That((slowed.CoolOffPercent, slowed.CoolOffClis, slowed.TargetPercent), Is.EqualTo(((double?)118, 1, 98.0)));
+        Assert.That(slowed.Note, Does.Contain("Cooling off: 11 subagents on this login"), "named by subagent count, not a bogus CLI count of 1");
+        var single = Paced(16, 1);
+        Assert.That(Pacer.CoolOff(single, Trend(130), 1), Is.SameAs(single), "one CLI, one subagent: genuinely one stream, stays off");
     }
 
     [Test]
