@@ -52,7 +52,7 @@ public sealed class AccountDirsTests
         realFind = LoginBrowser.Find;
         // No test mints a real long-lived token (M.ORCH-T696): LoginTokensTests covers minting, with stubs.
         LoginCommand.TokensOverride = () => null;
-        LoginBrowser.Find = () => new LoginBrowser.Browser("Edge", @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", "--inprivate");
+        LoginBrowser.Find = () => new LoginBrowser.Browser("Edge", @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe");
     }
 
     [TearDown]
@@ -65,7 +65,7 @@ public sealed class AccountDirsTests
     }
 
     [Test]
-    public void An_accounts_sign_in_opens_in_a_private_window_of_its_own_browser_profile()
+    public void An_accounts_sign_in_opens_in_its_own_browser_profile_that_remembers_the_session()
     {
         var b = dirs.For("b@example.com");
         var opener = LoginBrowser.Prepare(b, out var note);
@@ -73,9 +73,16 @@ public sealed class AccountDirsTests
         Assert.That(opener, Is.EqualTo(b.LoginOpenerPath));
         var script = File.ReadAllText(opener!);
         Assert.That(script, Does.Contain("start \"\" \"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\""));
-        Assert.That(script, Does.Contain($"--user-data-dir=\"{b.BrowserProfileDirectory}\"").And.Contain("--inprivate %1"),
-            "its own profile, a private window, and the sign-in URL claude passes (already quoted)");
-        Assert.That(LoginBrowser.Script(new("Chrome", "chrome.exe", "--incognito"), b), Does.Contain("--incognito %1"));
+        Assert.That(script, Does.Contain($"--user-data-dir=\"{b.BrowserProfileDirectory}\"").And.Contain("--new-window %1"),
+            "its own profile and the sign-in URL claude passes (already quoted)");
+        // Not a private window (M.ORCH-T1834): that threw the claude.ai session away and asked for the email and a code every time.
+        Assert.That(script, Does.Not.Contain("--inprivate").And.Not.Contain("--incognito"));
+
+        Directory.CreateDirectory(b.BrowserProfileDirectory);
+        File.WriteAllText(Path.Combine(b.BrowserProfileDirectory, "Cookies"), "someone else's session");
+        Assert.That(LoginBrowser.ForgetSession(b), Is.Null);
+        Assert.That(Directory.Exists(b.BrowserProfileDirectory), Is.False, "a wrong session is cleared with the profile");
+        Assert.That(LoginBrowser.ForgetSession(b), Is.Null, "clearing a profile that's gone is fine");
 
         LoginBrowser.Find = () => null;
         Assert.That(LoginBrowser.Prepare(b, out note), Is.Null);

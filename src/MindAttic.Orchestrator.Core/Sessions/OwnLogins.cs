@@ -66,8 +66,8 @@ public static class OwnLogins
         {
             return new OwnLoginResult(dir.Email, dir.Email, dir.Directory, OwnLoginOutcome.Failed, $"Couldn't prepare {dir.Email}'s login ({ex.Message}).", []);
         }
-        // Its own login screen (M.ORCH-T610): a private window of the account's own browser profile, not the default browser
-        // already signed in to claude.ai as whoever, so the page asks for this person's email and code.
+        // Its own login screen (M.ORCH-T610): the account's own browser profile, not the default browser already signed in to
+        // claude.ai as whoever. The profile remembers this person's session, so after the first time it's one click (M.ORCH-T1834).
         var opener = LoginBrowser.Prepare(dir, out var browserNote);
         if (browserNote is not null) notes.Add(browserNote);
         var command = $"{AccountDirs.EnvVar}={dir.Directory} " + (opener is null ? "" : $"BROWSER={opener} ") + AccountSwitch.LoginCommand(dir.Email, sso);
@@ -83,9 +83,16 @@ public static class OwnLogins
         if (!dir.SignedIn) return Done(OwnLoginOutcome.Failed, $"The login finished but no Claude account is signed in to in {dir.Directory}.");
         // The folder is the chosen account's: one signed in as anybody else is signed out again, so no CLI spends their tokens.
         if (dir.SignedInEmail is { } signed && !signed.Equals(dir.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            // The account's browser profile now holds the other person's claude.ai session: clear it too, or the next sign-in
+            // would authorize them again without asking (M.ORCH-T1834).
+            var profile = LoginBrowser.ForgetSession(dir) is { } kept
+                ? $" Couldn't clear its browser profile ({kept}); close that browser window and delete {dir.BrowserProfileDirectory} before signing in again."
+                : "";
             return Done(OwnLoginOutcome.SignedInAsOther, AccountDirs.SignOut(dir) is { } why
-                ? $"Signed in as {signed}, not {dir.Email}, and couldn't sign the folder out again ({why}): CLIs started with --account {dir.Email} would spend {signed}'s tokens."
-                : $"Signed in as {signed}, not {dir.Email}: signed {dir.Email}'s login out again. Sign in once more as {dir.Email}.");
+                ? $"Signed in as {signed}, not {dir.Email}, and couldn't sign the folder out again ({why}): CLIs started with --account {dir.Email} would spend {signed}'s tokens." + profile
+                : $"Signed in as {signed}, not {dir.Email}: signed {dir.Email}'s login out again. Sign in once more as {dir.Email}." + profile);
+        }
         return Done(OwnLoginOutcome.SignedIn, $"Signed in: {dir.Email} has its own login in {dir.Directory}.") with { Token = Mint(dir, opener, minting) };
     }
 
