@@ -38,19 +38,20 @@ public sealed class TabStatusTests
         // cutoffs, when the week resets, and the CLI tabs open on this login, each of the latter three its own bullet
         // line. The Launcher's own menu pane is never one of them (M.ORCH-T1430: MainViewModel.ActiveCliTitles filters it
         // out before it reaches here).
-        var tip = MainViewModel.TabHoverTipOf("Σ: 15% | λ: 29%", " Cutoffs: 5-hour 98%, weekly 95%.", Now.AddHours(7).AddMinutes(3), Now, ["repo-foo"]);
+        var tip = MainViewModel.TabHoverTipOf("Σ: 15% | λ: 29%", " Cutoffs: 5-hour 98%, weekly 95%.", Now.AddHours(2).AddMinutes(17), Now.AddHours(7).AddMinutes(3), Now, ["repo-foo"]);
         Assert.That(tip, Is.Not.Null);
         var lines = tip!.Split('\n');
         Assert.That(lines[0], Is.EqualTo("Σ: 15% | λ: 29%"));
         Assert.That(lines[1], Is.EqualTo("• Cutoffs: 5-hour 98%, weekly 95%"));
-        Assert.That(lines[2], Does.StartWith("• Weekly reset: ").And.EndWith("(in 7hr 3m)"));
-        Assert.That(lines[3], Is.EqualTo("• Active CLIs: repo-foo"));
+        Assert.That(lines[2], Does.StartWith("• 5-hour reset: ").And.EndWith("(in 2hr 17m)"));
+        Assert.That(lines[3], Does.StartWith("• Weekly reset: ").And.EndWith("(in 7hr 3m)"));
+        Assert.That(lines[4], Is.EqualTo("• Active CLIs: repo-foo"));
 
-        Assert.That(MainViewModel.TabHoverTipOf("Σ: 15% | λ: 29%", " Cutoffs: 5-hour 98%, weekly 95%.", null, Now, []),
-            Is.EqualTo("Σ: 15% | λ: 29%\n• Cutoffs: 5-hour 98%, weekly 95%\n• Weekly reset: not known yet\n• Active CLIs: none open"));
-        Assert.That(MainViewModel.TabHoverTipOf("", " Cutoffs: 5-hour 98%, weekly 95%.", null, Now, []),
-            Is.EqualTo("• Cutoffs: 5-hour 98%, weekly 95%\n• Weekly reset: not known yet\n• Active CLIs: none open"), "no usage line (the API key tab): no lead line, same as before");
-        Assert.That(MainViewModel.TabHoverTipOf("Σ: 15% | λ: 29%", "", Now.AddHours(1), Now, []), Is.Null, "no cutoffs (signed out, the API key): the full tip instead");
+        Assert.That(MainViewModel.TabHoverTipOf("Σ: 15% | λ: 29%", " Cutoffs: 5-hour 98%, weekly 95%.", null, null, Now, []),
+            Is.EqualTo("Σ: 15% | λ: 29%\n• Cutoffs: 5-hour 98%, weekly 95%\n• 5-hour reset: not known yet\n• Weekly reset: not known yet\n• Active CLIs: none open"));
+        Assert.That(MainViewModel.TabHoverTipOf("", " Cutoffs: 5-hour 98%, weekly 95%.", null, null, Now, []),
+            Is.EqualTo("• Cutoffs: 5-hour 98%, weekly 95%\n• 5-hour reset: not known yet\n• Weekly reset: not known yet\n• Active CLIs: none open"), "no usage line (the API key tab): no lead line, same as before");
+        Assert.That(MainViewModel.TabHoverTipOf("Σ: 15% | λ: 29%", "", Now.AddHours(1), Now.AddHours(1), Now, []), Is.Null, "no cutoffs (signed out, the API key): the full tip instead");
     }
 
     [Test]
