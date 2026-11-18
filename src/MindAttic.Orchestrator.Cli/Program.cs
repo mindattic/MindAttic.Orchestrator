@@ -243,9 +243,10 @@ internal static class CliApp
             });
             config.AddBranch("milestone", m =>
             {
-                m.SetDescription("Milestones and their acceptance checks (M.ORCH-T1684): bare or list shows the active and accepting ones with tickets done and checks passed; check runs the build and exists checks; accept <ID> --by <who> runs every check and marks the milestone reached only when all pass.");
+                m.SetDescription("Milestones and their acceptance checks (M.ORCH-T1684): bare or list shows the active and accepting ones with tickets done and checks passed; forecast shows each one's projected date, token cost and at-risk mark; check runs the build and exists checks; accept <ID> --by <who> runs every check and marks the milestone reached only when all pass.");
                 m.SetDefaultCommand<MilestoneListCommand>();
-                m.AddCommand<MilestoneListCommand>("list").WithDescription("The active and accepting milestones: tickets done of total and checks passed of total; --json as data.");
+                m.AddCommand<MilestoneListCommand>("list").WithDescription("The active and accepting milestones: tickets done of total, checks passed of total and the date last projected; --json as data.");
+                m.AddCommand<MilestoneForecastCommand>("forecast").WithDescription("Each active and accepting milestone's forecast (forecast [[<ID>]], M.ORCH-T1688): tickets and tokens left, the projected date from tickets closed per day, and whether it is at risk (the date slipped past its first forecast, or it grows faster than it closes); --json as data.");
                 m.AddCommand<MilestoneCheckCommand>("check").WithDescription("Run the build and exists checks of a milestone (check [[<ID>]], every active and accepting one when none) and record each result with its evidence; exit code 1 when one ran and failed.");
                 m.AddCommand<MilestoneAcceptCommand>("accept").WithDescription("The owner asking for every check: accept <ID> --by <who> moves an active milestone into acceptance, runs its build and exists checks, records its sign-off checks as passed, and marks it reached only when every check has passed. It never forces.");
             });

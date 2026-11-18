@@ -52,6 +52,9 @@ internal static class MilestoneCli
         };
     }
 
+    /// <summary>A projected date as the owner reads it: the local day.</summary>
+    public static string Day(DateTime utc) => utc.ToLocalTime().ToString("ddd yyyy-MM-dd", System.Globalization.CultureInfo.CurrentCulture);
+
     public static object Json(MilestoneAcceptance.Checked c) => new
     {
         number = c.Check.Number, kind = c.Check.Kind, description = c.Check.Description, repos = c.Check.Repos, target = c.Check.Target,
@@ -72,7 +75,7 @@ internal static class MilestoneCli
 }
 
 /// <summary><c>orchestrator milestone [list] [--json]</c> (M.ORCH-T1684): the active and accepting milestones, each with its
-/// tickets done of total and its acceptance checks passed of total.</summary>
+/// tickets done of total, its acceptance checks passed of total, and the date the daemon last projected for it (M.ORCH-T1688).</summary>
 internal sealed class MilestoneListCommand : Command<MilestoneListCommand.Settings>
 {
     public sealed class Settings : CommandSettings
@@ -92,11 +95,12 @@ internal sealed class MilestoneListCommand : Command<MilestoneListCommand.Settin
             return 0;
         }
         var graph = db.Graph();
+        var forecasts = new MilestoneForecasts(Ctx.Store()).Records();
         var rows = open.Select(m =>
         {
             var (done, total) = TicketsDb.MilestoneProgress(db.MilestoneMembers(m.Id, graph));
             var checks = db.MilestoneChecks(m.Id);
-            return (Milestone: m, Done: done, Total: total, Passed: checks.Count(c => c.Passed), Checks: checks.Count);
+            return (Milestone: m, Done: done, Total: total, Passed: checks.Count(c => c.Passed), Checks: checks.Count, Forecast: forecasts.GetValueOrDefault(m.Id));
         }).ToList();
         if (settings.Json)
         {
@@ -104,13 +108,16 @@ internal sealed class MilestoneListCommand : Command<MilestoneListCommand.Settin
             {
                 id = r.Milestone.Id, name = r.Milestone.Name, state = r.Milestone.State, repos = r.Milestone.Repos,
                 ticketsDone = r.Done, tickets = r.Total, checksPassed = r.Passed, checks = r.Checks,
+                projected = r.Forecast?.LatestProjectedUtc, atRisk = r.Forecast?.AtRisk,
             }), BranchesCommand.Indented));
             return 0;
         }
-        var table = new Table().Border(TableBorder.Rounded).AddColumns("Milestone", "Name", "State", "Tickets", "Checks", "Repos");
+        var table = new Table().Border(TableBorder.Rounded).AddColumns("Milestone", "Name", "State", "Tickets", "Checks", "Projected", "Repos");
         foreach (var r in rows)
             table.AddRow(Markup.Escape(r.Milestone.Id), Markup.Escape(r.Milestone.Name), Markup.Escape(r.Milestone.State),
-                $"{r.Done}/{r.Total} done", $"{r.Passed}/{r.Checks} passed", Markup.Escape(string.Join(", ", r.Milestone.Repos)));
+                $"{r.Done}/{r.Total} done", $"{r.Passed}/{r.Checks} passed",
+                (r.Forecast?.LatestProjectedUtc is { } at ? MilestoneCli.Day(at) : "[grey]unknown[/]") + (r.Forecast?.AtRisk == true ? " [red](at risk)[/]" : ""),
+                Markup.Escape(string.Join(", ", r.Milestone.Repos)));
         AnsiConsole.Write(table);
         return 0;
     });
@@ -218,4 +225,73 @@ internal sealed class MilestoneAcceptCommand : Command<MilestoneAcceptCommand.Se
             return 1;
         });
     }
+}
+
+/// <summary><c>orchestrator milestone forecast [&lt;ID&gt;] [--json]</c> (M.ORCH-T1688): the forecast of one milestone, or of
+/// every active and accepting one, worked out now: tickets and tokens left, the projected date and what it rests on, and
+/// whether it is at risk and why. It reads the first forecast the daemon recorded and writes nothing.</summary>
+internal sealed class MilestoneForecastCommand : Command<MilestoneForecastCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "[ID]")]
+        [Description("The milestone (MS-n or its name); every active and accepting milestone when left out.")]
+        public string? Id { get; init; }
+
+        [CommandOption("--json")]
+        [Description("Print the forecasts as JSON.")]
+        public bool Json { get; init; }
+    }
+
+    /// <summary>The token cost in words: the sum, how much of it is the measured average, and what couldn't be valued.</summary>
+    internal static string Cost(MilestoneForecast.Result f) =>
+        f.Complete ? "none"
+        : f.Unvalued == f.RemainingTickets ? "unknown (no estimates and no measured cost per ticket)"
+        : $"~{Formatting.Tokens(f.RemainingTokens)} tokens"
+            + (f.FromAverage > 0 ? $" ({f.FromAverage} of {f.RemainingTickets} at the measured average)" : "")
+            + (f.Unvalued > 0 ? $", not counting {f.Unvalued} with no estimate" : "");
+
+    public override int Execute(CommandContext context, Settings settings) => MilestoneCli.WithTickets(db =>
+    {
+        Milestone? only = null;
+        if (settings.Id is { } id)
+        {
+            only = db.Milestone(id) ?? throw new KeyNotFoundException($"There is no milestone {id}.");
+            if (only.State is not (MilestoneStates.Active or MilestoneStates.Accepting))
+                throw new InvalidOperationException($"{only.Id} is {only.State}; only an active or accepting milestone has a forecast.");
+        }
+        var rows = new MilestoneForecasts(Ctx.Store()).Read(db, DateTime.UtcNow, only);
+        if (settings.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(rows.Select(r => new
+            {
+                id = r.Milestone.Id, name = r.Milestone.Name, state = r.Milestone.State,
+                remainingTickets = r.Forecast.RemainingTickets, remainingTokens = r.Forecast.RemainingTokens,
+                estimatedAtAverage = r.Forecast.FromAverage, notValued = r.Forecast.Unvalued,
+                ticketsPerDay = r.Forecast.TicketsPerDay, basis = r.Forecast.Basis, projected = r.Forecast.ProjectedUtc,
+                firstProjected = r.Record?.FirstProjectedUtc, firstProjectedAt = r.Record?.FirstAtUtc,
+                atRisk = r.Forecast.AtRisk, reasons = r.Forecast.Reasons,
+            }), BranchesCommand.Indented));
+            return 0;
+        }
+        if (rows.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[grey]No milestone is active or in acceptance, so there is nothing to forecast.[/]");
+            return 0;
+        }
+        var table = new Table().Border(TableBorder.Rounded).AddColumns("Milestone", "Name", "Left", "Token cost", "Projected", "First forecast", "At risk");
+        foreach (var r in rows)
+        {
+            var f = r.Forecast;
+            table.AddRow(Markup.Escape(r.Milestone.Id), Markup.Escape(r.Milestone.Name),
+                $"{f.RemainingTickets} ticket{(f.RemainingTickets == 1 ? "" : "s")}", Markup.Escape(Cost(f)),
+                f.Complete ? "[grey]tickets done[/]" : f.ProjectedUtc is { } at ? MilestoneCli.Day(at) : "[yellow]unknown[/]",
+                r.Record?.FirstProjectedUtc is { } first ? MilestoneCli.Day(first) : "[grey]not recorded yet[/]",
+                f.AtRisk ? $"[red]yes[/]: {Markup.Escape(f.Reason)}" : "no");
+        }
+        AnsiConsole.Write(table);
+        foreach (var r in rows)
+            AnsiConsole.MarkupLine($"[grey]{Markup.Escape(r.Milestone.Id)}: {Markup.Escape(r.Forecast.Basis)}[/]");
+        return 0;
+    });
 }
