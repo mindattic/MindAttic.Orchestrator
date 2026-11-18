@@ -101,6 +101,13 @@ public sealed class OwnerInboxTests
         Assert.That(recent.Plan.Stale, Has.Count.EqualTo(1));
         Assert.That(OwnerInbox.Build(recent), Is.Empty);
 
+        // The grace runs from when it went stale (2h quiet), not from its last activity: just stale is never the owner's at once.
+        var justStale = Inputs(snap, [claim(2.1)]);
+        Assert.That(justStale.Plan.Stale, Has.Count.EqualTo(1));
+        Assert.That(OwnerInbox.Build(justStale), Is.Empty);
+        Assert.That(OwnerInbox.Build(Inputs(snap, [claim(3.9)])), Is.Empty);
+        Assert.That(OwnerInbox.Build(Inputs(snap, [claim(4)])).Select(i => i.Key), Is.EqualTo(new[] { "stale|A-T1" }));
+
         var old = OwnerInbox.Build(Inputs(snap, [claim(5)]));
         Assert.That(old.Select(i => i.Key), Is.EqualTo(new[] { "stale|A-T1" }));
         Assert.That(old[0].Action, Is.EqualTo("orchestrator release A-T1"));

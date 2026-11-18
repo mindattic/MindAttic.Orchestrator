@@ -169,13 +169,15 @@ public static class OwnerInbox
     }
 
     /// <summary>Stale claims (<see cref="SchedulePlan.Stale"/>) still not picked up <see cref="PickupGrace"/> after they went
-    /// stale: a stale ticket is back in the queue, so one an /allocate CLI takes again within that time never shows here.</summary>
+    /// stale: a stale ticket is back in the queue, so one an /allocate CLI takes again within that time never shows here.
+    /// <see cref="QueueItem.StaleSinceUtc"/> is the last activity, a stale period before the claim went stale, so the wait
+    /// from it is the stale period and then the grace; the grace alone would list every stale claim at once (M.ORCH-T1805).</summary>
     internal static IEnumerable<OwnerInboxItem> StaleClaims(OwnerInboxInputs i)
     {
         var after = PickupGrace(i.Settings);
         foreach (var q in i.Plan.Stale.OrderBy(q => q.StaleSinceUtc))
         {
-            if (q.StaleSinceUtc is not { } quietSince || i.NowUtc - quietSince < after) continue;
+            if (q.StaleSinceUtc is not { } quietSince || i.NowUtc - quietSince < after + after) continue;
             yield return new OwnerInboxItem(Stale, q.Id, $"{TitleOf(q)}: its session went quiet and nobody has picked it up again", q.Repo, quietSince,
                 $"orchestrator release {q.Id}") { TicketId = q.Id };
         }
