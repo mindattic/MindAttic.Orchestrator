@@ -234,6 +234,7 @@ public sealed class LampSettingsTests
         Case("theme", s => s with { Theme = "Light" }, "Light", v => v.Theme = "Dark", "Dark", s => s.Theme),
         Case("font", s => s with { Font = "Outfit" }, "Outfit", v => v.Font = "Segoe UI", "Segoe UI", s => s.Font),
         Case("symbolTabLabels", s => s with { SymbolTabLabels = false }, false, v => v.SymbolTabLabels = true, true, s => s.SymbolTabLabels),
+        Case("treeMenuLayout", s => s with { TreeMenuLayout = false }, false, v => v.TreeMenuLayout = true, true, s => s.TreeMenuLayout),
         Case("tabBlinkTokens", s => s with { TabBlinkTokens = 5000 }, 5000, v => v.TabBlinkTokens = 250, 250, s => s.TabBlinkTokens),
         Case("excludeLauncherFromTeamWall", s => s with { ExcludeLauncherFromTeamWall = true }, true, v => v.ExcludeLauncherFromTeamWall = false, false,
             s => s.ExcludeLauncherFromTeamWall),

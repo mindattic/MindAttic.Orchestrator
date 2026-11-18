@@ -377,6 +377,12 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The dashboard's tab trailing text: true (default), symbols, \"Σ: 15% | λ: 29%\"; false, words, \"wk: 15% | 5h: 29%\". Same figures either way.")]
         public bool? SymbolTabLabels { get; init; }
 
+        [CommandOption("--tree-menu-layout <ON>")]
+        [Description("The dashboard's login sidebar: true (default), a collapsible tree (each login expands to its own Usage " +
+            "entry and open CLI/Launcher panes, body spans the whole right side); false, the old flat person-tab strip plus a " +
+            "fixed CLI tab bar.")]
+        public bool? TreeMenuLayout { get; init; }
+
         [CommandOption("--exclude-launcher-team-wall <ON>")]
         [Description("The Team Wall: false (default), the Launcher's own menu pane shows as a tile like any other CLI; true, it's left out.")]
         public bool? ExcludeLauncherFromTeamWall { get; init; }
@@ -739,6 +745,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { SymbolTabLabels = symbolTabLabels };
             changed = true;
         }
+        if (settings.TreeMenuLayout is { } treeMenuLayout)
+        {
+            s = s with { TreeMenuLayout = treeMenuLayout };
+            changed = true;
+        }
         if (settings.ExcludeLauncherFromTeamWall is { } excludeLauncherFromTeamWall)
         {
             s = s with { ExcludeLauncherFromTeamWall = excludeLauncherFromTeamWall };
@@ -877,6 +888,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             " · CLIs open in Windows Terminal, a window per person" +
             $" · a busy person tab's play arrow blinks once per {s.TabBlinkTokens:N0} tokens" +
             $" · tab trailing text: {(s.SymbolTabLabels ? "symbols (Σ/λ)" : "words (wk/5h)")}" +
+            $" · login sidebar: {(s.TreeMenuLayout ? "tree menu" : "flat tabs")}" +
             $" · Team Wall: {(s.ExcludeLauncherFromTeamWall ? "excludes" : "includes")} the Launcher's menu pane");
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%" +
             $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · no weekly-aware pacing, ever");

@@ -99,6 +99,7 @@ public sealed partial class MainViewModel
                 weeklyStopPercent = settings.WeeklyStopPercent; paceTargetPercent = settings.PaceTargetPercent;
                 tabBlinkTokens = settings.TabBlinkTokens;
                 symbolTabLabels = settings.SymbolTabLabels;
+                treeMenuLayout = settings.TreeMenuLayout;
                 autoOpenLaunchers = settings.AutoOpenLaunchers;
                 AllTerminals.ConfirmCloseEnabled = settings.ConfirmCliClose;
                 AllTerminals.EndedLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedTabMinutes));

@@ -305,6 +305,12 @@ public sealed record OrchestratorSettings
     /// words, "wk: 15% | 5h: 29%" -- same figures and the same omit-the-5-hour-part-while-it's-unknown rule either way.</summary>
     public bool SymbolTabLabels { get; init; } = true;
 
+    /// <summary>The dashboard's login sidebar (M.ORCH-T1759): on (the default), a collapsible tree -- each login a node with
+    /// a chevron that expands to its own Usage entry and open CLI/Launcher panes, right there in the sidebar, and the body
+    /// (terminal, stats, 5-hour chart, tickets) takes the whole right side of the window. Off: the old flat person-tab strip
+    /// plus a fixed, always-shown CLI tab bar under the selected person.</summary>
+    public bool TreeMenuLayout { get; init; } = true;
+
     /// <summary>Whether the Team Wall (M.ORCH-T936) leaves out the Launcher's own menu pane (M.ORCH-T1256): off by default
     /// (included, as it always was before this setting existed), since the Launcher is itself a live CLI someone may want to
     /// watch like any other.</summary>

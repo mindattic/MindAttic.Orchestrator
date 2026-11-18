@@ -196,6 +196,24 @@ public sealed partial class MainViewModel
     /// <see cref="TabUsagePairsOf"/> when true (the default), words ("wk"/"5h") when false.</summary>
     private bool symbolTabLabels = true;
 
+    /// <summary>The TreeMenuLayout setting (M.ORCH-T1759), read with the settings each refresh: on (the default), the login
+    /// sidebar is a collapsible tree; off, the old flat person-tab strip plus a fixed CLI tab bar.</summary>
+    private bool treeMenuLayout = true;
+
+    /// <summary>Whether the login sidebar is the collapsible tree (<see cref="TreeMenuLayout"/> setting).</summary>
+    public bool TreeMenuLayout => Root.treeMenuLayout;
+
+    /// <summary>Whether the tree sidebar shows at all: there's something to show (<see cref="HasLoginTabs"/>) and the
+    /// setting is on. Mutually exclusive with <see cref="ShowsFlatLoginStrip"/>, never both.</summary>
+    public bool ShowsLoginTree => HasLoginTabs && TreeMenuLayout;
+
+    /// <summary>Whether the old flat person-tab strip shows: the setting is off.</summary>
+    public bool ShowsFlatLoginStrip => HasLoginTabs && !TreeMenuLayout;
+
+    /// <summary>Whether the old fixed CLI tab bar (<c>TerminalsPanel</c>) shows under the selected person: the setting is
+    /// off. In tree mode this person's panes are tree children instead, so the bar is never shown.</summary>
+    public bool ShowsFlatTerminalsPanel => IsTabSignedIn && !TreeMenuLayout;
+
     private TabBlinker? blinker;
     private TabBlinker Blinker => blinker ??= new TabBlinker(tab.Key.Length == 0 ? "~global" : tab.Key);
 
@@ -515,7 +533,8 @@ public sealed partial class MainViewModel
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
                                      nameof(ApiBurnText), nameof(ShowsClaudeMeters), nameof(ApiCreditPlaceholder),
-                                     nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip) })
+                                     nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip),
+                                     nameof(TreeMenuLayout), nameof(ShowsLoginTree), nameof(ShowsFlatLoginStrip), nameof(ShowsFlatTerminalsPanel) })
             Raise(name);
     }
 

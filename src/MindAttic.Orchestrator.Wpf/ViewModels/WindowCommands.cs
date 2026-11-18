@@ -28,6 +28,31 @@ public static class Converters
     /// at half the sidebar so the ticket cards under it keep the rest (M.ORCH-T1439).</summary>
     public static readonly IValueConverter Share = new ShareConverter();
 
+    /// <summary>AgentsBody's Grid.Row (M.ORCH-T1759): tree layout (true) starts it at row 1, under the menu bar, so it spans
+    /// the whole right side; flat layout (false) keeps it at row 3, under the login strip and the CLI tab bar.</summary>
+    public static readonly IValueConverter BodyRow = new BoolToIntConverter(whenTrue: 1, whenFalse: 3);
+
+    /// <summary>AgentsBody's Grid.RowSpan, the inverse of <see cref="BodyRow"/>: tree layout spans rows 1-3 (3); flat layout
+    /// spans only its own row 3 (1), unchanged from today.</summary>
+    public static readonly IValueConverter BodyRowSpan = new BoolToIntConverter(whenTrue: 3, whenFalse: 1);
+
+    private sealed class BoolToIntConverter(int whenTrue, int whenFalse) : IValueConverter
+    {
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value is true ? whenTrue : whenFalse;
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+    }
+
+    /// <summary>A tree node's expand/collapse chevron glyph (M.ORCH-T1759): "▾" expanded, "▸" collapsed.</summary>
+    public static readonly IValueConverter Chevron = new ChevronConverter();
+
+    private sealed class ChevronConverter : IValueConverter
+    {
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value is true ? "▾" : "▸";
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+    }
+
     private sealed class ShareConverter : IValueConverter
     {
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>

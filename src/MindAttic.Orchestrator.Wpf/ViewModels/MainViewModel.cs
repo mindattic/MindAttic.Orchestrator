@@ -128,7 +128,7 @@ public sealed partial class MainViewModel : ObservableObject
         aggregator = root?.aggregator ?? new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter { Db = store.Db }, lease);
         control = root?.control ?? new SessionControl(aggregator.Options);
         Zoom = root?.Zoom ?? new();
-        if (root is null) { loginTabs = [this]; orgTabs.Add(this); }
+        if (root is null) { loginTabs = [this]; orgTabs.Add(this); isExpanded = true; }
         Toasts.CollectionChanged += OnToastsChanged;
         Waiting = new("Needs you", "Sessions that stopped and are waiting for input, longest wait first", Palette.Waiting);
         Working = new("Working", "Agents mid-turn right now", Palette.Working);

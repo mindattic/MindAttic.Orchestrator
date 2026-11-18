@@ -353,7 +353,7 @@
         <ScrollViewer x:Name="LoginTabScroller" Grid.Row="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                       MaxHeight="{Binding ActualHeight, ElementName=TopRow, Converter={x:Static vm:Converters.Share}, ConverterParameter=0.5}"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                      Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
+                      Visibility="{Binding ShowsFlatLoginStrip, Converter={StaticResource Visible}}">
         <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" TabStripPlacement="Left" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding StripSelection}"
                          AutomationProperties.Name="Claude logins, one dashboard tab each"
                          ContextMenuOpening="OnLoginTabContextMenu">
@@ -443,6 +443,123 @@
             </mc:MaTabControl.ItemTemplate>
         </mc:MaTabControl>
         </ScrollViewer>
+        <!-- The collapsible tree sidebar (M.ORCH-T1759, TreeMenuLayout, default on, in place of LoginTabScroller above): each
+             login a node with a chevron that expands to its own pinned Usage entry and open CLI/Launcher panes, so the CLI
+             tab bar (TerminalsPanel) stays hidden and AgentsBody spans the whole right side (its Grid.Row/RowSpan, bound to
+             TreeMenuLayout via Converters.BodyRow/BodyRowSpan, further down). Only the selected login starts expanded
+             (MainViewModel.IsExpanded, forced true by Select); the chevron alone toggles it, never selection, so another
+             login's panes can be peeked at without leaving the one shown. v1 scope (not asked for, and the flat strip above
+             keeps them): no drag-reorder, no rename-in-place, no per-pane close button here; switch the setting off for
+             those. -->
+        <ScrollViewer x:Name="LoginTreeScroller" Grid.Row="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
+                      MaxHeight="{Binding ActualHeight, ElementName=TopRow, Converter={x:Static vm:Converters.Share}, ConverterParameter=0.5}"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding ShowsLoginTree, Converter={StaticResource Visible}}">
+        <ItemsControl x:Name="LoginTree" Style="{StaticResource MaList}" ItemsSource="{Binding OrgTabs}"
+                      AutomationProperties.Name="Claude logins, each expanding to its Usage entry and open CLI panes">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:MainViewModel}">
+                    <StackPanel x:Name="LoginTreeNode" Margin="0,0,0,2">
+                        <Grid x:Name="LoginTreeHeader" Cursor="Hand" Background="Transparent" MouseLeftButtonDown="LoginTreeHeader_MouseLeftButtonDown"
+                              ToolTipService.InitialShowDelay="0" mc:MaCallout.ToolTip="{Binding TabHoverTip}" AutomationProperties.Name="{Binding TabTip}">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsTabSelected}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource MaChromeBorder}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Rectangle Grid.Column="0" Width="3" Fill="{Binding TabBrush}" Margin="0,2,6,2" />
+                            <!-- The expand/collapse chevron alone (M.ORCH-T1759): its own click is marked handled so it never
+                                 also selects this login via the header's handler above it in the visual tree. -->
+                            <TextBlock Grid.Column="1" Text="{Binding IsExpanded, Converter={x:Static vm:Converters.Chevron}}" Width="14"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"
+                                       MouseLeftButtonDown="LoginTreeChevron_MouseLeftButtonDown" />
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="{StaticResource SpaceLS}">
+                                <!-- The same status-at-a-glance badges as the flat strip's own header (M.ORCH-T630/757/1173/1261/1270),
+                                     copied rather than shared: that template is inline in LoginTabStrip's ItemTemplate above, not a
+                                     keyed resource, and must stay exactly as it is for the flat layout. -->
+                                <Grid x:Name="TreeTabStatusIcon" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
+                                    <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
+                                                Foreground="{DynamicResource MaOnAccent}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
+                                                Visibility="{Binding ShowsIdleBadge, Converter={StaticResource Visible}}" />
+                                    <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Background="{DynamicResource MaGood}"
+                                                Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                AutomationProperties.Name="{Binding TabActivityWord}"
+                                                Visibility="{Binding ShowsBusyBadge, Converter={StaticResource Visible}}">
+                                        <Grid>
+                                            <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
+                                            <TextBlock Text="{Binding TabThinkingCountText}" FontSize="7" FontWeight="Bold" Foreground="{DynamicResource MaOnAccent}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabThinkingWord}"
+                                                       Visibility="{Binding ShowsTabThinkingCount, Converter={StaticResource Visible}}" />
+                                        </Grid>
+                                    </mc:MaBadge>
+                                    <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="?" Background="{DynamicResource MaWarn}"
+                                                Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                mc:MaCallout.ToolTip="{Binding TabNeedsYouTip}" AutomationProperties.Name="Blocked waiting on you"
+                                                Visibility="{Binding TabNeedsYou, Converter={StaticResource Visible}}" />
+                                    <TextBlock Text="{Binding TabDisabledGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
+                                               Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
+                                               Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
+                                </Grid>
+                                <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <ContentControl Grid.Column="2" HorizontalAlignment="Right" Content="{Binding}" ContentTemplate="{StaticResource LoginUsageBarsTemplate}" />
+                        </Grid>
+                        <ItemsControl x:Name="LoginTreeChildren" Style="{StaticResource MaList}" ItemsSource="{Binding Terminals.StripItems}"
+                                      Margin="23,2,0,2" Visibility="{Binding IsExpanded, Converter={StaticResource Visible}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid x:Name="LoginTreeChildRow" Margin="0,2,0,2" Cursor="Hand" Background="Transparent"
+                                          MouseLeftButtonDown="LoginTreeChild_MouseLeftButtonDown">
+                                        <!-- The pinned Usage row (M.ORCH-T1446): its figures live on the owning login's own
+                                             MainViewModel, not the UsageTabMarker item itself, hence AncestorType=ItemsControl to
+                                             reach back to the (inherited) DataContext of this child list's own control. -->
+                                        <StackPanel x:Name="TreeUsageRow" Orientation="Horizontal" Visibility="Collapsed">
+                                            <TextBlock Text="Usage" VerticalAlignment="Center" />
+                                            <ContentControl Margin="{StaticResource SpaceLS}"
+                                                            Content="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            ContentTemplate="{StaticResource LoginUsageBarsTemplate}" />
+                                        </StackPanel>
+                                        <!-- A real CLI/Launcher pane: the same per-pane badges as the flat CLI tab bar's own header. -->
+                                        <StackPanel x:Name="TreePaneRow" Orientation="Horizontal" mc:MaCallout.ToolTip="{Binding TabHoverTip}" AutomationProperties.Name="{Binding Title}">
+                                            <Grid Width="18" Height="18" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
+                                                <mc:MaBadge Style="{StaticResource MaTag}" Width="16" Height="16" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
+                                                            Foreground="{DynamicResource MaOnAccent}" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                            Visibility="{Binding ShowsPaneIdleBadge, Converter={StaticResource Visible}}" />
+                                                <mc:MaBadge Style="{StaticResource MaTag}" Width="16" Height="16" Padding="0" BorderThickness="0" Background="{DynamicResource MaGood}"
+                                                            Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                            Visibility="{Binding ShowsPaneBusyBadge, Converter={StaticResource Visible}}">
+                                                    <mc:MaSpinner Kind="Ring" Width="12" Height="12" StrokeThickness="1.2" Stroke="{DynamicResource MaOnAccent}" />
+                                                </mc:MaBadge>
+                                                <mc:MaBadge Style="{StaticResource MaTag}" Width="16" Height="16" Padding="0" BorderThickness="0" Content="?" Background="{DynamicResource MaWarn}"
+                                                            Foreground="{DynamicResource MaOnAccent}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                            Visibility="{Binding ShowsPaneAskingBadge, Converter={StaticResource Visible}}" />
+                                            </Grid>
+                                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding}" Value="{x:Static vm:PersonTerminalsViewModel.UsageTab}">
+                                            <Setter TargetName="TreeUsageRow" Property="Visibility" Value="Visible" />
+                                            <Setter TargetName="TreePaneRow" Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        </ScrollViewer>
         <!-- The shown person's tickets as cards (M.ORCH-T1439): Active first, then Pending, each with its count; the same rows as
              the body's Queue tabs (ActiveTab / PendingTab). On the global login's tab, that login's own (the unassigned queue
              stays in the body). It takes the height the logins leave and scrolls on its own (the window tools' own row moved
@@ -506,7 +623,7 @@
              and removes them, since a template would start a new CLI each time it was shown) and only the shown person's chosen
              one is visible; TerminalClip.cs keeps it clipped to AgentsBody's viewport as it scrolls, and the window hides them
              under a dialog or the loader. -->
-        <StackPanel x:Name="TerminalsPanel" Grid.Row="2" Grid.Column="1" Margin="{StaticResource SpaceLXLTSRXL}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+        <StackPanel x:Name="TerminalsPanel" Grid.Row="2" Grid.Column="1" Margin="{StaticResource SpaceLXLTSRXL}" Visibility="{Binding ShowsFlatTerminalsPanel, Converter={StaticResource Visible}}">
             <TextBlock x:Name="TerminalsEmptyHint" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceBS}"
                        Text="No terminals open on this login. When the Launcher runs inside the Orchestrator, each CLI it opens arrives here as a tab of its own: a live terminal you can type in."
                        Visibility="{Binding Terminals.HasPanes, Converter={x:Static vm:Converters.FalseToVisible}}" />
@@ -710,7 +827,10 @@
              (the Current work agent card board is gone, M.ORCH-T837), all reached by one scroll. One virtualized list
              (M.ORCH-T754, MainWindow.xaml.cs): only what's on screen is built; the terminal's own Grid is a plain, non-list part
              of it (as it was before M.ORCH-T861 pinned it, with the same TerminalClip.cs clipping it to this scroll view). -->
-        <ScrollViewer x:Name="AgentsBody" Grid.Row="3" Grid.Column="1" Style="{StaticResource MaBodyScroll}"
+        <ScrollViewer x:Name="AgentsBody" Grid.Column="1"
+                      Grid.Row="{Binding TreeMenuLayout, Converter={x:Static vm:Converters.BodyRow}}"
+                      Grid.RowSpan="{Binding TreeMenuLayout, Converter={x:Static vm:Converters.BodyRowSpan}}"
+                      Style="{StaticResource MaBodyScroll}"
                       Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <StackPanel>
                 <!-- The chosen terminal (M.ORCH-T810), first in the scrolling body (M.ORCH-T1302: pulled back in from its own

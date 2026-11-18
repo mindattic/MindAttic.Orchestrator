@@ -143,6 +143,10 @@ public sealed partial class MainViewModel
     /// once there's a second org (M.ORCH-T655), so an org's lone person is still named under the org switcher.</summary>
     public bool HasLoginTabs => OrgTabs.Count > 1 || (HasOrgs && OrgTabs.Count > 0);
 
+    /// <summary>Whether this is the tab on screen (M.ORCH-T1759): the tree sidebar's own selected-row highlight, since it has
+    /// no single control like <c>MaTabControl.SelectedItem</c> to carry that state for it.</summary>
+    public bool IsTabSelected => ReferenceEquals(this, SelectedTab);
+
     /// <summary>The tab on screen; the same in every tab. The window shows it (its DataContext follows this).</summary>
     public MainViewModel SelectedTab
     {
@@ -166,6 +170,31 @@ public sealed partial class MainViewModel
 
     private bool stripCleared;
 
+    /// <summary>Whether this login's tree node (<see cref="MainViewModel.TabStatus.ShowsLoginTree"/>) is expanded, showing its
+    /// Usage entry and open panes as children (M.ORCH-T1759). Only the selected login starts expanded (<see cref="Select"/>
+    /// forces it true); the chevron toggles this alone, never selection, so another login's panes can be peeked at without
+    /// leaving the one shown.</summary>
+    private bool isExpanded;
+    public bool IsExpanded
+    {
+        get => isExpanded;
+        set { if (isExpanded == value) return; isExpanded = value; Raise(nameof(IsExpanded)); }
+    }
+
+    private ICommand? selectLoginCommand, selectTreeChildCommand;
+
+    /// <summary>A tree header row's click (M.ORCH-T1759): selects this login (which also expands it, via <see cref="Select"/>).
+    /// Re-clicking an already-selected, already-expanded header is a no-op, matching the flat strip's click behaviour.</summary>
+    public ICommand SelectLoginCommand => selectLoginCommand ??= new RelayCommand(() => StripSelection = this);
+
+    /// <summary>A tree child row's click (M.ORCH-T1759): selects this login, then shows the clicked pane or the pinned Usage
+    /// marker, exactly as choosing it from the flat CLI tab bar would.</summary>
+    public ICommand SelectTreeChildCommand => selectTreeChildCommand ??= new RelayCommand(p =>
+    {
+        StripSelection = this;
+        Terminals.SelectedStripItem = p;
+    });
+
     /// <summary>The tab on screen, which the shared queue's rows act through (M.ORCH-T654).</summary>
     internal MainViewModel Shown => Root.SelectedTab;
 
@@ -187,7 +216,8 @@ public sealed partial class MainViewModel
         // in the log to say where the time goes. Logged only past SlowSelectThreshold so an ordinary switch stays silent.
         var clock = System.Diagnostics.Stopwatch.StartNew();
         selectedTab = next;
-        foreach (var t in loginTabs) { t.Raise(nameof(SelectedTab)); t.Raise(nameof(StripSelection)); }
+        next.IsExpanded = true;
+        foreach (var t in loginTabs) { t.Raise(nameof(SelectedTab)); t.Raise(nameof(StripSelection)); t.Raise(nameof(IsTabSelected)); }
         SelectedTabChanged?.Invoke(this, EventArgs.Empty);
         // The person shown is the one whose chosen terminal shows (M.ORCH-T810).
         ShowChosenPane();

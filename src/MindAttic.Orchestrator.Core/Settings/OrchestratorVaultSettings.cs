@@ -703,6 +703,14 @@ public sealed class OrchestratorVaultSettings
         Help = "On: \"Σ: 15% | λ: 29%\". Off: \"wk: 15% | 5h: 29%\". Same figures either way.")]
     public bool SymbolTabLabels { get; set; } = true;
 
+    /// <summary>On (the default): the login sidebar is a collapsible tree, each login expanding to its Usage entry and open
+    /// CLI/Launcher panes. Off: the old flat person-tab strip plus a fixed CLI tab bar under the selected person.</summary>
+    [Setting("Tree menu layout", Group = "Dashboard", Order = 29,
+        Help = "On (default): the login sidebar is a collapsible tree -- each login a node that expands to its own Usage " +
+            "entry and open CLI/Launcher panes, and the body takes the whole right side of the window. Off: the old flat " +
+            "person-tab strip plus a fixed CLI tab bar under the selected person.")]
+    public bool TreeMenuLayout { get; set; } = true;
+
     /// <summary>A busy login's green play arrow blinks once for every this many tokens it spends, so the busiest blink fastest.</summary>
     [Setting("Blink once per (tokens)", Group = "Dashboard", Order = 3,
         Help = "A busy login's green play arrow blinks once for every this many tokens it spends, so the busiest blink fastest.")]
@@ -1084,6 +1092,7 @@ public sealed class OrchestratorVaultSettings
         Theme = s.Theme,
         Font = s.Font,
         SymbolTabLabels = s.SymbolTabLabels,
+        TreeMenuLayout = s.TreeMenuLayout,
         TabBlinkTokens = s.TabBlinkTokens,
         ExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = s.AutoOpenLaunchers,
@@ -1256,6 +1265,7 @@ public sealed class OrchestratorVaultSettings
         Theme = string.IsNullOrWhiteSpace(Theme) ? null : Theme,
         Font = string.IsNullOrWhiteSpace(Font) ? OrchestratorSettings.DefaultFont : Font,
         SymbolTabLabels = SymbolTabLabels,
+        TreeMenuLayout = TreeMenuLayout,
         TabBlinkTokens = TabBlinkTokens,
         ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = AutoOpenLaunchers,
