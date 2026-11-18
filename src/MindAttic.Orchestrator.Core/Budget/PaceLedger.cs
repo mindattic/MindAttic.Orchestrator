@@ -166,7 +166,7 @@ public static class PaceLedger
         foreach (var end in ends)
         {
             var account = AccountOf(end);
-            if (taken.Any(t => Near(end, t.End) || Overlaps(end, t.End) && (account is null || t.Account is null || account == t.Account))) continue;
+            if (taken.Any(t => (Near(end, t.End) || Overlaps(end, t.End)) && (account is null || t.Account is null || account == t.Account))) continue;
             due.Add(end);
             taken.Add((end, account));
         }
