@@ -327,7 +327,7 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         if (parts.RemoveAll(p => p.TrimEnd('\\').Equals(ShimDirectory, StringComparison.OrdinalIgnoreCase)) > 0)
             Environment.SetEnvironmentVariable("Path", string.Join(';', parts), EnvironmentVariableTarget.User);
         try { if (Directory.Exists(ShimDirectory)) Directory.Delete(ShimDirectory, recursive: true); }
-        catch (IOException ex) { OrchestratorLog.For("MachineSetup").Warning(ex, "Removing the tickets shim directory failed; contained"); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { OrchestratorLog.For("MachineSetup").Warning(ex, "Removing the tickets shim directory failed; contained"); }
         say("tickets runs on this machine again.");
     }
 
@@ -472,7 +472,11 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         if (!File.Exists(source)) return;
         try
         {
-            if (File.Exists(mirror) && File.Exists(stamp) && File.GetLastWriteTimeUtc(mirror).Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture) != File.ReadAllText(stamp).Trim())
+            // A missing stamp can't say "unchanged": it means either there's nothing to back up yet (mirror doesn't exist
+            // either) or this machine has never successfully copied before (e.g. local writes made in Standalone mode,
+            // about to be overwritten for the first time as a client) - back it up in that case too, not just a confirmed
+            // change, so those writes are never silently lost.
+            if (File.Exists(mirror) && (!File.Exists(stamp) || File.GetLastWriteTimeUtc(mirror).Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture) != File.ReadAllText(stamp).Trim()))
             {
                 var kept = Path.ChangeExtension(mirror, $".local-{DateTime.Now:yyyyMMdd-HHmmss}.db");
                 File.Copy(mirror, kept, overwrite: true);
@@ -481,7 +485,7 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
             File.Copy(source, mirror, overwrite: true);
             File.WriteAllText(stamp, File.GetLastWriteTimeUtc(mirror).Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
-        catch (IOException ex) { say($"The ticket mirror couldn't be refreshed (in use?): {ex.Message}"); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { say($"The ticket mirror couldn't be refreshed (in use?): {ex.Message}"); }
     }
 
     private static int CopyNewer(string from, string to, string pattern)
