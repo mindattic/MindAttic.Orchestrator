@@ -108,7 +108,13 @@ public sealed class MemoryGuard
     /// <summary>The level now, read at most every <see cref="SampleEvery"/>; null while the guard is off or memory can't be read.</summary>
     public MemoryState? Observe(OrchestratorSettings s, DateTime nowUtc)
     {
-        if (!s.MemoryGuard) return null;
+        if (!s.MemoryGuard)
+        {
+            // Clears the level too: left set, Shared.Last would keep reporting whatever level (even Critical/Emergency) was
+            // last observed, forever, since nothing else ever resets it once the guard is off.
+            lock (gate) { last = null; clearSinceUtc = null; }
+            return null;
+        }
         lock (gate)
         {
             if (last is not null && nowUtc - sampledUtc < OrchestratorSettings.SecondsSpan(s.MemorySampleSeconds) && nowUtc >= sampledUtc) return last;
