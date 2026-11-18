@@ -92,10 +92,12 @@
              library's MaRowCard: a Border, not a button, so the two buttons below are its only click targets (the pattern
              UserTicketTemplate above already uses for its own Hyperlinks). -->
         <DataTemplate DataType="{x:Type vm:UserTicketRowViewModel}">
-            <Border x:Name="SidebarTicketCard" Style="{StaticResource MaRowCard}">
+            <!-- Padding="0" + MaAccentBar flush to the card's own edges, not MaTag's rounded 4px MaBadge floating inside the
+                 card's default padding (M.ORCH-T1800): the stripe treatment every card in this list shares with
+                 TaskRowViewModel's below, the one the mismatch was measured against. -->
+            <Border x:Name="SidebarTicketCard" Style="{StaticResource MaRowCard}" Padding="0">
                 <DockPanel>
-                <mc:MaBadge x:Name="SidebarTicketAccent" DockPanel.Dock="Left" Style="{StaticResource MaTag}" Width="4" MinWidth="0" Padding="0" BorderThickness="0"
-                            Background="{Binding Accent}" VerticalAlignment="Stretch" Margin="{StaticResource SpaceRS}" Focusable="False" />
+                <Border x:Name="SidebarTicketAccent" Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding Accent}" Focusable="False" />
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceLM}">
                     <Button x:Name="SidebarTicketPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE768;" Margin="{StaticResource SpaceRXS}"
                             Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
@@ -105,7 +107,7 @@
                             Command="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}"
                             mc:MaCallout.ToolTip="Open it in Tickets Desktop" AutomationProperties.Name="{Binding OpenName}" />
                 </StackPanel>
-                <StackPanel>
+                <StackPanel Margin="8,6,8,6">
                     <TextBlock Text="{Binding Caption}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaTileSubtitle}" Margin="{StaticResource SpaceLS}">
@@ -132,14 +134,14 @@
              active just because nothing's been attributed to a ticket yet. No x:Key: implicit by DataType, like the ticket
              template above. -->
         <DataTemplate DataType="{x:Type vm:LiveActivityRowViewModel}">
-            <Border x:Name="SidebarActivityCard" Style="{StaticResource MaRowCard}">
+            <!-- Same flush MaAccentBar stripe and card padding as UserTicketTemplate/TaskRowViewModel share (M.ORCH-T1800). -->
+            <Border x:Name="SidebarActivityCard" Style="{StaticResource MaRowCard}" Padding="0">
                 <DockPanel>
-                <mc:MaBadge x:Name="SidebarActivityAccent" DockPanel.Dock="Left" Style="{StaticResource MaTag}" Width="4" MinWidth="0" Padding="0" BorderThickness="0"
-                            Background="{Binding Accent}" VerticalAlignment="Stretch" Margin="{StaticResource SpaceRS}" Focusable="False" />
+                <Border x:Name="SidebarActivityAccent" Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding Accent}" Focusable="False" />
                 <Button x:Name="SidebarActivityPlayButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE768;" VerticalAlignment="Top" Margin="{StaticResource SpaceLM}"
                         Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                         mc:MaCallout.ToolTip="Jump to its CLI" AutomationProperties.Name="{Binding PlayName}" />
-                <StackPanel>
+                <StackPanel Margin="8,6,8,6">
                     <TextBlock Text="{Binding Repo}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Summary}" FontSize="12.5" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Margin="{StaticResource RowGutter}"
                                LineStackingStrategy="BlockLineHeight" LineHeight="17" MaxHeight="34" />
