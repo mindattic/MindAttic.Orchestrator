@@ -16,7 +16,6 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'member', 'premium', 'active', 1792866937.886, 1793635021.5990849);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-10T23:52:44Z', 2, '2026-11-11T02:30:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-10T23:57:49Z', 2, '2026-11-11T02:30:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-11T00:02:53Z', 2, '2026-11-11T02:30:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-11T00:08:01Z', 2, '2026-11-11T02:30:00Z', 0);
@@ -783,6 +782,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-17
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-17T23:40:15Z', 100, '2026-11-18T01:50:00Z', 8372816);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-17T23:44:19Z', 100, '2026-11-18T01:50:00Z', 8372816);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-17T23:48:34Z', 100, '2026-11-18T01:50:00Z', 8372816);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-17T23:53:06Z', 100, '2026-11-18T01:50:00Z', 8372816);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-11-17T23:57:15Z', 100, '2026-11-18T01:50:00Z', 8372816);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
