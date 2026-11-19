@@ -69,7 +69,15 @@ public sealed class ClaudeMeterProbe
     public Func<string?>? AccountKey { get; init; }
 
     /// <summary>Gets Claude's usage JSON; null when it couldn't. Tests swap it.</summary>
-    internal Func<string, CancellationToken, Task<string?>> Fetch { get; init; } = FetchAsync;
+    internal Func<string, CancellationToken, Task<string?>> Fetch { get; init; } = RealFetch;
+
+    private static readonly Func<string, CancellationToken, Task<string?>> RealFetch = FetchAsync;
+
+    /// <summary>Whose account a token spends (its account uuid), null when that can't be told. Unset: the profile endpoint, but
+    /// only beside the real <see cref="Fetch"/>, so a test's fake token is never sent anywhere.</summary>
+    internal Func<string, CancellationToken, Task<string?>>? Owner { get; init; }
+
+    private string? ownerToken, ownerUuid;
 
     /// <summary>Exchanges a refresh token for a new access token; null when refused. Tests swap it.</summary>
     internal Func<string, CancellationToken, Task<RefreshedToken?>> Renew { get; init; } = RenewAsync;
@@ -345,6 +353,14 @@ public sealed class ClaudeMeterProbe
             Fail($"no usable Claude sign-in to read the meter with: {unusable}", signIn: signIn);
             return;
         }
+        // A folder's token can be another account's than its config names (M.ORCH-T1858: the global ~/.claude held Erin's token
+        // under Ryan's .claude.json, so Erin's meter was written as Ryan's and his tab read 14%/6% against a real 76%/34%).
+        if (await TokenOwnerAsync(token).ConfigureAwait(false) is { } owner && account is not null && !OwnedBy(account, owner))
+        {
+            Fail($"its saved token is another account's ({owner}) than the one signed in here ({account}), so its meter isn't this login's: {SignInAgain(Label)}",
+                NoMeterBackoff, signIn: true);
+            return;
+        }
         string? body;
         string? why = null;
         try
@@ -502,6 +518,47 @@ public sealed class ClaudeMeterProbe
                 Thread.Sleep(40);
             }
         }
+    }
+
+    /// <summary>Whether <paramref name="accountKey"/> (<see cref="ClaudeAccount.Current"/>'s "account/organization") is <paramref name="ownerUuid"/>'s.</summary>
+    internal static bool OwnedBy(string accountKey, string ownerUuid) =>
+        accountKey.Split('/')[0].Equals(ownerUuid, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The account uuid <paramref name="token"/> spends, asked once per token; null when it can't be told (never blocks a reading).</summary>
+    private async Task<string?> TokenOwnerAsync(string token)
+    {
+        if (token == ownerToken) return ownerUuid;
+        var ask = Owner ?? (ReferenceEquals(Fetch, RealFetch) ? OwnerAsync : null);
+        if (ask is null) return null;
+        string? uuid;
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            uuid = await ask(token, cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or JsonException) { return null; }
+        if (uuid is not null) (ownerToken, ownerUuid) = (token, uuid);
+        return uuid;
+    }
+
+    private static async Task<string?> OwnerAsync(string token, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, MemberProfileSync.ProfileEndpoint);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Headers.Add("anthropic-beta", "oauth-2025-04-20");
+        request.Headers.UserAgent.ParseAdd("MindAttic.Orchestrator");
+        using var response = await Http.SendAsync(request, ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode) return null;
+        return OwnerOf(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+    }
+
+    /// <summary>The profile reply's <c>account.uuid</c>; null when it has none.</summary>
+    internal static string? OwnerOf(string body)
+    {
+        using var doc = JsonDocument.Parse(body);
+        return doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("account", out var a) &&
+               a.ValueKind == JsonValueKind.Object && a.TryGetProperty("uuid", out var u) && u.ValueKind == JsonValueKind.String
+            ? u.GetString() : null;
     }
 
     private static async Task<string?> FetchAsync(string token, CancellationToken ct)

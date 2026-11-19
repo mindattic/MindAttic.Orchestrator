@@ -37,6 +37,48 @@ public sealed class ClaudeMeterProbeTests
     };
 
     [Test]
+    public async Task A_token_that_is_another_accounts_is_never_written_as_this_logins_reading()
+    {
+        // M.ORCH-T1858: the global login held Erin's token under Ryan's .claude.json; her meter was written as his.
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"),
+            CredentialsPath = Credentials(DateTime.UtcNow.AddHours(1)),
+            Fetch = (_, _) => Task.FromResult<string?>(Body),
+            Owner = (_, _) => Task.FromResult<string?>("erin-uuid"),
+            AccountKey = () => "ryan-uuid/org",
+        };
+        Assert.That(probe.Tick(null, [], Now, force: true), Is.True);
+        await probe.Pending;
+        Assert.That(File.Exists(probe.UsagePath), Is.False, "nothing written");
+        Assert.That(probe.NeedsSignIn, Is.True);
+        Assert.That(probe.LastResult, Does.Contain("another account's"));
+    }
+
+    [Test]
+    public async Task A_token_that_is_the_signed_in_accounts_is_read_as_before()
+    {
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"),
+            CredentialsPath = Credentials(DateTime.UtcNow.AddHours(1)),
+            Fetch = (_, _) => Task.FromResult<string?>(Body),
+            Owner = (_, _) => Task.FromResult<string?>("RYAN-UUID"),
+            AccountKey = () => "ryan-uuid/org",
+        };
+        Assert.That(probe.Tick(null, [], Now, force: true), Is.True);
+        await probe.Pending;
+        Assert.That(probe.LastReading?.Week?.Percent, Is.EqualTo(79));
+    }
+
+    [Test]
+    public void The_profile_replys_account_uuid_is_its_owner()
+    {
+        Assert.That(ClaudeMeterProbe.OwnerOf("""{"account":{"uuid":"1a3a","email":"e@x"},"organization":{"uuid":"o"}}"""), Is.EqualTo("1a3a"));
+        Assert.That(ClaudeMeterProbe.OwnerOf("""{"organization":{"uuid":"o"}}"""), Is.Null);
+    }
+
+    [Test]
     public void A_login_spending_in_bursts_is_asked_at_least_every_MinGap()
     {
         // T651: the last spend 10 minutes ago (a long turn between events) with the report an hour old: still asked.
