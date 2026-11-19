@@ -57,7 +57,7 @@ public static class Converters
     {
         public object Convert(object[] values, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (values is not [var item, IEnumerable items]) return Visibility.Visible;
+            if (values is not [var item, IEnumerable items, ..]) return Visibility.Visible;
             object? last = null;
             foreach (var candidate in items) last = candidate;
             return Equals(item, last) ? Visibility.Collapsed : Visibility.Visible;

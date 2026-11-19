@@ -722,6 +722,8 @@
                                                     <MultiBinding Converter="{x:Static vm:Converters.HiddenOnLastRow}">
                                                         <Binding />
                                                         <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ItemsSource" />
+                                                        <!-- Re-evaluates every row when a pane is added or removed (M.ORCH-T1847). -->
+                                                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ItemsSource.Count" />
                                                     </MultiBinding>
                                                 </Path.Visibility>
                                             </Path>
