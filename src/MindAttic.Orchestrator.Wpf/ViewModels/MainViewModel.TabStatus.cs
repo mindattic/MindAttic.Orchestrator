@@ -347,7 +347,7 @@ public sealed partial class MainViewModel
             if (p.SessionId is { } sid && agents is not null)
                 for (var j = 0; j < agents.Count && !thinking; j++)
                     thinking = agents[j].SessionId == sid
-                        && agents[j].State is MindAttic.Orchestrator.Activity.AgentState.Working or MindAttic.Orchestrator.Activity.AgentState.HeldByPace;
+                        && (agents[j].State is MindAttic.Orchestrator.Activity.AgentState.Working or MindAttic.Orchestrator.Activity.AgentState.HeldByPace || agents[j].Subagents.Count > 0);
             if (!thinking) n++;
         }
         return n;
@@ -360,7 +360,8 @@ public sealed partial class MainViewModel
         for (var i = 0; i < agents.Count; i++)
         {
             var a = agents[i];
-            if (a.State is MindAttic.Orchestrator.Activity.AgentState.Working or MindAttic.Orchestrator.Activity.AgentState.HeldByPace) clis++;
+            // A CLI waiting on its own background subagents is still active (M.ORCH-T1859): it counts as one, plus each subagent.
+            if (a.State is MindAttic.Orchestrator.Activity.AgentState.Working or MindAttic.Orchestrator.Activity.AgentState.HeldByPace || a.Subagents.Count > 0) clis++;
             subagents += a.Subagents.Count;
         }
         return (clis, subagents);

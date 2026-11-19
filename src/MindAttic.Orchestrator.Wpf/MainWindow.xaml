@@ -805,7 +805,12 @@
                                                 <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Background="{DynamicResource MaGood}"
                                                             Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             Visibility="{Binding ShowsPaneBusyBadge, Converter={StaticResource Visible}}">
-                                                    <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
+                                                    <!-- Inside the ring, this CLI plus its running subagents (M.ORCH-T1859), its share of the login's count above. -->
+                                                    <Grid>
+                                                        <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
+                                                        <TextBlock Text="{Binding PaneWorkCountText}" FontSize="7" FontWeight="Bold" Foreground="{DynamicResource MaOnAccent}"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding PaneWorkWord}" />
+                                                    </Grid>
                                                 </mc:MaBadge>
                                                 <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Background="{DynamicResource MaGood}"
                                                             Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"

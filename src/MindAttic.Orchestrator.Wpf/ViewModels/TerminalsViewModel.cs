@@ -340,6 +340,14 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     private bool paneKnown, paneBusy, paneAsking;
     private string? paneGoal;
+    private int paneSubagents;
+
+    /// <summary>The number inside this CLI's busy spinner (M.ORCH-T1859): the CLI itself plus its running subagents, e.g. a CLI
+    /// with three background subagents reads 4, the share it adds to its login's own count.</summary>
+    public string PaneWorkCountText => MainViewModel.CountText(1 + paneSubagents);
+
+    /// <summary>The count in words, for its accessible name.</summary>
+    public string PaneWorkWord => MainViewModel.ThinkingWordOf(1, paneSubagents);
 
     /// <summary>Busy as the badges judge it: an Enter just typed, or its agent working and not blocked on the person.</summary>
     private bool PaneWorking => IsPresumedBusy || (paneKnown && paneBusy && !paneAsking);
@@ -437,6 +445,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     {
         Raise(nameof(ShowsPaneBusyBadge)); Raise(nameof(ShowsPaneGoalBadge)); Raise(nameof(PaneGoalTip));
         Raise(nameof(ShowsPaneAskingBadge)); Raise(nameof(ShowsPaneIdleBadge)); Raise(nameof(PaneActivityWord));
+        Raise(nameof(PaneWorkCountText)); Raise(nameof(PaneWorkWord));
     }
 
     /// <summary>Sets this pane's own status from its matched <see cref="AgentBoardRow"/> (by <see cref="SessionId"/>,
@@ -452,8 +461,9 @@ public sealed class TerminalPaneViewModel : ObservableObject
         if (presumedSinceUtc is { } since && known && EndsPresumption(since, busy, takenUtc)) SetPresumed(null);
         UpdateHoverTip(row, takenUtc);
         if (goal != paneGoal) Raise(nameof(TabHoverTip));
-        if (known == paneKnown && busy == paneBusy && asking == paneAsking && goal == paneGoal) return;
-        paneKnown = known; paneBusy = busy; paneAsking = asking; paneGoal = goal;
+        var subagents = row?.Subagents.Count ?? 0;
+        if (known == paneKnown && busy == paneBusy && asking == paneAsking && goal == paneGoal && subagents == paneSubagents) return;
+        paneKnown = known; paneBusy = busy; paneAsking = asking; paneGoal = goal; paneSubagents = subagents;
         RaiseBadges();
     }
 
