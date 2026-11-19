@@ -1602,10 +1602,10 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', 'SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T22:00:00Z', 21583);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', 'Unity.GridGame', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2040472);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-17', 'Unity.GridGame', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-17T22:00:00Z', 2192879);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 730077);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 736842);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4424108);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 10887624);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 5380586);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 10888091);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 5432812);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5519897);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 11284598);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', 'MindAttic.Scheduler', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 577721);
@@ -31381,35 +31381,35 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "dea3fbd477f60a93b9a5a2bcc1b4c9d87e7dec86"
   },
   "MediaButler": {
-    "Tested": "435f84f5935c329636a0d362144e458dcc072ba0",
-    "Green": "435f84f5935c329636a0d362144e458dcc072ba0"
+    "Tested": "0bafbc8867db4dee04e0b876c5359e384e488422",
+    "Green": "0bafbc8867db4dee04e0b876c5359e384e488422"
   },
   "MindAttic.Authentication": {
-    "Tested": "d4bf744b2d1a0e62b98173a6a270a20578e86d3b",
-    "Green": "d4bf744b2d1a0e62b98173a6a270a20578e86d3b"
+    "Tested": "85f0907eb9d6bb5cbc1c8611454c6cf93e64a603",
+    "Green": "85f0907eb9d6bb5cbc1c8611454c6cf93e64a603"
   },
   "MindAttic.Browser": {
-    "Tested": "66f2f9af9e0493a56356a3c52752ecb59150b9d0",
-    "Green": "66f2f9af9e0493a56356a3c52752ecb59150b9d0"
+    "Tested": "6f0f9fdc90dbe7f9e4a219e044ed6df4d13f5f02",
+    "Green": "6f0f9fdc90dbe7f9e4a219e044ed6df4d13f5f02"
   },
   "MindAttic.Capture": {
-    "Tested": "891e7630b1e4b29aedeb6351f76544ed0fee423e",
-    "Green": "891e7630b1e4b29aedeb6351f76544ed0fee423e"
+    "Tested": "d9b314ba818da91f7c02b680f9d0aa3d487feb29",
+    "Green": "d9b314ba818da91f7c02b680f9d0aa3d487feb29"
   },
   "MindAttic.Components": {
-    "Tested": "047973b7d87d3b279983d53c25c3429bd01f24d1",
+    "Tested": "4234f880055d3365651fcda2ca15ef6307c0d68a",
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Deploy": {
-    "Tested": "4bd91b202b88f46fb9b54a76181c5a78193fc422",
-    "Green": "4bd91b202b88f46fb9b54a76181c5a78193fc422"
+    "Tested": "27cf48921f05d1f2ec20797aaae021c612f0ed7f",
+    "Green": "27cf48921f05d1f2ec20797aaae021c612f0ed7f"
   },
   "MindAttic.Export": {
     "Tested": "958b869e92be532b4fb2bc5ab21193bec50152e7",
     "Green": "958b869e92be532b4fb2bc5ab21193bec50152e7"
   },
   "MindAttic.Helpers": {
-    "Tested": "a13bcc252d4f1836f217b53d5445fd7fab33fa01"
+    "Tested": "093dd710ebd0d69cce200b7b790a28bfdec4a06a"
   },
   "MindAttic.Ideas": {
     "Tested": "34bd819bffbebc91212cb7bec5421027053fbcd6",
@@ -31424,20 +31424,20 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "a253dc0d9e16853e50ef72dbf60720205ed97bdd"
   },
   "MindAttic.Log": {
-    "Tested": "05c954c68a554aa53de34a519a6f55378e62f7a9",
-    "Green": "05c954c68a554aa53de34a519a6f55378e62f7a9"
+    "Tested": "cbbc1e103b04a6aa4c52754850a411c73548200b",
+    "Green": "cbbc1e103b04a6aa4c52754850a411c73548200b"
   },
   "MindAttic.Media": {
-    "Tested": "3b5866ab9797423f1ef2f64bb121fa20b8c87b6c",
-    "Green": "3b5866ab9797423f1ef2f64bb121fa20b8c87b6c"
+    "Tested": "3a029ca015439bb5a7f1892542593315b4bcc3a1",
+    "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
     "Tested": "d47e632dfc2ce14dfe95d48a6949f40b791b3c47",
     "Green": "980d39195c1065a9b2ebc8a2df8c4a806545650a"
   },
   "MindAttic.Psst": {
-    "Tested": "de62c5b3199c3851d115a9dec4f377d3f2d07845",
-    "Green": "de62c5b3199c3851d115a9dec4f377d3f2d07845"
+    "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
+    "Green": "1c8061f8499168728487d2c9f4b57238b40eb22b"
   },
   "MindAttic.Telemetry": {
     "Tested": "d9290cf7a7c919b1832fdb6012c26379cdcd2d7b",
@@ -31448,19 +31448,19 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "ca493cacc90c8b876f6344b4332e4e0fd08b5a4d"
   },
   "MindAttic.Vault": {
-    "Tested": "7fb310038a28c4101d366b04a3faa0d1476830c0",
+    "Tested": "983484ad43dce5a52efc48fdff1c73b4b6eac5ff",
     "Green": "8111a0ea2faf68b1576f27ab083f1a30991d8b62"
   },
   "OpenCredentials": {
-    "Tested": "bca11476d9eaa882dc6a0407c58bc204ab1aa4f7",
-    "Green": "bca11476d9eaa882dc6a0407c58bc204ab1aa4f7"
+    "Tested": "dc7b963c623194c24d56a7d24db804f0aa5ef5fb",
+    "Green": "dc7b963c623194c24d56a7d24db804f0aa5ef5fb"
   },
   "ProcessLogger": {
-    "Tested": "dec97397e443629f1dc8f3a3f936606f5a003739",
-    "Green": "dec97397e443629f1dc8f3a3f936606f5a003739"
+    "Tested": "cc3b135f2871814bf71a1646c7d2ea5e1d6422df",
+    "Green": "cc3b135f2871814bf71a1646c7d2ea5e1d6422df"
   },
   "TaxRateCollector": {
-    "Tested": "62b3ae90301d5da79139e62554ef98ecc5019445",
+    "Tested": "33fba8cdc98d8ca9226e17721cd2bd07d585c850",
     "Green": "8c8cb74f137251478d607e495a871df52ee6083b"
   },
   "ThinkTank": {
@@ -31479,8 +31479,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3b118b76cde581331a55cab8c05545156cc0d229"
   },
   "REA.Bloodlines": {
-    "Tested": "e59995038680694302aad6b482e6ca6ad1ffb397",
-    "Green": "e59995038680694302aad6b482e6ca6ad1ffb397"
+    "Tested": "e3f8e78b4d956b8793840d67b8bcf9a3bfd5c0da",
+    "Green": "e3f8e78b4d956b8793840d67b8bcf9a3bfd5c0da"
   },
   "ChiMesh": {
     "Tested": "14a3cdbf2ad9a423803612d0fea14b6a76b33699"
@@ -31703,7 +31703,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "106a8dccff1e95bc0340918f24896896dc6c37dc"
   },
   "MindAttic.Components.SIDEBAR": {
-    "Tested": "047973b7d87d3b279983d53c25c3429bd01f24d1",
+    "Tested": "4234f880055d3365651fcda2ca15ef6307c0d68a",
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
