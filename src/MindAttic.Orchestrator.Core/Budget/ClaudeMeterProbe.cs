@@ -487,7 +487,7 @@ public sealed class ClaudeMeterProbe
     /// <c>.claude.json</c> (M.ORCH-T784: a 46-minute blind window from the same torn-read-taken-for-failure). Without
     /// this, every caller here took the torn read for "no usable sign-in" or "refreshing failed" and backed off, right
     /// when the load that tore the write meant tokens were actively being spent. Null when the file doesn't exist.</summary>
-    private static JsonObject? ReadCredentials(string path)
+    internal static JsonObject? ReadCredentials(string path)
     {
         for (var attempt = 0; ; attempt++)
         {

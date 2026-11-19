@@ -92,7 +92,20 @@ public sealed partial class MainViewModel
     /// hover delay (MainWindow.xaml's ToolTipService.InitialShowDelay="0" on the tab strip) so it's there to read the
     /// instant the pointer lands, not after the usual tooltip pause. A tab with no cutoffs (signed out, the API key, the
     /// global login's) keeps the full <see cref="TabTip"/>, which stays the accessible name of every tab.</summary>
-    public string TabHoverTip => TabHoverTipOf(TabUsageLine, TabCutoffsLine, FiveHourResetUtc, WeekReset, DateTime.UtcNow, ActiveCliTitles) ?? TabTip + ApiSpendTipLine;
+    public string TabHoverTip => (TabHoverTipOf(TabUsageLine, TabCutoffsLine, FiveHourResetUtc, WeekReset, DateTime.UtcNow, ActiveCliTitles) ?? TabTip + ApiSpendTipLine) + SignInTipLine;
+
+    /// <summary>"\n• Sign-in: 1.3 days in, 18.7 / 20.0 days left" (M.ORCH-T1854); "" signed out, on the API key, or with no saved expiry.</summary>
+    private string SignInTipLine
+    {
+        get
+        {
+            if (!tab.SignedIn || tab.IsApiKey) return "";
+            var path = tab.Email is { } email && AccountDirs.Normalize(email) is not null
+                ? new AccountDirs().For(email).CredentialsPath : MindAttic.Orchestrator.Budget.ClaudeMeterProbe.DefaultCredentialsPath;
+            var now = DateTime.UtcNow;
+            return MindAttic.Orchestrator.Budget.SignInAge.Of(path, now) is { } age ? $"\n• {age.Line(now)}" : "";
+        }
+    }
 
     /// <summary>Milliseconds before this tab's hover tooltip (its usage chart, MainWindow.xaml's LoginHoverTipTemplate) opens:
     /// <see cref="MindAttic.Orchestrator.Settings.OrchestratorSettings.CliTooltipDelayMs"/>, live from the Vault (M.ORCH-T1823)
