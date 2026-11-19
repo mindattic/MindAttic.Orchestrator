@@ -909,6 +909,31 @@ public sealed class TerminalPanesTests
         Assert.That(pane.ShowsPaneIdleBadge, Is.False, "unmatched again: back to none of the three");
     }
 
+    /// <summary>M.ORCH-T1856: working under a /goal, the infinity sign stands in for the busy ring; idle and asking are unchanged.</summary>
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_CLI_working_under_a_goal_shows_the_infinity_sign_instead_of_the_spinner()
+    {
+        var pane = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe" }, hosted: true);
+        AgentBoardRow Row(AgentState state, bool asking, string? goal) =>
+            new("s", "Repo", null, null, DateTime.UtcNow, DateTime.UtcNow, state, "", false, default, []) { Asking = asking, Goal = goal };
+
+        pane.ApplyAgentStatus(Row(AgentState.Working, asking: false, goal: "finish every ticket"), DateTime.UtcNow);
+        Assert.That(pane.ShowsPaneGoalBadge, Is.True);
+        Assert.That(pane.ShowsPaneBusyBadge, Is.False, "the infinity sign, not the ring");
+        Assert.That(pane.PaneGoalTip, Does.Contain("finish every ticket"));
+
+        pane.ApplyAgentStatus(Row(AgentState.Waiting, asking: true, goal: "finish every ticket"), DateTime.UtcNow);
+        Assert.That(pane.ShowsPaneGoalBadge, Is.False);
+        Assert.That(pane.ShowsPaneAskingBadge, Is.True, "blocked on the person still reads as asking");
+
+        pane.ApplyAgentStatus(Row(AgentState.Waiting, asking: false, goal: "finish every ticket"), DateTime.UtcNow);
+        Assert.That(pane.ShowsPaneIdleBadge, Is.True, "idle still reads as idle");
+
+        pane.ApplyAgentStatus(Row(AgentState.Working, asking: false, goal: null), DateTime.UtcNow);
+        Assert.That(pane.ShowsPaneGoalBadge, Is.False, "goal over: the ordinary spinner again");
+        Assert.That(pane.ShowsPaneBusyBadge, Is.True);
+    }
+
     /// <summary>M.ORCH-T1413: Enter lights the CLI tab busy at once; a status read taken before the Enter, or too soon after it,
     /// can't take that back; a later one still reading idle does; one reading busy hands over to the real signal.</summary>
     [Test, Apartment(ApartmentState.STA)]

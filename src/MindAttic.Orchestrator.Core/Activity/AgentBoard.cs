@@ -66,6 +66,10 @@ public sealed record AgentBoardRow(
     /// <see cref="Sessions.BackgroundJobs"/>): its turn may have ended, but its work hasn't.</summary>
     public int BackgroundJobs { get; init; }
 
+    /// <summary>The condition of the <c>/goal</c> its CLI is running (M.ORCH-T1856, <see cref="TranscriptSession.Goal"/>): a long
+    /// autonomous run that won't need you for a while, so its pane shows an infinity sign rather than the busy ring; null for none.</summary>
+    public string? Goal { get; init; }
+
     /// <summary>Whether its CLI is busy, as <c>orchestrator busy</c> judges one (M.ORCH-T873): its turn running (or held by the
     /// pace gate), a subagent or a background job running, or an /allocate claim open. What the CLI's pane badge and its person's
     /// tab spin green for.</summary>
@@ -138,7 +142,7 @@ public static class AgentBoard
                     started, session.LastWriteUtc, state, detail,
                     assignment?.Pilot is not null, session.UsageToday,
                     [.. byParent[session.SessionId]]) { Doing = session.Doing, DoingAtUtc = session.DoingAtUtc, Claims = claims, CliPid = cli,
-                      Asking = asking?.Contains(session.SessionId) == true, BackgroundJobs = jobs });
+                      Asking = asking?.Contains(session.SessionId) == true, BackgroundJobs = jobs, Goal = session.Goal });
             }
         }
         return [.. rows.OrderByDescending(r => r.LastActivityUtc)];

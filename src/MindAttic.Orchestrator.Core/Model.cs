@@ -108,6 +108,10 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
     /// <summary>When <see cref="Doing"/>'s tool call was made.</summary>
     public DateTime? DoingAtUtc { get; init; }
 
+    /// <summary>The condition of the Claude Code <c>/goal</c> this session is still working toward (M.ORCH-T1856), from its
+    /// transcript's latest <c>goal_status</c> line; null when none is set, or once it was met or cleared.</summary>
+    public string? Goal { get; init; }
+
     /// <summary>Set when the session keeps repeating the same tool call: likely stuck in a loop.</summary>
     public Activity.Loop? Loop { get; init; }
 

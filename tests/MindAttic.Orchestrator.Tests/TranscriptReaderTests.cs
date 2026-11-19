@@ -515,4 +515,37 @@ public sealed class TranscriptReaderTests
         Assert.That(reader.Version, Is.GreaterThan(version));
         Assert.That(grown.Single().UsageSince(Since).Output, Is.EqualTo(45));
     }
+
+    // The shape Claude Code writes for a /goal's progress (trimmed from a real transcript).
+    private static string GoalLine(string ts, bool met, string condition, bool sentinel = false) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            parentUuid = Guid.NewGuid().ToString(), type = "attachment", timestamp = ts, sessionId = "s1", cwd = @"D:\Projects\X",
+            attachment = new Dictionary<string, object> { ["type"] = "goal_status", ["met"] = met, ["sentinel"] = sentinel, ["condition"] = condition },
+        });
+
+    [Test]
+    public void A_goal_runs_from_its_first_unmet_status_until_one_says_it_was_met_or_cleared()
+    {
+        // M.ORCH-T1856: the pane shows an infinity sign while its CLI works under a /goal.
+        System.IO.File.WriteAllLines(File(), [Line("m0", "2026-10-13T06:00:00Z", 1, 1)]);
+        var reader = new TranscriptReader(dir);
+        Assert.That(reader.Poll(Since).Single().Goal, Is.Null, "no /goal yet");
+
+        System.IO.File.AppendAllLines(File(), [GoalLine("2026-10-13T06:01:00Z", met: false, "finish every ticket", sentinel: true), Line("m1", "2026-10-13T06:02:00Z", 1, 1)]);
+        Assert.That(reader.Poll(Since).Single().Goal, Is.EqualTo("finish every ticket"));
+
+        System.IO.File.AppendAllLines(File(), [GoalLine("2026-10-13T06:03:00Z", met: false, "finish every ticket")]);
+        Assert.That(reader.Poll(Since).Single().Goal, Is.EqualTo("finish every ticket"), "a Stop-hook check that isn't met yet keeps it");
+
+        System.IO.File.AppendAllLines(File(), [GoalLine("2026-10-13T06:04:00Z", met: true, "finish every ticket", sentinel: true)]);
+        Assert.That(reader.Poll(Since).Single().Goal, Is.Null, "/goal clear (or the goal met) ends it");
+    }
+
+    [Test]
+    public void A_line_that_only_quotes_goal_status_isnt_a_goal()
+    {
+        System.IO.File.WriteAllLines(File(), [ToolLine("m0", "2026-10-13T06:00:00Z").Replace("\"ls\"", "\"grep goal_status x\"")]);
+        Assert.That(new TranscriptReader(dir).Poll(Since).Single().Goal, Is.Null);
+    }
 }

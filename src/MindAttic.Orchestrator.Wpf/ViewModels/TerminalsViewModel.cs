@@ -148,6 +148,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
             };
             text.Append("\n\n").Append(state);
             if (row.Subagents.Count > 0) text.Append(" · ").Append(row.Subagents.Count).Append(row.Subagents.Count == 1 ? " subagent" : " subagents");
+            if (row.Goal is { } goal) text.Append("\nGoal (/goal): ").Append(Clip(goal, 200));
             text.Append("\nTokens this session: ").Append(Formatting.Tokens(row.Tokens.Total))
                 .Append(" (").Append(Formatting.Tokens(row.Tokens.Fresh)).Append(" uncached)");
             var up = nowUtc - row.StartedUtc;
@@ -338,12 +339,27 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public string StateText => Redeploying ? "redeploying…" : Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
 
     private bool paneKnown, paneBusy, paneAsking;
+    private string? paneGoal;
+
+    /// <summary>Busy as the badges judge it: an Enter just typed, or its agent working and not blocked on the person.</summary>
+    private bool PaneWorking => IsPresumedBusy || (paneKnown && paneBusy && !paneAsking);
 
     /// <summary>This one CLI's own status badge (M.ORCH-T1272), the CLI tab's own version of the login tab's aggregate one
     /// (M.ORCH-T1270): a spinner while its agent is working or has subagents/claims running, a plain "?" while it's genuinely
     /// blocked on the person, "zzz" once it's idle. None of the three while its agent isn't known yet (a Launcher menu pane,
-    /// or before its session is learned, <see cref="TerminalsViewModel.Update"/>).</summary>
-    public bool ShowsPaneBusyBadge => IsPresumedBusy || (paneKnown && paneBusy && !paneAsking);
+    /// or before its session is learned, <see cref="TerminalsViewModel.Update"/>). Working under a /goal, the infinity sign
+    /// (<see cref="ShowsPaneGoalBadge"/>) stands in for the spinner.</summary>
+    public bool ShowsPaneBusyBadge => PaneWorking && paneGoal is null;
+
+    /// <summary>Working under an active Claude Code <c>/goal</c> (M.ORCH-T1856, <see cref="AgentBoardRow.Goal"/>): an animated
+    /// infinity sign in place of the busy spinner, so a long autonomous run that won't need the person for a while reads apart
+    /// from an ordinary turn at a glance. Idle and asking still show "zzz" and "?".</summary>
+    public bool ShowsPaneGoalBadge => PaneWorking && paneGoal is not null;
+
+    /// <summary>The goal badge's callout: the /goal's condition, so what it's working toward shows on hover.</summary>
+    public string PaneGoalTip => paneGoal is { } goal ? $"Working on a goal (/goal), a long autonomous run:\n{Clip(goal, 300)}" : "";
+
+    internal static string Clip(string text, int max) => text.Length <= max ? text : text[..(max - 1)].TrimEnd() + "…";
 
     /// <summary>The shows pane asking badge.</summary>
     public bool ShowsPaneAskingBadge => !IsPresumedBusy && paneKnown && paneAsking;
@@ -352,7 +368,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public bool ShowsPaneIdleBadge => !IsPresumedBusy && paneKnown && !paneBusy && !paneAsking;
 
     /// <summary>The icon in words, so it's never only a picture.</summary>
-    public string PaneActivityWord => IsPresumedBusy ? "Busy" : !paneKnown ? "" : paneAsking ? "Blocked waiting on you" : paneBusy ? "Busy" : "Idle";
+    public string PaneActivityWord => ShowsPaneGoalBadge ? "Busy on a goal" : IsPresumedBusy ? "Busy" : !paneKnown ? "" : paneAsking ? "Blocked waiting on you" : paneBusy ? "Busy" : "Idle";
 
     // ── Presumed busy (M.ORCH-T1413) ────────────────────────────────────────
     // Status is read every ~18 s, so an Enter typed here lights the badges at once, presuming its CLI started work, until a
@@ -419,7 +435,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     private void RaiseBadges()
     {
-        Raise(nameof(ShowsPaneBusyBadge)); Raise(nameof(ShowsPaneAskingBadge)); Raise(nameof(ShowsPaneIdleBadge)); Raise(nameof(PaneActivityWord));
+        Raise(nameof(ShowsPaneBusyBadge)); Raise(nameof(ShowsPaneGoalBadge)); Raise(nameof(PaneGoalTip));
+        Raise(nameof(ShowsPaneAskingBadge)); Raise(nameof(ShowsPaneIdleBadge)); Raise(nameof(PaneActivityWord));
     }
 
     /// <summary>Sets this pane's own status from its matched <see cref="AgentBoardRow"/> (by <see cref="SessionId"/>,
@@ -430,10 +447,13 @@ public sealed class TerminalPaneViewModel : ObservableObject
         // Busy as orchestrator busy judges it: its turn, a subagent, a background job (M.ORCH-T1528) or a claim.
         var busy = row?.IsBusy == true;
         var asking = row?.Asking == true;
+        // A new session (a restart, a /clear) has its own transcript with no goal, so the goal ends with the session too.
+        var goal = row?.Goal;
         if (presumedSinceUtc is { } since && known && EndsPresumption(since, busy, takenUtc)) SetPresumed(null);
         UpdateHoverTip(row, takenUtc);
-        if (known == paneKnown && busy == paneBusy && asking == paneAsking) return;
-        paneKnown = known; paneBusy = busy; paneAsking = asking;
+        if (goal != paneGoal) Raise(nameof(TabHoverTip));
+        if (known == paneKnown && busy == paneBusy && asking == paneAsking && goal == paneGoal) return;
+        paneKnown = known; paneBusy = busy; paneAsking = asking; paneGoal = goal;
         RaiseBadges();
     }
 

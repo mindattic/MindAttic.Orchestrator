@@ -27,6 +27,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
     private static readonly byte[] UsageMarker = Encoding.UTF8.GetBytes("\"usage\"");
     private static readonly byte[] TicketMarker = Encoding.UTF8.GetBytes(TicketAttribution.PromptMarker);
     private static readonly byte[] ToolResultMarker = Encoding.UTF8.GetBytes("\"tool_result\"");
+    private static readonly byte[] GoalMarker = Encoding.UTF8.GetBytes("\"goal_status\"");
 
     private readonly Dictionary<string, FileState> files = new(StringComparer.OrdinalIgnoreCase);
     private DateTime countingSinceUtc;
@@ -92,6 +93,11 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         /// <summary>Its <c>.meta.json</c> has been read. Claude Code often writes it minutes after the transcript (up to half an
         /// hour), so until then a subagent's transcript is checked again each time it's read (M.ORCH-T378).</summary>
         public bool MetaRead;
+        /// <summary>The condition of the Claude Code <c>/goal</c> its latest <c>goal_status</c> line says is still being worked
+        /// toward (M.ORCH-T1856); null once that line says it was met or cleared, or before any.</summary>
+        public string? Goal;
+        /// <summary>When its latest <c>goal_status</c> line was written; default before any.</summary>
+        public DateTime GoalAtUtc;
     }
 
     /// <summary>
@@ -157,6 +163,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     }
                     state.PendingFiles.Clear();
                     state.Filed.Clear();
+                    // Quiet since before the window: no goal is being run in it now. A reread from 0 on resume finds it again.
+                    (state.Goal, state.GoalAtUtc) = (null, default);
                     state.LastWriteUtc = info.LastWriteTimeUtc;
                 }
                 else
@@ -224,6 +232,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     TicketedSubagents = [.. g.Where(s => s.AgentId is not null && s.TicketId is not null)
                         .Select(s => new TicketedSubagent(s.AgentId!, s.TicketId!, s.TicketType, s.Cwd!, [.. s.Events.OrderBy(e => e.AtUtc)], s.Model))],
                     Filing = [.. g.SelectMany(s => s.Filed.Select(id => new FiledTicket(id, s.AgentId, s.LastWriteUtc)))],
+                    // The CLI's own transcript's latest goal_status says whether a /goal is still running (M.ORCH-T1856).
+                    Goal = own.Where(s => s.GoalAtUtc != default).MaxBy(s => s.GoalAtUtc)?.Goal,
                     // Each transcript by itself: subagents running side by side each making the same call once isn't one
                     // agent repeating itself, nor are the calls a fork copied from its parent.
                     Loop = g.Select(s => LoopDetector.Find(s.Tools.OrderBy(c => c.AtUtc).ToList())).FirstOrDefault(l => l is not null),
@@ -244,7 +254,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
 
     // Events as [ticks, input, cache write, cache read, output]: a third the size of named fields.
     private sealed record CachedFile(string Path, long Offset, string? Cwd, string? SessionId, string? Model, string? TicketId, string? TicketType, DateTime LastWriteUtc,
-        long[][] Events, LimitHit[] Hits, Dictionary<string, long[]> Counted, string[]? Pending = null, string[]? Filed = null, bool ForkPrologue = false, string? ForkToolUseId = null);
+        long[][] Events, LimitHit[] Hits, Dictionary<string, long[]> Counted, string[]? Pending = null, string[]? Filed = null, bool ForkPrologue = false, string? ForkToolUseId = null,
+        string? Goal = null, DateTime GoalAtUtc = default);
 
     private sealed record Cache(int Version, DateTime SinceUtc, List<CachedFile> Files);
 
@@ -266,6 +277,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             {
                 Offset = f.Offset, Cwd = f.Cwd, SessionId = f.SessionId, Model = f.Model, TicketId = f.TicketId, TicketType = f.TicketType,
                 LastWriteUtc = f.LastWriteUtc, Restored = true, AgentId = SubagentId(f.Path), ForkPrologue = f.ForkPrologue, ForkToolUseId = f.ForkToolUseId,
+                Goal = f.Goal, GoalAtUtc = f.GoalAtUtc,
             };
             foreach (var e in f.Events)
                 if (e.Length == 5) state.Events.Add(new UsageEvent(new DateTime(e[0], DateTimeKind.Utc), new TokenUsage(e[1], e[2], e[3], e[4])));
@@ -290,7 +302,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             kv.Key, kv.Value.Offset, kv.Value.Cwd, kv.Value.SessionId, kv.Value.Model, kv.Value.TicketId, kv.Value.TicketType, kv.Value.LastWriteUtc,
             [.. kv.Value.Events.Select(e => new[] { e.AtUtc.Ticks, e.Usage.Input, e.Usage.CacheCreation, e.Usage.CacheRead, e.Usage.Output })],
             [.. kv.Value.Hits], kv.Value.CountedMessages.ToDictionary(c => c.Key, c => new[] { c.Value.Input, c.Value.CacheCreation, c.Value.CacheRead, c.Value.Output }),
-            [.. kv.Value.PendingFiles], [.. kv.Value.Filed], kv.Value.ForkPrologue, kv.Value.ForkToolUseId))]);
+            [.. kv.Value.PendingFiles], [.. kv.Value.Filed], kv.Value.ForkPrologue, kv.Value.ForkToolUseId, kv.Value.Goal, kv.Value.GoalAtUtc))]);
         // The daemon, the dashboard and CLI runs share the cache: each writes a private temp file and
         // swaps it in whole, so a reader never sees half of one.
         var temp = $"{cachePath}.{Environment.ProcessId}.tmp";
@@ -373,6 +385,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             state.CountedMessages.Clear();
             state.PendingFiles.Clear();
             state.Filed.Clear();
+            (state.Goal, state.GoalAtUtc) = (null, default);
             state.ForkPrologue = state.ForkToolUseId is not null;
         }
         if (stream.Length == state.Offset) return false;
@@ -411,7 +424,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     consumed = consumed[(nl + 1)..];
                     if (line.IsEmpty) continue;
                     if (state.Cwd is null || state.ForkPrologue || line.IndexOf(UsageMarker) >= 0 || (state.TicketId is null && line.IndexOf(TicketMarker) >= 0) ||
-                        (state.PendingFiles.Count > 0 && line.IndexOf(ToolResultMarker) >= 0))
+                        (state.PendingFiles.Count > 0 && line.IndexOf(ToolResultMarker) >= 0) || line.IndexOf(GoalMarker) >= 0)
                         Apply(Encoding.UTF8.GetString(line), state, sinceUtc);
                 }
                 state.Offset += end + 1;
@@ -453,6 +466,16 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             if (CopiedFromAnotherSession(root)) return;
 
             if (countFrom is null) return;
+            // A /goal's progress (M.ORCH-T1856): Claude Code writes a goal_status attachment when the goal is set ("sentinel"), after
+            // each Stop-hook check of it, and when it's met or cleared (/goal clear writes met:true). The latest one is the truth,
+            // whatever its timestamp: a goal set before the counting window still runs.
+            if (GoalStatusOf(root) is { } status)
+            {
+                sink.Goal = status.Met ? null : status.Condition;
+                sink.GoalAtUtc = Str(root, "timestamp") is { } gts && DateTime.TryParse(gts, null,
+                    System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var g) ? g : DateTime.UtcNow;
+                return;
+            }
             // The orchestrator's dispatch prompt names the ticket: that's what ties a session's cost to it.
             if (sink.TicketId is null && Str(root, "type") == "user" && root.TryGetProperty("message", out var prompt) &&
                 prompt.ValueKind == JsonValueKind.Object && TicketAttribution.FromPrompt(Text(prompt)) is { } ticket)
@@ -514,14 +537,28 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         Math.Max(0, line.Input - counted.Input), Math.Max(0, line.CacheCreation - counted.CacheCreation),
         Math.Max(0, line.CacheRead - counted.CacheRead), Math.Max(0, line.Output - counted.Output));
 
+    /// <summary>A Claude Code <c>/goal</c>'s status line (M.ORCH-T1856): <c>{"type":"attachment","attachment":{"type":"goal_status",
+    /// "met":false,"condition":"..."}}</c>; null for any other line (a tool result that merely quotes the words included).</summary>
+    internal static (bool Met, string Condition)? GoalStatusOf(JsonElement root)
+    {
+        if (Str(root, "type") != "attachment" || !root.TryGetProperty("attachment", out var a) || a.ValueKind != JsonValueKind.Object ||
+            Str(a, "type") != "goal_status")
+            return null;
+        var met = a.TryGetProperty("met", out var m) && m.ValueKind == JsonValueKind.True;
+        var condition = Str(a, "condition") is { Length: > 0 } c ? c.Trim() : "a goal";
+        return (met, condition);
+    }
+
     private static void Apply(string line, FileState state, DateTime? countFrom)
     {
         var sink = new TranscriptLineSink(state.CountedMessages, state.Events, state.Hits, state.Tools, state.PendingFiles, state.Filed)
         {
             Cwd = state.Cwd, SessionId = state.SessionId, Model = state.Model, TicketId = state.TicketId, TicketType = state.TicketType,
-            ForkPrologue = state.ForkPrologue, ForkToolUseId = state.ForkToolUseId,
+            ForkPrologue = state.ForkPrologue, ForkToolUseId = state.ForkToolUseId, Goal = state.Goal, GoalAtUtc = state.GoalAtUtc,
         };
         ApplyLine(line, sink, countFrom);
+        state.Goal = sink.Goal;
+        state.GoalAtUtc = sink.GoalAtUtc;
         state.Cwd = sink.Cwd;
         state.SessionId = sink.SessionId;
         state.Model = sink.Model;
@@ -654,6 +691,8 @@ internal sealed class TranscriptLineSink(Dictionary<string, TokenUsage> countedM
     public string? TicketType { get; set; }
     public bool ForkPrologue { get; set; }
     public string? ForkToolUseId { get; set; }
+    public string? Goal { get; set; }
+    public DateTime GoalAtUtc { get; set; }
     public Dictionary<string, TokenUsage> CountedMessages { get; } = countedMessages;
     public List<UsageEvent> Events { get; } = events;
     public List<LimitHit> Hits { get; } = hits ?? [];
