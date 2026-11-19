@@ -564,6 +564,7 @@ public sealed partial class MainViewModel : ObservableObject
         Raise(nameof(TokensDetail)); Raise(nameof(Warnings)); Raise(nameof(HasWarnings)); Raise(nameof(WarningsText));
         Raise(nameof(ShowsWarningsSection));
         Raise(nameof(TabTrailing)); Raise(nameof(TabTip)); Raise(nameof(TabHoverTip)); Raise(nameof(CliTooltipDelayMs));
+        Raise(nameof(LoginTreeGutter));
     }
 
     /// <summary>The most toasts shown at once; the oldest (last) go first.</summary>

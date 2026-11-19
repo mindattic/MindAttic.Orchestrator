@@ -311,6 +311,14 @@ public sealed record OrchestratorSettings
     /// plus a fixed, always-shown CLI tab bar under the selected person.</summary>
     public bool TreeMenuLayout { get; init; } = true;
 
+    /// <summary>The gap below each login's whole tree node (its header and, expanded, its open panes) in the sidebar
+    /// (M.ORCH-T1824, the owner's mockup): enough that one person's section visibly ends before the next one's colour
+    /// stripe begins, instead of the old 2px row gap every sibling row already had.</summary>
+    public double LoginTreeGutterPx { get; init; } = DefaultLoginTreeGutterPx;
+
+    /// <summary>The default login tree gutter constant.</summary>
+    public const double DefaultLoginTreeGutterPx = 10;
+
     /// <summary>Whether the Team Wall (M.ORCH-T936) leaves out the Launcher's own menu pane (M.ORCH-T1256): off by default
     /// (included, as it always was before this setting existed), since the Launcher is itself a live CLI someone may want to
     /// watch like any other.</summary>
@@ -664,6 +672,15 @@ public sealed record OrchestratorSettings
     /// lost (M.ORCH-T1001).</summary>
     public double TermResyncSeconds { get; init; } = 45;
 
+    /// <summary>Seconds between the login tree's own re-raise of every tab's busy/thinking figures (its spinner's own count:
+    /// its CLIs mid-turn plus their running subagents, summed per login, M.ORCH-T1447/M.ORCH-T1838): a guaranteed floor under
+    /// however promptly the daemon's own push or <see cref="DashboardPollSeconds"/> poll already keep the snapshot current,
+    /// not a replacement for either.</summary>
+    public double BusyCountRefreshSeconds { get; init; } = DefaultBusyCountRefreshSeconds;
+
+    /// <summary>The default busy count refresh constant.</summary>
+    public const double DefaultBusyCountRefreshSeconds = 5;
+
     /// <summary>The least seconds between two Launchers opened for one person (M.ORCH-T1150), so one that exits at once can't loop.</summary>
     public double LauncherRespawnSeconds { get; init; } = 30;
 
@@ -777,14 +794,6 @@ public sealed record OrchestratorSettings
     /// <summary>The default CLI tooltip delay constant: 20% below its old hardcoded 0ms (M.ORCH-T1823) - still 0, now live-dialable.</summary>
     public const double DefaultCliTooltipDelayMs = 0;
 
-    /// <summary>Minutes a TermHost running in an orch-test-* temp folder may live before the daemon ends it (M.ORCH-T1623): a test that
-    /// opened a real hosted tab and never closed it (it failed first) leaves one running all night. One whose folder is gone is ended
-    /// at once; a host in any other folder is never touched.</summary>
-    public double TestTermHostMaxMinutes { get; init; } = DefaultTestTermHostMaxMinutes;
-
-    /// <summary>The default test term host max minutes constant.</summary>
-    public const double DefaultTestTermHostMaxMinutes = 60;
-
     /// <summary>The folder, under the workspace root and under each repo, whose markdown files are the saved plans the
     /// dashboard's Plans button lists (M.ORCH-T1826, <see cref="Status.PlanCatalog"/>): half-formed ideas and features not
     /// ready for an implementation ticket yet.</summary>
@@ -814,6 +823,14 @@ public sealed record OrchestratorSettings
     public const int MinPlanHeadKb = 1;
     /// <summary>The largest plan head size.</summary>
     public const int MaxPlanHeadKb = 1024;
+
+    /// <summary>Minutes a TermHost running in an orch-test-* temp folder may live before the daemon ends it (M.ORCH-T1623): a test that
+    /// opened a real hosted tab and never closed it (it failed first) leaves one running all night. One whose folder is gone is ended
+    /// at once; a host in any other folder is never touched.</summary>
+    public double TestTermHostMaxMinutes { get; init; } = DefaultTestTermHostMaxMinutes;
+
+    /// <summary>The default test term host max minutes constant.</summary>
+    public const double DefaultTestTermHostMaxMinutes = 60;
 
     /// <summary>Seconds after an Enter typed in a CLI tab that a status read still saying idle ends its presumed busy (M.ORCH-T1413):
     /// the context gate marks a submitted prompt busy within a hook's first moments, so a read this much later that says idle is real.</summary>

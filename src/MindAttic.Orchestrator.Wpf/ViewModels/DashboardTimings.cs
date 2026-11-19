@@ -22,6 +22,10 @@ internal static class DashboardTimings
     /// <summary>The hosted-session registry's reread (M.ORCH-T1001): <see cref="OrchestratorSettings.TermResyncSeconds"/>.</summary>
     public static TimeSpan TermResync { get; private set; } = TimeSpan.FromSeconds(45);
 
+    /// <summary>The login tree's own re-raise of every tab's busy/thinking figures (M.ORCH-T1838):
+    /// <see cref="OrchestratorSettings.BusyCountRefreshSeconds"/>.</summary>
+    public static TimeSpan BusyCountRefresh { get; private set; } = TimeSpan.FromSeconds(OrchestratorSettings.DefaultBusyCountRefreshSeconds);
+
     /// <summary>The least time between two Launchers for one person: <see cref="OrchestratorSettings.LauncherRespawnSeconds"/>.</summary>
     public static TimeSpan LauncherSpacing { get; private set; } = TimeSpan.FromSeconds(30);
 
@@ -72,6 +76,7 @@ internal static class DashboardTimings
         HiddenPoll = OrchestratorSettings.SecondsSpan(s.DashboardHiddenPollSeconds, 1);
         HiddenHolderPoll = OrchestratorSettings.SecondsSpan(s.DashboardHiddenHolderPollSeconds, 1);
         TermResync = OrchestratorSettings.SecondsSpan(s.TermResyncSeconds, 1);
+        BusyCountRefresh = OrchestratorSettings.SecondsSpan(s.BusyCountRefreshSeconds, 1);
         LauncherSpacing = OrchestratorSettings.SecondsSpan(s.LauncherRespawnSeconds, 1);
         ElevatedTermWait = OrchestratorSettings.SecondsSpan(s.ElevatedTermWaitSeconds, 5);
         MeterStates = OrchestratorSettings.SecondsSpan(s.MeterStatesSeconds, 1);

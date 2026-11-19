@@ -3208,8 +3208,11 @@ public static class AgentGate
                 return name, "Starting a subagent:", activity_short(said.strip().splitlines()[0] if said else "")
             if low == "skill":
                 skill = s("skill").strip().lstrip("/")
-                return name, "Using", activity_short("/" + skill, 40) if skill else ""
-            return name, "Using", ""
+                return name, "Using", activity_short("/" + skill, 40) if skill else name
+            # The tool's own name, never blank (M.ORCH-T1825): the dashboard's ToolCallText.Describe already falls back to
+            # "Using " + name for the same case, so an unmatched tool stays as descriptive here as there - a bare "Using"
+            # with no name attached (the old `""`) read as no activity at all rather than one just not specifically worded yet.
+            return name, "Using", name
         def activity_record(provider, data, event, state=None, require=None):
             # One hook event's picture of its session, replacing the last. state overrides the event's own (asking, held, or
             # working for a Stop sent back to work); require writes only over a record already that provider's: the pace gate

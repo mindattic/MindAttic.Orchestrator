@@ -237,8 +237,19 @@ public sealed partial class MainViewModel
     /// <summary>Whether task detail ticket.</summary>
     public bool HasTaskDetailTicket => Root.taskDetailTicketId is not null;
 
-    /// <summary>The open task detail command.</summary>
-    public ICommand OpenTaskDetailCommand => Root.openTaskDetailCommand ??= new RelayCommand(p => { if (p is TaskRowViewModel row) Root.OpenTaskDetail(row); });
+    /// <summary>The paragraph/review button every card in the unified sidebar list shares (M.ORCH-T1825): a Task List row
+    /// opens its own CLI/subagent detail (<see cref="OpenTaskDetail"/>), a ticket card opens its own ticket straight
+    /// (<see cref="OpenTicketDetail"/>, the "bubbles up the ticket" case - it already is one), and a live, ticket-less
+    /// activity card opens its own CLI's detail with no ticket to bubble up to (<see cref="OpenActivityDetail"/>).</summary>
+    public ICommand OpenTaskDetailCommand => Root.openTaskDetailCommand ??= new RelayCommand(p =>
+    {
+        switch (p)
+        {
+            case TaskRowViewModel row: Root.OpenTaskDetail(row); break;
+            case UserTicketRowViewModel row: Root.OpenTicketDetail(row); break;
+            case LiveActivityRowViewModel row: Root.OpenActivityDetail(row); break;
+        }
+    });
     /// <summary>The close task detail command.</summary>
     public ICommand CloseTaskDetailCommand => Root.closeTaskDetailCommand ??= new RelayCommand(() => Root.IsTaskDetailOpen = false);
 
@@ -291,45 +302,58 @@ public sealed partial class MainViewModel
     private string? SummaryOf(string id) =>
         QueueItemOf(id)?.Ticket.Summary ?? Root.closedTickets.FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase))?.Ticket.Summary;
 
+    /// <summary>A ticket's own detail lines (M.ORCH-T1825, split out of the old single <c>OpenTaskDetail</c> so a ticket
+    /// card's own paragraph button can show exactly this, with no CLI/subagent wrapped around it): title, summary and the
+    /// queue's (or the recently closed list's) own facts about <paramref name="id"/>; null when neither knows it.</summary>
+    private (string Title, string Description, List<TaskDetailLine> Lines)? TicketDetailLinesOf(string id, string fallbackRepo, DateTime now)
+    {
+        var item = QueueItemOf(id);
+        var closed = item is not null ? null : Root.closedTickets.FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase));
+        if ((item?.Ticket ?? closed?.Ticket) is not { } ticket) return null;
+        var lines = new List<TaskDetailLine>
+        {
+            new("Ticket", ticket.Id),
+            new("Repo", item?.Repo ?? closed?.Repo ?? fallbackRepo),
+            new("Type", ticket.Type),
+            new("Status", ticket.Status),
+        };
+        if (item is not null)
+        {
+            if (item.Priority != 0) lines.Add(new("Priority", item.Priority.ToString("+#;-#", CultureInfo.InvariantCulture)));
+            lines.Add(new("Approved", item.MayWork ? "Yes" : "Waits for approval"));
+            if (item.Assignee is { } who) lines.Add(new("Assigned to", NameOf(who)));
+            if (item.Assignment is { } a)
+                lines.Add(new("Being worked", $"since {Formatting.Ago(a.StartedUtc, now)}" + (a.Account is { } on ? $" on {on}" : "") + (a.Model is { } model ? $" ({model})" : "")));
+            if (item.BlockedBy.Count > 0) lines.Add(new("Waits for", string.Join(", ", item.BlockedBy)));
+            if (item.RequiredBy.Count > 0) lines.Add(new("Required by", string.Join(", ", item.RequiredBy)));
+            if (item.Estimate is { } e) lines.Add(new("Estimate", $"~{Formatting.Tokens(e.Fresh)}"));
+        }
+        else if (closed?.ClosedUtc is { } at) lines.Add(new("Closed", Formatting.Ago(at, now)));
+        if (ticket.Date.Length > 0) lines.Add(new("Opened", ticket.Date));
+        if (ticket.Ref.Length > 0) lines.Add(new("Ref", ticket.Ref));
+        return (TicketsDb.Caption(ticket.Id, FriendlyNameOf(ticket.Id), ticket.Summary), ticket.Summary, lines);
+    }
+
     /// <summary>Fills and opens the detail modal for <paramref name="row"/>: its full ticket when it has one the queue (or the
     /// recently closed list) knows, else the CLI's own description, with who it bills and what it's doing either way.</summary>
     private void OpenTaskDetail(TaskRowViewModel row)
     {
         var now = DateTime.UtcNow;
-        var lines = new List<TaskDetailLine>();
         var cli = row.Cli;
-        string title, description;
         var id = row.TicketId;
-        var item = id is null ? null : QueueItemOf(id);
-        var closed = id is null || item is not null ? null : Root.closedTickets.FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase));
-        if (id is not null && (item?.Ticket ?? closed?.Ticket) is { } ticket)
+        var found = id is null ? null : TicketDetailLinesOf(id, cli.Repo, now);
+        string title, description;
+        List<TaskDetailLine> lines;
+        if (found is { } f)
         {
-            title = TicketsDb.Caption(ticket.Id, FriendlyNameOf(ticket.Id), ticket.Summary);
-            description = ticket.Summary;
-            lines.Add(new("Ticket", ticket.Id));
-            lines.Add(new("Repo", item?.Repo ?? closed?.Repo ?? cli.Repo));
-            lines.Add(new("Type", ticket.Type));
-            lines.Add(new("Status", ticket.Status));
-            if (item is not null)
-            {
-                if (item.Priority != 0) lines.Add(new("Priority", item.Priority.ToString("+#;-#", CultureInfo.InvariantCulture)));
-                lines.Add(new("Approved", item.MayWork ? "Yes" : "Waits for approval"));
-                if (item.Assignee is { } who) lines.Add(new("Assigned to", NameOf(who)));
-                if (item.Assignment is { } a)
-                    lines.Add(new("Being worked", $"since {Formatting.Ago(a.StartedUtc, now)}" + (a.Account is { } on ? $" on {on}" : "") + (a.Model is { } model ? $" ({model})" : "")));
-                if (item.BlockedBy.Count > 0) lines.Add(new("Waits for", string.Join(", ", item.BlockedBy)));
-                if (item.RequiredBy.Count > 0) lines.Add(new("Required by", string.Join(", ", item.RequiredBy)));
-                if (item.Estimate is { } e) lines.Add(new("Estimate", $"~{Formatting.Tokens(e.Fresh)}"));
-            }
-            else if (closed?.ClosedUtc is { } at) lines.Add(new("Closed", Formatting.Ago(at, now)));
-            if (ticket.Date.Length > 0) lines.Add(new("Opened", ticket.Date));
-            if (ticket.Ref.Length > 0) lines.Add(new("Ref", ticket.Ref));
+            (title, description, lines) = f;
         }
         else
         {
             title = $"{row.Kind} on {cli.Repo}";
             description = row.Subagent?.Task is { Length: > 0 } task ? task
                 : cli.Doing is { Length: > 0 } doing ? doing : cli.StateDetail;
+            lines = [];
             if (id is not null) lines.Add(new("Ticket", $"{id} (not in the open queue)"));
             lines.Add(new("Repo", cli.Repo));
         }
@@ -355,9 +379,34 @@ public sealed partial class MainViewModel
             lines.Add(new("Session", cli.SessionId));
             if (cli.CliPid is { } pid) lines.Add(new("PID", pid.ToString(CultureInfo.InvariantCulture)));
         }
+        ShowTaskDetail(title, description, found is not null ? id : null, lines);
+    }
+
+    /// <summary>Fills and opens the detail modal for <paramref name="row"/>'s own ticket (M.ORCH-T1825): the paragraph
+    /// button's "bubbles up the ticket" case for a ticket card - it already is one, so this is <see cref="TicketDetailLinesOf"/>
+    /// alone, plus who it's assigned to.</summary>
+    private void OpenTicketDetail(UserTicketRowViewModel row)
+    {
+        var now = DateTime.UtcNow;
+        var found = TicketDetailLinesOf(row.Id, row.Repo, now);
+        var (title, description, lines) = found ?? (row.Caption, row.Summary, [new("Ticket", row.Id), new("Repo", row.Repo)]);
+        lines.Add(new("Assigned to", row.AssigneeText));
+        ShowTaskDetail(title, description, found is not null ? row.Id : null, lines);
+    }
+
+    /// <summary>Fills and opens the detail modal for <paramref name="row"/>'s own live, ticket-less CLI (M.ORCH-T1825): the
+    /// paragraph button's case with no ticket to bubble up to, so this is just its repo and what it's doing, the same shape
+    /// <see cref="OpenTaskDetail"/> falls back to for a CLI with none.</summary>
+    private void OpenActivityDetail(LiveActivityRowViewModel row) =>
+        ShowTaskDetail($"CLI on {row.Repo}", row.Summary, null, [new("Repo", row.Repo), new("Session", row.SessionId)]);
+
+    /// <summary>The detail modal's own final step, every opener above ending with it: fills its title, description, ticket
+    /// (for its "Open in Tickets", null to hide it) and lines, then shows it.</summary>
+    private void ShowTaskDetail(string title, string description, string? ticketId, List<TaskDetailLine> lines)
+    {
         Root.taskDetailTitle = title;
         Root.taskDetailDescription = description;
-        Root.taskDetailTicketId = id is not null && (item is not null || closed is not null) ? id : null;
+        Root.taskDetailTicketId = ticketId;
         Root.taskDetailLines.Clear();
         foreach (var line in lines) Root.taskDetailLines.Add(line);
         foreach (var name in new[] { nameof(TaskDetailTitle), nameof(TaskDetailDescription), nameof(TaskDetailTicketId), nameof(HasTaskDetailTicket) })

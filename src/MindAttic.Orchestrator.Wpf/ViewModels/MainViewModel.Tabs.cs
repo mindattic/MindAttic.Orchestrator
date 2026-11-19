@@ -99,6 +99,12 @@ public sealed partial class MainViewModel
     /// in place of the old hardcoded <c>ToolTipService.InitialShowDelay="0"</c>.</summary>
     public double CliTooltipDelayMs => ShownSettings.CliTooltipDelayMs;
 
+    /// <summary>The gap below this login's whole tree node in the sidebar (M.ORCH-T1824, the owner's mockup), so one
+    /// person's section visibly ends before the next one's colour stripe begins: <see
+    /// cref="MindAttic.Orchestrator.Settings.OrchestratorSettings.LoginTreeGutterPx"/>, live from the Vault, in place of
+    /// the old hardcoded 2px row gap every tree node shared with its own sibling rows.</summary>
+    public System.Windows.Thickness LoginTreeGutter => new(0, 0, 0, ShownSettings.LoginTreeGutterPx);
+
     /// <summary>This tab's own open CLI tabs' names, in tab order: the hover tip's "Active CLIs" line. The Launcher's own
     /// menu pane is always open (M.ORCH-T855) but is never a CLI (M.ORCH-T1430), so it's left out here the same way
     /// <c>Presume</c> and the Team Wall already leave it out elsewhere; a login with nothing else open reads "none open".</summary>

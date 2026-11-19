@@ -32,6 +32,9 @@ public partial class MainWindow : Window
     /// <summary>How often the hosted-session registry is read again for a host whose bus announcement was lost (M.ORCH-T1001; 45s).</summary>
     private static TimeSpan TermResyncInterval => DashboardTimings.TermResync;
 
+    /// <summary>How often the login tree's busy/subagent counts are re-raised, independent of the poll/push refresh (M.ORCH-T1838; 5s).</summary>
+    private static TimeSpan BusyCountInterval => DashboardTimings.BusyCountRefresh;
+
     /// <summary>The global login's tab, which owns the refresh and every login's tab (M.ORCH-T613).</summary>
     private readonly MainViewModel model = new();
     private readonly DispatcherTimer timer;
@@ -194,6 +197,17 @@ public partial class MainWindow : Window
             Retime();
             PinTerminalFocus(onlyIfLost: true);
         };
+        // The login tree's own busy/subagent count tick (M.ORCH-T1838): runs unconditionally, on top of whatever cadence
+        // `timer` above is on (including stopped while the daemon's status stream pushes everything), so the spinner's own
+        // count - a login's CLIs plus their running subagents, summed - is never more than BusyCountInterval stale.
+        var busyCountTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = BusyCountInterval };
+        busyCountTimer.Tick += (_, _) =>
+        {
+            model.RaiseBusyCounts();
+            if (busyCountTimer.Interval != BusyCountInterval) busyCountTimer.Interval = BusyCountInterval; // dialed live in the Vault
+        };
+        busyCountTimer.Start();
+        Closed += (_, _) => busyCountTimer.Stop();
         Loaded += async (_, _) =>
         {
             // The last run's tabs, when it didn't close cleanly (M.ORCH-T862): offered before the first refresh, so a restored

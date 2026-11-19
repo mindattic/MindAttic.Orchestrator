@@ -538,6 +538,17 @@ public sealed partial class MainViewModel
             Raise(name);
     }
 
+    /// <summary>The login tree's own tick (M.ORCH-T1838, <c>MainWindow</c>'s busyCountTimer, <see cref="DashboardTimings.BusyCountRefresh"/>):
+    /// re-raises every login's busy/thinking figures (<see cref="TabThinkingCount"/> and its siblings) without waiting for a new
+    /// snapshot, so the spinner's own count - a login's CLIs mid-turn plus every running subagent across them, summed - never
+    /// sits stale longer than this, whatever the daemon's own push or poll is doing underneath. A no-op between genuine changes:
+    /// it only re-reads figures already current, it never recomputes the snapshot itself.</summary>
+    internal void RaiseBusyCounts()
+    {
+        if (!IsGlobalTab) { Root.RaiseBusyCounts(); return; }
+        foreach (var t in loginTabs) t.RaiseTabStatus();
+    }
+
     /// <summary>Marks <paramref name="email"/>'s sign-in as in progress (null: none) and relights every tab.</summary>
     private void SetSigningInEmail(string? email)
     {

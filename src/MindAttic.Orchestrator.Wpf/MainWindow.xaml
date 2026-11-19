@@ -98,14 +98,21 @@
             <Border x:Name="SidebarTicketCard" Style="{StaticResource MaRowCard}" Padding="0">
                 <DockPanel>
                 <Border x:Name="SidebarTicketAccent" Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding Accent}" Focusable="False" />
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceLM}">
+                <!-- Every card in this list shares this same lower-right icon trio (M.ORCH-T1825, the owner's mockup):
+                     focus (jump to the CLI), ticket (open it in Tickets Desktop) and paragraph (review/edit its whole
+                     ticket or task in the detail modal). Bottom-aligned, not Top, so it reads as the card's own corner
+                     rather than floating beside its title. -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="{StaticResource SpaceLM}">
                     <Button x:Name="SidebarTicketPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE768;" Margin="{StaticResource SpaceRXS}"
                             Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                             mc:MaCallout.ToolTip="Jump to the CLI working it" AutomationProperties.Name="{Binding PlayName}"
                             Visibility="{Binding CanPlay, Converter={StaticResource Visible}}" />
-                    <Button x:Name="SidebarTicketOpenButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;"
+                    <Button x:Name="SidebarTicketOpenButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Margin="{StaticResource SpaceRXS}"
                             Command="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}"
                             mc:MaCallout.ToolTip="Open it in Tickets Desktop" AutomationProperties.Name="{Binding OpenName}" />
+                    <Button x:Name="SidebarTicketDetailButton" Style="{StaticResource MaToolButton}" Content="&#xE70F;"
+                            Command="{Binding DataContext.OpenTaskDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                            mc:MaCallout.ToolTip="Review its whole ticket" AutomationProperties.Name="{Binding Caption, StringFormat='Review {0}'}" />
                 </StackPanel>
                 <StackPanel Margin="8,6,8,6">
                     <TextBlock Text="{Binding Caption}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
@@ -128,19 +135,25 @@
             </Border>
         </DataTemplate>
 
-        <!-- A live, ticket-less activity card in the unified sidebar list (M.ORCH-T1519, restructured by M.ORCH-T1770): one
-             click target, a Play button that jumps to its CLI - there's no ticket yet, so no Ticket button - and its title
-             the session's current "Doing" text instead of a ticket summary, so a busy member never reads as having nothing
-             active just because nothing's been attributed to a ticket yet. No x:Key: implicit by DataType, like the ticket
-             template above. -->
+        <!-- A live, ticket-less activity card in the unified sidebar list (M.ORCH-T1519, restructured by M.ORCH-T1770): the
+             same lower-right icon pair as every other card (M.ORCH-T1825) - a Play button that jumps to its CLI, and a
+             paragraph button that reviews its own CLI's detail - minus the Ticket button, since there's no ticket yet. Its
+             title is the session's current "Doing" text instead of a ticket summary, so a busy member never reads as having
+             nothing active just because nothing's been attributed to a ticket yet. No x:Key: implicit by DataType, like the
+             ticket template above. -->
         <DataTemplate DataType="{x:Type vm:LiveActivityRowViewModel}">
             <!-- Same flush MaAccentBar stripe and card padding as UserTicketTemplate/TaskRowViewModel share (M.ORCH-T1800). -->
             <Border x:Name="SidebarActivityCard" Style="{StaticResource MaRowCard}" Padding="0">
                 <DockPanel>
                 <Border x:Name="SidebarActivityAccent" Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding Accent}" Focusable="False" />
-                <Button x:Name="SidebarActivityPlayButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE768;" VerticalAlignment="Top" Margin="{StaticResource SpaceLM}"
-                        Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
-                        mc:MaCallout.ToolTip="Jump to its CLI" AutomationProperties.Name="{Binding PlayName}" />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="{StaticResource SpaceLM}">
+                    <Button x:Name="SidebarActivityPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE768;" Margin="{StaticResource SpaceRXS}"
+                            Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                            mc:MaCallout.ToolTip="Jump to its CLI" AutomationProperties.Name="{Binding PlayName}" />
+                    <Button x:Name="SidebarActivityDetailButton" Style="{StaticResource MaToolButton}" Content="&#xE70F;"
+                            Command="{Binding DataContext.OpenTaskDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                            mc:MaCallout.ToolTip="Review its detail" AutomationProperties.Name="{Binding Repo, StringFormat='Review {0}'}" />
+                </StackPanel>
                 <StackPanel Margin="8,6,8,6">
                     <TextBlock Text="{Binding Repo}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Summary}" FontSize="12.5" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Margin="{StaticResource RowGutter}"
@@ -155,23 +168,27 @@
 
         <!-- A Task List row in the unified sidebar list (M.ORCH-T1593, restructured by M.ORCH-T1770): one process spending
              tokens right now (a working CLI, or one of its subagents, indented under it), its owner's name in their tab
-             colour and the same colour as its left stripe, then its ticket ("ID · name", or "No ticket"). Two independent
-             click targets: a Play button that jumps to its own CLI, and a Ticket button that opens its ticket in Tickets
-             Desktop, hidden while it has none. No x:Key: implicit by DataType, like the two templates above, so it sits in
-             the same ItemsControl as a ticket row with no ItemTemplate split by kind. -->
+             colour and the same colour as its left stripe, then its ticket ("ID · name", or "No ticket"). The same
+             lower-right icon trio as every other card (M.ORCH-T1825): a Play button that jumps to its own CLI, a Ticket
+             button that opens its ticket in Tickets Desktop (hidden while it has none), and a paragraph button that
+             reviews its whole ticket or task in the detail modal. No x:Key: implicit by DataType, like the two templates
+             above, so it sits in the same ItemsControl as a ticket row with no ItemTemplate split by kind. -->
         <DataTemplate DataType="{x:Type vm:TaskRowViewModel}">
             <Border x:Name="SidebarTaskCard" Style="{StaticResource MaRowCard}" Padding="0">
                 <DockPanel Margin="{Binding Indent}">
                     <!-- The owner's-colour stripe (M.ORCH-T1626): the library's MaAccentBar, 3px and square to keep the row's look. -->
                     <Border Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding OwnerBrush}" />
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceLM}">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="{StaticResource SpaceLM}">
                         <Button x:Name="SidebarTaskPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE768;" Margin="{StaticResource SpaceRXS}"
                                 Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                                 mc:MaCallout.ToolTip="Jump to its CLI" AutomationProperties.Name="{Binding PlayName}" />
-                        <Button x:Name="SidebarTaskOpenButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;"
+                        <Button x:Name="SidebarTaskOpenButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Margin="{StaticResource SpaceRXS}"
                                 Command="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding TicketId}"
                                 mc:MaCallout.ToolTip="Open its ticket in Tickets Desktop" AutomationProperties.Name="{Binding TicketText, StringFormat='Open {0} in Tickets Desktop'}"
                                 Visibility="{Binding HasTicket, Converter={StaticResource Visible}}" />
+                        <Button x:Name="SidebarTaskDetailButton" Style="{StaticResource MaToolButton}" Content="&#xE70F;"
+                                Command="{Binding DataContext.OpenTaskDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                mc:MaCallout.ToolTip="Review its whole ticket or task" AutomationProperties.Name="{Binding TicketText, StringFormat='Review {0}'}" />
                     </StackPanel>
                     <StackPanel Margin="8,6,8,6">
                         <TextBlock FontSize="12" TextTrimming="CharacterEllipsis">
@@ -520,8 +537,11 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MainViewModel}">
                     <!-- The login's colour stripe runs the whole height of its tree, header and open panes alike
-                         (M.ORCH-T1812, the owner's mockup), so it sits beside both rather than in the header alone. -->
-                    <Grid x:Name="LoginTreeNode" Margin="0,0,0,2">
+                         (M.ORCH-T1812, the owner's mockup), so it sits beside both rather than in the header alone.
+                         Its bottom margin is the Vault's LoginTreeGutterPx (M.ORCH-T1824, the owner's mockup, default
+                         10px), not a hardcoded 2px: a real gutter between one person's whole section and the next's,
+                         rather than the same small gap every sibling row inside a section already has. -->
+                    <Grid x:Name="LoginTreeNode" Margin="{Binding LoginTreeGutter}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -544,9 +564,14 @@
                             <Border Grid.ColumnSpan="5" Style="{StaticResource MaDivider}" Height="Auto" Margin="0" SnapsToDevicePixels="False"
                                     Visibility="{Binding IsTabSelected, Converter={StaticResource Visible}}" />
                             <!-- The expand/collapse chevron alone (M.ORCH-T1759): its own click is marked handled so it never
-                                 also selects this login via the header's handler above it in the visual tree. -->
+                                 also selects this login via the header's handler above it in the visual tree. Collapsed, not
+                                 merely hidden, on a login with nothing to expand into (M.ORCH-T1824, e.g. the API key's row,
+                                 which has no CLI/Launcher panes of its own): Terminals.HasPanes, so the row never offers to
+                                 open a node with no children, and its Auto column drops to 0 width, letting the name column
+                                 shift left to fill the gap rather than leaving a blank chevron-sized hole. -->
                             <TextBlock Grid.Column="1" Text="{Binding IsExpanded, Converter={x:Static vm:Converters.Chevron}}" Width="14"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"
+                                       Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}"
                                        MouseLeftButtonDown="LoginTreeChevron_MouseLeftButtonDown" />
                             <!-- The name has its own column and trims with an ellipsis (M.ORCH-T1812): it used to share
                                  one with the usage bars, so in a narrow sidebar the two drew over each other. -->
@@ -733,18 +758,22 @@
                                                     Click="TreePaneMoreButton_Click"
                                                     AutomationProperties.Name="{Binding Title, StringFormat='More actions for {0}'}"
                                                     mc:MaCallout.ToolTip="Move, rename, change color, undock/dock, pop out, broadcast, or copy its PID" />
-                                            <!-- 9 in from the chevron column's end puts this 18-wide cell's centre exactly under the
-                                                 header's own 20-wide icon cell (8 in), M.ORCH-T1812. -->
-                                            <Grid Width="18" Height="18" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="9,0,8,0">
-                                                <mc:MaBadge Style="{StaticResource MaTag}" Width="16" Height="16" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
+                                            <!-- 8 in from the chevron column's end puts this 20-wide cell's centre exactly under the
+                                                 header's own 20-wide icon cell (M.ORCH-T1812), both now the same size (M.ORCH-T1838,
+                                                 the owner's report): this cell and its badges used to be drawn 2px smaller all round
+                                                 than the header's own (18/16/12 here vs. the header's and the flat strip's own
+                                                 TerminalTabStatusIcon's 20/18/14), so the same zzz/busy/asking badge read larger on a
+                                                 user's row than on their own CLI's, one column over. -->
+                                            <Grid Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="8,0,8,0">
+                                                <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
                                                             Foreground="{DynamicResource MaOnAccent}" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             Visibility="{Binding ShowsPaneIdleBadge, Converter={StaticResource Visible}}" />
-                                                <mc:MaBadge Style="{StaticResource MaTag}" Width="16" Height="16" Padding="0" BorderThickness="0" Background="{DynamicResource MaGood}"
+                                                <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Background="{DynamicResource MaGood}"
                                                             Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             Visibility="{Binding ShowsPaneBusyBadge, Converter={StaticResource Visible}}">
-                                                    <mc:MaSpinner Kind="Ring" Width="12" Height="12" StrokeThickness="1.2" Stroke="{DynamicResource MaOnAccent}" />
+                                                    <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
                                                 </mc:MaBadge>
-                                                <mc:MaBadge Style="{StaticResource MaTag}" Width="16" Height="16" Padding="0" BorderThickness="0" Content="?" Background="{DynamicResource MaWarn}"
+                                                <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="?" Background="{DynamicResource MaWarn}"
                                                             Foreground="{DynamicResource MaOnAccent}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             Visibility="{Binding ShowsPaneAskingBadge, Converter={StaticResource Visible}}" />
                                                 <!-- The Launcher pane's own rocket icon (M.ORCH-T1768), so a Launcher node reads as one at
@@ -763,13 +792,8 @@
                                                 <!-- A workspace-root tab ("General", or the workspace folder's own name "MindAttic": opened at the
                                                      workspace root, not on a repo, M.ORCH-T1819) has no AgentBoardRow of its own (AgentBoard.Build
                                                      only walks registered repos' own sessions), so none of the three status badges above it ever
-                                                     light, leaving this cell blank. A plain home glyph stands in for them, the same overlaid-cell
-                                                     idiom as the Launcher rocket above. -->
-                                                <Viewbox Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                         Visibility="{Binding IsWorkspacePane, Converter={StaticResource Visible}}"
-                                                         mc:MaCallout.ToolTip="A workspace tab: opened at the workspace root, not on a repo" AutomationProperties.Name="Workspace">
-                                                    <Path Data="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
-                                                </Viewbox>
+                                                     light, leaving this cell blank (M.ORCH-T1829): the home glyph that used to stand in for them
+                                                     read as a stray/wrong icon (the owner's report), so it's gone, not merely hidden. -->
                                             </Grid>
                                             <!-- Name, not Title (M.ORCH-T1768): Title still carries the login's initials
                                                  ("RD: Prose"), redundant here since this row already sits nested under
@@ -976,13 +1000,8 @@
                                             <!-- A workspace-root tab ("General", or the workspace folder's own name "MindAttic": opened at the
                                                  workspace root, not on a repo, M.ORCH-T1819) has no AgentBoardRow of its own (AgentBoard.Build
                                                  only walks registered repos' own sessions), so none of the three status badges above it ever
-                                                 light, leaving this cell blank. A plain home glyph stands in for them, the same overlaid-cell
-                                                 idiom as the Launcher rocket above. -->
-                                            <Viewbox x:Name="TerminalTabWorkspaceIcon" Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                     Visibility="{Binding IsWorkspacePane, Converter={StaticResource Visible}}"
-                                                     mc:MaCallout.ToolTip="A workspace tab: opened at the workspace root, not on a repo" AutomationProperties.Name="Workspace">
-                                                <Path Data="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" Stretch="Uniform" Fill="{DynamicResource MaMuted}" />
-                                            </Viewbox>
+                                                 light, leaving this cell blank (M.ORCH-T1829): the home glyph that used to stand in for them
+                                                 read as a stray/wrong icon (the owner's report), so it's gone, not merely hidden. -->
                                         </Grid>
                                         <!-- Double-click the name to rename it in place (M.ORCH-T1432): the TextBox swaps in for the TextBlock in
                                              the same cell; Enter keeps it, Esc or leaving it cancels (TerminalTabName_* in MainWindow.xaml.cs). -->

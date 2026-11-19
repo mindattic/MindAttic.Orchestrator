@@ -711,6 +711,14 @@ public sealed class OrchestratorVaultSettings
             "person-tab strip plus a fixed CLI tab bar under the selected person.")]
     public bool TreeMenuLayout { get; set; } = true;
 
+    /// <summary>The gap below each login's whole tree node in the sidebar, so one person's section visibly ends before the
+    /// next one's colour stripe begins.</summary>
+    [Setting("Login tree section gutter (px)", Group = "Dashboard", Order = 30,
+        Help = "The gap below each login's whole tree node (its header and, expanded, its open CLI/Launcher panes) in the " +
+            "tree sidebar, so one person's section visibly ends before the next one's colour stripe begins.")]
+    [SettingRange(0, 40)]
+    public double LoginTreeGutterPx { get; set; } = OrchestratorSettings.DefaultLoginTreeGutterPx;
+
     /// <summary>A busy login's green play arrow blinks once for every this many tokens it spends, so the busiest blink fastest.</summary>
     [Setting("Blink once per (tokens)", Group = "Dashboard", Order = 3,
         Help = "A busy login's green play arrow blinks once for every this many tokens it spends, so the busiest blink fastest.")]
@@ -887,6 +895,16 @@ public sealed class OrchestratorVaultSettings
         Help = "Seconds between rereads of the hosted-session registry, so a CLI whose announcement was lost still gets its tab.")]
     [SettingRange(5, 86400)]
     public double TermResyncSeconds { get; set; } = 45;
+
+    /// <summary>Seconds between the login tree's own re-raise of every tab's busy/thinking figures (its spinner's count: CLIs
+    /// mid-turn plus their running subagents, summed per login): a guaranteed floor under however promptly the daemon's own
+    /// push or poll already keep the snapshot current, not a replacement for either.</summary>
+    [Setting("Busy/subagent count refresh (s)", Group = "Dashboard", Order = 12,
+        Help = "Seconds between the login tree's own re-raise of every tab's busy/thinking figures - its spinner's count: " +
+            "CLIs mid-turn plus their running subagents, summed per login. A guaranteed floor under however promptly the " +
+            "daemon's own push or poll already keep the snapshot current, not a replacement for either.")]
+    [SettingRange(1, 300)]
+    public double BusyCountRefreshSeconds { get; set; } = OrchestratorSettings.DefaultBusyCountRefreshSeconds;
 
     /// <summary>The least seconds between two Launchers opened for one person, so one that exits at once can't loop.</summary>
     [Setting("Launcher respawn spacing (s)", Group = "Dashboard", Order = 12,
@@ -1072,6 +1090,7 @@ public sealed class OrchestratorVaultSettings
         DashboardHiddenPollSeconds = s.DashboardHiddenPollSeconds,
         DashboardHiddenHolderPollSeconds = s.DashboardHiddenHolderPollSeconds,
         TermResyncSeconds = s.TermResyncSeconds,
+        BusyCountRefreshSeconds = s.BusyCountRefreshSeconds,
         LauncherRespawnSeconds = s.LauncherRespawnSeconds,
         ElevatedTermWaitSeconds = s.ElevatedTermWaitSeconds,
         MeterStatesSeconds = s.MeterStatesSeconds,
@@ -1252,6 +1271,7 @@ public sealed class OrchestratorVaultSettings
         DashboardHiddenPollSeconds = DashboardHiddenPollSeconds,
         DashboardHiddenHolderPollSeconds = DashboardHiddenHolderPollSeconds,
         TermResyncSeconds = TermResyncSeconds,
+        BusyCountRefreshSeconds = BusyCountRefreshSeconds,
         LauncherRespawnSeconds = LauncherRespawnSeconds,
         ElevatedTermWaitSeconds = ElevatedTermWaitSeconds,
         MeterStatesSeconds = MeterStatesSeconds,
