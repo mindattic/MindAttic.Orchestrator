@@ -236,11 +236,36 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
                         if (group["hooks"] is JsonArray inner)
                             foreach (var hook in inner.OfType<JsonObject>().Where(IsGlobalOnly).ToList())
                                 inner.Remove(hook);
+        ApplyOverrides(settings, account);
         WriteIfChanged(account.SettingsPath, settings.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         return shared;
 
         static bool IsGlobalOnly(JsonObject hook) =>
             hook["command"] is JsonValue v && v.TryGetValue<string>(out var text) && text.Contains(GlobalOnlyHook, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The file in a login's folder whose top-level keys replace the derived settings' (M.ORCH-T1860).</summary>
+    public const string OverridesName = "settings-overrides.json";
+
+    /// <summary>
+    /// Lays <paramref name="account"/>'s own <see cref="OverridesName"/> over the settings derived from <c>~/.claude</c>
+    /// (M.ORCH-T1860): each top-level key there replaces the derived one, and a null removes it. It lets one login differ from
+    /// the rest, e.g. Jordan's turning off Remote Control so the CLIs started on it never reach his claude.ai/code list. An
+    /// unreadable file is ignored, leaving the derived settings as they are.
+    /// </summary>
+    private static void ApplyOverrides(JsonObject settings, AccountDir account)
+    {
+        var path = Path.Combine(account.Directory, OverridesName);
+        JsonObject overrides;
+        try
+        {
+            if (!File.Exists(path) || JsonNode.Parse(File.ReadAllText(path)) is not JsonObject o) return;
+            overrides = o;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return; }
+        foreach (var (key, value) in overrides)
+            if (value is null) settings.Remove(key);
+            else settings[key] = value.DeepClone();
     }
 
     /// <summary>The keys of a <c>.claude.json</c> that say who's signed in.</summary>
