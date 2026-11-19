@@ -699,7 +699,7 @@
                                              at every sibling boundary, so the breathing room moved onto TreePaneRow below
                                              instead - only the row's actual content insets now, while this connector column and
                                              the selection highlight both run edge-to-edge, sibling rows' spines touching to read
-                                             as one continuous line, its last segment an "L" (HiddenOnLastRow below), never a "T". -->
+                                             as one continuous line, its last segment an "L" (IsLastOfPerson below, kept current on every add, remove, move and drag, M.ORCH-T1857), never a "T". -->
                                         <!-- Where they sit (M.ORCH-T1812, the owner's mockup): the list starts where the header's
                                              chevron starts (right after the login's stripe), this column is as wide as the header's chevron (14) and
                                              the spine runs down its middle, so it drops straight from the chevron; the tee
@@ -718,16 +718,8 @@
                                             <Path Grid.Row="0" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="7,0,0,0" VerticalAlignment="Stretch"
                                                   Fill="{DynamicResource MaMuted}" />
                                             <Path Grid.Row="1" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="7,0,0,0" VerticalAlignment="Stretch"
-                                                  Fill="{DynamicResource MaMuted}">
-                                                <Path.Visibility>
-                                                    <MultiBinding Converter="{x:Static vm:Converters.HiddenOnLastRow}">
-                                                        <Binding />
-                                                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ItemsSource" />
-                                                        <!-- Re-evaluates every row when a pane is added or removed (M.ORCH-T1847). -->
-                                                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ItemsSource.Count" />
-                                                    </MultiBinding>
-                                                </Path.Visibility>
-                                            </Path>
+                                                  Fill="{DynamicResource MaMuted}"
+                                                  Visibility="{Binding IsLastOfPerson, Converter={x:Static vm:Converters.FalseToVisible}}" />
                                             <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="7,0,0,0"
                                                   Fill="{DynamicResource MaMuted}" />
                                         </Grid>

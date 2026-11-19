@@ -288,6 +288,16 @@ public sealed class TerminalPaneViewModel : ObservableObject
         }
     }
 
+    private bool isLastOfPerson;
+
+    /// <summary>The last of its login's panes, so the tree draws its branch as an elbow, not a tee. Set by
+    /// <see cref="PersonTerminalsViewModel"/> on every change to that login's list, moves included (M.ORCH-T1857).</summary>
+    public bool IsLastOfPerson
+    {
+        get => isLastOfPerson;
+        internal set => Set(ref isLastOfPerson, value);
+    }
+
     /// <summary>Its CLI has exited; the tab stays up, showing its last lines, until closed (by hand, or pruned once stale,
     /// M.ORCH-T1177). Also ends any presumed-busy left over from an Enter typed just before it exited (M.ORCH-T1443):
     /// without this, a CLI closed before its first status read landed kept its login's badge green for up to
@@ -1548,7 +1558,11 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     public PersonTerminalsViewModel(TerminalsViewModel all)
     {
         this.all = all;
-        Panes.CollectionChanged += (_, e) => MirrorStrip(e);
+        Panes.CollectionChanged += (_, e) =>
+        {
+            MirrorStrip(e);
+            for (var i = 0; i < Panes.Count; i++) Panes[i].IsLastOfPerson = i == Panes.Count - 1;
+        };
     }
 
     /// <summary>The CLI tab strip's items (M.ORCH-T1569): the pinned <see cref="UsageTab"/>, then <see cref="Panes"/>, kept in
