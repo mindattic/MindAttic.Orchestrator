@@ -65,10 +65,11 @@ internal static class LoginDragDrop
             void ClearHighlight() { if (hovered is { } h) h.Opacity = 1; hovered = null; }
             strip.PreviewDragOver += (_, e) =>
             {
-                var accept = e.Data.GetDataPresent(Format);
-                e.Effects = accept ? DragDropEffects.Move : DragDropEffects.None;
+                // Any other drag (a tree CLI row's reorder/transfer, M.ORCH-T1849) is left to its own handlers.
+                if (!e.Data.GetDataPresent(Format)) return;
+                e.Effects = DragDropEffects.Move;
                 e.Handled = true;
-                var over = accept && e.OriginalSource is DependencyObject hit && ItemsControl.ContainerFromElement(strip, hit) is FrameworkElement row ? row : null;
+                var over = e.OriginalSource is DependencyObject hit && ItemsControl.ContainerFromElement(strip, hit) is FrameworkElement row ? row : null;
                 if (ReferenceEquals(over, hovered)) return;
                 ClearHighlight();
                 if (over is { } row2) { row2.Opacity = 0.65; hovered = row2; }
@@ -76,6 +77,7 @@ internal static class LoginDragDrop
             strip.PreviewDragLeave += (_, _) => ClearHighlight();
             strip.PreviewDrop += (_, e) =>
             {
+                if (!e.Data.GetDataPresent(Format)) return;
                 ClearHighlight();
                 e.Handled = true;
                 if (e.Data.GetData(Format) is not MainViewModel dragged || e.OriginalSource is not DependencyObject dropped) return;

@@ -79,6 +79,9 @@ public sealed partial class MainViewModel
         }
     }
 
+    /// <summary>Says why a dragged CLI wasn't moved here (M.ORCH-T1849), in the status bar and the Accounts view.</summary>
+    internal void SayMove(string message) => StatusMessage = AccountsMessage = message;
+
     /// <summary>The target's name (M.ORCH-T614), else its email or "Global login".</summary>
     private static string NameOf(MoveTarget target)
     {

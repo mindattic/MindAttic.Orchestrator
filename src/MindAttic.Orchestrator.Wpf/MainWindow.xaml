@@ -533,6 +533,7 @@
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding ShowsLoginTree, Converter={StaticResource Visible}}">
         <ItemsControl x:Name="LoginTree" Style="{StaticResource MaList}" ItemsSource="{Binding OrgTabs}"
+                      DragOver="LoginTree_DragOver" Drop="LoginTree_Drop"
                       AutomationProperties.Name="Claude logins, each expanding to its open CLI panes">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MainViewModel}">
@@ -650,7 +651,7 @@
                                           ContextMenuOpening="LoginTreeChild_ContextMenuOpening"
                                           PreviewMouseLeftButtonDown="LoginTreeChildRow_PreviewMouseLeftButtonDown"
                                           PreviewMouseMove="LoginTreeChildRow_PreviewMouseMove"
-                                          DragOver="LoginTreeChildRow_DragOver" Drop="LoginTreeChildRow_Drop">
+                                          DragOver="LoginTreeChildRow_DragOver" DragLeave="LoginTreeChildRow_DragLeave" Drop="LoginTreeChildRow_Drop">
                                         <!-- The pane actually shown in the body right now (M.ORCH-T1801): its own IsSelected (the
                                              same flag that drives its HwndHost's Visibility) alone isn't enough, since a login
                                              keeps its last-active pane's IsSelected true even while another login is shown - so

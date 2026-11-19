@@ -5,6 +5,7 @@ using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -761,9 +762,13 @@ public partial class MainWindow : Window
     /// this one never even sees it then).</summary>
     private void LoginTreeChildRow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        treeDragPane = sender is FrameworkElement { DataContext: TerminalPaneViewModel pane } ? pane : null;
+        // The Launcher is locked first (M.ORCH-T1848): never dragged.
+        treeDragPane = sender is FrameworkElement { DataContext: TerminalPaneViewModel { Request.IsMenu: false } pane } ? pane : null;
+        treeDragOwner = treeDragPane is null ? null : FindAncestorDataContext<MainViewModel>(VisualTreeHelper.GetParent((DependencyObject)sender));
         treeDragStart = treeDragPane is null ? null : e.GetPosition(null);
     }
+
+    private MainViewModel? treeDragOwner;
 
     /// <summary>Past the system drag threshold with the left button still down, starts the actual drag
     /// (<see cref="LoginTreeChildRow_Drop"/> applies it); one drag per press.</summary>
@@ -777,13 +782,136 @@ public partial class MainWindow : Window
         treeDragStart = null;
         try { DragDrop.DoDragDrop(row, pane, DragDropEffects.Move); }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Starting a tree CLI reorder drag failed; contained"); }
-        finally { treeDragPane = null; }
+        finally { treeDragPane = null; treeDragOwner = null; ClearDropLine(); ClearHeaderHighlight(); }
     }
+
+    /// <summary>Whether a drop on <paramref name="row"/> at <paramref name="e"/>'s pointer lands below it (pointer in its
+    /// lower half); always below a Launcher row, which nothing may land above (M.ORCH-T1848).</summary>
+    private static bool DropsBelow(FrameworkElement row, DragEventArgs e) =>
+        row.DataContext is TerminalPaneViewModel { Request.IsMenu: true } || e.GetPosition(row).Y >= row.ActualHeight / 2;
 
     private void LoginTreeChildRow_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(typeof(TerminalPaneViewModel)) ? DragDropEffects.Move : DragDropEffects.None;
         e.Handled = true;
+        if (!e.Data.GetDataPresent(typeof(TerminalPaneViewModel)) || sender is not FrameworkElement row
+            || FindAncestorDataContext<MainViewModel>(VisualTreeHelper.GetParent(row)) is not { } owner)
+        {
+            e.Effects = DragDropEffects.None;
+            ClearDropLine();
+            return;
+        }
+        e.Effects = DragDropEffects.Move;
+        ClearHeaderHighlight();
+        ShowDropLine(row, DropsBelow(row, e), owner.TabBrush);
+    }
+
+    private void LoginTreeChildRow_DragLeave(object sender, DragEventArgs e)
+    {
+        if (ReferenceEquals(sender, dropLineRow)) ClearDropLine();
+    }
+
+    /// <summary>The 2px insertion line a tree CLI drag shows between rows (M.ORCH-T1849); one at a time.</summary>
+    private DropLineAdorner? dropLine;
+    private FrameworkElement? dropLineRow;
+
+    private void ShowDropLine(FrameworkElement row, bool below, Brush brush)
+    {
+        if (ReferenceEquals(row, dropLineRow) && dropLine?.Below == below) return;
+        ClearDropLine();
+        if (AdornerLayer.GetAdornerLayer(row) is not { } layer) return;
+        dropLine = new DropLineAdorner(row, below, brush);
+        dropLineRow = row;
+        layer.Add(dropLine);
+    }
+
+    private void ClearDropLine()
+    {
+        if (dropLine is { } line && dropLineRow is { } row) AdornerLayer.GetAdornerLayer(row)?.Remove(line);
+        dropLine = null;
+        dropLineRow = null;
+    }
+
+    private sealed class DropLineAdorner : Adorner
+    {
+        private readonly Brush brush;
+
+        public DropLineAdorner(UIElement row, bool below, Brush brush) : base(row)
+        {
+            Below = below;
+            this.brush = brush;
+            IsHitTestVisible = false;
+        }
+
+        public bool Below { get; }
+
+        protected override void OnRender(DrawingContext dc)
+        {
+            var size = AdornedElement.RenderSize;
+            dc.DrawRectangle(brush, null, new System.Windows.Rect(0, Below ? size.Height - 1 : -1, size.Width, 2));
+        }
+    }
+
+    /// <summary>A login header a tree CLI drag is over (M.ORCH-T1849): dimmed like LoginDragDrop's own login drags do.</summary>
+    private FrameworkElement? headerHighlight;
+
+    private void ClearHeaderHighlight()
+    {
+        if (headerHighlight is { } h) h.Opacity = 1;
+        headerHighlight = null;
+    }
+
+    /// <summary>A tree CLI drag over a login's own header, not one of its rows (those handle it themselves): another login
+    /// takes it as a transfer (M.ORCH-T1849).</summary>
+    private void LoginTree_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Handled || e.Data.GetData(typeof(TerminalPaneViewModel)) is not TerminalPaneViewModel) return;
+        e.Handled = true;
+        ClearDropLine();
+        var over = e.OriginalSource is DependencyObject hit && ItemsControl.ContainerFromElement(LoginTree, hit) is FrameworkElement { DataContext: MainViewModel target } row
+            && !ReferenceEquals(target, treeDragOwner) ? row : null;
+        e.Effects = over is null ? DragDropEffects.None : DragDropEffects.Move;
+        if (ReferenceEquals(over, headerHighlight)) return;
+        ClearHeaderHighlight();
+        if (over is not null) { over.Opacity = 0.65; headerHighlight = over; }
+    }
+
+    private void LoginTree_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Handled || e.Data.GetData(typeof(TerminalPaneViewModel)) is not TerminalPaneViewModel moved) return;
+        e.Handled = true;
+        ClearHeaderHighlight();
+        if (treeDragOwner is not { } from || e.OriginalSource is not DependencyObject hit
+            || ItemsControl.ContainerFromElement(LoginTree, hit) is not FrameworkElement { DataContext: MainViewModel to }
+            || ReferenceEquals(from, to)) return;
+        QueueTransfer(moved, from, to);
+    }
+
+    /// <summary>Runs <see cref="TransferAsync"/> once the drag's own modal loop has ended, so its confirmation isn't nested in it.</summary>
+    private void QueueTransfer(TerminalPaneViewModel pane, MainViewModel from, MainViewModel to) =>
+        Dispatcher.InvokeAsync(async () =>
+        {
+            try { await TransferAsync(pane, from, to); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Transferring a dragged CLI failed; contained"); }
+        });
+
+    /// <summary>A tree CLI dropped on another login (M.ORCH-T1849): after a Yes/No, the same move as its right-click "Move to".</summary>
+    private async Task TransferAsync(TerminalPaneViewModel pane, MainViewModel from, MainViewModel to)
+    {
+        if (!to.IsTabSignedIn) { from.SayMove($"{to.TabTitle} isn't signed in, so {pane.Title} can't move there."); return; }
+        if (pane.HostPid is not { } host || from.AgentOfHost(host) is not { } agent)
+        {
+            from.SayMove($"{pane.Title} isn't known to the Orchestrator yet: it can move once its first turn starts.");
+            return;
+        }
+        var targets = await from.MoveTargetsAsync(agent.OwnLogin);
+        if (targets.FirstOrDefault(t => to.ScopeEmail is null ? t.IsGlobal : string.Equals(t.Email, to.ScopeEmail, StringComparison.OrdinalIgnoreCase)) is not { } target)
+        {
+            from.SayMove($"{pane.Title} can't move to {to.TabTitle}: it isn't one of the logins it can move to.");
+            return;
+        }
+        if (MaMessageBox.Show(this, $"Move {pane.Title} to {to.TabTitle}? Its CLI moves at its next idle point, keeping its session.", "Move CLI?",
+                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        await from.MoveToAccountAsync(agent.Repo, agent.SessionId, agent.CliPid, target);
     }
 
     /// <summary>Applies a tree reorder drag dropped on <paramref name="sender"/>'s row (M.ORCH-T1768 note 6), the tree's own
@@ -798,14 +926,19 @@ public partial class MainWindow : Window
     {
         try
         {
+            ClearDropLine();
             if (e.Data.GetData(typeof(TerminalPaneViewModel)) is not TerminalPaneViewModel moved
-                || sender is not FrameworkElement row || row.DataContext is not { } targetItem) return;
+                || sender is not FrameworkElement { DataContext: TerminalPaneViewModel target } row) return;
             e.Handled = true;
-            if (FindAncestorDataContext<MainViewModel>(VisualTreeHelper.GetParent(row)) is not { } owner
-                || !owner.Terminals.Panes.Contains(moved)) return;
-            var stripIndex = owner.Terminals.StripItems.IndexOf(targetItem);
-            if (stripIndex < 0) return;
-            owner.Terminals.Reorder(moved, stripIndex - 1);
+            if (FindAncestorDataContext<MainViewModel>(VisualTreeHelper.GetParent(row)) is not { } owner || ReferenceEquals(moved, target)) return;
+            if (!owner.Terminals.Panes.Contains(moved))
+            {
+                if (treeDragOwner is { } from && !ReferenceEquals(from, owner)) QueueTransfer(moved, from, owner);
+                return;
+            }
+            var panes = owner.Terminals.Panes;
+            var to = panes.IndexOf(target) + (DropsBelow(row, e) ? 1 : 0);
+            owner.Terminals.Reorder(moved, panes.IndexOf(moved) < to ? to - 1 : to);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Dropping a tree CLI reorder failed; contained"); }
     }
