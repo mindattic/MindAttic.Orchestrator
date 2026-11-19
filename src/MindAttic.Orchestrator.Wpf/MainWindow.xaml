@@ -759,6 +759,7 @@
                                             <Button x:Name="TreePaneMoreButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE712;" Margin="4,-2,0,-2"
                                                     Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
                                                     Click="TreePaneMoreButton_Click"
+                                                    Visibility="{Binding Request.IsMenu, Converter={x:Static vm:Converters.FalseToVisible}}"
                                                     AutomationProperties.Name="{Binding Title, StringFormat='More actions for {0}'}"
                                                     mc:MaCallout.ToolTip="Move, rename, change color, undock/dock, pop out, broadcast, or copy its PID" />
                                             <!-- 8 in from the chevron column's end puts this 20-wide cell's centre exactly under the
