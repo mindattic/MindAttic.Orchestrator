@@ -71,6 +71,7 @@ public sealed class AccountPacer
                 // Refreshed here too (M.ORCH-T1119): before, only the global login's probe was, so a login whose CLIs bill its
                 // long-lived token, which never refreshes the folder's sign-in, went blind once that sign-in's 8-hour token expired.
                 MayRefresh = () => owner.MayRefreshLogin(dir.Email),
+                TabsOnToken = () => Sessions.LoginTokens.Default.For(dir.Email)?.Valid(DateTime.UtcNow) == true,
             }
             : null;
         public List<UsageSample>? Samples;

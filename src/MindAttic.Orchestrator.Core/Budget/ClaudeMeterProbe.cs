@@ -78,6 +78,10 @@ public sealed class ClaudeMeterProbe
     /// rotates the refresh token and an open CLI still holding the old one would be signed out. Unset, never refreshes.</summary>
     public Func<bool>? MayRefresh { get; init; }
 
+    /// <summary>Whether this login's tabs run on a valid long-lived token (M.ORCH-T1836): then a dead folder sign-in only blinds
+    /// the meter (the token can't read it) and isn't reported as <see cref="NeedsSignIn"/>. Unset, never.</summary>
+    public Func<bool>? TabsOnToken { get; init; }
+
     private readonly object gate = new();
     private DateTime nextUtc;
     /// <summary>Bumped by <see cref="Reset"/>: an ask started before it that then fails doesn't put the backoff back (M.ORCH-T342).</summary>
@@ -393,6 +397,13 @@ public sealed class ClaudeMeterProbe
 
         void Fail(string why, TimeSpan? wait = null, bool signIn = false)
         {
+            // Only the folder's sign-in is dead (M.ORCH-T1836): tabs on a valid long-lived token keep working, so this is a
+            // meter that can't be read, not a login that needs the person; NeedsSignIn would put "sign in again" on every tab.
+            if (signIn && TabsOnToken?.Invoke() == true)
+            {
+                signIn = false;
+                why = $"meter unavailable, tabs still signed in on the long-lived token ({why})";
+            }
             LastResult = why;
             NeedsSignIn = signIn;
             // The old account's ask failing (its credentials mid-rewrite by the /login) mustn't hold off reading the new one.
