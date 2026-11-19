@@ -924,6 +924,10 @@
                                          figures live on the shown login's MainViewModel, not on the UsageTabMarker item itself,
                                          hence AncestorType=mc:MaTabControl to reach back to the control's own (inherited)
                                          DataContext. -->
+                                    <!-- The Launcher stays first, never dragged, nothing dropped before it (M.ORCH-T1848). -->
+                                    <DataTrigger Binding="{Binding Request.IsMenu, FallbackValue=False}" Value="True">
+                                        <Setter Property="IsLocked" Value="True" />
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding}" Value="{x:Static vm:PersonTerminalsViewModel.UsageTab}">
                                         <Setter Property="IsLocked" Value="True" />
                                         <Setter Property="Accent" Value="{Binding DataContext.TabBrush, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />

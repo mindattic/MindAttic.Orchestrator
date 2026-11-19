@@ -1712,6 +1712,8 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     /// still here; gone, its neighbor is chosen; and one arriving on an empty panel is chosen.</summary>
     internal void SyncTo(IReadOnlyList<TerminalPaneViewModel> mine)
     {
+        // The Launcher is always this person's first pane (M.ORCH-T1848); OrderBy is stable, so the rest keep their order.
+        mine = [.. mine.OrderBy(p => p.Request.IsMenu ? 0 : 1)];
         var at = selected is null ? -1 : Panes.IndexOf(selected);
         // The chosen one, if it's leaving, is cleared here first (MaTabControl's SelectedItem binding told of a plain
         // property change) before its Panes.RemoveAt below: removing the still-selected item straight out of the bound
@@ -1754,8 +1756,9 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     internal bool Reorder(TerminalPaneViewModel moved, int newIndex)
     {
         var from = Panes.IndexOf(moved);
-        if (from < 0) return false;
-        newIndex = Math.Clamp(newIndex, 0, Panes.Count - 1);
+        if (from < 0 || moved.Request.IsMenu) return false;
+        var first = Panes.Count > 0 && Panes[0].Request.IsMenu ? 1 : 0;
+        newIndex = Math.Clamp(newIndex, first, Panes.Count - 1);
         if (newIndex == from) return false;
 
         Panes.Move(from, newIndex);

@@ -463,8 +463,7 @@ public sealed partial class MainViewModel
             // OpenTerminal before this tab's process even exited, M.LNCH-T107) before spawning run.ps1 -WaitPid -Force itself.
             // Running our own LauncherRedeployer on top of that races a second dotnet publish against the one already in
             // flight, which can catch the deployed exe mid-move and fail the replacement's own relaunch (M.ORCH-T1524).
-            // With automatic Launchers off (M.ORCH-T1585), a tab gone opens nothing: Open Project on the tab's right-click does.
-            if (!autoOpenLaunchers) return;
+            // The Launcher itself always comes back (M.ORCH-T1848), even with automatic Launchers off.
             if (pane.Request.IsMenu)
             {
                 if (AllTerminals.Panes.Any(p => p != pane && p.Request.IsMenu && !p.Ended && ReferenceEquals(OwnerOf(p), owner)))
@@ -472,6 +471,8 @@ public sealed partial class MainViewModel
                 OnLauncherTabGone(owner, pane);
                 return;
             }
+            // With automatic Launchers off (M.ORCH-T1585), any other tab gone opens nothing: Open Project on the tab's right-click does.
+            if (!autoOpenLaunchers) return;
             var key = owner.tab.Key;
             var hasLive = AllTerminals.Panes.Any(p => !p.Ended && ReferenceEquals(OwnerOf(p), owner));
             var outcome = launcherRespawn.Decide(key, owner.IsTabSignedIn, hasLive, ShuttingDown, RestoringTerminals, DateTime.UtcNow);
