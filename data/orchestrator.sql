@@ -1746,7 +1746,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-18', 'Unstuck', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 341421);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-19', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3631189);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-19', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-19T22:00:00Z', 3472074);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-19', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 11229076);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-19', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 11258288);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-19', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', '2026-11-19T22:00:00Z', 2643342);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-19', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 875091);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-19', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-19T22:00:00Z', 1638429);
@@ -31616,8 +31616,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "191dc2a2e3f1b9f68654c17237884d514185a3d3"
   },
   "MindAttic.Tickets": {
-    "Tested": "9e4213d43a03b06d2ffeca0f1df77354e8aac91c",
-    "Green": "9e4213d43a03b06d2ffeca0f1df77354e8aac91c"
+    "Tested": "28144329379b69a9470a775c3b0cde3f5d1c48a6",
+    "Green": "28144329379b69a9470a775c3b0cde3f5d1c48a6"
   },
   "MindAttic.Vault": {
     "Tested": "983484ad43dce5a52efc48fdff1c73b4b6eac5ff",
@@ -32953,7 +32953,8 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|M.ORCH-T1864": "2026-11-20T02:53:10.4034946Z",
     "approval|PRS-T1070": "2026-11-20T02:54:32.6753601Z",
     "approval|PRS-T1071": "2026-11-20T02:57:07.6175719Z",
-    "approval|PRS-T1073": "2026-11-20T03:00:40.1071437Z"
+    "approval|PRS-T1073": "2026-11-20T03:00:40.1071437Z",
+    "approval|M.ORCH-T1868": "2026-11-20T04:31:29.5103061Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[

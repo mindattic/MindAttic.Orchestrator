@@ -169,8 +169,31 @@ public sealed class SessionRestoreStore(string? directory = null)
         }
     }
 
-    /// <summary>Whether <paramref name="state"/> is one to offer: it wasn't a clean exit and had a tab open.</summary>
-    public static bool ShouldOffer(RestoreState? state) => state is { Clean: false, Tabs.Count: > 0 };
+    /// <summary>
+    /// Whether <paramref name="state"/> (after <see cref="Unhosted"/>) has tabs to reopen: any tab after an unclean exit; after a
+    /// clean one only a hosted tab (M.ORCH-T1867). Closing the dashboard never ends a TermHost CLI, so a hosted tab still in the
+    /// file died afterwards, outside the dashboard: typically a Windows restart, whose window close beats SessionEnding.
+    /// </summary>
+    public static bool ShouldOffer(RestoreState? state) => state is { Tabs.Count: > 0 } && (!state.Clean || state.Tabs.Any(IsHosted));
+
+    /// <summary>The tabs of <paramref name="state"/> (after <see cref="Unhosted"/>) to reopen (M.ORCH-T1867): all of them after an
+    /// unclean exit; after a clean one only the hosted tabs whose host died since (in-process tabs ended with the dashboard on
+    /// purpose). <see cref="RestoreState.SelectedTab"/> follows its tab, or goes when that tab was dropped.</summary>
+    public static RestoreState ToReopen(RestoreState state)
+    {
+        if (!state.Clean) return state;
+        var kept = new List<RestoreTab>();
+        int? selected = null;
+        for (var i = 0; i < state.Tabs.Count; i++)
+        {
+            if (!IsHosted(state.Tabs[i])) continue;
+            if (state.SelectedTab == i) selected = kept.Count;
+            kept.Add(state.Tabs[i]);
+        }
+        return kept.Count == state.Tabs.Count ? state : state with { Tabs = kept, SelectedTab = selected };
+    }
+
+    private static bool IsHosted(RestoreTab tab) => tab.HostId is { Length: > 0 };
 
     /// <summary>
     /// <paramref name="state"/> without the tabs whose TermHost still lives (M.ORCH-T928): the dashboard reattaches those, so

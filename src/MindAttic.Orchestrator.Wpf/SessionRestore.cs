@@ -186,21 +186,12 @@ internal static class SessionRestore
         {
             if (Previous is null) return false;
             // Tabs whose TermHost still lives are reattached by the dashboard, never offered for --resume (M.ORCH-T928).
-            var state = SessionRestoreStore.Unhosted(Previous);
-            if (!SessionRestoreStore.ShouldOffer(state)) return false;
-            var lines = SessionRestoreStore.Describe(state);
-            var when = state.SavedUtc.ToLocalTime().ToString("g");
-            var answer = MaMessageBox.Show(owner,
-                $"The dashboard didn't close cleanly last time ({state.Reason ?? "unknown"}, last saved {when}). These terminal tabs were open:\n\n" +
-                string.Join("\n", lines.Take(20)) + (lines.Count > 20 ? $"\n...and {lines.Count - 20} more" : "") +
-                "\n\nYes: Restore. Reopen them, each Claude CLI resuming its session (claude --resume) on its login.\nNo: Dismiss. Start without them (the file is kept in " +
-                Store.Directory + ").",
-                "Restore terminal tabs?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes);
-            if (answer != MessageBoxResult.Yes)
-            {
-                Log.Information("Restore of {Count} tab(s) dismissed", state.Tabs.Count);
-                return false;
-            }
+            var unhosted = SessionRestoreStore.Unhosted(Previous);
+            if (!SessionRestoreStore.ShouldOffer(unhosted)) return false;
+            // Reopened on its own, no prompt (M.ORCH-T1867): the tabs that were open come back as they were, every start.
+            var state = SessionRestoreStore.ToReopen(unhosted);
+            Log.Information("Reopening {Count} tab(s) from the last run ({Reason:l}, {Clean:l}, saved {Saved:u}); the file is kept in {Dir:l}",
+                state.Tabs.Count, state.Reason ?? "?", state.Clean ? "clean exit" : "not a clean exit", state.SavedUtc, Store.Directory);
             var results = root.RestoreTabs(state);
             foreach (var line in results) Log.Information("Restore: {Line:l}", line);
             return true;

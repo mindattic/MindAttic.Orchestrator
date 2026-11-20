@@ -82,6 +82,20 @@ public sealed class SessionRestoreTests
     }
 
     [Test]
+    public void A_clean_exit_still_reopens_hosted_tabs_whose_host_died_since()
+    {
+        // M.ORCH-T1867: a Windows restart closes the window (a clean exit) and then kills every TermHost.
+        var hosted = new RestoreTab { Request = Host(), SessionId = "h", HostId = "dead" };
+        var inProcess = new RestoreTab { Request = Host(), SessionId = "p" };
+        var state = new RestoreState { Clean = true, SelectedTab = 1, Tabs = [inProcess, hosted] };
+        Assert.That(SessionRestoreStore.ShouldOffer(state), Is.True);
+        var reopen = SessionRestoreStore.ToReopen(state);
+        Assert.That(reopen.Tabs.Select(t => t.SessionId), Is.EqualTo(new[] { "h" }));
+        Assert.That(reopen.SelectedTab, Is.EqualTo(0));
+        Assert.That(SessionRestoreStore.ToReopen(state with { Clean = false }).Tabs, Has.Count.EqualTo(2));
+    }
+
+    [Test]
     public void A_known_session_reopens_with_resume_and_without_its_first_prompt()
     {
         var request = SessionRestoreStore.ReopenRequest(new RestoreTab { Request = Host(@"C:\acc\a@b.com", "do the thing", "a@b.com"), SessionId = "abc", Login = "a@b.com" });
