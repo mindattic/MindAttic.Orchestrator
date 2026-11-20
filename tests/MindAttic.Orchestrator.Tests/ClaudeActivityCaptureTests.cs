@@ -153,8 +153,8 @@ public sealed class ClaudeActivityCaptureTests
         Assert.That(One("Skill", new { skill = "commit", args = "private words" }), Is.EqualTo(new[] { "Skill", "Using", "/commit" }));
 
     [Test]
-    public void Another_tool_shows_its_name_and_no_target() =>
-        Assert.That(One("TodoWrite", new { todos = new[] { new { content = "private plan" } } }), Is.EqualTo(new[] { "TodoWrite", "Using", "" }));
+    public void Another_tool_shows_its_own_name_as_target_never_its_input() =>
+        Assert.That(One("TodoWrite", new { todos = new[] { new { content = "private plan" } } }), Is.EqualTo(new[] { "TodoWrite", "Using", "TodoWrite" }));
 
     [Test]
     public void A_target_is_cut_to_80_characters()
