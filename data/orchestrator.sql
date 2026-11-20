@@ -31549,7 +31549,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "022f425a6b423e59ae59d2308a38224588965008",
+    "Tested": "cda15b15d1f87de50f85e6a94d5934ea4734b385",
     "Green": "980d39195c1065a9b2ebc8a2df8c4a806545650a"
   },
   "MindAttic.Psst": {
@@ -31825,7 +31825,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "022f425a6b423e59ae59d2308a38224588965008",
+    "Tested": "cda15b15d1f87de50f85e6a94d5934ea4734b385",
     "Green": "980d39195c1065a9b2ebc8a2df8c4a806545650a"
   },
   "ipt392tmp": {
@@ -31888,8 +31888,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "95c4ee516106a414b2f463d01bfe3cef1714faa1"
   },
   "Mods.MechWarrior5.SaveEditor": {
-    "Tested": "478d4866a028b9549ddf891504dbce307eafa86d",
-    "Green": "478d4866a028b9549ddf891504dbce307eafa86d"
+    "Tested": "e2e9136d78cabeab7d6e39e2a5779cf20b5098d8",
+    "Green": "e2e9136d78cabeab7d6e39e2a5779cf20b5098d8"
   },
   "Mods.MechWarrior5.Shared": {
     "Tested": "0038d22ac427af390c01fbcc9d6916806192b981",
