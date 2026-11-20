@@ -494,7 +494,8 @@ public sealed class TerminalPanesTests
         Assert.That(tabs.Descendants().Any(e => e.Name.LocalName == "CompositeCollection"), Is.False);
 
         var containerStyle = tabs.Elements().Single(e => e.Name.LocalName == "MaTabControl.ItemContainerStyle").Elements().Single(e => e.Name.LocalName == "Style");
-        var usageTrigger = containerStyle.Descendants().Single(e => e.Name.LocalName == "DataTrigger");
+        // Two DataTriggers lock a tab now: the Launcher's (Request.IsMenu, M.ORCH-T1848) and the Usage tab's, so pick by binding.
+        var usageTrigger = containerStyle.Descendants().Single(e => e.Name.LocalName == "DataTrigger" && ((string?)e.Attribute("Value") ?? "").Contains("UsageTab"));
         Assert.That(usageTrigger.Elements().Any(s => (string?)s.Attribute("Property") == "IsLocked" && (string?)s.Attribute("Value") == "True"), Is.True,
             "locked: drag-to-reorder can never move it or drop another tab before it");
 
