@@ -125,7 +125,13 @@ public sealed partial class MainViewModel
     {
         get
         {
-            if (tab.IsApiKey || !Root.liveReadings.TryGetValue(MeterReading.KeyOf(ScopeEmail), out var r)) return null;
+            if (tab.IsApiKey) return null;
+            // The global tab also reads its person's per-CLI login (M.ORCH-T1879), where their CLIs actually run: the newer wins.
+            Root.liveReadings.TryGetValue(MeterReading.KeyOf(ScopeEmail), out var r);
+            if (ScopeEmail is null && Root.full?.GlobalEmail is { Length: > 0 } global &&
+                Root.liveReadings.TryGetValue(MeterReading.KeyOf(global), out var own) && (r is null || own.ReadUtc > r.ReadUtc))
+                r = own;
+            if (r is null) return null;
             return snapshot is null || r.ReadUtc > snapshot.TakenUtc ? r : null;
         }
     }

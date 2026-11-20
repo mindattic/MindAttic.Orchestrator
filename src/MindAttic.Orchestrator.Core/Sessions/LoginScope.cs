@@ -59,7 +59,18 @@ public static class LoginScope
         var scoped = email is null
             ? Keep(all, login => login is null || (globalEmail is not null && Same(AccountDirs.Normalize(login), globalEmail)), workingWindow, waitingWindow)
             : Keep(all, login => Same(login, email), workingWindow, waitingWindow);
-        if (email is null) return scoped;
+        if (email is null)
+        {
+            // Its meter too (M.ORCH-T1879): the person's CLIs run on that per-CLI folder, so the global ~/.claude login's own
+            // pace and meter sit unread (its 5-hour and weekly read 0%, or another account's stale reading), while the
+            // per-CLI login's pace is the person's real one. Same account, same Claude meter, so it's the truth for this tab.
+            var same = globalEmail is null ? null : all.Accounts.FirstOrDefault(a => Same(AccountDirs.Normalize(a.Email), globalEmail));
+            return same is null ? scoped : scoped with
+            {
+                Budget = same.Budget, Pace = same.Pace, Utilization = same.Utilization ?? scoped.Utilization,
+                WeeklyUtilization = same.WeeklyUtilization ?? scoped.WeeklyUtilization,
+            };
+        }
         var own = all.Accounts.FirstOrDefault(a => Same(a.Email, email));
         return scoped with
         {

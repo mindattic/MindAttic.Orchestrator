@@ -87,6 +87,22 @@ public sealed class LoginScopeTests
     }
 
     [Test]
+    public void The_global_logins_tab_shows_the_meter_of_a_per_cli_login_with_its_own_email()
+    {
+        // M.ORCH-T1879: the person's CLIs ran on their per-CLI folder, so the idle ~/.claude login's pace read 0% / 0% on their tab.
+        var ws = Workspace();
+        var budget = BudgetCalculator.Compute([], new OrchestratorSettings(), Now, Now.Date);
+        var ryans = new Pace(PaceMode.Open, 4, 1, 1, null, null, null, "ryan's own");
+        var all = ws with { Accounts = [.. ws.Accounts, new AccountPace("Ryan@Example.com", @"C:\x\ryan@example.com", "acct-ryan", budget, ryans, null, 1)] };
+
+        var mine = LoginScope.For(all, null, WorkingWindow, WaitingWindow);
+
+        Assert.That(mine.Pace, Is.SameAs(ryans));
+        Assert.That(mine.Budget, Is.SameAs(budget));
+        Assert.That(LoginScope.For(ws, null, WorkingWindow, WaitingWindow).Pace, Is.SameAs(ws.Pace), "with no such login, the global one's own");
+    }
+
+    [Test]
     public void A_logins_tab_sees_its_own_clis_and_its_accounts_own_pace_and_every_repo_with_its_tickets()
     {
         var all = Workspace();
