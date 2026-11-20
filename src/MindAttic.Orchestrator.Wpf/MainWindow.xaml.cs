@@ -952,9 +952,40 @@ public partial class MainWindow : Window
             }
             var panes = owner.Terminals.Panes;
             var to = panes.IndexOf(target) + (DropsBelow(row, e) ? 1 : 0);
-            owner.Terminals.Reorder(moved, panes.IndexOf(moved) < to ? to - 1 : to);
+            ReorderWithPlaceholder(owner, moved, panes.IndexOf(moved) < to ? to - 1 : to);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Dropping a tree CLI reorder failed; contained"); }
+    }
+
+    /// <summary>How long a same-login reorder (this row drop, and <see cref="TerminalTabs_Reordered"/>'s own flat-strip
+    /// drag) may run before it shows M.ORCH-T1883's own placeholder instead of just happening (M.ORCH-T1884): the owner's
+    /// own 500ms.</summary>
+    private static readonly TimeSpan ReorderPlaceholderThreshold = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>Applies a same-login reorder (<see cref="PersonTerminalsViewModel.Reorder"/>: <c>Panes.Move</c> then
+    /// <see cref="TerminalsViewModel.Restamp"/>) with M.ORCH-T1884's own 500ms threshold wired around it: a timer started
+    /// the instant the drop is accepted would flip <paramref name="moved"/>'s own placeholder on
+    /// (<see cref="TerminalPaneViewModel.SetReorderPending"/>, the exact same faded/dashed/spinner look M.ORCH-T1883 gives
+    /// a cross-login transfer) once <see cref="ReorderPlaceholderThreshold"/> passes without Reorder having returned yet.
+    /// <para>Honestly, as Reorder is written today (M.ORCH-T1768 note 6), it never does: Panes.Move and Restamp both run to
+    /// completion on this very call stack, with no await anywhere in either, so the timer's own Tick - itself only ever
+    /// raised on this same UI thread's dispatcher queue - can't run until the <c>try</c> below has already returned control
+    /// to it. This is wired up anyway, ready for the day Reorder's own redraw genuinely becomes asynchronous (e.g. a slow
+    /// disk write Restamp awaited instead of blocking on); until then the threshold is unreachable, not a simulated delay
+    /// pretending otherwise.</para></summary>
+    private void ReorderWithPlaceholder(MainViewModel owner, TerminalPaneViewModel moved, int newIndex)
+    {
+        var done = false;
+        var timer = new DispatcherTimer { Interval = ReorderPlaceholderThreshold };
+        timer.Tick += (_, _) => { timer.Stop(); if (!done) moved.SetReorderPending(true); };
+        timer.Start();
+        try { owner.Terminals.Reorder(moved, newIndex); }
+        finally
+        {
+            done = true;
+            timer.Stop();
+            moved.SetReorderPending(false);
+        }
     }
 
     /// <summary>The nearest ancestor in the visual tree whose own DataContext is a <typeparamref name="T"/>; null past the root.</summary>
@@ -1232,7 +1263,7 @@ public partial class MainWindow : Window
     /// event is a no-op here, not a crash).</summary>
     private void TerminalTabs_Reordered(object sender, TabReorderEventArgs e)
     {
-        if (e.MovedItem is TerminalPaneViewModel pane) Shown.Terminals.Reorder(pane, e.NewIndex - 1);
+        if (e.MovedItem is TerminalPaneViewModel pane) ReorderWithPlaceholder(Shown, pane, e.NewIndex - 1);
     }
 
     /// <summary>A CLI tab's right-click menu (M.ORCH-T883; Shift+F10 too): "Move to" each other signed-in login, read when it's
