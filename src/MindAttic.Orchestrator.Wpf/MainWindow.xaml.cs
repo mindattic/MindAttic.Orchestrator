@@ -1500,7 +1500,7 @@ public partial class MainWindow : Window
                     tab.LogOutCommand);
             if (!tab.IsTabSignedIn)
             {
-                menu.IsOpen = true;
+                OpenLoginMenu(menu);
                 return;
             }
             menu.Items.Add(DropdownSeparator());
@@ -1532,6 +1532,8 @@ public partial class MainWindow : Window
         }
         menu.IsOpen = true;
     }
+
+    private static void OpenLoginMenu(ContextMenu menu) => menu.IsOpen = true;
 
     /// <summary>
     /// "Open Project" (M.ORCH-T1585): the Launcher's Open Project Tab as a tree menu, dot-named projects nested on '.', each
