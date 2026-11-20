@@ -346,18 +346,20 @@ public sealed class TerminalPanesTests
     }
 
     [Test, Apartment(ApartmentState.STA)]
-    public void The_Launcher_s_own_tab_is_an_ordinary_pane_to_Reorder_no_longer_pinned_first()
+    public void The_Launcher_s_own_tab_is_locked_at_index_0_and_Reorder_refuses_it_while_other_panes_still_reorder()
     {
         var all = new TerminalsViewModel();
         var person = new PersonTerminalsViewModel(all);
         var menu = new TerminalPaneViewModel(new PaneRequest("RD: Launcher", temp.New()) { Repo = "Launcher", Provider = "Launcher", CommandLine = "cmd.exe", IsMenu = true, Initials = "RD" });
         TerminalPaneViewModel Pane(string repo) => new(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe" });
-        var cli = Pane("Repo");
-        person.SyncTo([menu, cli]);
+        var (cli, cli2) = (Pane("Repo"), Pane("Repo2"));
+        person.SyncTo([cli, menu, cli2]);
 
-        Assert.That(person.Reorder(menu, 1), Is.True, "the Launcher's tab can be dragged like any other");
-
-        Assert.That(person.Panes, Is.EqualTo(new[] { cli, menu }));
+        Assert.That(person.Panes[0], Is.SameAs(menu), "SyncTo sorts the Launcher first (M.ORCH-T1848)");
+        Assert.That(person.Reorder(menu, 1), Is.False, "the Launcher's tab can't be dragged");
+        Assert.That(person.Reorder(cli2, 0), Is.True, "other panes still reorder");
+        Assert.That(person.Panes[0], Is.SameAs(menu), "nothing lands above the Launcher: a drop at 0 clamps to 1");
+        Assert.That(person.Panes, Is.EqualTo(new[] { menu, cli2, cli }));
     }
 
     [Test, Apartment(ApartmentState.STA)]
