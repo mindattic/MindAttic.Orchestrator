@@ -785,7 +785,7 @@ public sealed record OrchestratorSettings
     public double AutoTabNameMaxChars { get; init; } = DefaultAutoTabNameMaxChars;
 
     /// <summary>The default auto tab name length constant.</summary>
-    public const double DefaultAutoTabNameMaxChars = 20;
+    public const double DefaultAutoTabNameMaxChars = 32;
 
     /// <summary>Milliseconds before the CLI row's hover tooltip (its usage chart, M.ORCH-T1814) opens (<c>ToolTipService.InitialShowDelay</c>
     /// on the owning tab/row, M.ORCH-T1823): 0 opens it the instant the pointer lands, with no hover-delay wait.</summary>

@@ -42,31 +42,39 @@ public class AutoTabNameTests
         });
     }
 
-    [TestCase("M.ORCH-T1812", "Tree sidebar alignment", "Deploy and relaunch the dashboard", "Tree sidebar")]
+    [TestCase("M.ORCH-T1812", "Tree sidebar alignment", "Deploy and relaunch the dashboard", "Tree sidebar alignment")]
     [TestCase("PRS-T995", "Hub without a window", null, "Hub without window")]
-    [TestCase("M.ORCH-T1812", null, "Deploy and relaunch the dashboard", "M.ORCH-T1812")]
-    [TestCase(null, null, "Deploy and relaunch the Orchestrator dashboard", "Deploy relaunch")]
+    [TestCase("M.ORCH-T1812", "Hub tray", "Deploy and relaunch the dashboard", "Hub tray Deploy")]
+    [TestCase("M.ORCH-T1812", null, "Deploy and relaunch the dashboard", "Deploy relaunch dashboard")]
     [TestCase(null, null, "Read the Prose Hub startup: Program.cs", "Read Prose Hub")]
-    public void The_ticket_names_it_first_then_its_id_then_what_it_is_doing(string? id, string? name, string? doing, string expected) =>
-        Assert.That(AutoTabName.NameFor(id, name, doing, 20), Is.EqualTo(expected));
+    [TestCase(null, null, "Using mcp__rea__list_strings", "Rea list strings")]
+    [TestCase(null, null, @"Editing D:\Projects\X\Daemon.cs now", "Editing Daemon.cs now")]
+    public void Always_three_words_from_the_ticket_name_then_its_activity_then_its_id(string? id, string? name, string? doing, string expected) =>
+        Assert.That(AutoTabName.NameFor(id, name, doing, 32), Is.EqualTo(expected));
 
     [Test]
-    public void Nothing_known_gives_no_name()
+    public void Fewer_than_three_words_gives_no_name()
     {
         Assert.Multiple(() =>
         {
-            Assert.That(AutoTabName.NameFor(null, null, null, 20), Is.Null);
-            Assert.That(AutoTabName.NameFor(" ", "", "the of to", 20), Is.Null);
+            Assert.That(AutoTabName.NameFor(null, null, null, 32), Is.Null);
+            Assert.That(AutoTabName.NameFor(" ", "", "the of to", 32), Is.Null);
+            Assert.That(AutoTabName.NameFor(null, null, "Using", 32), Is.Null, "never a lone 'Using' (M.ORCH-T1878)");
+            Assert.That(AutoTabName.NameFor("M.ORCH-T1812", null, "Building", 32), Is.Null);
         });
     }
 
     [Test]
-    public void A_name_never_exceeds_the_cap_and_one_long_word_is_cut_to_it()
+    public void A_name_fits_the_cap_by_cutting_its_longest_words_never_by_dropping_one()
     {
+        var cut = AutoTabName.Shorten("Internationalization everywhere always", 14);
         Assert.Multiple(() =>
         {
-            Assert.That(AutoTabName.Shorten("Internationalization everywhere", 12), Is.EqualTo("Internationa"));
+            Assert.That(cut, Is.Not.Null);
+            Assert.That(cut!.Length, Is.LessThanOrEqualTo(14));
+            Assert.That(cut.Split(' '), Has.Length.EqualTo(3));
             Assert.That(AutoTabName.Shorten("one two three four five", 40), Is.EqualTo("One two three"));
+            Assert.That(AutoTabName.Shorten("two words", 40), Is.Null);
         });
     }
 }

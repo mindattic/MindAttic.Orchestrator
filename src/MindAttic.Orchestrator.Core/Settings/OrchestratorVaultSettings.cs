@@ -755,8 +755,8 @@ public sealed class OrchestratorVaultSettings
 
     /// <summary>The most characters an auto-given tab name has.</summary>
     [Setting("Longest auto-given tab name (characters)", Group = "Dashboard", Order = 6,
-        Help = "The most characters a name the dashboard gives a workspace CLI tab may have. Names are cut between words, at most three of them.")]
-    [SettingRange(8, 60)]
+        Help = "The most characters a name the dashboard gives a workspace CLI tab may have. Every name is exactly three words; when they don't fit, the longest are shortened.")]
+    [SettingRange(14, 60)]
     public double AutoTabNameMaxChars { get; set; } = OrchestratorSettings.DefaultAutoTabNameMaxChars;
 
     /// <summary>Milliseconds before the CLI row's hover tooltip (its usage chart) opens; 0 opens it instantly.</summary>

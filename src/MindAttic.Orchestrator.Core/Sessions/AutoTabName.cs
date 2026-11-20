@@ -8,15 +8,18 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class AutoTabName
 {
-    /// <summary>Words that carry no meaning in a tab's few characters.</summary>
+    /// <summary>Words that carry no meaning in a tab's few characters ("Using" alone named tabs before M.ORCH-T1878).</summary>
     private static readonly HashSet<string> Filler = new(StringComparer.OrdinalIgnoreCase)
     {
         "a", "an", "the", "of", "to", "for", "and", "or", "in", "on", "at", "by", "with", "from", "into", "its", "it", "is", "are",
-        "be", "that", "this", "as", "so", "then", "each", "every", "all", "own",
+        "be", "that", "this", "as", "so", "then", "each", "every", "all", "own", "using", "mcp", "tool",
     };
 
-    /// <summary>The most words a name takes, however short they are.</summary>
-    public const int MaxWords = 3;
+    /// <summary>How many words every name has (M.ORCH-T1878): always exactly this many, so a tab says what it's doing.</summary>
+    public const int Words = 3;
+
+    /// <summary>The shortest a word is cut to when three don't fit the character limit.</summary>
+    private const int MinWordChars = 3;
 
     /// <summary>Whether <paramref name="request"/> is a CLI opened at the workspace root rather than on a repo: it runs in
     /// <paramref name="workspaceRoot"/> itself and is not a Launcher menu. Decided by the folder, never by the tab's name.</summary>
@@ -33,41 +36,61 @@ public static class AutoTabName
 
     /// <summary>
     /// The name for a CLI working <paramref name="ticketId"/> (whose friendly name is <paramref name="ticketName"/>, when it
-    /// has one) and last seen doing <paramref name="doing"/>: the ticket's name shortened, else its ID, else the activity
-    /// shortened; null when none of them says anything, which leaves the tab as it is. Never longer than
-    /// <paramref name="maxChars"/> (at least 8).
+    /// has one) and last seen doing <paramref name="doing"/>: always exactly <see cref="Words"/> words (M.ORCH-T1878), taken
+    /// first from the ticket's name, then its activity, then the ticket's ID; null when together they don't have three, which
+    /// leaves the tab as it is. Never longer than <paramref name="maxChars"/> (at least 14): the longest words are cut down
+    /// rather than any word dropped.
     /// </summary>
     public static string? NameFor(string? ticketId, string? ticketName, string? doing, int maxChars)
     {
-        var max = Math.Max(8, maxChars);
-        if (Shorten(ticketName, max) is { } named) return named;
-        if (ticketId?.Trim() is { Length: > 0 } id) return id.Length <= max ? id : id[..max];
-        return Shorten(doing, max);
+        var words = new List<string>();
+        foreach (var source in new[] { ticketName, doing, ticketId })
+            foreach (var word in WordsOf(source))
+                if (words.Count < Words && !words.Contains(word, StringComparer.OrdinalIgnoreCase)) words.Add(word);
+        return words.Count < Words ? null : Fit(words, maxChars);
     }
 
-    /// <summary><paramref name="text"/>'s first meaningful words, up to <see cref="MaxWords"/> of them and
-    /// <paramref name="maxChars"/> characters, cut only between words; a single word longer than that is cut to fit. Null for
-    /// nothing usable.</summary>
-    public static string? Shorten(string? text, int maxChars)
+    /// <summary><paramref name="text"/>'s first <see cref="Words"/> meaningful words, fitted to <paramref name="maxChars"/>;
+    /// null when it has fewer than three.</summary>
+    public static string? Shorten(string? text, int maxChars) =>
+        WordsOf(text).Take(Words).ToList() is { Count: Words } words ? Fit(words, maxChars) : null;
+
+    /// <summary><paramref name="text"/>'s meaningful words in order: its first line up to a sentence or clause break, filler
+    /// dropped, a tool or code name split into its parts (<c>mcp__rea__list_strings</c> is "rea list strings") and a path
+    /// cut to its file name.</summary>
+    private static IEnumerable<string> WordsOf(string? text)
     {
-        if (string.IsNullOrWhiteSpace(text)) return null;
-        // The first line, up to its first sentence or clause break: what follows is detail.
+        if (string.IsNullOrWhiteSpace(text)) yield break;
         var line = text.Trim().Split('\n', 2)[0];
-        var stop = line.IndexOfAny([':', ';', '(', '.', ',']);
+        // A colon breaks only as punctuation (": "), never inside a path like D:\.
+        var stops = new[] { line.IndexOf(": ", StringComparison.Ordinal), line.TrimEnd().EndsWith(':') ? line.TrimEnd().Length - 1 : -1, line.IndexOfAny([';', '(', ',']) };
+        var stop = stops.Where(i => i > 3).DefaultIfEmpty(-1).Min();
         if (stop > 3) line = line[..stop];
-        var words = line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries)
-            .Select(w => w.Trim('"', '\'', '`', '*', '[', ']', '-'))
-            .Where(w => w.Length > 0 && !Filler.Contains(w))
-            .ToList();
-        if (words.Count == 0) return null;
-        var name = "";
-        foreach (var word in words.Take(MaxWords))
+        foreach (var raw in line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries))
         {
-            var next = name.Length == 0 ? word : name + " " + word;
-            if (next.Length > maxChars) break;
-            name = next;
+            var token = raw.Trim('"', '\'', '`', '*', '[', ']', '-', '.');
+            var slash = token.LastIndexOfAny(['\\', '/']);
+            if (slash >= 0 && slash < token.Length - 1) token = token[(slash + 1)..];
+            foreach (var part in token.Split(['_'], StringSplitOptions.RemoveEmptyEntries))
+            {
+                var word = part.Trim('.', '-');
+                if (word.Length > 0 && !Filler.Contains(word)) yield return word;
+            }
         }
-        if (name.Length == 0) name = words[0][..Math.Min(words[0].Length, maxChars)];
+    }
+
+    /// <summary><paramref name="words"/> joined, capitalized, the longest cut a letter at a time (to <see cref="MinWordChars"/>)
+    /// until the name fits <paramref name="maxChars"/>.</summary>
+    private static string Fit(List<string> words, int maxChars)
+    {
+        var max = Math.Max(14, maxChars);
+        var fitted = words.ToList();
+        while (fitted.Sum(w => w.Length) + fitted.Count - 1 > max && fitted.MaxBy(w => w.Length) is { Length: > MinWordChars } longest)
+        {
+            var i = fitted.IndexOf(longest);
+            fitted[i] = longest[..^1];
+        }
+        var name = string.Join(' ', fitted);
         return char.ToUpperInvariant(name[0]) + name[1..];
     }
 
