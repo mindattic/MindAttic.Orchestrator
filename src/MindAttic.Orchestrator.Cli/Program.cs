@@ -442,9 +442,14 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             return null;
         }
         var dir = dirs.For(email);
-        if (!dir.SignedIn)
+        // A folder signed in as another account (M.ORCH-T1881: a /login inside Amy's CLI landed Ryan's OAuth in her folder)
+        // would bill that other seat: it's signed in again as itself first, as one with no login is.
+        var asOther = dir.SignedIn && dir.SignedInEmail is { } other && !other.Equals(dir.Email, StringComparison.OrdinalIgnoreCase);
+        if (!dir.SignedIn || asOther)
         {
-            AnsiConsole.MarkupLine($"{Markup.Escape(dir.Email)} has no login of its own yet: signing it in first.");
+            AnsiConsole.MarkupLine(asOther
+                ? $"[yellow]{Markup.Escape(dir.Email)}'s login is signed in as {Markup.Escape(dir.SignedInEmail!)}: signing it in as itself first.[/]"
+                : $"{Markup.Escape(dir.Email)} has no login of its own yet: signing it in first.");
             var signedIn = LoginCommand.SignInFirst(dirs, dir.Email);
             if (signedIn.Outcome != OwnLoginOutcome.SignedIn)
             {
