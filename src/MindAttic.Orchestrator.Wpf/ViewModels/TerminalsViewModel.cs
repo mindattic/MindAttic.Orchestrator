@@ -269,6 +269,10 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// A restored tab starts with the session it resumes.</summary>
     public string? SessionId { get; internal set; }
 
+    /// <summary>The code of the /quicksave handoff the dashboard last saw this CLI write (M.ORCH-T1869): kept in the save
+    /// state and the session-restore file, so a Quick Load types <c>/quickload</c> on it.</summary>
+    public string? HandoffCode { get; internal set; }
+
     /// <summary>Whether selected.</summary>
     public bool IsSelected
     {

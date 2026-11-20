@@ -23,6 +23,18 @@ public sealed record RestoreTab
     /// <summary>The TermHost session its CLI ran in (M.ORCH-T928), null when it ran unhosted (in the dashboard's own process). While
     /// that host lives the dashboard reattaches the tab itself, so a restore never offers it.</summary>
     public string? HostId { get; init; }
+
+    /// <summary>The code of the /quicksave handoff its CLI last wrote (M.ORCH-T1869): a Quick Load types <c>/quickload</c> on it.</summary>
+    public string? HandoffCode { get; init; }
+
+    /// <summary>The repos /allocate was working in its CLI when saved ("*": all), null when /allocate was off (M.ORCH-T1869).</summary>
+    public IReadOnlyList<string>? Allocate { get; init; }
+
+    /// <summary>The repos its CLI's /crossrepo named, null when it had none (M.ORCH-T1869).</summary>
+    public IReadOnlyList<string>? Crossrepo { get; init; }
+
+    /// <summary>How many subagents its CLI had running when saved (M.ORCH-T1869): their tickets are picked up again by /allocate.</summary>
+    public int Subagents { get; init; }
 }
 
 /// <summary>Every terminal tab open in the dashboard, and who and what was on screen (M.ORCH-T862): rewritten whenever that

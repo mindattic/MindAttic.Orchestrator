@@ -24,6 +24,8 @@ public sealed partial class MainViewModel
             // Its TermHost session (M.ORCH-T926): while that host lives the next dashboard reattaches the tab, so a restore
             // never offers it (M.ORCH-T928). Null for an in-process tab.
             HostId = p.IsHosted ? p.TermId : null,
+            HandoffCode = p.HandoffCode,
+            Subagents = p.StatusRow?.Subagents.Count ?? 0,
         }).ToList();
         var shown = all.SelectedPane is { } s ? panes.IndexOf(s) : -1;
         return new RestoreState
@@ -50,45 +52,48 @@ public sealed partial class MainViewModel
         restored = [];
         restoredShown = null;
         restoredPerson = state.SelectedPerson;
-        var dirs = new AccountDirs();
-        string ConfigDirOf(string? login) => login is null ? Setup.AgentGate.ClaudeDir : dirs.For(login).Directory;
         for (var i = 0; i < state.Tabs.Count; i++)
         {
             var tab = state.Tabs[i];
-            try
-            {
-                var request = SessionRestoreStore.ReopenRequest(tab, ConfigDirOf, LoginLook.ForConfigDir);
-                if (request.IsMenu && AllTerminals.Panes.Any(p => p.Request.IsMenu && !p.Ended &&
-                        string.Equals(p.Login, request.Login, StringComparison.OrdinalIgnoreCase)))
-                {
-                    lines.Add($"{request.Title}: its Launcher menu was already open");
-                    continue;
-                }
-                var before = AllTerminals.Panes.Count;
-                if (AllTerminals.Open(request) is { } error)
-                {
-                    lines.Add($"{request.Title} in {request.Directory}: not reopened ({error})");
-                    continue;
-                }
-                if (AllTerminals.Panes.Count <= before) continue;
-                var pane = AllTerminals.Panes[^1];
-                if (!request.IsMenu && tab.SessionId is { Length: > 0 } session && string.Equals(request.Provider, "Claude", StringComparison.OrdinalIgnoreCase))
-                    pane.SessionId = session;
-                restored.Add((pane, tab.Chosen));
-                if (state.SelectedTab == i) restoredShown = pane;
-                lines.Add(request.IsMenu ? $"{request.Title}: reopened the Launcher menu"
-                    : pane.SessionId is { } s ? $"{request.Title} in {request.Directory}: reopened, resuming session {s}"
-                    : $"{request.Title} in {request.Directory}: reopened fresh (no session known)");
-            }
-            catch (Exception ex)
-            {
-                OrchestratorLog.For("Restore").Error(ex, "Reopening {Title:l} failed; contained", tab.Request.Title);
-                lines.Add($"{tab.Request.Title}: not reopened ({ex.Message})");
-            }
+            var (pane, line) = ReopenTab(tab);
+            lines.Add(line);
+            if (pane is null) continue;
+            restored.Add((pane, tab.Chosen));
+            if (state.SelectedTab == i) restoredShown = pane;
         }
         if (restored.Count > 0)
             StatusMessage = $"Restored {restored.Count} of {state.Tabs.Count} terminal tab(s) from the last session.";
         return lines;
+    }
+
+    /// <summary>Reopens one saved tab (<see cref="SessionRestoreStore.ReopenRequest"/>, global login's tab): its new pane (null
+    /// when none was opened: a Launcher menu already open, or it failed) and a line for the log. Never throws.</summary>
+    internal (TerminalPaneViewModel? Pane, string Line) ReopenTab(RestoreTab tab)
+    {
+        try
+        {
+            var dirs = new AccountDirs();
+            string ConfigDirOf(string? login) => login is null ? Setup.AgentGate.ClaudeDir : dirs.For(login).Directory;
+            var request = SessionRestoreStore.ReopenRequest(tab, ConfigDirOf, LoginLook.ForConfigDir);
+            if (request.IsMenu && AllTerminals.Panes.Any(p => p.Request.IsMenu && !p.Ended &&
+                    string.Equals(p.Login, request.Login, StringComparison.OrdinalIgnoreCase)))
+                return (null, $"{request.Title}: its Launcher menu was already open");
+            var before = AllTerminals.Panes.Count;
+            if (AllTerminals.Open(request) is { } error) return (null, $"{request.Title} in {request.Directory}: not reopened ({error})");
+            if (AllTerminals.Panes.Count <= before) return (null, $"{request.Title}: not reopened (no tab came up)");
+            var pane = AllTerminals.Panes[^1];
+            if (!request.IsMenu && tab.SessionId is { Length: > 0 } session && string.Equals(request.Provider, "Claude", StringComparison.OrdinalIgnoreCase))
+                pane.SessionId = session;
+            pane.HandoffCode = tab.HandoffCode;
+            return (pane, request.IsMenu ? $"{request.Title}: reopened the Launcher menu"
+                : pane.SessionId is { } s ? $"{request.Title} in {request.Directory}: reopened, resuming session {s}"
+                : $"{request.Title} in {request.Directory}: reopened fresh (no session known)");
+        }
+        catch (Exception ex)
+        {
+            OrchestratorLog.For("Restore").Error(ex, "Reopening {Title:l} failed; contained", tab.Request.Title);
+            return (null, $"{tab.Request.Title}: not reopened ({ex.Message})");
+        }
     }
 
     /// <summary>The TermHost sessions of the tabs each person last had chosen (M.ORCH-T1436), from the last run's restore file.</summary>

@@ -2,23 +2,20 @@ using System.Diagnostics;
 using System.Windows.Input;
 using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Activity;
+using MindAttic.Orchestrator.Sessions;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// The dashboard's Save button (M.ORCH-T1769): a left click force-quicksaves the shown CLI alone, through the same
-/// input-injection path the "Say" button / on-screen keyboard already use (<see cref="TerminalPaneViewModel.WriteInput"/>),
-/// with no closing and no confirm - it's a single, easily-undone action like any other keystroke sent to the CLI. A right
-/// click opens a menu (<see cref="MainWindow"/>'s own <c>OnSaveButtonContextMenu</c>) for Quick Save All and Quick Load
-/// All, each confirmed first and reporting how long the confirmed run actually took once it's done.
-/// <para>
-/// This replaces Save all &amp; close (M.ORCH-T1724), whose one bar icon force-quicksaved every open CLI and then closed
-/// and exited the whole app (a "pause everything, resume at the next start" action the dashboard no longer offers): Quick
-/// Save All keeps that same force-quicksave-every-open-CLI mechanic (<see cref="QuicksaveOneAsync"/>, sequenced within a
-/// repo since its handoff is one slot shared by every CLI checked out there, parallel across repos) but never closes a
-/// tab or exits, and Quick Load All is its new counterpart - typing bare <c>/quickload</c> (this repo's latest handoff)
-/// into every open CLI the same way.
-/// </para>
+/// The dashboard's Save button (M.ORCH-T1769) and its save states (M.ORCH-T1869), like an emulator's: a left click
+/// force-quicksaves the shown CLI alone (its handoff code kept on its tab, so the session-restore autosave carries it).
+/// The right-click menu's Quick Save All saves the whole dashboard as one package: it first stops new spending (/allocate off
+/// in every CLI, each letting its running subagents land), force-quicksaves every open CLI, then writes every tab (login,
+/// folder, Claude session, handoff code, /allocate and /crossrepo, subagents running) to a <see cref="SaveStateStore"/> slot.
+/// Quick Load All restores the newer of that package and the session-restore autosave (so a crash or a Windows restart comes
+/// back too): every tab not open is reopened with <c>claude --resume</c>, each CLI gets <c>/quickload</c> on its handoff (or a
+/// "carry on"), then its /crossrepo and /allocate back, which picks its interrupted tickets up again; the tab that was on screen
+/// is shown. One CLI failing never holds the rest up; each run reports what it did.
 /// </summary>
 public sealed partial class MainViewModel
 {
@@ -29,6 +26,12 @@ public sealed partial class MainViewModel
     private static readonly TimeSpan QuickAllTimeout = TimeSpan.FromSeconds(90);
 
     private static readonly TimeSpan QuickAllPoll = TimeSpan.FromSeconds(2);
+
+    /// <summary>How long a reopened CLI is given to come up (its agent seen by the status read) before it's typed into anyway.</summary>
+    private static readonly TimeSpan ReopenReadyTimeout = TimeSpan.FromSeconds(60);
+
+    /// <summary>What a Quick Save All or Quick Load All did, for the completion modal.</summary>
+    internal sealed record QuickAllResult(TimeSpan Elapsed, int Acted, int Total, string Note);
 
     private void InitSave()
     {
@@ -41,10 +44,10 @@ public sealed partial class MainViewModel
     /// <summary>Left-click: quicksaves the shown CLI alone.</summary>
     public ICommand QuicksaveShownCommand { get; private set; } = null!;
 
-    /// <summary>Right-click menu, "Quick Save All" (<see cref="MainWindow"/> confirms first and reports how long it took).</summary>
+    /// <summary>Right-click menu, "Quick Save All" (<see cref="MainWindow"/> confirms first and reports what it did).</summary>
     public ICommand QuickSaveAllCommand { get; private set; } = null!;
 
-    /// <summary>Right-click menu, "Quick Load All" (<see cref="MainWindow"/> confirms first and reports how long it took).</summary>
+    /// <summary>Right-click menu, "Quick Load All" (<see cref="MainWindow"/> confirms first and reports what it did).</summary>
     public ICommand QuickLoadAllCommand { get; private set; } = null!;
 
     /// <summary>Open, real CLI panes - the same set Save all &amp; close worked (M.ORCH-T1724): not the Launcher's own
@@ -60,79 +63,179 @@ public sealed partial class MainViewModel
             : new ToastViewModel("Quicksave", $"{pane.Name} didn't quicksave in time (busy, hung, or not a quicksave-capable provider).", Palette.Working, null));
     }
 
-    /// <summary>"Quick Save All" (right-click menu, confirmed first by <see cref="MainWindow"/>): force-quicksaves every
-    /// open CLI, same grouping Save all &amp; close used, but closes nothing and never exits. Returns how long it took and
-    /// how many of how many landed, for the completion modal.</summary>
-    internal async Task<(TimeSpan Elapsed, int Acted, int Total)> QuickSaveAllAsync()
+    /// <summary>"Quick Save All" (right-click menu, confirmed first by <see cref="MainWindow"/>): the whole dashboard saved as
+    /// one package (M.ORCH-T1869). Every CLI's /allocate and /crossrepo is read, /allocate is turned off everywhere so no new
+    /// work starts (running subagents finish and land), every open CLI is force-quicksaved (sequenced within a repo, whose
+    /// handoff is one slot, parallel across repos), and every tab is written to a save-state slot. Closes nothing.</summary>
+    internal async Task<QuickAllResult> QuickSaveAllAsync()
     {
-        if (quicksavingAll) return (TimeSpan.Zero, 0, 0);
+        if (!IsGlobalTab) return await Root.QuickSaveAllAsync();
+        if (quicksavingAll) return new(TimeSpan.Zero, 0, 0, "A Quick Save All is already running.");
         quicksavingAll = true;
         var clock = Stopwatch.StartNew();
         try
         {
             var panes = OpenPanes();
-            if (panes.Count == 0) return (clock.Elapsed, 0, 0);
+            if (panes.Count == 0) return new(clock.Elapsed, 0, 0, "");
+
+            // What each CLI was doing, read before /allocate goes off, so a load puts it back.
+            var cycler = new ContextCycler();
+            var allocating = Safe(() => cycler.AllocateClis(), new Dictionary<int, IReadOnlyList<string>>());
+            var marks = new Dictionary<TerminalPaneViewModel, (IReadOnlyList<string>? Allocate, IReadOnlyList<string>? Crossrepo)>();
+            foreach (var pane in panes)
+                marks[pane] = pane.StatusRow?.CliPid is { } pid
+                    ? (allocating.TryGetValue(pid, out var repos) ? repos : null, Safe(() => cycler.CrossRepoOf(pid), null))
+                    : (null, null);
+
+            // Stop spending: nothing new is claimed or started; subagents already working finish and land.
+            var wound = Safe(() => CliMarks.WindDownEverywhere(cycler.Directory), 0);
+
             var codes = new string?[panes.Count];
             var byRepo = panes.Select((p, i) => (Pane: p, Index: i)).GroupBy(x => x.Pane.Request.Directory, StringComparer.OrdinalIgnoreCase);
             await Task.WhenAll(byRepo.Select(async group =>
             {
                 foreach (var (pane, index) in group) codes[index] = await QuicksaveOneAsync(pane);
             }));
-            return (clock.Elapsed, codes.Count(c => c is { Length: > 0 }), panes.Count);
+
+            // The package: every tab as the session-restore file has it (the same order as its panes), plus what was read above.
+            var live = AllTerminals.Panes.Where(p => !p.Ended).ToList();
+            var state = CaptureRestore(SaveStateStore.SaveAllReason, clean: false);
+            var tabs = state.Tabs.Select((tab, i) => i < live.Count && marks.TryGetValue(live[i], out var m)
+                ? tab with { Allocate = m.Allocate, Crossrepo = m.Crossrepo } : tab).ToList();
+            var path = new SaveStateStore().Save(state with { Tabs = tabs });
+            SessionRestore.Changed();
+
+            var saved = codes.Count(c => c is { Length: > 0 });
+            var note = (path is null ? "The save state couldn't be written (see the log)." : $"Saved {tabs.Count} tab(s) as one save state.")
+                + (wound > 0 ? $" /allocate is off in {wound} CLI(s); their running subagents finish, nothing new starts. Quick Load All turns it back on." : "");
+            OrchestratorLog.For("SaveState").Information("Quick Save All: {Saved} of {Total} quicksaved, {Wound} wound down, {Tabs} tab(s) saved to {Path:l}",
+                saved, panes.Count, wound, tabs.Count, path ?? "(not written)");
+            return new(clock.Elapsed, saved, panes.Count, note);
         }
         finally { quicksavingAll = false; }
     }
 
-    /// <summary>"Quick Load All" (right-click menu, confirmed first by <see cref="MainWindow"/>): types bare
-    /// <c>/quickload</c> (this repo's latest handoff) into every open CLI, same grouping as <see cref="QuickSaveAllAsync"/>.
-    /// Returns how long it took and how many of how many were sent, for the completion modal.</summary>
-    internal async Task<(TimeSpan Elapsed, int Acted, int Total)> QuickLoadAllAsync()
+    /// <summary>"Quick Load All" (right-click menu, confirmed first by <see cref="MainWindow"/>): the newer of the last save
+    /// state and the session-restore autosave, restored (M.ORCH-T1869). Every saved tab not open now is reopened (its CLI with
+    /// <c>claude --resume</c> on its login), then each CLI gets <c>/quickload</c> on its handoff (else a "carry on"), then its
+    /// /crossrepo and /allocate as they were; the tab that was on screen is shown again.</summary>
+    internal async Task<QuickAllResult> QuickLoadAllAsync()
     {
-        if (quickloadingAll) return (TimeSpan.Zero, 0, 0);
+        if (!IsGlobalTab) return await Root.QuickLoadAllAsync();
+        if (quickloadingAll) return new(TimeSpan.Zero, 0, 0, "A Quick Load All is already running.");
         quickloadingAll = true;
         var clock = Stopwatch.StartNew();
         try
         {
-            var panes = OpenPanes();
-            if (panes.Count == 0) return (clock.Elapsed, 0, 0);
-            var sent = new bool[panes.Count];
-            var byRepo = panes.Select((p, i) => (Pane: p, Index: i)).GroupBy(x => x.Pane.Request.Directory, StringComparer.OrdinalIgnoreCase);
+            var state = SaveStateStore.Pick(new SaveStateStore().Latest(), SessionRestore.Previous);
+            if (state is null) return new(clock.Elapsed, 0, 0, "There's no save state yet: Quick Save All makes one.");
+
+            var targets = new List<(TerminalPaneViewModel Pane, RestoreTab Tab, bool Reopened)>();
+            TerminalPaneViewModel? shown = null;
+            var reopened = 0;
+            for (var i = 0; i < state.Tabs.Count; i++)
+            {
+                var tab = state.Tabs[i];
+                var pane = OpenPaneOf(tab);
+                var isNew = false;
+                if (pane is null)
+                {
+                    var (opened, line) = ReopenTab(tab);
+                    OrchestratorLog.For("SaveState").Information("Quick Load All: {Line:l}", line);
+                    if (opened is null) continue;
+                    pane = opened;
+                    isNew = true;
+                    reopened++;
+                }
+                if (state.SelectedTab == i) shown = pane;
+                if (!tab.Request.IsMenu) targets.Add((pane, tab, isNew));
+            }
+            if (shown is not null) ShowPane(shown);
+
+            var sent = new bool[targets.Count];
+            var byRepo = targets.Select((t, i) => (Target: t, Index: i)).GroupBy(x => x.Target.Tab.Request.Directory, StringComparer.OrdinalIgnoreCase);
             await Task.WhenAll(byRepo.Select(async group =>
             {
-                foreach (var (pane, index) in group) sent[index] = await QuickloadOneAsync(pane);
+                foreach (var (target, index) in group) sent[index] = await ResumeOneAsync(target.Pane, target.Tab, target.Reopened);
             }));
-            return (clock.Elapsed, sent.Count(s => s), panes.Count);
+            var allocating = targets.Count(t => t.Tab.Allocate is { Count: > 0 });
+            var note = $"From the {(state.Reason == SaveStateStore.SaveAllReason ? "save state" : "autosave")} of {state.SavedUtc.ToLocalTime():g}: "
+                + $"{reopened} tab(s) reopened, {targets.Count - reopened} already open"
+                + (allocating > 0 ? $", /allocate turned back on in {allocating}." : ".");
+            return new(clock.Elapsed, sent.Count(s => s), targets.Count, note);
         }
         finally { quickloadingAll = false; }
     }
 
+    /// <summary>The open pane that is <paramref name="tab"/>: the same TermHost session, else the same Claude session.</summary>
+    private TerminalPaneViewModel? OpenPaneOf(RestoreTab tab) => AllTerminals.Panes.FirstOrDefault(p => !p.Ended &&
+        (tab.HostId is { Length: > 0 } host && string.Equals(p.TermId, host, StringComparison.OrdinalIgnoreCase)
+         || tab.SessionId is { Length: > 0 } session && string.Equals(p.SessionId, session, StringComparison.OrdinalIgnoreCase)
+         || tab.Request.IsMenu && p.Request.IsMenu && string.Equals(p.Login, tab.Login, StringComparison.OrdinalIgnoreCase)));
+
+    /// <summary>One CLI back where it was: (once a reopened one is up) its handoff loaded, then /crossrepo and /allocate as
+    /// saved, each typed as its own prompt (Claude queues one typed while it's busy). True once the first was typed.</summary>
+    private async Task<bool> ResumeOneAsync(TerminalPaneViewModel pane, RestoreTab tab, bool reopened)
+    {
+        try
+        {
+            if (reopened)
+            {
+                var deadline = DateTime.UtcNow + ReopenReadyTimeout;
+                while (pane.StatusRow is null && !pane.Ended && DateTime.UtcNow < deadline) await Task.Delay(QuickAllPoll);
+                await Task.Delay(QuickAllPoll);
+            }
+            if (pane.Ended || !Type(pane, SaveStateStore.ResumePrompt(tab))) return false;
+            foreach (var command in new[] { SaveStateStore.CrossrepoCommand(tab), SaveStateStore.AllocateCommand(tab) })
+                if (command is not null)
+                {
+                    await Task.Delay(QuickAllPoll);
+                    Type(pane, command);
+                }
+            await Task.Delay(QuickAllPoll);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            OrchestratorLog.For("SaveState").Error(ex, "Resuming {Title:l} failed; contained", tab.Request.Title);
+            return false;
+        }
+    }
+
+    /// <summary>Types <paramref name="text"/> into <paramref name="pane"/> and presses Enter.</summary>
+    private static bool Type(TerminalPaneViewModel pane, string text)
+    {
+        if (!pane.WriteInput(TerminalPaste.Payload(text, pane.Bracketed))) return false;
+        pane.WriteInput("\r");
+        return true;
+    }
+
+    private static T Safe<T>(Func<T> read, T fallback)
+    {
+        try { return read(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { return fallback; }
+    }
+
     /// <summary>Types <c>/quicksave</c> into <paramref name="pane"/> and waits for its repo's handoff file to show a save
     /// written after this moment, up to <see cref="QuickAllTimeout"/>; null (not an error - just reported) when it never
-    /// typed, or the CLI never took the turn in time (busy, hung, or not a quicksave-capable provider).</summary>
+    /// typed, or the CLI never took the turn in time (busy, hung, or not a quicksave-capable provider). The code is kept on
+    /// the pane (M.ORCH-T1869), so the autosave and the next save state carry it.</summary>
     private async Task<string?> QuicksaveOneAsync(TerminalPaneViewModel pane)
     {
         var baselineUtc = DateTime.UtcNow;
-        if (!pane.WriteInput(TerminalPaste.Payload("/quicksave", pane.Bracketed))) return null;
-        pane.WriteInput("\r");
+        if (!Type(pane, "/quicksave")) return null;
         var path = QuicksaveCapture.SessionPath(pane.Request.Directory);
         var deadlineUtc = baselineUtc + QuickAllTimeout;
         while (DateTime.UtcNow < deadlineUtc)
         {
             await Task.Delay(QuickAllPoll);
-            if (QuicksaveCapture.TryReadCode(path, baselineUtc) is { Length: > 0 } code) return code;
+            if (QuicksaveCapture.TryReadCode(path, baselineUtc) is { Length: > 0 } code)
+            {
+                pane.HandoffCode = code;
+                SessionRestore.Changed();
+                return code;
+            }
         }
         return null;
-    }
-
-    /// <summary>Types bare <c>/quickload</c> into <paramref name="pane"/> (restores this repo's latest handoff); true once
-    /// typed. There's no file-based landing signal for a load the way <see cref="QuicksaveOneAsync"/> has for a save
-    /// (the handoff file a repo's own <c>/quicksave</c> writes says nothing about a later <c>/quickload</c> reading it), so
-    /// this only reports that it was sent, after a short settle so every pane isn't typed into in the very same instant.</summary>
-    private async Task<bool> QuickloadOneAsync(TerminalPaneViewModel pane)
-    {
-        if (!pane.WriteInput(TerminalPaste.Payload("/quickload", pane.Bracketed))) return false;
-        pane.WriteInput("\r");
-        await Task.Delay(QuickAllPoll);
-        return true;
     }
 }

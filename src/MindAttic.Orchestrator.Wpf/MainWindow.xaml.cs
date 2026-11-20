@@ -277,11 +277,11 @@ public partial class MainWindow : Window
     {
         var menu = DropdownMenu(target, "Quick save or load every open CLI", placement);
         var saveAll = DropdownItem("", "Quick Save All");
-        saveAll.ToolTip = "Force-quicksave every open CLI (confirmed first), reporting how long it took once every one lands";
+        saveAll.ToolTip = "Save everything as one save state (confirmed first): /allocate off everywhere so nothing new starts, every open CLI quicksaved, every tab, session and /allocate kept";
         saveAll.Click += async (_, _) => await RunQuickAllAsync(isSave: true);
         menu.Items.Add(saveAll);
         var loadAll = DropdownItem("", "Quick Load All");
-        loadAll.ToolTip = "Type /quickload into every open CLI (confirmed first), reporting how long it took once sent";
+        loadAll.ToolTip = "Restore the last save state (or the newer autosave) (confirmed first): every closed tab reopened and resumed, each CLI's handoff loaded, /allocate back on where it was";
         loadAll.Click += async (_, _) => await RunQuickAllAsync(isSave: false);
         menu.Items.Add(loadAll);
         menu.IsOpen = true;
@@ -295,12 +295,16 @@ public partial class MainWindow : Window
     {
         var verb = isSave ? "quick save" : "quick load";
         var noun = isSave ? "Quick Save All" : "Quick Load All";
-        if (MaMessageBox.Show(this, $"Are you sure you want to {verb} all open CLIs?", $"{noun}?",
+        var question = isSave
+            ? "Save everything as one save state? /allocate goes off in every CLI (running subagents finish, nothing new starts), every open CLI quicksaves, and every tab is kept."
+            : "Restore the last save state? Closed tabs reopen and resume, each CLI loads its handoff, and /allocate comes back on where it was.";
+        if (MaMessageBox.Show(this, question, $"{noun}?",
                 MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
-        var (elapsed, acted, total) = isSave ? await model.QuickSaveAllAsync() : await model.QuickLoadAllAsync();
-        var report = total == 0 ? $"No open CLI tabs to {verb}."
+        var (elapsed, acted, total, note) = isSave ? await model.QuickSaveAllAsync() : await model.QuickLoadAllAsync();
+        var report = (total == 0 ? $"No CLI tabs to {verb}."
             : isSave ? $"{acted} of {total} quicksave{(total == 1 ? "" : "s")} captured in {elapsed.TotalSeconds:0.0}s."
-            : $"{acted} of {total} quickload{(total == 1 ? "" : "s")} sent in {elapsed.TotalSeconds:0.0}s.";
+            : $"{acted} of {total} CLI{(total == 1 ? "" : "s")} resumed in {elapsed.TotalSeconds:0.0}s.")
+            + (note is { Length: > 0 } ? "\n\n" + note : "");
         MaMessageBox.Show(this, report, noun, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
