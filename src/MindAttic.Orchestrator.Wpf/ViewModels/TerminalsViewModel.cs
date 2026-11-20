@@ -336,12 +336,19 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>An inert placeholder standing in the Launcher's own slot while MindAttic.Launcher redeploys after its tab closed
     /// (M.ORCH-T1511): never a real CLI's, never attached to a process. Shown ahead of every other state in
     /// <see cref="StateText"/>, so a placeholder that's also marked <see cref="Ended"/> still reads "redeploying…", not "ended".</summary>
-    public bool Redeploying { get => redeploying; internal set { if (Set(ref redeploying, value)) Raise(nameof(StateText)); } }
+    public bool Redeploying { get => redeploying; internal set { if (Set(ref redeploying, value)) { Raise(nameof(StateText)); Raise(nameof(ShowsLauncherReloadIcon)); } } }
     /// <summary>The state text.</summary>
     private bool redeploying;
 
     /// <summary>The state text.</summary>
     public string StateText => Redeploying ? "redeploying…" : Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
+
+    /// <summary>Whether this pane's close "x" (the flat tab strip and the tree row, M.ORCH-T1873) shows as a redeploy/reopen
+    /// icon instead of an ordinary close: the Launcher's own pane, since closing it already redeploys MindAttic.Launcher and
+    /// reopens it fresh (<see cref="MainViewModel.OnLauncherTabGone"/>) rather than just ending it for good - so the icon says
+    /// what clicking it really does. False again once this pane is itself the inert "redeploying…" placeholder
+    /// (<see cref="Redeploying"/>): nothing to click there until the real one replaces it, a spinner standing in its place.</summary>
+    public bool ShowsLauncherReloadIcon => Request.IsMenu && !Redeploying;
 
     private bool paneKnown, paneBusy, paneAsking;
     private string? paneGoal;

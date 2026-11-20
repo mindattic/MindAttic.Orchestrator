@@ -556,7 +556,13 @@ public sealed partial class MainViewModel
         string? error;
         try { error = await Task.Run(() => LauncherRedeployer(aggregator.Options.WorkspaceRoot)); }
         catch (Exception ex) { error = ex.Message; }
-        if (error is { } e) log.Warning("Redeploying MindAttic.Launcher for {Login:l} failed; reopening the build already deployed: {Error:l}", owner.TabTitle, e);
+        if (error is { } e)
+        {
+            log.Warning("Redeploying MindAttic.Launcher for {Login:l} failed; reopening the build already deployed: {Error:l}", owner.TabTitle, e);
+            // Not lost, just stale (M.ORCH-T1873): the build already deployed reopens below regardless, so this is a heads-up,
+            // not the "CLI not ended"-style error toast a truly failed reopen gets further down.
+            owner.Toasts.Insert(0, new ToastViewModel($"{owner.TabTitle}'s Launcher didn't redeploy", $"{e} Reopening the build already deployed instead.", Palette.Waiting, null));
+        }
         else log.Information("Redeployed MindAttic.Launcher for {Login:l}", owner.TabTitle);
         AllTerminals.Panes.Remove(placeholder);
         placeholder.DisposeControl();
@@ -564,6 +570,9 @@ public sealed partial class MainViewModel
         {
             log.Warning("Couldn't reopen {Login:l}'s Launcher after redeploying: {Error:l}", owner.TabTitle, openError);
             launchersOpened.Remove(owner.tab.Key);
+            // The reload icon's one real failure mode (M.ORCH-T1873): its Launcher is gone and didn't come back, so this one
+            // is surfaced as the ordinary error toast rather than the softer heads-up above.
+            owner.Toasts.Insert(0, new ToastViewModel($"Couldn't reopen {owner.TabTitle}'s Launcher", openError, Palette.Over, null));
         }
     }
 
