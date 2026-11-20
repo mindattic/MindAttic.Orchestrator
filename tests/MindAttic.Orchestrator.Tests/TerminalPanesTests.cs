@@ -174,6 +174,40 @@ public sealed class TerminalPanesTests
         Assert.That(changes, Is.EqualTo(4));
     }
 
+    /// <summary>M.ORCH-T1857/M.ORCH-T1865: the tree sidebar draws only its last pane's branch as an elbow (IsLastOfPerson),
+    /// so it must be true for exactly one pane -- the current last -- after every kind of change to the list: a lone
+    /// pane, one arriving or leaving, and a reorder, whether SyncTo's own (a position stamp changing) or a drag.</summary>
+    [Test, Apartment(ApartmentState.STA)]
+    public void IsLastOfPerson_is_true_for_exactly_the_current_last_pane_through_every_kind_of_change()
+    {
+        var all = new TerminalsViewModel();
+        var person = new PersonTerminalsViewModel(all);
+        TerminalPaneViewModel Pane(string repo) => new(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe" });
+        var (a, b, c) = (Pane("A"), Pane("B"), Pane("C"));
+
+        person.SyncTo([a]);
+        Assert.That((a.IsLastOfPerson), Is.True, "a lone pane is its own last");
+
+        person.SyncTo([a, b]);
+        Assert.That((a.IsLastOfPerson, b.IsLastOfPerson), Is.EqualTo((false, true)), "a second pane arriving takes it from the first");
+
+        person.SyncTo([a, b, c]);
+        Assert.That((a.IsLastOfPerson, b.IsLastOfPerson, c.IsLastOfPerson), Is.EqualTo((false, false, true)));
+
+        person.SyncTo([a, c]);
+        Assert.That((a.IsLastOfPerson, c.IsLastOfPerson), Is.EqualTo((false, true)), "b leaving doesn't leave two or none marked last");
+
+        person.Reorder(a, 1);
+        Assert.That(person.Panes, Is.EqualTo(new[] { c, a }));
+        Assert.That((c.IsLastOfPerson, a.IsLastOfPerson), Is.EqualTo((false, true)), "dragging a pane to the end moves the elbow with it");
+
+        person.SyncTo([c, a, b]);
+        Assert.That((c.IsLastOfPerson, a.IsLastOfPerson, b.IsLastOfPerson), Is.EqualTo((false, false, true)), "b rejoining at the end takes it back from a");
+
+        person.SyncTo([]);
+        Assert.That((a.IsLastOfPerson, b.IsLastOfPerson, c.IsLastOfPerson), Is.EqualTo((false, false, false)), "none left marked once the panel is empty");
+    }
+
     [Test, Apartment(ApartmentState.STA)]
     public void Next_and_previous_cycle_the_persons_own_terminal_tabs_and_do_nothing_with_fewer_than_two()
     {

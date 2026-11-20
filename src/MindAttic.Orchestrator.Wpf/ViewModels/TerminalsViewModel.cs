@@ -292,7 +292,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
     private bool isLastOfPerson;
 
     /// <summary>The last of its login's panes, so the tree draws its branch as an elbow, not a tee. Set by
-    /// <see cref="PersonTerminalsViewModel"/> on every change to that login's list, moves included (M.ORCH-T1857).</summary>
+    /// <see cref="PersonTerminalsViewModel"/> on every change to that login's list, moves included (M.ORCH-T1857),
+    /// and cleared on this one's own way out rather than left stale (M.ORCH-T1865).</summary>
     public bool IsLastOfPerson
     {
         get => isLastOfPerson;
@@ -1591,6 +1592,11 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         Panes.CollectionChanged += (_, e) =>
         {
             MirrorStrip(e);
+            // A pane leaving keeps whatever IsLastOfPerson it last had (the loop below only ever touches what's still in
+            // Panes): cleared explicitly here, or the one that happened to be last when it left shows a stale elbow forever,
+            // even once it's the sole survivor of a run of removals that empties the list (M.ORCH-T1865).
+            if (e.OldItems is not null)
+                foreach (TerminalPaneViewModel gone in e.OldItems) gone.IsLastOfPerson = false;
             for (var i = 0; i < Panes.Count; i++) Panes[i].IsLastOfPerson = i == Panes.Count - 1;
         };
     }
