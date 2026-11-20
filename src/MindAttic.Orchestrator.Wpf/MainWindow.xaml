@@ -242,44 +242,6 @@
             </StackPanel>
         </DataTemplate>
 
-        <!-- A CLI working under a Claude Code /goal (M.ORCH-T1856): an infinity sign in place of the busy ring, a faint track with
-             two bright strokes chasing round it, so a long autonomous run reads apart from an ordinary turn at a glance. The figure
-             eight crosses itself at the centre with a smooth tangent, so the strokes run on round it without a jump. The chase
-             only runs while the badge shows (ShowsPaneGoalBadge), so a pane not on a goal costs nothing. -->
-        <PathGeometry x:Key="GoalInfinityGeometry" Figures="M 7,3.5 C 9,1 13,0.5 13,3.5 C 13,6.5 9,6 7,3.5 C 5,1 1,0.5 1,3.5 C 1,6.5 5,6 7,3.5 Z" />
-        <Style x:Key="GoalInfinityTrack" TargetType="Path">
-            <Setter Property="Data" Value="{StaticResource GoalInfinityGeometry}" />
-            <Setter Property="Stroke" Value="{DynamicResource MaOnAccent}" />
-            <Setter Property="StrokeThickness" Value="1.4" />
-            <Setter Property="Opacity" Value="0.4" />
-            <Setter Property="Stretch" Value="None" />
-            <Setter Property="Width" Value="14" />
-            <Setter Property="Height" Value="7" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="IsHitTestVisible" Value="False" />
-        </Style>
-        <Style x:Key="GoalInfinityTrace" TargetType="Path" BasedOn="{StaticResource GoalInfinityTrack}">
-            <Setter Property="Opacity" Value="1" />
-            <Setter Property="StrokeDashArray" Value="5 5" />
-            <Setter Property="StrokeDashCap" Value="Round" />
-            <Setter Property="StrokeLineJoin" Value="Round" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding ShowsPaneGoalBadge}" Value="True">
-                    <DataTrigger.EnterActions>
-                        <BeginStoryboard x:Name="GoalInfinityChase">
-                            <Storyboard>
-                                <DoubleAnimation Storyboard.TargetProperty="StrokeDashOffset" From="10" To="0" Duration="0:0:1.2" RepeatBehavior="Forever" />
-                            </Storyboard>
-                        </BeginStoryboard>
-                    </DataTrigger.EnterActions>
-                    <DataTrigger.ExitActions>
-                        <RemoveStoryboard BeginStoryboardName="GoalInfinityChase" />
-                    </DataTrigger.ExitActions>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
     </Window.Resources>
 
     <Grid x:Name="Root">
@@ -816,10 +778,7 @@
                                                             Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             mc:MaCallout.ToolTip="{Binding PaneGoalTip}"
                                                             Visibility="{Binding ShowsPaneGoalBadge, Converter={StaticResource Visible}}">
-                                                    <Grid>
-                                                        <Path Style="{StaticResource GoalInfinityTrack}" />
-                                                        <Path Style="{StaticResource GoalInfinityTrace}" />
-                                                    </Grid>
+                                                    <mc:MaSpinner Kind="Infinity" Width="14" Height="14" StrokeThickness="1.4" Stroke="{DynamicResource MaOnAccent}" />
                                                 </mc:MaBadge>
                                                 <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="?" Background="{DynamicResource MaWarn}"
                                                             Foreground="{DynamicResource MaOnAccent}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -1039,10 +998,7 @@
                                                         Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                         AutomationProperties.Name="{Binding PaneActivityWord}" mc:MaCallout.ToolTip="{Binding PaneGoalTip}"
                                                         Visibility="{Binding ShowsPaneGoalBadge, Converter={StaticResource Visible}}">
-                                                <Grid>
-                                                    <Path Style="{StaticResource GoalInfinityTrack}" />
-                                                    <Path Style="{StaticResource GoalInfinityTrace}" />
-                                                </Grid>
+                                                <mc:MaSpinner Kind="Infinity" Width="14" Height="14" StrokeThickness="1.4" Stroke="{DynamicResource MaOnAccent}" />
                                             </mc:MaBadge>
                                             <mc:MaBadge x:Name="TerminalTabAskingBadge" Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="?" Background="{DynamicResource MaWarn}"
                                                         Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
