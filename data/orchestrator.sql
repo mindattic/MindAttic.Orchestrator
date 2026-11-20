@@ -31547,7 +31547,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "27074e4574ca253a33d86ad4477dcfc23d1d0227",
+    "Tested": "dde8df993994b189e8be9a95371294fb32355e89",
     "Green": "980d39195c1065a9b2ebc8a2df8c4a806545650a"
   },
   "MindAttic.Psst": {
@@ -31823,7 +31823,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "27074e4574ca253a33d86ad4477dcfc23d1d0227",
+    "Tested": "dde8df993994b189e8be9a95371294fb32355e89",
     "Green": "980d39195c1065a9b2ebc8a2df8c4a806545650a"
   },
   "ipt392tmp": {
@@ -32909,7 +32909,11 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|MAT-T165": "2026-11-20T08:06:43.1885891Z",
     "stale|IP-T501": "2026-11-20T08:32:08.4429866Z",
     "approval|GG-T454": "2026-11-20T08:40:06.1740862Z",
-    "approval|IP-T619": "2026-11-20T10:10:54.104291Z"
+    "approval|IP-T619": "2026-11-20T10:10:54.104291Z",
+    "orphaned|IP-T501": "2026-11-20T15:45:38.4914886Z",
+    "orphaned|IP-T548": "2026-11-20T15:45:38.4914886Z",
+    "orphaned|IP-T472": "2026-11-20T15:45:38.4914886Z",
+    "orphaned|US-T99": "2026-11-20T15:45:38.4914886Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
