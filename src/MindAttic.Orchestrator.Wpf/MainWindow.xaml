@@ -103,7 +103,9 @@
                      ticket or task in the detail modal). Bottom-aligned, not Top, so it reads as the card's own corner
                      rather than floating beside its title. -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="{StaticResource SpaceLM}">
-                    <Button x:Name="SidebarTicketPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE768;" Margin="{StaticResource SpaceRXS}"
+                    <!-- A magnifying glass, not the Play triangle (M.ORCH-T1882, the owner's report): this only switches to
+                         the CLI already working it, to look at it - it starts nothing, and the triangle read as run/execute. -->
+                    <Button x:Name="SidebarTicketPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE721;" Margin="{StaticResource SpaceRXS}"
                             Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                             mc:MaCallout.ToolTip="Jump to the CLI working it" AutomationProperties.Name="{Binding PlayName}"
                             Visibility="{Binding CanPlay, Converter={StaticResource Visible}}" />
@@ -147,7 +149,8 @@
                 <DockPanel>
                 <Border x:Name="SidebarActivityAccent" Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding Accent}" Focusable="False" />
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="{StaticResource SpaceLM}">
-                    <Button x:Name="SidebarActivityPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE768;" Margin="{StaticResource SpaceRXS}"
+                    <!-- A magnifying glass, not the Play triangle (M.ORCH-T1882): see SidebarTicketPlayButton above. -->
+                    <Button x:Name="SidebarActivityPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE721;" Margin="{StaticResource SpaceRXS}"
                             Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                             mc:MaCallout.ToolTip="Jump to its CLI" AutomationProperties.Name="{Binding PlayName}" />
                     <Button x:Name="SidebarActivityDetailButton" Style="{StaticResource MaToolButton}" Content="&#xE70F;"
@@ -179,7 +182,8 @@
                     <!-- The owner's-colour stripe (M.ORCH-T1626): the library's MaAccentBar, 3px and square to keep the row's look. -->
                     <Border Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding OwnerBrush}" />
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="{StaticResource SpaceLM}">
-                        <Button x:Name="SidebarTaskPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE768;" Margin="{StaticResource SpaceRXS}"
+                        <!-- A magnifying glass, not the Play triangle (M.ORCH-T1882): see SidebarTicketPlayButton above. -->
+                        <Button x:Name="SidebarTaskPlayButton" Style="{StaticResource MaToolButton}" Content="&#xE721;" Margin="{StaticResource SpaceRXS}"
                                 Command="{Binding DataContext.JumpToCliCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                                 mc:MaCallout.ToolTip="Jump to its CLI" AutomationProperties.Name="{Binding PlayName}" />
                         <Button x:Name="SidebarTaskOpenButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Margin="{StaticResource SpaceRXS}"
