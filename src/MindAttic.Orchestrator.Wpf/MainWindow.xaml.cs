@@ -78,6 +78,10 @@ public partial class MainWindow : Window
         // the same Team Wall/Tickets/Logins/Settings/Wind down/theme toggle and the same C: free space and RAM reading,
         // regardless of which login's tab is shown.
         MenuBarTools.DataContext = model;
+        // HostStatsBars (M.ORCH-T1875) sits in the menu bar's left column, a sibling of MenuBarTools rather than inside
+        // it, so it needs this same assignment on its own (M.ORCH-T1880): without it, its C:/RAM bars and text bound
+        // whatever ambient DataContext fell through instead of the global login's, showing no fill or percent.
+        HostStatsBars.DataContext = model;
         PhoneStatus.DataContext = model;
         Root.SizeChanged += (_, _) => SizeTerminalRow();
         TerminalFrame.IsVisibleChanged += (_, _) => SizeTerminalRow();
@@ -711,10 +715,15 @@ public partial class MainWindow : Window
 
     private void OnTabPartSizeChanged(object sender, SizeChangedEventArgs e) => SizeTerminalTabs();
 
-    /// <summary>The tree sidebar's header row click (M.ORCH-T1759): selects that login (which also expands it).</summary>
+    /// <summary>The tree sidebar's header row click (M.ORCH-T1877): a toggle. Already expanded (selected and peeked
+    /// alike) just collapses it, same as the chevron; collapsed selects that login instead, which already expands it
+    /// (<see cref="MainViewModel.Select"/>) and shows its Usage. Buttons inside the header (<c>LoginTreeMoreButton</c>)
+    /// mark their own click handled before it bubbles here, so they're never mistaken for this toggle.</summary>
     private void LoginTreeHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: MainViewModel vm }) vm.SelectLoginCommand.Execute(null);
+        if (sender is not FrameworkElement { DataContext: MainViewModel vm }) return;
+        if (vm.IsExpanded) vm.IsExpanded = false;
+        else vm.SelectLoginCommand.Execute(null);
     }
 
     /// <summary>The tree sidebar's chevron click (M.ORCH-T1759): toggles this login's node alone, never its selection, so
