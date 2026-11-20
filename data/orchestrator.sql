@@ -1768,12 +1768,12 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-19', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1121535);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-19', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-19T22:00:00Z', 3829504);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-19', 'Unstuck', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-19T22:00:00Z', 117750);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1647257);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 577135);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 255773);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 598141);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'Mods.MechWarrior5.SaveEditor', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 912342);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'SpaceGod', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 272392);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2129786);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 647915);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'IdiotProof', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 264718);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 707122);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'Mods.MechWarrior5.SaveEditor', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1077070);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'SpaceGod', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 385908);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 82847);
 
 -- ticket_costs
@@ -31625,8 +31625,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "191dc2a2e3f1b9f68654c17237884d514185a3d3"
   },
   "MindAttic.Tickets": {
-    "Tested": "aafdda4e649213c983a5f7a389cb89b3c68760ec",
-    "Green": "aafdda4e649213c983a5f7a389cb89b3c68760ec"
+    "Tested": "f17ac4a0679a6c7149b592082be97b29c402b0a5",
+    "Green": "f17ac4a0679a6c7149b592082be97b29c402b0a5"
   },
   "MindAttic.Vault": {
     "Tested": "983484ad43dce5a52efc48fdff1c73b4b6eac5ff",
