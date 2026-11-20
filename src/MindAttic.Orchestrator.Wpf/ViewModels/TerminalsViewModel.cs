@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Globalization;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
@@ -122,29 +121,9 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     /// <summary>The CLI tab's callout (M.ORCH-T1553, mc:MaCallout.ToolTip as M.ORCH-T1552 has every tooltip): <see cref="Tooltip"/>
     /// plus this CLI's live figures from the agent row its status read already matched (<see cref="ApplyAgentStatus"/>): its state
-    /// and subagents, tokens spent this session, uptime, its Launcher/claude.exe PIDs, and its own RAM line
-    /// (<see cref="RamTipLine"/>, M.ORCH-T1876). Nothing is read to build the rest; the text is built only when WPF reads it,
-    /// which <see cref="ApplyAgentStatus"/> asks for only once a shown figure changes - RAM alone is read fresh on every one
-    /// of those reads, not held in <see cref="tipKey"/>, since it moves on its own and a tooltip that's open a while should
-    /// still read live when it's reopened.</summary>
-    public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow, RamTipLine);
-
-    /// <summary>This pane's own RAM line (M.ORCH-T1876): its whole process tree's working set (<see cref="MemoryReclaim.TreeWorkingSetBytes"/>,
-    /// the Launcher/TermHost/claude.exe/subagents it owns, the same tree <see cref="RootPid"/> already identifies for session
-    /// matching), in MB, and that as a percent of this machine's installed RAM. Null before its root process is known, once it's
-    /// exited, or while Windows can't say either figure.</summary>
-    private string? RamTipLine => RootPid is { } root && MachineHealth.TotalPhysGb() is { } totalGb
-        ? RamTipLineOf(MemoryReclaim.TreeWorkingSetBytes(root), totalGb) : null;
-
-    /// <summary><see cref="RamTipLine"/>'s text for a tree using <paramref name="bytes"/> out of <paramref name="totalPhysGb"/>
-    /// installed; null once the tree's root has exited (0 bytes) or either figure is nonsensical.</summary>
-    internal static string? RamTipLineOf(long bytes, double totalPhysGb)
-    {
-        if (bytes <= 0 || totalPhysGb <= 0) return null;
-        var mb = bytes / (1024.0 * 1024);
-        var percent = bytes / (totalPhysGb * 1024 * 1024 * 1024) * 100;
-        return $"{mb.ToString("N0", CultureInfo.InvariantCulture)} MB RAM ({percent.ToString("0.#", CultureInfo.InvariantCulture)}% of {totalPhysGb.ToString("0.#", CultureInfo.InvariantCulture)} GB)";
-    }
+    /// and subagents, tokens spent this session, uptime, and its Launcher/claude.exe PIDs. Nothing is read to build it; the
+    /// text is built only when WPF reads it, which <see cref="ApplyAgentStatus"/> asks for only once a shown figure changes.</summary>
+    public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow);
 
     private AgentBoardRow? statusRow;
 
@@ -155,9 +134,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
     private (bool Known, AgentState State, bool Asking, int Subagents, int Jobs, long TokenStep, long Tokens, long UpStep, long Up, int? Cli, int? Host) tipKey;
 
     /// <summary><see cref="TabHoverTip"/>'s text for <paramref name="row"/> (null while its agent isn't known: the plain lines,
-    /// and the Launcher PID once found), plus <paramref name="ramLine"/> (<see cref="RamTipLine"/>) on its own trailing line
-    /// once known.</summary>
-    internal static string TabHoverTipOf(string tooltip, AgentBoardRow? row, int? hostPid, DateTime nowUtc, string? ramLine = null)
+    /// and the Launcher PID once found).</summary>
+    internal static string TabHoverTipOf(string tooltip, AgentBoardRow? row, int? hostPid, DateTime nowUtc)
     {
         var text = new System.Text.StringBuilder(tooltip);
         if (row is not null)
@@ -184,7 +162,6 @@ public sealed class TerminalPaneViewModel : ObservableObject
             if (hostPid is not null && row?.CliPid is not null) text.Append(" · ");
             if (row?.CliPid is { } cli) text.Append("claude.exe PID ").Append(cli);
         }
-        if (ramLine is { Length: > 0 }) text.Append('\n').Append(ramLine);
         return text.ToString();
     }
 
