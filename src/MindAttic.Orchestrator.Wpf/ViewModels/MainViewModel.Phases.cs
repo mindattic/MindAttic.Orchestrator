@@ -50,35 +50,6 @@ public sealed partial class MainViewModel
         allocate = root?.allocate ?? new Allocate(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), lease) { WaitingPath = Allocate.DefaultWaitingPath };
         ToggleLoginsCommand = new RelayCommand(() => IsLoginsOpen = !IsLoginsOpen);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
-        WindDownCommand = new RelayCommand(WindDown);
-    }
-
-    // ── Wind down (M.ORCH-T1468) ─────────────────────────────────────────────
-
-    /// <summary>Winds every CLI this Orchestrator instance knows about down at once, across every login it hosts: the same
-    /// per-CLI effect as typing <c>/allocate off -target=all</c>, plus Pacing off so nothing nudges any of them to start more
-    /// work. Each CLI still winds down gracefully (its subagents finish, then it quicksaves), and the hard 5-hour stop is
-    /// untouched -- this only removes the pressure to start more, it never weakens the cutoff.</summary>
-    public ICommand WindDownCommand { get; private set; } = null!;
-
-    private void WindDown()
-    {
-        try
-        {
-            var reached = CliMarks.WindDownEverywhere(new ContextCycler().Directory);
-            var s = store.LoadSettingsToChange();
-            store.SaveSettings(s with { Pacing = false });
-            Toasts.Insert(0, new ToastViewModel("Winding down",
-                reached == 0 ? "Pacing is off. No CLI had /allocate on."
-                    : $"Pacing is off and /allocate off was recorded for {reached} CLI{(reached == 1 ? "" : "s")}; each finishes its own subagents, then quicksaves.",
-                Palette.Working, null));
-        }
-        // Every other settings-writing command in this class shows a toast or status message on failure; this one didn't.
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException)
-        {
-            Toasts.Insert(0, new ToastViewModel("Wind down failed", ex.Message, Palette.Over, null));
-            OrchestratorLog.For("Dashboard").Error(ex, "Wind down failed");
-        }
     }
 
     // ── Settings (LAMP, M.ORCH-T1308) ───────────────────────────────────────

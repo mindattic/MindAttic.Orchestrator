@@ -65,7 +65,7 @@ public sealed class SettingsModalTests
         var row = tools.Elements().Where(e => (string?)e.Attribute(X + "Name") is { } n && n.EndsWith("Button", StringComparison.Ordinal))
             .Select(e => (string?)e.Attribute(X + "Name")).ToList();
         // Save (M.ORCH-T1769) ends the row with its own menu chevron beside it (SaveMoreButton, M.ORCH-T1793).
-        Assert.That(row, Is.EqualTo(new[] { "TeamWallButton", "PlansButton", "TicketsButton", "LoginsButton", "SettingsButton", "WindDownButton", "SaveButton", "SaveMoreButton" }));
+        Assert.That(row, Is.EqualTo(new[] { "TeamWallButton", "PlansButton", "TicketsButton", "LoginsButton", "SettingsButton", "SaveButton", "SaveMoreButton" }));
         Assert.That(tools.Descendants(Mc + "MaToggleIcon").Where(t => (string?)t.Attribute("IsThemeToggle") == "True"), Is.Empty,
             "no theme toggle of its own any more");
         // No phone/desktop toggle (M.ORCH-T1560, removed by M.ORCH-T1567): the window's size alone switches the layout.

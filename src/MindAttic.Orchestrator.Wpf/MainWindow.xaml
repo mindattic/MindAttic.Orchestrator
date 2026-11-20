@@ -359,9 +359,6 @@
                         mc:MaCallout.ToolTip="Logins" AutomationProperties.Name="Logins" />
                 <Button x:Name="SettingsButton" Style="{StaticResource MaToolButton}" Content="&#xE713;" Command="{Binding OpenSettingsCommand}"
                         mc:MaCallout.ToolTip="Settings (opens MindAttic Vault)" AutomationProperties.Name="Settings" />
-                <Button x:Name="WindDownButton" Style="{StaticResource MaToolButton}" Content="&#xE769;" Command="{Binding WindDownCommand}"
-                        mc:MaCallout.ToolTip="Wind down: /allocate off and pacing off for every CLI across every login, each finishing its own subagents first"
-                        AutomationProperties.Name="Wind down every CLI" />
                 <!-- Save (M.ORCH-T1769, replacing Save all &amp; close's M.ORCH-T1724 force-close-and-exit, now retired):
                      left click quicksaves the shown CLI alone; right click opens Quick Save All / Quick Load All
                      (OnSaveButtonContextMenu), each confirmed first and reporting how long it took once it's done. -->
