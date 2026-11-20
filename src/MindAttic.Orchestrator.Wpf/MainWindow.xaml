@@ -828,7 +828,7 @@
              column: the scroller is sized to the Canvas, i.e. the column the logins set. Tab enters the list once; Up and
              Down move between the cards; each card's own Play/Ticket buttons are reached with a further Tab. -->
         <Canvas x:Name="SidebarTicketArea" Grid.Row="2" Margin="{StaticResource SpaceTM}" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
-        <ScrollViewer x:Name="SidebarTicketScroller" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="3"
+        <ScrollViewer x:Name="SidebarTicketScroller" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="8"
                       Width="{Binding ActualWidth, ElementName=SidebarTicketArea}" Height="{Binding ActualHeight, ElementName=SidebarTicketArea}">
         <StackPanel x:Name="SidebarTickets" KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Contained"
                     AutomationProperties.Name="Active, then pending, then the 100 highest-priority tickets. Each has its own Play and Ticket buttons">
