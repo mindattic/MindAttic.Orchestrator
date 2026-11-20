@@ -42,12 +42,27 @@ public sealed partial class MainViewModel
         // The tickets it and its subagents hold (M.ORCH-T637): its claims, and the one it was started on.
         var row = full?.Agents.FirstOrDefault(a => a.SessionId == sessionId);
         List<string> holding = [.. (row?.Claims ?? []).Concat(row?.TicketId is { Length: > 0 } own ? [own] : []).Distinct(StringComparer.OrdinalIgnoreCase)];
+        // This tab's own pane for the CLI, if one's open (M.ORCH-T1883): by its SessionId, else (just started, not learned
+        // yet) its Launcher tab's host pid, the same two keys TerminalPaneViewModel.IsMoving itself watches below.
+        var pane = AllTerminals.Panes.FirstOrDefault(p => string.Equals(p.SessionId, sessionId, StringComparison.Ordinal))
+            ?? (row?.Host?.ProcessId is { } byHost ? AllTerminals.Panes.FirstOrDefault(p => p.HostPid == byHost) : null);
+        var fromLogin = pane?.Login;
         // Locked at once (M.ORCH-T638): the CLI only moves at its next idle point, so without this it looks like nothing happened.
         PendingMoves.Begin(new MoveLock
         {
             SessionId = sessionId, Pid = cliPid ?? 0, HostPid = row?.Host?.ProcessId, HostPipe = row?.Host?.PipeName, Repo = repo,
-            ToEmail = target.Email, ToName = NameOf(target), StartedUtc = DateTime.UtcNow, Tickets = holding,
+            FromEmail = fromLogin, ToEmail = target.Email, ToName = NameOf(target), StartedUtc = DateTime.UtcNow, Tickets = holding,
         });
+        // The pane disappears from its own login's tree/tab strip and shows at the target's at once (M.ORCH-T1883), rather
+        // than waiting for the real transfer (about a minute) to land: moved for real into SyncTerminals' own reckoning of
+        // whose page it's on (OwnerOf, keyed by Login, the same field a landed move changes for real once the next refresh's
+        // Update sees its CLI there), while it renders as a faded/dashed placeholder with a spinner the whole time
+        // (TerminalPaneViewModel.IsMoving, driven by the PendingMoves lock just begun above) - put back below if it doesn't land.
+        if (pane is not null && !string.Equals(fromLogin, target.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            pane.Login = target.Email;
+            SyncTerminals();
+        }
         var hosts = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
         var mover = AccountMover;
         AccountMoveResult result;
@@ -75,6 +90,13 @@ public sealed partial class MainViewModel
         if (!result.Ok)
         {
             PendingMoves.End(sessionId);
+            // Didn't land: the placeholder goes back to a real row under its old login (M.ORCH-T1883), not left stranded
+            // under the target's; a no-op when there was no pane to move in the first place, or it already moved on its own.
+            if (pane is not null && string.Equals(pane.Login, target.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                pane.Login = fromLogin;
+                SyncTerminals();
+            }
             Toasts.Insert(0, new ToastViewModel($"{repo} not moved to {target.Label}", result.Message, Palette.Over, null));
         }
     }
@@ -99,6 +121,16 @@ public sealed partial class MainViewModel
         foreach (var m in PendingMoves.Sync(next.Moves, next.TakenUtc))
         {
             if ((full ?? next).Agents.Any(a => MoveLocks.Landed(m, a))) continue;
+            // A backstop for M.ORCH-T1883's own revert in MoveToAccountAsync, above, for a move whose placeholder this
+            // dashboard shows but whose own await never got the chance to put it back (a restart mid-move, or a lock this
+            // dashboard didn't begin itself, e.g. `orchestrator move`): still shown under the target it never reached, so
+            // it goes back to where it actually came from, by SessionId alone (the one key a pane's own identity never loses).
+            if (AllTerminals.Panes.FirstOrDefault(p => string.Equals(p.SessionId, m.SessionId, StringComparison.Ordinal)) is { } pane
+                && string.Equals(pane.Login, m.ToEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                pane.Login = m.FromEmail;
+                SyncTerminals();
+            }
             Toasts.Insert(0, new ToastViewModel($"{m.Repo} hasn't moved to {m.ToName}",
                 $"Its CLI didn't show up on {m.ToName}, so it and its tickets are unlocked again and stay with its old login" +
                 (m.Tickets.Count > 0 ? $" ({string.Join(", ", m.Tickets)} are handed back to it)." : "."),
@@ -125,6 +157,9 @@ public sealed partial class MainViewModel
             foreach (var h in r.Hosts) h.RaiseMoving();
         }
         foreach (var q in AllQueueRows) q.RaiseMoving();
+        // Every open CLI's own placeholder (M.ORCH-T1883): AllTerminals.Panes is the one shared list every tab's own
+        // Terminals.Panes is drawn from (SyncTerminals), so raising it from the global tab alone is enough.
+        if (IsGlobalTab) foreach (var p in AllTerminals.Panes) p.RaiseMoving();
         System.Windows.Input.CommandManager.InvalidateRequerySuggested();
     }
 }

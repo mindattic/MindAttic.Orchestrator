@@ -665,7 +665,11 @@
                                          the flat CLI tab strip's own AllowReorder/Reordered had no counterpart here at all); Ctrl held
                                          instead hands the press to LoginDragDrop's own quick-switch-login drag (MainWindow.xaml.cs,
                                          its own doc comment explains the handoff). -->
-                                    <Grid x:Name="LoginTreeChildRow" Cursor="Hand" Background="Transparent" AllowDrop="True"
+                                    <!-- Faded while this CLI is "moving" (M.ORCH-T1883/M.ORCH-T1884, MovingOpacity, the same 0.65
+                                         LoginDragDrop/LoginTree_DragOver's own drag-hover dim already uses): a plain bound attribute,
+                                         not a Style trigger (Opacity isn't a Grid-style setter LibraryOnlyXamlTests allows: a layout
+                                         panel's own style may only set Visibility). -->
+                                    <Grid x:Name="LoginTreeChildRow" Cursor="Hand" Background="Transparent" AllowDrop="True" Opacity="{Binding MovingOpacity}"
                                           MouseLeftButtonDown="LoginTreeChild_MouseLeftButtonDown"
                                           ContextMenuOpening="LoginTreeChild_ContextMenuOpening"
                                           PreviewMouseLeftButtonDown="LoginTreeChildRow_PreviewMouseLeftButtonDown"
@@ -699,6 +703,24 @@
                                                 </Style>
                                             </Border.Style>
                                         </Border>
+                                        <!-- The M.ORCH-T1883/M.ORCH-T1884 moving placeholder's own dashed outline: same size/shape as
+                                             the row itself (Grid.ColumnSpan="2", the whole row like the highlight Border above), never
+                                             a solid line (that's DropLineAdorner's own insertion marker, a different thing). No raw
+                                             Rectangle (M.ORCH-T667's library-only rule, LibraryOnlyXamlTests, bans one, same as the
+                                             spine's own Path lines just below explain): four Path lines instead, each a straight unit
+                                             segment stretched along its own axis only, so the dash pattern along each edge isn't
+                                             skewed the way stretching a whole rectangle geometry would skew it on a non-square row. -->
+                                        <Grid Grid.ColumnSpan="2" Margin="1" IsHitTestVisible="False"
+                                              Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
+                                            <Path Data="M0,0 L1,0" Stretch="Fill" Height="1" VerticalAlignment="Top"
+                                                  StrokeDashArray="3,2" StrokeThickness="1" Stroke="{DynamicResource MaMuted}" />
+                                            <Path Data="M0,0 L1,0" Stretch="Fill" Height="1" VerticalAlignment="Bottom"
+                                                  StrokeDashArray="3,2" StrokeThickness="1" Stroke="{DynamicResource MaMuted}" />
+                                            <Path Data="M0,0 L0,1" Stretch="Fill" Width="1" HorizontalAlignment="Left"
+                                                  StrokeDashArray="3,2" StrokeThickness="1" Stroke="{DynamicResource MaMuted}" />
+                                            <Path Data="M0,0 L0,1" Stretch="Fill" Width="1" HorizontalAlignment="Right"
+                                                  StrokeDashArray="3,2" StrokeThickness="1" Stroke="{DynamicResource MaMuted}" />
+                                        </Grid>
                                         <!-- The branch's own connector lines (M.ORCH-T1768): a vertical line down this column, the
                                              same one every sibling row draws, so together they read as one continuous spine down
                                              the login's open panes, each with a short horizontal tee into its own icon - so it's
@@ -763,7 +785,7 @@
                                                     CommandParameter="{Binding}"
                                                     AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
                                                     mc:MaCallout.ToolTip="Close this terminal, ending its CLI"
-                                                    Visibility="{Binding Request.IsMenu, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                                                    Visibility="{Binding ShowsCloseButton, Converter={StaticResource Visible}}" />
                                             <!-- The Launcher's own pane (M.ORCH-T1873): its close X is this redeploy/reopen icon instead, same
                                                  CloseCommand underneath (closing it already redeploys MindAttic.Launcher and reopens it fresh,
                                                  M.ORCH-T1511's OnLauncherTabGone) - only its face says "reload" up front rather than "close".
@@ -781,6 +803,14 @@
                                                           StrokeThickness="1.327" Stroke="{DynamicResource MaMuted}"
                                                           Visibility="{Binding Redeploying, Converter={StaticResource Visible}}"
                                                           AutomationProperties.Name="Redeploying the Launcher" />
+                                            <!-- M.ORCH-T1883/M.ORCH-T1884's own moving placeholder: in the ellipsis/close buttons' own
+                                                 slot (both hidden, ShowsCloseButton/ShowsMoreButton, while this is shown), the exact
+                                                 same ring as Redeploying's above. -->
+                                            <mc:MaSpinner DockPanel.Dock="Right" Kind="Ring" Width="14" Height="14" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                          StrokeThickness="1.327" Stroke="{DynamicResource MaMuted}"
+                                                          Visibility="{Binding IsMoving, Converter={StaticResource Visible}}"
+                                                          mc:MaCallout.ToolTip="{Binding MovingText}"
+                                                          AutomationProperties.Name="{Binding MovingText, FallbackValue=Moving}" />
                                             <!-- This CLI's own menu (Move to, Copy PID, Rename, Change Color, Undock/Dock, Pop out,
                                                  broadcast), reachable with a tap or a left click (M.ORCH-T1793): the exact same menu
                                                  the row's own right-click opens (LoginTreeChild_ContextMenuOpening), which doesn't
@@ -788,7 +818,7 @@
                                             <Button x:Name="TreePaneMoreButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE712;" Margin="4,-2,0,-2"
                                                     Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
                                                     Click="TreePaneMoreButton_Click"
-                                                    Visibility="{Binding Request.IsMenu, Converter={x:Static vm:Converters.FalseToVisible}}"
+                                                    Visibility="{Binding ShowsMoreButton, Converter={StaticResource Visible}}"
                                                     AutomationProperties.Name="{Binding Title, StringFormat='More actions for {0}'}"
                                                     mc:MaCallout.ToolTip="Move, rename, change color, undock/dock, pop out, broadcast, or copy its PID" />
                                             <!-- 8 in from the chevron column's end puts this 20-wide cell's centre exactly under the
@@ -970,6 +1000,13 @@
                                     <DataTrigger Binding="{Binding Request.IsMenu, FallbackValue=False}" Value="True">
                                         <Setter Property="IsLocked" Value="True" />
                                     </DataTrigger>
+                                    <!-- The M.ORCH-T1883/M.ORCH-T1884 moving placeholder (TerminalPaneViewModel.IsMoving): locked so it
+                                         can't be dragged again mid-move. Its own fade is MovingOpacity, a plain bound attribute on
+                                         the header Grid below, not a style setter here (Opacity isn't one of MaTabItem's own declared
+                                         properties, so LibraryOnlyXamlTests doesn't allow a style to set it). -->
+                                    <DataTrigger Binding="{Binding IsMoving, FallbackValue=False}" Value="True">
+                                        <Setter Property="IsLocked" Value="True" />
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding}" Value="{x:Static vm:PersonTerminalsViewModel.UsageTab}">
                                         <Setter Property="IsLocked" Value="True" />
                                         <Setter Property="Accent" Value="{Binding DataContext.TabBrush, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
@@ -981,7 +1018,25 @@
                         </mc:MaTabControl.ItemContainerStyle>
                         <mc:MaTabControl.ItemTemplate>
                             <DataTemplate>
-                                <Grid>
+                                <Grid Opacity="{Binding MovingOpacity}">
+                                    <!-- The M.ORCH-T1883/M.ORCH-T1884 moving placeholder's own dashed outline (TreePaneRow's own twin
+                                         above, including why this is four Path lines, not a raw Rectangle): this header Grid fills
+                                         the whole tab's clickable face, so outlining it this way reads as the tab itself being
+                                         outlined, same size/shape as any other tab. -->
+                                    <!-- FallbackValue=Collapsed (M.ORCH-T1883): this Grid is a sibling of UsageTabHeader/RealTabHeader,
+                                         not inside either, so it isn't covered by RealTabHeader's own Collapsed trigger for the
+                                         pinned Usage tab - without a fallback, IsMoving's failed binding there (UsageTabMarker has
+                                         no such property) would default Visibility to Visible and draw this on the Usage tab too. -->
+                                    <Grid IsHitTestVisible="False" Visibility="{Binding IsMoving, Converter={StaticResource Visible}, FallbackValue=Collapsed}">
+                                        <Path Data="M0,0 L1,0" Stretch="Fill" Height="1" VerticalAlignment="Top"
+                                              StrokeDashArray="3,2" StrokeThickness="1" Stroke="{DynamicResource MaMuted}" />
+                                        <Path Data="M0,0 L1,0" Stretch="Fill" Height="1" VerticalAlignment="Bottom"
+                                              StrokeDashArray="3,2" StrokeThickness="1" Stroke="{DynamicResource MaMuted}" />
+                                        <Path Data="M0,0 L0,1" Stretch="Fill" Width="1" HorizontalAlignment="Left"
+                                              StrokeDashArray="3,2" StrokeThickness="1" Stroke="{DynamicResource MaMuted}" />
+                                        <Path Data="M0,0 L0,1" Stretch="Fill" Width="1" HorizontalAlignment="Right"
+                                              StrokeDashArray="3,2" StrokeThickness="1" Stroke="{DynamicResource MaMuted}" />
+                                    </Grid>
                                     <!-- The pinned Usage tab's own header; Collapsed except for the Usage item itself
                                          (DataTemplate.Triggers below swaps which of these two is Visible). -->
                                     <StackPanel x:Name="UsageTabHeader" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
@@ -1007,7 +1062,7 @@
                                                 CommandParameter="{Binding}"
                                                 AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
                                                 mc:MaCallout.ToolTip="Close this terminal, ending its CLI"
-                                                Visibility="{Binding Request.IsMenu, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                                                Visibility="{Binding ShowsCloseButton, Converter={StaticResource Visible}}" />
                                         <!-- The Launcher's own tab (M.ORCH-T1873): the tree row's own twin above, same CloseCommand, reload
                                              face, and spinner-while-busy swap - see TreePaneRow's own copy for why. -->
                                         <Button x:Name="TerminalReloadButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE72C;" Margin="8,-4,-2,-4"
@@ -1021,13 +1076,23 @@
                                                       StrokeThickness="1.327" Stroke="{DynamicResource MaMuted}"
                                                       Visibility="{Binding Redeploying, Converter={StaticResource Visible}}"
                                                       AutomationProperties.Name="Redeploying the Launcher" />
+                                        <!-- M.ORCH-T1883/M.ORCH-T1884's own moving placeholder: in the ellipsis/close buttons' own
+                                             slot (both hidden, ShowsCloseButton/ShowsMoreButton, while this is shown), the tree
+                                             row's own twin above. -->
+                                        <mc:MaSpinner x:Name="TerminalMovingSpinner" DockPanel.Dock="Right" Kind="Ring" Width="14" Height="14" Margin="8,0,-2,0" VerticalAlignment="Center"
+                                                      StrokeThickness="1.327" Stroke="{DynamicResource MaMuted}"
+                                                      Visibility="{Binding IsMoving, Converter={StaticResource Visible}}"
+                                                      mc:MaCallout.ToolTip="{Binding MovingText}"
+                                                      AutomationProperties.Name="{Binding MovingText, FallbackValue=Moving}" />
                                         <!-- This CLI's own menu, reachable with a tap or a left click (M.ORCH-T1793): the exact same
                                              menu the tab's own right-click opens (OnTerminalTabContextMenu), the flat strip's twin
                                              of the tree pane row's own TreePaneMoreButton. Collapsed for the pinned Usage tab along
-                                             with the rest of RealTabHeader (the DataTrigger below). -->
+                                             with the rest of RealTabHeader (the DataTrigger below), and for the same M.ORCH-T1883/
+                                             M.ORCH-T1884 moving placeholder as the close button above (ShowsMoreButton). -->
                                         <Button x:Name="TerminalMoreButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE712;" Margin="4,-4,0,-4"
                                                 Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
                                                 Click="TerminalMoreButton_Click"
+                                                Visibility="{Binding ShowsTabMoreButton, Converter={StaticResource Visible}, FallbackValue=Visible}"
                                                 AutomationProperties.Name="{Binding Title, StringFormat='More actions for {0}'}"
                                                 mc:MaCallout.ToolTip="Move, rename, change color, undock/dock, pop out, broadcast, or copy its PID" />
                                     <StackPanel x:Name="TerminalTabParts" Orientation="Horizontal" HorizontalAlignment="Left">

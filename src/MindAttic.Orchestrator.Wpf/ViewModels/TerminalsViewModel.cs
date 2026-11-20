@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
@@ -121,9 +122,29 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     /// <summary>The CLI tab's callout (M.ORCH-T1553, mc:MaCallout.ToolTip as M.ORCH-T1552 has every tooltip): <see cref="Tooltip"/>
     /// plus this CLI's live figures from the agent row its status read already matched (<see cref="ApplyAgentStatus"/>): its state
-    /// and subagents, tokens spent this session, uptime, and its Launcher/claude.exe PIDs. Nothing is read to build it; the
-    /// text is built only when WPF reads it, which <see cref="ApplyAgentStatus"/> asks for only once a shown figure changes.</summary>
-    public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow);
+    /// and subagents, tokens spent this session, uptime, its Launcher/claude.exe PIDs, and its own RAM line
+    /// (<see cref="RamTipLine"/>, M.ORCH-T1876). Nothing is read to build the rest; the text is built only when WPF reads it,
+    /// which <see cref="ApplyAgentStatus"/> asks for only once a shown figure changes - RAM alone is read fresh on every one
+    /// of those reads, not held in <see cref="tipKey"/>, since it moves on its own and a tooltip that's open a while should
+    /// still read live when it's reopened.</summary>
+    public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow, RamTipLine);
+
+    /// <summary>This pane's own RAM line (M.ORCH-T1876): its whole process tree's working set (<see cref="MemoryReclaim.TreeWorkingSetBytes"/>,
+    /// the Launcher/TermHost/claude.exe/subagents it owns, the same tree <see cref="RootPid"/> already identifies for session
+    /// matching), in MB, and that as a percent of this machine's installed RAM. Null before its root process is known, once it's
+    /// exited, or while Windows can't say either figure.</summary>
+    private string? RamTipLine => RootPid is { } root && MachineHealth.TotalPhysGb() is { } totalGb
+        ? RamTipLineOf(MemoryReclaim.TreeWorkingSetBytes(root), totalGb) : null;
+
+    /// <summary><see cref="RamTipLine"/>'s text for a tree using <paramref name="bytes"/> out of <paramref name="totalPhysGb"/>
+    /// installed; null once the tree's root has exited (0 bytes) or either figure is nonsensical.</summary>
+    internal static string? RamTipLineOf(long bytes, double totalPhysGb)
+    {
+        if (bytes <= 0 || totalPhysGb <= 0) return null;
+        var mb = bytes / (1024.0 * 1024);
+        var percent = bytes / (totalPhysGb * 1024 * 1024 * 1024) * 100;
+        return $"{mb.ToString("N0", CultureInfo.InvariantCulture)} MB RAM ({percent.ToString("0.#", CultureInfo.InvariantCulture)}% of {totalPhysGb.ToString("0.#", CultureInfo.InvariantCulture)} GB)";
+    }
 
     private AgentBoardRow? statusRow;
 
@@ -134,8 +155,9 @@ public sealed class TerminalPaneViewModel : ObservableObject
     private (bool Known, AgentState State, bool Asking, int Subagents, int Jobs, long TokenStep, long Tokens, long UpStep, long Up, int? Cli, int? Host) tipKey;
 
     /// <summary><see cref="TabHoverTip"/>'s text for <paramref name="row"/> (null while its agent isn't known: the plain lines,
-    /// and the Launcher PID once found).</summary>
-    internal static string TabHoverTipOf(string tooltip, AgentBoardRow? row, int? hostPid, DateTime nowUtc)
+    /// and the Launcher PID once found), plus <paramref name="ramLine"/> (<see cref="RamTipLine"/>) on its own trailing line
+    /// once known.</summary>
+    internal static string TabHoverTipOf(string tooltip, AgentBoardRow? row, int? hostPid, DateTime nowUtc, string? ramLine = null)
     {
         var text = new System.Text.StringBuilder(tooltip);
         if (row is not null)
@@ -162,6 +184,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
             if (hostPid is not null && row?.CliPid is not null) text.Append(" · ");
             if (row?.CliPid is { } cli) text.Append("claude.exe PID ").Append(cli);
         }
+        if (ramLine is { Length: > 0 }) text.Append('\n').Append(ramLine);
         return text.ToString();
     }
 
@@ -349,6 +372,62 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// what clicking it really does. False again once this pane is itself the inert "redeploying…" placeholder
     /// (<see cref="Redeploying"/>): nothing to click there until the real one replaces it, a spinner standing in its place.</summary>
     public bool ShowsLauncherReloadIcon => Request.IsMenu && !Redeploying;
+
+    /// <summary>Set while this CLI itself is between logins (M.ORCH-T1884's own same-login reorder, past its 500ms
+    /// threshold, <see cref="SetReorderPending"/>); the other half of <see cref="IsMoving"/>.</summary>
+    private bool reorderPending;
+
+    /// <summary>Whether this CLI is "moving" right now (M.ORCH-T1883/M.ORCH-T1884): either a cross-login transfer in
+    /// flight (<see cref="PendingMoves.For"/> by <see cref="SessionId"/>, else <see cref="PendingMoves.ForHost"/> by
+    /// <see cref="HostPid"/>, for the moment just after a drop when the session isn't known yet), or a same-login reorder
+    /// that's run past its own threshold (<see cref="reorderPending"/>). Either way the tree row and the flat tab both
+    /// show the same faded, dashed placeholder with a spinner where its ellipsis/close buttons normally sit, rather than
+    /// a normal row, until this clears (landed, failed, timed out, or the reorder itself finished).</summary>
+    public bool IsMoving => reorderPending || PendingMoves.For(SessionId) is not null || PendingMoves.ForHost(HostPid) is not null;
+
+    /// <summary>What <see cref="IsMoving"/>'s own fade is (M.ORCH-T1883): a plain bound <c>Opacity</c> rather than a
+    /// XAML style trigger, since <c>Opacity</c> isn't one of MaTabItem's own declared properties (MindAttic.Components.Wpf's
+    /// LibraryOnlyXamlTests, M.ORCH-T667, only allows a style to set a library control's own properties) - the tree row's
+    /// own copy of the same look sets it as a plain attribute on its Grid for the same reason.</summary>
+    public double MovingOpacity => IsMoving ? 0.65 : 1.0;
+
+    /// <summary>What <see cref="IsMoving"/>'s placeholder says, if it has anything to say beyond its own look: the
+    /// cross-login move's own "Moving to X…" (<see cref="MoveLock.Text"/>) when there is one, else a plain "Moving…"
+    /// for a same-login reorder past threshold, else empty.</summary>
+    public string MovingText => PendingMoves.For(SessionId)?.Text ?? PendingMoves.ForHost(HostPid)?.Text ?? (reorderPending ? "Moving…" : "");
+
+    /// <summary>Marks or clears this pane's own M.ORCH-T1884 reorder placeholder.</summary>
+    internal void SetReorderPending(bool value)
+    {
+        if (reorderPending == value) return;
+        reorderPending = value;
+        RaiseMoving();
+    }
+
+    /// <summary>Re-raises <see cref="IsMoving"/>/<see cref="MovingText"/> (M.ORCH-T1883): called for every open pane
+    /// whenever <see cref="PendingMoves.Changed"/> fires (<see cref="MainViewModel.OnMovesChanged"/>), the same pattern
+    /// <see cref="HostRowViewModel.RaiseMoving"/>/<see cref="TicketRowViewModel.RaiseMoving"/> already use for their own
+    /// locked controls - and directly by <see cref="SetReorderPending"/> for the same-login case, which has no lock to watch.</summary>
+    public void RaiseMoving()
+    {
+        Raise(nameof(IsMoving)); Raise(nameof(MovingText)); Raise(nameof(MovingOpacity));
+        Raise(nameof(ShowsCloseButton)); Raise(nameof(ShowsMoreButton)); Raise(nameof(ShowsTabMoreButton));
+    }
+
+    /// <summary>Whether this pane's own close "x" shows at all (the flat tab strip and the tree row): never the
+    /// Launcher's own pane (<see cref="ShowsLauncherReloadIcon"/>/its spinner stand in for it there) nor a pane that's
+    /// itself the M.ORCH-T1883/M.ORCH-T1884 moving placeholder, whose spinner takes this same slot instead.</summary>
+    public bool ShowsCloseButton => !Request.IsMenu && !IsMoving;
+
+    /// <summary>Whether the tree row's own "more actions" ellipsis shows: not the Launcher's own pane (it already has its
+    /// own reload icon there), and not while it's the moving placeholder either, same reasoning as
+    /// <see cref="ShowsCloseButton"/>.</summary>
+    public bool ShowsMoreButton => !Request.IsMenu && !IsMoving;
+
+    /// <summary>Whether the flat tab strip's own "more actions" ellipsis shows: unlike <see cref="ShowsMoreButton"/>,
+    /// this one's always shown even on the Launcher's own tab (TerminalMoreButton, MainWindow.xaml, had no Request.IsMenu
+    /// condition before M.ORCH-T1883 either) - only hidden for the same moving placeholder.</summary>
+    public bool ShowsTabMoreButton => !IsMoving;
 
     private bool paneKnown, paneBusy, paneAsking;
     private string? paneGoal;
