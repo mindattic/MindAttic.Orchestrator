@@ -80,6 +80,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 100)]
     public double PaceGuardStartPercent { get; set; } = OrchestratorSettings.DefaultPaceGuardStartPercent;
 
+    /// <summary>The weekly use a login with no 5-hour window is paced to reach by its reset (M.ORCH-T1885).</summary>
+    [Setting("Weekly pace target, no 5-hour window (%)", Group = "Pacing", Order = 3,
+        Help = "For a login with no 5-hour window (a solo Ultra account): the weekly use it's paced to reach by its reset, along a straight line. Above the line, new subagents start slower and tool calls are held. Never past the login's weekly cutoff.")]
+    [SettingRange(1, 100)]
+    public double WeeklyPaceTargetPercent { get; set; } = OrchestratorSettings.DefaultWeeklyPaceTargetPercent;
+
     /// <summary>Slash commands whose turns skip every pace gate (no hold, no subagent wait, no stop); their spend still counts.</summary>
     [Setting("Exempt from pacing", Group = "Pacing", Order = 3,
         Help = "Slash commands whose turns skip every pace gate (no hold, no subagent wait, no stop); their spend still counts. Empty exempts none.")]
@@ -1021,6 +1027,7 @@ public sealed class OrchestratorVaultSettings
         Pacing = s.Pacing,
         PaceTargetPercent = s.PaceTargetPercent,
         PaceGuardStartPercent = s.PaceGuardStartPercent,
+        WeeklyPaceTargetPercent = s.WeeklyPaceTargetPercent,
         ExemptCommands = [.. s.ExemptCommands],
         ReportFreshMinutes = s.ReportFreshMinutes,
         ProviderCapPercent = s.ProviderCapPercent,
@@ -1204,6 +1211,7 @@ public sealed class OrchestratorVaultSettings
         Pacing = Pacing,
         PaceTargetPercent = PaceTargetPercent,
         PaceGuardStartPercent = PaceGuardStartPercent,
+        WeeklyPaceTargetPercent = WeeklyPaceTargetPercent,
         ExemptCommands = [.. ExemptCommands ?? []],
         ReportFreshMinutes = ReportFreshMinutes,
         ProviderCapPercent = ProviderCapPercent,

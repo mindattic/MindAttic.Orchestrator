@@ -66,6 +66,14 @@ public sealed record OrchestratorSettings
     /// <summary>The default <see cref="PaceGuardStartPercent"/>.</summary>
     public const double DefaultPaceGuardStartPercent = 90;
 
+    /// <summary>The weekly use a login with no 5-hour window (a solo Ultra account) is paced to reach by its weekly reset
+    /// (M.ORCH-T1885): a straight line from 0% at the week's start to this at its reset; above it, new subagents start slower
+    /// and tool calls are held. Never past the login's own weekly cutoff. A login with a 5-hour window is left to its cutoffs.</summary>
+    public double WeeklyPaceTargetPercent { get; init; } = DefaultWeeklyPaceTargetPercent;
+
+    /// <summary>The default <see cref="WeeklyPaceTargetPercent"/>.</summary>
+    public const double DefaultWeeklyPaceTargetPercent = 95;
+
     /// <summary>The share of each account's week kept back (M.ORCH-T609): every CLI on an account stops at
     /// <see cref="WeeklyStopPercent"/> (100 minus this) of that account's week instead of burning it all. 0 to
     /// <see cref="MaxWeeklyReservePercent"/>; applies to each login on its own.</summary>

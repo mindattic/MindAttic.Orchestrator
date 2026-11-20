@@ -81,7 +81,14 @@ public sealed class AccountPacer
         /// seen for (bughunt 2026-10-27: the global login's hold, M.ORCH-T438, per login).</summary>
         public ReportedWindow? WeekStop;
         public string? WeekStopAccount;
+        /// <summary>The signed-in account's plan ("Ultra" has no 5-hour window, M.ORCH-T1885), read once per account signed in:
+        /// its .claude.json can run to megabytes.</summary>
+        public string? Plan;
+        public string? PlanAccount;
     }
+
+    /// <summary>Whether <paramref name="plan"/> has no 5-hour window (a solo Ultra account), as the dashboard reads it.</summary>
+    internal static bool HasNoFiveHourWindow(string? plan) => plan == "Ultra";
 
     private readonly Dictionary<string, State> states = new(StringComparer.OrdinalIgnoreCase);
 
@@ -129,7 +136,13 @@ public sealed class AccountPacer
                 state.Meter?.Reset();
             }
             state.Account = account;
-            var ids = byEmail[dir.Email].ToHashSet(StringComparer.Ordinal);
+            if (state.PlanAccount != account)
+            {
+                try { state.Plan = AccountProfile.Read(dir.ConfigPath)?.Plan; }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { state.Plan = null; }
+                state.PlanAccount = account;
+            }
+            var ids =byEmail[dir.Email].ToHashSet(StringComparer.Ordinal);
             var mine = sessions.Where(s => ids.Contains(s.SessionId)).ToList();
             // Let past its weekly target by the user (M.ORCH-T694): its week stops at the wall until the allowance ends.
             var (own, allowedWhy) = WeeklyAllowances.Apply(allowed, dir.Email, UsageCutoffs.Apply(cutoffs, dir.Email, settings), nowUtc);
@@ -195,6 +208,11 @@ public sealed class AccountPacer
         pace = Pacer.CoolOff(pace, utilization, Math.Max(active, pace.SubagentsByCli.Count));
         // Under the pace guards' start line on both windows, none of the above holds anything: full speed (M.ORCH-T1592).
         pace = Pacer.Dormant(pace, budget, settings, active);
+        // No 5-hour window to spread its spend (a solo Ultra account, M.ORCH-T1885): its week is paced along a straight line to
+        // the weekly pace target instead, never past its own weekly cutoff.
+        if (HasNoFiveHourWindow(state.Plan))
+            pace = Pacer.WeeklyPace(pace, WeeklyUtilizationSeries.Build(samples, budget, Math.Min(settings.WeeklyPaceTargetPercent, settings.WeeklyStopPercent), now),
+                state.Writer.AgentDelay(now), settings.MaxSubagents, settings);
         // A login with no limit learned yet is Unpaced with SubagentAllowance null, which otherwise falls back (Allocate.More)
         // to MaxConcurrentSessions minus every busy ticket across the whole workspace, leaving a fresh account no room of its
         // own (M.ORCH-T660). Its room is its own: the session setting, bounded by MaxSubagents, counted against its own marks.

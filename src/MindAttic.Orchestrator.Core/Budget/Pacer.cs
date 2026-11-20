@@ -75,6 +75,13 @@ public sealed record Pace(
     /// <summary>The CLIs spending on the login when <see cref="Pacer.CoolOff"/> slowed it; 0 when it didn't.</summary>
     public int CoolOffClis { get; init; }
 
+    /// <summary>Where the week's pace line is now, when <see cref="Pacer.WeeklyPace"/> slowed a login with no 5-hour window for
+    /// being above it (M.ORCH-T1885); null when it didn't.</summary>
+    public double? WeeklyPaceLinePercent { get; init; }
+
+    /// <summary>The week's use when <see cref="Pacer.WeeklyPace"/> slowed the login; null when it didn't.</summary>
+    public double? WeeklyPaceUsedPercent { get; init; }
+
     /// <summary>The higher of the login's 5-hour and weekly use when <see cref="Pacer.Dormant"/> lifted every pace guard for being
     /// under <see cref="GuardStartPercent"/> (M.ORCH-T1592); null when the guards are awake.</summary>
     public double? DormantPercent { get; init; }
@@ -125,6 +132,11 @@ public sealed record Pace(
     {
         _ when Memory is { Level: > Activity.MemoryLevel.Ok } m => Activity.MemoryGuard.Note(m, Subagents),
         null => "",
+        var a when WeeklyPaceLinePercent is { } line && WeeklyPaceUsedPercent is { } weekUsed => $"Subagents: {a} at once across all agents " +
+            $"({Subagents} running now). Weekly pace: this login has no 5-hour window, and its week is at {weekUsed:0}%, above the {line:0}% " +
+            $"its line to {TargetPercent:0}% at the reset is at now, so don't start extra subagents (a new one waits for a free slot)" +
+            (AgentDelaySeconds > 0 ? $" and tool calls are held about {AgentDelaySeconds:0}s each" : "") +
+            " until it's back under. Nothing running is stopped; keep working normally.",
         var a when DormantPercent is { } used => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). Usage is at " +
             $"{used:0}%, under the {GuardStartPercent:0}% line where pacing starts, so run at full speed: a subagent on every ticket you've claimed " +
             "or been handed, and parallel subagents for independent pieces." +
@@ -495,6 +507,38 @@ public static class Pacer
         var note = $"{pace.Note} Cooling off: {who} on course for {u.ProjectedEndPercent:0}% of the 5-hour window, " +
                    $"past its {u.TargetPercent:0}% pace line, so new subagents start slower ({slowed} at once) until it bends back under.";
         return pace with { SubagentAllowance = slowed, CoolOffPercent = u.ProjectedEndPercent, CoolOffClis = clis, TargetPercent = u.TargetPercent, Note = note };
+    }
+
+    /// <summary>
+    /// The week's own pace for a login with no 5-hour window (M.ORCH-T1885: a solo Ultra account ran 90% of its week in two days,
+    /// because the 5-hour window is what spreads every other login's spend out and it has none, and its cutoff only bites at the
+    /// end). <paramref name="week"/> is the week against a straight line from 0% to the weekly target at its reset; while the
+    /// week's use is above that line, new subagents start slower (the ones running less one for every 10 points over, at least
+    /// one) and each tool call is held so the burn fits what's left to the target over the hours left. Never stops: nothing
+    /// running is cut off, and the weekly cutoff (<see cref="Pace.Stop"/>) is left to do that. Off at or under the line, at the
+    /// stop, unpaced, and with no week running. Run after <see cref="Dormant"/>, whose 5-hour line means nothing here.
+    /// </summary>
+    /// <param name="recentDelaySeconds">The per-call hold the measured rate was already slowed by (<see cref="AgentDelay"/>).</param>
+    public static Pace WeeklyPace(Pace pace, Utilization week, double recentDelaySeconds, int maxSubagents, OrchestratorSettings s)
+    {
+        if (pace is { Stop: true } || week is not { Ended: false } u || u.EndUtc <= u.NowUtc) return pace;
+        var line = u.PaceAt(u.NowUtc);
+        if (u.NowPercent <= line) return pace;
+        var overBy = u.NowPercent - line;
+        var room = Math.Max(1, (long)(pace.SubagentAllowance ?? (maxSubagents > 0 ? maxSubagents : 1)));
+        var slowed = (int)Math.Clamp((long)pace.Subagents - Math.Max(1, (long)Math.Ceiling(Math.Min(overBy, 1000) / 10)), 1, room);
+        // In week-points an hour: what's left to the target over the hours left, against the week's own recent burn.
+        var sustainable = Math.Max(0, u.TargetPercent - u.NowPercent) / Math.Max(1.0 / 60, (u.EndUtc - u.NowUtc).TotalHours);
+        var hold = Math.Max(pace.AgentDelaySeconds, AgentDelay(Math.Max(0, u.PercentPerHour), sustainable, recentDelaySeconds, s));
+        var note = $"{pace.Note} Weekly pace: this login has no 5-hour window, and its week is at {u.NowPercent:0}%, above the " +
+                   $"{line:0}% its line to {u.TargetPercent:0}% at the reset is at now, so new subagents start slower ({slowed} at once)" +
+                   (hold > 0 ? $" and tool calls wait about {hold:0}s each" : "") + " until it's back under.";
+        return pace with
+        {
+            Mode = pace.IsPaced ? pace.Mode : PaceMode.Open,
+            SubagentAllowance = slowed, AgentDelaySeconds = hold, DormantPercent = null, UnderTargetPercent = null,
+            WeeklyPaceLinePercent = line, WeeklyPaceUsedPercent = u.NowPercent, TargetPercent = u.TargetPercent, Note = note.TrimStart(),
+        };
     }
 
     /// <summary>
