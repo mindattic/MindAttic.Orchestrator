@@ -242,6 +242,7 @@ public sealed class LampSettingsTests
         Case("hiddenRendererMinutes", s => s with { HiddenRendererMinutes = 10 }, 10d, v => v.HiddenRendererMinutes = 30, 30d, s => s.HiddenRendererMinutes),
         Case("autoTabNameMinutes", s => s with { AutoTabNameMinutes = 5 }, 5d, v => v.AutoTabNameMinutes = 15, 15d, s => s.AutoTabNameMinutes),
         Case("autoTabNameMaxChars", s => s with { AutoTabNameMaxChars = 20 }, 20d, v => v.AutoTabNameMaxChars = 30, 30d, s => s.AutoTabNameMaxChars),
+        Case("cliTooltipDelayMs", s => s with { CliTooltipDelayMs = 250 }, 250d, v => v.CliTooltipDelayMs = 0, 0d, s => s.CliTooltipDelayMs),
         Case("plansFolder", s => s with { PlansFolder = @"docs\ideas" }, @"docs\ideas", v => v.PlansFolder = @"notes\plans", @"notes\plans", s => s.PlansFolder),
         Case("planSummaryMaxChars", s => s with { PlanSummaryMaxChars = 200 }, 200, v => v.PlanSummaryMaxChars = 120, 120, s => s.PlanSummaryMaxChars),
         Case("planHeadKb", s => s with { PlanHeadKb = 8 }, 8, v => v.PlanHeadKb = 16, 16, s => s.PlanHeadKb),
