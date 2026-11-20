@@ -69,7 +69,7 @@ public sealed class TicketsDesktopTests
             // An organization's summary isn't a ticket's, nor is the "working, no ticket yet" card's (M.ORCH-T1519): it's the
             // session's own Doing text, with no ticket to open (M.ORCH-T1580).
             .Where(e => e.Ancestors(p + "DataTemplate").FirstOrDefault()?.Attribute("DataType")?.Value is not { } type
-                || !(type.Contains("OrgViewModel") || type.Contains("LiveActivityRowViewModel")))
+                || !(type.Contains("OrgViewModel") || type.Contains("LiveActivityRowViewModel") || type.Contains("PlanRowViewModel")))
             // An inbox row that isn't a ticket (shown only when IsTicket is false) names something with no ticket to open (M.ORCH-T1689).
             .Where(e => !e.AncestorsAndSelf(p + "TextBlock").Any(t => (string?)t.Attribute("Visibility") is { } v
                 && v.Contains("Binding IsTicket") && v.Contains("FalseToVisible")));
