@@ -89,6 +89,8 @@ public partial class MainWindow
         // Who, as a picker at the top left in place of the sidebar (M.ORCH-T1568); the CLI tab strip stays, the row under it
         // (M.ORCH-T1571). The readouts and status bar it hides are a wrapped line in the touch bar (PhoneStatus, M.ORCH-T1570).
         Hold(PhonePickers, VisibilityProperty, Visibility.Visible);
+        // The upper-left disk/RAM bars (M.ORCH-T1875) are a wrapped line in the touch bar instead (PhoneStatus, M.ORCH-T1570).
+        Hold(HostStatsBars, VisibilityProperty, Visibility.Collapsed);
         // MaxWidth, not Visibility: their Visibility is bound to whether they have anything to say.
         foreach (var readout in new FrameworkElement[] { AllocatePausedText, DiskHoldText, DiskFreeText, RamUtilizationText, RamWarnText, RamBadText })
             Hold(readout, MaxWidthProperty, 0d);

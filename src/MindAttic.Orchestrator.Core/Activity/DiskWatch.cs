@@ -58,6 +58,19 @@ public sealed class DiskWatch
         return drives;
     }
 
+    /// <summary>Percent of <paramref name="root"/>'s own capacity in use right now (M.ORCH-T1875, the menu bar's disk bar);
+    /// null if it can't be read. Kept separate from <see cref="DriveFree"/> (a record other callers already construct
+    /// positionally) rather than adding a field to it.</summary>
+    public static double? UsedPercent(string root)
+    {
+        try
+        {
+            var d = new DriveInfo(root);
+            return d.IsReady && d.TotalSize > 0 ? 100.0 * (1 - (double)d.AvailableFreeSpace / d.TotalSize) : null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException) { return null; }
+    }
+
     /// <summary>The level for <paramref name="freeGb"/>. Coming down from <paramref name="previous"/> it needs to be clear of the
     /// line it crossed by a tenth of the warn line (at least 1 GB).</summary>
     public static HealthLevel Judge(double freeGb, double warnGb, double criticalGb, HealthLevel previous = HealthLevel.Ok)

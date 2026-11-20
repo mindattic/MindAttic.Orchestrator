@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Windows.Media;
 using MindAttic.Orchestrator.Activity;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
@@ -12,14 +13,29 @@ public sealed partial class MainViewModel
     // tab is selected.
 
     private double diskFreeGb;
+    private double? diskUsedPercent;
     private double? ramUtilizationPercent;
 
     /// <summary>Free space on the system drive, two decimals: "16.45 GB free (C:)". Empty before the first read.</summary>
     public string DiskFreeText => diskFreeGb <= 0 ? "" : $"{diskFreeGb.ToString("0.00", CultureInfo.InvariantCulture)} GB free (C:)";
 
+    /// <summary>C:'s own usage bar (M.ORCH-T1875, beside the menu bar's "C:" label, upper left): the same MaProgressBar
+    /// the login strip's Sigma/Lambda bars use. 0 before the first read or when it can't be read, so the bar just sits
+    /// empty rather than binding to null.</summary>
+    public double DiskUsedPercent => Math.Max(0, diskUsedPercent ?? 0);
+
+    /// <summary>That bar's colour: the same band <see cref="BandBrush"/> already gives the Sigma/Lambda bars.</summary>
+    public Brush DiskUsedBrush => BandBrush(diskUsedPercent);
+
     /// <summary>Physical RAM in use right now, Windows' own reading: "RAM 62%". Empty before the first read, or when
     /// Windows can't say.</summary>
     public string RamUtilizationText => ramUtilizationPercent is { } p ? $"RAM {p.ToString("0", CultureInfo.InvariantCulture)}%" : "";
+
+    /// <summary>RAM's own usage bar (M.ORCH-T1875, beside the menu bar's "RAM" label, upper left).</summary>
+    public double RamUsedPercent => Math.Max(0, ramUtilizationPercent ?? 0);
+
+    /// <summary>That bar's colour: the same band <see cref="BandBrush"/> already gives the Sigma/Lambda bars.</summary>
+    public Brush RamUsedBrush => BandBrush(ramUtilizationPercent);
 
     private MemoryState? memory;
 
@@ -151,10 +167,11 @@ public sealed partial class MainViewModel
         if (consentsToasted.Count > 512) consentsToasted.Clear();
     }
 
-    private void SetHostStats(double freeGb, double? ramPercent, MemoryState? memoryNow = null, bool allocatePausedNow = false, DiskHold? diskHoldNow = null)
+    private void SetHostStats(double freeGb, double? diskUsed, double? ramPercent, MemoryState? memoryNow = null, bool allocatePausedNow = false, DiskHold? diskHoldNow = null)
     {
         ShowConsentToasts();
         diskFreeGb = freeGb;
+        diskUsedPercent = diskUsed;
         ramUtilizationPercent = ramPercent;
         memory = memoryNow;
         allocatePaused = allocatePausedNow;
@@ -166,7 +183,11 @@ public sealed partial class MainViewModel
         Raise(nameof(ConnectedMembersToolTip));
         Raise(nameof(AllocatePausedText));
         Raise(nameof(DiskFreeText));
+        Raise(nameof(DiskUsedPercent));
+        Raise(nameof(DiskUsedBrush));
         Raise(nameof(RamUtilizationText));
+        Raise(nameof(RamUsedPercent));
+        Raise(nameof(RamUsedBrush));
         Raise(nameof(RamCalmText));
         Raise(nameof(RamWarnText));
         Raise(nameof(RamBadText));

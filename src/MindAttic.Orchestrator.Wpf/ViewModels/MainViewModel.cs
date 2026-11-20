@@ -412,7 +412,7 @@ public sealed partial class MainViewModel : ObservableObject
             var dirs = OwnLoginDirs();
             IReadOnlyList<Member> readMembers = [];
             (Snapshot, SchedulePlan, IReadOnlyDictionary<string, string>)? planned = null;
-            var (next, tabs, nextOrgs, diskFree, ramPercent, allocatePausedNow) = await BuiltAfterChanges(() => Task.Run(() =>
+            var (next, tabs, nextOrgs, diskFree, diskUsed, ramPercent, allocatePausedNow) = await BuiltAfterChanges(() => Task.Run(() =>
             {
                 var built = aggregator.Refresh();
                 // Each login's name and color, read with the snapshot, off the UI thread; and the organization's members, so
@@ -433,6 +433,7 @@ public sealed partial class MainViewModel : ObservableObject
                 // The menu bar's own host readout (M.ORCH-T1499): this machine's C: free space and RAM load, not any login's,
                 // reused from the same cheap stat calls the disk-space and memory alerts already read (M.ORCH-T471/M.ORCH-T1494).
                 var diskFreeGb = DiskWatch.Read(["C:\\"]) is [{ } drive, ..] ? drive.FreeGb : 0;
+                var diskUsedPercent = DiskWatch.UsedPercent("C:\\");
                 var ramUtilizationPercent = MachineHealth.RamUtilizationPercent();
                 // The master switch for /allocate (M.ORCH-T1491): only a setting that was read and is off shows the banner.
                 var paused = store.TryLoadSettings(out var settingsNow) && !settingsNow.Allocate;
@@ -450,13 +451,13 @@ public sealed partial class MainViewModel : ObservableObject
                 if (InboxNow(built, planned?.Item2, settingsNow) is { } inbox) inboxRead = inbox;
                 // The saved plans (M.ORCH-T1826): the markdown files under docs\plans in the workspace and each repo just read.
                 plansRead = PlansNow(built, settingsNow);
-                return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, diskFreeGb, ramUtilizationPercent, paused);
+                return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, diskFreeGb, diskUsedPercent, ramUtilizationPercent, paused);
             }), () => localChanges);
             precomputedPlan = planned;
             ApplyTabs(next, tabs, nextOrgs);
             // The memory guard's level (M.ORCH-T1498): the daemon's, stepped, as the snapshot's pace carries it; else this process's own.
             // And the disk floor's hold (M.ORCH-T1692): the daemon's, as the snapshot's pace carries it; else this process's own.
-            SetHostStats(diskFree, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow, next.Pace?.Disk ?? DiskGuard.Shared.Last);
+            SetHostStats(diskFree, diskUsed, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow, next.Pace?.Disk ?? DiskGuard.Shared.Last);
             ApplyInbox();
             ApplyPlans();
             // What a pushed snapshot's figures are laid over until the next read (M.ORCH-T872).

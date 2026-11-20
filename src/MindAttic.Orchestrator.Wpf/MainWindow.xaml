@@ -294,13 +294,45 @@
                  badges and right-click menu, their ticket cards), which is why the person picker that used to sit beside it
                  is gone (M.ORCH-T1815): the drawer lists the same logins (OrgTabs) and more. Collapsed on the desktop
                  (MainWindow.Compact.cs shows it). -->
-            <Grid x:Name="PhonePickers" Grid.Column="0" Visibility="Collapsed" Margin="{StaticResource SpaceRS}">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+            <Grid x:Name="PhonePickers" Visibility="Collapsed" Margin="{StaticResource SpaceRS}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Button x:Name="DrawerButton" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE700;" Click="DrawerButton_Click"
                         Margin="{StaticResource SpaceRS}" mc:MaCallout.ToolTip="People, organizations and their tickets" AutomationProperties.Name="Show people and tickets" />
             </Grid>
+            <!-- This host's own C: free space and RAM load, upper left (M.ORCH-T1499, moved to the corner and given bars
+                 by M.ORCH-T1875, the owner's request): a short label and a small usage bar for each, the same
+                 MaProgressBar/BandBrush pairing as the login tab strip's own Sigma/Lambda bars (LoginUsageBarsTemplate
+                 above), so host and login usage read the same way. Collapsed in the phone layout like the readouts it
+                 replaces (MainWindow.Compact.cs's ApplyCompact). -->
+            <StackPanel x:Name="HostStatsBars" Orientation="Horizontal" VerticalAlignment="Center"
+                        AutomationProperties.Name="This machine's disk and RAM use">
+                <TextBlock Text="C:" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" />
+                <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
+                             Margin="{StaticResource SpaceLXS}" Value="{Binding DiskUsedPercent, Mode=OneWay}"
+                             Foreground="{Binding DiskUsedBrush}" mc:MaCallout.ToolTip="Free space on the system drive" />
+                <TextBlock x:Name="DiskFreeText" Text="{Binding DiskFreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}"
+                           mc:MaCallout.ToolTip="Free space on the system drive" AutomationProperties.Name="{Binding DiskFreeText}"
+                           Visibility="{Binding DiskFreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock Text="RAM" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}" />
+                <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
+                             Margin="{StaticResource SpaceLXS}" Value="{Binding RamUsedPercent, Mode=OneWay}"
+                             Foreground="{Binding RamUsedBrush}" mc:MaCallout.ToolTip="{Binding RamToolTip}" />
+                <!-- The memory guard's level (M.ORCH-T1498): muted while ok, MaWarn while it holds new work, MaBad once it sheds
+                     subagents or refuses tool calls; one of the three shows, the tooltip says what's held. -->
+                <TextBlock x:Name="RamUtilizationText" Text="{Binding RamCalmText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}"
+                           mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamCalmText}"
+                           Visibility="{Binding RamCalmText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock x:Name="RamWarnText" Text="{Binding RamWarnText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceLS}"
+                           mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
+                           Visibility="{Binding RamWarnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock x:Name="RamBadText" Text="{Binding RamBadText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceLS}"
+                           mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
+                           Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+            </StackPanel>
+            </StackPanel>
             <StackPanel x:Name="MenuBarTools" Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" HorizontalAlignment="Right" AutomationProperties.Name="Window tools and host status">
                 <!-- On the host, the org members connected from their own PCs with their member keys (hub phase 1, M.ORCH-T1640):
                      a people glyph and a count, the tooltip naming them; collapsed when none is, and on every other machine. -->
@@ -321,20 +353,6 @@
                 <TextBlock x:Name="DiskHoldText" Text="{Binding DiskHoldText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRL}"
                            mc:MaCallout.ToolTip="{Binding DiskHoldToolTip}" AutomationProperties.Name="{Binding DiskHoldToolTip}"
                            Visibility="{Binding DiskHoldText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <TextBlock x:Name="DiskFreeText" Text="{Binding DiskFreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRM}"
-                           mc:MaCallout.ToolTip="Free space on the system drive" AutomationProperties.Name="{Binding DiskFreeText}"
-                           Visibility="{Binding DiskFreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <!-- The memory guard's level (M.ORCH-T1498): muted while ok, MaWarn while it holds new work, MaBad once it sheds
-                     subagents or refuses tool calls; one of the three shows, the tooltip says what's held. -->
-                <TextBlock x:Name="RamUtilizationText" Text="{Binding RamCalmText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRL}"
-                           mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamCalmText}"
-                           Visibility="{Binding RamCalmText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <TextBlock x:Name="RamWarnText" Text="{Binding RamWarnText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRL}"
-                           mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
-                           Visibility="{Binding RamWarnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <TextBlock x:Name="RamBadText" Text="{Binding RamBadText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRL}"
-                           mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
-                           Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <Button x:Name="TeamWallButton" Style="{StaticResource MaToolButton}" Content="&#xE716;" Click="TeamWallButton_Click"
                         mc:MaCallout.ToolTip="Team Wall: everyone's live CLIs" AutomationProperties.Name="Team Wall" />
                 <!-- The owner inbox (M.ORCH-T1689): everything waiting on the owner (approvals, tickets parked on them, stale and
