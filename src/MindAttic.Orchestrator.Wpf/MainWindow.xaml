@@ -572,10 +572,11 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <!-- The hover highlight (M.ORCH-T1891, Ryan: "not sure whats highlighted when I mouse over"): the
-                                 library's own MaHover fill, behind the row's content, shown only while the mouse is over this
-                                 header (LoginTreeHeader, the Grid this template names above). Drawn first so the selected
-                                 login's own highlight just below still wins where the two overlap. -->
-                            <Border Grid.ColumnSpan="5" Background="{DynamicResource MaHover}" Margin="0" SnapsToDevicePixels="False"
+                                 library's own MaShapeBorder (M.ORCH-T1893: a plain Border isn't library-styled) with its MaHover
+                                 fill, behind the row's content, shown only while the mouse is over this header (LoginTreeHeader,
+                                 the Grid this template names above). Drawn first so the selected login's own highlight just below
+                                 still wins where the two overlap. -->
+                            <mc:MaShapeBorder Grid.ColumnSpan="5" Fill="{DynamicResource MaHover}" Margin="0" SnapsToDevicePixels="False"
                                     Visibility="{Binding IsMouseOver, ElementName=LoginTreeHeader, Converter={StaticResource Visible}}" />
                             <!-- The selected login's highlight: the library's MaChromeBorder fill (MaDivider, sized to the whole
                                  row) behind the row's content, shown only for the selected login. -->
@@ -683,10 +684,11 @@
                                             <ColumnDefinition Width="14" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <!-- The hover highlight (M.ORCH-T1891, same as the login header's own above): MaHover,
-                                             shown only while the mouse is over this row (LoginTreeChildRow, this template's own
-                                             Grid), drawn first so the selected-pane highlight just below still wins over it. -->
-                                        <Border Grid.ColumnSpan="2" Background="{DynamicResource MaHover}" Margin="0" SnapsToDevicePixels="False"
+                                        <!-- The hover highlight (M.ORCH-T1891, same as the login header's own above): MaShapeBorder
+                                             with MaHover (M.ORCH-T1893: a plain Border isn't library-styled), shown only while the
+                                             mouse is over this row (LoginTreeChildRow, this template's own Grid), drawn first so the
+                                             selected-pane highlight just below still wins over it. -->
+                                        <mc:MaShapeBorder Grid.ColumnSpan="2" Fill="{DynamicResource MaHover}" Margin="0" SnapsToDevicePixels="False"
                                                 Visibility="{Binding IsMouseOver, ElementName=LoginTreeChildRow, Converter={StaticResource Visible}}" />
                                         <!-- The highlight itself: the library's MaChromeBorder fill (MaDivider, sized to the whole
                                              row) behind the row's content, its style only showing or hiding it. -->
