@@ -6,8 +6,11 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>MindAttic.Orchestrator.Wpf</RootNamespace>
     <AssemblyName>MindAttic.Orchestrator.Desktop</AssemblyName>
-    <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
+    <!-- HOUSE-LAW-1: whole-number versions only. M.ORCH-T1888: the major goes up by one with every commit that touches
+         src\ (data-sync and docs commits don't), counted from OrchestratorVersionBase (v1) by OrchestratorVersionFromGit
+         below; this is only the fallback when git can't be asked. The window title shows it: "MindAttic Orchestrator vN". -->
     <Version>1.0.0</Version>
+    <OrchestratorVersionBase>e6f98479</OrchestratorVersionBase>
     <!-- The exe's own icon: Explorer, the shortcuts and a Start or taskbar pin all show it. -->
     <ApplicationIcon>..\..\assets\logo.ico</ApplicationIcon>
     <!-- LibraryImport's generated marshalling (TerminalFocus's user32 calls) needs it. -->
@@ -47,5 +50,27 @@
   <ItemGroup>
     <InternalsVisibleTo Include="MindAttic.Orchestrator.Tests" />
   </ItemGroup>
+
+  <!-- M.ORCH-T1888: N.0.0, N = 1 + the commits since OrchestratorVersionBase that touch src\. release.ps1, building from a
+       git archive, passes OrchestratorVersion itself (counted on the commit it ships); version.ps1 prints the same number. -->
+  <Target Name="OrchestratorVersionFromGit" BeforeTargets="GetAssemblyVersion" Condition="'$(OrchestratorVersion)' == ''">
+    <Exec Command="git rev-list --count $(OrchestratorVersionBase)..HEAD -- ." WorkingDirectory="$(MSBuildThisFileDirectory).."
+          ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low" EchoOff="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_OrchestratorCommits" />
+      <Output TaskParameter="ExitCode" PropertyName="_OrchestratorGitExit" />
+    </Exec>
+    <PropertyGroup Condition="'$(_OrchestratorGitExit)' == '0' And $([System.Text.RegularExpressions.Regex]::IsMatch('$(_OrchestratorCommits)', '^\d+$'))">
+      <OrchestratorVersion>$([MSBuild]::Add($(_OrchestratorCommits), 1)).0.0</OrchestratorVersion>
+    </PropertyGroup>
+  </Target>
+  <Target Name="ApplyOrchestratorVersion" AfterTargets="OrchestratorVersionFromGit" BeforeTargets="GetAssemblyVersion" Condition="'$(OrchestratorVersion)' != ''">
+    <PropertyGroup>
+      <Version>$(OrchestratorVersion)</Version>
+      <VersionPrefix>$(OrchestratorVersion)</VersionPrefix>
+      <AssemblyVersion>$(OrchestratorVersion).0</AssemblyVersion>
+      <FileVersion>$(OrchestratorVersion).0</FileVersion>
+      <InformationalVersion>$(OrchestratorVersion)</InformationalVersion>
+    </PropertyGroup>
+  </Target>
 
 </Project>

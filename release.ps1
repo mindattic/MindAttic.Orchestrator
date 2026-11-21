@@ -57,7 +57,10 @@ function Invoke-Publish([string]$Project, [string]$Output, [string[]]$Extra = @(
     if ($LASTEXITCODE -ne 0) { throw "Publishing $Project failed." }
 }
 
-Invoke-Publish 'MindAttic.Orchestrator.Wpf' $app @('--runtime', 'win-x64', '--self-contained', 'true', '/p:PublishSingleFile=true',
+# The whole-number version (M.ORCH-T1888), counted on the commit it ships: the archive has no .git of its own to ask.
+$orchestratorVersion = (& (Join-Path $PSScriptRoot 'version.ps1') -Ref $commit).TrimStart('v')
+Write-Host "Version v$orchestratorVersion" -ForegroundColor Cyan
+Invoke-Publish 'MindAttic.Orchestrator.Wpf' $app @('--runtime', 'win-x64', '--self-contained', 'true', '/p:PublishSingleFile=true', "-p:OrchestratorVersion=$orchestratorVersion.0.0",
     '/p:IncludeNativeLibrariesForSelfExtract=true', '/p:EnableCompressionInSingleFile=true', '/p:DebugType=None')
 Get-ChildItem $app -File | Where-Object Name -ne 'MindAttic.Orchestrator.Desktop.exe' | Remove-Item -Force
 Invoke-Publish 'MindAttic.Orchestrator.Cli' (Join-Path $app 'Cli') @("-p:MindAtticRoot=$workspace", '/p:DebugType=None')
