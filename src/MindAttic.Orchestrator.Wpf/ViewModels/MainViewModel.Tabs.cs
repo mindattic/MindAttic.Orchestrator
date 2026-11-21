@@ -107,7 +107,7 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>Milliseconds before this tab's hover tooltip (its usage chart, MainWindow.xaml's LoginHoverTipTemplate) opens:
+    /// <summary>Milliseconds before this tab's hover tooltip (its usage text, MainWindow.xaml's LoginHoverTipTemplate) opens:
     /// <see cref="MindAttic.Orchestrator.Settings.OrchestratorSettings.CliTooltipDelayMs"/>, live from the Vault (M.ORCH-T1823)
     /// in place of the old hardcoded <c>ToolTipService.InitialShowDelay="0"</c>.</summary>
     public double CliTooltipDelayMs => ShownSettings.CliTooltipDelayMs;

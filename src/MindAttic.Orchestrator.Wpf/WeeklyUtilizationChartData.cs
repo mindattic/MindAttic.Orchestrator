@@ -45,10 +45,27 @@ public static class WeeklyUtilizationChartData
     /// <summary>Binds the view model's <see cref="MainViewModel.WeeklyUtilization"/> to <see cref="MaLineChart.Data"/>.</summary>
     public static IValueConverter Converter { get; } = new WeeklyUtilizationConverter();
 
-    private sealed class WeeklyUtilizationConverter : IValueConverter
+    /// <summary>The same drawn compact (M.ORCH-T1887, the chart under a solo Ultra login's CLI): the same lines with one
+    /// label only, the percent the week is predicted to end at, as <see cref="UtilizationChartData.From"/>'s compact form.</summary>
+    public static IValueConverter CompactConverter { get; } = new WeeklyUtilizationConverter(compact: true);
+
+    /// <summary><see cref="From(Utilization, UtilizationChartData.ChartBrushes)"/>, optionally with only the projection's percent labelled.</summary>
+    public static MaLineChartData From(Utilization u, UtilizationChartData.ChartBrushes brushes, bool compact)
+    {
+        var data = From(u, brushes);
+        if (!compact) return data;
+        return data with
+        {
+            EndLabel = null,
+            Projection = data.Projection is { } p ? p with { Label = Formatting.FiveHourPercent(u.ProjectedEndPercent) } : null,
+            ReferenceLines = data.ReferenceLines is { } lines ? [.. lines.Select(l => l with { Label = null })] : null,
+        };
+    }
+
+    private sealed class WeeklyUtilizationConverter(bool compact = false) : IValueConverter
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-            value is Utilization u ? From(u, UtilizationChartData.ThemeBrushes()) : null;
+            value is Utilization u ? From(u, UtilizationChartData.ThemeBrushes(), compact) : null;
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
             throw new NotSupportedException();

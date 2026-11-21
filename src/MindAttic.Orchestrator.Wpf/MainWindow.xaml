@@ -215,20 +215,12 @@
              always set ({Binding}, the login's own MainViewModel), so the trigger that collapses PART_TrailingContent on a
              null TrailingContent never fires here - this is what hides it instead. The lambda pair collapses on its own
              (ShowsFiveHourChart, M.ORCH-T1540) for a solo Ultra login, which has no 5-hour window to show. -->
-        <!-- A person's hover tooltip (M.ORCH-T1814, M.COMP-T193's MaCallout.ToolTipTemplate): a thumbnail of their 5-hour
-             window chart (the same data as UtilizationChart further down, drawn Compact: its only text is the percent the
-             window is predicted to end at) over the text the tooltip always had (figures, resets, cutoffs, active CLIs).
-             A login with no 5-hour window (a solo Ultra, ShowsFiveHourChart) shows the text alone. The tooltip isn't in
-             the row's visual tree, so these bind to the tooltip's own value: the login's MainViewModel. The chart stretches
-             to the tooltip's own full width (M.ORCH-T1823, HorizontalAlignment="Stretch", no fixed Width) rather than the
-             old hardcoded 200px, which left it short of the tooltip's own (wider) text line below it. -->
+        <!-- A person's hover tooltip (M.ORCH-T1814, M.COMP-T193's MaCallout.ToolTipTemplate): the text the tooltip always
+             had (figures, resets, cutoffs, active CLIs). Its 5-hour chart thumbnail is gone (M.ORCH-T1887): nobody ever saw
+             it, so the chart lives under each CLI's terminal instead (TerminalUsageChart). The tooltip isn't in the row's
+             visual tree, so this binds to the tooltip's own value: the login's MainViewModel. -->
         <DataTemplate x:Key="LoginHoverTipTemplate" DataType="{x:Type vm:MainViewModel}">
-            <StackPanel>
-                <mc:MaLineChart Compact="True" Height="64" HorizontalAlignment="Stretch" Margin="{StaticResource SpaceBXS}"
-                                Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.CompactConverter}}"
-                                Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}" />
-                <TextBlock Text="{Binding TabHoverTip}" TextWrapping="Wrap" />
-            </StackPanel>
+            <TextBlock Text="{Binding TabHoverTip}" TextWrapping="Wrap" />
         </DataTemplate>
         <DataTemplate x:Key="LoginUsageBarsTemplate" DataType="{x:Type vm:MainViewModel}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
@@ -1231,12 +1223,33 @@
                      chart and tickets are on the Usage tab now (M.ORCH-T1572), and the body doesn't scroll under a CLI. A plain sibling of AgentsBodyList below, never one of its virtualized rows (VirtualizedList.
                      ApplyBody(AgentsBody, AgentsBodyList) in MainWindow.xaml.cs flattens AgentsBodyList alone): the native
                      terminal window must never be torn down by a realize/derealize cycle just because it scrolled out of view. -->
+                <!-- Under the terminal, a share of its height (M.ORCH-T1887, TerminalChartHeight: 12%, floored at 48px; collapsed for
+                     the API key, so its terminal keeps the whole frame): the
+                     login's own usage chart, drawn compact (lines plus the predicted end percent), so pacing can be
+                     watched while the CLI works without opening the Usage tab. The 5-hour window for every plan but a solo
+                     Ultra login, which has none and gets its weekly chart instead; the API key's person shows neither. -->
                 <Grid x:Name="TerminalFrame" MinHeight="160" Margin="{StaticResource SpaceTS}"
                       Visibility="{Binding Terminals.ShowsTerminal, Converter={StaticResource Visible}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid x:Name="TerminalUsageChart" Grid.Row="1" Margin="{StaticResource SpaceTS}"
+                          Height="{Binding ActualHeight, ElementName=TerminalFrame, Converter={x:Static local:TerminalChartHeight.Converter}}"
+                          Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
+                        <mc:MaLineChart Compact="True" HorizontalAlignment="Stretch"
+                                        Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.CompactConverter}}"
+                                        AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
+                                        Visibility="{Binding ShowsFiveHourChart, Converter={StaticResource Visible}}" />
+                        <mc:MaLineChart Compact="True" HorizontalAlignment="Stretch"
+                                        Data="{Binding WeeklyUtilization, Converter={x:Static local:WeeklyUtilizationChartData.CompactConverter}}"
+                                        AutomationProperties.Name="{Binding WeeklyUtilizationText, StringFormat='Weekly utilization: {0}'}"
+                                        Visibility="{Binding ShowsWeeklyChart, Converter={StaticResource Visible}}" />
+                    </Grid>
                     <!-- WPF claims arrow keys (and Tab) for its own directional/tab focus navigation even when a hosted
                          native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never
                          sees them (M.ORCH-T833): switched off here so they pass straight through to the terminal. -->
-                    <Grid x:Name="TerminalPanesHost" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
+                    <Grid x:Name="TerminalPanesHost" Grid.Row="0" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
                 </Grid>
 
                 <!-- The pinned Usage tab's own page (M.ORCH-T1532, in place of just hiding TerminalFrame and scrolling to

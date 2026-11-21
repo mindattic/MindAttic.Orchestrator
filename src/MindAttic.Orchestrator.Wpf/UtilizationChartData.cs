@@ -28,8 +28,8 @@ public static class UtilizationChartData
     /// <summary>The theme's MaAccent, MaGood, MaWarn and MaBad (the library theme's own outside the app, in tests).</summary>
     public static ChartBrushes ThemeBrushes() => new(Palette.Accent, Palette.Working, Palette.Waiting, Palette.Over);
 
-    /// <summary>What the chart draws for <paramref name="u"/>. <paramref name="compact"/> (M.ORCH-T1814, the person
-    /// tooltip's thumbnail) is the same lines with one label only: the percent the window is predicted to end at.</summary>
+    /// <summary>What the chart draws for <paramref name="u"/>. <paramref name="compact"/> (M.ORCH-T1814; the chart under
+    /// each CLI since M.ORCH-T1887) is the same lines with one label only: the percent the window is predicted to end at.</summary>
     public static MaLineChartData From(Utilization u, ChartBrushes brushes, bool compact = false)
     {
         var data = Full(u, brushes);
@@ -79,7 +79,7 @@ public static class UtilizationChartData
     /// <summary>Binds the view model's <see cref="Utilization"/> to <see cref="MaLineChart.Data"/>.</summary>
     public static IValueConverter Converter { get; } = new UtilizationConverter();
 
-    /// <summary>The same for the person tooltip's thumbnail: the predicted percent is its only label.</summary>
+    /// <summary>The same drawn compact, for the chart under each CLI (M.ORCH-T1887): the predicted percent is its only label.</summary>
     public static IValueConverter CompactConverter { get; } = new UtilizationConverter(compact: true);
 
     private sealed class UtilizationConverter(bool compact = false) : IValueConverter
