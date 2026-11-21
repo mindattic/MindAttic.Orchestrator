@@ -761,12 +761,16 @@
                                                  of a tee that reads as though a further sibling followed below it. The top half
                                                  always shows: it is this row's own link up to the one above it (or the login
                                                  header, for the first row). -->
-                                            <Path Grid.Row="0" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="7,0,0,0" VerticalAlignment="Stretch"
+                                            <!-- Margin-left 4, not the chevron column's own math-center 7 (M.ORCH-T1894, Ryan's
+                                                 screenshots): the chevron glyph's ink sits a few px left of its 14-wide cell's true
+                                                 center, so a spine mathematically centered in that cell reads as sitting right of
+                                                 the arrow. Nudged 3px left to match what Ryan's eye (and screenshots) measured. -->
+                                            <Path Grid.Row="0" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Stretch"
                                                   Fill="{DynamicResource MaMuted}" />
-                                            <Path Grid.Row="1" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="7,0,0,0" VerticalAlignment="Stretch"
+                                            <Path Grid.Row="1" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Stretch"
                                                   Fill="{DynamicResource MaMuted}"
                                                   Visibility="{Binding IsLastOfPerson, Converter={x:Static vm:Converters.FalseToVisible}}" />
-                                            <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="7,0,0,0"
+                                            <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="4,0,0,0"
                                                   Fill="{DynamicResource MaMuted}" />
                                         </Grid>
                                         <!-- A real CLI/Launcher pane: the same per-pane badges as the flat CLI tab bar's own header,
@@ -832,7 +836,9 @@
                                                  than the header's own (18/16/12 here vs. the header's and the flat strip's own
                                                  TerminalTabStatusIcon's 20/18/14), so the same zzz/busy/asking badge read larger on a
                                                  user's row than on their own CLI's, one column over. -->
-                                            <Grid Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="8,0,8,0">
+                                            <!-- Margin-left 5, not 8 (M.ORCH-T1894): shifted 3px left alongside the spine above,
+                                                 for the same reason - the chevron's ink reads left of its cell's true center. -->
+                                            <Grid Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="5,0,8,0">
                                                 <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
                                                             Foreground="{DynamicResource MaOnAccent}" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             Visibility="{Binding ShowsPaneIdleBadge, Converter={StaticResource Visible}}" />

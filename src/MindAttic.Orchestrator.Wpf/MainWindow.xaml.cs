@@ -830,7 +830,9 @@ public partial class MainWindow : Window
         if (ReferenceEquals(sender, dropLineRow)) ClearDropLine();
     }
 
-    /// <summary>The 2px insertion line a tree CLI drag shows between rows (M.ORCH-T1849); one at a time.</summary>
+    /// <summary>The 2px insertion line a tree CLI drag shows between rows (M.ORCH-T1849); one at a time. Starts past the
+    /// row's own spine column (<see cref="DropLineAdorner.OnRender"/>), not at the row's left edge (M.ORCH-T1894, Ryan:
+    /// wants the dragged rows to "still read as connected like a tree" rather than the bar cutting across the spine).</summary>
     private DropLineAdorner? dropLine;
     private FrameworkElement? dropLineRow;
 
@@ -864,10 +866,15 @@ public partial class MainWindow : Window
 
         public bool Below { get; }
 
+        /// <summary>Drawn from the row's own spine column onward, not from its left edge (M.ORCH-T1894): the adorned row is
+        /// always the tree's <c>LoginTreeChildRow</c> Grid, whose own first column is the spine (the vertical connector line
+        /// down from the login, MainWindow.xaml). Starting the bar there leaves that column clear so the spine still reads as
+        /// one continuous line through the drag, rather than this bar cutting across it row to row.</summary>
         protected override void OnRender(DrawingContext dc)
         {
             var size = AdornedElement.RenderSize;
-            dc.DrawRectangle(brush, null, new System.Windows.Rect(0, Below ? size.Height - 1 : -1, size.Width, 2));
+            var x = AdornedElement is Grid { ColumnDefinitions.Count: > 0 } grid ? grid.ColumnDefinitions[0].ActualWidth : 0;
+            dc.DrawRectangle(brush, null, new System.Windows.Rect(x, Below ? size.Height - 1 : -1, Math.Max(0, size.Width - x), 2));
         }
     }
 
