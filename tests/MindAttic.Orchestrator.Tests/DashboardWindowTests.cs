@@ -4,7 +4,8 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>No tray (M.ORCH-T501): closing the dashboard quits it, and a later launch brings the open one to the front
+/// <summary>The dashboard lives in the tray again (M.ORCH-T1889, superseding M.ORCH-T501's "no tray to hide in"):
+/// closing or minimizing it hides it instead of quitting, and a later launch brings the open one to the front
 /// (SingleInstanceTests, M.ORCH-T497), restored as it was.</summary>
 [Apartment(ApartmentState.STA)]
 public sealed class DashboardWindowTests
@@ -19,16 +20,20 @@ public sealed class DashboardWindowTests
     }
 
     [Test]
-    public void The_dashboard_has_no_tray_icon_to_hide_in()
+    public void The_dashboard_has_a_tray_icon_again()
     {
+        // M.ORCH-T1889: reverses M.ORCH-T501 - the daemon needs to be recoverable and its status visible without the
+        // dashboard window staying open, so Tray.cs (NotifyIcon) is back.
         var wpf = typeof(MainWindow).Assembly;
-        Assert.That(wpf.GetReferencedAssemblies().Select(a => a.Name), Has.None.EqualTo("System.Windows.Forms"), "NotifyIcon was the only use");
-        Assert.That(wpf.GetType("MindAttic.Orchestrator.Wpf.Tray"), Is.Null);
+        Assert.That(wpf.GetReferencedAssemblies().Select(a => a.Name), Has.Some.EqualTo("System.Windows.Forms"));
+        Assert.That(wpf.GetType("MindAttic.Orchestrator.Wpf.Tray"), Is.Not.Null);
     }
 
     [Test]
-    public void Closing_the_dashboard_closes_it()
+    public void Closing_an_untracked_window_still_closes_it()
     {
+        // Tray.cs's own close-to-tray is wired per dashboard window, not globally - a window never handed to it
+        // (what this suite's other tests use) closes normally.
         var window = OffScreenWindow.Show();
         var closed = false;
         window.Closed += (_, _) => closed = true;

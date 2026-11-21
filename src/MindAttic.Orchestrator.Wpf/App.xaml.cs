@@ -26,6 +26,7 @@ public partial class App : Application
     private EventWaitHandle? exitSignal;
     private SingleInstance? instance;
     private IDisposable? highContrast;
+    private Tray? tray;
 
     /// <summary>What --install exits with when it refused because a Claude CLI is still working (M.ORCH-T873); run.ps1 reads it.</summary>
     public const int BusyRefusedExit = 3;
@@ -200,8 +201,8 @@ public partial class App : Application
         // Windows logging off or restarting ends every terminal too: its tabs are offered back at the next start.
         SessionEnding += (_, _) => SessionRestore.Exit(clean: false, "windows-session-ending");
 
-        // Closing the window quits: there's no tray to hide in (M.ORCH-T501).
-        ShutdownMode = ShutdownMode.OnMainWindowClose;
+        // The dashboard lives in the tray again (M.ORCH-T1889, superseding M.ORCH-T501): ShutdownMode stays
+        // OnExplicitShutdown (set above), Tray's close-to-tray handles the window, and only its Exit shuts down.
         // A client's dashboard is its host's Team Wall (M.ORCH-T1473): the daemon, the CLIs and their state are all over there.
         if (MachineTopology.Current.OpensHostTeamWall && MachineRole.Current is var client)
         {
@@ -219,6 +220,7 @@ public partial class App : Application
         main.ListenForStatus();
         MainWindow.Show();
         DashboardWindow.Track(MainWindow);
+        tray = new Tray(MainWindow, installer, self);
         instance.OnShowRequested(args => Dispatcher.BeginInvoke(() =>
         {
             if (MainWindow is not { } window) return;
@@ -252,6 +254,7 @@ public partial class App : Application
         exitSignal?.Dispose();
         instance?.Dispose();
         highContrast?.Dispose();
+        tray?.Dispose();
         base.OnExit(e);
     }
 

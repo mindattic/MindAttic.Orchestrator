@@ -38,6 +38,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Tray.cs's NotifyIcon (M.ORCH-T1889): the assemblies only, not UseWindowsForms - that also adds WinForms'
+         own implicit global usings (Brush, TextBox, Button, Panel, Point, Size...), colliding project-wide with
+         WPF's identically-named ones. Tray.cs always qualifies with its Forms./Drawing. aliases instead. -->
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
     <!-- RelayTerminal and RelayConnection, shared with the standalone TermViewer (M.ORCH-T960). -->
     <ProjectReference Include="..\MindAttic.Orchestrator.Term.Wpf\MindAttic.Orchestrator.Term.Wpf.csproj" />
