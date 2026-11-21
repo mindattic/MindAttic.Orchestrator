@@ -520,7 +520,7 @@
                              LoginTreeMoreButton above. -->
                         <Button x:Name="LoginTabMoreButton" Style="{StaticResource MaToolButton}" Content="&#xE712;" Margin="{StaticResource SpaceLS}"
                                 Click="LoginTabMoreButton_Click"
-                                mc:MaCallout.ToolTip="Open Project, Run Launcher, New Launcher, User Settings, Change Color"
+                                mc:MaCallout.ToolTip="Open Project, Run Launcher, User Settings, Change Color"
                                 AutomationProperties.Name="{Binding TabTitle, StringFormat='More actions for {0}'}"
                                 Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}" />
                     </StackPanel>
@@ -637,7 +637,7 @@
                                                  Foreground="{Binding FiveHourLimitBrush}" />
                                 </StackPanel>
                             </StackPanel>
-                            <!-- This login's own menu (Open Project, Run Launcher, New Launcher, User Settings, Change Color), reachable
+                            <!-- This login's own menu (Open Project, Run Launcher, User Settings, Change Color), reachable
                                  with a tap or a left click (M.ORCH-T1793): the exact same menu the row's own right-click opens
                                  (LoginTreeHeader_ContextMenuOpening), which doesn't work well on touch or in the phone layout to begin
                                  with. Shown for every login (same as the row's own context menu); ShowLoginMenu itself still refuses a
@@ -651,7 +651,7 @@
                             <Button x:Name="LoginTreeMoreButton" Grid.Column="4" Style="{StaticResource MaToolButton}" Content="&#xE712;"
                                     Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
                                     Margin="{StaticResource SpaceLS}" Click="LoginTreeMoreButton_Click"
-                                    mc:MaCallout.ToolTip="Open Project, Run Launcher, New Launcher, User Settings, Change Color"
+                                    mc:MaCallout.ToolTip="Open Project, Run Launcher, User Settings, Change Color"
                                     AutomationProperties.Name="{Binding TabTitle, StringFormat='More actions for {0}'}"
                                     Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}" />
                         </Grid>

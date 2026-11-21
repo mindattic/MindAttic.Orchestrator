@@ -1503,8 +1503,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The tree sidebar's login header right-click menu (M.ORCH-T1768 note 6): the root-node menu the flat login
-    /// tab strip's own header offers (<see cref="OnLoginTabContextMenu"/>) - Open Project, Run Launcher, New Launcher,
-    /// User Settings, Change Color - which the tree view (TreeMenuLayout, on by default since M.ORCH-T1759) left with no
+    /// tab strip's own header offers (<see cref="OnLoginTabContextMenu"/>) - Open Project, Run Launcher, User Settings,
+    /// Change Color - which the tree view (TreeMenuLayout, on by default since M.ORCH-T1759) left with no
     /// way to reach at all: right-clicking a tree header did nothing before this, since it had no ContextMenuOpening wired.
     /// A root node's menu is expected to differ from a CLI node's own (ticket note 5's own clarification); this just
     /// restores the root menu itself to the layout that's now most people's default.</summary>
@@ -1538,7 +1538,7 @@ public partial class MainWindow : Window
         // Login/Log out (M.ORCH-T1820, M.ORCH-T1821): every real Claude login - not the API key pseudo-account, which has
         // Buy API credits below instead - can be re-authenticated from here without opening the Logins modal. Login always
         // shows, so a login nearing its expiry can be renewed ahead of it; Log out joins it only while actually signed in.
-        // Once signed out, the rest of this menu (Projects, Run/New Launcher, User Settings, Change Color) is left off
+        // Once signed out, the rest of this menu (Projects, Run Launcher, User Settings, Change Color) is left off
         // entirely: IsTabSignedIn is the same real signed-in state those already gate (the sign-in-only panel and the tree's
         // muted "Disabled: signed out" badge), not a flag of its own, so a logged-out login looks and acts exactly like a
         // roster account never signed in here to begin with.
@@ -1560,8 +1560,6 @@ public partial class MainWindow : Window
         menu.Items.Add(DropdownSeparator());
         Add("", "Run Launcher", "Opens this login's standalone Launcher (its own process): the project menu above does the same in-app",
             tab.RunLauncherCommand);
-        Add("", "New Launcher", "Opens another Launcher tab for this login, after its other tabs, even with one open already; /launcher cycles through them (M.ORCH-T1487)",
-            tab.NewLauncherCommand);
         Add("", "User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
             tab.UserSettingsCommand);
         menu.Items.Add(LoginColorMenu(tab)); // Change Color (M.ORCH-T1594)

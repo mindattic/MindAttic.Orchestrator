@@ -389,9 +389,21 @@ public sealed partial class MainViewModel
         foreach (var t in loginTabs)
         {
             var key = t.tab.Key;
-            var live = AllTerminals.Panes.Any(p => p.Request.IsMenu && !p.Ended &&
-                string.Equals(p.Login, AccountDirs.Normalize(t.ScopeEmail), StringComparison.OrdinalIgnoreCase));
-            if (live) launchersEmbedded.Add(key);
+            var normalized = AccountDirs.Normalize(t.ScopeEmail);
+            var liveLaunchers = AllTerminals.Panes.Where(p => p.Request.IsMenu && !p.Ended &&
+                string.Equals(p.Login, normalized, StringComparison.OrdinalIgnoreCase)).ToList();
+            // M.ORCH-T1890 (the owner's request): only ever one Launcher tab per login, so any extra left over (e.g. from
+            // before this, or a race between two opens) is closed, keeping whichever is shown or else the first.
+            if (liveLaunchers.Count > 1)
+            {
+                var keep = liveLaunchers.FirstOrDefault(p => p.IsSelected) ?? liveLaunchers[0];
+                foreach (var extra in liveLaunchers.Where(p => p != keep))
+                {
+                    if (!tabsGone.TryGetValue(extra, out _)) tabsGone.Add(extra, null);
+                    AllTerminals.Close(extra);
+                }
+            }
+            if (liveLaunchers.Count > 0) launchersEmbedded.Add(key);
             else if (launchersEmbedded.Remove(key)) launchersOpened.Remove(key);
         }
         // Every signed-in login always has its Launcher (M.ORCH-T1886, the owner's request): it's the one child its tree node
@@ -581,15 +593,15 @@ public sealed partial class MainViewModel
 
     /// <summary>Opens <paramref name="email"/>'s Launcher menu (M.LNCH-T77): embedded as a Terminals panel tab, first among
     /// that login's (so every CLI it opens, seeing itself hosted, routes back into the panel too); one already open there is
-    /// brought up rather than getting a second, and so is a standalone one already running outside the dashboard (from
-    /// before this, or started by hand) -- off the UI thread, since finding it asks WMI. Embedding failing (rare) falls back
-    /// to the login's own Windows Terminal window, as every Launcher tab opened before M.LNCH-T77. Returns an error for a
-    /// toast (null on success, embedded or not) and a status line either way. <paramref name="alwaysNew"/> (New Launcher,
-    /// M.ORCH-T1487) opens another tab even with one open already.</summary>
-    private async Task<(string? Error, string Status)> OpenLauncherPaneAsync(string? email, string tabTitle, bool embedOnly = false, bool alwaysNew = false)
+    /// brought up rather than getting a second (M.ORCH-T1890: only ever one Launcher per login), and so is a standalone one
+    /// already running outside the dashboard (from before this, or started by hand) -- off the UI thread, since finding it
+    /// asks WMI. Embedding failing (rare) falls back to the login's own Windows Terminal window, as every Launcher tab
+    /// opened before M.LNCH-T77. Returns an error for a toast (null on success, embedded or not) and a status line either
+    /// way.</summary>
+    private async Task<(string? Error, string Status)> OpenLauncherPaneAsync(string? email, string tabTitle, bool embedOnly = false)
     {
         var normalized = AccountDirs.Normalize(email);
-        if (!alwaysNew && Root.AllTerminals.Panes.FirstOrDefault(p => p.Request.IsMenu && !p.Ended &&
+        if (Root.AllTerminals.Panes.FirstOrDefault(p => p.Request.IsMenu && !p.Ended &&
                 string.Equals(p.Login, normalized, StringComparison.OrdinalIgnoreCase)) is { } open)
         {
             Root.ShowPane(open);
@@ -638,30 +650,10 @@ public sealed partial class MainViewModel
         AccountsMessage = status;
     }, () => IsTabSignedIn);
 
-    private ICommand? newLauncherCommand;
-
-    /// <summary>New Launcher (M.ORCH-T1487), from this tab's right-click menu: another Launcher tab for this login, appended
-    /// after its other tabs even with one open already (the same open as <see cref="RunLauncherCommand"/>'s, embedded).</summary>
-    public ICommand NewLauncherCommand => newLauncherCommand ??= new RelayCommand(() => _ = NewLauncherAsync(), () => IsTabSignedIn);
-
-    /// <summary>Opens a new Launcher tab for this login; a failure is a toast, never thrown (M.ORCH-T1392).</summary>
-    private async Task NewLauncherAsync()
-    {
-        string? error, status;
-        try { (error, status) = await OpenLauncherPaneAsync(ScopeEmail, TabTitle, embedOnly: true, alwaysNew: true); }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            OrchestratorLog.For("Launcher").Error(ex, "New Launcher for {Login:l} failed", TabTitle);
-            (error, status) = (ex.Message, $"Couldn't open a new Launcher for {TabTitle}: {ex.Message}");
-        }
-        if (error is { } e) Toasts.Insert(0, new ToastViewModel($"Couldn't open a new Launcher for {TabTitle}", e, Palette.Over, null));
-        AccountsMessage = status;
-    }
-
     /// <summary>
-    /// /launcher (M.ORCH-T1487, <c>orchestrator launcher</c> over the bus; UI thread): brings up the next of
-    /// <paramref name="login"/>'s live Launcher tabs after the one shown, in tab order and wrapping round, or opens one (as New
-    /// Launcher does) when they have none. Null is the global login. Never throws.
+    /// /launcher (M.ORCH-T1487, <c>orchestrator launcher</c> over the bus; UI thread): brings up <paramref name="login"/>'s
+    /// one live Launcher tab, or opens it (as <see cref="RunLauncherCommand"/> does) when they have none. Only ever one
+    /// Launcher per login (M.ORCH-T1890), so there's nothing left to cycle through. Null is the global login. Never throws.
     /// </summary>
     public void CycleLauncher(string? login)
     {
@@ -678,16 +670,8 @@ public sealed partial class MainViewModel
                 return;
             }
             SyncTerminals();
-            var launchers = person.Terminals.Panes.Where(p => p.Request.IsMenu && !p.Ended).ToList();
-            if (launchers.Count == 0)
-            {
-                if (person.NewLauncherCommand.CanExecute(null)) person.NewLauncherCommand.Execute(null);
-                return;
-            }
-            // From another person's page, their first Launcher; from theirs, the one after the tab shown (-1 + 1: the first).
-            var shown = ReferenceEquals(SelectedTab, person) ? person.Terminals.SelectedPane : null;
-            var index = shown is null ? -1 : launchers.IndexOf(shown);
-            ShowPane(launchers[(index + 1) % launchers.Count]);
+            if (person.Terminals.Panes.FirstOrDefault(p => p.Request.IsMenu && !p.Ended) is { } launcher) ShowPane(launcher);
+            else if (person.RunLauncherCommand.CanExecute(null)) person.RunLauncherCommand.Execute(null);
         }
         catch (Exception ex) { OrchestratorLog.For("Launcher").Error(ex, "/launcher for {Login:l} failed; contained", login ?? "the global login"); }
     }
