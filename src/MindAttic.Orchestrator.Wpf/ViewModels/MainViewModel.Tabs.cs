@@ -394,8 +394,11 @@ public sealed partial class MainViewModel
             if (live) launchersEmbedded.Add(key);
             else if (launchersEmbedded.Remove(key)) launchersOpened.Remove(key);
         }
-        // Off by default (M.ORCH-T1585): each Launcher is a process of its own (~80 MB); the tab right-click's Open Project does its job in-app.
-        if (ShuttingDown || !Root.autoOpenLaunchers) return;
+        // Every signed-in login always has its Launcher (M.ORCH-T1886, the owner's request): it's the one child its tree node
+        // always expands to, so a login with no CLIs open (Amy, the API key) isn't a leaf row with no way into its Launcher.
+        // This reverses M.ORCH-T1585's off-by-default for the Launcher itself, as M.ORCH-T1848 already did for its reopen;
+        // AutoOpenLaunchers now only governs the respawn after some other last tab is gone (OnTabGone).
+        if (ShuttingDown) return;
         // Through the same cap as a last tab's respawn (M.ORCH-T1150): a Launcher that exits at once is reopened at most every 30s.
         var now = DateTime.UtcNow;
         var wanted = loginTabs.Where(t => t.IsTabSignedIn && !launchersOpened.Contains(t.tab.Key) && launcherRespawn.TryTake(t.tab.Key, now))

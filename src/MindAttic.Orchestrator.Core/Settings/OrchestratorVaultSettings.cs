@@ -736,9 +736,9 @@ public sealed class OrchestratorVaultSettings
         Help = "Off (the default): the Launcher's own menu tab shows as a tile on the Team Wall like any other CLI.")]
     public bool ExcludeLauncherFromTeamWall { get; set; }
 
-    /// <summary>Off (the default): no MindAttic.Launcher process (~80 MB each) is started for every signed-in login or when its last tab closes; a login tab's right-click Open Project lists the same projects in-app, and Run Launcher still opens one by hand.</summary>
-    [Setting("Open a Launcher per login", Group = "Dashboard", Order = 5,
-        Help = "Off (the default): no MindAttic.Launcher process (~80 MB each) is started for every signed-in login or when its last tab closes; a login tab's right-click Open Project lists the same projects in-app, and Run Launcher still opens one by hand.")]
+    /// <summary>Every signed-in login always has its own Launcher (M.ORCH-T1886). Off (the default): closing a login's last other CLI tab opens nothing more; on, it opens a new Launcher for that login as well.</summary>
+    [Setting("Open a Launcher when a login's last tab closes", Group = "Dashboard", Order = 5,
+        Help = "Every signed-in login always has its own Launcher (M.ORCH-T1886). Off (the default): closing a login's last other CLI tab opens nothing more; on, it opens a new Launcher for that login as well.")]
     public bool AutoOpenLaunchers { get; set; }
 
     /// <summary>How long a CLI tab whose CLI has ended stays for its last lines before it's closed unasked.</summary>
