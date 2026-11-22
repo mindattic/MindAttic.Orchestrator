@@ -113,7 +113,7 @@ Initial check ids (the probe tickets may add more, and must list them here when 
 | | `sqldb:storage` | `server/database` | % | `HealthCheck.StoragePercent` |
 | links (T2016) | `link:latency` | `from->to` (`probe->daemon`: connect to the first line on the status stream; `probe->tickets-db` (`daemon->tickets-db` in the daemon): one timed open of the ticket database, `TicketDbPing`, M.ORCH-T2032; `dashboard->daemon`, `daemon->termhost:<pid>`, ...) | ms | `HealthCheck.LinkLatencyMs`; unreachable is `fail` |
 | | `daemon:tick` | `daemon` | s | `DaemonTick.Line` (M.ORCH-T2032, Core/Health/DaemonTick.cs): the tick under way so far, or the last one when that was longer, from the volatile `daemon-tick` state row the daemon writes at each tick's start and end; `warn` at the daemon's slow-tick line (60 s), `fail` at the pace gates' stale line (180 s), the M.ORCH-T1922 stall; no row kept or its daemon gone is `warn` with no reading |
-| | `link:up` | `daemon->dashboard`, `daemon->tickets-desktop`, `daemon->termhost:<pid>`, `daemon->cli:<pid>` | state | rule (M.ORCH-T2031, Core/Health/LinkProbe.cs): `up` (its process runs) `pass`; `gone` (still held by the daemon, process not running) `warn`; `absent` (an app never heard) `pass` |
+| | `link:up` | `daemon->dashboard`, `daemon->tickets-desktop`, `daemon->termhost:<pid>`, `daemon->cli:<pid>` | state | rule (M.ORCH-T2031, Core/Health/LinkProbe.cs): `up` (its process runs) `pass`; `gone` (still held by the daemon, process not running) `warn` for a TermHost or CLI pid but `pass` for the dashboard and Tickets Desktop, whose closing leaves its presence behind (M.ORCH-T2062); `absent` (an app never heard) `pass` |
 
 ## 4. Transport: the `health` kind on the app bus
 

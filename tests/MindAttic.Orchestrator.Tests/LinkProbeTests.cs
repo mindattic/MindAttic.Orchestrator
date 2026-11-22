@@ -41,7 +41,7 @@ public sealed class LinkProbeTests
         Assert.That(daemon.Grade, Is.EqualTo(HealthGrade.Healthy));
         Assert.That(Of(report, LinkProbe.UpCheck, "daemon->dashboard").ObservedState, Is.EqualTo(LinkProbe.Up));
         var tickets = Of(report, LinkProbe.UpCheck, "daemon->tickets-desktop");
-        Assert.That((tickets.ObservedState, tickets.Grade), Is.EqualTo((LinkProbe.Gone, HealthGrade.Degraded)));
+        Assert.That((tickets.ObservedState, tickets.Grade), Is.EqualTo((LinkProbe.Gone, HealthGrade.Healthy)));
         Assert.That(Of(report, LinkProbe.UpCheck, "daemon->termhost:100").Grade, Is.EqualTo(HealthGrade.Healthy));
         Assert.That(Of(report, LinkProbe.UpCheck, "daemon->termhost:200").Grade, Is.EqualTo(HealthGrade.Degraded));
         Assert.That(report.Results.Count(r => r.ComponentId == "daemon->cli:300"), Is.EqualTo(1), "one result per CLI process");

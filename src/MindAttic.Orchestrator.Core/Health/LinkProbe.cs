@@ -25,8 +25,8 @@ public sealed record DaemonReach(double? Ms, string? Error = null);
 /// <item><c>link:up</c> for each other end the daemon holds, a state graded by rule: <c>daemon-&gt;dashboard</c> and
 /// <c>daemon-&gt;tickets-desktop</c> from their presences, <c>daemon-&gt;termhost:&lt;pid&gt;</c> for each hosted session kept and
 /// <c>daemon-&gt;cli:&lt;pid&gt;</c> for each CLI whose activity it follows. <c>up</c> (its process runs) is healthy; <c>gone</c>
-/// (still held, its process isn't running) is degraded, a stale entry worth a look; <c>absent</c> (an app never heard) is
-/// healthy, as a closed app is no broken link.</item>
+/// (still held, its process isn't running) is healthy for the two apps, as a cleanly closed app is no broken link (M.ORCH-T2062),
+/// but degraded for a TermHost or CLI, a stale entry worth a look; <c>absent</c> (an app never heard) is healthy too.</item>
 /// </list>
 /// Every source is a function, so a test runs it on fakes; <see cref="ForHub"/> wires it to the daemon's own hub. Only reads.
 /// </summary>
@@ -153,7 +153,7 @@ public sealed class LinkProbe
                 results.Add(Read("daemon->" + link, () =>
                 {
                     if (presences.Heard(app) is not { } p) return (Absent, HealthGrade.Healthy, "not running");
-                    return presences.IsLive(p) ? (Up, HealthGrade.Healthy, null) : (Gone, HealthGrade.Degraded, $"pid {p.Pid} is gone");
+                    return presences.IsLive(p) ? (Up, HealthGrade.Healthy, null) : (Gone, HealthGrade.Healthy, $"pid {p.Pid} is gone (closed)");
                 }));
 
         foreach (var session in Safe(TermSessions))
