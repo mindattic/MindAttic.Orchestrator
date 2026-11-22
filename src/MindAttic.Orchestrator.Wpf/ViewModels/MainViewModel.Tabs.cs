@@ -778,11 +778,12 @@ public sealed partial class MainViewModel
     private static IEnumerable<RosterProject> Leaves(IEnumerable<ProjectNode> nodes) =>
         nodes.SelectMany<ProjectNode, RosterProject>(n => n switch { ProjectLeaf l => [l.Project], ProjectBranch b => Leaves(b.Children), _ => [] });
 
-    /// <summary>Opens a CLI for <paramref name="project"/> on this tab's login, as the tile grid's Start does.</summary>
-    internal Task OpenProjectAsync(RosterProject project) => StartSessionAsync(project.Name, project.Path, "Claude", AutoLogin, null);
+    /// <summary>Opens a <paramref name="kind"/> CLI (the Open Project window's provider, M.ORCH-T2041) for
+    /// <paramref name="project"/> on this tab's login, as the tile grid's Start does.</summary>
+    internal Task OpenProjectAsync(RosterProject project, string kind) => StartSessionAsync(project.Name, project.Path, kind, AutoLogin, null);
 
-    /// <summary>Opens a CLI at the workspace root (the Launcher's "General Prompt"), on this tab's login.</summary>
-    internal Task OpenGeneralPromptAsync() => StartSessionAsync("General", WorkspaceRoot, "Claude", AutoLogin, null);
+    /// <summary>Opens a <paramref name="kind"/> CLI at the workspace root (the Launcher's "General Prompt"), on this tab's login.</summary>
+    internal Task OpenGeneralPromptAsync(string kind) => StartSessionAsync("General", WorkspaceRoot, kind, AutoLogin, null);
 
     /// <summary>Commit + push every dirty project under one message (M.ORCH-T1590), the project tree root's right-click:
     /// the Launcher's own <c>commit</c>, its lines to <paramref name="line"/>; its exit code (0: all fine).</summary>

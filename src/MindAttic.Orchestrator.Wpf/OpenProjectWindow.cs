@@ -15,15 +15,24 @@ namespace MindAttic.Orchestrator.Wpf;
 /// The tree itself is unchanged (dot-named projects nested on '.', M.ORCH-T1793) other than always showing fully
 /// expanded, since picking a project closes the window anyway; a branch is a plain label, never a pick itself. A
 /// leaf's own right-click-to-commit (M.ORCH-T1588) came along with it.
+/// <para>Provider and model (M.ORCH-T2041): a provider combo (the Launcher's own, <see cref="LauncherProviders"/>:
+/// Claude, Codex, Gemini, Kimi) and a model combo above the picks, so General Prompt or a project opens on the provider
+/// chosen rather than always Claude. A model changed here is written into that provider's Launcher RunCommand (the
+/// Launcher's <c>host</c> has no <c>--model</c> of its own), exactly as the Launcher's own Settings model picker does.</para>
 /// </summary>
 internal sealed class OpenProjectWindow : Window
 {
     private readonly List<CheckBox> picks = [];
     private readonly Button add = new() { Content = "_Add", IsDefault = true, IsEnabled = false };
-    private Action? picked;
+    private readonly ComboBox providerBox = new() { MinWidth = 150 };
+    private readonly ComboBox modelBox = new() { MinWidth = 200, IsEditable = true };
+    private Action<string>? picked;
     private bool settingAll;
 
-    internal OpenProjectWindow(IReadOnlyList<ProjectNode> tree, Action generalPrompt, Action runLauncher, Action<RosterProject> openProject)
+    /// <summary>The model combo's own "no --model" entry: the CLI's default.</summary>
+    private const string CliDefault = "(CLI default)";
+
+    internal OpenProjectWindow(IReadOnlyList<ProjectNode> tree, Action<string> generalPrompt, Action runLauncher, Action<RosterProject, string> openProject)
     {
         Title = "Open Project";
         Width = 460;
@@ -38,7 +47,7 @@ internal sealed class OpenProjectWindow : Window
 
         var list = new StackPanel();
         list.Children.Add(Pick("General Prompt", "A CLI at the workspace root, every project in reach", generalPrompt));
-        list.Children.Add(Pick("Run Launcher", "Opens this login's standalone Launcher: its own process, outside this dashboard", runLauncher));
+        list.Children.Add(Pick("Run Launcher", "Opens this login's standalone Launcher: its own process, outside this dashboard", _ => runLauncher()));
         var header = new TextBlock { Text = "Projects" };
         header.SetResourceReference(StyleProperty, "MaMutedText");
         header.SetResourceReference(MarginProperty, "SpaceTS");
@@ -57,7 +66,14 @@ internal sealed class OpenProjectWindow : Window
 
         add.SetResourceReference(StyleProperty, "MaPrimaryButton");
         add.ToolTip = "Opens the pick above on this login";
-        add.Click += (_, _) => { if (picked is { } go) { Close(); go(); } };
+        add.Click += (_, _) =>
+        {
+            if (picked is not { } go) return;
+            var kind = (providerBox.SelectedItem as ComboBoxItem)?.Tag as LauncherProviders.Provider;
+            if (kind is not null) ApplyModel(kind);
+            Close();
+            go(kind?.Key ?? MindAttic.Orchestrator.Providers.Claude);
+        };
         var cancel = new Button { Content = "_Cancel", IsCancel = true };
         cancel.SetResourceReference(StyleProperty, "MaButton");
         cancel.SetResourceReference(MarginProperty, "SpaceRS");
@@ -65,6 +81,8 @@ internal sealed class OpenProjectWindow : Window
         var prompt = new TextBlock { Text = "Pick what to open for this login, then Add.", TextWrapping = TextWrapping.Wrap };
         prompt.SetResourceReference(StyleProperty, "MaMutedText");
         prompt.SetResourceReference(MarginProperty, "SpaceBXS");
+
+        var agent = AgentRow();
 
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         footer.SetResourceReference(MarginProperty, "SpaceTS");
@@ -74,8 +92,10 @@ internal sealed class OpenProjectWindow : Window
         var panel = new DockPanel();
         panel.SetResourceReference(MarginProperty, "SpaceL");
         DockPanel.SetDock(prompt, Dock.Top);
+        DockPanel.SetDock(agent, Dock.Top);
         DockPanel.SetDock(footer, Dock.Bottom);
         panel.Children.Add(prompt);
+        panel.Children.Add(agent);
         panel.Children.Add(footer);
         panel.Children.Add(scroll);
         Content = panel;
@@ -84,10 +104,56 @@ internal sealed class OpenProjectWindow : Window
         Loaded += (_, _) => picks.FirstOrDefault()?.Focus();
     }
 
+    /// <summary>The Provider and Model combos, filled from the Launcher's providers with the first (Claude) picked.</summary>
+    private FrameworkElement AgentRow()
+    {
+        foreach (var p in LauncherProviders.All())
+            providerBox.Items.Add(new ComboBoxItem { Content = p.Name == p.Key ? p.Key : $"{p.Key} ({p.Name})", Tag = p });
+        providerBox.SelectionChanged += (_, _) => FillModels();
+        providerBox.ToolTip = "Which agent CLI the pick opens";
+        modelBox.ToolTip = "The model it runs: saved to that provider's Launcher command, as the Launcher's own Settings does";
+        if (providerBox.Items.Count > 0) providerBox.SelectedIndex = 0;
+
+        var row = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+        row.Children.Add(Labeled("Provider", providerBox));
+        row.Children.Add(Labeled("Model", modelBox));
+        return row;
+    }
+
+    private static FrameworkElement Labeled(string text, Control box)
+    {
+        var label = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) };
+        label.SetResourceReference(StyleProperty, "MaMutedText");
+        var pair = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 16, 2) };
+        pair.Children.Add(label);
+        pair.Children.Add(box);
+        return pair;
+    }
+
+    /// <summary>The model combo for the provider picked: its current model (selected), the known ones, and the CLI's default.</summary>
+    private void FillModels()
+    {
+        modelBox.Items.Clear();
+        if ((providerBox.SelectedItem as ComboBoxItem)?.Tag is not LauncherProviders.Provider p) return;
+        foreach (var m in LauncherProviders.ModelsFor(p)) modelBox.Items.Add(m);
+        modelBox.Items.Add(CliDefault);
+        modelBox.Text = p.Model ?? CliDefault;
+    }
+
+    /// <summary>Writes the model chosen into <paramref name="p"/>'s Launcher command when it differs from what's there.</summary>
+    private void ApplyModel(LauncherProviders.Provider p)
+    {
+        var chosen = modelBox.Text?.Trim();
+        var model = string.IsNullOrEmpty(chosen) || chosen == CliDefault ? null : chosen;
+        if (string.Equals(model, p.Model, StringComparison.OrdinalIgnoreCase)) return;
+        if (LauncherProviders.SetModel(p.Key, model) is { } error)
+            OrchestratorLog.For("Dashboard").Warning("Open Project: {Error}", error);
+    }
+
     /// <summary>A single-select row: a check box that behaves like a radio button, ticking it clears every other one,
     /// since the library (MindAttic.Components.Wpf.Theme.xaml) has no radio button style of its own and this is the
     /// only place one's needed so far.</summary>
-    private CheckBox Pick(string label, string? tip, Action go, int depth = 0)
+    private CheckBox Pick(string label, string? tip, Action<string> go, int depth = 0)
     {
         var box = new CheckBox { Content = label, Margin = new Thickness(depth * 20, 2, 0, 2) };
         box.SetResourceReference(StyleProperty, "MaCheck");
@@ -107,7 +173,7 @@ internal sealed class OpenProjectWindow : Window
     }
 
     /// <summary>A row of the tree: a branch is a plain label with its children indented under it, a leaf a pick.</summary>
-    private FrameworkElement Node(ProjectNode node, Action<RosterProject> openProject, int depth)
+    private FrameworkElement Node(ProjectNode node, Action<RosterProject, string> openProject, int depth)
     {
         switch (node)
         {
@@ -119,7 +185,7 @@ internal sealed class OpenProjectWindow : Window
                 foreach (var child in branch.Children) panel.Children.Add(Node(child, openProject, depth + 1));
                 return panel;
             case ProjectLeaf leaf:
-                var box = Pick(node.Label, $"{leaf.Project.Path}\nRight-click: commit and push it under a message you write", () => openProject(leaf.Project), depth);
+                var box = Pick(node.Label, $"{leaf.Project.Path}\nRight-click: commit and push it under a message you write", kind => openProject(leaf.Project, kind), depth);
                 // Right-click a project (M.ORCH-T1588, carried over from the old tree menu): a commit-message modal
                 // (Save/Cancel) that commits and pushes it, without picking it to open a CLI.
                 box.PreviewMouseRightButtonUp += (_, e) => { e.Handled = true; CommitProjectWindow.Show(this, leaf.Project); };

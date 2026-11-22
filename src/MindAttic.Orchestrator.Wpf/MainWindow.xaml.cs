@@ -1436,13 +1436,13 @@ public partial class MainWindow : Window
         try
         {
             new OpenProjectWindow(MainViewModel.ProjectTree ?? [],
-                generalPrompt: () => Open(tab.OpenGeneralPromptAsync),
+                generalPrompt: kind => Open(() => tab.OpenGeneralPromptAsync(kind)),
                 runLauncher: () => Open(() =>
                 {
                     if (tab.RunLauncherCommand.CanExecute(null)) tab.RunLauncherCommand.Execute(null);
                     return Task.CompletedTask;
                 }),
-                openProject: project => Open(() => tab.OpenProjectAsync(project)))
+                openProject: (project, kind) => Open(() => tab.OpenProjectAsync(project, kind)))
             { Owner = this }.Show();
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening the Open Project window failed; contained"); }
