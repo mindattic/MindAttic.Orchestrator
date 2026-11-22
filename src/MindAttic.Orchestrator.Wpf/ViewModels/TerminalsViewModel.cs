@@ -123,7 +123,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// plus this CLI's live figures from the agent row its status read already matched (<see cref="ApplyAgentStatus"/>): its state
     /// and subagents, tokens spent this session, uptime, and its Launcher/claude.exe PIDs. Nothing is read to build it; the
     /// text is built only when WPF reads it, which <see cref="ApplyAgentStatus"/> asks for only once a shown figure changes.</summary>
-    public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow);
+    public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow, WorkingSetMb);
 
     private AgentBoardRow? statusRow;
 
@@ -135,7 +135,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     /// <summary><see cref="TabHoverTip"/>'s text for <paramref name="row"/> (null while its agent isn't known: the plain lines,
     /// and the Launcher PID once found).</summary>
-    internal static string TabHoverTipOf(string tooltip, AgentBoardRow? row, int? hostPid, DateTime nowUtc)
+    internal static string TabHoverTipOf(string tooltip, AgentBoardRow? row, int? hostPid, DateTime nowUtc, Func<int, double?>? ramMb = null)
     {
         var text = new System.Text.StringBuilder(tooltip);
         if (row is not null)
@@ -158,11 +158,27 @@ public sealed class TerminalPaneViewModel : ObservableObject
         if (hostPid is not null || row?.CliPid is not null)
         {
             text.Append('\n');
-            if (hostPid is { } host) text.Append("Launcher PID ").Append(host);
+            if (hostPid is { } host) text.Append("Launcher PID ").Append(host).Append(RamText(ramMb, host));
             if (hostPid is not null && row?.CliPid is not null) text.Append(" · ");
-            if (row?.CliPid is { } cli) text.Append("claude.exe PID ").Append(cli);
+            if (row?.CliPid is { } cli) text.Append("claude.exe PID ").Append(cli).Append(RamText(ramMb, cli));
         }
         return text.ToString();
+    }
+
+    /// <summary>A process's working set in MB, read when the tip is built (no poll); null when it can't be read (M.ORCH-T1876).</summary>
+    private static double? WorkingSetMb(int pid)
+    {
+        try { using var p = System.Diagnostics.Process.GetProcessById(pid); return p.WorkingSet64 / (1024.0 * 1024); }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return null; }
+    }
+
+    /// <summary>" (812 MB, 2.5% of RAM)" for <paramref name="pid"/>, empty when unreadable (M.ORCH-T1876).</summary>
+    private static string RamText(Func<int, double?>? ramMb, int pid)
+    {
+        if (ramMb?.Invoke(pid) is not { } mb) return "";
+        var total = MindAttic.Orchestrator.Activity.MachineHealth.TotalPhysGb();
+        var pct = total is > 0 ? $", {mb / (total.Value * 1024) * 100:0.#}% of RAM" : "";
+        return $" ({mb:N0} MB{pct})";
     }
 
     /// <summary>The coarse step a shown figure moves in: <see cref="Formatting.Tokens"/>' last digit, or
