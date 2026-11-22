@@ -458,6 +458,13 @@ public sealed partial class MainViewModel
     /// <summary>On a per-CLI login's tab, who its folder is signed in to when that's another account's email; else null.</summary>
     private string? SignedInAsOther => MismatchOf(ScopeEmail, snapshot?.Account, accountRows);
 
+    /// <summary>The login node's own visible warning (M.ORCH-T1954): "signed in as X — wrong account, use Login" while this
+    /// folder is OAuth-signed in as another account; empty (collapsed) otherwise. Its usage stays this folder's own: the tab's
+    /// figures are keyed by <see cref="ScopeEmail"/> (the folder), never merged into the other account's node.</summary>
+    public string WrongAccountLine => tab.SignedIn && !tab.IsApiKey && SignedInAsOther is { } other ? WrongAccountLineOf(other) : "";
+
+    internal static string WrongAccountLineOf(string other) => $"signed in as {other} — wrong account, use Login";
+
     internal static string? MismatchOf(string? email, string? signedInAccount, IReadOnlyList<AccountRow> rows)
     {
         if (email is null || signedInAccount is null || signedInAccount == ClaudeAccount.ApiKey) return null;
@@ -528,7 +535,7 @@ public sealed partial class MainViewModel
     /// <summary>Raises everything the tab strip shows for this tab.</summary>
     private void RaiseTabStatus()
     {
-        foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabUsageLine), nameof(TabTip), nameof(TabHoverTip),
+        foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(WrongAccountLine), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabUsageLine), nameof(TabTip), nameof(TabHoverTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge), nameof(TabActivityWord),
                                      nameof(TabCliCount), nameof(TabThinkingCount), nameof(ShowsTabThinkingCount), nameof(TabThinkingCountText), nameof(TabThinkingWord),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(TabFaceTitle), nameof(ApiSpendFace), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),

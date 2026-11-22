@@ -519,7 +519,12 @@
                                        Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
                         </Grid>
-                        <TextBlock Text="{Binding TabFaceTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding TabFaceTitle}" FontWeight="SemiBold" />
+                            <!-- Signed in as another account (M.ORCH-T1954): the same warning as the tree node's. -->
+                            <TextBlock Text="{Binding WrongAccountLine}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}"
+                                       Visibility="{Binding WrongAccountLine, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                        </StackPanel>
                         <!-- This login's own menu, reachable with a tap or a left click (M.ORCH-T1793): the exact same menu the
                              tab's own right-click opens (OnLoginTabContextMenu), the flat strip's twin of the tree header's own
                              LoginTreeMoreButton above. -->
@@ -626,7 +631,13 @@
                                                Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                                Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
                                 </Grid>
-                                <TextBlock Text="{Binding TabFaceTitle}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <!-- A folder OAuth-signed in as another account says so on its own node (M.ORCH-T1954), in the
+                                     theme's warning colour; collapsed while it's signed in as itself. -->
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding TabFaceTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding WrongAccountLine}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap"
+                                               Visibility="{Binding WrongAccountLine, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                </StackPanel>
                             </DockPanel>
                             <!-- The same sigma/lambda bars as LoginUsageBarsTemplate (the flat strip's TrailingContentTemplate),
                                  written out here: the library has no bare content host to put that template in. -->
