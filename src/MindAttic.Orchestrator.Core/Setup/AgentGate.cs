@@ -2008,7 +2008,10 @@ public static class AgentGate
         # so a window that went over can be traced to the calls around it.
         def gate_log(decision, held):
             try:
-                log_gate_event(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), decision, round(held, 1), tool, status().get("percent_used"), account_tag())
+                # The judged stop percent when the daemon wrote one, so a refusal below the line shows what it was judged at
+                # (M.ORCH-T2009: 96.0 logged for a refusal that was 98+ with the spend since and the in-flight lead).
+                s = status()
+                log_gate_event(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), decision, round(held, 1), tool, s.get("stop_percent", s.get("percent_used")), account_tag())
             except Exception:
                 pass
 
@@ -2520,7 +2523,25 @@ public static class AgentGate
             # The session's state as the context gate saved it: its session_states row or its exported file, whichever was
             # written later (M.ORCH-T543: the file alone stayed exempt when a Stop's write of it failed).
             return bool(session_state(data.get("session_id")).get("exempt"))
+        def within_lead():
+            # The judged stop percent (reported + spend since + the lead for subagents in flight, M.ORCH-T2002) at or past the
+            # login's cutoff: an exempt call must not pass then (M.ORCH-T2009: five went through at 97.0, a turn short of 98).
+            try:
+                judged = status().get("stop_percent")
+                return isinstance(judged, (int, float)) and not isinstance(judged, bool) and float(judged) >= five_hour_stop_percent()
+            except Exception:
+                return False
         if exempt_turn() or (tool == "Skill" and exempt_skill((data.get("tool_input") or {}).get("skill"))):
+            if within_lead():
+                while time.monotonic() - start < MAX_HOLD and within_lead():
+                    touch_slot()
+                    activity_hold()
+                    time.sleep(5)
+                if within_lead():
+                    release()
+                    gate_log("refused", time.monotonic() - start)
+                    refuse("The 5-hour window is within a turn of its cutoff (the subagents running now would pass it with one more turn each), "
+                           "so even this exempt command's tool calls are held until it resets. End your turn now with one short line saying where you stopped.")
             gate_log("exempt", 0)
             # Said on the daemon's inbox at once (M.ORCH-T872); the file stays for a daemon from before it.
             publish_status("poke", {"source": "pace-gate", "why": "exempt"})

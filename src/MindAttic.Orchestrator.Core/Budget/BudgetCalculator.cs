@@ -550,6 +550,10 @@ public sealed class RateLimitStatusWriter(string? path = null)
         body["weekly_stop_percent"] = status.WeeklyStopPercent;
         // And the login's 5-hour cutoff, which the hooks' own stop holds while the daemon is down (bughunt 2026-10-27).
         body["five_hour_stop_percent"] = status.FiveHourStopPercent;
+        // The percent the stop is judged by, with the lead for the subagents in flight (M.ORCH-T2009): the gate logs it and
+        // holds exempt calls at the cutoff by it, not by percent_used (Claude's last whole number).
+        if (status.StopBlockPercent is not null && !status.BlockLimitIsPeak)
+            body["stop_percent"] = Math.Round(Pacer.StopPercentOf(status, pace?.Subagents ?? 0), 1);
         // pace-gate.py refuses tool calls while this is set (after holding them its longest), so nothing passes the limit;
         // written paced or not, since the stop doesn't depend on pacing.
         if (pace is { Stop: true })
