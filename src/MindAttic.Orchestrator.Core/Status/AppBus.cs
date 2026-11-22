@@ -214,6 +214,24 @@ public sealed record ShowWorkerRequest
     [JsonPropertyName("to")] public string? To { get; init; }
 }
 
+/// <summary>The <see cref="AppBus.AgentState"/> payload (v1, M.ORCH-T1996): which CLI session's badge state changed, and a hint of
+/// to what. The dashboard re-reads that one session on it (M.ORCH-T1997); the hint is only what it falls back on.</summary>
+public sealed record AgentStateNotice
+{
+    /// <summary>The CLI's session id.</summary>
+    [JsonPropertyName("session")] public string Session { get; init; } = "";
+    /// <summary>The hook event that sent it (UserPromptSubmit, Stop, SubagentStart, ...).</summary>
+    [JsonPropertyName("event")] public string? Event { get; init; }
+    /// <summary>A hint: "working", "idle", "asking" or "".</summary>
+    [JsonPropertyName("state")] public string? State { get; init; }
+    /// <summary>The subagent's id, on a subagent's own event.</summary>
+    [JsonPropertyName("agent")] public string? Agent { get; init; }
+    /// <summary>The CLI's running subagents, on a subagent event; null otherwise.</summary>
+    [JsonPropertyName("subagents")] public int? Subagents { get; init; }
+    /// <summary>The CLI's claude.exe process id, when known.</summary>
+    [JsonPropertyName("cliPid")] public int? CliPid { get; init; }
+}
+
 /// <summary>The <see cref="AppBus.Presence"/> payload.</summary>
 public sealed record AppPresence
 {

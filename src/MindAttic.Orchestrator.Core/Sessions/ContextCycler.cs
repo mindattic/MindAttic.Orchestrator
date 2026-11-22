@@ -417,6 +417,24 @@ public sealed class ContextCycler(string? directory = null)
         return true;
     }
 
+    /// <summary>One session's turn as its <c>.state.json</c> says it now (M.ORCH-T1997): busy as <see cref="LiveSessions"/> judges
+    /// it and asking as <see cref="AskingSessions"/> does, read for that one file only, on an <c>agent-state</c> push. Null when
+    /// it has no state file or was caught mid-write.</summary>
+    public (bool Busy, bool Asking)? ReadTurn(string sessionId, DateTime nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId) || sessionId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) return null;
+        try
+        {
+            var file = Path.Combine(Directory, sessionId + ".state.json");
+            if (!File.Exists(file)) return null;
+            using var doc = JsonDocument.Parse(ReadShared(file));
+            var root = doc.RootElement;
+            var busy = root.TryGetProperty("state", out var st) && st.ValueKind == JsonValueKind.String && IsBusyTurn(st.GetString(), DecidingOf(root), nowUtc);
+            return (busy, IsAsking(root));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException) { return null; }
+    }
+
     /// <summary>Whether <paramref name="sessionId"/>'s Claude CLI is still running, by the process id the context gate
     /// recorded for it (any session of a CLI that /clear-ed counts while the CLI does); null when none was recorded.</summary>
     public bool? SessionRunning(string sessionId)

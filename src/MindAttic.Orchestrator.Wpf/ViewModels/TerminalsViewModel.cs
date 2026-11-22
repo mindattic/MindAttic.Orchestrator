@@ -438,7 +438,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public string PaneActivityWord => ShowsPaneGoalBadge ? "Busy on a goal" : IsPresumedBusy ? "Busy" : !paneKnown ? (PaneFresh ? "Idle" : "") : paneAsking ? "Blocked waiting on you" : paneBusy ? "Busy" : "Idle";
 
     // ── Presumed busy (M.ORCH-T1413) ────────────────────────────────────────
-    // Status is read every ~18 s, so an Enter typed here lights the badges at once, presuming its CLI started work, until a
+    // A turn's start is pushed (M.ORCH-T1997) but the timed status read (~18 s) is all there is while the stream is down, so an Enter typed here lights the badges at once, presuming its CLI started work, until a
     // status read confirms it (the CLI reads busy: the real signal takes over) or a read taken well after the Enter still says
     // idle (nothing started: an empty prompt, a menu move), or, with no read at all, PresumeLife passes.
 
@@ -511,6 +511,12 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <see cref="TerminalsViewModel.Update"/>) in the status read taken at <paramref name="takenUtc"/>; null while it isn't known yet.</summary>
     internal void ApplyAgentStatus(AgentBoardRow? row, DateTime takenUtc)
     {
+        // A pushed change newer than this read (M.ORCH-T1997) still holds: a snapshot built before it doesn't undo it.
+        if (pushed is { } p)
+        {
+            if (takenUtc < p.AtUtc && row is not null && row.SessionId == p.Session) row = Overlay(row, p);
+            else if (takenUtc >= p.AtUtc) pushed = null;
+        }
         var known = row is not null;
         // Busy as orchestrator busy judges it: its turn, a subagent, a background job (M.ORCH-T1528) or a claim.
         var busy = row?.IsBusy == true;
@@ -524,6 +530,45 @@ public sealed class TerminalPaneViewModel : ObservableObject
         if (known == paneKnown && busy == paneBusy && asking == paneAsking && goal == paneGoal && subagents == paneSubagents) return;
         paneKnown = known; paneBusy = busy; paneAsking = asking; paneGoal = goal; paneSubagents = subagents;
         RaiseBadges();
+    }
+
+    /// <summary>A pushed status change (M.ORCH-T1997, <see cref="ApplyPushedState"/>): what its session's <c>.state.json</c> said
+    /// at <see cref="AtUtc"/>, and its running subagents when the notice counted them.</summary>
+    internal sealed record PushedState(string Session, DateTime AtUtc, bool Busy, bool Asking, int? Subagents, string? Agent);
+
+    private PushedState? pushed;
+
+    /// <summary>
+    /// Applies a CLI status change pushed on the status stream (M.ORCH-T1997, the context gate's <c>agent-state</c>), on the UI
+    /// thread: its badge changes at once instead of at the next status read. Laid over the agent row its last read matched (a
+    /// first prompt with none yet gets a bare row), and kept over any read taken before it until one taken after it lands.
+    /// Ignored when <paramref name="state"/> isn't this pane's session.
+    /// </summary>
+    internal void ApplyPushedState(PushedState state)
+    {
+        if (Ended || !string.Equals(state.Session, SessionId, StringComparison.Ordinal)) return;
+        // An older push than the one held (two hooks racing) changes nothing.
+        if (pushed is { } held && held.Session == state.Session && held.AtUtc > state.AtUtc) return;
+        pushed = state;
+        var row = statusRow is { } last && last.SessionId == state.Session ? last
+            : new AgentBoardRow(state.Session, "", null, null, state.AtUtc, state.AtUtc, AgentState.Waiting, "", false, default, []);
+        ApplyAgentStatus(row, state.AtUtc - TimeSpan.FromTicks(1));
+    }
+
+    /// <summary><paramref name="row"/> with the pushed state laid over it: busy or waiting (held by pace stays held while busy),
+    /// asking, and the subagent count when the push counted them.</summary>
+    internal static AgentBoardRow Overlay(AgentBoardRow row, PushedState state)
+    {
+        var turn = !state.Busy ? AgentState.Waiting : row.State == AgentState.HeldByPace ? AgentState.HeldByPace : AgentState.Working;
+        var subagents = row.Subagents;
+        if (state.Subagents is { } n && n != subagents.Count)
+            subagents = n <= subagents.Count ? [.. subagents.Take(n)]
+                : [.. subagents, .. Enumerable.Range(0, n - subagents.Count).Select(i => new SubagentActivity(
+                    i == 0 && state.Agent is { Length: > 0 } agent && subagents.All(s => s.AgentId != agent) ? agent : "",
+                    row.SessionId, "", state.AtUtc, state.AtUtc, default))];
+        if (turn == row.State && state.Asking == row.Asking && ReferenceEquals(subagents, row.Subagents)) return row;
+        var detail = turn == row.State ? row.StateDetail : turn == AgentState.Waiting ? "Waiting for you" : "Working";
+        return row with { State = turn, StateDetail = detail, Asking = state.Asking, Subagents = subagents };
     }
 
     /// <summary>Shows "not sent, reconnecting" for a few seconds (M.ORCH-T979): the input is dropped, never replayed later.</summary>
@@ -1532,6 +1577,36 @@ public sealed class TerminalsViewModel : ObservableObject
 
     /// <summary>The live terminal running Launcher host <paramref name="hostPid"/>; null when none does.</summary>
     public TerminalPaneViewModel? Find(int hostPid) => Panes.FirstOrDefault(p => p.HostPid == hostPid && !p.Ended);
+
+    /// <summary>
+    /// A CLI's status change pushed on the stream (M.ORCH-T1997, the context gate's <c>agent-state</c>, M.ORCH-T1996), on the UI
+    /// thread: that one session's <c>.state.json</c> is read again (off the UI thread) and laid over the badge of every live pane
+    /// on it at once, so it doesn't wait for the next status read; the notice's own hint stands in when the file can't be read.
+    /// The timed status read is left as the fallback for while the stream is down.
+    /// </summary>
+    internal async Task ApplyAgentStateAsync(Status.AgentStateNotice notice, Func<string, DateTime, (bool Busy, bool Asking)?>? read = null)
+    {
+        if (notice.Session is not { Length: > 0 } session || !Panes.Any(p => !p.Ended && p.SessionId == session)) return;
+        var at = DateTime.UtcNow;
+        read ??= (s, now) => new ContextCycler().ReadTurn(s, now);
+        var turn = await Task.Run(() => read(session, at));
+        if (PushedStateOf(notice, turn, at) is not { } state) return;
+        foreach (var pane in Panes.Where(p => !p.Ended && p.SessionId == session).ToList()) pane.ApplyPushedState(state);
+    }
+
+    /// <summary>What a pushed notice says its session is now: the re-read <paramref name="turn"/>, or, when there was none, the
+    /// notice's hint ("working", "idle", "asking"); null when neither says anything.</summary>
+    internal static TerminalPaneViewModel.PushedState? PushedStateOf(Status.AgentStateNotice notice, (bool Busy, bool Asking)? turn, DateTime atUtc)
+    {
+        if (turn is { } t) return new(notice.Session, atUtc, t.Busy, t.Asking, notice.Subagents, notice.Agent);
+        return notice.State switch
+        {
+            "working" => new(notice.Session, atUtc, true, false, notice.Subagents, notice.Agent),
+            "idle" => new(notice.Session, atUtc, false, false, notice.Subagents, notice.Agent),
+            "asking" => new(notice.Session, atUtc, true, true, notice.Subagents, notice.Agent),
+            _ => null,
+        };
+    }
 
     /// <summary>At each refresh: an ended tab sat past <see cref="EndedLifetime"/> is pruned (M.ORCH-T1177); a terminal whose
     /// CLI has exited is marked ended; a live one learns its Launcher host, and follows its CLI to the login it runs on

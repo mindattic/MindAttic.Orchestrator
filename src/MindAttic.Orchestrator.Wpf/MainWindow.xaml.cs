@@ -376,7 +376,9 @@ public partial class MainWindow : Window
         // without a new process, and it can ask this window to show who works a ticket.
         bus.On<Status.TicketBusEvent>(Status.AppBus.Ticket, (_, change) => OnTicketChange(change), Status.AppBus.Version)
             .On<Status.AppPresence>(Status.AppBus.Presence, (_, presence) => model.Presences.Note(presence), Status.AppBus.Version)
-            .On<Status.ShowWorkerRequest>(Status.AppBus.ShowWorker, (_, request) => OnShowWorker(request), Status.AppBus.Version);
+            .On<Status.ShowWorkerRequest>(Status.AppBus.ShowWorker, (_, request) => OnShowWorker(request), Status.AppBus.Version)
+            // A CLI's badge state changed (M.ORCH-T1997): its pane's badge follows at once, not at the next status read.
+            .On<Status.AgentStateNotice>(Status.AppBus.AgentState, (_, notice) => OnAgentState(notice), Status.AppBus.Version);
         // Hosted CLIs (M.ORCH-T926): one started elsewhere (the Launcher, M.LNCH-T82) gets a tab, one that ended is marked ended.
         // /launcher (M.ORCH-T1487) rides the same message: cycle that login's Launcher tabs, or open one.
         bus.On<Term.TermSessionEvent>(Term.TermBus.Kind, (_, session) =>
@@ -507,6 +509,18 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             OrchestratorLog.For("Dashboard").Error(ex, "Applying pushed {Kind:l} failed", payload.GetType().Name);
+        }
+    }
+
+    /// <summary>A CLI's status change pushed off the stream (M.ORCH-T1997), on the UI thread: that session is read again and its
+    /// pane's badge set from it at once (<see cref="ViewModels.TerminalsViewModel.ApplyAgentStateAsync"/>).</summary>
+    private async void OnAgentState(Status.AgentStateNotice notice)
+    {
+        try { await model.AllTerminals.ApplyAgentStateAsync(notice); }
+        // async void on the dispatcher: an escaped exception would close the dashboard.
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Dashboard").Error(ex, "Applying a pushed CLI status for {Session:l} failed", notice.Session);
         }
     }
 
