@@ -285,14 +285,17 @@ public static partial class ProjectCommit
             if (commit.ExitCode != 0 || commit.TimedOut) return Fail("Syncing the ticket database: git commit", commit);
 
             var push = Git("push", "-q");
-            if (push.ExitCode != 0 && !push.TimedOut && IsBehindRemote(push.Error))
+            for (var attempt = 0; attempt < 3 && push.ExitCode != 0 && !push.TimedOut && IsBehindRemote(push.Error); attempt++)
             {
-                // The remote moved ahead: rebase onto it, keeping any other work there aside, and push again.
-                var pull = Git("pull", "-q", "--rebase", "--autostash");
-                if (pull.ExitCode != 0 || pull.TimedOut)
+                // The remote moved ahead: fetch and merge it (never a rebase or stash: the checkout is shared with other
+                // agents' uncommitted work, which a merge leaves alone and refuses safely), then push again (M.ORCH-T2060).
+                var fetch = Git("fetch", "-q", "origin", "main");
+                if (fetch.ExitCode != 0 || fetch.TimedOut) return Fail("Synced the ticket database locally, but fetching origin", fetch);
+                var merge = Git("merge", "--no-edit", "-q", "origin/main");
+                if (merge.ExitCode != 0 || merge.TimedOut)
                 {
-                    Git("rebase", "--abort");
-                    return Fail("Synced the ticket database locally, but rebasing onto origin", pull);
+                    Git("merge", "--abort");
+                    return Fail("Synced the ticket database locally, but merging origin/main", merge);
                 }
                 push = Git("push", "-q");
             }
