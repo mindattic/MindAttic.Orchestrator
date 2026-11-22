@@ -1739,6 +1739,32 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Commit and push projects failed; contained"); }
     }
 
+    /// <summary>The global toolbar's Projects group (M.ORCH-T1980): opens <see cref="OpenProjectWindow"/> for whichever
+    /// login is currently selected (<see cref="Shown"/>) - the same window the per-login row's own "+ Add" button and
+    /// "Open Project…" menu item already reach (<see cref="AddTabButton_Click"/>, <see cref="OpenProjectMenuItem"/>),
+    /// just reachable without first clicking into that login's own row.</summary>
+    private void ToolbarOpenProjectButton_Click(object sender, RoutedEventArgs e) => ShowOpenProjectWindow(Shown);
+
+    /// <summary>The global toolbar's Git group, "Commit and push projects…" (M.ORCH-T1980): the same picker window the
+    /// per-login menu's own item opens (<see cref="OpenCommitProjects"/>); it isn't gated on the selected login, since
+    /// <see cref="OpenCommitProjects"/> never takes one either.</summary>
+    private void ToolbarCommitProjectsButton_Click(object sender, RoutedEventArgs e) => OpenCommitProjects();
+
+    /// <summary>The global toolbar's Git group, "Refresh projects" (M.ORCH-T1980): re-reads the roster for whichever
+    /// login is currently selected (<see cref="Shown"/>), the same call the per-login menu's own "Refresh projects"
+    /// item makes.</summary>
+    private void ToolbarRefreshProjectsButton_Click(object sender, RoutedEventArgs e) => _ = Shown.RefreshProjectListAsync();
+
+    /// <summary>The global toolbar's Git group, "Commit + push all dirty projects…" (M.ORCH-T1980): the same
+    /// <see cref="CommitAllWindow"/> the per-login menu's own item opens (<see cref="CommitAllProjects"/>), for
+    /// whichever login is currently selected (<see cref="Shown"/>) - the toolbar button isn't inside a dropdown, so
+    /// there's no menu to close first.</summary>
+    private void ToolbarCommitAllButton_Click(object sender, RoutedEventArgs e)
+    {
+        try { CommitAllWindow.Show(this, Shown.CommitAllProjectsAsync); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Commit + push all from the toolbar failed; contained"); }
+    }
+
 
     /// <summary>Ctrl+Shift+B (M.ORCH-T935): pauses or resumes the shown CLI's remote broadcast, wherever focus is.</summary>
     private void OnBroadcastKey(object sender, KeyEventArgs e)

@@ -288,6 +288,11 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <!-- The host stats/window tools stay row 0; the global toolbar below (M.ORCH-T1980) is row 1, full width. -->
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <!-- The phone layout's first row (M.ORCH-T1568, M.ORCH-T1571): the menu button top left, with the tools staying
                  top right; the shown person's own CLI tab strip (scroll arrows and all) is the row under it, as on the
                  desktop. The menu button opens the sidebar itself as a drawer (M.ORCH-T1570: orgs, every person with their
@@ -395,6 +400,93 @@
                 <Button x:Name="SaveMoreButton" Style="{StaticResource MaToolButton}" Content="&#xE70D;" Width="16" FontSize="8" Margin="2,0,8,0"
                         Click="SaveMoreButton_Click"
                         mc:MaCallout.ToolTip="Quick Save All or Quick Load All" AutomationProperties.Name="Quick Save All or Quick Load All" />
+            </StackPanel>
+            <!-- The global toolbar (M.ORCH-T1980): the structural shell for M.ORCH-T1972's wider migration of every
+                 MindAttic.Launcher-only feature into this dashboard - one row, grouped and labeled, under the host
+                 stats/window tools above. Every button here acts on whichever login is currently selected
+                 (model.SelectedTab, which is also this window's own DataContext while a login's shown - see
+                 model.SelectedTabChanged in MainWindow.xaml.cs), never one specific login's row: a global, always-reachable
+                 way to the same handful of actions the per-login row's own "+ Add"/"⋯" menu (M.ORCH-T1964) already
+                 offers once you've clicked into that row - this doesn't replace or duplicate that menu. Backup & Restore,
+                 Azure and Shells have no feature behind them yet (nothing to migrate until their own tickets land), so
+                 their one button each stays disabled rather than faking an action; its tooltip names the ticket that
+                 will build it. -->
+            <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
+                <Separator Style="{StaticResource MaSeparator}" Margin="0,8,0,8" />
+                <StackPanel x:Name="DashboardToolbar" Orientation="Horizontal" VerticalAlignment="Center"
+                            AutomationProperties.Name="Dashboard toolbar: Projects, Git, Settings, Launcher, and what's still to come">
+                    <!-- Projects: the same Open Project window the per-login row's own "+ Add" button and "⋯" menu item
+                         already open (ShowOpenProjectWindow, M.ORCH-T1964), for whichever login is selected. -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceRL}">
+                        <TextBlock Text="Projects" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
+                        <Button x:Name="ToolbarOpenProjectButton" Style="{StaticResource MaToolButton}" Content="&#xE8B7;" Click="ToolbarOpenProjectButton_Click"
+                                IsEnabled="{Binding IsTabSignedIn}" ToolTipService.ShowOnDisabled="True"
+                                mc:MaCallout.ToolTip="Open Project: a CLI for a project, the General Prompt or Run Launcher, for the selected login"
+                                AutomationProperties.Name="Open Project" />
+                    </StackPanel>
+                    <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
+                    <!-- Git: the same Commit and push projects / Refresh projects / Commit + push all dirty projects
+                         actions the per-login menu already offers (ShowLoginMenu). Commit and push projects… opens the
+                         picker tree on its own (OpenCommitProjects takes no login at all, same as the menu item), so it
+                         isn't gated on the selected login the way the other two, which act on it, are. -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceRL}">
+                        <TextBlock Text="Git" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
+                        <Button x:Name="ToolbarCommitProjectsButton" Style="{StaticResource MaToolButton}" Content="&#xE898;" Click="ToolbarCommitProjectsButton_Click"
+                                Margin="{StaticResource SpaceRXS}"
+                                mc:MaCallout.ToolTip="Commit and push projects…: pick projects in the tree and commit and push each one under one message"
+                                AutomationProperties.Name="Commit and push projects" />
+                        <Button x:Name="ToolbarRefreshProjectsButton" Style="{StaticResource MaToolButton}" Content="&#xE72C;" Click="ToolbarRefreshProjectsButton_Click"
+                                Margin="{StaticResource SpaceRXS}"
+                                IsEnabled="{Binding IsTabSignedIn}" ToolTipService.ShowOnDisabled="True"
+                                mc:MaCallout.ToolTip="Refresh projects: reads the Launcher's roster and GitHub's wip-tagged repos again, for the selected login"
+                                AutomationProperties.Name="Refresh projects" />
+                        <Button x:Name="ToolbarCommitAllButton" Style="{StaticResource MaToolButton}" Content="&#xE898;" Click="ToolbarCommitAllButton_Click"
+                                IsEnabled="{Binding IsTabSignedIn}" ToolTipService.ShowOnDisabled="True"
+                                mc:MaCallout.ToolTip="Commit + push all dirty projects…: one commit message for every project with changes, each pushed, for the selected login"
+                                AutomationProperties.Name="Commit and push all dirty projects" />
+                    </StackPanel>
+                    <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
+                    <!-- Settings: the dashboard's own Settings window (OpenSettingsCommand, the same command the menu
+                         bar's own SettingsButton above already uses - MindAttic Vault's Orchestrator tab). -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceRL}">
+                        <TextBlock Text="Settings" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
+                        <Button x:Name="ToolbarSettingsButton" Style="{StaticResource MaToolButton}" Content="&#xE713;" Command="{Binding OpenSettingsCommand}"
+                                mc:MaCallout.ToolTip="Settings (opens MindAttic Vault)" AutomationProperties.Name="Settings" />
+                    </StackPanel>
+                    <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
+                    <!-- Launcher: tab.RunLauncherCommand, the same command the per-login menu's own "Run Launcher" item
+                         uses; its CanExecute is IsTabSignedIn, so this button grays itself out with no IsEnabled
+                         binding of its own needed. -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceRL}">
+                        <TextBlock Text="Launcher" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
+                        <Button x:Name="ToolbarRunLauncherButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Command="{Binding RunLauncherCommand}"
+                                ToolTipService.ShowOnDisabled="True"
+                                mc:MaCallout.ToolTip="Run Launcher: opens the selected login's standalone Launcher (its own process)"
+                                AutomationProperties.Name="Run Launcher" />
+                    </StackPanel>
+                    <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
+                    <!-- Stub groups (M.ORCH-T1972's wider migration still to come): no Orchestrator feature behind any of
+                         these three yet, so each stays disabled rather than faking an action. The glyph is
+                         TabDisabledGlyph's own "not usable right now" one (MainViewModel.TabStatus.cs: the signed-out
+                         lock), reused rather than a codepoint of its own. -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceRL}">
+                        <TextBlock Text="Backup &amp; Restore" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
+                        <Button x:Name="ToolbarBackupRestoreButton" Style="{StaticResource MaToolButton}" Content="&#xE733;" IsEnabled="False" ToolTipService.ShowOnDisabled="True"
+                                mc:MaCallout.ToolTip="Backup &amp; Restore: coming soon (M.ORCH-T1983)" AutomationProperties.Name="Backup and Restore: coming soon" />
+                    </StackPanel>
+                    <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceRL}">
+                        <TextBlock Text="Azure" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
+                        <Button x:Name="ToolbarAzureButton" Style="{StaticResource MaToolButton}" Content="&#xE733;" IsEnabled="False" ToolTipService.ShowOnDisabled="True"
+                                mc:MaCallout.ToolTip="Azure: coming soon (M.ORCH-T1985)" AutomationProperties.Name="Azure: coming soon" />
+                    </StackPanel>
+                    <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Shells" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
+                        <Button x:Name="ToolbarShellsButton" Style="{StaticResource MaToolButton}" Content="&#xE733;" IsEnabled="False" ToolTipService.ShowOnDisabled="True"
+                                mc:MaCallout.ToolTip="Shells: coming soon (M.ORCH-T1988)" AutomationProperties.Name="Shells: coming soon" />
+                    </StackPanel>
+                </StackPanel>
             </StackPanel>
             </Grid>
         </Border>
@@ -537,6 +629,16 @@
                                 mc:MaCallout.ToolTip="Open Project, Run Launcher, User Settings, Change Color"
                                 AutomationProperties.Name="{Binding TabTitle, StringFormat='More actions for {0}'}"
                                 Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}" />
+                        <!-- "+ Add" (M.ORCH-T1964), at the end of every login row: opens the Open Project window (General
+                             Prompt, Run Launcher, or a project from the tree), in place of hovering Open Project's own
+                             cascading submenu in the "⋯" menu above. Disabled, not hidden, while signed out - same gate
+                             as the old menu's root item - so it's still there to explain why. -->
+                        <Button x:Name="LoginTabAddButton" Style="{StaticResource MaToolButton}" Content="+ Add" FontFamily="Segoe UI" FontSize="12"
+                                Width="56" Margin="{StaticResource SpaceLS}" Click="AddTabButton_Click"
+                                IsEnabled="{Binding IsTabSignedIn}" ToolTipService.ShowOnDisabled="True"
+                                mc:MaCallout.ToolTip="Open a CLI: General Prompt, Run Launcher, or a project from the tree"
+                                AutomationProperties.Name="{Binding TabTitle, StringFormat='Open a new CLI for {0}'}"
+                                Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}" />
                     </StackPanel>
                 </DataTemplate>
             </mc:MaTabControl.ItemTemplate>
@@ -657,13 +759,23 @@
                             <TextBlock Grid.Column="3" Text="{Binding ApiSpendFace}" Style="{StaticResource MaMutedText}" FontSize="11" VerticalAlignment="Center"
                                        HorizontalAlignment="Right" Margin="{StaticResource SpaceLS}"
                                        Visibility="{Binding ApiSpendFace, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                            <!-- The same size as a row's own ellipsis and Close X below, and in the X's column (M.ORCH-T1812). -->
-                            <Button x:Name="LoginTreeMoreButton" Grid.Column="4" Style="{StaticResource MaToolButton}" Content="&#xE712;"
-                                    Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
-                                    Margin="{StaticResource SpaceLS}" Click="LoginTreeMoreButton_Click"
-                                    mc:MaCallout.ToolTip="Open Project, Run Launcher, User Settings, Change Color"
-                                    AutomationProperties.Name="{Binding TabTitle, StringFormat='More actions for {0}'}"
-                                    Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}" />
+                            <!-- The same size as a row's own ellipsis and Close X below, and in the X's column (M.ORCH-T1812);
+                                 "+ Add" (M.ORCH-T1964) joins it here, at the end of the row, opening the Open Project window
+                                 (General Prompt, Run Launcher, or a project from the tree) with one click instead of hovering
+                                 Open Project's own cascading submenu in the "⋯" menu. Disabled, not hidden, while signed out. -->
+                            <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center"
+                                        Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}">
+                                <Button x:Name="LoginTreeMoreButton" Style="{StaticResource MaToolButton}" Content="&#xE712;"
+                                        Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
+                                        Margin="{StaticResource SpaceLS}" Click="LoginTreeMoreButton_Click"
+                                        mc:MaCallout.ToolTip="Open Project, Run Launcher, User Settings, Change Color"
+                                        AutomationProperties.Name="{Binding TabTitle, StringFormat='More actions for {0}'}" />
+                                <Button x:Name="LoginTreeAddButton" Style="{StaticResource MaToolButton}" Content="+ Add" FontFamily="Segoe UI"
+                                        Width="46" Height="18" FontSize="9" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}"
+                                        Click="AddTabButton_Click" IsEnabled="{Binding IsTabSignedIn}" ToolTipService.ShowOnDisabled="True"
+                                        mc:MaCallout.ToolTip="Open a CLI: General Prompt, Run Launcher, or a project from the tree"
+                                        AutomationProperties.Name="{Binding TabTitle, StringFormat='Open a new CLI for {0}'}" />
+                            </StackPanel>
                         </Grid>
                         <!-- A signed-out login's Launcher stand-in (M.ORCH-T1950): every org member's node stays in the
                              tree for good, and keeps its Launcher child (M.ORCH-T1886), but a Launcher can't run on a login
