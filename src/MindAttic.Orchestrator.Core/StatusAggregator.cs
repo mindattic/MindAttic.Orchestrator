@@ -406,6 +406,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                 lastAccount = signIn.Account;
                 lastReported = null;
                 weekStop = null;
+                stopHold = null; // the old account's held stop isn't this one's (M.ORCH-T2010)
             }
             events = [.. events.Where(e => signIn.Contains(e.AtUtc))];
             if (reported is not null && (!signIn.Owns(reported) || reported.Account is null && signIn.Switched && !signIn.Contains(reported.AtUtc))) reported = null;

@@ -437,12 +437,14 @@ public static class BudgetCalculator
     /// </summary>
     internal static BudgetStatus HoldStopPercent(BudgetStatus b, ref StopHold? held)
     {
-        if (b.CurrentBlock is not { } block || b.StopBlockPercent is not { } now)
+        if (b.CurrentBlock is not { } block)
         {
             held = null;
             return b;
         }
         if (held is not null && Math.Abs((held.WindowEndUtc - block.EndUtc).TotalMinutes) > 30) held = null;
+        // One refresh with the window unsized (no fresh report) leaves the hold standing, unapplied; it drops at the window's end.
+        if (b.StopBlockPercent is not { } now) return b;
         var top = Math.Max(now, held?.Percent ?? 0);
         held = new StopHold(block.EndUtc, top);
         return top > now ? b with { StopBlockPercent = top } : b;

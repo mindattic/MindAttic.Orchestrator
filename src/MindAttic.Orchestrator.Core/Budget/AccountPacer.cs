@@ -166,6 +166,7 @@ public sealed class AccountPacer
             if (state.Account is not null && state.Account != account)
             {
                 state.Samples = null;
+                state.StopHold = null; // the old account's held stop isn't this one's (M.ORCH-T2010)
                 // The probe asks again at once for the new account, not after the old one's backoff.
                 state.Meter?.Reset();
                 (state.SignedInSince, state.SignedInSinceKnown) = (nowUtc, true);
