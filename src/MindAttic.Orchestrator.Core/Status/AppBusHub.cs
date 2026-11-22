@@ -107,6 +107,16 @@ public sealed class AppPresences
         return p is not null && p.Handles.Contains(kind, StringComparer.OrdinalIgnoreCase) && SaidByLiveProcess(p) ? p : null;
     }
 
+    /// <summary>The latest presence heard from <paramref name="app"/>, live or not; null when none has been (M.ORCH-T2031: the links
+    /// probe tells an app that left from one never started).</summary>
+    public AppPresence? Heard(string app)
+    {
+        lock (byApp) return byApp.GetValueOrDefault(app);
+    }
+
+    /// <summary>Whether the process that said <paramref name="presence"/> still runs (M.ORCH-T2031).</summary>
+    public bool IsLive(AppPresence presence) => SaidByLiveProcess(presence);
+
     /// <summary>Whether the process that said <paramref name="presence"/> still runs: its pid does, and not as a process started after
     /// it was said (a reused pid). One with no time of its own (an older writer) is judged by its pid alone.</summary>
     private bool SaidByLiveProcess(AppPresence presence)
@@ -148,6 +158,9 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     /// next plan reads them at once instead of at its next tick (<c>org limit</c>/<c>org allow</c>/<c>org disallow</c>,
     /// bughunt 2026-11-02).</summary>
     public Action? StateChanged { get; init; }
+
+    /// <summary>The presences this hub has taken (M.ORCH-T2031), for the links probe run in the daemon.</summary>
+    public AppPresences Presences { get; init; } = new();
 
     /// <summary>The key a presence is kept under on the stream: one per app.</summary>
     public static string PresenceKey(string app) => AppBus.Presence + ":" + app.Trim().ToLowerInvariant();
@@ -295,6 +308,12 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
         stream.Publish(envelope);
     }
 
+    /// <summary>The hosted sessions kept for connecting subscribers (M.ORCH-T2031: the links probe checks each one's host).</summary>
+    public IReadOnlyList<Term.TermSessionRecord> TermSessionsKept()
+    {
+        lock (termKept) return [.. termKept.Values];
+    }
+
     /// <summary>Stops keeping each hosted session whose host no longer runs (M.ORCH-T1998), its ended lost. Never throws.</summary>
     public void ExpireTermSessions()
     {
@@ -391,6 +410,7 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                     return;
                 case AppBus.Presence:
                     if (envelope.PayloadAs<AppPresence>() is not { App.Length: > 0 } presence) return;
+                    Presences.Note(presence);
                     stream.Publish(envelope, PresenceKey(presence.App));
                     return;
                 case AppBus.Activity:

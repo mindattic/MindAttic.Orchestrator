@@ -134,6 +134,13 @@ public sealed class ActivityCoalescer
         return ended;
     }
 
+    /// <summary>Each session's CLI process, where its record named one (M.ORCH-T2031: the links probe checks each is alive).</summary>
+    public IReadOnlyList<(string Session, int CliPid)> CliPids()
+    {
+        lock (gate)
+            return [.. sessions.Where(s => s.Value.CliPid is > 0).Select(s => (s.Key, s.Value.CliPid!.Value))];
+    }
+
     /// <summary>The latest message sent for each session, oldest session first: the activity snapshot a connecting subscriber gets.</summary>
     public IReadOnlyList<ActivityPayload> Snapshot()
     {

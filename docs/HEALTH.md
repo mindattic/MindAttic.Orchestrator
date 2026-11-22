@@ -111,7 +111,8 @@ Initial check ids (the probe tickets may add more, and must list them here when 
 | azure-sql (T2015) | `sqldb:state` | `server/database` | state | rule (above) |
 | | `sqldb:dtu` | `server/database` | % | `HealthCheck.DtuPercent` |
 | | `sqldb:storage` | `server/database` | % | `HealthCheck.StoragePercent` |
-| links (T2016) | `link:latency` | `from->to` (`dashboard->daemon`, `daemon->tickets-db`, `daemon->termhost:<pid>`, ...) | ms | `HealthCheck.LinkLatencyMs`; unreachable is `fail` |
+| links (T2016) | `link:latency` | `from->to` (`probe->daemon`: connect to the first line on the status stream; `dashboard->daemon`, `daemon->tickets-db`, `daemon->termhost:<pid>`, ...) | ms | `HealthCheck.LinkLatencyMs`; unreachable is `fail` |
+| | `link:up` | `daemon->dashboard`, `daemon->tickets-desktop`, `daemon->termhost:<pid>`, `daemon->cli:<pid>` | state | rule (M.ORCH-T2031, Core/Health/LinkProbe.cs): `up` (its process runs) `pass`; `gone` (still held by the daemon, process not running) `warn`; `absent` (an app never heard) `pass` |
 
 ## 4. Transport: the `health` kind on the app bus
 
