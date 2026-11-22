@@ -363,6 +363,8 @@ public sealed partial class MainViewModel
             t.RaiseTabStatus();
         }
         UpdateOrgPills();
+        // Each login's Agents panel (M.ORCH-T1747), from the agents its read found.
+        ApplyAgents();
         // A login's tab come or gone takes its terminals with it (to the global login's when gone), M.ORCH-T810.
         SyncTerminals();
         // The CLIs already open take their login's name and Prefix as they are now (M.ORCH-T1440): a rename in User Settings

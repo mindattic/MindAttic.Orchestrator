@@ -510,6 +510,8 @@ public sealed partial class MainViewModel : ObservableObject
                 if (InboxNow(built, planned?.Item2, settingsNow) is { } inbox) inboxRead = inbox;
                 // The saved plans (M.ORCH-T1826): the markdown files under docs\plans in the workspace and each repo just read.
                 plansRead = PlansNow(built, settingsNow);
+                // Each login's agents (M.ORCH-T1747): the agents table, spread over the tabs when they're applied.
+                if (AgentsNow() is { } agents) agentsRead = agents;
                 return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, diskFreeGb, diskUsedPercent, ramUtilizationPercent, paused);
             }), () => localChanges);
             precomputedPlan = planned;

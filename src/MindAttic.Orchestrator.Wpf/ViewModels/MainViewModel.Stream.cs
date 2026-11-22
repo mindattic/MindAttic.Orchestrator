@@ -86,6 +86,8 @@ public sealed partial class MainViewModel
                 // What ApplyAccounts shows, read here rather than on the UI thread (M.ORCH-T1735).
                 accountsRead = ReadAccounts(patched.Account, DateTime.UtcNow);
                 AllTerminals.ParentsRead = ReadParents();
+                // Each login's agents (M.ORCH-T1747), so a pushed snapshot moves their states and heartbeats on too.
+                if (AgentsNow() is { } agents) agentsRead = agents;
                 return LoginScope.Tabs(patched, dirs, members, lastApiKey);
             });
             // A read that landed meanwhile showed something as new or newer.

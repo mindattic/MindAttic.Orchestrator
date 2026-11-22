@@ -1094,6 +1094,30 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <!-- This login's Agents panel (M.ORCH-T1747, roadmap Phase 1): each agent the agents table has on it
+                             (AgentBook, M.ORCH-T1744; retired ones left out), its role, then its state, the unit it's on and
+                             its last heartbeat. Read with the refresh and a pushed snapshot's figures, never polled. Below the
+                             panes and off their spine, so the last pane's elbow stays an "L". Shown only while expanded and
+                             the login has an agent. -->
+                        <Grid x:Name="LoginTreeAgents" Margin="14,2,0,2" Visibility="{Binding IsExpanded, Converter={StaticResource Visible}}">
+                            <StackPanel Visibility="{Binding HasAgents, Converter={StaticResource Visible}}"
+                                        AutomationProperties.Name="{Binding AgentsTitle}">
+                                <TextBlock Text="{Binding AgentsTitle}" Style="{StaticResource MaMutedText}" FontSize="11" FontWeight="SemiBold" Margin="6,0,0,0" />
+                                <ItemsControl Style="{StaticResource MaList}" ItemsSource="{Binding Agents}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel Margin="6,1,0,1" mc:MaCallout.ToolTip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
+                                                <TextBlock Text="&#xE99A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Width="20" Margin="0,0,7,0"
+                                                           TextAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource MaMuted}" />
+                                                <TextBlock Text="{Binding Role}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding Line}" Style="{StaticResource MaMutedText}" FontSize="11" VerticalAlignment="Center"
+                                                           Margin="{StaticResource SpaceLS}" TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                     </Grid>
                 </DataTemplate>
