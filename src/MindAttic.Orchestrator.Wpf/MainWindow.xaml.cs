@@ -1385,6 +1385,39 @@ public partial class MainWindow : Window
         ShowLoginMenu(button, tab, PlacementMode.Bottom);
     }
 
+    /// <summary>"+ Add" (M.ORCH-T1964): the flat tab strip's own button and the tree sidebar header's own, at the end
+    /// of every login row. Opens <see cref="OpenProjectWindow"/> for that login - General Prompt, Run Launcher or a
+    /// project from the tree, one click away instead of behind the row's "⋯" menu.</summary>
+    private void AddTabButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: MainViewModel tab } || !tab.IsPersonTab) return;
+        e.Handled = true;
+        ShowOpenProjectWindow(tab);
+    }
+
+    /// <summary>Opens <see cref="OpenProjectWindow"/> over this dashboard for <paramref name="tab"/>'s login: General
+    /// Prompt, Run Launcher or a project from the tree, each selecting <paramref name="tab"/> first
+    /// (<see cref="MainViewModel.SelectedTab"/>) so the new CLI lands on the right login's own tab strip, exactly as
+    /// the old Open Project cascading menu (M.ORCH-T1585) did.</summary>
+    private void ShowOpenProjectWindow(MainViewModel tab)
+    {
+        _ = MainViewModel.RefreshProjectsAsync(DashboardTimings.ProjectsRefresh);
+        void Open(Func<Task> start) { model.SelectedTab = tab; _ = start(); }
+        try
+        {
+            new OpenProjectWindow(MainViewModel.ProjectTree ?? [],
+                generalPrompt: () => Open(tab.OpenGeneralPromptAsync),
+                runLauncher: () => Open(() =>
+                {
+                    if (tab.RunLauncherCommand.CanExecute(null)) tab.RunLauncherCommand.Execute(null);
+                    return Task.CompletedTask;
+                }),
+                openProject: project => Open(() => tab.OpenProjectAsync(project)))
+            { Owner = this }.Show();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening the Open Project window failed; contained"); }
+    }
+
     /// <summary>The flat CLI tab strip's own "more" button (M.ORCH-T1793, TerminalMoreButton): the exact same menu a
     /// right-click on the tab opens (<see cref="OnTerminalTabContextMenu"/>), reachable with a tap or a left click.</summary>
     private async void TerminalMoreButton_Click(object sender, RoutedEventArgs e)
@@ -1624,9 +1657,22 @@ public partial class MainWindow : Window
             }
             menu.Items.Add(DropdownSeparator());
         }
-        menu.Items.Add(ProjectsMenu(tab));
+        menu.Items.Add(OpenProjectMenuItem(tab));
+        var commitProjects = DropdownItem("", "Commit and push projects…");
+        commitProjects.ToolTip = "Pick projects in the tree and commit and push each one under one message (M.ORCH-T1589)";
+        commitProjects.IsEnabled = MainViewModel.ProjectTree is { Count: > 0 };
+        commitProjects.Click += (_, e) => { e.Handled = true; OpenCommitProjects(); };
+        menu.Items.Add(commitProjects);
+        var refreshProjects = DropdownItem("", "Refresh projects");
+        refreshProjects.ToolTip = "Read the Launcher's roster and GitHub's wip-tagged repos again";
+        refreshProjects.Click += (_, e) => { e.Handled = true; _ = tab.RefreshProjectListAsync(); };
+        menu.Items.Add(refreshProjects);
+        var commitAll = DropdownItem("", "Commit + push all dirty projects…");
+        commitAll.ToolTip = "One commit message for every project with changes, each pushed (also: right-click Open Project)";
+        commitAll.Click += (_, e) => { e.Handled = true; CommitAllProjects(commitAll, tab); };
+        menu.Items.Add(commitAll);
         menu.Items.Add(DropdownSeparator());
-        Add("", "Run Launcher", "Opens this login's standalone Launcher (its own process): the project menu above does the same in-app",
+        Add("", "Run Launcher", "Opens this login's standalone Launcher (its own process): Open Project above does the same in-app",
             tab.RunLauncherCommand);
         Add("", "User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
             tab.UserSettingsCommand);
@@ -1653,77 +1699,23 @@ public partial class MainWindow : Window
     private static void OpenLoginMenu(ContextMenu menu) => menu.IsOpen = true;
 
     /// <summary>
-    /// "Open Project" (M.ORCH-T1585): the Launcher's Open Project Tab as a tree menu, dot-named projects nested on '.', each
-    /// opening a CLI on <paramref name="tab"/>'s login, so no Launcher process is needed per login; General Prompt opens one at
-    /// the workspace root, Refresh reads the roster and GitHub's wip topic again. A read older than 10 minutes is redone in the
-    /// background each time the menu opens; the menu shows the last one meanwhile.
+    /// "Open Project…" (M.ORCH-T1964): opens <see cref="OpenProjectWindow"/> for <paramref name="tab"/>'s login -
+    /// General Prompt, Run Launcher or a project from the tree, one window in place of the cascading submenu this item
+    /// used to expand into (M.ORCH-T1585), unwieldy to hover open level by level once the roster grew. Its own "+ Add"
+    /// button on the login row (<see cref="AddTabButton_Click"/>) reaches the very same window. Right-click still
+    /// commits and pushes every dirty project under one message (M.ORCH-T1590), the one piece of the old menu kept
+    /// here rather than moved into the window.
     /// </summary>
-    private MenuItem ProjectsMenu(MainViewModel tab)
+    private MenuItem OpenProjectMenuItem(MainViewModel tab)
     {
         _ = MainViewModel.RefreshProjectsAsync(DashboardTimings.ProjectsRefresh); // 10 minutes by default (M.ORCH-T1624)
-        var root = DropdownItem("", "Open Project");
-        root.ToolTip = "Open a CLI for a project on this login (the Launcher's Open Project Tab, in-app). Right-click: commit + push every dirty project under one message";
-        root.IsEnabled = tab.IsTabSignedIn;
-        ToolTipService.SetShowOnDisabled(root, true);
-        // Right-click the tree's root (M.ORCH-T1590): commit + push every dirty project under one message.
-        // Only on the root's own row: a right-click on a project in its submenu routes through the root too.
-        root.PreviewMouseRightButtonUp += (_, e) =>
-        {
-            if (!ReferenceEquals(OwningMenuItem(e.OriginalSource as DependencyObject), root)) return;
-            e.Handled = true;
-            CommitAllProjects(root, tab);
-        };
-        void Open(Func<Task> start)
-        {
-            model.SelectedTab = tab;
-            _ = start();
-        }
-        var general = DropdownItem("", "General Prompt");
-        general.ToolTip = "A CLI at the workspace root, every project in reach";
-        general.Click += (_, e) => { e.Handled = true; Open(tab.OpenGeneralPromptAsync); };
-        root.Items.Add(general);
-        root.Items.Add(DropdownSeparator());
-        if (MainViewModel.ProjectTree is not { } tree)
-            root.Items.Add(Disabled("Loading projects…"));
-        else if (tree.Count == 0)
-            root.Items.Add(Disabled("No projects on the Launcher's roster"));
-        else
-        {
-            var labels = new List<(MenuItem Item, ProjectNode Node)>();
-            foreach (var node in tree) root.Items.Add(ProjectItem(node, tab, Open, labels));
-            // Each project's uncommitted file count (M.ORCH-T1587): the last read now, the fresh one once git status is read.
-            void ShowChanges() { foreach (var (item, node) in labels) SetIconHeader(item, ProjectIcon(node), ProjectHeader(node)); }
-            ShowChanges();
-            _ = MainViewModel.RefreshProjectChangesAsync(DashboardTimings.ProjectChangesRefresh).ContinueWith(
-                _ => Dispatcher.BeginInvoke(ShowChanges), TaskScheduler.Default);
-        }
-        root.Items.Add(DropdownSeparator());
-        var commit = DropdownItem("", "Commit and push projects…");
-        commit.ToolTip = "Pick projects in this tree and commit and push each one under one message (M.ORCH-T1589)";
-        commit.IsEnabled = MainViewModel.ProjectTree is { Count: > 0 };
-        commit.Click += (_, e) => { e.Handled = true; OpenCommitProjects(); };
-        root.Items.Add(commit);
-        var refresh = DropdownItem("", "Refresh projects");
-        refresh.ToolTip = "Read the Launcher's roster and GitHub's wip-tagged repos again";
-        refresh.Click += (_, e) => { e.Handled = true; _ = tab.RefreshProjectListAsync(); };
-        root.Items.Add(refresh);
-        var commitAll = DropdownItem("", "Commit + push all dirty projects…");
-        commitAll.ToolTip = "One commit message for every project with changes, each pushed (also: right-click Open Project)";
-        commitAll.Click += (_, e) => { e.Handled = true; CommitAllProjects(root, tab); };
-        root.Items.Add(commitAll);
-        return root;
-    }
-
-    /// <summary>A folder glyph for a branch (a dot-named group), a page glyph for a leaf (M.ORCH-T1793): what
-    /// <see cref="ProjectItem"/> gives each row and <see cref="ProjectsMenu"/>'s own <c>ShowChanges</c> keeps on a refresh.</summary>
-    private static string ProjectIcon(ProjectNode node) => node is ProjectBranch ? "" : "";
-
-    /// <summary>The nearest MenuItem at or above <paramref name="source"/> (visual tree, then logical across a popup).</summary>
-    private static MenuItem? OwningMenuItem(DependencyObject? source)
-    {
-        for (var up = source; up is not null; up = up is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(up) ?? LogicalTreeHelper.GetParent(up) : LogicalTreeHelper.GetParent(up))
-            if (up is MenuItem item) return item;
-        return null;
+        var item = DropdownItem("", "Open Project…");
+        item.ToolTip = "Open a CLI for a project, the General Prompt or this login's Launcher. Right-click: commit + push every dirty project under one message";
+        item.IsEnabled = tab.IsTabSignedIn;
+        ToolTipService.SetShowOnDisabled(item, true);
+        item.Click += (_, e) => { e.Handled = true; ShowOpenProjectWindow(tab); };
+        item.PreviewMouseRightButtonUp += (_, e) => { e.Handled = true; CommitAllProjects(item, tab); };
+        return item;
     }
 
     /// <summary>Closes the menu <paramref name="from"/> is in and opens <see cref="CommitAllWindow"/> (M.ORCH-T1590).</summary>
@@ -1747,64 +1739,6 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Commit and push projects failed; contained"); }
     }
 
-    /// <summary>A project row's label with its uncommitted file count (M.ORCH-T1587) when it has changes; a branch's shows the
-    /// total of the projects under it, so a dirty project can be found without opening every branch.</summary>
-    internal static string ProjectHeader(ProjectNode node)
-    {
-        var changed = ChangedUnder(node);
-        return changed > 0 ? $"{node.Label}  ({changed})" : node.Label;
-    }
-
-    private static int ChangedUnder(ProjectNode node) => node switch
-    {
-        ProjectLeaf leaf => MainViewModel.ProjectChanges.TryGetValue(leaf.Project.Path, out var n) && n is > 0 ? n.Value : 0,
-        ProjectBranch branch => branch.Children.Sum(ChangedUnder),
-        _ => 0,
-    };
-
-    private MenuItem ProjectItem(ProjectNode node, MainViewModel tab, Action<Func<Task>> open, List<(MenuItem Item, ProjectNode Node)> labels)
-    {
-        var item = DropdownItem(ProjectIcon(node), node.Label);
-        labels.Add((item, node));
-        switch (node)
-        {
-            case ProjectBranch branch:
-                foreach (var child in branch.Children) item.Items.Add(ProjectItem(child, tab, open, labels));
-                break;
-            case ProjectLeaf leaf:
-                item.ToolTip = $"{leaf.Project.Path}\nRight-click: commit and push it under a message you write";
-                item.Click += (_, e) => { e.Handled = true; open(() => tab.OpenProjectAsync(leaf.Project)); };
-                // Right-click a project (M.ORCH-T1588): a commit-message modal (Save/Cancel) that commits and pushes it.
-                item.PreviewMouseRightButtonUp += (_, e) =>
-                {
-                    if (!ReferenceEquals(OwningMenuItem(e.OriginalSource as DependencyObject), item)) return;
-                    e.Handled = true;
-                    CommitProject(item, leaf.Project);
-                };
-                break;
-        }
-        return item;
-    }
-
-    /// <summary>Closes the menu <paramref name="from"/> is in and opens <see cref="CommitProjectWindow"/> on
-    /// <paramref name="project"/> (M.ORCH-T1588).</summary>
-    private void CommitProject(MenuItem from, RosterProject project)
-    {
-        try
-        {
-            for (DependencyObject? up = from; up is not null; up = LogicalTreeHelper.GetParent(up))
-                if (up is ContextMenu menu) { menu.IsOpen = false; break; }
-            CommitProjectWindow.Show(this, project);
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Commit {Project:l} failed; contained", project.Name); }
-    }
-
-    private static MenuItem Disabled(string header)
-    {
-        var item = DropdownItem(header);
-        item.IsEnabled = false;
-        return item;
-    }
 
     /// <summary>Ctrl+Shift+B (M.ORCH-T935): pauses or resumes the shown CLI's remote broadcast, wherever focus is.</summary>
     private void OnBroadcastKey(object sender, KeyEventArgs e)
@@ -1882,14 +1816,6 @@ public partial class MainWindow : Window
         var item = DropdownItem(IconHeader(icon, label));
         AutomationProperties.SetName(item, label); // the glyph alone says nothing to a screen reader
         return item;
-    }
-
-    /// <summary>Replaces an existing item's header with a fresh icon-led one (M.ORCH-T1793), for a label that's rebuilt
-    /// after the item was first created (<see cref="ProjectItem"/>'s uncommitted-count refresh).</summary>
-    private static void SetIconHeader(MenuItem item, string icon, string label)
-    {
-        item.Header = IconHeader(icon, label);
-        AutomationProperties.SetName(item, label);
     }
 
     /// <summary>A full-width, light-gray rule between a dropdown's groups (a bare Separator draws WPF's
