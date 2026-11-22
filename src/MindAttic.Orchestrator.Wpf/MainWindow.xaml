@@ -178,8 +178,10 @@
              above, so it sits in the same ItemsControl as a ticket row with no ItemTemplate split by kind. -->
         <DataTemplate DataType="{x:Type vm:TaskRowViewModel}">
             <Border x:Name="SidebarTaskCard" Style="{StaticResource MaRowCard}" Padding="0">
-                <DockPanel Margin="{Binding Indent}">
-                    <!-- The owner's-colour stripe (M.ORCH-T1626): the library's MaAccentBar, 3px and square to keep the row's look. -->
+                <DockPanel>
+                    <!-- The owner's-colour stripe (M.ORCH-T1626): the library's MaAccentBar, 3px and square to keep the row's look.
+                         Always flush to the card's left edge, a subagent's too (M.ORCH-T1979): its Indent moves only the text
+                         below, so an indented row never shows a second stripe inside the card's edge. -->
                     <Border Style="{StaticResource MaAccentBar}" Width="3" CornerRadius="0" Background="{Binding OwnerBrush}" />
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="{StaticResource SpaceLM}">
                         <!-- A magnifying glass, not the Play triangle (M.ORCH-T1882): see SidebarTicketPlayButton above. -->
@@ -194,6 +196,7 @@
                                 Command="{Binding DataContext.OpenTaskDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                                 mc:MaCallout.ToolTip="Review its whole ticket or task" AutomationProperties.Name="{Binding TicketText, StringFormat='Review {0}'}" />
                     </StackPanel>
+                    <Border Margin="{Binding Indent}">
                     <StackPanel Margin="8,6,8,6">
                         <TextBlock FontSize="12" TextTrimming="CharacterEllipsis">
                             <Run Text="{Binding Owner, Mode=OneWay}" Foreground="{Binding OwnerBrush, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" · " /><Run Text="{Binding Kind, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
@@ -203,6 +206,7 @@
                         <TextBlock Text="{Binding Repo}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding Doing}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
+                    </Border>
                 </DockPanel>
             </Border>
         </DataTemplate>
