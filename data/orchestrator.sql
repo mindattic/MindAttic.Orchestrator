@@ -1762,17 +1762,17 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22445541);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 820324);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 58538);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 784369);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 911524);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 612230);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 356016);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 367037);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2154632);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 19222752);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'GridGame.Studio', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2806116);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'IdiotProof', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 716325);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 692009);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3567695);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3951964);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 0);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13500989);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13985464);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -4890,7 +4890,6 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (37, 'IP-T548', 'IdiotProof', 'D:\Projects\MindAttic\IdiotProof', 'Claude', '2026-11-19T20:35:02.6325262Z', 1, NULL, NULL, NULL, 13356, '33afdbd4-4e77-449c-9026-7d3a28e246b4', 'sonnet', NULL, 'ryandebraal@gmail.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (38, 'US-T99', 'SpaceGod', 'D:\Projects\MindAttic\SpaceGod', 'Claude', '2026-11-20T00:24:53.5083357Z', 1, NULL, NULL, NULL, 4560, 'd5da4af3-5328-4bef-b372-ddd19f1daed6', 'opus', NULL, 'waffle@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (39, 'IP-T447', 'IdiotProof', 'D:\Projects\MindAttic\IdiotProof', 'Claude', '2026-11-20T00:55:11.7348824Z', 1, NULL, NULL, NULL, 13356, '33afdbd4-4e77-449c-9026-7d3a28e246b4', 'opus', NULL, 'ryandebraal@gmail.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (40, 'GAD-T289', 'Gadfly', 'D:\Projects\MindAttic\Gadfly', 'Claude', '2026-11-22T00:55:55.6780915Z', 1, NULL, NULL, NULL, 46140, '2e6c8f98-6378-4374-bfee-47f0c4007417', NULL, NULL, 'honey@mindattic.com');
 
 -- organizations
 
@@ -31645,7 +31644,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "06372edd4e76a1c755997d7c41c545d519589468",
+    "Tested": "d7e3978dfddfb927958954dbe5568ef2269859fa",
     "Green": "980d39195c1065a9b2ebc8a2df8c4a806545650a"
   },
   "MindAttic.Psst": {
@@ -32323,21 +32322,6 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "DeadStartedUtc": "2026-11-20T00:24:53.5083357Z",
     "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
     "Cli": 4560,
-    "Ahead": 0,
-    "Uncommitted": [],
-    "Open": true
-  },
-  {
-    "TicketId": "GAD-T289",
-    "Repo": "Gadfly",
-    "Directory": "D:\\Projects\\MindAttic\\Gadfly",
-    "FirstSeenUtc": "2026-11-22T04:49:11.6279075Z",
-    "State": "orphaned",
-    "Deaths": 1,
-    "Redispatches": 0,
-    "DeadStartedUtc": "2026-11-22T00:55:55.6780915Z",
-    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
-    "Cli": 46140,
     "Ahead": 0,
     "Uncommitted": [],
     "Open": true
@@ -33720,7 +33704,18 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|DT-T2": "2026-11-22T17:46:46.8680629Z",
     "approval|GAD-T490": "2026-11-22T18:03:49.1989628Z",
     "approval|M.ORCH-T1964": "2026-11-22T18:06:02.1929658Z",
-    "approval|M.ORCH-T1972": "2026-11-22T18:25:19.5432872Z"
+    "approval|M.ORCH-T1972": "2026-11-22T18:25:19.5432872Z",
+    "approval|M.ORCH-T1980": "2026-11-22T18:35:44.7385029Z",
+    "approval|M.ORCH-T1981": "2026-11-22T18:35:44.7385029Z",
+    "approval|M.ORCH-T1982": "2026-11-22T18:35:44.7385029Z",
+    "approval|M.ORCH-T1983": "2026-11-22T18:35:44.7385029Z",
+    "approval|M.ORCH-T1984": "2026-11-22T18:35:44.7385029Z",
+    "approval|M.ORCH-T1985": "2026-11-22T18:35:44.7385029Z",
+    "approval|M.ORCH-T1986": "2026-11-22T18:35:44.7385029Z",
+    "approval|M.ORCH-T1987": "2026-11-22T18:35:44.7385029Z",
+    "approval|M.ORCH-T1988": "2026-11-22T18:35:44.7385029Z",
+    "approval|M.ORCH-T1989": "2026-11-22T18:35:44.7385029Z",
+    "approval|M.ORCH-T1990": "2026-11-22T18:35:44.7385029Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
