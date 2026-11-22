@@ -386,6 +386,18 @@ public sealed class DashboardViewModelTests
         Assert.That(xaml, Does.Contain("{Binding WarningsText").And.Not.Contain("ticket file problem"));
     }
 
+    [Test]
+    public void The_first_load_waits_a_bounded_time_on_the_ticket_database_then_says_tickets_are_loading()
+    {
+        // M.ORCH-T1936: a pegged ticket database held the loader up 20 minutes (M.ORCH-T1922).
+        Assert.That(OrchestratorSettings.FirstLoadWait(null), Is.EqualTo(TimeSpan.FromSeconds(20)));
+        Assert.That(OrchestratorSettings.FirstLoadWait(new OrchestratorSettings { FirstLoadWaitSeconds = 45 }), Is.EqualTo(TimeSpan.FromSeconds(45)));
+        Assert.That(OrchestratorSettings.FirstLoadWait(new OrchestratorSettings { FirstLoadWaitSeconds = 0 }), Is.EqualTo(TimeSpan.FromSeconds(OrchestratorSettings.MinFirstLoadWaitSeconds)));
+        Assert.That(OrchestratorSettings.FirstLoadWait(new OrchestratorSettings { FirstLoadWaitSeconds = 100_000 }), Is.EqualTo(TimeSpan.FromSeconds(OrchestratorSettings.MaxFirstLoadWaitSeconds)));
+        Assert.That(MainViewModel.TicketsLoadingLine(true), Is.EqualTo("Tickets loading…"));
+        Assert.That(MainViewModel.TicketsLoadingLine(false), Is.Empty);
+    }
+
     // ── A change made while a refresh is built ──────────────────────────────
 
     [Test]

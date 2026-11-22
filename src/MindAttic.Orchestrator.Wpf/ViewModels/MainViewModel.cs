@@ -391,6 +391,49 @@ public sealed partial class MainViewModel : ObservableObject
     /// loader covers the dashboard until then, so it never shows empty or half-filled panels (M.ORCH-T184).</summary>
     public bool IsLoading { get => isLoading; private set => Set(ref isLoading, value); }
 
+    private bool ticketsLoading;
+
+    /// <summary>True while the loader was lifted before the first refresh finished (M.ORCH-T1936): the ticket database held it
+    /// past the FirstLoadWaitSeconds setting (a pegged database kept the loader up 20 minutes, M.ORCH-T1922), so the dashboard
+    /// shows and says tickets are loading until that refresh lands and fills it in.</summary>
+    public bool TicketsLoading
+    {
+        get => ticketsLoading;
+        private set
+        {
+            if (ticketsLoading == value) return;
+            Set(ref ticketsLoading, value);
+            Raise(nameof(TicketsLoadingText));
+        }
+    }
+
+    /// <summary>The menu bar's "tickets loading" readout (M.ORCH-T1936); empty once the first refresh is in.</summary>
+    public string TicketsLoadingText => TicketsLoadingLine(TicketsLoading);
+
+    internal static string TicketsLoadingLine(bool loading) => loading ? "Tickets loading…" : "";
+
+    /// <summary>Whether the first snapshot is still to land, loader up or lifted early (M.ORCH-T1936): what --start and --show wait on.</summary>
+    private bool FirstSnapshotPending => IsLoading || TicketsLoading;
+
+    /// <summary>Lifts the first load's loader once the FirstLoadWaitSeconds setting has passed with the refresh still reading
+    /// (M.ORCH-T1936); the refresh itself carries on, and its finally clears <see cref="TicketsLoading"/>.</summary>
+    private async Task LiftLoaderAfterWaitAsync()
+    {
+        try
+        {
+            var wait = await Task.Run(() => OrchestratorSettings.FirstLoadWait(store.TryLoadSettings(out var s) ? s : null));
+            await Task.Delay(wait);
+            if (!IsLoading) return;
+            TicketsLoading = true;
+            IsLoading = false;
+            OrchestratorLog.For("Dashboard").Warning("The first refresh passed {Seconds}s; the dashboard shows while tickets load", wait.TotalSeconds);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Dashboard").Warning(ex, "lifting the loader early failed");
+        }
+    }
+
     /// <summary>The one refresh every tab shares (M.ORCH-T613): a login's tab asks the global login's, which builds the
     /// workspace's snapshot once, keeps a tab per login, and hands each its own view of it.</summary>
     public async Task RefreshAsync()
@@ -404,6 +447,8 @@ public sealed partial class MainViewModel : ObservableObject
         // rather than being dropped until the next push.
         if (refreshing) { refreshQueued = true; return; }
         refreshing = true;
+        // The first load never waits without limit on the ticket database (M.ORCH-T1936): past the setting the loader lifts.
+        if (IsLoading) _ = LiftLoaderAfterWaitAsync();
         // The digest of the rest of the snapshot the stream last said (M.ORCH-T872): the published file read now holds at least it.
         var rest = restWanted;
         try
@@ -484,6 +529,7 @@ public sealed partial class MainViewModel : ObservableObject
                 await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Loaded);
             refreshing = false;
             IsLoading = false;
+            TicketsLoading = false;
         }
         if (refreshQueued)
         {
@@ -633,7 +679,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (root is not null) { await root.StartRepoAsync(name); return; }
         SelectedTab = this;
-        for (var waited = 0; IsLoading && waited < 600; waited++) await Task.Delay(100);
+        for (var waited = 0; FirstSnapshotPending && waited < 600; waited++) await Task.Delay(100);
         var log = OrchestratorLog.For("Dashboard");
         if (StartTarget(name, tiles) is not { } tile)
         {

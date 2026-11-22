@@ -759,6 +759,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 10080)]
     public double HiddenRendererMinutes { get; set; } = OrchestratorSettings.DefaultHiddenRendererMinutes;
 
+    /// <summary>How long the first load waits on the ticket database before the dashboard shows anyway (M.ORCH-T1936).</summary>
+    [Setting("First load waits for tickets (seconds)", Group = "Dashboard", Order = 7,
+        Help = "How long the dashboard's loader waits on the ticket database when it opens. Past it the dashboard shows and says tickets are loading until the read lands, rather than sitting on the loader while the database is slow.")]
+    [SettingRange(OrchestratorSettings.MinFirstLoadWaitSeconds, OrchestratorSettings.MaxFirstLoadWaitSeconds)]
+    public int FirstLoadWaitSeconds { get; set; } = OrchestratorSettings.DefaultFirstLoadWaitSeconds;
+
     /// <summary>Minutes between the passes that name a workspace CLI tab for what its CLI is doing; 0 never renames one.</summary>
     [Setting("Name a workspace CLI tab for its work every (minutes)", Group = "Dashboard", Order = 6,
         Help = "A CLI tab opened at the workspace root (General, MindAttic) is given a short name for what its CLI is doing: its ticket's name, else its latest activity. The first naming comes this many minutes after the tab opens, and it is reconsidered this often for as long as the CLI is working and you have not renamed the tab yourself. Tabs opened on a repo keep their name. 0 never renames a tab.")]
@@ -1168,6 +1174,7 @@ public sealed class OrchestratorVaultSettings
         TreeMenuLayout = s.TreeMenuLayout,
         TabBlinkTokens = s.TabBlinkTokens,
         UnitTokenBudget = s.UnitTokenBudget,
+        FirstLoadWaitSeconds = s.FirstLoadWaitSeconds,
         ExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = s.AutoOpenLaunchers,
         ConfirmCliClose = s.ConfirmCliClose,
@@ -1351,6 +1358,7 @@ public sealed class OrchestratorVaultSettings
         TreeMenuLayout = TreeMenuLayout,
         TabBlinkTokens = TabBlinkTokens,
         UnitTokenBudget = UnitTokenBudget,
+        FirstLoadWaitSeconds = FirstLoadWaitSeconds,
         ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = AutoOpenLaunchers,
         ConfirmCliClose = ConfirmCliClose,

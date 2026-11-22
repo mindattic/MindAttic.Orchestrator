@@ -317,6 +317,19 @@ public sealed record OrchestratorSettings
     /// <summary>The constants default, min and max unit token budget.</summary>
     public const int DefaultUnitTokenBudget = 80_000, MinUnitTokenBudget = 20_000, MaxUnitTokenBudget = 400_000;
 
+    /// <summary>How long the dashboard's first load waits on the ticket database before it lifts its loader anyway (M.ORCH-T1936):
+    /// a pegged database held it on the full-screen loader for 20 minutes (M.ORCH-T1922). Past it the dashboard shows and says
+    /// tickets are loading until the read lands. <see cref="MinFirstLoadWaitSeconds"/> to <see cref="MaxFirstLoadWaitSeconds"/>;
+    /// read it clamped through <see cref="FirstLoadWait"/>.</summary>
+    public int FirstLoadWaitSeconds { get; init; } = DefaultFirstLoadWaitSeconds;
+
+    /// <summary>The constants default, min and max first load wait seconds.</summary>
+    public const int DefaultFirstLoadWaitSeconds = 20, MinFirstLoadWaitSeconds = 1, MaxFirstLoadWaitSeconds = 600;
+
+    /// <summary>The first load's wait (M.ORCH-T1936), clamped to its bounds; the default when no settings were read.</summary>
+    public static TimeSpan FirstLoadWait(OrchestratorSettings? s) =>
+        TimeSpan.FromSeconds(Math.Clamp(s?.FirstLoadWaitSeconds ?? DefaultFirstLoadWaitSeconds, MinFirstLoadWaitSeconds, MaxFirstLoadWaitSeconds));
+
     /// <summary>The dashboard's tab trailing text (M.ORCH-T1255): symbols, "Σ: 15% | λ: 29%" (the default, M.ORCH-T1251), or
     /// words, "wk: 15% | 5h: 29%" -- same figures and the same omit-the-5-hour-part-while-it's-unknown rule either way.</summary>
     public bool SymbolTabLabels { get; init; } = true;

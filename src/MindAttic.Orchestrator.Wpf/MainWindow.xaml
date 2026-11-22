@@ -344,6 +344,11 @@
                 <TextBlock x:Name="AllocatePausedText" Text="{Binding AllocatePausedText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRL}"
                            mc:MaCallout.ToolTip="{Binding AllocatePausedToolTip}" AutomationProperties.Name="{Binding AllocatePausedText}"
                            Visibility="{Binding AllocatePausedText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <!-- The first load lifted its loader before the ticket database answered (M.ORCH-T1936): in MaWarn, shown only
+                     until that read lands and fills the dashboard in. -->
+                <TextBlock x:Name="TicketsLoadingText" Text="{Binding TicketsLoadingText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRL}"
+                           mc:MaCallout.ToolTip="The ticket database is slow to answer; the dashboard fills in once it does" AutomationProperties.Name="{Binding TicketsLoadingText}"
+                           AutomationProperties.LiveSetting="Polite" Visibility="{Binding TicketsLoadingText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <!-- The disk floor's hold (M.ORCH-T1679/T1692): in MaBad, shown only while the drive is under the floor even after a
                      self-cleanup, so nothing new starting is never silent; the tooltip says how much space lifts it. -->
                 <TextBlock x:Name="DiskHoldText" Text="{Binding DiskHoldText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRL}"
@@ -1599,6 +1604,8 @@
             <WrapPanel x:Name="PhoneStatus" DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="3,3,3,0">
                 <TextBlock Text="{Binding AllocatePausedText}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRM}"
                            mc:MaCallout.ToolTip="{Binding AllocatePausedToolTip}" Visibility="{Binding AllocatePausedText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock Text="{Binding TicketsLoadingText}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceRM}"
+                           Visibility="{Binding TicketsLoadingText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock Text="{Binding DiskHoldText}" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRM}"
                            mc:MaCallout.ToolTip="{Binding DiskHoldToolTip}" Visibility="{Binding DiskHoldText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 <TextBlock Text="{Binding RamBadText}" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRM}"

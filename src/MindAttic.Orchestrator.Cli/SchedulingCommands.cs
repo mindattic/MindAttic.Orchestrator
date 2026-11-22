@@ -377,6 +377,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The size of one task (one unit of work) in uncached tokens (default 80000; 20000 to 400000).")]
         public int? UnitTokenBudget { get; init; }
 
+        [CommandOption("--first-load-wait <SECONDS>")]
+        [Description("How long the dashboard's first load waits on the ticket database before it shows anyway, saying tickets are loading (default 20; 1 to 600).")]
+        public int? FirstLoadWaitSeconds { get; init; }
+
         [CommandOption("--symbol-tab-labels <ON>")]
         [Description("The dashboard's tab trailing text: true (default), symbols, \"Σ: 15% | λ: 29%\"; false, words, \"wk: 15% | 5h: 29%\". Same figures either way.")]
         public bool? SymbolTabLabels { get; init; }
@@ -750,6 +754,12 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { UnitTokenBudget = unit };
             changed = true;
         }
+        if (settings.FirstLoadWaitSeconds is { } firstWait)
+        {
+            if (firstWait is < OrchestratorSettings.MinFirstLoadWaitSeconds or > OrchestratorSettings.MaxFirstLoadWaitSeconds) { AnsiConsole.MarkupLine($"[red]--first-load-wait is {OrchestratorSettings.MinFirstLoadWaitSeconds} to {OrchestratorSettings.MaxFirstLoadWaitSeconds}.[/]"); return 1; }
+            s = s with { FirstLoadWaitSeconds = firstWait };
+            changed = true;
+        }
         if (settings.SymbolTabLabels is { } symbolTabLabels)
         {
             s = s with { SymbolTabLabels = symbolTabLabels };
@@ -902,6 +912,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             " · CLIs open in Windows Terminal, a window per person" +
             $" · a busy person tab's play arrow blinks once per {s.TabBlinkTokens:N0} tokens" +
             $" · one task is {WorkUnits.Size(WorkUnits.Budget(s))} tokens" +
+            $" · the dashboard's first load waits {OrchestratorSettings.FirstLoadWait(s).TotalSeconds:0}s on the ticket database" +
             $" · tab trailing text: {(s.SymbolTabLabels ? "symbols (Σ/λ)" : "words (wk/5h)")}" +
             $" · login sidebar: {(s.TreeMenuLayout ? "tree menu" : "flat tabs")}" +
             $" · Team Wall: {(s.ExcludeLauncherFromTeamWall ? "excludes" : "includes")} the Launcher's menu pane");

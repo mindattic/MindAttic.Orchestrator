@@ -13,7 +13,7 @@ public sealed partial class MainViewModel
     public async Task<bool> ShowAsync(string target)
     {
         if (root is not null) return await root.ShowAsync(target);
-        for (var waited = 0; IsLoading && waited < 600; waited++) await Task.Delay(100);
+        for (var waited = 0; FirstSnapshotPending && waited < 600; waited++) await Task.Delay(100);
         var log = OrchestratorLog.For("Dashboard");
         var kind = DashboardRequest.KindOf(target);
         var globalEmail = workspace?.GlobalEmail;
