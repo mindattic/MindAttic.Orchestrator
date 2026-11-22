@@ -436,16 +436,30 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>The one refresh every tab shares (M.ORCH-T613): a login's tab asks the global login's, which builds the
     /// workspace's snapshot once, keeps a tab per login, and hands each its own view of it.</summary>
-    public async Task RefreshAsync()
+    public Task RefreshAsync() => RefreshPassAsync(null);
+
+    /// <summary>One pass of <see cref="RefreshAsync"/>; <paramref name="done"/>, when given, completes once this pass has
+    /// applied what it read (before any follow-up it starts), so the callers that queued it read the fresh plan.</summary>
+    private async Task RefreshPassAsync(TaskCompletionSource? done)
     {
         if (root is not null)
         {
             await root.RefreshAsync();
+            done?.TrySetResult();
             return;
         }
         // One asked for mid-refresh (a snapshot the status stream just announced, M.ORCH-T854) runs once this one is done,
-        // rather than being dropped until the next push.
-        if (refreshing) { refreshQueued = true; return; }
+        // rather than being dropped until the next push; and while a pushed snapshot's figures are being laid over the last
+        // read (ApplyFiguresAsync), whose background read writes the same accountsRead/ParentsRead fields (M.ORCH-T1977).
+        // The caller waits for that queued pass rather than returning at once, so what it reads next (the Inbox's Work it
+        // now reads the plan) is the refreshed one, not the one before its change (M.ORCH-T1977).
+        if (refreshing || applyingFigures)
+        {
+            refreshQueued = true;
+            await (queuedPass ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
+            done?.TrySetResult();
+            return;
+        }
         refreshing = true;
         // The first load never waits without limit on the ticket database (M.ORCH-T1936): past the setting the loader lifts.
         if (IsLoading) _ = LiftLoaderAfterWaitAsync();
@@ -530,13 +544,25 @@ public sealed partial class MainViewModel : ObservableObject
             refreshing = false;
             IsLoading = false;
             TicketsLoading = false;
+            done?.TrySetResult();
         }
-        if (refreshQueued)
-        {
-            refreshQueued = false;
-            await RefreshAsync();
-        }
+        await RunQueuedRefreshAsync();
     }
+
+    /// <summary>Runs the refresh asked for while a refresh or a figures pass ran (M.ORCH-T1977), if one was and neither still
+    /// runs, completing the callers waiting on it once that pass has applied its read.</summary>
+    private async Task RunQueuedRefreshAsync()
+    {
+        if (!refreshQueued || refreshing || applyingFigures) return;
+        refreshQueued = false;
+        var waiting = queuedPass ?? new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        queuedPass = null;
+        try { await RefreshPassAsync(waiting); }
+        finally { waiting.TrySetResult(); }
+    }
+
+    /// <summary>What the callers that hit a running refresh await (M.ORCH-T1977): completed when the queued pass has run.</summary>
+    private TaskCompletionSource? queuedPass;
 
     /// <summary>Whether the Vault held a Claude key at the last read (M.ORCH-T906): the API key's person tab's "signed in",
     /// reused when the stream's figures are laid over the last read.</summary>

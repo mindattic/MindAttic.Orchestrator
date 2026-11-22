@@ -93,7 +93,13 @@ public sealed partial class MainViewModel
             ApplyTabs(patched, tabs, lastOrgs);
             return false;
         }
-        finally { applyingFigures = false; }
+        finally
+        {
+            applyingFigures = false;
+            // A refresh asked for meanwhile waited for this pass to finish rather than racing its read (M.ORCH-T1977): run it now.
+            // Fire and forget: the refresh catches and shows its own failures.
+            _ = RunQueuedRefreshAsync();
+        }
     }
 
     /// <summary>
