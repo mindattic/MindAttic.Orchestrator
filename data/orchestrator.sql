@@ -1760,19 +1760,19 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Mods.RogueTrader.Brevity', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 157996);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 15793848);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22445541);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2316714);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2425824);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 58538);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3059480);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 612230);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4612290);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4893341);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2154632);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 19222752);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'GridGame.Studio', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2806116);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'IdiotProof', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 716325);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 692009);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 11377036);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 11816863);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 0);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 18959359);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 18986894);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -4911,7 +4911,8 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent) VALUES (37, 'IP-T548', 'IdiotProof', 'D:\Projects\MindAttic\IdiotProof', 'Claude', '2026-11-19T20:35:02.6325262Z', 1, NULL, NULL, NULL, 13356, '33afdbd4-4e77-449c-9026-7d3a28e246b4', 'sonnet', NULL, 'ryandebraal@gmail.com', NULL);
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent) VALUES (38, 'US-T99', 'SpaceGod', 'D:\Projects\MindAttic\SpaceGod', 'Claude', '2026-11-20T00:24:53.5083357Z', 1, NULL, NULL, NULL, 4560, 'd5da4af3-5328-4bef-b372-ddd19f1daed6', 'opus', NULL, 'waffle@mindattic.com', NULL);
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent) VALUES (39, 'IP-T447', 'IdiotProof', 'D:\Projects\MindAttic\IdiotProof', 'Claude', '2026-11-20T00:55:11.7348824Z', 1, NULL, NULL, NULL, 13356, '33afdbd4-4e77-449c-9026-7d3a28e246b4', 'opus', NULL, 'ryandebraal@gmail.com', NULL);
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent) VALUES (40, 'M.ORCH-T2059', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-22T21:57:40.5674824Z', 1, NULL, NULL, NULL, 17636, '86d15485-9fd2-4ea5-add5-79ebbf4ff45b', 'sonnet', NULL, 'shampoo1232@mindattic.com', NULL);
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent) VALUES (40, 'M.ORCH-T2070', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-22T22:08:45.1845153Z', 1, NULL, NULL, NULL, 17636, '86d15485-9fd2-4ea5-add5-79ebbf4ff45b', 'opus', NULL, 'shampoo1232@mindattic.com', NULL);
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent) VALUES (41, 'M.ORCH-T2069', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-11-22T22:08:45.1845153Z', 1, NULL, NULL, NULL, 17636, '86d15485-9fd2-4ea5-add5-79ebbf4ff45b', 'opus', NULL, 'shampoo1232@mindattic.com', NULL);
 
 -- organizations
 
@@ -31603,7 +31604,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "4179ed633d0e63fb60c91695e36cfb547aef77a0"
   },
   "Gadfly": {
-    "Tested": "36970c1cf3249790a0971ac9486d1892a457de67",
+    "Tested": "0f033d43f17ef580c5e45054616523e5ff187ce2",
     "Green": "c8678cfad7fb926a447150254c9b2b4d9944e960"
   },
   "IdiotProof": {
@@ -33818,7 +33819,12 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|GAD-T559": "2026-11-22T21:40:02.1708816Z",
     "approval|GAD-T560": "2026-11-22T21:40:02.1708816Z",
     "approval|GAD-T561": "2026-11-22T21:40:02.1708816Z",
-    "approval|M.ORCH-T2068": "2026-11-22T21:56:50.167277Z"
+    "approval|M.ORCH-T2068": "2026-11-22T21:56:50.167277Z",
+    "approval|GAD-T592": "2026-11-22T22:07:32.1469239Z",
+    "approval|GAD-T593": "2026-11-22T22:10:06.3823631Z",
+    "approval|GAD-T594": "2026-11-22T22:10:06.3823631Z",
+    "approval|GAD-T595": "2026-11-22T22:10:06.3823631Z",
+    "approval|GAD-T596": "2026-11-22T22:10:06.3823631Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
@@ -33931,6 +33937,108 @@ INSERT INTO state (name, value) VALUES ('rebalance-moves', '[
   }
 ]');
 INSERT INTO state (name, value) VALUES ('relocate-moves', '[]');
+INSERT INTO state (name, value) VALUES ('reminders', '[
+  {
+    "Id": "4d8f45",
+    "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
+    "DueUtc": "2026-11-23T15:00:00Z",
+    "CreatedUtc": "2026-11-22T22:04:21.2351738Z",
+    "Failures": 0,
+    "Pending": true,
+    "ToLabel": "you",
+    "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
+  },
+  {
+    "Id": "01bbcf",
+    "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
+    "DueUtc": "2026-11-24T15:00:00Z",
+    "CreatedUtc": "2026-11-22T22:04:23.0618298Z",
+    "Failures": 0,
+    "Pending": true,
+    "ToLabel": "you",
+    "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
+  },
+  {
+    "Id": "9960ca",
+    "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
+    "DueUtc": "2026-11-25T15:00:00Z",
+    "CreatedUtc": "2026-11-22T22:04:25.0236337Z",
+    "Failures": 0,
+    "Pending": true,
+    "ToLabel": "you",
+    "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
+  },
+  {
+    "Id": "6b9492",
+    "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
+    "DueUtc": "2026-11-26T15:00:00Z",
+    "CreatedUtc": "2026-11-22T22:04:26.814467Z",
+    "Failures": 0,
+    "Pending": true,
+    "ToLabel": "you",
+    "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
+  },
+  {
+    "Id": "be246f",
+    "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
+    "DueUtc": "2026-11-27T15:00:00Z",
+    "CreatedUtc": "2026-11-22T22:04:28.5550589Z",
+    "Failures": 0,
+    "Pending": true,
+    "ToLabel": "you",
+    "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
+  },
+  {
+    "Id": "fa2180",
+    "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
+    "DueUtc": "2026-11-28T15:00:00Z",
+    "CreatedUtc": "2026-11-22T22:04:30.4460343Z",
+    "Failures": 0,
+    "Pending": true,
+    "ToLabel": "you",
+    "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
+  },
+  {
+    "Id": "f5eb2a",
+    "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
+    "DueUtc": "2026-11-29T15:00:00Z",
+    "CreatedUtc": "2026-11-22T22:04:32.1828989Z",
+    "Failures": 0,
+    "Pending": true,
+    "ToLabel": "you",
+    "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
+  },
+  {
+    "Id": "839165",
+    "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
+    "DueUtc": "2026-11-30T15:00:00Z",
+    "CreatedUtc": "2026-11-22T22:04:33.9640601Z",
+    "Failures": 0,
+    "Pending": true,
+    "ToLabel": "you",
+    "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
+  },
+  {
+    "Id": "de2f4e",
+    "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
+    "DueUtc": "2026-12-01T15:00:00Z",
+    "CreatedUtc": "2026-11-22T22:04:35.8435257Z",
+    "Failures": 0,
+    "Pending": true,
+    "ToLabel": "you",
+    "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
+  },
+  {
+    "Id": "6cb760",
+    "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
+    "DueUtc": "2026-12-02T15:00:00Z",
+    "CreatedUtc": "2026-11-22T22:04:37.8014334Z",
+    "Failures": 0,
+    "Pending": true,
+    "ToLabel": "you",
+    "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
+  }
+]');
 INSERT INTO state (name, value) VALUES ('requeued', '{
   "SET-T54": "2026-11-22T00:15:43.8782164Z",
   "M.ORCH-T1900": "2026-11-22T19:11:34.2946684Z",
