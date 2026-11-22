@@ -836,15 +836,17 @@ public sealed partial class MainViewModel
     /// <summary>What a tab not signed in yet says above its Sign in.</summary>
     public string SignInPrompt => tab.SignedIn ? ""
         : tab.IsApiKey ? $"There's no {BillingSwitch.VaultProvider} key in the MindAttic Vault keyring. Add one there (MindAttic.Vault, or the Launcher's Settings) and the API key's page and Launcher open at the next refresh."
+        : tab.Email is null ? "The global login (~/.claude) is signed out. Sign in to see its dashboard and open its Launcher again."
         : $"{tab.Title} ({tab.Email}) isn't signed in on this machine yet. Sign in to see its dashboard and open the Launcher as {tab.Title}.";
 
     /// <summary>Sign in, on a tab whose login isn't signed in yet: its own sign-in in a private browser window, then the tab
     /// becomes its dashboard.</summary>
     public ICommand SignInTabCommand => signInTabCommand ??= new RelayCommand(async () =>
     {
-        if (ScopeEmail is not { } email) return;
+        // The global login's tab, logged out (M.ORCH-T1821): the same sign-in its menu's Login runs.
+        if (ScopeEmail is not { } email) { LoginCommand.Execute(null); return; }
         if (await SignInOwnAsync(email)) await RefreshAsync();
-    }, () => !tab.SignedIn && !tab.IsApiKey && ScopeEmail is not null && !IsSigningIn);
+    }, () => !tab.SignedIn && !tab.IsApiKey && !IsSigningIn);
 
     /// <summary>Tags each new toast with this tab while there's more than one (toasts tagged by tab), and tells the window. Every
     /// tab's toasts are mirrored into <see cref="AllToasts"/> (M.ORCH-T1574), newest first, so the dots show them on every tab.</summary>

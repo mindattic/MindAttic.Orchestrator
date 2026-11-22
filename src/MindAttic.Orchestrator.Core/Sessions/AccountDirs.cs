@@ -179,6 +179,33 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
         }
     }
 
+    /// <summary>
+    /// Whether the global login is signed out (M.ORCH-T1821): <see cref="HomeConfigPath"/> holds no Claude login and no API
+    /// key, as <see cref="SignOutGlobal"/> leaves it. Unlike <see cref="GlobalSignedIn"/>, billing on the API key is not
+    /// signed out (the global tab stays usable then), and a read that fails counts as signed in, so a torn write never grays
+    /// the global login's tab. Read again only when the file's write time or length changed: the dashboard asks every tick.
+    /// </summary>
+    public bool GlobalSignedOut
+    {
+        get
+        {
+            try
+            {
+                var info = new FileInfo(HomeConfigPath);
+                var stamp = info.Exists ? (info.LastWriteTimeUtc, info.Length) : (default(DateTime), -1L);
+                lock (GlobalSignedOutLock)
+                    if (globalSignedOutRead is { } cached && cached.Path == HomeConfigPath && cached.Stamp == stamp) return cached.SignedOut;
+                var signedOut = ClaudeAccount.Current(HomeConfigPath) is null;
+                lock (GlobalSignedOutLock) globalSignedOutRead = (HomeConfigPath, stamp, signedOut);
+                return signedOut;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return false; }
+        }
+    }
+
+    private static readonly object GlobalSignedOutLock = new();
+    private static (string Path, (DateTime, long) Stamp, bool SignedOut)? globalSignedOutRead;
+
     /// <summary>Whether any Claude account is signed in here at all, the global login or one of its own (M.ORCH-T1545).</summary>
     public bool AnySignedIn => GlobalSignedIn || SignedIn().Count > 0;
 

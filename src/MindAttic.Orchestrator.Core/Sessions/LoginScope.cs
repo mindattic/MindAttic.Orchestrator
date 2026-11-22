@@ -142,14 +142,15 @@ public static class LoginScope
     public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<Member>? members = null, bool? apiKey = null,
         IReadOnlySet<string>? lapsed = null) =>
         Tabs(snapshot, email => LoginLook.For(dirs.For(email).Directory, email), LoginLook.For(dirs.ClaudeDir, snapshot.GlobalEmail), members, apiKey,
-            dirs.All().Select(d => (d.Email, d.SignedIn)), lapsed);
+            dirs.All().Select(d => (d.Email, d.SignedIn)), lapsed, globalSignedIn: !dirs.GlobalSignedOut);
 
     /// <summary><paramref name="knownLogins"/> (M.ORCH-T1254): every per-CLI login folder on this machine, signed in or not, so
     /// one a tick's <paramref name="snapshot"/> happens to carry no live session, agent or host for (a cutoff just set, a
     /// transient read, between CLIs) still keeps its tab rather than dropping out of the strip -- only a login this machine has
     /// never heard of (no folder, no roster row) goes without one.</summary>
     internal static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, Func<string, LoginLook> ownLook, LoginLook globalLook, IEnumerable<Member>? members = null,
-        bool? apiKey = null, IEnumerable<(string Email, bool SignedIn)>? knownLogins = null, IReadOnlySet<string>? lapsed = null)
+        bool? apiKey = null, IEnumerable<(string Email, bool SignedIn)>? knownLogins = null, IReadOnlySet<string>? lapsed = null,
+        bool globalSignedIn = true)
     {
         var byEmail = new Dictionary<string, Member>(StringComparer.Ordinal);
         foreach (var m in members ?? [])
@@ -165,6 +166,11 @@ public static class LoginScope
             : onKey
                 ? new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet", globalLook.TabColor)
                 : new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet, this member's own seat", globalLook.TabColor);
+        // Logged out (M.ORCH-T1821, AccountDirs.GlobalSignedOut): the global login's tab stays in the strip and the tree, grayed
+        // like any signed-out login, with a Login-only menu, until Login signs it back in. Log out keeps the node; only Disable
+        // (M.ORCH-T1952/T1958, a per-CLI login's) hides or marks a member.
+        if (!globalSignedIn)
+            global = global with { ToolTip = "The global login (~/.claude): signed out; Login signs it back in", SignedIn = false };
         var live = snapshot.Accounts.Select(a => a.Email)
             .Concat(snapshot.Agents.Select(a => a.OwnLogin))
             .Concat(snapshot.Repos.SelectMany(r => r.Hosts).Select(h => h.OwnLogin))

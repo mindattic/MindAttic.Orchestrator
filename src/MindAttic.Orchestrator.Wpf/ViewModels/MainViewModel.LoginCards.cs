@@ -325,31 +325,35 @@ public sealed partial class MainViewModel
         if (IsApiKeyTab) return;
         if (ScopeEmail is { } email) { if (await SignInOwnAsync(email)) await RefreshAsync(); }
         else if (Root.workspace?.GlobalEmail is { Length: > 0 } global) await RenewGlobalLoginAsync(global);
-    }, () => !IsApiKeyTab && !IsSigningIn && (ScopeEmail is not null || Root.workspace?.GlobalEmail is { Length: > 0 }));
+        // Logged out (M.ORCH-T1821), the global login has no email left to name: a plain claude auth login picks it.
+        else if (!IsTabSignedIn) { await RenewGlobalLoginAsync(null); await RefreshAsync(); }
+    }, () => !IsApiKeyTab && !IsSigningIn && (ScopeEmail is not null || Root.workspace?.GlobalEmail is { Length: > 0 } || !IsTabSignedIn));
 
     /// <summary>Opens <paramref name="email"/>'s login again for the global login's tab: the same seam <see cref="AccountSwitch.Login"/>
     /// and <c>orchestrator login &lt;account&gt;</c> run, off the UI thread (it waits on the browser), with no roster row or
-    /// billing switch to weigh in here (the global login is never the API key).</summary>
-    private async Task RenewGlobalLoginAsync(string email)
+    /// billing switch to weigh in here (the global login is never the API key). A null <paramref name="email"/> (the global
+    /// login logged out, M.ORCH-T1821, so no email is known for it) runs a plain <c>claude auth login</c>.</summary>
+    private async Task RenewGlobalLoginAsync(string? email)
     {
         if (IsSigningIn) return;
         IsSigningIn = true;
         SetSigningInEmail(email);
         CommandManager.InvalidateRequerySuggested();
-        var command = AccountSwitch.LoginCommand(email, sso: false);
-        AccountsMessage = $"Opening {email}'s login in the browser ({command}).";
+        var who = email ?? "the global login";
+        var command = AccountSwitch.LoginCommand(email ?? "", sso: false);
+        AccountsMessage = $"Opening {who}'s login in the browser ({command}).";
         try
         {
-            var code = await Task.Run(() => AccountSwitch.Login(email, false));
+            var code = await Task.Run(() => AccountSwitch.Login(email ?? "", false));
             AccountsMessage = code == 0
-                ? $"Signed in as {email}: every CLI follows at its next turn."
+                ? $"Signed in as {who}: every CLI follows at its next turn."
                 : $"{command} ended with exit code {code}; the account wasn't switched.";
-            if (code != 0) Toasts.Insert(0, new ToastViewModel($"{email} not signed in", AccountsMessage, Palette.Over, null));
+            if (code != 0) Toasts.Insert(0, new ToastViewModel($"{who} not signed in", AccountsMessage, Palette.Over, null));
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             AccountsMessage = $"Couldn't run {command}: {ex.Message}";
-            Toasts.Insert(0, new ToastViewModel($"{email} not signed in", AccountsMessage, Palette.Over, null));
+            Toasts.Insert(0, new ToastViewModel($"{who} not signed in", AccountsMessage, Palette.Over, null));
         }
         finally
         {
@@ -367,9 +371,9 @@ public sealed partial class MainViewModel
     /// goes through the exact file state <see cref="IsTabSignedIn"/> already reads back (the tree's "Disabled: signed out"
     /// badge and the sign-in-only panel a roster account not yet signed in here shows): no flag of its own, so it grays out
     /// and its menu reduces to just Login the same way, once its tab has no live CLI of its own left to keep it looking
-    /// signed in. The global login's tab (<see cref="AccountDirs.SignOutGlobal"/>) really does sign out too, but
-    /// <c>LoginScope.Tabs</c> always calls its tab "signed in" (M.ORCH-T613 predates per-login sign-out), so that one tab's
-    /// own look and menu don't reflect it - a known gap left on M.ORCH-T1821 rather than widened into that shared snapshot code.
+    /// signed in. The global login's tab (<see cref="AccountDirs.SignOutGlobal"/>) signs out the same way, and
+    /// <c>LoginScope.Tabs</c> reads it back (<see cref="AccountDirs.GlobalSignedOut"/>), so its tab grays and its menu reduces
+    /// to Login too.
     /// </summary>
     public ICommand LogOutCommand => logOutCommand ??= new RelayCommand(() =>
     {

@@ -1681,7 +1681,8 @@ public partial class MainWindow : Window
         {
             Add("", "Login", "Re-authenticates this one login (the same sign-in Sign in uses) without opening the Logins modal or touching any other login",
                 tab.LoginCommand);
-            if (tab.ScopeEmail is not null && tab.IsTabSignedIn)
+            // The global login's tab too (M.ORCH-T1821): logged out, it grays and reduces to Login like any other.
+            if (tab.IsTabSignedIn)
                 Add("", "Log out", "Signs this login out: its CLIs become inaccessible and its row grays out until Login (above) signs it back in",
                     tab.LogOutCommand);
             // Disable/Enable (M.ORCH-T1958): a per-CLI login only, signed in or not; the node stays shown either way (M.ORCH-T1950).

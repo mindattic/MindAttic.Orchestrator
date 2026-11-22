@@ -119,9 +119,12 @@ public static class AccountSwitch
         row.FiveHourResetAt(nowUtc) is { } fr ? Formatting.ResetInHours(fr, nowUtc) : "",
         row.ReadUtc is { } r ? Formatting.Ago(r, nowUtc) : "not read yet");
 
-    /// <summary><c>auth login --email &lt;address&gt;</c>, and <c>--sso</c> when <paramref name="sso"/>.</summary>
+    /// <summary><c>auth login --email &lt;address&gt;</c>, and <c>--sso</c> when <paramref name="sso"/>. An empty
+    /// <paramref name="email"/> (the global login logged out, nobody's email known, M.ORCH-T1821) leaves <c>--email</c> off,
+    /// so the browser asks which account.</summary>
     public static IReadOnlyList<string> LoginArgs(string email, bool sso) =>
-        sso ? ["auth", "login", "--email", email, "--sso"] : ["auth", "login", "--email", email];
+        string.IsNullOrEmpty(email) ? sso ? ["auth", "login", "--sso"] : ["auth", "login"]
+        : sso ? ["auth", "login", "--email", email, "--sso"] : ["auth", "login", "--email", email];
 
     /// <summary>"claude auth login --email a@b.com --sso", as it's shown and run.</summary>
     public static string LoginCommand(string email, bool sso) => "claude " + string.Join(' ', LoginArgs(email, sso));
