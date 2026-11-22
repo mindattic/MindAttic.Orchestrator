@@ -9,15 +9,44 @@ using Spectre.Console.Cli;
 /// <summary>
 /// <c>orchestrator remind "&lt;text&gt;" --at &lt;time&gt; [--to &lt;contact&gt;]</c> (M.ORCH-T477): saves a reminder the daemon
 /// texts through Psst when it's due; <c>--list</c> shows the pending ones and <c>--cancel &lt;id&gt;</c> drops one. A CLI agent
-/// asked to "remind me tomorrow" runs it too.
+/// asked to "remind me tomorrow" runs it too. With no <c>--at</c>, a first word of <c>add</c>, <c>list</c> or <c>dismiss</c> works
+/// the reminders that nag instead (M.ORCH-T1933, <see cref="NagCli"/>).
 /// </summary>
 internal sealed class RemindCommand : Command<RemindCommand.Settings>
 {
     public sealed class Settings : CommandSettings
     {
         [CommandArgument(0, "[TEXT]")]
-        [Description("What to be reminded of.")]
+        [Description("What to be reminded of; or add, list, dismiss for a reminder that nags.")]
         public string? Text { get; init; }
+
+        [CommandArgument(1, "[MORE]")]
+        [Description("After add: what it says (or give --text). After dismiss: the reminder's id.")]
+        public string? More { get; init; }
+
+        [CommandOption("--text <TEXT>")]
+        [Description("With add: what the reminder that nags says.")]
+        public string? Says { get; init; }
+
+        [CommandOption("--every <GAP>")]
+        [Description("With add: how long until the first nag, and the gap the backoff grows from: \"30m\", \"2h\", \"1d\" (at least 1 minute).")]
+        public string? Every { get; init; }
+
+        [CommandOption("--until-ticket <ID>")]
+        [Description("With add: a ticket whose closing (or won't-do) ends it, e.g. IP-T603; without one it nags until dismissed.")]
+        public string? UntilTicket { get; init; }
+
+        [CommandOption("--backoff <N>")]
+        [Description("With add: how much longer each gap is than the last (default 2: doubling; 1: the same every time).")]
+        public double? Backoff { get; init; }
+
+        [CommandOption("--max-every <GAP>")]
+        [Description("With add: the longest a gap grows to (default 7d).")]
+        public string? MaxEvery { get; init; }
+
+        [CommandOption("--all")]
+        [Description("With list: the ended reminders that nagged too.")]
+        public bool All { get; init; }
 
         [CommandOption("--at <TIME>")]
         [Description("When, local time: \"9am\", \"tomorrow\", \"tomorrow 8am\", \"fri 5pm\", \"tonight\", \"in 2h\", \"30m\", \"2026-10-20 09:00\".")]
@@ -36,7 +65,7 @@ internal sealed class RemindCommand : Command<RemindCommand.Settings>
         public string? Cancel { get; init; }
 
         [CommandOption("--json")]
-        [Description("With --list, write them as JSON.")]
+        [Description("With --list or list, write them as JSON.")]
         public bool Json { get; init; }
     }
 
@@ -48,6 +77,28 @@ internal sealed class RemindCommand : Command<RemindCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
+        // The reminders that nag (M.ORCH-T1933): a verb as the first word, unless --at makes it a one-shot reminder saying it.
+        if (settings.At is null && settings.Cancel is null && !settings.List && settings.Text?.Trim().ToLowerInvariant() is { } verb)
+            switch (verb)
+            {
+                case NagCli.AddVerb:
+                    return NagCli.Add(string.IsNullOrWhiteSpace(settings.Says) ? settings.More : settings.Says, settings.Every,
+                        settings.UntilTicket, settings.Backoff, settings.MaxEvery);
+                case NagCli.ListVerb:
+                    return NagCli.List(settings.All, settings.Json);
+                case NagCli.DismissVerb:
+                    return NagCli.Dismiss(settings.More);
+            }
+        if (settings.Says is not null || settings.Every is not null || settings.UntilTicket is not null || settings.MaxEvery is not null || settings.Backoff is not null)
+        {
+            AnsiConsole.MarkupLine("[red]--text, --every, --until-ticket, --backoff and --max-every go with add: orchestrator remind add --text \"<text>\" --every 1d[/]");
+            return 1;
+        }
+        if (settings.More is not null)
+        {
+            AnsiConsole.MarkupLine("[red]Put the reminder's text in quotes: orchestrator remind \"call the dentist\" --at \"tomorrow 9am\"[/]");
+            return 1;
+        }
         var store = Ctx.Store();
         var now = DateTime.UtcNow;
         if (settings.Cancel is { } id)

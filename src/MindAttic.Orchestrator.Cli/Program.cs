@@ -213,7 +213,8 @@ internal static class CliApp
             });
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
             config.AddCommand<PaceWatchCommand>("pace-watch").WithDescription("Live: the pace gate's calculated delay right now, and every hold or refusal as it happens, so pacing's actual effect on tool calls is visible outside the chat; --interval seconds (1 by default). Ctrl+C to stop.");
-            config.AddCommand<RemindCommand>("remind").WithDescription("Save a reminder the daemon texts through Psst when it's due (\"<text>\" --at \"tomorrow 9am\" [[--to <contact>]]); --list, --cancel <id>.");
+            config.AddCommand<RemindCommand>("remind").WithDescription("Save a reminder the daemon texts through Psst when it's due (\"<text>\" --at \"tomorrow 9am\" [[--to <contact>]]); --list, --cancel <id>. " +
+                "One that nags until dismissed or a ticket closes (M.ORCH-T1933): add --text \"<text>\" --every 1d [[--until-ticket <ID>]] [[--backoff N]] [[--max-every 7d]]; list [[--all]]; dismiss <id>.");
             config.AddBranch("workspace", w =>
             {
                 w.SetDescription("The workspace as a list of repos: export it, or build it on a new machine.");
