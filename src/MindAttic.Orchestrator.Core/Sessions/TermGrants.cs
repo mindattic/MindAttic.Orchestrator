@@ -128,7 +128,7 @@ public static class TermGrants
             {
                 foreach (var r in records)
                 {
-                    var before = Convert.ToInt64(Sql.Scalar(connection, tx, "SELECT COUNT(*) FROM term_audit WHERE id = @id;", ("@id", r.Id)), CultureInfo.InvariantCulture);
+                    var before = Convert.ToInt64(Sql.Scalar(connection, tx, "SELECT COUNT(*) FROM term_audit WHERE id = @id;", ("@id", Clip(r.Id, 64)) /* the id as inserted (M.ORCH-T1969) */), CultureInfo.InvariantCulture);
                     if (before > 0) continue;
                     Sql.Run(connection, tx,
                         "INSERT INTO term_audit (id, at_utc, event, viewer, owner, session, level, remote, frames, bytes, detail) " +

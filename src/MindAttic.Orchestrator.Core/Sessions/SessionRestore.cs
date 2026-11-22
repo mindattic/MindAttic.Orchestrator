@@ -130,7 +130,7 @@ public sealed class SessionRestoreStore(string? directory = null)
             try
             {
                 System.IO.Directory.CreateDirectory(Directory);
-                temp = Path.Combine(Directory, $"{FileName}.{Environment.ProcessId}.tmp");
+                temp = Path.Combine(Directory, $"{FileName}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp" /* each write its own temp (M.ORCH-T1969) */);
                 File.WriteAllText(temp, Serialize(state), new UTF8Encoding(false));
                 File.Move(temp, CurrentPath, overwrite: true);
                 return true;

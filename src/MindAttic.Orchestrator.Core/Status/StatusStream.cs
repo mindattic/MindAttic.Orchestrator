@@ -448,9 +448,12 @@ public sealed class StatusStreamServer : IDisposable
     private async Task FeedAsync(NamedPipeServerStream pipe, CancellationToken ct)
     {
         // A figures message runs to tens of KB: 128 lines is half an hour of ticks behind before the oldest go.
-        var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(128) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
+        Channel<string> channel;
         lock (gate)
         {
+            // Room for the state and every retained line on top of the 128, so the initial batch never drops its own
+            // first message, the full state (M.ORCH-T1969).
+            channel = Channel.CreateBounded<string>(new BoundedChannelOptions(128 + 1 + retained.Count) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
             // Under the lock, so nothing published between the state and the subscription is lost or sent out of order.
             channel.Writer.TryWrite(StatusStream.Serialize(CurrentLocked()));
             foreach (var line in retained.Values) channel.Writer.TryWrite(line);

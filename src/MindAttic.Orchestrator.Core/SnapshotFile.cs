@@ -71,7 +71,8 @@ public sealed class SnapshotFile(string path)
             if (last is null || info.LastWriteTimeUtc != readStamp || info.Length != readLength)
             {
                 var published = JsonSerializer.Deserialize<Published>(File.ReadAllBytes(Path), Json);
-                last = published is { Version: FormatVersion } ? Restore(published) : null;
+                // "Snapshot": null (or no Events) threw NullReferenceException out of Restore (M.ORCH-T1969).
+                last = published is { Version: FormatVersion, Snapshot: not null, Events: not null } ? Restore(published) : null;
                 (readStamp, readLength) = (info.LastWriteTimeUtc, info.Length);
             }
         }

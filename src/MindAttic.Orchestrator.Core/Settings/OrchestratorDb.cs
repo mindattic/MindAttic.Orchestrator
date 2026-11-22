@@ -120,16 +120,20 @@ public sealed class OrchestratorDb(string path)
             if (server is null)
             {
                 text = change(local, localTx) ? Dump(local, localTx) : null;
+                // Written while the write lock is still held, so writers' dumps land in commit order and a stale one can't
+                // overwrite a newer one (M.ORCH-T1969).
+                TryWriteDump(text);
                 localTx.Commit();
             }
         }
         if (server is not null)
-            text = WithBusyRetry(() =>
+            WithBusyRetry(() =>
             {
                 using var connection = server.Open();
                 using var tx = connection.BeginTransaction();
                 OrchestratorServer.Lock(connection, tx);
                 var written = change(connection, tx) ? Dump(connection, tx) : null;
+                TryWriteDump(written); // under the server lock, as above (M.ORCH-T1969)
                 tx.Commit();
                 // Committed: a copy that can't be made now (the file held past its timeout) is made by the daemon's SyncMirror.
                 if (mirror.Length > 0)
@@ -137,6 +141,11 @@ public sealed class OrchestratorDb(string path)
                     catch (Exception ex) when (ex is DbException or IOException or UnauthorizedAccessException) { }
                 return written;
             });
+    }
+
+    /// <summary><see cref="WriteDump"/> when there's a dump; one that can't be written now (the file held) is left for the next change.</summary>
+    private void TryWriteDump(string? text)
+    {
         if (text is null) return;
         try { WriteDump(text); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
@@ -665,10 +674,8 @@ public sealed class OrchestratorDb(string path)
         // A change only to rows the dump leaves out (Volatile) can't change it: not worth reading every table for. With SQL
         // Server the store of record, this file holds only what this machine shares, and the dump is written from the server.
         var text = dump && Server is null ? Dump(connection, tx) : null;
+        TryWriteDump(text); // before the commit, holding the write lock (M.ORCH-T1969)
         tx.Commit();
-        if (text is null) return;
-        try { WriteDump(text); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     /// <summary>Runs <paramref name="action"/> holding the database's write lock (BEGIN IMMEDIATE), so no other process's write is

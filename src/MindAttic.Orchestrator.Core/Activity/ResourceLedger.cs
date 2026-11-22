@@ -115,9 +115,9 @@ public sealed class ResourceLedger(OrchestratorDb db, string? machine = null)
     public bool Release(string kind, string path, DateTime nowUtc)
     {
         var changed = 0;
-        db.WriteData((connection, tx) => changed = Sql.Run(connection, tx,
-            $"UPDATE {Table} SET released_utc = @at WHERE machine = @m AND kind = @k AND LOWER(path) = @p AND released_utc IS NULL;",
-            ("@at", Text(nowUtc)), ("@m", Machine), ("@k", kind), ("@p", Normalize(path).ToLowerInvariant())), dump: false);
+        db.WriteData((connection, tx) => changed = Find(connection, tx, kind, Normalize(path)) is not { } row ? 0 : Sql.Run(connection, tx,
+            $"UPDATE {Table} SET released_utc = @at WHERE machine = @m AND kind = @k AND path = @p AND released_utc IS NULL;",
+            ("@at", Text(nowUtc)), ("@m", Machine), ("@k", kind), ("@p", row.Path)), dump: false);
         return changed > 0;
     }
 
@@ -135,9 +135,9 @@ public sealed class ResourceLedger(OrchestratorDb db, string? machine = null)
     public bool Forget(string kind, string path)
     {
         var changed = 0;
-        db.WriteData((connection, tx) => changed = Sql.Run(connection, tx,
-            $"DELETE FROM {Table} WHERE machine = @m AND kind = @k AND LOWER(path) = @p;",
-            ("@m", Machine), ("@k", kind), ("@p", Normalize(path).ToLowerInvariant())), dump: false);
+        db.WriteData((connection, tx) => changed = Find(connection, tx, kind, Normalize(path)) is not { } row ? 0 : Sql.Run(connection, tx,
+            $"DELETE FROM {Table} WHERE machine = @m AND kind = @k AND path = @p;",
+            ("@m", Machine), ("@k", kind), ("@p", row.Path)), dump: false);
         return changed > 0;
     }
 
@@ -162,9 +162,11 @@ public sealed class ResourceLedger(OrchestratorDb db, string? machine = null)
     /// (<see cref="Resource.IsDue"/>).</summary>
     public IReadOnlyList<Resource> Due(DateTime nowUtc) => [.. All().Where(r => r.IsDue(nowUtc))];
 
+    // The case-insensitive match is done here, not in SQL: SQLite's LOWER() and NOCASE fold ASCII only, so a non-ASCII
+    // path in another case never matched (M.ORCH-T1969).
     private Resource? Find(DbConnection connection, DbTransaction? tx, string kind, string full) =>
-        Sql.Read(connection, tx, $"SELECT {Columns} FROM {Table} WHERE machine = @m AND kind = @k AND LOWER(path) = @p;", Row,
-            ("@m", Machine), ("@k", kind), ("@p", full.ToLowerInvariant())).FirstOrDefault();
+        Sql.Read(connection, tx, $"SELECT {Columns} FROM {Table} WHERE machine = @m AND kind = @k;", Row,
+            ("@m", Machine), ("@k", kind)).FirstOrDefault(r => string.Equals(r.Path, full, StringComparison.OrdinalIgnoreCase));
 
     private const string Columns = "machine, kind, path, owner, ticket, created_utc, expires_utc, released_utc";
 

@@ -294,13 +294,15 @@ public sealed class ContextCycler(string? directory = null)
             {
                 using var j = JsonDocument.Parse(line);
                 var r = j.RootElement;
+                // A non-object line or a non-string provider threw InvalidOperationException out of the whole read (M.ORCH-T1969).
+                if (r.ValueKind != JsonValueKind.Object) return null;
                 string S(string name) => r.TryGetProperty(name, out var v) ? v.ToString() : "?";
-                var cli = r.TryGetProperty("provider", out var p) && p.GetString() is { } who && who != Providers.Claude ? $"{who} CLI" : "CLI";
+                var cli = r.TryGetProperty("provider", out var p) && p.ValueKind == JsonValueKind.String && p.GetString() is { } who && who != Providers.Claude ? $"{who} CLI" : "CLI";
                 return S("action") == "let stop"
                     ? $"keep-going: let the {cli} in {S("repo")} stop ({S("why")}, {S("open")} open); it stopped again without doing anything, so it likely needs you"
                     : $"keep-going: told the {cli} in {S("repo")} to carry on ({S("why")}, {S("open")} tickets still open)";
             }
-            catch (JsonException) { return null; }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException) { return null; }
         }
     }
 

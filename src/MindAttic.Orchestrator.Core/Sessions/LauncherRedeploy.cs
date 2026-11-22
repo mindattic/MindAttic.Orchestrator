@@ -43,6 +43,7 @@ public static class LauncherRedeploy
                 try { process.Kill(true); } catch (Exception ex) when (ex is not OutOfMemoryException) { }
                 return "Redeploying MindAttic.Launcher timed out.";
             }
+            process.WaitForExit(); // the timed wait can return before the async output reads drain (M.ORCH-T1969)
             if (process.ExitCode == 0) return null;
             string tail;
             lock (sync) tail = string.Join(" ", output.Where(l => l.Length > 0).TakeLast(3));

@@ -257,7 +257,9 @@ public static class PaneBroker
         {
             using var writer = new StreamWriter(pipe, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true };
             using var reader = new StreamReader(pipe, new UTF8Encoding(false), leaveOpen: true);
-            writer.WriteLine(Serialize(request));
+            // The write itself failing means the request never reached the dashboard: false, so the caller opens it another way (M.ORCH-T1969).
+            try { writer.WriteLine(Serialize(request)); }
+            catch (IOException) { return false; }
             var reply = reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(30)).GetAwaiter().GetResult();
             error = string.IsNullOrEmpty(reply) ? null : reply;
         }
@@ -291,7 +293,7 @@ public static class PaneBroker
             {
                 try { await AnswerAsync(pipe, open, ct).ConfigureAwait(false); }
                 catch (Exception ex) when (ex is not OperationCanceledException) { OrchestratorLog.For("Terminals").Error(ex, "Answering a terminals-pipe request failed; contained"); }
-            }, ct);
+            }); // not Task.Run(..., ct): a canceled ct would skip the body and leak the connected pipe (M.ORCH-T1969)
         }
     }
 
