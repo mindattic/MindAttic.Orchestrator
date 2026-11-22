@@ -553,6 +553,59 @@ public sealed partial class MainViewModel
                                      nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip),
                                      nameof(TreeMenuLayout), nameof(ShowsLoginTree), nameof(ShowsFlatLoginStrip), nameof(ShowsFlatTerminalsPanel) })
             Raise(name);
+        Root.RequestClockRearm();
+    }
+
+    // ── Clock-driven texts (M.ORCH-T1999) ───────────────────────────────────
+
+    private System.Windows.Threading.DispatcherTimer? clockTimer;
+    private bool clockRearmPending;
+
+    /// <summary>The next moment one tab's clock-based text changes with no new snapshot: a fresh reading's staleness deadline
+    /// (the usage bars give way to "stale · read N ago"), a stale one's next whole minute ("N ago" ticks); null when this
+    /// tab shows no meter reading.</summary>
+    private DateTime? NextClockChangeUtc(DateTime nowUtc)
+    {
+        if (!tab.SignedIn || tab.IsApiKey || NeedsSignInAgain || MeterReadUtc is not { } read) return null;
+        var staleAt = read + UsageReport.StaleAfter + TimeSpan.FromSeconds(1);
+        if (nowUtc < staleAt) return staleAt;
+        var minutes = Math.Floor((nowUtc - read).TotalMinutes) + 1;
+        return read + TimeSpan.FromMinutes(minutes);
+    }
+
+    /// <summary>Asks the root to recompute its one-shot clock timer once the current raise settles (coalesced).</summary>
+    private void RequestClockRearm()
+    {
+        if (clockRearmPending || System.Windows.Application.Current?.Dispatcher is not { } ui) return;
+        clockRearmPending = true;
+        ui.BeginInvoke(new Action(ArmClock), System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>Schedules the one-shot timer for the earliest next clock change across every login (not a poll): its tick
+    /// re-raises every tab's status, which re-arms it for the following deadline.</summary>
+    private void ArmClock()
+    {
+        clockRearmPending = false;
+        clockTimer ??= new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background);
+        clockTimer.Stop();
+        var now = DateTime.UtcNow;
+        DateTime? next = null;
+        foreach (var t in loginTabs)
+            if (t.NextClockChangeUtc(now) is { } at && (next is null || at < next)) next = at;
+        if (next is not { } when) return;
+        var wait = when - now;
+        if (wait < TimeSpan.FromSeconds(1)) wait = TimeSpan.FromSeconds(1);
+        if (wait > TimeSpan.FromDays(1)) wait = TimeSpan.FromDays(1);
+        clockTimer.Interval = wait;
+        clockTimer.Tick -= OnClockTick;
+        clockTimer.Tick += OnClockTick;
+        clockTimer.Start();
+    }
+
+    private void OnClockTick(object? sender, EventArgs e)
+    {
+        clockTimer?.Stop();
+        foreach (var t in loginTabs) { t.RaiseTabStatus(); t.Raise(nameof(TabStaleLine)); }
     }
 
     /// <summary>Marks <paramref name="email"/>'s sign-in as in progress (null: none) and relights every tab.</summary>
