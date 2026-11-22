@@ -264,6 +264,13 @@ public sealed class FallbackViewers
             {
                 var process = Launch(path, session);
                 if (launched.Remove(session.Id, out var old)) old.Process?.Dispose();
+                if (process is null)
+                {
+                    // Gone before it could be watched (M.ORCH-T1978): a crash, so backoff and MaxCrashes apply, rather than
+                    // an entry Reap never sees that relaunches every LaunchGrace forever.
+                    Crashed(session.Id, nowUtc, nowUtc, "had already exited when it was looked up");
+                    continue;
+                }
                 launched[session.Id] = new Launched(nowUtc, process);
                 started++;
                 Tell(LogEventLevel.Information, $"fallback viewers: opened a window for {session.Title ?? session.Id} ({session.Id})");
@@ -292,26 +299,30 @@ public sealed class FallbackViewers
             {
                 if (!p.HasExited) continue;
                 if (p.ExitCode == 0) dismissed.Add(id);
-                else
-                {
-                    var count = crashes.TryGetValue(id, out var before) && nowUtc - entry.AtUtc < StableRun ? before.Count + 1 : 1;
-                    if (count >= MaxCrashes)
-                    {
-                        crashes.Remove(id);
-                        dismissed.Add(id);
-                        Tell(LogEventLevel.Error, $"fallback viewers: the window for {id} crashed {count} times in a row (last exit {p.ExitCode}); it isn't reopened until the dashboard has been back");
-                    }
-                    else
-                    {
-                        var wait = CrashDelay(count);
-                        crashes[id] = new Crashes(count, nowUtc + wait);
-                        Tell(LogEventLevel.Warning, $"fallback viewers: the window for {id} exited with {p.ExitCode}; it opens again in {wait.TotalSeconds:0}s");
-                    }
-                }
+                else Crashed(id, entry.AtUtc, nowUtc, $"exited with {p.ExitCode}");
             }
             catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
             p.Dispose();
             launched.Remove(id);
+        }
+    }
+
+    /// <summary>Counts a crash of <paramref name="id"/>'s viewer started at <paramref name="startedUtc"/>: it opens again after a
+    /// growing wait, and after <see cref="MaxCrashes"/> in a row not at all this time round, said once.</summary>
+    private void Crashed(string id, DateTime startedUtc, DateTime nowUtc, string how)
+    {
+        var count = crashes.TryGetValue(id, out var before) && nowUtc - startedUtc < StableRun ? before.Count + 1 : 1;
+        if (count >= MaxCrashes)
+        {
+            crashes.Remove(id);
+            dismissed.Add(id);
+            Tell(LogEventLevel.Error, $"fallback viewers: the window for {id} crashed {count} times in a row (last: {how}); it isn't reopened until the dashboard has been back");
+        }
+        else
+        {
+            var wait = CrashDelay(count);
+            crashes[id] = new Crashes(count, nowUtc + wait);
+            Tell(LogEventLevel.Warning, $"fallback viewers: the window for {id} {how}; it opens again in {wait.TotalSeconds:0}s");
         }
     }
 

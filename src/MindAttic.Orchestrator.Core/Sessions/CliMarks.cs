@@ -120,11 +120,22 @@ public static class CliMarks
         var db = Db();
         if (!File.Exists(db.Path)) return;
         foreach (var kind in Kinds)
-            foreach (var f in Directory.EnumerateFiles(directory, kind + "-*").ToList())
+        {
+            var files = Directory.EnumerateFiles(directory, kind + "-*").ToList();
+            var present = new HashSet<string>(files, StringComparer.OrdinalIgnoreCase);
+            foreach (var f in files)
             {
                 var rest = Path.GetFileName(f)[(kind.Length + 1)..];
                 var clear = rest.EndsWith(ClearedSuffix, StringComparison.Ordinal);
                 if (!IsPid(clear ? rest[..^ClearedSuffix.Length] : rest, out var pid)) continue;
+                // Both a mark and its .cleared: the plain mark is the newer word (M.ORCH-T1978), so the clear is just dropped,
+                // never applied after it (files run alphabetically, the upsert first).
+                if (clear && (present.Contains(f[..^ClearedSuffix.Length]) || File.Exists(f[..^ClearedSuffix.Length])))
+                {
+                    try { File.Delete(f); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                    continue;
+                }
                 var claim = $"{f}.{Environment.ProcessId}.reading";
                 string text;
                 try
@@ -162,6 +173,7 @@ public static class CliMarks
                     catch (Exception again) when (again is IOException or UnauthorizedAccessException) { }
                 }
             }
+        }
     }
 
     /// <summary>Winds every CLI with /allocate currently on down at once (M.ORCH-T1468): each gets <c>noallocate</c>="wind" (so
