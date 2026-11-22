@@ -414,7 +414,7 @@
             <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
                 <Separator Style="{StaticResource MaSeparator}" Margin="0,8,0,8" />
                 <StackPanel x:Name="DashboardToolbar" Orientation="Horizontal" VerticalAlignment="Center"
-                            AutomationProperties.Name="Dashboard toolbar: Projects, Git, Settings, Launcher, and what's still to come">
+                            AutomationProperties.Name="Dashboard toolbar: Projects, Git, Settings, Launcher, Shells, and what's still to come">
                     <!-- Projects: the same Open Project window the per-login row's own "+ Add" button and "⋯" menu item
                          already open (ShowOpenProjectWindow, M.ORCH-T1964), for whichever login is selected. -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceRL}">
@@ -483,8 +483,13 @@
                     <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="Shells" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
-                        <Button x:Name="ToolbarShellsButton" Style="{StaticResource MaToolButton}" Content="&#xE733;" IsEnabled="False" ToolTipService.ShowOnDisabled="True"
-                                mc:MaCallout.ToolTip="Shells: coming soon (M.ORCH-T1988)" AutomationProperties.Name="Shells: coming soon" />
+                        <Button x:Name="ToolbarCmdAdminButton" Style="{StaticResource MaToolButton}" Content="&#xE756;" Click="ToolbarCmdAdminButton_Click"
+                                Margin="{StaticResource SpaceRXS}"
+                                mc:MaCallout.ToolTip="Open Command Prompt (Admin) at the workspace root"
+                                AutomationProperties.Name="Open Command Prompt (Admin)" />
+                        <Button x:Name="ToolbarPowerShellAdminButton" Style="{StaticResource MaToolButton}" Content="&#xE756;" Click="ToolbarPowerShellAdminButton_Click"
+                                mc:MaCallout.ToolTip="Open PowerShell (Admin) at the workspace root"
+                                AutomationProperties.Name="Open PowerShell (Admin)" />
                     </StackPanel>
                 </StackPanel>
             </StackPanel>

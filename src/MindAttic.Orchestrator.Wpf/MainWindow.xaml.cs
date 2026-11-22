@@ -1820,6 +1820,34 @@ public partial class MainWindow : Window
     /// item makes.</summary>
     private void ToolbarRefreshProjectsButton_Click(object sender, RoutedEventArgs e) => _ = Shown.RefreshProjectListAsync();
 
+    /// <summary>The global toolbar's Shells group (M.ORCH-T1988): Command Prompt, elevated, at the workspace root.</summary>
+    private void ToolbarCmdAdminButton_Click(object sender, RoutedEventArgs e) => OpenAdminShell("cmd.exe");
+
+    /// <summary>The global toolbar's Shells group (M.ORCH-T1988): PowerShell, elevated, at the workspace root.</summary>
+    private void ToolbarPowerShellAdminButton_Click(object sender, RoutedEventArgs e) => OpenAdminShell("powershell.exe");
+
+    /// <summary>Starts <paramref name="exe"/> with Verb=runas (the UAC prompt) in the workspace root, like Launcher's own admin-shell items.</summary>
+    private static void OpenAdminShell(string exe)
+    {
+        var root = OrchestratorOptions.Load().WorkspaceRoot;
+        if (string.IsNullOrWhiteSpace(root)) return;
+        // An elevated (runas) start ignores WorkingDirectory and lands in System32, so the shell cds itself.
+        var args = exe == "cmd.exe"
+            ? $"/k cd /d \"{root}\""
+            : $"-NoExit -Command \"Set-Location -LiteralPath '{root.Replace("'", "''")}'\"";
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, args)
+            {
+                Verb = "runas",
+                UseShellExecute = true,
+                WorkingDirectory = root,
+            });
+        }
+        catch (System.ComponentModel.Win32Exception) { /* the UAC prompt was declined */ }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening an admin shell from the toolbar failed; contained"); }
+    }
+
     /// <summary>The global toolbar's Git group, "Commit + push all dirty projects…" (M.ORCH-T1980): the same
     /// <see cref="CommitAllWindow"/> the per-login menu's own item opens (<see cref="CommitAllProjects"/>), for
     /// whichever login is currently selected (<see cref="Shown"/>) - the toolbar button isn't inside a dropdown, so
