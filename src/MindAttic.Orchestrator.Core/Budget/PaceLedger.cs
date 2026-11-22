@@ -117,13 +117,20 @@ public static class PaceLedger
 
         // Tokens per percent from this window's own reports, to say how much of it a gap spent.
         var perPercent = mine.LastOrDefault(s => s.Percent >= ReportedUsage.MinPercent) is { } sized ? sized.WindowFresh / sized.Percent : (double?)null;
+        // Every reading of this account's meter taken while this window ran, whichever reset it reported (M.ORCH-T2006): a
+        // window is bucketed by its samples' own reset, so readings Claude tagged with a neighbouring window's reset (a drifted
+        // or stale resets_at, or the prior window's tail) land in that window, not this one. They still prove the meter was
+        // seen: before, a lone sample bucketed here graded the window blind for hours the probe answered every few minutes.
+        var seen = samples.Where(s => s.AtUtc >= start && s.AtUtc <= endUtc && (owner is null || accountAt!(s.AtUtc) is not { } sa || sa == owner))
+            .Select(s => s.AtUtc).Order().ToList();
         var gaps = new List<MeterGap>();
         var (prevAt, prevFresh) = (start, 0L);
         foreach (var s in mine)
         {
             var spent = s.WindowFresh - prevFresh;
-            if (s.AtUtc - prevAt >= MinGap && spent > 0 && (perPercent is not { } pp || spent / pp >= MinGapPercent))
-                gaps.Add(new MeterGap(prevAt, s.AtUtc, spent));
+            if (s.AtUtc - prevAt >= MinGap && spent > 0 && (perPercent is not { } pp || spent / pp >= MinGapPercent)
+                && LongestUnseen(seen, prevAt, s.AtUtc) is { } unseen && unseen.To - unseen.From >= MinGap)
+                gaps.Add(new MeterGap(unseen.From, unseen.To, spent));
             (prevAt, prevFresh) = (s.AtUtc, s.WindowFresh);
         }
 
@@ -171,6 +178,19 @@ public static class PaceLedger
             taken.Add((end, account));
         }
         return [.. due.Select(d => Build(d, samples, hits, events, accountAt: accountAt))];
+    }
+
+    // The longest stretch between from and to with no meter reading at all (any reset) inside it.
+    private static (DateTime From, DateTime To)? LongestUnseen(List<DateTime> seen, DateTime from, DateTime to)
+    {
+        (DateTime From, DateTime To)? longest = null;
+        var prev = from;
+        foreach (var at in seen.Where(a => a > from && a < to).Append(to))
+        {
+            if (longest is not { } l || at - prev > l.To - l.From) longest = (prev, at);
+            prev = at;
+        }
+        return longest;
     }
 
     // Two windows are the same one when their resets are within 10 minutes (Claude rounds resets to the 10 minutes).
