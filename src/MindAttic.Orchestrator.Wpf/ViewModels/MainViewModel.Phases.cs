@@ -83,11 +83,12 @@ public sealed partial class MainViewModel
             Palette.Over, null);
     }
 
-    /// <summary>The Logins dialog (the org-wide login actions: Add login, Sign in all, Report), which Settings held before its
-    /// settings moved to MindAttic Vault.</summary>
-    /// One for the whole window, kept on the global login's tab (like <see cref="SelectedTab"/>): the menu bar's Logins button is
-    /// the global tab's while the dialog is the shown tab's, so a per-tab flag left the button doing nothing on a person's tab
-    /// and the dialog popping open later on the global one.
+    /// <summary>The User Management dialog (M.ORCH-T1898, was Logins - the org-wide login actions, Add login/Sign in all/Report,
+    /// plus each roster member's own stored email-account credential), which Settings held before its settings moved to
+    /// MindAttic Vault.</summary>
+    /// One for the whole window, kept on the global login's tab (like <see cref="SelectedTab"/>): the menu bar's User Management
+    /// button is the global tab's while the dialog is the shown tab's, so a per-tab flag left the button doing nothing on a
+    /// person's tab and the dialog popping open later on the global one.
     public bool IsLoginsOpen
     {
         get => Root.isLoginsOpen;
@@ -95,6 +96,8 @@ public sealed partial class MainViewModel
         {
             if (Root.isLoginsOpen == value) return;
             Root.isLoginsOpen = value;
+            // The credential list is read fresh on open (M.ORCH-T1898), not kept live while the dialog is shut.
+            if (value) Root.RebuildUserCredentials();
             foreach (var t in Root.loginTabs) t.Raise(nameof(IsLoginsOpen));
             if (!Root.loginTabs.Contains(Root)) Root.Raise(nameof(IsLoginsOpen));
         }

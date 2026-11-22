@@ -370,7 +370,7 @@
                 <Button x:Name="TicketsButton" Style="{StaticResource MaToolButton}" Content="&#xE8EC;" Command="{Binding OpenTicketsAppCommand}"
                         mc:MaCallout.ToolTip="Open Tickets" AutomationProperties.Name="Open Tickets" />
                 <Button x:Name="LoginsButton" Style="{StaticResource MaToolButton}" Content="&#xE77B;" Command="{Binding ToggleLoginsCommand}"
-                        mc:MaCallout.ToolTip="Logins" AutomationProperties.Name="Logins" />
+                        mc:MaCallout.ToolTip="User Management" AutomationProperties.Name="User Management" />
                 <Button x:Name="SettingsButton" Style="{StaticResource MaToolButton}" Content="&#xE713;" Command="{Binding OpenSettingsCommand}"
                         mc:MaCallout.ToolTip="Settings (opens MindAttic Vault)" AutomationProperties.Name="Settings" />
                 <!-- Save (M.ORCH-T1769, replacing Save all &amp; close's M.ORCH-T1724 force-close-and-exit, now retired):
@@ -1704,7 +1704,7 @@
              Settings dialog's Logins tab (M.ORCH-T804) until LAMP moved every setting to MindAttic Vault (the cog opens it), and
              are the global login's tab's (MainWindow.xaml.cs sets OrgToolbar's DataContext). Esc, its close button and the backdrop
              close it through ToggleLoginsCommand. Last in the root grid, spanning every row, over the loader too. -->
-        <mc:MaModal x:Name="LoginsModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="Logins" AutomationProperties.Name="Logins" DialogWidth="720"
+        <mc:MaModal x:Name="LoginsModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="User Management" AutomationProperties.Name="User Management" DialogWidth="720"
                     IsOpen="{Binding IsLoginsOpen}" CloseCommand="{Binding ToggleLoginsCommand}">
             <ScrollViewer x:Name="LoginsBody" Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,4,16,12" MaxHeight="560">
                 <StackPanel x:Name="OrgToolbar" MaxWidth="760" HorizontalAlignment="Left">
@@ -1736,6 +1736,41 @@
                     <TextBlock x:Name="BillingDetailLine" Text="{Binding BillingDetail}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}"
                                AutomationProperties.LiveSetting="Polite"
                                Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                    <!-- User credentials (M.ORCH-T1898, Ryan's ask): each roster member's own email-account password, kept in
+                         MindAttic Vault's keyring (RosterCredentialStore), never in the git-synced settings/db - view, add, edit
+                         or delete it right on its row, no masking (Ryan wants to review it plainly, not behind a reveal toggle). -->
+                    <TextBlock Text="USER CREDENTIALS" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceTL}" />
+                    <TextBlock Text="Each roster member's own email account password, kept in MindAttic Vault: view, add, edit or delete it here."
+                               Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceBS}" />
+                    <ItemsControl x:Name="UserCredentialsList" Style="{StaticResource MaList}" ItemsSource="{Binding UserCredentials}"
+                                  AutomationProperties.Name="User credentials">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:UserCredentialRowViewModel}">
+                                <Grid Margin="{StaticResource RowGutter}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="180" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Email}" Style="{StaticResource MaMutedText}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <TextBox Grid.Column="1" Style="{StaticResource MaTextBox}" Height="32" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}"
+                                             Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"
+                                             mc:MaTextBox.Placeholder="Password"
+                                             AutomationProperties.Name="{Binding Name, StringFormat='Password for {0}'}" />
+                                    <Button Grid.Column="2" Style="{StaticResource MaButton}" Content="Save" Padding="{StaticResource SpaceHMVXS}" Margin="{StaticResource SpaceLS}"
+                                            Command="{Binding SaveCommand}" VerticalAlignment="Center"
+                                            AutomationProperties.Name="{Binding Name, StringFormat='Save the credential for {0}'}" />
+                                    <Button Grid.Column="3" Style="{StaticResource MaButton}" Content="Delete" Padding="{StaticResource SpaceHMVXS}" Margin="{StaticResource SpaceLS}"
+                                            Command="{Binding DeleteCommand}" VerticalAlignment="Center"
+                                            AutomationProperties.Name="{Binding Name, StringFormat='Delete the credential for {0}'}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </ScrollViewer>
         </mc:MaModal>
