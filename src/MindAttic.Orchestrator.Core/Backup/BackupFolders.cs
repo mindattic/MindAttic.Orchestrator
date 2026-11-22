@@ -46,6 +46,25 @@ public static class BackupFolders
             .SelectMany(g => g.Select(x => x.Folder))
             .ToList();
 
+    /// <summary>
+    /// The newest dated folder under <paramref name="backupBase"/>: the latest date, and of that day's folders the last
+    /// (<c>_z</c> after <c>_a</c> after the bare date). Null when the base isn't reachable or holds no dated folder.
+    /// <paramref name="listFolders"/> lists a folder's subfolders; tests give a stand-in (M.ORCH-T2052).
+    /// </summary>
+    public static string? FindNewest(string backupBase, Func<string, IEnumerable<string>>? listFolders = null)
+    {
+        listFolders ??= dir => Directory.Exists(dir) ? Directory.GetDirectories(dir) : [];
+        IEnumerable<string> folders;
+        try { folders = listFolders(backupBase).ToList(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+        return folders
+            .Select(folder => (Folder: folder, Name: Path.GetFileName(folder.TrimEnd('\\', '/'))))
+            .Where(x => ParseDatePrefix(x.Name).HasValue)
+            .OrderByDescending(x => x.Name, StringComparer.Ordinal)
+            .Select(x => x.Folder)
+            .FirstOrDefault();
+    }
+
     internal static DateTime? ParseDatePrefix(string folderName)
     {
         // "2026-11-22" or "2026-11-22_a"; anything else after the date isn't one of ours.
