@@ -55,6 +55,7 @@ public sealed partial class MainViewModel
         ToggleLoginsCommand = new RelayCommand(() => IsLoginsOpen = !IsLoginsOpen);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         OpenLauncherSettingsCommand = new RelayCommand(OpenLauncherSettings);
+        OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
     }
 
     // ── Settings (LAMP, M.ORCH-T1308) ───────────────────────────────────────
@@ -115,6 +116,46 @@ public sealed partial class MainViewModel
         }
         return opened ? null : new ToastViewModel("Launcher settings live in MindAttic Vault",
             "MindAttic.Vault.Desktop isn't installed or didn't start. Install it (MindAttic.Vault's run.ps1) to change the Launcher's agent CLIs, models, API keys, GitHub token and Windows Terminal path.",
+            Palette.Over, null);
+    }
+
+    /// <summary>The toolbar's Project settings button (M.ORCH-T2026): MindAttic.Vault.Desktop at the Launcher's bucket, scrolled to
+    /// the selected CLI's project's roster entry (alias, description, color, scheme), as the Launcher's ProjectSetupMenu opens it.
+    /// The button is disabled while no CLI is selected.</summary>
+    public ICommand OpenProjectSettingsCommand { get; private set; } = null!;
+
+    /// <summary>What opens the Vault at one Launcher setting (a seam for tests): true when Vault.Desktop took the request.</summary>
+    internal Func<string, bool> OpenLauncherVaultAt { get; set; } =
+        setting => MindAttic.Vault.Launch.VaultSettings.Open(ProviderCredentials.LauncherAppId, setting);
+
+    private void OpenProjectSettings()
+    {
+        var pane = Terminals?.SelectedPane;
+        var directory = pane?.Request.Directory;
+        var name = pane?.Request.Repo ?? (string.IsNullOrWhiteSpace(directory) ? null : Path.GetFileName(Path.TrimEndingDirectorySeparator(directory)));
+        if (OpenProjectSettingsWith(name, LauncherProjectSettings.SettingFor(name, directory), OpenLauncherVaultAt) is { } toast) Toasts.Insert(0, toast);
+    }
+
+    /// <summary>What the Project settings button does: <paramref name="openVault"/> at <paramref name="setting"/> (the project's
+    /// roster entry, <see cref="LauncherProjectSettings.SettingFor"/>), and the toast to show when there's no such entry or the
+    /// Vault didn't open, else null.</summary>
+    internal static ToastViewModel? OpenProjectSettingsWith(string? projectName, string? setting, Func<string, bool> openVault)
+    {
+        if (setting is null)
+            return new ToastViewModel("Not a Launcher project",
+                projectName is { Length: > 0 }
+                    ? $"{projectName} isn't on the Launcher's project roster, so it has no alias, description, color or scheme to set. Add it with Discover projects first."
+                    : "Select a project's CLI tab first: its alias, description, color and scheme are on the Launcher's project roster.",
+                Palette.Over, null);
+        bool opened;
+        try { opened = openVault(setting); }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Dashboard").Warning(ex, "Opening MindAttic Vault at {Project}'s settings failed", projectName);
+            opened = false;
+        }
+        return opened ? null : new ToastViewModel("Project settings live in MindAttic Vault",
+            "MindAttic.Vault.Desktop isn't installed or didn't start. Install it (MindAttic.Vault's run.ps1) to change a project's alias, description, color and scheme.",
             Palette.Over, null);
     }
 

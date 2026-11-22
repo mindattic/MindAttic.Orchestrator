@@ -456,6 +456,22 @@
                         <Button x:Name="ToolbarLauncherSettingsButton" Style="{StaticResource MaToolButton}" Content="&#xE90F;" Command="{Binding OpenLauncherSettingsCommand}"
                                 mc:MaCallout.ToolTip="Launcher settings (opens MindAttic Vault at the Launcher's agent CLIs and models, API keys, GitHub token and Windows Terminal path)"
                                 AutomationProperties.Name="Launcher settings" />
+                        <!-- Project settings (M.ORCH-T2026): MindAttic Vault scrolled to the selected CLI's project's roster entry,
+                             as the Launcher's ProjectSetupMenu opens it; disabled while no CLI tab is selected. -->
+                        <Button x:Name="ToolbarProjectSettingsButton" Content="&#xE70F;" Command="{Binding OpenProjectSettingsCommand}"
+                                ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="Project settings">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource MaToolButton}">
+                                    <Setter Property="mc:MaCallout.ToolTip" Value="Project settings (opens MindAttic Vault at the selected CLI's project: its alias, description, color and scheme)" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Terminals.SelectedPane}" Value="{x:Null}">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                            <Setter Property="mc:MaCallout.ToolTip" Value="Project settings: select a project's CLI tab first" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                     </StackPanel>
                     <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
                     <!-- Launcher: tab.RunLauncherCommand, the same command the per-login menu's own "Run Launcher" item
