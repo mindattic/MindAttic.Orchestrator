@@ -101,6 +101,7 @@ public sealed partial class MainViewModel
                 symbolTabLabels = settings.SymbolTabLabels;
                 treeMenuLayout = settings.TreeMenuLayout;
                 autoOpenLaunchers = settings.AutoOpenLaunchers;
+                autoOpenGeneralPrompts = settings.AutoOpenGeneralPrompts;
                 AllTerminals.ConfirmCloseEnabled = settings.ConfirmCliClose;
                 AllTerminals.EndedLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedTabMinutes));
                 AllTerminals.EndedMenuLifetime = TimeSpan.FromMinutes(Math.Max(0, settings.EndedLauncherTabMinutes));

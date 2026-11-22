@@ -369,7 +369,7 @@ public sealed partial class MainViewModel
         // (said on the bus as a roster change, M.ORCH-T1438) retitles their tabs at this pass, no reopen.
         _ = AllTerminals.RefreshLooksAsync();
         OpenLaunchers();
-        OpenGeneralPrompts();
+        EnsureGeneralPrompts();
         if (NewlyDisconnected(wasSignedIn, loginTabs.Select(t => t.tab)) is { Count: > 0 } disconnected) AutoSignIn(disconnected);
     }
 
@@ -444,38 +444,49 @@ public sealed partial class MainViewModel
         }
     }
 
-    // ── General Prompt, auto-ensured per login (M.ORCH-T1951, the owner's request) ─────────────
+    // ── General Prompt, auto-kept per login (M.ORCH-T1951/M.ORCH-T1957, the owner's request) ─────────────
 
-    /// <summary>The logins whose General Prompt CLI this dashboard has opened (or tried to), the same bookkeeping
-    /// <see cref="launchersOpened"/> keeps for the Launcher: cleared once its pane is gone, so the next refresh tries again
-    /// through <see cref="generalPromptRespawn"/>'s cap.</summary>
+    /// <summary>The logins whose General Prompt this dashboard has opened and still sees live; cleared once its pane is gone,
+    /// so the next refresh reopens it through <see cref="generalPromptRespawn"/>'s cap.</summary>
     private readonly HashSet<string> generalPromptsOpened = new(StringComparer.OrdinalIgnoreCase);
-    private readonly LauncherRespawn generalPromptRespawn = new();
 
-    /// <summary>A pane is this login's General Prompt (not a project repo's, not the Launcher's own menu): the one
-    /// <see cref="OpenGeneralPromptAsync"/> opens, identified by its request's own title the same way <see cref="RepoPaneRequest"/>
-    /// names every other repo tab.</summary>
-    private static bool IsGeneralPromptPane(TerminalPaneViewModel pane) => !pane.Request.IsMenu && pane.Request.Repo == "General";
+    /// <summary>The logins with an open in flight (M.ORCH-T1957): a resync landing before the pane exists never starts a second.</summary>
+    private readonly HashSet<string> generalPromptsPending = new(StringComparer.OrdinalIgnoreCase);
+    private readonly LauncherRespawn generalPromptRespawn = new();
+    private bool autoOpenGeneralPrompts = new MindAttic.Orchestrator.Settings.OrchestratorSettings().AutoOpenGeneralPrompts;
+
+    /// <summary>A pane is <paramref name="login"/>'s General Prompt (M.ORCH-T1957): a live CLI, not the Launcher's menu, on that
+    /// login's folder (<see cref="TreeLoginKey"/>), at the workspace root (case and a trailing slash ignored).</summary>
+    private static bool IsGeneralPromptOf(TerminalPaneViewModel p, string? login, string root) =>
+        !p.Request.IsMenu && string.Equals(TreeLoginKey(p), login, StringComparison.OrdinalIgnoreCase) && SameFolder(p.Request.Directory, root);
+
+    private static bool SameFolder(string? a, string? b) =>
+        a is not null && b is not null && string.Equals(a.TrimEnd('\\', '/'), b.TrimEnd('\\', '/'),StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>This login is signed in as itself (M.ORCH-T1957): signed in, not the API key, a per-CLI folder, not borrowed
+    /// (its folder isn't OAuth-signed in as another account, <see cref="SignedInAsOther"/>).</summary>
+    private bool SignedInAsItself => ScopeEmail is not null && !tab.IsApiKey && tab.SignedIn && SignedInAsOther is null;
 
     /// <summary>
-    /// One General Prompt CLI per login (M.ORCH-T1951): every login's node, signed in or not - not yet gated on Disabled
-    /// (M.ORCH-T1952 adds that exclusion) - always keeps exactly one open, the same way <see cref="OpenLaunchers"/> keeps one
-    /// Launcher per signed-in login. Two things this gives the owner: a direct line to talk to that account's own LLM
-    /// regardless of project work, and - since starting a CLI on a signed-out login's folder signs it in first
-    /// (<see cref="OwnLoginDirAsync"/>, M.ORCH-T610, before the CLI itself opens) - the one place a disconnected login's own
-    /// sign-in always runs scoped to its own tab, never some unrelated window (unlike the Launcher, which only opens once
-    /// already signed in, this fires for a signed-out login too: that's the whole point here).
+    /// One General Prompt CLI per login signed in as itself (M.ORCH-T1951/M.ORCH-T1957), kept open like its Launcher: one
+    /// closed or ended is reopened at a later refresh (capped by <see cref="generalPromptRespawn"/>), extras are closed. Only
+    /// per-CLI folder logins get one: the global (~/.claude) login has none, so a global login that is the same person as a
+    /// folder login never doubles up. Opened quietly (<see cref="OpenGeneralPromptQuietlyAsync"/>), never through
+    /// <see cref="StartSessionAsync"/>'s RAM dialog or sign-in.
     /// </summary>
-    private void OpenGeneralPrompts()
+    private void EnsureGeneralPrompts()
     {
-        if (!IsGlobalTab) return;
+        if (!IsGlobalTab || !autoOpenGeneralPrompts) return;
+        var root = WorkspaceRoot;
+        if (string.IsNullOrEmpty(root)) return;
+        generalPromptRespawn.Spacing = DashboardTimings.LauncherSpacing;
         var now = DateTime.UtcNow;
         foreach (var t in loginTabs)
         {
-            if (t.IsApiKeyTab) continue;
+            if (!t.SignedInAsItself) continue;
             var key = t.tab.Key;
-            var live = AllTerminals.Panes.Where(p => !p.Ended && ReferenceEquals(OwnerOf(p), t) && IsGeneralPromptPane(p)).ToList();
-            // At most one (a race between two opens, or one left over from before): keep whichever is shown, else the first.
+            var login = AccountDirs.Normalize(t.ScopeEmail);
+            var live = AllTerminals.Panes.Where(p => !p.Ended && IsGeneralPromptOf(p, login, root)).ToList();
             if (live.Count > 1)
             {
                 var keep = live.FirstOrDefault(p => p.IsSelected) ?? live[0];
@@ -487,31 +498,45 @@ public sealed partial class MainViewModel
             }
             if (live.Count > 0) { generalPromptsOpened.Add(key); continue; }
             generalPromptsOpened.Remove(key);
-            // An ended General Prompt tab is replaced rather than piled up beside the new one (M.ORCH-T1153's own reasoning
-            // for the Launcher applies just the same here).
-            foreach (var ended in AllTerminals.Panes.Where(p => p.Ended && ReferenceEquals(OwnerOf(p), t) && IsGeneralPromptPane(p)).ToList())
+            if (ShuttingDown || RestoringTerminals || generalPromptsPending.Contains(key)) continue;
+            foreach (var ended in AllTerminals.Panes.Where(p => p.Ended && IsGeneralPromptOf(p, login, root)).ToList())
             {
                 if (!tabsGone.TryGetValue(ended, out _)) tabsGone.Add(ended, null);
                 AllTerminals.Close(ended);
             }
-            if (ShuttingDown || RestoringTerminals || !generalPromptRespawn.TryTake(key, now)) continue;
-            generalPromptsOpened.Add(key);
-            _ = OpenGeneralPromptQuietlyAsync(key, t);
+            if (!generalPromptRespawn.TryTake(key, now)) continue;
+            generalPromptsPending.Add(key);
+            _ = OpenGeneralPromptQuietlyAsync(key, t.ScopeEmail!, t.TabTitle, root);
         }
     }
 
-    /// <summary>Opens <paramref name="person"/>'s General Prompt and logs why, quietly, on a failure - which also undoes the
-    /// optimistic <see cref="generalPromptsOpened"/> mark <see cref="OpenGeneralPrompts"/> made before this fire-and-forget
-    /// call, the same reasoning as <see cref="OpenLauncherQuietlyAsync"/>'s own mark.</summary>
-    private async Task OpenGeneralPromptQuietlyAsync(string key, MainViewModel person)
+    /// <summary>The unattended open (M.ORCH-T1957): skipped (and tried again at a later refresh) while RAM or the disk holds new
+    /// CLIs or the folder isn't signed in as itself; never a dialog or a sign-in window. Never throws.</summary>
+    private async Task OpenGeneralPromptQuietlyAsync(string key, string email, string title, string root)
     {
-        try { await person.OpenGeneralPromptAsync(); }
+        var log = OrchestratorLog.For("Dashboard");
+        try
+        {
+            var settings = store.LoadSettings();
+            var held = await Task.Run(() => MindAttic.Orchestrator.Activity.MemoryGuard.StartHeld(settings) ?? MindAttic.Orchestrator.Activity.DiskGuard.StartHeld(settings));
+            if (held is not null) { log.Information("{Login:l}'s General Prompt waits: {Why:l}", title, held); return; }
+            var dir = accountDirs.For(email);
+            var ready = await Task.Run(() =>
+            {
+                if (!dir.SignedIn || dir.BorrowedFrom is not null) return false;
+                accountDirs.Prepare(dir);
+                return true;
+            });
+            if (!ready || ShuttingDown || RestoringTerminals) return;
+            if (AllTerminals.Panes.Any(p => !p.Ended && IsGeneralPromptOf(p, AccountDirs.Normalize(email), root))) return;
+            if (OpenTerminal(control.RepoPaneRequest("General", root, "Claude", null, dir.Directory, email)) is { } error)
+                log.Warning("Couldn't open {Login:l}'s General Prompt tab: {Error:l}", title, error);
+        }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            OrchestratorLog.For("Dashboard").Warning(ex, "Couldn't open {Login:l}'s General Prompt tab", person.TabTitle);
+            log.Warning(ex, "Couldn't open {Login:l}'s General Prompt tab", title);
         }
-        if (!AllTerminals.Panes.Any(p => !p.Ended && ReferenceEquals(OwnerOf(p), person) && IsGeneralPromptPane(p)))
-            generalPromptsOpened.Remove(key);
+        finally { generalPromptsPending.Remove(key); }
     }
 
     /// <summary>M.ORCH-T1153: a new Launcher for <paramref name="person"/> replaces their ended Launcher tabs rather than piling up

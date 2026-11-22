@@ -70,6 +70,8 @@ public sealed partial class MainViewModel
         {
             t.Terminals.RefreshLast(); // a pane moved between logins (M.ORCH-T1955)
             t.Raise(nameof(ShowsLauncherPlaceholder));
+            t.Raise(nameof(ShowsGeneralPromptPlaceholder));
+            t.Raise(nameof(LauncherPlaceholderContinues));
         }
         ShowChosenPane();
     }
@@ -79,6 +81,15 @@ public sealed partial class MainViewModel
     /// one on a signed-in login, so a signed-out one with no Launcher pane gets this stand-in instead of becoming a leaf.
     /// The API key keeps its own behaviour (no stand-in).</summary>
     public bool ShowsLauncherPlaceholder => IsPersonTab && !tab.IsApiKey && !tab.SignedIn && !Terminals.Panes.Any(p => p.Request.IsMenu && !p.Ended);
+
+    /// <summary>Whether this login's node shows the disabled "General Prompt (signed out)" row (M.ORCH-T1957): a member login
+    /// (not the API key, not the global one) that isn't signed in as itself -- signed out, or its folder borrowed by another
+    /// account -- so <see cref="EnsureGeneralPrompts"/> keeps no General Prompt on it, and it has none open.</summary>
+    public bool ShowsGeneralPromptPlaceholder => IsPersonTab && !tab.IsApiKey && ScopeEmail is not null && Root.autoOpenGeneralPrompts
+        && !SignedInAsItself && !Terminals.Panes.Any(p => !p.Ended && IsGeneralPromptOf(p, AccountDirs.Normalize(ScopeEmail), Root.WorkspaceRoot));
+
+    /// <summary>The Launcher stand-in's spine runs on below it: into the General Prompt stand-in or the panes (M.ORCH-T1957).</summary>
+    public bool LauncherPlaceholderContinues => ShowsGeneralPromptPlaceholder || Terminals.HasPanes;
 
     /// <summary>The one terminal on screen is the shown person's chosen one; every other is hidden.</summary>
     private void ShowChosenPane()
