@@ -174,10 +174,25 @@ public static partial class Scheduler
         // A block set by hand is a 'requires' link in the ticket database (tickets ticket block, M.ORCH-T762), or a 'part-of'
         // link to an unapproved epic (M.ORCH-T1210: nothing in an unapproved epic is picked up just because only 'part-of'
         // names it, not 'requires' too). One on an epic waits only until the epic is approved (started), not until it closes
-        // (M.ORCH-T1146). Any other part-of parent is a container whose children are the work, never their blocker (M.ORCH-T1904).
+        // (M.ORCH-T1146). Any other part-of parent is a container whose children are the work, never their blocker (M.ORCH-T1904),
+        // though what it requires blocks them (M.ORCH-T1909).
+        // A part-of ancestor's 'requires' blockers block t too (M.ORCH-T1909): a story split into tasks hands its prerequisites
+        // down, so its tasks wait for them as the story would have. Any depth, a visited set against part-of cycles.
+        IEnumerable<string> AncestorRequires(string id)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal) { id };
+            var pending = new Stack<string>(snapshot.PartOf.GetValueOrDefault(id) ?? []);
+            while (pending.TryPop(out var parent))
+            {
+                if (!seen.Add(parent)) continue;
+                foreach (var req in snapshot.Requires.GetValueOrDefault(parent) ?? []) yield return req;
+                foreach (var up in snapshot.PartOf.GetValueOrDefault(parent) ?? []) pending.Push(up);
+            }
+        }
         IReadOnlyList<string> Blockers(Ticket t) =>
             [.. BlockedByPhrase().Matches(t.Summary).Select(m => m.Groups["id"].Value.ToUpperInvariant())
                 .Concat(snapshot.Requires.GetValueOrDefault(t.Id) ?? [])
+                .Concat(AncestorRequires(t.Id))
                 .Where(id => !(IsEpic(id) && IsApproved(id)))
                 .Concat((snapshot.PartOf.GetValueOrDefault(t.Id) ?? []).Where(id => IsEpic(id) && !IsApproved(id)))
                 .Where(id => id != t.Id && openIds.Contains(id))
