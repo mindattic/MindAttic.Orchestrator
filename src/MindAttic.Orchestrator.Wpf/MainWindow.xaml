@@ -489,10 +489,7 @@
                                 AutomationProperties.Name="Bootstrap this machine" />
                     </StackPanel>
                     <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
-                    <!-- Stub groups (M.ORCH-T1972's wider migration still to come): no Orchestrator feature behind any of
-                         these three yet, so each stays disabled rather than faking an action. The glyph is
-                         TabDisabledGlyph's own "not usable right now" one (MainViewModel.TabStatus.cs: the signed-out
-                         lock), reused rather than a codepoint of its own. -->
+                    <!-- Backup & Restore group (M.ORCH-T2050, M.ORCH-T1972's wider migration): a live button, not a stub. -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceRL}">
                         <TextBlock Text="Backup &amp; Restore" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
                         <!-- Backup & Restore (M.ORCH-T2050): Backup now / Restore from folder (BackupRestoreWindow). -->

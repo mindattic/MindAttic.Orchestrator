@@ -755,6 +755,11 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 10080)]
     public double LogPruneMinutes { get; set; } = 60;
 
+    /// <summary>Local dated backup folders kept.</summary>
+    [Setting("Keep local backups (folders)", Group = "Alerts", Order = 68, Help = "How many dated backup folders to keep under the backup base: after each Backup & Restore backup, older ones are deleted. 0 keeps every one.")]
+    [SettingRange(0, 10000)]
+    public int BackupKeepLocal { get; set; } = 30;
+
     /// <summary>The least minutes between two disk self-cleanups while the temp drive stays under its free-GB line.</summary>
     [Setting("Disk self-cleanup at most every (minutes)", Group = "Alerts", Order = 66,
         Help = "The least minutes between two disk self-cleanups while the temp drive stays under its free-GB line.")]
@@ -1271,6 +1276,7 @@ public sealed class OrchestratorVaultSettings
         HealthFailureThreshold = s.HealthFailureThreshold,
         HealthSuccessThreshold = s.HealthSuccessThreshold,
         LogPruneMinutes = s.LogPruneMinutes,
+        BackupKeepLocal = s.BackupKeepLocal,
         DiskCleanupEveryMinutes = s.DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = s.GitHubIntakeMinutes,
         DashboardPollSeconds = s.DashboardPollSeconds,
@@ -1485,6 +1491,7 @@ public sealed class OrchestratorVaultSettings
         HealthFailureThreshold = HealthFailureThreshold,
         HealthSuccessThreshold = HealthSuccessThreshold,
         LogPruneMinutes = LogPruneMinutes,
+        BackupKeepLocal = BackupKeepLocal,
         DiskCleanupEveryMinutes = DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = GitHubIntakeMinutes,
         DashboardPollSeconds = DashboardPollSeconds,

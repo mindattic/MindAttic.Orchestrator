@@ -226,6 +226,23 @@ internal sealed class BackupRestoreWindow : Window
         await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Background);
 
         var ok = run is { Ok: true } && (sent?.Ok ?? true);
+        // Prune old dated folders (M.ORCH-T2064), only after a good local backup so failing runs can't delete the last good ones.
+        if (run is { Ok: true })
+        {
+            try
+            {
+                var keep = new MindAttic.Orchestrator.Settings.JsonStore().LoadSettings().BackupKeepLocal;
+                if (keep > 0)
+                {
+                    var removed = await Task.Run(() => backup.Prune(keep));
+                    if (removed.Count > 0) Say($"  Pruned {removed.Count} old backup folder{(removed.Count == 1 ? "" : "s")} (keeping the newest {keep}).");
+                }
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                OrchestratorLog.For("Dashboard").Warning(ex, "Backup prune failed; contained");
+            }
+        }
         if (run is not null)
         {
             restoreFolder.Text = run.Folder;

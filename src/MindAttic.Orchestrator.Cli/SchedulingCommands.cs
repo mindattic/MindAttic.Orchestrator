@@ -703,6 +703,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Results in a row back out of unhealthy before an alerted check alerts its recovery, 1 to 100 (default 1).")]
         public int? HealthSuccessThreshold { get; init; }
 
+        [CommandOption("--backup-keep <N>")]
+        [Description("Local backup folders kept under the backup base after each Backup & Restore backup, 0 to 10000; 0 keeps every one (default 30).")]
+        public int? BackupKeep { get; init; }
+
         [CommandOption("--model <REPO_OR_TICKET=MODEL>")]
         [Description("The model /allocate starts a repo's (or one ticket's) subagents on, overriding the pick: Prose=opus, M.ORCH-T12=sonnet, GTFO.*=sonnet; =auto clears. A ticket's wins over its repo's. Repeatable.")]
         public string[] Model { get; init; } = [];
@@ -879,7 +883,12 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             };
             if (HealthThresholds.Problem(s) is { } healthError) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(healthError)}[/]"); return 1; }
         }
-        var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.ThrottleAgents is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
+        if (settings.BackupKeep is { } backupKeep)
+        {
+            if (backupKeep is < 0 or > 10000) { AnsiConsole.MarkupLine("[red]--backup-keep is 0 to 10000 (0 keeps every backup).[/]"); return 1; }
+            s = s with { BackupKeepLocal = backupKeep };
+        }
+        var changed = settings.BackupKeep is not null || settings.GroomDays is not null || settings.GitHubIntake is not null || settings.ThrottleAgents is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
             || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null
             || settings.DiskHoldGb is not null || settings.DiskHoldResumeMarginGb is not null
             || settings.TempRetentionHours is not null || memoryChanged || healthChanged || settings.HeavyProcesses is not null;
@@ -1175,6 +1184,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         static string Every(double seconds) => seconds > 0 ? $"every {seconds:0.#} s" : "off";
         AnsiConsole.MarkupLine(Markup.Escape($"  health probes the daemon runs: machine {Every(s.HealthProbeMachineSeconds)} · links {Every(s.HealthProbeLinksSeconds)} · " +
             $"azure {Every(s.HealthProbeAzureSeconds)}"));
+        AnsiConsole.MarkupLine(Markup.Escape($"  local backups kept: {(s.BackupKeepLocal > 0 ? s.BackupKeepLocal.ToString() : "every one")}"));
         // Change-only health alerts (M.ORCH-T2039).
         AnsiConsole.MarkupLine(Markup.Escape($"  health alerts: unhealthy after {s.HealthFailureThreshold} in a row, recovered after {s.HealthSuccessThreshold} in a row, " +
             (s.HealthAlerts ? "texted through Psst" : "not texted")));

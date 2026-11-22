@@ -158,6 +158,7 @@ public sealed class LampSettingsTests
         Case("healthLinkLatencyDegradedMs", s => s with { HealthLinkLatencyDegradedMs = 1000 }, 1000d, v => v.HealthLinkLatencyDegradedMs = 500, 500d, s => s.HealthLinkLatencyDegradedMs),
         Case("healthLinkLatencyUnhealthyMs", s => s with { HealthLinkLatencyUnhealthyMs = 5000 }, 5000d, v => v.HealthLinkLatencyUnhealthyMs = 3000, 3000d, s => s.HealthLinkLatencyUnhealthyMs),
         Case("logPruneMinutes", s => s with { LogPruneMinutes = 60 }, 60d, v => v.LogPruneMinutes = 30, 30d, s => s.LogPruneMinutes),
+        Case("backupKeepLocal", s => s with { BackupKeepLocal = 30 }, 30d, v => v.BackupKeepLocal = 7, 7d, s => s.BackupKeepLocal),
         Case("diskCleanupEveryMinutes", s => s with { DiskCleanupEveryMinutes = 5 }, 5d, v => v.DiskCleanupEveryMinutes = 15, 15d, s => s.DiskCleanupEveryMinutes),
         Case("gitHubIntakeMinutes", s => s with { GitHubIntakeMinutes = 60 }, 60d, v => v.GitHubIntakeMinutes = 120, 120d, s => s.GitHubIntakeMinutes),
         Case("memorySampleSeconds", s => s with { MemorySampleSeconds = 5 }, 5d, v => v.MemorySampleSeconds = 10, 10d, s => s.MemorySampleSeconds),

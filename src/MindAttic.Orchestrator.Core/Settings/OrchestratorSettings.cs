@@ -771,6 +771,11 @@ public sealed record OrchestratorSettings
     /// <summary>Minutes between prunes of old log entries and finished terminal hosts' logs (was <see cref="LogPruner.Every"/>).</summary>
     public double LogPruneMinutes { get; init; } = 60;
 
+    /// <summary>Local backups kept under the backup base: after each Backup &amp; Restore backup, all but the newest this many
+    /// dated folders are deleted (<see cref="Backup.BackupService.Prune"/>, M.ORCH-T2064). 0 keeps every one. Default 30, the
+    /// Launcher's own <c>backup --keep 30</c> example.</summary>
+    public int BackupKeepLocal { get; init; } = 30;
+
     /// <summary>Seconds between the daemon's copies of SQL Server's settings, assignments and state into data/orchestrator.db.</summary>
     public double MirrorSeconds { get; init; } = 60;
 
