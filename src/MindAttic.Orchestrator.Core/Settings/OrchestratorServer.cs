@@ -248,12 +248,23 @@ public sealed class OrchestratorServer(string connectionString)
             max_every_minutes float NULL, until_ticket nvarchar(128) NULL, created_utc nvarchar(64) NOT NULL, next_utc nvarchar(64) NOT NULL,
             nags bigint NOT NULL, last_nag_utc nvarchar(64) NULL, ended_utc nvarchar(64) NULL, ended_why nvarchar(max) NULL
             """, null),
+        // Roles and agents, the "who" (M.ORCH-T1742).
+        ("roles", """
+            name nvarchar(128) NOT NULL PRIMARY KEY, brief nvarchar(max) NOT NULL, model nvarchar(64) NULL, effort nvarchar(16) NULL,
+            tools nvarchar(max) NULL, takes nvarchar(max) NULL, source nvarchar(max) NULL, updated_utc nvarchar(64) NOT NULL
+            """, null),
+        ("agents", """
+            id nvarchar(64) NOT NULL PRIMARY KEY, role nvarchar(128) NOT NULL, owner nvarchar(256) NOT NULL, runtime nvarchar(32) NOT NULL,
+            state nvarchar(16) NOT NULL, heartbeat_utc nvarchar(64) NULL, unit nvarchar(128) NULL, created_utc nvarchar(64) NOT NULL,
+            state_utc nvarchar(64) NOT NULL
+            """, "CREATE INDEX agents_owner ON agents (owner); CREATE INDEX agents_role ON agents (role);"),
     ];
 
     /// <summary>The schema's version: 1, the tables of SQLite's first ten steps; 2, <c>members</c> (M.ORCH-T670); 3,
     /// <c>assignments.account</c> (M.ORCH-T668); 4, <c>organizations</c> and <c>org_members</c> (M.ORCH-T655); 5, <c>term_grants</c>
-    /// and <c>term_audit</c> (M.ORCH-T934); 6, <c>resources</c> (M.ORCH-T1676); 7, <c>reminders</c> (M.ORCH-T1932).</summary>
-    public const int SchemaVersion = 7;
+    /// and <c>term_audit</c> (M.ORCH-T934); 6, <c>resources</c> (M.ORCH-T1676); 7, <c>reminders</c> (M.ORCH-T1932); 8, <c>roles</c> and
+    /// <c>agents</c> (M.ORCH-T1742).</summary>
+    public const int SchemaVersion = 8;
 
     /// <summary>The changes to tables already there, one step per version past 1, as SQLite's migrations add them: a column
     /// added to a table there is one more step here (an <c>ALTER TABLE ... ADD</c>, also added to its <see cref="Tables"/> row so
@@ -266,6 +277,7 @@ public sealed class OrchestratorServer(string connectionString)
         ("term_grants", ""), // 5: term_grants and term_audit, new tables (created with the rest below; M.ORCH-T934)
         ("resources", ""), // 6: resources, the resource ledger, a new table (created with the rest below; M.ORCH-T1676)
         ("reminders", ""), // 7: reminders, the reminders that nag, a new table (created with the rest below; M.ORCH-T1932)
+        ("roles", ""), // 8: roles and agents, new tables (created with the rest below; M.ORCH-T1742)
     ];
 
     private void EnsureSchema(SqlConnection connection)

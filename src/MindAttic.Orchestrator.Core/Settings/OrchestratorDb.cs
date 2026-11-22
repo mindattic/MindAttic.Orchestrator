@@ -540,6 +540,39 @@ public sealed class OrchestratorDb(string path)
             ended_why         TEXT
         );
         """,
+        // 19: roles and agents, the "who" (M.ORCH-T1742, roadmap Phase 1). roles: the catalog, one row per role by its name, with
+        // its brief (what it's for, as its role file's description says), the model and effort it runs on (NULL: ModelChoice and
+        // the CLI's default decide), the tools it may use (comma-separated; NULL: all, so a reviewer is read-only by naming only
+        // read tools), what it takes (the kinds of unit it accepts, comma-separated; NULL: any), the file it was rendered from and
+        // when it was last written. In the dump: it changes only when the catalog does. agents: one row per agent by a stable id
+        // that outlives PIDs, /clear and restarts, naming its role, its owner (the login it runs on, by account email), its
+        // runtime (claude, codex, ...), its state (idle, running, paused or terminated), its last heartbeat, the unit it's on now
+        // (NULL: none), when it was made and when its state last changed. Times ISO-8601 UTC text. Not in the dump: heartbeats churn.
+        """
+        CREATE TABLE roles (
+            name        TEXT PRIMARY KEY,
+            brief       TEXT NOT NULL,
+            model       TEXT,
+            effort      TEXT,
+            tools       TEXT,
+            takes       TEXT,
+            source      TEXT,
+            updated_utc TEXT NOT NULL
+        );
+        CREATE TABLE agents (
+            id            TEXT PRIMARY KEY,
+            role          TEXT NOT NULL,
+            owner         TEXT NOT NULL,
+            runtime       TEXT NOT NULL,
+            state         TEXT NOT NULL,
+            heartbeat_utc TEXT,
+            unit          TEXT,
+            created_utc   TEXT NOT NULL,
+            state_utc     TEXT NOT NULL
+        );
+        CREATE INDEX agents_owner ON agents (owner);
+        CREATE INDEX agents_role ON agents (role);
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a
@@ -574,6 +607,7 @@ public sealed class OrchestratorDb(string path)
         ("org_members", "provider, login", ""),
         ("term_grants", "owner, viewer, session", ""),
         ("reminders", "id", ""),
+        ("roles", "name", ""),
         ("state", "name", " WHERE name NOT IN (" + string.Join(", ", Volatile.Select(v => "'" + v + "'")) + ")"),
     ];
 
