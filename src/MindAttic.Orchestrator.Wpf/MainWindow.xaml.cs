@@ -1593,6 +1593,10 @@ public partial class MainWindow : Window
             if (tab.ScopeEmail is not null && tab.IsTabSignedIn)
                 Add("", "Log out", "Signs this login out: its CLIs become inaccessible and its row grays out until Login (above) signs it back in",
                     tab.LogOutCommand);
+            // Delete (M.ORCH-T1953): a per-CLI login only (never the global login's tab), signed in or not; it confirms first.
+            if (tab.ScopeEmail is not null)
+                Add("", "Delete…", "Removes this member: closes its tabs, takes it off the member roster (orchestrator members remove) and moves its login folder to .claude-accounts\\.deleted as a dated backup",
+                    tab.DeleteLoginCommand);
             if (!tab.IsTabSignedIn)
             {
                 OpenLoginMenu(menu);

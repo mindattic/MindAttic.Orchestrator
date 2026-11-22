@@ -425,7 +425,7 @@ public sealed partial class MainViewModel
         if (ShuttingDown) return;
         // Through the same cap as a last tab's respawn (M.ORCH-T1150): a Launcher that exits at once is reopened at most every 30s.
         var now = DateTime.UtcNow;
-        var wanted = loginTabs.Where(t => t.IsTabSignedIn && !launchersOpened.Contains(t.tab.Key) && launcherRespawn.TryTake(t.tab.Key, now))
+        var wanted = loginTabs.Where(t => t.IsTabSignedIn && !IsBeingDeleted(t.ScopeEmail) && !launchersOpened.Contains(t.tab.Key) && launcherRespawn.TryTake(t.tab.Key, now))
             .Select(t => { launchersOpened.Add(t.tab.Key); CloseEndedLaunchers(t); return (t.tab.Key, t.ScopeEmail, t.TabTitle); }).ToList();
         foreach (var (key, email, title) in wanted) _ = OpenLauncherQuietlyAsync(key, email, title);
     }
@@ -483,7 +483,7 @@ public sealed partial class MainViewModel
         var now = DateTime.UtcNow;
         foreach (var t in loginTabs)
         {
-            if (!t.SignedInAsItself) continue;
+            if (!t.SignedInAsItself || IsBeingDeleted(t.ScopeEmail)) continue;
             var key = t.tab.Key;
             var login = AccountDirs.Normalize(t.ScopeEmail);
             var live = AllTerminals.Panes.Where(p => !p.Ended && IsGeneralPromptOf(p, login, root)).ToList();
@@ -595,7 +595,7 @@ public sealed partial class MainViewModel
             // Launcher's own in-app Redeploy menu item already handles redeploying and relaunching itself, so the dashboard
             // doesn't need to): it falls through to the same last-tab-gone decision as everything else below.
             // With automatic Launchers off (M.ORCH-T1585), any other tab gone opens nothing: Open Project on the tab's right-click does.
-            if (!autoOpenLaunchers) return;
+            if (!autoOpenLaunchers || IsBeingDeleted(owner.ScopeEmail)) return;
             var key = owner.tab.Key;
             var hasLive = AllTerminals.Panes.Any(p => !p.Ended && ReferenceEquals(OwnerOf(p), owner));
             var outcome = launcherRespawn.Decide(key, owner.IsTabSignedIn, hasLive, ShuttingDown, RestoringTerminals, DateTime.UtcNow);

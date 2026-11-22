@@ -394,4 +394,80 @@ public sealed partial class MainViewModel
         NoteLocalChange();
         _ = RefreshAsync();
     }, () => !IsApiKeyTab && IsTabSignedIn);
+
+    // ── Delete, from a login's right-click menu (M.ORCH-T1953) ──────
+
+    private ICommand? deleteLoginCommand;
+
+    /// <summary>The logins being deleted (M.ORCH-T1953): no Launcher or General Prompt is reopened for one while its tabs close
+    /// and its folder moves away, which would otherwise make the folder again.</summary>
+    private readonly HashSet<string> deletingLogins = new(StringComparer.OrdinalIgnoreCase);
+
+    internal bool IsBeingDeleted(string? email) => AccountDirs.Normalize(email) is { } e && Root.deletingLogins.Contains(e);
+
+    /// <summary>
+    /// "Delete" (M.ORCH-T1953), on a per-CLI login's right-click menu (never the API key's or the global login's): removes the
+    /// member for good, after a confirm. Its open tabs (CLIs, Launcher, General Prompt) are closed, its
+    /// <c>~/.claude-accounts\&lt;email&gt;</c> folder is moved to a dated backup (<c>.claude-accounts\.deleted\&lt;email&gt;-yyyyMMddHHmmss</c>,
+    /// which no node is made from, M.ORCH-T1950 only reading folders named as emails) rather than deleted, and it is
+    /// taken off the member roster the way <c>orchestrator members remove &lt;email&gt;</c> does
+    /// (<see cref="MemberRoster.Remove"/>). Its node then drops at the refresh. A folder that can't be moved (still in use)
+    /// stops it there, the roster untouched, so the node never comes back half-deleted.
+    /// </summary>
+    public ICommand DeleteLoginCommand => deleteLoginCommand ??= new RelayCommand(async () =>
+    {
+        if (IsApiKeyTab || AccountDirs.Normalize(ScopeEmail) is not { } email) return;
+        var dirs = OwnLoginDirs();
+        var backup = Path.Combine(dirs.Root, ".deleted", $"{email}-{DateTime.Now:yyyyMMddHHmmss}");
+        if (MindAttic.Components.Wpf.Controls.MaMessageBox.Show(System.Windows.Application.Current?.MainWindow,
+                $"Delete {TabTitle} ({email})?\n\nIts open CLIs, Launcher and General Prompt close, it's removed from the member roster " +
+                $"(orchestrator members remove {email}), and its node leaves the tree.\n\nIts login folder isn't deleted: it moves to\n{backup}\n" +
+                "so its credentials and history can be restored by moving it back (and adding the member again).",
+                "Delete login?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning,
+                System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes) return;
+        var root = Root;
+        root.deletingLogins.Add(email);
+        try
+        {
+            foreach (var pane in root.AllTerminals.Panes.Where(p => string.Equals(TreeLoginKey(p), email, StringComparison.OrdinalIgnoreCase)).ToList())
+                root.AllTerminals.Close(pane);
+            var folder = dirs.For(email).Directory;
+            var error = await Task.Run(() => MoveToBackup(folder, backup));
+            if (error is not null)
+            {
+                AccountsMessage = $"Couldn't delete {email}: its folder couldn't be moved to {backup} ({error}). Nothing else was changed; close what holds it and try again.";
+                Toasts.Insert(0, new ToastViewModel($"{email} not deleted", AccountsMessage, Palette.Over, null));
+                return;
+            }
+            var removed = await Task.Run(() => MemberRoster.Remove(root.aggregator.Db, email));
+            AccountsMessage = $"Deleted {email}: " + (removed ? "removed from the member roster, " : "") +
+                (Directory.Exists(backup) ? $"its folder moved to {backup}." : "it had no login folder here.");
+            NoteLocalChange();
+            await root.RefreshAsync();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            AccountsMessage = $"Couldn't delete {email}: {ex.Message}";
+            Toasts.Insert(0, new ToastViewModel($"{email} not deleted", AccountsMessage, Palette.Over, null));
+            OrchestratorLog.For("Dashboard").Error(ex, "deleting a login failed");
+        }
+        finally { root.deletingLogins.Remove(email); }
+    }, () => !IsApiKeyTab && ScopeEmail is not null && !IsSigningIn);
+
+    /// <summary>Moves <paramref name="folder"/> to <paramref name="backup"/>, retrying briefly while a just-ended CLI still holds a
+    /// file in it; null when moved (or there was no folder), else why not.</summary>
+    private static string? MoveToBackup(string folder, string backup)
+    {
+        if (!Directory.Exists(folder)) return null;
+        Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
+        for (var attempt = 1; ; attempt++)
+        {
+            try { Directory.Move(folder, backup); return null; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                if (attempt >= 10) return ex.Message;
+                Thread.Sleep(500);
+            }
+        }
+    }
 }
