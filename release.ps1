@@ -8,7 +8,8 @@
     A fresh PC can't build MindAttic from source (the MindAttic.* packages live only in this PC's C:\LocalNuGet), so the zip
     carries built apps:
 
-      MindAttic.Orchestrator\   the dashboard (self-contained Desktop exe), Cli\, and TermHost\, Gateway\, TermViewer\ each in
+      MindAttic.Orchestrator\   the dashboard (self-contained Desktop exe) with the headless
+                                MindAttic.Orchestrator.Daemon.exe beside it, Cli\, and TermHost\, Gateway\, TermViewer\ each in
                                 its <version>-<yyyyMMddHHmmss>\ folder, published from this checkout as run.ps1 publishes them
       MindAttic.Launcher\       the deployed Launcher (C:\Apps\MindAttic.Launcher), which starts every CLI
       Tickets\                  the installed tickets tool (dotnet tool store), run through a tickets.cmd shim
@@ -63,6 +64,15 @@ Write-Host "Version v$orchestratorVersion" -ForegroundColor Cyan
 Invoke-Publish 'MindAttic.Orchestrator.Wpf' $app @('--runtime', 'win-x64', '--self-contained', 'true', '/p:PublishSingleFile=true', "-p:OrchestratorVersion=$orchestratorVersion.0.0",
     '/p:IncludeNativeLibrariesForSelfExtract=true', '/p:EnableCompressionInSingleFile=true', '/p:DebugType=None')
 Get-ChildItem $app -File | Where-Object Name -ne 'MindAttic.Orchestrator.Desktop.exe' | Remove-Item -Force
+# The headless daemon exe beside the dashboard exe, where the installer looks for it (Installer.InstallDaemonCopy, M.ORCH-T1944, M.ORCH-T2005).
+$daemonStage = Join-Path $out 'daemon'
+if (Test-Path $daemonStage) { Remove-Item -Recurse -Force $daemonStage }
+Invoke-Publish 'MindAttic.Orchestrator.Daemon' $daemonStage @('--runtime', 'win-x64', '--self-contained', 'true', '/p:PublishSingleFile=true',
+    '/p:IncludeNativeLibrariesForSelfExtract=true', '/p:DebugType=None')
+$daemonExe = Join-Path $daemonStage 'MindAttic.Orchestrator.Daemon.exe'
+if (-not (Test-Path $daemonExe)) { throw 'Publishing the daemon produced no MindAttic.Orchestrator.Daemon.exe.' }
+Copy-Item $daemonExe $app -Force
+Remove-Item -Recurse -Force $daemonStage
 Invoke-Publish 'MindAttic.Orchestrator.Cli' (Join-Path $app 'Cli') @("-p:MindAtticRoot=$workspace", '/p:DebugType=None')
 foreach ($part in 'TermHost', 'Gateway', 'TermViewer') {
     $project = "MindAttic.Orchestrator.$part"
