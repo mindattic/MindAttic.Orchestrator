@@ -1221,6 +1221,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-22T04:40:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-21T23:40:00Z', 'Blind', 'Claude''s meter unseen for 24m while 328.7k were spent', 96, 96, 2867389, 79, 0, NULL, NULL, 1953, 2721.8, 1, 0, 0, '[{"FromUtc":"2026-11-21T23:40:00Z","ToUtc":"2026-11-22T00:04:11Z","Fresh":328692,"Length":"00:24:11"}]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-22T06:40:00Z', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-22T01:40:00Z', 'Under', 'ended at 13%', 13, 13, 11631236, 47, 0, NULL, NULL, 6, 1.4, 0, 0, 1, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-22T06:50:00Z', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-22T01:50:00Z', 'Blind', 'Claude''s meter unseen for 56m while 446.4k were spent', 45, 45, 986926, 38, 0, NULL, NULL, 2, 0.1, 0, 0, 0, '[{"FromUtc":"2026-11-22T05:14:36Z","ToUtc":"2026-11-22T05:32:27Z","Fresh":66802,"Length":"00:17:51"},{"FromUtc":"2026-11-22T05:32:27Z","ToUtc":"2026-11-22T05:54:47Z","Fresh":56490,"Length":"00:22:20"},{"FromUtc":"2026-11-22T05:54:47Z","ToUtc":"2026-11-22T06:11:31Z","Fresh":323153,"Length":"00:16:44"}]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-22T07:10:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-22T02:10:00Z', 'Over', 'Claude reported 100%', 100, 100, 13614133, 75, 204.1, NULL, NULL, 128, 421, 17, 8, 38, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -1756,7 +1757,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 15793848);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22445541);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 361108);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1065811);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1345501);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 692009);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 32751);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 0);
@@ -31574,7 +31575,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "1238669b9e71c50dbef8440e890196348066ac21"
   },
   "Gadfly": {
-    "Tested": "19c7151989cc8ffea60b73fa6f3ea588b3a2876a",
+    "Tested": "cb920cc29789df6a234ff34c1004ce1eebde2bcd",
     "Green": "5feb532d1a339f89134f95ff4d8f2f8e21cfd894"
   },
   "IdiotProof": {
