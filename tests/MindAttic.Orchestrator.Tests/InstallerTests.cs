@@ -137,6 +137,118 @@ public sealed class InstallerTests
     }
 
     [Test]
+    public void The_headless_daemon_exe_is_installed_beside_the_dashboard_exe()
+    {
+        // M.ORCH-T1943: InstalledDaemonExe is where every --daemon launch hands off to.
+        var installer = new Installer(@"C:\Apps\MindAttic.Orchestrator");
+        Assert.That(Installer.DaemonExeName, Is.EqualTo("MindAttic.Orchestrator.Daemon.exe"));
+        Assert.That(installer.InstalledDaemonExe, Is.EqualTo(@"C:\Apps\MindAttic.Orchestrator\MindAttic.Orchestrator.Daemon.exe"));
+        Assert.That(Path.GetDirectoryName(installer.InstalledDaemonExe), Is.EqualTo(Path.GetDirectoryName(installer.InstalledExe)));
+    }
+
+    [Test]
+    public void A_daemon_launch_forwards_to_the_headless_exe_beside_it_only_when_it_is_there()
+    {
+        // M.ORCH-T1943: the dashboard exe and its old-named copy hand --daemon to the daemon exe; without one they run it themselves.
+        var dir = Path.Combine(Path.GetTempPath(), "orch-daemon-forward-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(dir);
+            var desktop = Path.Combine(dir, Installer.ExeName);
+            var legacy = Path.Combine(dir, Installer.LegacyExeName);
+            var daemon = Path.Combine(dir, Installer.DaemonExeName);
+            File.WriteAllText(desktop, "");
+            File.WriteAllText(legacy, "");
+            Assert.That(Installer.DaemonForwardTarget(desktop), Is.Null, "an install from before the daemon exe: it runs the daemon itself");
+
+            File.WriteAllText(daemon, "");
+            Assert.That(Installer.DaemonForwardTarget(desktop), Is.EqualTo(daemon));
+            Assert.That(Installer.DaemonForwardTarget(legacy), Is.EqualTo(daemon), "the old-named copy forwards too");
+            Assert.That(Installer.DaemonForwardTarget(daemon), Is.Null, "the daemon exe never forwards to itself");
+            Assert.That(Installer.DaemonForwardTarget(daemon.ToUpperInvariant()), Is.Null, "itself, matched without case");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
+    public void The_daemon_is_started_from_the_headless_exe_when_it_is_installed()
+    {
+        // M.ORCH-T1943: DaemonStartInfo starts the daemon exe straight away rather than a dashboard exe that would only forward.
+        var dir = Path.Combine(Path.GetTempPath(), "orch-daemon-start-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(dir);
+            var desktop = Path.Combine(dir, Installer.ExeName);
+            var daemon = Path.Combine(dir, Installer.DaemonExeName);
+            File.WriteAllText(desktop, "");
+            Assert.That(Installer.DaemonStartInfo(desktop).FileName, Is.EqualTo(desktop), "no daemon exe: the dashboard exe runs it");
+
+            File.WriteAllText(daemon, "");
+            var psi = Installer.DaemonStartInfo(desktop);
+            Assert.That(psi.FileName, Is.EqualTo(daemon));
+            Assert.That(psi.ArgumentList, Is.EqualTo(new[] { Installer.DaemonArg }), "jobs.json's --daemon is passed through");
+            Assert.That(psi.WorkingDirectory, Is.EqualTo(dir));
+            Assert.That(psi.CreateNoWindow, Is.True);
+            Assert.That(Installer.DaemonStartInfo(daemon).FileName, Is.EqualTo(daemon), "started as itself");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
+    public void An_install_copies_the_daemon_exe_in_beside_and_leaves_the_installed_one_when_there_is_none_to_copy()
+    {
+        // M.ORCH-T1944: run.ps1 publishes the daemon exe beside the dashboard exe; a lone drag-and-drop exe has none.
+        var root = Path.Combine(Path.GetTempPath(), "orch-daemon-install-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var installer = new Installer(Path.Combine(root, "Apps"));
+            var publish = Path.Combine(root, "publish");
+            var lone = Path.Combine(root, "Downloads");
+            Directory.CreateDirectory(publish);
+            Directory.CreateDirectory(lone);
+            File.WriteAllText(Path.Combine(publish, Installer.ExeName), "desktop v2");
+            File.WriteAllText(Path.Combine(publish, Installer.DaemonExeName), "daemon v2");
+
+            installer.Install(Path.Combine(publish, Installer.ExeName), force: true);
+            Assert.That(File.ReadAllText(installer.InstalledExe), Is.EqualTo("desktop v2"));
+            Assert.That(File.ReadAllText(installer.InstalledDaemonExe), Is.EqualTo("daemon v2"), "copied in beside the dashboard exe");
+            Assert.That(Installer.DaemonForwardTarget(installer.InstalledExe), Is.EqualTo(installer.InstalledDaemonExe));
+
+            File.WriteAllText(Path.Combine(lone, Installer.ExeName), "desktop v3");
+            installer.Install(Path.Combine(lone, Installer.ExeName), force: true);
+            Assert.That(File.ReadAllText(installer.InstalledExe), Is.EqualTo("desktop v3"));
+            Assert.That(File.ReadAllText(installer.InstalledDaemonExe), Is.EqualTo("daemon v2"), "no daemon exe beside the installer: the installed one is left");
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Test]
+    public void A_locked_installed_daemon_exe_is_moved_aside_for_the_new_one()
+    {
+        // M.ORCH-T1944: a running exe can't be overwritten but can be renamed, so a copy it still locks moves it aside first.
+        var root = Path.Combine(Path.GetTempPath(), "orch-daemon-locked-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var installer = new Installer(Path.Combine(root, "Apps"));
+            var publish = Path.Combine(root, "publish");
+            Directory.CreateDirectory(installer.InstallDir);
+            Directory.CreateDirectory(publish);
+            File.WriteAllText(installer.InstalledDaemonExe, "daemon v1");
+            File.WriteAllText(Path.Combine(publish, Installer.ExeName), "desktop v2");
+            File.WriteAllText(Path.Combine(publish, Installer.DaemonExeName), "daemon v2");
+
+            // Held as a running image holds it: readable and renameable, never writable.
+            using (new FileStream(installer.InstalledDaemonExe, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
+                installer.Install(Path.Combine(publish, Installer.ExeName), force: true);
+
+            Assert.That(File.ReadAllText(installer.InstalledDaemonExe), Is.EqualTo("daemon v2"), "the new build took the name");
+            var aside = Directory.GetFiles(installer.InstallDir, Installer.DaemonExeName + ".*.old");
+            Assert.That(aside.Select(File.ReadAllText), Is.All.EqualTo("daemon v1"), "only the old build was moved aside");
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Test]
     public void A_shortcut_with_no_icon_set_is_not_the_same_path_and_does_not_throw()
     {
         // WScript reports an unset IconLocation as ",0": its path part is empty (every shortcut made before M.ORCH-T190).
