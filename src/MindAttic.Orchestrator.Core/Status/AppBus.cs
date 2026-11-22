@@ -50,6 +50,16 @@ public static class AppBus
     /// <c>cliPid</c>. A notice to re-read that session, not the truth itself.</summary>
     public const string AgentState = "agent-state";
 
+    /// <summary>One health probe run's report (M.ORCH-T2021, docs/HEALTH.md section 4): the <c>application/health+json</c> shape of
+    /// <c>HealthReport</c> (status, probe, host, time, durationMs, intervalSeconds and its results grouped under <c>checks</c> by
+    /// check id). Probes write it to the inbox; the daemon keeps the latest report per probe for subscribers as they connect and,
+    /// per check instance (probe + check id + componentId), the latest result and a bounded history. Version
+    /// <see cref="HealthVersion"/>.</summary>
+    public const string Health = "health";
+
+    /// <summary>The version of the <see cref="Health"/> payload.</summary>
+    public const int HealthVersion = 1;
+
     /// <summary>The version of the <see cref="Activity"/> payload.</summary>
     public const int ActivityVersion = 1;
 
@@ -63,7 +73,7 @@ public static class AppBus
     public const string TicketsDesktop = "tickets-desktop";
 
     /// <summary>Every kind of this bus.</summary>
-    public static bool IsAppKind(string? kind) => kind is Ticket or OpenTicket or ShowWorker or Presence or Activity or AgentState;
+    public static bool IsAppKind(string? kind) => kind is Ticket or OpenTicket or ShowWorker or Presence or Activity or AgentState or Health;
 }
 
 /// <summary>A session's state in an <see cref="AppBus.Activity"/> message: <see cref="ActivityPayload.State"/>'s values.</summary>

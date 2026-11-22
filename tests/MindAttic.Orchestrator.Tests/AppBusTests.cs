@@ -1,3 +1,4 @@
+using MindAttic.Orchestrator.Health;
 using MindAttic.Orchestrator.Status;
 using MindAttic.Orchestrator.Tickets;
 using MindAttic.Tickets.Data;
@@ -61,6 +62,37 @@ public sealed class AppBusTests
         hub.Take(StatusEnvelope.Of(AppBus.Presence, new AppPresence { App = AppBus.OrchestratorDesktop, Pid = 8, Handles = [AppBus.ShowWorker] }));
         Assert.That(stream.Retained(AppBusHub.PresenceKey(AppBus.TicketsDesktop)), Does.Contain("tickets-desktop"));
         Assert.That(stream.Retained(AppBusHub.PresenceKey(AppBus.OrchestratorDesktop)), Does.Contain("orchestrator-desktop"));
+    }
+
+    [Test]
+    public void The_hub_keeps_each_probe_s_latest_health_report_and_a_bounded_history_per_check_instance()
+    {
+        using var stream = new StatusStreamServer { PipeName = "test-" + Guid.NewGuid() };
+        var hub = new AppBusHub(stream, new TicketActivityFeed());
+        var start = new DateTimeOffset(2026, 11, 22, 20, 0, 0, TimeSpan.Zero);
+        HealthReport Run(int i) => new("machine", "pc", null, start.AddSeconds(30 * i), 5, 30,
+        [
+            new HealthResult("disk:free", "C:", "system", 100 - i, "GB", HealthGrade.Healthy, start.AddSeconds(30 * i)),
+            new HealthResult("disk:free", "D:", "system", 500, "GB", HealthGrade.Healthy, start.AddSeconds(30 * i)),
+        ]);
+        var past = AppBusClient.Hub;
+        AppBusClient.Hub = hub;
+        try
+        {
+            for (var i = 0; i < AppBusHub.HealthHistoryLength + 5; i++) Assert.That(AppBusClient.PublishHealth(Run(i)), Is.True);
+            // One older than the newest is relayed but neither kept nor added to the history.
+            AppBusClient.PublishHealth(Run(-1));
+        }
+        finally { AppBusClient.Hub = past; }
+
+        var history = hub.HealthHistory("machine", "disk:free", "C:");
+        Assert.That(history, Has.Count.EqualTo(AppBusHub.HealthHistoryLength));
+        Assert.That(history[0].ObservedValue, Is.EqualTo(100 - 5));
+        Assert.That(hub.HealthLatest("machine", "disk:free", "C:")?.ObservedValue, Is.EqualTo(100 - (AppBusHub.HealthHistoryLength + 4)));
+        Assert.That(hub.HealthLatest("machine", "disk:free", "D:")?.ObservedValue, Is.EqualTo(500));
+        Assert.That(hub.HealthLatest("machine", "disk:free"), Is.Null);
+        var kept = stream.Retained(AppBusHub.HealthKey("machine"));
+        Assert.That(kept, Does.Contain("\"kind\":\"health\"").And.Contain("2026-11-22T23:02:00Z"));
     }
 
     [Test]

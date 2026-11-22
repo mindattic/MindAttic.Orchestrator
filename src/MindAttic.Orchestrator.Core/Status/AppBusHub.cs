@@ -1,3 +1,5 @@
+using System.Text.Json;
+using MindAttic.Orchestrator.Health;
 using MindAttic.Orchestrator.Tickets;
 
 namespace MindAttic.Orchestrator.Status;
@@ -49,6 +51,18 @@ public static class AppBusClient
             Id = id.Trim().ToUpperInvariant(), Event = ticketEvent, Login = login, Session = session,
             AtUtc = DateTime.UtcNow, Source = "orchestrator",
         });
+
+    /// <summary>Publishes one probe run's <paramref name="report"/> as the <see cref="AppBus.Health"/> kind (M.ORCH-T2021), its payload
+    /// the report's health+json; whether it reached the daemon. Best effort, as every publish.</summary>
+    public static bool PublishHealth(HealthReport report)
+    {
+        try { return Publish(AppBus.Health, JsonSerializer.Deserialize<JsonElement>(report.ToJson()), AppBus.HealthVersion); }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            log.Debug(ex, "Couldn't publish a health report");
+            return false;
+        }
+    }
 
     /// <summary>Says this process (<paramref name="app"/>) listens for <paramref name="handles"/>.</summary>
     public static bool PublishPresence(string app, IReadOnlyList<string> handles) =>
@@ -302,6 +316,66 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
         }
     }
 
+    /// <summary>The key a probe's latest health report is kept under on the stream (M.ORCH-T2021): one per probe, all of them handed
+    /// to each subscriber as it connects.</summary>
+    public static string HealthKey(string probe) => AppBus.Health + ":" + probe.Trim().ToLowerInvariant();
+
+    /// <summary>How many results the hub keeps per check instance (docs/HEALTH.md section 4): three hours at the 30 s default sample.</summary>
+    public const int HealthHistoryLength = 360;
+
+    // Per check instance (probe + check id + componentId): its results oldest first, at most HealthHistoryLength, the last the latest.
+    private readonly Dictionary<(string Probe, string CheckId, string ComponentId), Queue<HealthResult>> healthKept = [];
+    // Each probe's newest report time, so one arriving out of order is relayed but never kept over a newer one.
+    private readonly Dictionary<string, DateTimeOffset> healthAt = new(StringComparer.OrdinalIgnoreCase);
+
+    private static (string, string, string) HealthInstance(string probe, string checkId, string? componentId) =>
+        (probe.Trim().ToLowerInvariant(), checkId.Trim(), componentId?.Trim() ?? "");
+
+    /// <summary>The latest result kept for one check instance; null when none has come.</summary>
+    public HealthResult? HealthLatest(string probe, string checkId, string? componentId = null)
+    {
+        lock (healthKept)
+            return healthKept.TryGetValue(HealthInstance(probe, checkId, componentId), out var ring) && ring.Count > 0 ? ring.Last() : null;
+    }
+
+    /// <summary>The results kept for one check instance, oldest first, at most <see cref="HealthHistoryLength"/>.</summary>
+    public IReadOnlyList<HealthResult> HealthHistory(string probe, string checkId, string? componentId = null)
+    {
+        lock (healthKept)
+            return healthKept.TryGetValue(HealthInstance(probe, checkId, componentId), out var ring) ? [.. ring] : [];
+    }
+
+    /// <summary>A <c>health</c> message (M.ORCH-T2021): relayed to every subscriber, its report kept per probe for connecting ones,
+    /// and each of its results added to its check instance's history. One older than the probe's newest is only relayed; one this
+    /// daemon can't read (a later version, not a report) is relayed unread.</summary>
+    private void TakeHealth(StatusEnvelope envelope)
+    {
+        if (envelope.V > AppBus.HealthVersion || envelope.Payload.ValueKind != JsonValueKind.Object
+            || HealthReport.FromJson(envelope.Payload.GetRawText()) is not { Probe.Length: > 0 } report)
+        {
+            stream.Publish(envelope);
+            return;
+        }
+        var probe = report.Probe.Trim();
+        lock (healthKept)
+        {
+            if (healthAt.TryGetValue(probe, out var held) && report.Time < held)
+            {
+                stream.Publish(envelope);
+                return;
+            }
+            healthAt[probe] = report.Time;
+            foreach (var result in report.Results)
+            {
+                var instance = HealthInstance(probe, result.CheckId, result.ComponentId);
+                if (!healthKept.TryGetValue(instance, out var ring)) healthKept[instance] = ring = new Queue<HealthResult>();
+                ring.Enqueue(result);
+                while (ring.Count > HealthHistoryLength) ring.Dequeue();
+            }
+            stream.Publish(envelope, HealthKey(probe));
+        }
+    }
+
     /// <summary>Sends <paramref name="envelope"/> on, by its kind.</summary>
     public void Take(StatusEnvelope envelope)
     {
@@ -332,6 +406,9 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                     return;
                 case Term.TermBus.Kind:
                     TakeTermSession(envelope);
+                    return;
+                case AppBus.Health:
+                    TakeHealth(envelope);
                     return;
                 case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Reminders or StateBus.Cutoffs or StateBus.Allowances:
                     // The whole of its kind each time: the latest is kept, so a dashboard connecting gets it after the state.
