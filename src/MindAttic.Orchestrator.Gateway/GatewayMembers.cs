@@ -46,6 +46,7 @@ internal sealed class MemberKeysFile : IMemberKeys
     private readonly Func<DateTime> now;
     private readonly System.Threading.Lock gate = new();
     private TermMemberKeyFile? file;
+    private bool unreadable;
     private DateTime stamp = DateTime.MinValue, checkedUtc = DateTime.MinValue, flushedUtc = DateTime.MinValue;
     private readonly Dictionary<string, DateTime> seen;
 
@@ -58,7 +59,14 @@ internal sealed class MemberKeysFile : IMemberKeys
 
     public string? Match(string? presented) => TermMemberKeys.Match(Current(), presented);
 
-    public bool IsRevoked(string subject) => TermMemberKeys.IsRevoked(Current(), subject);
+    public bool IsRevoked(string subject)
+    {
+        var current = Current();
+        // Unreadable with no good list to fall back on: who was revoked isn't known, so a non-owner subject is refused (the
+        // caller already exempts the owner), M.ORCH-T1966.
+        lock (gate) if (current is null && unreadable) return true;
+        return TermMemberKeys.IsRevoked(current, subject);
+    }
 
     public void Seen(string subject)
     {
@@ -91,6 +99,10 @@ internal sealed class MemberKeysFile : IMemberKeys
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return file; }
             if (written == stamp && file is not null) return file;
             if (!TermMemberKeys.TryRead(directory, out var read)) return file;
+            // A file that isn't JSON (a half-written save, a bad hand edit) keeps the last good list rather than dropping every
+            // revocation (M.ORCH-T1966); the stamp stays so it's read again next time. With no good list yet, IsRevoked denies.
+            unreadable = read is null;
+            if (read is null) return file;
             stamp = written;
             file = read;
             return file;
@@ -111,7 +123,8 @@ internal static class MemberTickets
     public static readonly IReadOnlyList<string> Verbs = ["show", "list", "new", "note", "close"];
 
     /// <summary>Options a member may not pass: a host path (read or written), another workspace, or another author.</summary>
-    public static readonly IReadOnlyList<string> RefusedOptions = ["--root", "--output", "--description-file", "--author"];
+    // --with-children is refused too: it would close child tickets other people work (M.ORCH-T1966).
+    public static readonly IReadOnlyList<string> RefusedOptions = ["--root", "--output", "--description-file", "--author", "--with-children"];
 
     /// <summary>Options of the allowed verbs that take a value, so the value isn't read as the ticket id.</summary>
     private static readonly HashSet<string> Valued = new(StringComparer.OrdinalIgnoreCase)
@@ -128,7 +141,8 @@ internal static class MemberTickets
         foreach (var a in args.Skip(2))
         {
             if (a == "--") return "\"--\" isn't open to members";
-            var name = a.Split('=', 2)[0];
+            // Spectre.Console.Cli takes --opt:value as well as --opt=value (M.ORCH-T1966).
+            var name = a.Split(['=', ':'], 2)[0];
             if (RefusedOptions.Contains(name, StringComparer.OrdinalIgnoreCase)) return $"{name} isn't open to members";
         }
         return null;

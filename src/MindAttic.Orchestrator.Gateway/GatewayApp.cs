@@ -860,7 +860,17 @@ internal sealed class LoginThrottle(Func<DateTime>? clock = null, int capacity =
     {
         lock (gate)
         {
-            if (entries.Remove(Key(from), out var e)) order.Remove(e.Node);
+            // Takes back only the attempt TryBegin just counted, not the address's other failures (M.ORCH-T1966): a right key
+            // from a shared address must not wipe a guesser's count. Records go in order, so the newest is at Next - 1.
+            var key = Key(from);
+            if (!entries.TryGetValue(key, out var e)) return;
+            var last = (e.Next + MaxFailures - 1) % MaxFailures;
+            if (e.Times[last] != default)
+            {
+                e.Times[last] = default;
+                e.Next = last;
+            }
+            if (Array.TrueForAll(e.Times, t => t == default) && entries.Remove(key)) order.Remove(e.Node);
         }
     }
 

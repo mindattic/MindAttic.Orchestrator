@@ -118,12 +118,20 @@ internal static class TicketsRunner
         // request) waiting past it.
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
         limit.CancelAfter(Timeout);
-        var stdout = p.StandardOutput.ReadToEndAsync(limit.Token);
-        var stderr = p.StandardError.ReadToEndAsync(limit.Token);
+        // Read into buffers rather than ReadToEndAsync so what was read survives giving up on the reads (M.ORCH-T1966).
+        using var reads = CancellationTokenSource.CreateLinkedTokenSource(limit.Token);
+        var outText = new StringBuilder();
+        var errText = new StringBuilder();
+        var stdout = DrainAsync(p.StandardOutput, outText, reads.Token);
+        var stderr = DrainAsync(p.StandardError, errText, reads.Token);
         try
         {
             await p.WaitForExitAsync(limit.Token).ConfigureAwait(false);
-            return (p.ExitCode, await stdout.ConfigureAwait(false) + await stderr.ConfigureAwait(false));
+            // Once it has exited, a grandchild still holding stdout mustn't turn a finished command into a timeout
+            // (M.ORCH-T1966): give the reads a moment, then answer with the real exit code and whatever was read.
+            try { await Task.WhenAll(stdout, stderr).WaitAsync(TimeSpan.FromSeconds(2), limit.Token).ConfigureAwait(false); }
+            catch (TimeoutException) { reads.Cancel(); }
+            return (p.ExitCode, Snapshot(outText) + Snapshot(errText));
         }
         catch (OperationCanceledException)
         {
@@ -131,5 +139,22 @@ internal static class TicketsRunner
             if (ct.IsCancellationRequested) return (130, $"The request was cancelled before {name} finished."); // the client went away: not a timeout
             return (124, $"{name} timed out on the host after {Timeout.TotalMinutes:0} minutes.");
         }
+    }
+
+    private static async Task DrainAsync(StreamReader reader, StringBuilder into, CancellationToken ct)
+    {
+        var buffer = new char[4096];
+        try
+        {
+            int n;
+            while ((n = await reader.ReadAsync(buffer.AsMemory(), ct).ConfigureAwait(false)) > 0)
+                lock (into) into.Append(buffer, 0, n);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or IOException or ObjectDisposedException) { }
+    }
+
+    private static string Snapshot(StringBuilder text)
+    {
+        lock (text) return text.ToString();
     }
 }
