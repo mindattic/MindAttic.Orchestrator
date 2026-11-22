@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    M.ORCH-T1942 (part of M.ORCH-T1216): the headless daemon, split out of the dashboard exe. No WPF: it runs Core's Daemon and
+    holds the daemon mutex (Installer.DaemonMutex), so the daemon no longer depends on the dashboard being installed or on its
+    process lifetime. WinExe with no window, so a logon job or a forwarder starting it flashes no console.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>MindAttic.Orchestrator.Daemon</RootNamespace>
+    <AssemblyName>MindAttic.Orchestrator.Daemon</AssemblyName>
+    <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
+    <Version>1.0.0</Version>
+    <ApplicationIcon>..\..\assets\logo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- M.ORCH-T1597: transcript reads leave the large-object heap fragmented; ConserveMemory has the GC compact it back.
+         DOTNET_GCConserveMemory overrides it per process. -->
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MindAttic.Orchestrator.Tests" />
+  </ItemGroup>
+
+</Project>

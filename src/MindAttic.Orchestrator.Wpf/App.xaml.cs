@@ -22,7 +22,7 @@ public partial class App : Application
     // WCAG 1.4.13: a tooltip stays up until the pointer or focus leaves or Esc is pressed, rather than vanishing after 5s.
     static App() => MaToolTips.KeepOpen();
 
-    private Mutex? daemonMutex;
+    private DaemonHost? daemonHost;
     private EventWaitHandle? exitSignal;
     private SingleInstance? instance;
     private IDisposable? highContrast;
@@ -252,7 +252,7 @@ public partial class App : Application
         // Closed on its own: written once more, marked clean, so the next start offers nothing (M.ORCH-T862).
         if (dashboard) SessionRestore.Exit(clean: true, "exit");
         OrchestratorLog.Stop();
-        daemonMutex?.Dispose();
+        daemonHost?.Dispose();
         exitSignal?.Dispose();
         instance?.Dispose();
         highContrast?.Dispose();
@@ -260,67 +260,13 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    /// <summary>Headless: no window, ever. The mutex keeps a second daemon from starting and tells the dashboard one is up.</summary>
+    /// <summary>Headless: no window, ever. The mutex keeps a second daemon from starting and tells the dashboard one is up. The same
+    /// <see cref="DaemonHost"/> MindAttic.Orchestrator.Daemon.exe runs (M.ORCH-T1942).</summary>
     private void RunDaemon()
     {
         OrchestratorLog.Start("Daemon");
-        // A client's daemon is the host's (M.ORCH-T1473): Scheduler's logon job still starts this, and it exits at once.
-        if (!MachineTopology.Current.RunsDaemon)
-        {
-            OrchestratorLog.For("Daemon").Information("This machine is a client of {Host:l}; the host runs the daemon, so this one exits", MachineRole.Current.Host ?? "its host");
-            Shutdown();
-            return;
-        }
-        daemonMutex = new Mutex(initiallyOwned: true, Installer.DaemonMutex, out var first);
-        if (!first)
-        {
-            OrchestratorLog.For("Daemon").Information("A daemon is already running; this one exits");
-            Shutdown();
-            return;
-        }
-        // This process holds the daemon mutex for good, so a loop that dies must start again here (M.ORCH-T1615): left dead, no
-        // daemon would run (no pacing, wakes or fallback viewers) until someone restarted it by hand.
-        new Thread(() =>
-        {
-            for (var failures = 0; ; failures++)
-            {
-                try
-                {
-                    new Daemon(new JsonStore()).Run(TimeSpan.FromSeconds(15), CancellationToken.None);
-                    return;
-                }
-                catch (Exception ex) when (ex is not OutOfMemoryException)
-                {
-                    // Both numbers are Vault settings (M.ORCH-T1619); defaults when settings can't be read.
-                    var cs = new JsonStore().TryLoadSettings(out var loaded) ? loaded : new OrchestratorSettings();
-                    var cap = Math.Max(1, cs.DaemonRestartMaxSeconds);
-                    var pause = TimeSpan.FromSeconds(Math.Min(cap, Math.Max(1, cs.DaemonRestartSeconds) * Math.Pow(2, Math.Min(failures, 10))));
-                    OrchestratorLog.For("Daemon").Error(ex, "The daemon loop died; starting it again in {Seconds:0}s", pause.TotalSeconds);
-                    Thread.Sleep(pause);
-                }
-            }
-        })
-        {
-            IsBackground = true, Name = "Daemon",
-        }.Start();
-        ThreadPool.QueueUserWorkItem(_ =>
-        {
-            try
-            {
-                // The old-named copy (M.ORCH-T999) unpacks under its own name each time it forwards a launch.
-                var (folders, bytes) = (0, 0L);
-                foreach (var app in new[] { Path.GetFileNameWithoutExtension(Environment.ProcessPath!), Path.GetFileNameWithoutExtension(Installer.LegacyExeName) }.Distinct(StringComparer.OrdinalIgnoreCase))
-                {
-                    var (f, b) = ExtractionPruner.Prune(ExtractionPruner.BaseDir(), app);
-                    folders += f;
-                    bytes += b;
-                }
-                if (folders > 0)
-                    OrchestratorLog.For("Daemon").Information("Deleted {Folders} old builds' unpacked files ({MB:N0} MB) from {Dir:l}",
-                        folders, bytes / 1048576.0, ExtractionPruner.BaseDir());
-            }
-            catch (Exception ex) { OrchestratorLog.For("Daemon").Error(ex, "Pruning old builds' files failed"); }
-        });
+        daemonHost = DaemonHost.Start();
+        if (daemonHost is null) Shutdown();
     }
 
     /// <summary>Starts the dashboard from <paramref name="exe"/> again after an install stopped it (M.ORCH-T1030). Never throws.</summary>
