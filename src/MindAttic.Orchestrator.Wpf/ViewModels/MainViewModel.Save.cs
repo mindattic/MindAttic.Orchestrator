@@ -119,10 +119,13 @@ public sealed partial class MainViewModel
     /// <summary>"Quick Load All" (right-click menu, confirmed first by <see cref="MainWindow"/>): the newer of the last save
     /// state and the session-restore autosave, restored (M.ORCH-T1869). Every saved tab not open now is reopened (its CLI with
     /// <c>claude --resume</c> on its login), then each CLI gets <c>/quickload</c> on its handoff (else a "carry on"), then its
-    /// /crossrepo and /allocate as they were; the tab that was on screen is shown again.</summary>
-    internal async Task<QuickAllResult> QuickLoadAllAsync()
+    /// /crossrepo and /allocate as they were; the tab that was on screen is shown again.
+    /// <para>On start (M.ORCH-T2069) it runs on its own with <paramref name="alive"/>, the CLIs whose TermHost outlived the last
+    /// run and were reattached: they never lost their place, so each gets only its /crossrepo and /allocate back (what Quick
+    /// Save All turned off), never a /quickload over the work it's still doing; the tab on screen is left as reselected.</para></summary>
+    internal async Task<QuickAllResult> QuickLoadAllAsync(IReadOnlySet<TerminalPaneViewModel>? alive = null)
     {
-        if (!IsGlobalTab) return await Root.QuickLoadAllAsync();
+        if (!IsGlobalTab) return await Root.QuickLoadAllAsync(alive);
         if (quickloadingAll) return new(TimeSpan.Zero, 0, 0, "A Quick Load All is already running.");
         quickloadingAll = true;
         var clock = Stopwatch.StartNew();
@@ -130,8 +133,10 @@ public sealed partial class MainViewModel
         {
             var state = SaveStateStore.Pick(new SaveStateStore().Latest(), SessionRestore.Previous);
             if (state is null) return new(clock.Elapsed, 0, 0, "There's no save state yet: Quick Save All makes one.");
+            new SaveStateStore().MarkLoaded(state);
+            var auto = alive is not null;
 
-            var targets = new List<(TerminalPaneViewModel Pane, RestoreTab Tab, bool Reopened)>();
+            var targets = new List<(TerminalPaneViewModel Pane, RestoreTab Tab, bool Reopened, bool Alive)>();
             TerminalPaneViewModel? shown = null;
             var reopened = 0;
             for (var i = 0; i < state.Tabs.Count; i++)
@@ -149,15 +154,15 @@ public sealed partial class MainViewModel
                     reopened++;
                 }
                 if (state.SelectedTab == i) shown = pane;
-                if (!tab.Request.IsMenu) targets.Add((pane, tab, isNew));
+                if (!tab.Request.IsMenu) targets.Add((pane, tab, isNew || auto && !alive!.Contains(pane), auto && alive!.Contains(pane)));
             }
-            if (shown is not null) ShowPane(shown);
+            if (shown is not null && !auto) ShowPane(shown);
 
             var sent = new bool[targets.Count];
             var byRepo = targets.Select((t, i) => (Target: t, Index: i)).GroupBy(x => x.Target.Tab.Request.Directory, StringComparer.OrdinalIgnoreCase);
             await Task.WhenAll(byRepo.Select(async group =>
             {
-                foreach (var (target, index) in group) sent[index] = await ResumeOneAsync(target.Pane, target.Tab, target.Reopened);
+                foreach (var (target, index) in group) sent[index] = await ResumeOneAsync(target.Pane, target.Tab, target.Reopened, target.Alive);
             }));
             var allocating = targets.Count(t => t.Tab.Allocate is { Count: > 0 });
             var note = $"From the {(state.Reason == SaveStateStore.SaveAllReason ? "save state" : "autosave")} of {state.SavedUtc.ToLocalTime():g}: "
@@ -168,6 +173,22 @@ public sealed partial class MainViewModel
         finally { quickloadingAll = false; }
     }
 
+    /// <summary>On start (M.ORCH-T2069, M.ORCH-T1803 part 2): when the newer of the last save state and the last run's
+    /// autosave was saved after the state last restored, Quick Load All runs on its own - no prompt, nothing closed: every CLI
+    /// reopened gets <c>/quickload</c> on its handoff (else a "carry on"), and every one its /crossrepo and /allocate back.
+    /// <paramref name="alive"/> is the CLIs reattached from a TermHost that outlived the last run (see
+    /// <see cref="QuickLoadAllAsync"/>). Null when there was nothing newer to restore.</summary>
+    internal async Task<QuickAllResult?> RestoreAllOnStartAsync(IReadOnlySet<TerminalPaneViewModel> alive)
+    {
+        var store = new SaveStateStore();
+        var state = SaveStateStore.Pick(store.Latest(), SessionRestore.Previous);
+        if (!SaveStateStore.IsNewer(state, store.LastLoadedUtc())) return null;
+        var result = await QuickLoadAllAsync(alive);
+        OrchestratorLog.For("SaveState").Information("Restore all on start: {Acted} of {Total} CLI(s) resumed in {Seconds:0.0}s. {Note:l}",
+            result.Acted, result.Total, result.Elapsed.TotalSeconds, result.Note);
+        return result;
+    }
+
     /// <summary>The open pane that is <paramref name="tab"/>: the same TermHost session, else the same Claude session.</summary>
     private TerminalPaneViewModel? OpenPaneOf(RestoreTab tab) => AllTerminals.Panes.FirstOrDefault(p => !p.Ended &&
         (tab.HostId is { Length: > 0 } host && string.Equals(p.TermId, host, StringComparison.OrdinalIgnoreCase)
@@ -175,8 +196,9 @@ public sealed partial class MainViewModel
          || tab.Request.IsMenu && p.Request.IsMenu && string.Equals(p.Login, tab.Login, StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>One CLI back where it was: (once a reopened one is up) its handoff loaded, then /crossrepo and /allocate as
-    /// saved, each typed as its own prompt (Claude queues one typed while it's busy). True once the first was typed.</summary>
-    private async Task<bool> ResumeOneAsync(TerminalPaneViewModel pane, RestoreTab tab, bool reopened)
+    /// saved, each typed as its own prompt (Claude queues one typed while it's busy). True once the first was typed.
+    /// <paramref name="alive"/> (a CLI that outlived the last run, M.ORCH-T2069): no resume prompt, only the two modes.</summary>
+    private async Task<bool> ResumeOneAsync(TerminalPaneViewModel pane, RestoreTab tab, bool reopened, bool alive = false)
     {
         try
         {
@@ -186,7 +208,19 @@ public sealed partial class MainViewModel
                 while (pane.StatusRow is null && !pane.Ended && DateTime.UtcNow < deadline) await Task.Delay(QuickAllPoll);
                 await Task.Delay(QuickAllPoll);
             }
-            if (pane.Ended || !Type(pane, SaveStateStore.ResumePrompt(tab))) return false;
+            if (pane.Ended) return false;
+            if (alive)
+            {
+                var typed = false;
+                foreach (var command in new[] { SaveStateStore.CrossrepoCommand(tab), SaveStateStore.AllocateCommand(tab) })
+                    if (command is not null)
+                    {
+                        if (typed) await Task.Delay(QuickAllPoll);
+                        typed |= Type(pane, command);
+                    }
+                return typed;
+            }
+            if (!Type(pane, SaveStateStore.ResumePrompt(tab))) return false;
             foreach (var command in new[] { SaveStateStore.CrossrepoCommand(tab), SaveStateStore.AllocateCommand(tab) })
                 if (command is not null)
                 {

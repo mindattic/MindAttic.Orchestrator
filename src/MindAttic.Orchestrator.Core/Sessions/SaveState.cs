@@ -61,6 +61,36 @@ public sealed class SaveStateStore(string? directory = null)
         return options.Count == 0 ? null : options.MaxBy(s => s.SavedUtc);
     }
 
+    /// <summary>The file holding when a save state was last restored (M.ORCH-T2069).</summary>
+    public string LastLoadPath => Path.Combine(Directory, "last-load.txt");
+
+    /// <summary>The <see cref="RestoreState.SavedUtc"/> of the state last restored (by Quick Load All or on start), or null.</summary>
+    public DateTime? LastLoadedUtc()
+    {
+        try
+        {
+            return File.Exists(LastLoadPath) && DateTime.TryParse(File.ReadAllText(LastLoadPath).Trim(), System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var when) ? when : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>Records that <paramref name="state"/> was restored, so the next start doesn't restore it again.</summary>
+    public void MarkLoaded(RestoreState state)
+    {
+        try
+        {
+            System.IO.Directory.CreateDirectory(Directory);
+            File.WriteAllText(LastLoadPath, state.SavedUtc.ToUniversalTime().ToString("o", System.Globalization.CultureInfo.InvariantCulture));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Whether <paramref name="state"/> is worth restoring on start (M.ORCH-T2069): it has tabs and was saved after
+    /// the state last restored (<paramref name="lastLoadedUtc"/>; none yet counts as older).</summary>
+    public static bool IsNewer(RestoreState? state, DateTime? lastLoadedUtc) =>
+        state is { Tabs.Count: > 0 } && (lastLoadedUtc is not { } last || state.SavedUtc.ToUniversalTime() > last);
+
     /// <summary>What turns <paramref name="tab"/>'s /allocate back on, typed into its CLI; null when it was off. Its own repo
     /// alone is bare <c>/allocate</c>; "*" is <c>/allocate all</c>; else <c>/allocate -repo=A,B</c>.</summary>
     public static string? AllocateCommand(RestoreTab tab)

@@ -251,6 +251,8 @@ public partial class MainWindow : Window
             busyCountTimer = busyCounts;
             busyCounts.Start();
             Closed += (_, _) => { busyCounts.Stop(); busyCountTimer = null; };
+            // The CLIs that outlived the last run, before any is reopened: restore-all on start leaves their work alone (M.ORCH-T2069).
+            var alive = model.AllTerminals.Panes.Where(p => !p.Ended).ToHashSet();
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
             await model.RefreshAsync();
             // Each person back on the CLI tab they last had chosen (M.ORCH-T1436), kept by TermHost session in the restore file.
@@ -259,6 +261,11 @@ public partial class MainWindow : Window
             model.RestoringTerminals = false;
             polling = true;
             Retime();
+            // Restore all (M.ORCH-T2069, M.ORCH-T1803 part 2): a save state or autosave newer than the last load is resumed on its
+            // own, each CLI's handoff loaded and its /crossrepo and /allocate back; in the background, nothing waits on it.
+            if (restoreOnLoad)
+                _ = model.RestoreAllOnStartAsync(alive).ContinueWith(t => OrchestratorLog.For("SaveState").Error(t.Exception, "Restore all on start failed; contained"),
+                    TaskContinuationOptions.OnlyOnFaulted);
         };
         // Closing, no tab gone spawns a Launcher (M.ORCH-T1150): set in OnClosing, only once the close isn't cancelled.
         Closed += (_, _) =>
