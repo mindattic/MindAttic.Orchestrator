@@ -455,8 +455,15 @@ public sealed partial class MainViewModel
     internal static double? SnapshotFiveHourOf(BudgetStatus? budget, double? rosterFiveHourUsed) =>
         budget is { CurrentBlock: not null, BlockPercentUnknown: false } b ? b.BlockPercent : rosterFiveHourUsed;
 
-    /// <summary>On a per-CLI login's tab, who its folder is signed in to when that's another account's email; else null.</summary>
-    private string? SignedInAsOther => MismatchOf(ScopeEmail, snapshot?.Account, accountRows);
+    /// <summary>On a per-CLI login's tab, who its folder is signed in to when that's another account's email; else null. The
+    /// folder's own <c>.claude.json</c> email, cached per refresh off the UI thread (M.ORCH-T1956), so an account that isn't on
+    /// the roster is caught too; the roster mapping of the snapshot's account only until that first read.</summary>
+    private string? SignedInAsOther => ScopeEmail is { } email && Root.loginSignedInAs.TryGetValue(email, out var who)
+        ? OtherEmailOf(email, who)
+        : MismatchOf(ScopeEmail, snapshot?.Account, accountRows);
+
+    internal static string? OtherEmailOf(string email, string? signedInEmail) =>
+        signedInEmail is { Length: > 0 } who && !who.Equals(email, StringComparison.OrdinalIgnoreCase) ? who : null;
 
     /// <summary>The login node's own visible warning (M.ORCH-T1954): "signed in as X — wrong account, use Login" while this
     /// folder is OAuth-signed in as another account; empty (collapsed) otherwise. Its usage stays this folder's own: the tab's

@@ -129,6 +129,10 @@ public sealed partial class MainViewModel
 
     /// <summary>Each per-CLI login's plan as its own folder's sign-in names it (M.ORCH-T1751), read with the meter states.</summary>
     private IReadOnlyDictionary<string, string> loginPlans = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Each per-CLI login folder's signed-in email as its own <c>.claude.json</c> has it (M.ORCH-T1956), read with the
+    /// meter states off the UI thread, so the login node's wrong-account line sees any other email, on the roster or not.</summary>
+    private IReadOnlyDictionary<string, string> loginSignedInAs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     private DateTime meterStatesReadUtc;
 
     /// <summary>How often <see cref="LoadMeterStates"/> rereads them: well inside <see cref="UsageReport.StaleAfter"/> (30s by
@@ -143,13 +147,16 @@ public sealed partial class MainViewModel
         {
             var read = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
             var plans = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var signedInAs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var dir in OwnLoginDirs().All())
             {
                 if (ReportedUsage.LoadAnyAge(dir.UsagePath) is { } r) read[dir.Email] = r.AtUtc;
                 if (dir.SignedInPlan is { } plan) plans[dir.Email] = plan;
+                if (dir.SignedInEmail is { Length: > 0 } who) signedInAs[dir.Email] = who;
             }
             meterReadUtc = read;
             loginPlans = plans;
+            loginSignedInAs = signedInAs;
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { }
         signInAgain = UsageReport.NeedingSignIn(ReportedUsage.DefaultDb);
