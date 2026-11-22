@@ -8,8 +8,8 @@ namespace MindAttic.Orchestrator.Sessions;
 /// <summary>
 /// A CLI to open as a tab of a person's Terminals panel on the dashboard (M.ORCH-T810): a live ConPTY terminal (the Windows
 /// Terminal renderer, through EasyWindowsTerminalControl) running <see cref="Command"/> in <see cref="Directory"/>. It goes on
-/// the page of the login it runs on (<see cref="Login"/>: <see cref="Email"/>, else the email its <see cref="ConfigDir"/> folder
-/// is named for, else the global login), titled and colored as that login's Windows Terminal tab would be.
+/// the page of the login it runs on (<see cref="Login"/>: the email its <see cref="ConfigDir"/> folder is named for, else
+/// <see cref="Email"/>, else the global login), titled and colored as that login's Windows Terminal tab would be.
 /// <para>MindAttic.Launcher sends one down <see cref="PaneBroker.PipeName"/> (M.LNCH-T77) instead of opening a standalone
 /// Windows Terminal window: the same <c>MindAttic.Launcher host …</c> command its wt tab would run, as JSON on one line.</para>
 /// </summary>
@@ -32,7 +32,8 @@ public sealed record PaneRequest(string Title, string Directory)
     /// <summary>The per-CLI login folder (<c>CLAUDE_CONFIG_DIR</c>) its CLI runs on, when known; null for none or the global login.</summary>
     public string? ConfigDir { get; init; }
 
-    /// <summary>The login's email, when known: it picks the person's page over <see cref="ConfigDir"/>.</summary>
+    /// <summary>The login's email, when known: picks the person's page only where <see cref="ConfigDir"/> doesn't name one
+    /// (see <see cref="Login"/>) -- a folder signed in as someone else is filed under the folder, not this.</summary>
     public string? Email { get; init; }
 
     /// <summary>The login's badge, "RD".</summary>

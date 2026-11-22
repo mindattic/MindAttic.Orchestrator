@@ -62,7 +62,7 @@ public sealed class TerminalPanesTests
     [TestCase(null, @"C:\Users\me\.claude-accounts\Amy@Example.com", "amy@example.com")]
     [TestCase(null, @"C:\Users\me\.claude-accounts\amy@example.com\", "amy@example.com")]
     [TestCase(null, @"C:\Users\me\.claude", null)]
-    [TestCase("Jordan@Example.com", @"C:\Users\me\.claude-accounts\amy@example.com", "jordan@example.com")]
+    [TestCase("Jordan@Example.com", @"C:\Users\me\.claude-accounts\amy@example.com", "amy@example.com")] // folder wins over Email (M.ORCH-T1949)
     public void A_terminal_goes_on_the_page_of_the_login_it_runs_on(string? email, string? configDir, string? login) =>
         Assert.That(new PaneRequest("T", "D") { Email = email, ConfigDir = configDir }.Login, Is.EqualTo(login));
 
