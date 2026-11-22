@@ -598,6 +598,10 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     /// and the model it runs on (M.ORCH-T563).</summary>
     public sealed record Handout(QueueItem Item, string? Directory, string? Prompt, ModelChoice.Choice? Model = null)
     {
+        /// <summary>The role it's worked as (M.ORCH-T1746, <see cref="Roles"/>): its <c>role:</c> label, else
+        /// <see cref="Roles.Default"/>. The role's model, when it names one, is <see cref="Model"/>.</summary>
+        public string? Role { get; init; }
+
         /// <summary>Not this CLI's: sent to another login, which opens a tab on it (M.ORCH-T666); null for this CLI's own.</summary>
         public LoginRoom? DelegatedTo { get; init; }
 
@@ -706,7 +710,9 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             if (redelegate(item, to) is not null) { taken.Add(to.Email ?? Redelegation.FallbackKey); continue; }
             taken.Add(to.Email ?? Redelegation.FallbackKey);
             Redelegation.Record(store, item.Id, text, to.IsFallback ? nowUtc : null);
-            delegated.Add(new Handout(item, null, null, ModelChoice.For(item.Ticket, item.Repo, settings)) { DelegatedTo = to, Delegated = text });
+            var role = Roles.Of(item.Role);
+            delegated.Add(new Handout(item, null, null, ModelChoice.For(item.Ticket, item.Repo, settings, role, Roles.ModelOf(store.Db, role)))
+                { DelegatedTo = to, Delegated = text, Role = role });
         }
         return delegated;
     }
@@ -879,6 +885,8 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         // one handed out takes its estimate out of what's left, in queue order (priority, tickets ticket bump, first; a user's own
         // assigned tickets in the same order), so a lower-priority ticket waits behind them rather than taking the room they need.
         double committed = 0;
+        // Each role's model, read from the roles table once per call (M.ORCH-T1746).
+        var roleModels = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in open)
         {
             if (handed.Count >= more) break;
@@ -889,10 +897,12 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 capped.Add(item.Repo);
                 continue;
             }
-            var model = ModelChoice.For(item.Ticket, item.Repo, settings);
+            var role = Roles.Of(item.Role);
+            if (!roleModels.TryGetValue(role, out var roleModel)) roleModels[role] = roleModel = Roles.ModelOf(store.Db, role);
+            var model = ModelChoice.For(item.Ticket, item.Repo, settings, role, roleModel);
             if (!claim)
             {
-                handed.Add(new Handout(item, null, null, model));
+                handed.Add(new Handout(item, null, null, model) { Role = role });
                 inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
                 committed += item.Estimate?.Fresh ?? 0;
                 continue;
@@ -909,7 +919,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             {
                 if (all.Any(a => a.TicketId == item.Id && a != item.Assignment)) { taken = true; return; }
                 all.RemoveAll(a => a.TicketId == item.Id);
-                all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true) { Cli = cli, CliSession = self, Model = model.Model, Account = AccountDirs.Normalize(login) });
+                all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true) { Cli = cli, CliSession = self, Model = model.Model, Account = AccountDirs.Normalize(login), Role = role });
             });
             if (taken) { claimedElsewhere++; continue; }
             // Who works it, for Tickets Desktop's link back (M.ORCH-T766): best effort, never holds up the claim.
@@ -922,7 +932,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             // seam not given, or it couldn't be made) leaves the prompt as it was.
             var scratch = scratchFor?.Invoke(item);
             handed.Add(new Handout(item, onBranch?.Worktree ?? tree, carried + PromptFor(item, tree, mainlineOf(item.RepoPath), model, onBranch, scratch), model)
-                { Branch = onBranch?.Branch, Scratch = scratch });
+                { Branch = onBranch?.Branch, Scratch = scratch, Role = role });
             inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
             committed += item.Estimate?.Fresh ?? 0;
         }

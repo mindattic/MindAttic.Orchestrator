@@ -242,6 +242,10 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Ticket → its level from its <c>level:epic|feature|story|task</c> label (M.ORCH-T1904); missing means unlabelled.</summary>
     public IReadOnlyDictionary<string, string> Levels { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Ticket → the role named by its <c>role:</c> label (M.ORCH-T1746); missing means none named, which
+    /// <see cref="Scheduling.Roles.Default"/> fills in.</summary>
+    public IReadOnlyDictionary<string, string> Roles { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Whether <paramref name="id"/> is labelled <c>level:task</c> (M.ORCH-T1904).</summary>
     public bool IsTask(string id) => Levels.GetValueOrDefault(id) is { } level && level.Equals("task", StringComparison.OrdinalIgnoreCase);
 

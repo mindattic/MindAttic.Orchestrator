@@ -43,6 +43,9 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// (an unplanned leaf) a cheap plan pass first; null (not known, as in a hand-built item) neither.</summary>
     public bool? IsTask { get; init; }
 
+    /// <summary>The role its <c>role:</c> label names (M.ORCH-T1746); null when none, which <see cref="Roles.Default"/> fills in.</summary>
+    public string? Role { get; init; }
+
     /// <summary>One work unit in uncached tokens (<see cref="WorkUnits.Budget"/>), named in the prompt; 0 means the default.</summary>
     public long UnitBudget { get; init; }
 
@@ -242,6 +245,7 @@ public static partial class Scheduler
                     Name = snapshot.Names?.GetValueOrDefault(t.Id),
                     Milestone = snapshot.Milestones?.GetValueOrDefault(t.Id),
                     IsTask = snapshot.IsTask(t.Id),
+                    Role = snapshot.Roles?.GetValueOrDefault(t.Id),
                     UnitBudget = WorkUnits.Budget(settings),
                 }))
             .OrderBy(q => q.IsAssigned)

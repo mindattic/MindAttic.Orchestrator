@@ -579,6 +579,11 @@ public sealed class OrchestratorDb(string path)
         """
         ALTER TABLE assignments ADD COLUMN agent TEXT;
         """,
+        // 21: the role each assignment is worked as (M.ORCH-T1746, roadmap Phase 1): the ticket's role: label, else implementer.
+        // Rows already there keep NULL: made before roles were recorded.
+        """
+        ALTER TABLE assignments ADD COLUMN role TEXT;
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

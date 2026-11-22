@@ -9,7 +9,8 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// changes with a clear definition of done; <see cref="Opus"/> for features, design work, changes across many files and
 /// anything that must be right the first time. An override in settings (<see cref="OrchestratorSettings.ModelOverrides"/>,
 /// by ticket, then by repo) wins. A Sonnet ticket whose diff is big or touches risky files gets one Opus review of the diff
-/// before it lands (<see cref="DiffReview"/>).
+/// before it lands (<see cref="DiffReview"/>). A ticket worked as a role whose catalog entry names a model (M.ORCH-T1746,
+/// <see cref="Roles"/>) runs on that model; these rules are the fallback when its role names none.
 /// </summary>
 public static class ModelChoice
 {
@@ -59,10 +60,13 @@ public static class ModelChoice
         return m.Contains("opus") ? Opus : m.Contains("sonnet") ? Sonnet : m.Contains("haiku") ? "haiku" : m.Contains("fable") ? "fable" : null;
     }
 
-    /// <summary>The model for <paramref name="ticket"/> of <paramref name="repo"/>.</summary>
-    public static Choice For(Ticket ticket, string repo, OrchestratorSettings settings)
+    /// <summary>The model for <paramref name="ticket"/> of <paramref name="repo"/>, worked as <paramref name="role"/>: your
+    /// override first, then the model <paramref name="roleModel"/> (the role's catalog entry, M.ORCH-T1746) names, and only
+    /// when it names none (null, <c>inherit</c>, or a model this can't start) the ticket's own type and summary.</summary>
+    public static Choice For(Ticket ticket, string repo, OrchestratorSettings settings, string? role = null, string? roleModel = null)
     {
         if (Override(settings, ticket.Id, repo) is { } over) return over;
+        if (Parse(roleModel) is { } fromRole and not Auto) return new(fromRole, $"the {role ?? "ticket's"} role's model");
         var summary = ticket.Summary.ToLowerInvariant();
         var type = ticket.Type.ToLowerInvariant();
         if (FailedTest.FirstOrDefault(summary.Contains) is not null) return new(Sonnet, "a failed test");

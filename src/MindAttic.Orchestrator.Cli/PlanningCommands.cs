@@ -147,6 +147,8 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
             Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}){named}: {h.Item.Ticket.Summary}");
             // M.ORCH-T563: the model /allocate starts this ticket's subagent on (the Agent tool's model).
             if (h.Model is { } model) Console.WriteLine(ModelChoice.Line(model));
+            // M.ORCH-T1746: the role it's worked as (its role: label, else implementer).
+            if (h.Role is not null) Console.WriteLine($"role: {h.Role}");
             // M.ORCH-T1633: on the remote host with branch builds on, its own work branch in a worktree of its own.
             if (h.Directory is not null && h.Branch is not null) Console.WriteLine($"worktree: {h.Directory} (on {h.Branch}, its own; pushed to origin/{h.Branch}, never main)");
             else if (h.Directory is not null) Console.WriteLine($"checkout: {h.Directory} (on main, shared with this repo's other agents)");

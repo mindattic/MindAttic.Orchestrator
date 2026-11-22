@@ -10,7 +10,8 @@ using DbRead = (string Path, System.DateTime WriteUtc, System.Linq.ILookup<strin
     System.Collections.Generic.IReadOnlyDictionary<string, string> Names,
     System.Collections.Generic.IReadOnlyDictionary<string, MindAttic.Orchestrator.TicketMilestone> Milestones,
     System.Collections.Generic.IReadOnlyList<MindAttic.Orchestrator.Tickets.MilestoneScope> MilestoneScopes,
-    System.Collections.Generic.IReadOnlySet<string> Containers, System.Collections.Generic.IReadOnlyDictionary<string, string> Levels);
+    System.Collections.Generic.IReadOnlySet<string> Containers, System.Collections.Generic.IReadOnlyDictionary<string, string> Levels,
+    System.Collections.Generic.IReadOnlyDictionary<string, string> Roles);
 
 namespace MindAttic.Orchestrator.Tickets;
 
@@ -37,6 +38,10 @@ public sealed class OpenTicketSource
 
     /// <summary>The prefix of a ticket's level label: <c>level:epic|feature|story|task</c> (M.ORCH-T1904).</summary>
     public const string LevelLabelPrefix = "level:";
+
+    /// <summary>The prefix of a ticket's role label: <c>role:&lt;name&gt;</c>, the role whose agent works it (M.ORCH-T1746;
+    /// <see cref="Scheduling.Roles"/>).</summary>
+    public const string RoleLabelPrefix = "role:";
 
     private DateTime dbReadUtc;
 
@@ -131,9 +136,16 @@ public sealed class OpenTicketSource
 
     /// <summary>Ticket → its level from <paramref name="labels"/> (the database's labels, open or closed tickets alike; M.ORCH-T1908).</summary>
     public static Dictionary<string, string> LevelsOf(IReadOnlyDictionary<string, IReadOnlyList<string>> labels) =>
-        labels.Select(l => (l.Key, Level: l.Value.FirstOrDefault(v => v.StartsWith(LevelLabelPrefix, StringComparison.OrdinalIgnoreCase))))
-            .Where(l => l.Level is not null)
-            .ToDictionary(l => l.Key, l => l.Level![LevelLabelPrefix.Length..].Trim().ToLowerInvariant(), StringComparer.OrdinalIgnoreCase);
+        PrefixedOf(labels, LevelLabelPrefix);
+
+    /// <summary>Ticket → its role from its <c>role:</c> label (<see cref="RoleLabelPrefix"/>, M.ORCH-T1746); missing means none named.</summary>
+    public IReadOnlyDictionary<string, string> Roles => fromDb?.Roles ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Ticket → what follows <paramref name="prefix"/> in its first label that starts with it, trimmed and lower-cased.</summary>
+    public static Dictionary<string, string> PrefixedOf(IReadOnlyDictionary<string, IReadOnlyList<string>> labels, string prefix) =>
+        labels.Select(l => (l.Key, Label: l.Value.FirstOrDefault(v => v.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))))
+            .Where(l => l.Label is not null && l.Label.Length > prefix.Length)
+            .ToDictionary(l => l.Key, l => l.Label![prefix.Length..].Trim().ToLowerInvariant(), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Ticket → its manual priority in the database's queue (higher runs sooner); missing means 0.</summary>
     public IReadOnlyDictionary<string, long> Priorities => fromDb?.Priorities ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
@@ -313,6 +325,6 @@ public sealed class OpenTicketSource
             names.ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
             MilestonesOf(db, openIds, prior?.Milestones),
             MilestoneScope.ReadOr(db, prior?.MilestoneScopes, graph),
-            containers, LevelsOf(labels));
+            containers, LevelsOf(labels), PrefixedOf(labels, RoleLabelPrefix));
     }
 }

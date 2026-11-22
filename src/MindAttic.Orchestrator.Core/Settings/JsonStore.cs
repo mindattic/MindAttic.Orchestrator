@@ -502,6 +502,7 @@ public sealed class JsonStore
         ("reviewed_utc", nameof(Assignment.ReviewedUtc), typeof(string)),
         ("account", nameof(Assignment.Account), typeof(string)),
         ("agent", nameof(Assignment.AgentId), typeof(string)),
+        ("role", nameof(Assignment.Role), typeof(string)),
     ];
 
     /// <summary><paramref name="name"/>'s value as JSON, or null when nothing is kept for it.</summary>

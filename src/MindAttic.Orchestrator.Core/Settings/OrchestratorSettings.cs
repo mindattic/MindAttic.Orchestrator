@@ -1237,6 +1237,10 @@ public sealed record Assignment(string TicketId, string Repo, string Directory, 
     /// claim or background agent's assignment, or one made before agents had ids.</summary>
     public string? AgentId { get; init; }
 
+    /// <summary>The role it's worked as (M.ORCH-T1746, <see cref="Scheduling.Roles"/>): the ticket's <c>role:</c> label, else
+    /// <see cref="Scheduling.Roles.Default"/>. Null for an assignment made before roles were recorded, or not by a claim.</summary>
+    public string? Role { get; init; }
+
     /// <summary>A claim for a CLI's subagent (or a tab the orchestrator opened): dispatched, no background agent on it.</summary>
     [JsonIgnore]
     public bool IsClaim => Worktree && Pilot is null && Log is null;
