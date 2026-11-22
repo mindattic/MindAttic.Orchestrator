@@ -27,6 +27,7 @@ public partial class App : Application
     private SingleInstance? instance;
     private IDisposable? highContrast;
     private Tray? tray;
+    private Services.DesktopPinWatcher? desktopPin;
 
     /// <summary>What --install exits with when it refused because a Claude CLI is still working (M.ORCH-T873); run.ps1 reads it.</summary>
     public const int BusyRefusedExit = 3;
@@ -232,6 +233,14 @@ public partial class App : Application
         MainWindow.Show();
         DashboardWindow.Track(MainWindow);
         tray = new Tray(MainWindow, installer, self);
+        // M.ORCH-T2030 (from the Launcher's M.LNCH-T111): MindAttic windows under the workspace root kept on Desktop 1 while
+        // Vault's Global "Default to Desktop 1" is on; one hook for the dashboard's lifetime, released in OnExit.
+        try
+        {
+            desktopPin = new Services.DesktopPinWatcher(OrchestratorOptions.Load().WorkspaceRoot);
+            desktopPin.Start();
+        }
+        catch (Exception ex) { log.Warning(ex, "DesktopPinWatcher didn't start; windows stay wherever they open"); }
         instance.OnShowRequested(args => Dispatcher.BeginInvoke(() =>
         {
             if (MainWindow is not { } window) return;
@@ -266,6 +275,7 @@ public partial class App : Application
         instance?.Dispose();
         highContrast?.Dispose();
         tray?.Dispose();
+        desktopPin?.Dispose();
         base.OnExit(e);
     }
 
