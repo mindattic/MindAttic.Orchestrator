@@ -39,6 +39,13 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// <summary>Approved for work in the ticket database's queue (<see cref="Snapshot.Approved"/>, M.ORCH-T761).</summary>
     public bool Approved { get; init; }
 
+    /// <summary>Whether it's planned as one task (level:task, M.ORCH-T1906): true gets the task budget in its prompt, false
+    /// (an unplanned leaf) a cheap plan pass first; null (not known, as in a hand-built item) neither.</summary>
+    public bool? IsTask { get; init; }
+
+    /// <summary>One work unit in uncached tokens (<see cref="WorkUnits.Budget"/>), named in the prompt; 0 means the default.</summary>
+    public long UnitBudget { get; init; }
+
     /// <summary>Whether it may be worked: a fix, or approved.</summary>
     public bool MayWork => Approved || Ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase);
 
@@ -219,6 +226,8 @@ public static partial class Scheduler
                     GraphWeight = snapshot.GraphWeights?.GetValueOrDefault(t.Id) ?? 0,
                     Name = snapshot.Names?.GetValueOrDefault(t.Id),
                     Milestone = snapshot.Milestones?.GetValueOrDefault(t.Id),
+                    IsTask = snapshot.IsTask(t.Id),
+                    UnitBudget = WorkUnits.Budget(settings),
                 }))
             .OrderBy(q => q.IsAssigned)
             // A ticket the last-resort cool-off aborted mid-run goes back at the front for the next round (M.ORCH-T786).

@@ -241,6 +241,9 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         // else (the setting off, or any machine but the host) the prompt below is unchanged, byte for byte.
         branch is not null ? PromptOnBranch(item, checkout, mainline, model, branch, scratch) :
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
+        // M.ORCH-T1906 (docs/WORK_UNITS.md): a task names its budget; an unplanned leaf gets a cheap plan pass first. Unknown
+        // (null, a hand-built item) adds nothing, so the pinned prompt stays byte for byte (BranchWorkTests).
+        WorkUnitSentence(item) +
         $"Work in {item.Repo}'s own checkout ({checkout}) on {mainline}, never a separate branch or worktree: run every command from that folder (cd there first). " +
         $"Other agents may be working {item.Repo} in this same checkout at the same time, so touch only the files this ticket needs and leave every change " +
         "you didn't make as it is (never git add -A or git add ., git stash, git reset, git checkout -- or git clean). " +
@@ -283,6 +286,24 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         $"mark it finished: tickets ticket close {item.Id} --ref <the commit hash as it landed on {mainline}>. " +
         "You are done only when the push has succeeded and the ticket is closed. " +
         "If you can't finish or land it, leave the ticket open and say why.";
+
+    /// <summary>
+    /// The work-unit sentence after the ticket line (M.ORCH-T1906, docs/WORK_UNITS.md): a task is one unit of about the
+    /// budget, landed then split if it runs over; an unplanned leaf is sized first and either marked a task and done, or
+    /// split into tasks without changing code. Empty when the item doesn't say which it is.
+    /// </summary>
+    internal static string WorkUnitSentence(QueueItem item)
+    {
+        if (item.IsTask is not { } isTask) return "";
+        var budget = WorkUnits.Size(item.UnitBudget > 0 ? item.UnitBudget : Settings.OrchestratorSettings.DefaultUnitTokenBudget);
+        return isTask
+            ? $"This is one unit of work sized for about {budget} uncached tokens. If it turns out bigger, land what's complete, " +
+              $"file the rest with tickets ticket split {item.Id} --task \"...\", and stop. "
+            : $"Plan first, cheaply: read the ticket (tickets ticket show {item.Id}) and only the code needed to size it. " +
+              $"If one unit of about {budget} tokens does it, run tickets ticket level {item.Id} task and do it. " +
+              $"Otherwise split it with tickets ticket split {item.Id} --task \"...\" --task \"...\" (2-6 concrete tasks, each naming its " +
+              "area/files, --sequential when each needs the one before), report the new IDs and stop without changing code; the tasks are dispatched next. ";
+    }
 
     /// <summary>What a Sonnet ticket's prompt says between its commit and its landing (M.ORCH-T563).</summary>
     internal static string ReviewStep(string id) =>
@@ -346,6 +367,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         var sonnet = model is { IsSonnet: true };
         return
             $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
+            WorkUnitSentence(item) +
             (b.Brief is { Length: > 0 } brief ? $"This ticket is back from its branch: {brief.Trim()} " : "") +
             $"This machine is the remote host with branch builds on, so this ticket is worked on its own branch, {b.Branch}, never on {mainline}: " +
             $"the host builds each push to origin/{b.Branch}, the owner's PC runs its tests, and the host merges it into {mainline} itself once they pass. " +
