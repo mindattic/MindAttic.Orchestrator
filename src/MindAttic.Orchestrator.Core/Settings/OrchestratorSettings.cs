@@ -701,15 +701,6 @@ public sealed record OrchestratorSettings
     /// lost (M.ORCH-T1001).</summary>
     public double TermResyncSeconds { get; init; } = 45;
 
-    /// <summary>Seconds between the login tree's own re-raise of every tab's busy/thinking figures (its spinner's own count:
-    /// its CLIs mid-turn plus their running subagents, summed per login, M.ORCH-T1447/M.ORCH-T1838): a guaranteed floor under
-    /// however promptly the daemon's own push or <see cref="DashboardPollSeconds"/> poll already keep the snapshot current,
-    /// not a replacement for either.</summary>
-    public double BusyCountRefreshSeconds { get; init; } = DefaultBusyCountRefreshSeconds;
-
-    /// <summary>The default busy count refresh constant.</summary>
-    public const double DefaultBusyCountRefreshSeconds = 5;
-
     /// <summary>The least seconds between two Launchers opened for one person (M.ORCH-T1150), so one that exits at once can't loop.</summary>
     public double LauncherRespawnSeconds { get; init; } = 30;
 

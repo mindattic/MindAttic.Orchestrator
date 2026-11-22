@@ -919,16 +919,6 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(5, 86400)]
     public double TermResyncSeconds { get; set; } = 45;
 
-    /// <summary>Seconds between the login tree's own re-raise of every tab's busy/thinking figures (its spinner's count: CLIs
-    /// mid-turn plus their running subagents, summed per login): a guaranteed floor under however promptly the daemon's own
-    /// push or poll already keep the snapshot current, not a replacement for either.</summary>
-    [Setting("Busy/subagent count refresh (s)", Group = "Dashboard", Order = 12,
-        Help = "Seconds between the login tree's own re-raise of every tab's busy/thinking figures - its spinner's count: " +
-            "CLIs mid-turn plus their running subagents, summed per login. A guaranteed floor under however promptly the " +
-            "daemon's own push or poll already keep the snapshot current, not a replacement for either.")]
-    [SettingRange(1, 300)]
-    public double BusyCountRefreshSeconds { get; set; } = OrchestratorSettings.DefaultBusyCountRefreshSeconds;
-
     /// <summary>The least seconds between two Launchers opened for one person, so one that exits at once can't loop.</summary>
     [Setting("Launcher respawn spacing (s)", Group = "Dashboard", Order = 12,
         Help = "The least seconds between two Launchers opened for one person, so one that exits at once can't loop.")]
@@ -1114,7 +1104,6 @@ public sealed class OrchestratorVaultSettings
         DashboardHiddenPollSeconds = s.DashboardHiddenPollSeconds,
         DashboardHiddenHolderPollSeconds = s.DashboardHiddenHolderPollSeconds,
         TermResyncSeconds = s.TermResyncSeconds,
-        BusyCountRefreshSeconds = s.BusyCountRefreshSeconds,
         LauncherRespawnSeconds = s.LauncherRespawnSeconds,
         ElevatedTermWaitSeconds = s.ElevatedTermWaitSeconds,
         MeterStatesSeconds = s.MeterStatesSeconds,
@@ -1299,7 +1288,6 @@ public sealed class OrchestratorVaultSettings
         DashboardHiddenPollSeconds = DashboardHiddenPollSeconds,
         DashboardHiddenHolderPollSeconds = DashboardHiddenHolderPollSeconds,
         TermResyncSeconds = TermResyncSeconds,
-        BusyCountRefreshSeconds = BusyCountRefreshSeconds,
         LauncherRespawnSeconds = LauncherRespawnSeconds,
         ElevatedTermWaitSeconds = ElevatedTermWaitSeconds,
         MeterStatesSeconds = MeterStatesSeconds,
