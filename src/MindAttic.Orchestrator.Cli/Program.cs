@@ -195,6 +195,8 @@ internal static class CliApp
             {
                 p.SetDescription("Health probes (M.ORCH-T1935, docs/HEALTH.md): each takes its readings, grades them against the health lines, publishes a health report on the app bus and prints it; [[--once]] exits with the Nagios code (0 ok, 1 warn, 2 critical, 3 couldn't run), [[--json]] prints health+json, [[--interval <s>]] sets the loop period.");
                 p.AddCommand<MachineProbeCommand>("machine").WithDescription("Free RAM, commit charge, kernel handles and each fixed drive's free space (memory:free, memory:commit, memory:handles, disk:free), M.ORCH-T2022.");
+                p.AddCommand<LinksProbeCommand>("links").WithDescription("Latencies the daemon depends on: the status stream and one ticket-database read (link:latency probe->daemon, probe->tickets-db) and the daemon's tick so far or last (daemon:tick, s), degraded past the slow-tick line and unhealthy past the pace gates' stale line, M.ORCH-T2032.");
+                p.AddCommand<AzureProbeCommand>("azure").WithAlias("azure-sql").WithDescription("Every Azure SQL database's state, load and storage (sqldb:state, sqldb:dtu, sqldb:storage), one report per database; az not signed in reads degraded (M.ORCH-T2029).");
             });
             config.AddCommand<BusyCommand>("busy").WithDescription("Whether any Claude CLI on this machine (any login) is still working: mid-turn, a subagent running, an /allocate claim in flight, or holding on a prompt. Exits 1 when any is working or can't be read, 0 when all are idle; the calling CLI is left out. --wait polls until all are idle. run.ps1 runs it before a redeploy (M.ORCH-T873).");
             config.AddBranch("db", d =>

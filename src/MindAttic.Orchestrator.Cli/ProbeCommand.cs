@@ -94,13 +94,22 @@ internal abstract class ProbeCommand : AsyncCommand<ProbeCommand.Settings>
         catch (OperationCanceledException) { return Unknown; }
         catch (Exception ex) when (ex is not OutOfMemoryException) { return Failed(ex.Message); }
 
-        var report = new HealthReport(Probe, Environment.MachineName, Description, DateTimeOffset.UtcNow, watch.ElapsedMilliseconds,
-            (int)Math.Round(timeout.TotalSeconds), results);
-        AppBusClient.PublishHealth(report);
-        if (settings.Json) Console.WriteLine(report.ToJson(indented: settings.Once));
-        else Console.WriteLine((settings.Once ? "" : DateTime.Now.ToString("T", CultureInfo.CurrentCulture) + " ") + Summary(report));
-        return HealthGrades.NagiosExit(report.Status);
+        var worst = HealthGrade.Healthy;
+        foreach (var part in Split(results))
+        {
+            var report = new HealthReport(Probe, Environment.MachineName, Description, DateTimeOffset.UtcNow, watch.ElapsedMilliseconds,
+                (int)Math.Round(timeout.TotalSeconds), part);
+            AppBusClient.PublishHealth(report);
+            if (settings.Json) Console.WriteLine(report.ToJson(indented: settings.Once));
+            else Console.WriteLine((settings.Once ? "" : DateTime.Now.ToString("T", CultureInfo.CurrentCulture) + " ") + Summary(report));
+            if (report.Status > worst) worst = report.Status;
+        }
+        return HealthGrades.NagiosExit(worst);
     }
+
+    /// <summary>Divides one run's results into the reports to publish (default: one). A probe that watches several things
+    /// (the Azure probe: one report per database) overrides it; the exit code is the worst of them. Never returns none.</summary>
+    protected virtual IEnumerable<IReadOnlyList<HealthResult>> Split(IReadOnlyList<HealthResult> results) => [results];
 
     /// <summary>Says the probe couldn't run (nothing is published: the hub marks its checks stale on its own).</summary>
     private int Failed(string why)
@@ -233,5 +242,40 @@ internal sealed class MachineProbeCommand : ProbeCommand
     {
         var kept = parts.Where(p => p is { Length: > 0 }).ToList();
         return kept.Count == 0 ? null : string.Join("; ", kept);
+    }
+}
+
+/// <summary>
+/// <c>orchestrator probe azure</c> (M.ORCH-T2029, docs/HEALTH.md section 3; also <c>azure-sql</c>): every Azure SQL database's
+/// <c>sqldb:state</c>, <c>sqldb:dtu</c> and <c>sqldb:storage</c> from <see cref="AzureSqlProbe"/>, one published report per
+/// database (the results sharing its <c>server/database</c> component id). When az isn't installed or signed in, or a listing
+/// fails, that is one degraded <c>sqldb:state</c> result saying so (never a crash, never healthy); a server whose listing
+/// failed beside others that worked adds the same result to the databases that did list. Reads only: it never resumes a database.
+/// </summary>
+internal sealed class AzureProbeCommand : ProbeCommand
+{
+    protected override string Probe => "azure-sql";
+
+    protected override string Description => "Azure SQL databases: state, load and storage";
+
+    protected override Task<IReadOnlyList<HealthResult>> Check(OrchestratorSettings s, HealthThresholds t, CancellationToken ct) =>
+        Task.Run(() => Results(new AzureSqlProbe(), t, DateTimeOffset.UtcNow), ct);
+
+    /// <summary>The run's results through <paramref name="probe"/>.</summary>
+    internal static IReadOnlyList<HealthResult> Results(AzureSqlProbe probe, HealthThresholds t, DateTimeOffset now)
+    {
+        var listing = probe.List();
+        var results = new List<HealthResult>(listing.Databases.Count == 0 && listing.Ok ? [] : probe.Results(listing, t, now));
+        if (listing.Error is { } error)
+            results.Add(new HealthResult("sqldb:state", null, "datastore", null, "state", HealthGrade.Degraded, now,
+                Output: listing.NeedsLogin ? $"az isn't signed in (az login): {error}" : $"couldn't list databases: {error}",
+                ObservedState: listing.NeedsLogin ? "not signed in" : "unreadable"));
+        return results;
+    }
+
+    protected override IEnumerable<IReadOnlyList<HealthResult>> Split(IReadOnlyList<HealthResult> results)
+    {
+        if (results.Count == 0) return [results];
+        return results.GroupBy(r => r.ComponentId ?? "").Select(g => (IReadOnlyList<HealthResult>)g.ToList()).ToList();
     }
 }
