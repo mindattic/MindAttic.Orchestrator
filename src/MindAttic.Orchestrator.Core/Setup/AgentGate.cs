@@ -587,7 +587,7 @@ public static class AgentGate
             return (l.get("note") or ORCHESTRATOR_STOP) if l else None
         def lapsed(s):
             # A status worked out before its window reset holds nothing in the new one, though it's still fresh for up to a tick:
-            # past stop_until its stop, past window_reset its holds and subagent allowance (M.ORCH-T387).
+            # past stop_until its stop, past window_reset its holds, subagent allowance and judged stop percent (M.ORCH-T387, M.ORCH-T2012: the exempt hold read a stale one).
             def passed(key):
                 try:
                     return datetime.fromisoformat(str(s[key]).replace("Z", "+00:00")).timestamp() <= time.time()
@@ -596,7 +596,7 @@ public static class AgentGate
             if s.get("stop") and passed("stop_until"):
                 s = {k: v for k, v in s.items() if k not in ("stop", "stop_note", "stop_until", "stop_window")}
             if passed("window_reset"):
-                s = {k: v for k, v in s.items() if k not in ("pace_delay_seconds", "pace_note", "subagent_allowance", "subagent_note")}
+                s = {k: v for k, v in s.items() if k not in ("pace_delay_seconds", "pace_note", "subagent_allowance", "subagent_note", "stop_percent")}
             return s
         def daemon_down():
             # Seconds since the orchestrator last wrote rl-status.json, once that's past what the gates trust; else None.
