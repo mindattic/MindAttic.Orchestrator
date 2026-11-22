@@ -162,7 +162,10 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     {
         try
         {
-            if (Activity.Offer(CleanActivity(activity), now, cliPid) is { } send) SendActivity(send);
+            var clean = CleanActivity(activity);
+            // Decided and published under one lock (M.ORCH-T1976): else a stale "running" could land after the "ended" and be kept.
+            lock (Activity.Gate)
+                if (Activity.Offer(clean, now, cliPid) is { } send) SendActivity(send);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -175,7 +178,8 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     {
         try
         {
-            foreach (var due in Activity.Due(now)) SendActivity(due);
+            lock (Activity.Gate)
+                foreach (var due in Activity.Due(now)) SendActivity(due);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -189,7 +193,8 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     {
         try
         {
-            foreach (var ended in Activity.Expire(now, silentFor, alive)) SendActivity(ended);
+            lock (Activity.Gate)
+                foreach (var ended in Activity.Expire(now, silentFor, alive)) SendActivity(ended);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {

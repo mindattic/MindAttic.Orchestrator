@@ -87,6 +87,10 @@ public sealed class AccountPacer
         public string? PlanAccount;
         /// <summary>The other member the folder is signed in as (M.ORCH-T1896); null when it's its own.</summary>
         public string? BorrowedFrom;
+        /// <summary>When the folder's signed-in account last changed (M.ORCH-T1976): its sessions' hits and spend from before
+        /// are a previous account's, never this one's. Null: unknown, everything counts. Kept with its limit hits.</summary>
+        public DateTime? SignedInSince;
+        public bool SignedInSinceKnown;
     }
 
     /// <summary>The pace of a login whose folder is signed in as <paramref name="other"/>, not its own <paramref name="email"/>
@@ -162,6 +166,7 @@ public sealed class AccountPacer
                 state.Samples = null;
                 // The probe asks again at once for the new account, not after the old one's backoff.
                 state.Meter?.Reset();
+                (state.SignedInSince, state.SignedInSinceKnown) = (nowUtc, true);
             }
             state.Account = account;
             if (state.PlanAccount != account)
@@ -186,7 +191,16 @@ public sealed class AccountPacer
     private AccountPace Pace(AccountDir dir, State state, List<TranscriptSession> sessions, OrchestratorSettings settings,
         DateTime now, DateTime startOfTodayUtc, bool write, string? why = null, bool disabled = false)
     {
-        var events = sessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc).ToList();
+        // Since the folder's last sign-in change (M.ORCH-T1976), read back from its limits file after a restart: a transcript
+        // mapped to this folder may hold a previous account's spend and walls, which must never stop the one signed in now.
+        var stored = ReadLimits(dir);
+        if (!state.SignedInSinceKnown)
+        {
+            state.SignedInSince = stored is null || stored.Account == "" || stored.Account == state.Account ? stored?.SignedInSinceUtc : now;
+            state.SignedInSinceKnown = true;
+        }
+        var since = state.SignedInSince;
+        var events = sessions.SelectMany(s => s.Events).Where(e => since is null || e.AtUtc >= since).OrderBy(e => e.AtUtc).ToList();
         // A reading the probe tagged with another account (the folder since re-signed, M.ORCH-T1404) is that account's, never
         // this one's: before, the old account's 99% landed in the freshly emptied samples and stopped the new account.
         bool Theirs(ReportedUsage? r) => r?.Account is { } a && state.Account is { } mine && a != mine;
@@ -206,14 +220,15 @@ public sealed class AccountPacer
         // stale, wrongly-tagged merge across a live /login switch within this process's life. Tagged with the account, so a
         // folder re-signed to a different one (its own .claude.json changed under the same folder) starts fresh rather than
         // being held to the old account's wall, which for a weekly one could otherwise block it for days.
-        var before = LoadLimits(dir, state.Account);
-        var observed = LimitCalibration.Observe(sessions.SelectMany(s => s.Hits), events, now - LimitCalibration.Keep);
+        var before = stored is null || (state.Account is not null && stored.Account != state.Account) ? [] : stored.Observations;
+        var observed = LimitCalibration.Observe(sessions.SelectMany(s => s.Hits).Where(h => since is null || h.AtUtc >= since), events, now - LimitCalibration.Keep);
         var limits = LimitCalibration.Merge(before, observed, now);
-        if (write && !limits.SequenceEqual(before)) SaveLimits(dir, state.Account, limits);
+        var restamp = stored is null ? since is not null : stored.Account != (state.Account ?? "") || stored.SignedInSinceUtc != since;
+        if (write && (restamp || !limits.SequenceEqual(before))) SaveLimits(dir, state.Account, limits, since);
         var calibration = new LimitCalibration(limits);
         // The stop counts what's been spent since Claude's percent was first seen, not since a statusline last restamped it (M.ORCH-T1110).
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration, reported: reported, reportedLimit: limit,
-            reportedSeenUtc: ReportedLimit.FirstSeen(samples, reported));
+            ledgerFromUtc: since, reportedSeenUtc: ReportedLimit.FirstSeen(samples, reported));
         budget = HoldWeeklyStop(state, budget, now);
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
@@ -407,21 +422,26 @@ public sealed class AccountPacer
     /// sign-in for days) is never read as this one's.</summary>
     public static List<LimitObservation> LoadLimits(AccountDir dir, string? account = null)
     {
-        try
-        {
-            if (!File.Exists(dir.LimitsPath)) return [];
-            var stored = JsonSerializer.Deserialize<StoredLimits>(File.ReadAllText(dir.LimitsPath), Json);
-            return stored is null || (account is not null && stored.Account != account) ? [] : stored.Observations;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return []; }
+        var stored = ReadLimits(dir);
+        return stored is null || (account is not null && stored.Account != account) ? [] : stored.Observations;
     }
 
-    private static void SaveLimits(AccountDir dir, string? account, List<LimitObservation> limits)
+    private static StoredLimits? ReadLimits(AccountDir dir)
+    {
+        try
+        {
+            if (!File.Exists(dir.LimitsPath)) return null;
+            return JsonSerializer.Deserialize<StoredLimits>(File.ReadAllText(dir.LimitsPath), Json);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
+    }
+
+    private static void SaveLimits(AccountDir dir, string? account, List<LimitObservation> limits, DateTime? signedInSince)
     {
         try
         {
             var temp = dir.LimitsPath + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(new StoredLimits(account ?? "", limits), Json));
+            File.WriteAllText(temp, JsonSerializer.Serialize(new StoredLimits(account ?? "", limits) { SignedInSinceUtc = signedInSince }, Json));
             File.Move(temp, dir.LimitsPath, overwrite: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
@@ -430,5 +450,9 @@ public sealed class AccountPacer
     /// <summary>What <see cref="AccountDir.LimitsPath"/> holds: the account it was kept for, and that account's own observed
     /// hits (M.ORCH-T774 review: a bare array couldn't say whose hits they were, so a re-signed folder would keep reading the
     /// previous account's).</summary>
-    private sealed record StoredLimits(string Account, List<LimitObservation> Observations);
+    private sealed record StoredLimits(string Account, List<LimitObservation> Observations)
+    {
+        /// <summary>When <see cref="Account"/> was signed in to the folder (M.ORCH-T1976); null when unknown.</summary>
+        public DateTime? SignedInSinceUtc { get; init; }
+    }
 }

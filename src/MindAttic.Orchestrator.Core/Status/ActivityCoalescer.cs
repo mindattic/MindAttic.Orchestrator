@@ -12,6 +12,11 @@ namespace MindAttic.Orchestrator.Status;
 public sealed class ActivityCoalescer
 {
     private readonly object gate = new();
+
+    /// <summary>The lock every decision here is taken under (reentrant): a publisher holds it across a decision and its publish,
+    /// so a stale message decided first can never land after a newer one, such as a session's end (M.ORCH-T1976).</summary>
+    public object Gate => gate;
+
     private readonly Dictionary<string, Entry> sessions = new(StringComparer.Ordinal);
 
     private sealed class Entry
