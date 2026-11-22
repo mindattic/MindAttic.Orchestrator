@@ -209,6 +209,8 @@ public partial class App : Application
             log.Information("Client of {Host:l}: opening its host's Team Wall instead of the local dashboard", client.Host ?? client.GatewayUrl ?? "?");
             if (TeamWallWindow.Open($"MindAttic Orchestrator — host {client.Host ?? client.GatewayUrl}") is not { } wall) { Shutdown(); return; }
             MainWindow = wall;
+            // OnExplicitShutdown: the wall is this client's only window, so closing it quits, freeing the single-instance mutex (M.ORCH-T1970).
+            wall.Closed += (_, _) => Shutdown();
             instance.OnShowRequested(_ => Dispatcher.BeginInvoke(() => { if (MainWindow is { } w) DashboardWindow.Restore(w); }));
             return;
         }

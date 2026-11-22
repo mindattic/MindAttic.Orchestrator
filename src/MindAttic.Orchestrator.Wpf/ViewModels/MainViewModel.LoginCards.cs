@@ -346,7 +346,7 @@ public sealed partial class MainViewModel
                 : $"{command} ended with exit code {code}; the account wasn't switched.";
             if (code != 0) Toasts.Insert(0, new ToastViewModel($"{email} not signed in", AccountsMessage, Palette.Over, null));
         }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             AccountsMessage = $"Couldn't run {command}: {ex.Message}";
             Toasts.Insert(0, new ToastViewModel($"{email} not signed in", AccountsMessage, Palette.Over, null));
@@ -416,9 +416,11 @@ public sealed partial class MainViewModel
     {
         if (IsApiKeyTab || AccountDirs.Normalize(ScopeEmail) is not { } email) return;
         var root = Root;
-        var disabling = !IsLoginDisabled;
+        var disabling = true;
+        // async void: the DB read and anything thrown below must stay inside the try, or it crashes the app (M.ORCH-T1970).
         try
         {
+            disabling = !IsLoginDisabled;
             await Task.Run(() => MemberRoster.Set(root.aggregator.Db, email, null, null, null,
                 disabling ? MemberRoster.Disabled : "active", DateTime.UtcNow, unique: true));
             AccountsMessage = disabling
@@ -427,7 +429,7 @@ public sealed partial class MainViewModel
             NoteLocalChange();
             await root.RefreshAsync();
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             AccountsMessage = $"Couldn't {(disabling ? "disable" : "enable")} {email}: {ex.Message}";
             Toasts.Insert(0, new ToastViewModel($"{email} not changed", AccountsMessage, Palette.Over, null));

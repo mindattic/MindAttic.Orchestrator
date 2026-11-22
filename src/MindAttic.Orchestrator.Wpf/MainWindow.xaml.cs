@@ -250,8 +250,7 @@ public partial class MainWindow : Window
             polling = true;
             Retime();
         };
-        // Closing, no tab gone spawns a Launcher (M.ORCH-T1150).
-        Closing += (_, _) => model.ShuttingDown = true;
+        // Closing, no tab gone spawns a Launcher (M.ORCH-T1150): set in OnClosing, only once the close isn't cancelled.
         Closed += (_, _) =>
         {
             model.ShuttingDown = true;
@@ -333,6 +332,21 @@ public partial class MainWindow : Window
     /// (<see cref="Sessions.PaneBroker"/>) and opens as a new tab on its person's page. Called by the app for its one dashboard
     /// only, never by a test's window.
     /// </summary>
+    private bool freezeOnClose;
+
+    /// <summary>
+    /// A real close only (M.ORCH-T1970): every Closing handler runs first, the tray's close-to-tray among them (attached after
+    /// this window's own, so a handler here couldn't see its cancel), and only a close nobody cancelled marks the dashboard
+    /// shutting down and freezes its session-restore state; hidden to the tray, it keeps both live.
+    /// </summary>
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        base.OnClosing(e);
+        if (e.Cancel) return;
+        model.ShuttingDown = true;
+        if (freezeOnClose) SessionRestore.Freeze();
+    }
+
     internal void HostTerminals()
     {
         // Its tabs are written to the session-restore file as they change, and offered back after a crash (M.ORCH-T862).
@@ -340,8 +354,8 @@ public partial class MainWindow : Window
         SessionRestore.Track(model);
         // Back where it was last time, maximized or not, before it's shown (M.ORCH-T1510).
         SessionRestore.TrackWindow(this);
-        // Kept as they stand when the window starts closing: the tabs' teardown after that isn't what was open.
-        Closing += (_, _) => SessionRestore.Freeze();
+        // Kept as they stand when the window starts closing: the tabs' teardown after that isn't what was open (OnClosing).
+        freezeOnClose = true;
         terminalsPipe = new CancellationTokenSource();
         _ = Sessions.PaneBroker.ServeAsync(request => Dispatcher.InvokeAsync(() => model.OpenTerminal(request)).Task, terminalsPipe.Token)
             .ContinueWith(t => OrchestratorLog.For("Terminals").Error(t.Exception, "The terminals pipe server ended"), TaskContinuationOptions.OnlyOnFaulted);

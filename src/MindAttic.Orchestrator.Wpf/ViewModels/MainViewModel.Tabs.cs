@@ -577,7 +577,14 @@ public sealed partial class MainViewModel
         AllTerminals.Panes.CollectionChanged += (_, e) =>
         {
             foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? [])
-                added.PropertyChanged += (s, p) => { if (p.PropertyName == nameof(TerminalPaneViewModel.Ended) && s is TerminalPaneViewModel { Ended: true } ended) AfterChange.Post(() => OnTabGone(ended)); };
+                added.PropertyChanged += (s, p) =>
+                {
+                    if (p.PropertyName != nameof(TerminalPaneViewModel.Ended) || s is not TerminalPaneViewModel pane) return;
+                    if (pane.Ended) AfterChange.Post(() => OnTabGone(pane));
+                    // A revived pane (Ended back to false) is live again: its next end counts as a tab gone anew (M.ORCH-T1970).
+                    // Posted too, so it runs after an end posted just before it.
+                    else AfterChange.Post(() => Root.tabsGone.Remove(pane));
+                };
             // Not inside the change: the replacement Launcher closes and adds panes, which an ObservableCollection refuses during
             // its own CollectionChanged ("Cannot change ObservableCollection during a CollectionChanged event"), so closing a
             // person's last tab never opened their new Launcher (M.ORCH-T1317).

@@ -126,7 +126,10 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
     /// is skipped, so nothing reaches a new link ahead of its Hello). Ends on <see cref="Close"/>. Never throws.</summary>
     private async Task WriteLoopAsync()
     {
-        var token = sending.Token;
+        CancellationToken token;
+        // Close() ran first and disposed it: nothing left to write (M.ORCH-T1970).
+        try { token = sending.Token; }
+        catch (ObjectDisposedException) { return; }
         try
         {
             await foreach (var (target, frame) in outbox.Reader.ReadAllAsync(token).ConfigureAwait(false))

@@ -350,7 +350,8 @@ internal sealed class ViewerWindow : Window
 
     private void Copy()
     {
-        if (relay?.Terminal.GetSelectedText() is { Length: > 0 } text)
+        // ReadSelection, not GetSelectedText: a terminal whose native window is gone throws (M.ORCH-T1613, M.ORCH-T1970).
+        if (relay?.ReadSelection() is { Length: > 0 } text)
             try { Clipboard.SetDataObject(text, copy: true); }
             catch (System.Runtime.InteropServices.ExternalException ex) { log.Warning(ex, "The clipboard was busy"); }
     }
