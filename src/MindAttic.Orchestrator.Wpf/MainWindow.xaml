@@ -836,9 +836,11 @@
                                                  than the header's own (18/16/12 here vs. the header's and the flat strip's own
                                                  TerminalTabStatusIcon's 20/18/14), so the same zzz/busy/asking badge read larger on a
                                                  user's row than on their own CLI's, one column over. -->
-                                            <!-- Margin-left 5, not 8 (M.ORCH-T1894): shifted 3px left alongside the spine above,
-                                                 for the same reason - the chevron's ink reads left of its cell's true center. -->
-                                            <Grid Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="5,0,8,0">
+                                            <!-- Margin-left 6, not 8 (M.ORCH-T1894, M.ORCH-T1895): shifted 3px left alongside the spine
+                                                 above for the chevron-center reason below, then nudged 1px back right (Ryan's report) -
+                                                 right margin trimmed to match so the cell's total span, and the name column after it,
+                                                 don't shift. -->
+                                            <Grid Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="6,0,7,0">
                                                 <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
                                                             Foreground="{DynamicResource MaOnAccent}" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             Visibility="{Binding ShowsPaneIdleBadge, Converter={StaticResource Visible}}" />
