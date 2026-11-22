@@ -55,6 +55,9 @@ internal sealed class ModeTracker
                     keep = esc;
                     break;
                 }
+                // A CSI cut off by a fresh ESC (M.ORCH-T1971): drop it and resume at that ESC; CAN/SUB abort it.
+                if (text[j] == 0x1b) { i = j; continue; }
+                if (text[j] is 0x18 or 0x1a) { i = j + 1; continue; }
                 if (text[j] is (byte)'h' or (byte)'l' && j > esc + 2 && text[esc + 2] == '?')
                     ApplyModes(text.AsSpan(esc + 3, j - esc - 3), text[j] == 'h');
                 i = j + 1;
@@ -88,7 +91,8 @@ internal sealed class ModeTracker
             else
             {
                 if (next == 'c') ResetModes();
-                i = esc + 2;
+                // ESC ESC (M.ORCH-T1971): the second ESC starts its own sequence.
+                i = next == 0x1b ? esc + 1 : esc + 2;
             }
         }
         pending = keep >= 0 ? text[keep..] : [];

@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace MindAttic.Orchestrator.TermHost.Replay;
 
@@ -11,6 +12,17 @@ internal static class ReplayScreen
     /// <summary>The queries conhost and TUIs send at start: cursor position (<c>ESC[6n</c>, <c>ESC[?6n</c>), status
     /// (<c>ESC[5n</c>) and device attributes (<c>ESC[c</c>, <c>ESC[0c</c>, <c>ESC[&gt;c</c>, <c>ESC[&gt;0c</c>).</summary>
     private static readonly string[] Queries = ["\u001b[6n", "\u001b[?6n", "\u001b[5n", "\u001b[c", "\u001b[0c", "\u001b[>c", "\u001b[>0c"];
+
+    /// <summary>
+    /// The other queries whose replies <see cref="AutoReplies"/> treats as replies (M.ORCH-T1971): DECRQM <c>CSI ?Ps$p</c>,
+    /// kitty keyboard <c>CSI ?u</c>, XTVERSION <c>CSI &gt;q</c>, window reports <c>CSI 13-16/18-21t</c>, OSC colour and
+    /// clipboard queries (<c>OSC 4;n;?</c>, <c>OSC 10;?</c>..., <c>OSC 52;c;?</c>), and DCS <c>$q</c> / <c>+q</c>. Mode sets are left alone.
+    /// </summary>
+    private static readonly Regex MoreQueries = new(
+        @"\x1b\[(?:\??[0-9]+\$p|\?u|>0?q|(?:1[34-689]|2[01])(?:;2)?t)" +
+        @"|\x1b\](?:4|5|1[0-9]|52);(?:[^\x07\x1b]*;)?\?(?:\x07|\x1b\\)" +
+        @"|\x1bP[$+]q[^\x07\x1b]*(?:\x07|\x1b\\)",
+        RegexOptions.CultureInvariant);
 
     private static readonly string[] AltScreenEnters = ["\u001b[?1049h", "\u001b[?47h", "\u001b[?1047h"];
 
@@ -72,6 +84,7 @@ internal static class ReplayScreen
         var changed = false;
         foreach (var query in Queries)
             if (text.Contains(query, StringComparison.Ordinal)) { text = text.Replace(query, "", StringComparison.Ordinal); changed = true; }
+        if (MoreQueries.IsMatch(text)) { text = MoreQueries.Replace(text, ""); changed = true; }
         return changed ? Encoding.Latin1.GetBytes(text) : data;
     }
 
