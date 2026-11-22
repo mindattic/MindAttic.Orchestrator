@@ -161,8 +161,8 @@ internal static class CliApp
             {
                 m.SetDescription("The organization's members (orchestrator.db): name, email, role, tier, status, and whether each has signed in here; the dashboard has a tab for each.");
                 m.SetDefaultCommand<MembersCommand>();
-                m.AddCommand<MembersAddCommand>("add").WithDescription("Add a member: add <email> --name \"<name>\" --role primary-owner|owner|admin|member --tier premium|standard [[--status active|pending]].");
-                m.AddCommand<MembersSetCommand>("set").WithDescription("Change a member: set <email> with any of --name, --role, --tier, --status (--name \"\" clears the name).");
+                m.AddCommand<MembersAddCommand>("add").WithDescription("Add a member: add <email> --name \"<name>\" --role primary-owner|owner|admin|member --tier premium|standard [[--status active|pending|disabled]].");
+                m.AddCommand<MembersSetCommand>("set").WithDescription("Change a member: set <email> with any of --name, --role, --tier, --status active|pending|disabled (--name \"\" clears the name).");
                 m.AddCommand<MembersRemoveCommand>("remove").WithDescription("Remove a member: remove <email>.");
             });
             // The global /org and /organization commands run these (M.ORCH-T686); each is a command above, a member named any way.
@@ -178,7 +178,7 @@ internal static class CliApp
                 {
                     m.SetDescription("The members, as orchestrator members lists them; add, set and remove change them.");
                     m.SetDefaultCommand<MembersCommand>();
-                    m.AddCommand<MembersAddCommand>("add").WithDescription("Add a member: add <email> --name \"<name>\" --role primary-owner|owner|admin|member --tier premium|standard [[--status active|pending]].");
+                    m.AddCommand<MembersAddCommand>("add").WithDescription("Add a member: add <email> --name \"<name>\" --role primary-owner|owner|admin|member --tier premium|standard [[--status active|pending|disabled]].");
                     m.AddCommand<MembersSetCommand>("set").WithDescription("Change a member: set <email> with any of --name, --role, --tier, --status.");
                     m.AddCommand<MembersRemoveCommand>("remove").WithDescription("Remove a member: remove <email>.");
                 });

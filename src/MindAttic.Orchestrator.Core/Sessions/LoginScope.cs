@@ -20,6 +20,10 @@ public sealed record LoginTab(string? Email, string Title, string ToolTip, strin
                    : "The Vault's API key, as a person: there's no Claude key in the MindAttic Vault keyring yet",
             Billing.ApiKeyPerson.Color, hasKey) { IsApiKey = true };
 
+    /// <summary>Whether the member's until date has passed (M.ORCH-T1401): still shown (only a disabled member is hidden,
+    /// M.ORCH-T1952), marked lapsed.</summary>
+    public bool Lapsed { get; init; }
+
     /// <summary>Whether this is the API key's person tab rather than a Claude login's.</summary>
     public bool IsApiKey { get; init; }
 
@@ -131,7 +135,8 @@ public static class LoginScope
     /// @; any other login's by its login's name. The global one is its member's own seat, never marked a fallback (the API key tab is, while the key bills), each has its email in the tooltip and
     /// its terminal tabs' color as its accent. The global login's own account gets no second tab: the fallback one is its.
     /// </summary>
-    /// <para><paramref name="lapsed"/> (M.ORCH-T1401): logins whose <see cref="MemberUntil"/> date has passed, left out.</para>
+    /// <para><paramref name="lapsed"/> (M.ORCH-T1401): logins whose <see cref="MemberUntil"/> date has passed, kept and marked
+    /// <see cref="LoginTab.Lapsed"/>; only a disabled member (M.ORCH-T1952) is left out.</para>
     /// <para>The API key's person (M.ORCH-T906) has its tab after everyone's: <paramref name="apiKey"/> says whether the
     /// Vault holds a key for it (its "signed in"); null leaves it out.</para>
     public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<Member>? members = null, bool? apiKey = null,
@@ -174,10 +179,11 @@ public static class LoginScope
             .Where(e => !live.Contains(e) && e != globalEmail)
             .ToHashSet(StringComparer.Ordinal);
         // Every org member's and every login folder's node is permanent (M.ORCH-T1950): signed out or with no live CLI it
-        // still has its tab, shown signed out. Hidden is the ONE place a login is left out of the tree: today only a member
-        // whose until date has passed (M.ORCH-T1401, MemberUntil), so nothing opens or respawns for it; the 'disabled'
-        // member status (M.ORCH-T1952) belongs here too. The global login's is never dropped.
-        bool Hidden(string email) => lapsed is not null && lapsed.Contains(email);
+        // still has its tab, shown signed out. Hidden is the ONE place a login is left out of the tree: only a member whose
+        // status is 'disabled' (M.ORCH-T1952, set by hand), so nothing opens or respawns for it. A member whose until date has
+        // passed (M.ORCH-T1401, MemberUntil) stays, marked lapsed (LoginTab.Lapsed). The global login's is never dropped,
+        // and the API key's person keeps its own tab below.
+        bool Hidden(string email) => byEmail.TryGetValue(email, out var m) && MemberRoster.IsDisabled(m);
         var own = live.Concat(waiting).Where(e => !Hidden(e)).Order(StringComparer.Ordinal).Select(e =>
         {
             var look = ownLook(e);
@@ -186,9 +192,12 @@ public static class LoginScope
             // machine already knows, just one the snapshot happens to carry nothing live for this tick, not one still to sign
             // in to.
             var signedIn = !waiting.Contains(e) || knownSignedIn.GetValueOrDefault(e, false);
-            return signedIn
-                ? new LoginTab(e, title, $"{e}: its own login (~/.claude-accounts)", look.TabColor)
-                : new LoginTab(e, title, $"{e}: not signed in on this machine yet; sign in to see its dashboard", look.TabColor, SignedIn: false);
+            var isLapsed = lapsed is not null && lapsed.Contains(e);
+            var lapsedNote = isLapsed ? " (lapsed: its until date has passed)" : "";
+            return (signedIn
+                ? new LoginTab(e, title, $"{e}: its own login (~/.claude-accounts){lapsedNote}", look.TabColor)
+                : new LoginTab(e, title, $"{e}: not signed in on this machine yet; sign in to see its dashboard{lapsedNote}", look.TabColor, SignedIn: false))
+                with { Lapsed = isLapsed };
         });
         // By the name each shows, case-insensitive (M.ORCH-T752): the global login's tab is just its member's, so it sorts
         // with the others; ties by email, the global one first. The API key's person goes after all of them (M.ORCH-T906).

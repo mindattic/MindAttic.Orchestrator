@@ -418,6 +418,8 @@ public sealed partial class MainViewModel
     /// <summary>The icon in words, so it's never only a picture: "Busy", "Idle", "All N CLIs stopped", or why it's disabled.</summary>
     public string TabActivityWord => TabActivity switch
     {
+        // Past its until date (M.ORCH-T1401): still shown since M.ORCH-T1952, marked lapsed.
+        _ when tab.Lapsed => tab.SignedIn ? "Lapsed: its until date has passed" : "Lapsed: its until date has passed, signed out",
         TabActivity.Disabled => tab.IsApiKey ? tab.SignedIn ? "Disabled: its API credit is spent" : "Disabled: no key in the Vault"
             : tab.SignedIn ? "Disabled: past its cutoff" : "Disabled: signed out",
         _ when IsPersonTab && StoppedCliCount is > 0 and var n => n == 1 ? "Stopped: its one open CLI is idle" : $"Stopped: all {n} open CLIs are idle",

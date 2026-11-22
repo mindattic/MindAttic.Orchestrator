@@ -482,7 +482,7 @@ public sealed partial class MainViewModel : ObservableObject
                 var ramUtilizationPercent = MachineHealth.RamUtilizationPercent();
                 // The master switch for /allocate (M.ORCH-T1491): only a setting that was read and is off shows the banner.
                 var paused = store.TryLoadSettings(out var settingsNow) && !settingsNow.Allocate;
-                // Members whose until date has passed drop off the roster, so no CLI tab is started or respawned for them (M.ORCH-T1401).
+                // Members whose until date has passed (M.ORCH-T1401): kept on the tree, marked lapsed (only disabled hides one, M.ORCH-T1952).
                 var lapsed = MemberUntil.Lapsed(settingsNow?.MemberUntil, DateTime.Now);
                 // On the host, the org members connected to it now (hub phase 1, M.ORCH-T1640): the menu bar's chip.
                 connectedMembersRead = ConnectedMembersNow(settingsNow);

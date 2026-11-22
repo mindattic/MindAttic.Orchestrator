@@ -101,6 +101,18 @@ public sealed class AccountPacer
         AgentNote = $"This login is signed in as {other}, not {email}: every call spends {other}'s allowance. Finish the current step and stop.",
     };
 
+    /// <summary>The pace of a disabled member's login (M.ORCH-T1952): stopped, no subagents, as <see cref="Borrowed"/> is, until
+    /// it's set active again.</summary>
+    internal static Pace DisabledPace(Pace pace, string email) => pace with
+    {
+        Mode = PaceMode.Over,
+        SessionCap = 0,
+        SubagentAllowance = 0,
+        Stop = true,
+        Note = $"{email} is a disabled member: nothing runs on its login until it's set active (orchestrator members set {email} --status active).",
+        AgentNote = $"{email} is a disabled member: finish the current step and stop.",
+    };
+
     /// <summary>Whether <paramref name="plan"/> has no 5-hour window (a solo Ultra account), as the dashboard reads it.</summary>
     internal static bool HasNoFiveHourWindow(string? plan) => plan == "Ultra";
 
@@ -135,6 +147,8 @@ public sealed class AccountPacer
         IReadOnlyList<UsageCutoff>? cutoffs = null;
         try { cutoffs = Cutoffs?.Invoke(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+        // Disabled members (M.ORCH-T1952), read once a tick: paced to a stop like a borrowed login.
+        var disabled = Dirs.DisabledNow();
         foreach (var (dir, account) in accounts)
         {
             if (!states.TryGetValue(dir.Email, out var state)) states[dir.Email] = state = new State(dir, this);
@@ -164,13 +178,13 @@ public sealed class AccountPacer
             var mine = sessions.Where(s => ids.Contains(s.SessionId)).ToList();
             // Let past its weekly target by the user (M.ORCH-T694): its week stops at the wall until the allowance ends.
             var (own, allowedWhy) = WeeklyAllowances.Apply(allowed, dir.Email, UsageCutoffs.Apply(cutoffs, dir.Email, settings), nowUtc);
-            result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, write, allowedWhy));
+            result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, write, allowedWhy, disabled.Contains(dir.Email)));
         }
         return result;
     }
 
     private AccountPace Pace(AccountDir dir, State state, List<TranscriptSession> sessions, OrchestratorSettings settings,
-        DateTime now, DateTime startOfTodayUtc, bool write, string? why = null)
+        DateTime now, DateTime startOfTodayUtc, bool write, string? why = null, bool disabled = false)
     {
         var events = sessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc).ToList();
         // A reading the probe tagged with another account (the folder since re-signed, M.ORCH-T1404) is that account's, never
@@ -246,6 +260,8 @@ public sealed class AccountPacer
         if (why is not null) pace = pace with { Note = $"{pace.Note} {why}" };
         // Signed in as another member (M.ORCH-T1896): every token its CLIs spend is that member's, so it gets no room at all.
         if (state.BorrowedFrom is { } other) pace = Borrowed(pace, dir.Email, other);
+        // A disabled member (M.ORCH-T1952): nothing new on it at all.
+        if (disabled) pace = DisabledPace(pace, dir.Email);
         if (write)
         {
             state.Writer.Write(budget, pace);

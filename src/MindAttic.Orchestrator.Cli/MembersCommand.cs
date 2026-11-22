@@ -191,7 +191,7 @@ internal sealed class MembersSetCommand : Command<MembersSetCommand.Settings>
         public string? Tier { get; init; }
 
         [CommandOption("--status <STATUS>")]
-        [Description("active or pending.")]
+        [Description("active, pending or disabled (disabled hides its dashboard node and keeps all work off its login, M.ORCH-T1952).")]
         public string? Status { get; init; }
     }
 
