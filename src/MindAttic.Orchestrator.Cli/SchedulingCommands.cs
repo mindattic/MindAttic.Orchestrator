@@ -264,9 +264,43 @@ internal sealed class DaemonCommand : Command<DaemonCommand.Settings>
         [CommandOption("--interval <SECONDS>")]
         [DefaultValue(15)]
         public int Interval { get; init; } = 15;
+
+        [CommandOption("--here")]
+        [Description("Run the daemon in this console, printing its log lines, instead of handing off to the installed MindAttic.Orchestrator.Daemon.exe.")]
+        public bool Here { get; init; }
     }
 
     public override int Execute(CommandContext context, Settings settings)
+    {
+        // Handed off to the installed headless daemon exe when it is there (M.ORCH-T1943), so the one daemon always runs from the
+        // same exe whoever started it; --here (or an install from before M.ORCH-T1942) runs it in this console as before.
+        if (!settings.Here && new MindAttic.Orchestrator.Setup.Installer().InstalledDaemonExe is var exe && File.Exists(exe))
+            return HandOff(exe);
+        return RunHere(settings);
+    }
+
+    private static int HandOff(string exe)
+    {
+        if (MindAttic.Orchestrator.Setup.Installer.DaemonRunning())
+        {
+            AnsiConsole.MarkupLine("[yellow]A daemon is already running (the logon one, or another `orchestrator daemon`); this one won't start beside it.[/]");
+            return 1;
+        }
+        try
+        {
+            // Outside this CLI's job (M.ORCH-T1691), as Installer.EnsureDaemon starts it: the daemon outlives this command.
+            var started = MindAttic.Orchestrator.Term.Breakaway.Start(MindAttic.Orchestrator.Setup.Installer.DaemonStartInfo(exe));
+            AnsiConsole.MarkupLine($"Started the headless daemon (pid {started.Pid}, {Markup.Escape(exe)}). [grey]Log: {Markup.Escape(OrchestratorLog.DbPath)}; `orchestrator daemon --here` runs one in this console instead.[/]");
+            return 0;
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+        {
+            AnsiConsole.MarkupLine($"[red]Couldn't start {Markup.Escape(exe)}: {Markup.Escape(ex.Message)}[/]");
+            return 1;
+        }
+    }
+
+    private static int RunHere(Settings settings)
     {
         // The daemon's own mutex, as the installed one takes (M.ORCH-T1000): a second daemon beside the logon one split the status
         // inbox with it, so about half of what writers sent went to one that acted on none of it.

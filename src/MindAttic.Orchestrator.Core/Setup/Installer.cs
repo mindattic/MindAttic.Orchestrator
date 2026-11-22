@@ -20,6 +20,9 @@ public sealed class Installer
     /// <summary>The logon task this exe registered before WatchDog took the daemon over (M.ORCH-T475). Never registered
     /// now; still ended on an upgrade and deleted on an uninstall, for a machine that has it yet.</summary>
     public const string LegacyTaskName = @"\MindAttic\Orchestrator\Orchestrator daemon";
+    /// <summary>The headless daemon exe (M.ORCH-T1942), installed beside <see cref="ExeName"/>: what every <see cref="DaemonArg"/>
+    /// launch hands off to when it is there (M.ORCH-T1943).</summary>
+    public const string DaemonExeName = "MindAttic.Orchestrator.Daemon.exe";
     /// <summary>Command-line argument that starts the exe as the background daemon.</summary>
     public const string DaemonArg = "--daemon";
     /// <summary>File name of the shortcut the installer creates.</summary>
@@ -48,6 +51,8 @@ public sealed class Installer
     public string InstallDir { get; }
     /// <summary>Full path of the installed exe.</summary>
     public string InstalledExe => Path.Combine(InstallDir, ExeName);
+    /// <summary>Full path of the installed headless daemon exe (M.ORCH-T1943), whether or not it is there yet.</summary>
+    public string InstalledDaemonExe => Path.Combine(InstallDir, DaemonExeName);
 
     /// <summary>The house folder (C:\Apps) when it's writable or already holds the install; otherwise per-user Programs.</summary>
     internal static string ChooseInstallDir(string preferred, string fallback)
@@ -228,6 +233,18 @@ public sealed class Installer
         return File.Exists(target) && !SamePath(target, self) ? target : null;
     }
 
+    /// <summary>
+    /// The headless daemon exe a <see cref="DaemonArg"/> launch of <paramref name="self"/> (the dashboard exe or its old-named copy)
+    /// hands off to (M.ORCH-T1943): <see cref="DaemonExeName"/> beside it, or null when that isn't there (an install from before
+    /// M.ORCH-T1942), and the launch then runs the daemon as before. So Scheduler's jobs.json, the Run value and every other
+    /// <c>--daemon</c> start keep working unchanged while the daemon itself runs in the exe that has no WPF.
+    /// </summary>
+    public static string? DaemonForwardTarget(string self)
+    {
+        var target = Path.Combine(Path.GetDirectoryName(self) ?? "", DaemonExeName);
+        return File.Exists(target) && !SamePath(target, self) ? target : null;
+    }
+
     /// <summary>Deletes the TermHost versions older than the newest that no process runs from (M.ORCH-T932). The daemon repeats it
     /// on a slow tick, for the versions that were still in use now. Never throws.</summary>
     public void CleanupTermHosts()
@@ -291,9 +308,11 @@ public sealed class Installer
         return "started the daemon";
     }
 
-    /// <summary>How the daemon is started: <paramref name="exe"/> <see cref="DaemonArg"/>, from its own folder, windowless.</summary>
+    /// <summary>How the daemon is started: <paramref name="exe"/> <see cref="DaemonArg"/>, from its own folder, windowless. The headless
+    /// exe beside it is started straight away when it is there (M.ORCH-T1943), rather than a dashboard exe that would only forward.</summary>
     public static ProcessStartInfo DaemonStartInfo(string exe)
     {
+        exe = DaemonForwardTarget(exe) ?? exe;
         var psi = new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetDirectoryName(exe)! };
         psi.ArgumentList.Add(DaemonArg);
         return psi;

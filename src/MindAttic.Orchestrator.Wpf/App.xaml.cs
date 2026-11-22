@@ -49,6 +49,15 @@ public partial class App : Application
             return;
         }
 
+        // A daemon launch of either name (Scheduler's jobs.json, the Run value, EnsureDaemon) is handed to the headless daemon exe
+        // beside it when that is installed (M.ORCH-T1943), and waited on; without it, it runs here as before.
+        if (e.Args.Contains(Installer.DaemonArg, StringComparer.OrdinalIgnoreCase)
+            && Environment.ProcessPath is { } daemonSelf && Installer.DaemonForwardTarget(daemonSelf) is { } daemonExe)
+        {
+            Shutdown(Forward(daemonExe, e.Args));
+            return;
+        }
+
         // Started by the old name (Scheduler's logon job, the Launcher, Tickets Desktop's links): handed to the new-named exe
         // beside it before anything else, so this copy takes no mutex or pipe and writes no hooks (M.ORCH-T999).
         if (Environment.ProcessPath is { } started && Installer.ForwardTarget(started) is { } forward)
