@@ -173,8 +173,12 @@ public static class LoginScope
         var waiting = byEmail.Keys.Concat(knownSignedIn.Keys)
             .Where(e => !live.Contains(e) && e != globalEmail)
             .ToHashSet(StringComparer.Ordinal);
-        // A member whose until date has passed (M.ORCH-T1401, MemberUntil) has no tab, so nothing opens or respawns for it; the global login's is never dropped.
-        var own = live.Concat(waiting).Where(e => lapsed is null || !lapsed.Contains(e)).Order(StringComparer.Ordinal).Select(e =>
+        // Every org member's and every login folder's node is permanent (M.ORCH-T1950): signed out or with no live CLI it
+        // still has its tab, shown signed out. Hidden is the ONE place a login is left out of the tree: today only a member
+        // whose until date has passed (M.ORCH-T1401, MemberUntil), so nothing opens or respawns for it; the 'disabled'
+        // member status (M.ORCH-T1952) belongs here too. The global login's is never dropped.
+        bool Hidden(string email) => lapsed is not null && lapsed.Contains(email);
+        var own = live.Concat(waiting).Where(e => !Hidden(e)).Order(StringComparer.Ordinal).Select(e =>
         {
             var look = ownLook(e);
             var title = Title(e, look.Alias);

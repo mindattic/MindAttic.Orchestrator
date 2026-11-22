@@ -10,8 +10,8 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
 /// One dashboard tab per Claude login (M.ORCH-T613): the global <c>~/.claude</c> login's first, then each per-CLI login under
-/// <c>~/.claude-accounts</c> that's signed in or has a CLI on it, titled by its name (M.ORCH-T614) in its terminal tabs' color
-/// (M.ORCH-T616), a tab added or removed as logins are signed in or out. Each tab is this whole view model, scoped to its
+/// <c>~/.claude-accounts</c> and each org member, titled by its name (M.ORCH-T614) in its terminal tabs' color
+/// (M.ORCH-T616); a login's tab is permanent (M.ORCH-T1950), shown signed out rather than removed when it signs out. Each tab is this whole view model, scoped to its
 /// login: its stat tiles, its 5-hour and weekly meter and chart from its own pace, its agents and repos (only the CLIs and
 /// Launcher tabs on it), its toasts, and Start opening on its login. Tickets stay workspace-wide, so the queue and the audit
 /// read the same everywhere; the Accounts view stays the overview of every login. The global login's tab owns the one

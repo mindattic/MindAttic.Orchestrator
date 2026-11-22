@@ -66,9 +66,19 @@ public sealed partial class MainViewModel
         var owners = AllTerminals.Panes.ToLookup(OwnerOf);
         foreach (var t in loginTabs)
             t.Terminals.SyncTo([.. owners[t].OrderBy(p => p.Request.Order ?? long.MaxValue)]);
-        foreach (var t in loginTabs) t.Terminals.RefreshLast(); // a pane moved between logins (M.ORCH-T1955)
+        foreach (var t in loginTabs)
+        {
+            t.Terminals.RefreshLast(); // a pane moved between logins (M.ORCH-T1955)
+            t.Raise(nameof(ShowsLauncherPlaceholder));
+        }
         ShowChosenPane();
     }
+
+    /// <summary>Whether this login's tree node shows the disabled "Launcher (signed out)" row (M.ORCH-T1950): every org
+    /// member's node stays for good and always has a Launcher child (M.ORCH-T1886), but <see cref="OpenLaunchers"/> only runs
+    /// one on a signed-in login, so a signed-out one with no Launcher pane gets this stand-in instead of becoming a leaf.
+    /// The API key keeps its own behaviour (no stand-in).</summary>
+    public bool ShowsLauncherPlaceholder => IsPersonTab && !tab.IsApiKey && !tab.SignedIn && !Terminals.Panes.Any(p => p.Request.IsMenu && !p.Ended);
 
     /// <summary>The one terminal on screen is the shown person's chosen one; every other is hidden.</summary>
     private void ShowChosenPane()
