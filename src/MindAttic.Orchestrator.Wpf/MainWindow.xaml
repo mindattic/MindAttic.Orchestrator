@@ -467,6 +467,10 @@
                                 ToolTipService.ShowOnDisabled="True"
                                 mc:MaCallout.ToolTip="Run Launcher: opens the selected login's standalone Launcher (its own process)"
                                 AutomationProperties.Name="Run Launcher" />
+                        <!-- Bootstrap (M.ORCH-T2053): the Launcher's bootstrap as clickable steps (BootstrapWindow). -->
+                        <Button x:Name="ToolbarBootstrapButton" Style="{StaticResource MaToolButton}" Content="&#xE7B8;" Click="ToolbarBootstrapButton_Click"
+                                mc:MaCallout.ToolTip="Bootstrap this machine: prerequisites, the workspace clone and the latest backup restore, step by step"
+                                AutomationProperties.Name="Bootstrap this machine" />
                     </StackPanel>
                     <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
                     <!-- Stub groups (M.ORCH-T1972's wider migration still to come): no Orchestrator feature behind any of

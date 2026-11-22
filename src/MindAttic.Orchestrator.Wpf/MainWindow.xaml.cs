@@ -1849,6 +1849,15 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Azure export failed; contained"); }
     }
 
+    /// <summary>The toolbar's Bootstrap button (M.ORCH-T2053): opens <see cref="BootstrapWindow"/> at the workspace root.</summary>
+    private void ToolbarBootstrapButton_Click(object sender, RoutedEventArgs e)
+    {
+        var root = OrchestratorOptions.Load().WorkspaceRoot;
+        if (string.IsNullOrWhiteSpace(root)) return;
+        try { new BootstrapWindow(root) { Owner = this }.Show(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Bootstrap from the toolbar failed; contained"); }
+    }
+
     private void OpenKickstart()
     {
         var root = OrchestratorOptions.Load().WorkspaceRoot;

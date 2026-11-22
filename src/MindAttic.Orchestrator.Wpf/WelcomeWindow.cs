@@ -102,6 +102,10 @@ public sealed class WelcomeWindow : Window
         open.SetResourceReference(StyleProperty, "MaPrimaryButton");
         open.Click += (_, _) => Close();
         var buttons = new MaStackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
+        var bootstrap = new Button { Content = "Bootstrap…" };
+        bootstrap.SetResourceReference(StyleProperty, "MaButton");
+        bootstrap.Click += (_, _) => { try { new BootstrapWindow(WorkspaceRoot()) { Owner = this }.ShowDialog(); } catch (Exception ex) when (ex is not OutOfMemoryException) { note.Text = $"Bootstrap didn't open: {ex.Message}"; } };
+        buttons.Children.Add(bootstrap);
         buttons.Children.Add(recheck);
         buttons.Children.Add(open);
         buttons.SetResourceReference(MarginProperty, "SpaceTM");
