@@ -227,6 +227,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 tick.Lap("ended sessions' temp folders");
                 SweepLedgerIfDue(options.WorkspaceRoot);
                 tick.Lap("ledger sweep");
+                // The role catalog (M.ORCH-T2066): the roles table from the role files, the first tick and when they change.
+                try { SyncRolesIfChanged(options.WorkspaceRoot, DateTime.UtcNow); }
+                catch (Exception ex) { Say(LogEventLevel.Warning, $"roles: couldn't sync them from their files (retrying next tick): {ex.Message}"); }
+                tick.Lap("role catalog");
                 logPruner.RunIfDue(s, msg => Say(LogEventLevel.Information, msg));
                 tick.Lap("old logs");
                 // Old side-by-side TermHost versions, once the CLIs still running on them have ended (M.ORCH-T932).
