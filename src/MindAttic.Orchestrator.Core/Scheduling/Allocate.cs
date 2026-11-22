@@ -654,18 +654,22 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null,
         IReadOnlyDictionary<int, DateTime>? onSince = null, Func<int, string?>? loginOf = null,
         IReadOnlyList<LoginRoom>? logins = null, Func<QueueItem, LoginRoom, string?>? redelegate = null, string? login = null,
-        bool canFallBack = false, OrgRouting? orgs = null, MachineTopology? topology = null, Func<QueueItem, string?>? scratchFor = null)
+        bool canFallBack = false, OrgRouting? orgs = null, MachineTopology? topology = null, Func<QueueItem, string?>? scratchFor = null,
+        Func<string, string, IReadOnlyList<string>>? openPrerequisites = null)
     {
         // Org dispatch (M.ORCH-T753): an org's tickets go only to its own members' logins; with one org, nothing changes.
         orgs ??= OrgRouting.Load(store, settings);
+        openPrerequisites ??= OpenPrerequisites;
         var (handed, why) = NextHere(plan, settings, store, repos, count, claim, nowUtc, mainlineOf, unthrottled, self,
-            pilotRunning, stillOpen, cli, pilots, cliRunning, onSince, loginOf, login, orgs, topology ?? MachineTopology.Current, scratchFor);
+            pilotRunning, stillOpen, cli, pilots, cliRunning, onSince, loginOf, login, orgs, topology ?? MachineTopology.Current, scratchFor,
+            openPrerequisites);
         // Weekly-aware pacing (M.ORCH-T666): what this CLI's login can't fit goes to a login that can, else the fallback login, so
         // no ticket waits on a full account. Only for a claim (a dry run hands nothing out), and never for a /pacing off CLI,
         // whose own room isn't held to.
         if (!claim || unthrottled || redelegate is null || !settings.WeeklyAwarePacing) return (handed, why);
         var delegated = Redelegate(plan, settings, store, repos, handed, nowUtc, logins ?? [], redelegate, login, canFallBack, self,
-            pilotRunning ?? (a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc)), stillOpen ?? StillOpen, cli, orgs);
+            pilotRunning ?? (a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc)), stillOpen ?? StillOpen, cli, orgs,
+            openPrerequisites);
         return delegated.Count == 0 ? (handed, why) : ([.. handed, .. delegated], why);
     }
 
@@ -680,7 +684,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     private static List<Handout> Redelegate(SchedulePlan plan, OrchestratorSettings settings, JsonStore store, IReadOnlyList<string> repos,
         IReadOnlyList<Handout> handed, DateTime nowUtc, IReadOnlyList<LoginRoom> logins, Func<QueueItem, LoginRoom, string?> redelegate,
         string? login, bool canFallBack, string? self, Func<Assignment, bool> pilotRunning, Func<string, string, bool> stillOpen, int? cli,
-        OrgRouting orgs)
+        OrgRouting orgs, Func<string, string, IReadOnlyList<string>> openPrerequisites)
     {
         var delegated = new List<Handout>();
         if (!settings.Allocate || QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is not null) return delegated;
@@ -705,7 +709,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             // Only to a login of the ticket's own org (M.ORCH-T753): never another org's member; the API key stays the one fallback.
             var ofOrg = orgs.Active ? logins.Where(l => l.IsFallback || orgs.OrgOfLogin(l.Email) == orgs.OrgOf(item)) : logins;
             if (Redelegation.Choose(item, ofOrg, fallback, taken) is not { } to) continue;
-            if (!stillOpen(item.RepoPath, item.Id)) continue;
+            if (!stillOpen(item.RepoPath, item.Id) || openPrerequisites(item.RepoPath, item.Id).Count > 0) continue;
             var text = Redelegation.Text(item, login, pace, to);
             if (redelegate(item, to) is not null) { taken.Add(to.Email ?? Redelegation.FallbackKey); continue; }
             taken.Add(to.Email ?? Redelegation.FallbackKey);
@@ -738,7 +742,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         string? self, Func<Assignment, bool>? pilotRunning, Func<string, string, bool>? stillOpen,
         int? cli, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots, Func<int, bool>? cliRunning,
         IReadOnlyDictionary<int, DateTime>? onSince, Func<int, string?>? loginOf, string? login, OrgRouting orgs, MachineTopology topology,
-        Func<QueueItem, string?>? scratchFor)
+        Func<QueueItem, string?>? scratchFor, Func<string, string, IReadOnlyList<string>> openPrerequisites)
     {
         cliRunning ??= ContextCycler.IsClaude;
         stillOpen ??= StillOpen;
@@ -877,6 +881,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         // Past one it can't have (another CLI claimed it first, or it closed since) to the next, until `more` are handed out.
         var claimedElsewhere = 0;
         var closedSince = 0;
+        var blockedSince = 0;
         // A repo you capped (settings --repo-sessions) gets no more than that at once, counting what's already being worked
         // there: each agent touches only its own ticket's files, so only a cap you set applies (M.ORCH-T358).
         var inRepo = plan.Queue.Where(Busy).GroupBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
@@ -910,6 +915,9 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             // The plan's ticket list may be older than a `tickets ticket close` made a second ago: one closed since isn't
             // handed out to be worked twice (M.ORCH-T489).
             if (!stillOpen(item.RepoPath, item.Id)) { closedSince++; continue; }
+            // Nor one given a 'requires' prerequisite that's still open since (M.ORCH-T2059): the plan's links come from the
+            // daemon's published snapshot, up to a tick and SnapshotFile.MaxAge behind a `tickets ticket link A requires B`.
+            if (openPrerequisites(item.RepoPath, item.Id).Count > 0) { blockedSince++; continue; }
             // Worked in the repo's own checkout on main (M.ORCH-T1122): no worktree, no branch.
             var tree = item.RepoPath;
             // The plan was read before the claim: another CLI's `next --claim` may have taken it since. The check and the
@@ -940,6 +948,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             : capped.Count > 0 ? $"{string.Join(", ", capped)} {(capped.Count == 1 ? "is" : "are")} at the cap you set (settings --repo-sessions or --repo-cap); nothing else is ready"
             : claimedElsewhere > 0 ? "another CLI claimed them first; nothing else is ready"
             : closedSince > 0 ? "they were closed since the queue was read; nothing else is ready"
+            : blockedSince > 0 ? "they now require other open tickets (linked since the queue was read); nothing else is ready"
             : "nothing else fits what's left before the reset (see orchestrator queue)");
     }
 
@@ -979,6 +988,48 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
         {
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Ticket <paramref name="id"/>'s prerequisites still open right now, read from the ticket database at claim time
+    /// (M.ORCH-T2059): what it requires, what its part-of ancestors require (M.ORCH-T1909) and a part-of epic not yet approved
+    /// (M.ORCH-T1210), as <see cref="Scheduler"/>'s blockers judge them, an approved epic required waiting no longer (M.ORCH-T1146).
+    /// The plan's own links can trail a `tickets ticket link A requires B` by a daemon tick and the published snapshot's age.
+    /// Only this ticket's links and their ends are read, not the whole links table. Empty when the database can't be read or
+    /// the workspace isn't migrated (the plan's own read stands).
+    /// </summary>
+    internal static IReadOnlyList<string> OpenPrerequisites(string repoPath, string id)
+    {
+        try
+        {
+            using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(Path.GetDirectoryName(repoPath));
+            if (db is null) return [];
+            bool IsOpen(string t) => db.Ticket(t) is { } known && known.Ticket.Status == MindAttic.Tickets.Log.TicketRules.Open;
+            bool IsEpic(string t) => db.Labels(t).Contains(Tickets.OpenTicketSource.EpicLabel, StringComparer.OrdinalIgnoreCase);
+            bool IsApproved(string t) => db.QueueState(t).Approval == MindAttic.Tickets.Data.TicketsDb.Approved;
+            var candidates = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { id };
+            var pending = new Stack<string>([id]);
+            while (pending.TryPop(out var at))
+            {
+                foreach (var link in db.Links(at).Where(l => l.From.Equals(at, StringComparison.OrdinalIgnoreCase)))
+                {
+                    if (link.Kind == "requires") candidates.Add(link.To);
+                    else if (link.Kind == "part-of")
+                    {
+                        // Only the ticket's own part-of epic blocks it until approved; an ancestor's requires blocks it too.
+                        if (at.Equals(id, StringComparison.OrdinalIgnoreCase) && IsEpic(link.To) && !IsApproved(link.To)) candidates.Add(link.To);
+                        if (seen.Add(link.To)) pending.Push(link.To);
+                    }
+                }
+            }
+            return [.. candidates.Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(t => !t.Equals(id, StringComparison.OrdinalIgnoreCase) && IsOpen(t) && !(IsEpic(t) && IsApproved(t)))];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
+        {
+            return [];
         }
     }
 
