@@ -247,6 +247,8 @@ public partial class App : Application
             DashboardWindow.Restore(window);
             if (window is MainWindow main && StartRequest.Repo(args) is { } repo) _ = main.StartRepoAsync(repo);
             if (window is MainWindow shown && DashboardRequest.ShowTarget(args) is { } target) _ = shown.ShowAsync(target);
+            // A CLI's /quickload all (M.ORCH-T2070): Quick Load All, reported back under the nonce it waits on.
+            if (window is MainWindow loader && DashboardRequest.QuickLoadAllNonce(args) is { } nonce) _ = loader.QuickLoadAllRequestedAsync(nonce);
         }));
         // The repo a new user just made in the Welcome window (M.ORCH-T1559) opens with a CLI in it, ready for their /commit.
         if ((startRepo ?? WelcomeWindow.CreatedRepo) is { } repoToStart) _ = ((MainWindow)MainWindow).StartRepoAsync(repoToStart);

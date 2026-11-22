@@ -98,6 +98,15 @@ public sealed partial class SingleInstance : IDisposable
         catch (AbandonedMutexException) { return true; } // the owner died without releasing it (killed): ours now
     }
 
+    /// <summary>Hands <paramref name="args"/> to the running instance down its pipe without ever claiming the instance itself
+    /// (M.ORCH-T2070: <c>orchestrator quickload-all</c>, a tool that must never become the dashboard). False when none is
+    /// running, or it couldn't be reached.</summary>
+    public static bool TryHandOff(string name, IReadOnlyList<string> args)
+    {
+        if (args.Count == 0 || !EventWaitHandle.TryOpenExisting(ShowEvent(name), out var show)) return false;
+        using (show) return TrySend(name, args);
+    }
+
     private static bool SignalShow(string name, IReadOnlyList<string> args)
     {
         if (!EventWaitHandle.TryOpenExisting(ShowEvent(name), out var show)) return false;

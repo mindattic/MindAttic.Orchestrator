@@ -32,7 +32,12 @@ public sealed partial class MainViewModel
     private static readonly TimeSpan ReopenReadyTimeout = TimeSpan.FromSeconds(60);
 
     /// <summary>What a Quick Save All or Quick Load All did, for the completion modal.</summary>
-    internal sealed record QuickAllResult(TimeSpan Elapsed, int Acted, int Total, string Note);
+    internal sealed record QuickAllResult(TimeSpan Elapsed, int Acted, int Total, string Note)
+    {
+        /// <summary>Quick Load All only: one line per CLI it resumed (its tab, its repo, its handoff code or "carry on"), for
+        /// <c>/quickload all</c>'s report (M.ORCH-T2070).</summary>
+        public IReadOnlyList<string> Resumed { get; init; } = [];
+    }
 
     private void InitSave()
     {
@@ -168,7 +173,12 @@ public sealed partial class MainViewModel
             var note = $"From the {(state.Reason == SaveStateStore.SaveAllReason ? "save state" : "autosave")} of {state.SavedUtc.ToLocalTime():g}: "
                 + $"{reopened} tab(s) reopened, {targets.Count - reopened} already open"
                 + (allocating > 0 ? $", /allocate turned back on in {allocating}." : ".");
-            return new(clock.Elapsed, sent.Count(s => s), targets.Count, note);
+            var resumed = targets.Where((_, i) => sent[i]).Select(t =>
+                $"{t.Pane.Name} in {System.IO.Path.GetFileName(t.Tab.Request.Directory.TrimEnd('\\', '/'))}: "
+                + (t.Alive ? "kept its place (/crossrepo and /allocate only)"
+                    : t.Tab.HandoffCode is { Length: > 0 } code ? $"/quickload {code}" : "carry on (no handoff code)")
+                + (t.Reopened ? ", reopened" : "")).ToList();
+            return new(clock.Elapsed, sent.Count(s => s), targets.Count, note) { Resumed = resumed };
         }
         finally { quickloadingAll = false; }
     }

@@ -343,6 +343,28 @@ public partial class MainWindow : Window
         MaMessageBox.Show(this, report, noun, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
+    /// <summary><c>--quickload-all &lt;nonce&gt;</c> (M.ORCH-T2070): a CLI's <c>/quickload all</c> asked for Quick Load All. It runs
+    /// unconfirmed (it was typed on purpose), its outcome is toasted here and written as a <see cref="QuickLoadAllReport"/> under
+    /// that nonce for the asking CLI to print; a run that throws still writes one, saying so.</summary>
+    public async Task QuickLoadAllRequestedAsync(string nonce)
+    {
+        QuickLoadAllReport report;
+        try
+        {
+            var result = await model.QuickLoadAllAsync();
+            report = new QuickLoadAllReport(nonce, DateTime.UtcNow, result.Elapsed.TotalSeconds, result.Acted, result.Total, result.Note, result.Resumed);
+            model.Toasts.Insert(0, new ToastViewModel("Quick Load All",
+                (result.Total == 0 ? "No CLI tabs to quick load." : $"{result.Acted} of {result.Total} CLI(s) resumed (asked from a CLI's /quickload all).")
+                + (result.Note is { Length: > 0 } ? " " + result.Note : ""), Palette.Working, null));
+        }
+        catch (Exception ex)
+        {
+            OrchestratorLog.For("SaveState").Error(ex, "Quick Load All asked from a CLI failed; contained");
+            report = new QuickLoadAllReport(nonce, DateTime.UtcNow, 0, 0, 0, $"Quick Load All failed: {ex.Message}", []);
+        }
+        report.Write();
+    }
+
     /// <summary><c>--start &lt;repo&gt;</c> (M.ORCH-T767): a CLI in that workspace repo, as Start opens one; anything else is refused.</summary>
     public Task StartRepoAsync(string repo) => model.StartRepoAsync(repo);
 

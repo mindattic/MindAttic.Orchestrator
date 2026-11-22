@@ -32,10 +32,30 @@ public static partial class DashboardRequest
     [GeneratedRegex(@"^(?:[^@\s-][^@\s]*@[^@\s]+\.[^@\s]+|[A-Za-z0-9][A-Za-z0-9._-]{0,127})$", RegexOptions.CultureInvariant)]
     private static partial Regex Target();
 
-    /// <summary>What a later launch hands the running dashboard: its <c>--start &lt;repo&gt;</c> (<see cref="StartRequest.HandOff"/>)
-    /// and its <c>--show &lt;target&gt;</c>, each only when well formed; nothing when it only comes forward.</summary>
+    /// <summary><c>--quickload-all &lt;nonce&gt;</c> (M.ORCH-T2070): a CLI's <c>/quickload all</c> (<c>orchestrator quickload-all</c>)
+    /// asks the running dashboard to run Quick Load All, unconfirmed (it was typed on purpose), and to write what it resumed to
+    /// <see cref="Sessions.QuickLoadAllReport"/> under that nonce, so the CLI can wait for it and report it.</summary>
+    public const string QuickLoadAllArg = "--quickload-all";
+
+    /// <summary>The nonce after <c>--quickload-all</c>, or null when there's no such argument or its nonce isn't well formed
+    /// (<see cref="Sessions.QuickLoadAllReport.IsNonce"/>).</summary>
+    public static string? QuickLoadAllNonce(IReadOnlyList<string> args)
+    {
+        for (var i = 0; i < args.Count; i++)
+        {
+            if (!string.Equals(args[i], QuickLoadAllArg, StringComparison.OrdinalIgnoreCase)) continue;
+            var nonce = i + 1 < args.Count ? args[i + 1].Trim() : "";
+            return Sessions.QuickLoadAllReport.IsNonce(nonce) ? nonce : null;
+        }
+        return null;
+    }
+
+    /// <summary>What a later launch hands the running dashboard: its <c>--start &lt;repo&gt;</c> (<see cref="StartRequest.HandOff"/>),
+    /// its <c>--show &lt;target&gt;</c> and its <c>--quickload-all &lt;nonce&gt;</c>, each only when well formed; nothing when it only
+    /// comes forward.</summary>
     public static IReadOnlyList<string> HandOff(IReadOnlyList<string> args) =>
-        [.. StartRequest.HandOff(args), .. ShowTarget(args) is { } target ? new[] { ShowArg, target } : []];
+        [.. StartRequest.HandOff(args), .. ShowTarget(args) is { } target ? new[] { ShowArg, target } : [],
+         .. QuickLoadAllNonce(args) is { } nonce ? new[] { QuickLoadAllArg, nonce } : []];
 
     /// <summary>What kind of thing <paramref name="target"/> names: a login (an email), a ticket (a ticket id), else a session.</summary>
     public static ShowKind KindOf(string target) =>

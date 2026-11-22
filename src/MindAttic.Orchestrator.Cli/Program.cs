@@ -108,6 +108,7 @@ internal static class CliApp
             config.AddCommand<StatusCommand>("status").WithDescription("Every repo: state, live sessions, open tickets, tokens today.");
             config.AddCommand<StartCommand>("start").WithDescription("Open an agent tab for a repo through the Launcher; --account <email> runs its Claude CLI on that per-CLI login's token pool; --resume <session> reopens a Claude conversation (e.g. one cut off by a crash).");
             config.AddCommand<DockCommand>("dock").WithDescription("Give a hosted CLI (its id, else this CLI's own) its dashboard tab back now, never restarting it (M.ORCH-T1448).");
+            config.AddCommand<QuickLoadAllCommand>("quickload-all").WithDescription("Ask the running dashboard to run Quick Load All (every CLI resumes its repo's latest quicksave) and print what it resumed (M.ORCH-T2070, /quickload all).");
             config.AddCommand<UndockCommand>("undock").WithDescription("Drop a hosted CLI's dashboard tab (its id, else this CLI's own); the CLI keeps running headless until orchestrator dock (M.ORCH-T1448).");
             config.AddCommand<LauncherCommand>("launcher").WithDescription("Bring up the next of this login's Launcher tabs in the dashboard (cycling), or open one when it has none (M.ORCH-T1487).");
             config.AddCommand<SendCommand>("send").WithDescription("Type text into a live Launcher-hosted session.");
