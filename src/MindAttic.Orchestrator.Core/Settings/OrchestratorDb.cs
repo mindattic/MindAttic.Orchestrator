@@ -584,6 +584,22 @@ public sealed class OrchestratorDb(string path)
         """
         ALTER TABLE assignments ADD COLUMN role TEXT;
         """,
+        // 22: the agent mailbox (M.ORCH-T1745, roadmap Phase 1): durable, addressed handoffs between roles. One row per message
+        // by a text id, to the agent it's for (an agt- id), from whoever sent it (an agent id, a login or a name), about the unit
+        // (a ticket id; NULL: none), its body, when it was sent and when its agent was handed it (NULL: unread). The daemon hands
+        // an agent's unread mail to its CLI as a nudge file (Daemon.Mail.cs). Times ISO-8601 UTC text. Not in the dump: read_utc churns.
+        """
+        CREATE TABLE agent_messages (
+            id         TEXT PRIMARY KEY,
+            to_agent   TEXT NOT NULL,
+            from_agent TEXT NOT NULL,
+            unit       TEXT,
+            body       TEXT NOT NULL,
+            sent_utc   TEXT NOT NULL,
+            read_utc   TEXT
+        );
+        CREATE INDEX agent_messages_to ON agent_messages (to_agent, read_utc);
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

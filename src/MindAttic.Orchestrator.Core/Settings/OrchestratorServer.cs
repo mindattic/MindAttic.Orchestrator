@@ -258,13 +258,19 @@ public sealed class OrchestratorServer(string connectionString)
             state nvarchar(16) NOT NULL, heartbeat_utc nvarchar(64) NULL, unit nvarchar(128) NULL, created_utc nvarchar(64) NOT NULL,
             state_utc nvarchar(64) NOT NULL
             """, "CREATE INDEX agents_owner ON agents (owner); CREATE INDEX agents_role ON agents (role);"),
+        // The agent mailbox (M.ORCH-T1745).
+        ("agent_messages", """
+            id nvarchar(64) NOT NULL PRIMARY KEY, to_agent nvarchar(64) NOT NULL, from_agent nvarchar(256) NOT NULL, unit nvarchar(128) NULL,
+            body nvarchar(max) NOT NULL, sent_utc nvarchar(64) NOT NULL, read_utc nvarchar(64) NULL
+            """, "CREATE INDEX agent_messages_to ON agent_messages (to_agent, read_utc);"),
     ];
 
     /// <summary>The schema's version: 1, the tables of SQLite's first ten steps; 2, <c>members</c> (M.ORCH-T670); 3,
     /// <c>assignments.account</c> (M.ORCH-T668); 4, <c>organizations</c> and <c>org_members</c> (M.ORCH-T655); 5, <c>term_grants</c>
     /// and <c>term_audit</c> (M.ORCH-T934); 6, <c>resources</c> (M.ORCH-T1676); 7, <c>reminders</c> (M.ORCH-T1932); 8, <c>roles</c> and
-    /// <c>agents</c> (M.ORCH-T1742); 9, <c>assignments.agent</c> (M.ORCH-T1743); 10, <c>assignments.role</c> (M.ORCH-T1746).</summary>
-    public const int SchemaVersion = 10;
+    /// <c>agents</c> (M.ORCH-T1742); 9, <c>assignments.agent</c> (M.ORCH-T1743); 10, <c>assignments.role</c> (M.ORCH-T1746);
+    /// 11, <c>agent_messages</c> (M.ORCH-T1745).</summary>
+    public const int SchemaVersion = 11;
 
     /// <summary>The changes to tables already there, one step per version past 1, as SQLite's migrations add them: a column
     /// added to a table there is one more step here (an <c>ALTER TABLE ... ADD</c>, also added to its <see cref="Tables"/> row so
@@ -280,6 +286,7 @@ public sealed class OrchestratorServer(string connectionString)
         ("roles", ""), // 8: roles and agents, new tables (created with the rest below; M.ORCH-T1742)
         ("assignments", "IF COL_LENGTH(N'assignments', N'agent') IS NULL ALTER TABLE assignments ADD agent nvarchar(64) NULL;"), // 9: the agent working each (M.ORCH-T1743)
         ("assignments", "IF COL_LENGTH(N'assignments', N'role') IS NULL ALTER TABLE assignments ADD role nvarchar(128) NULL;"), // 10: the role each is worked as (M.ORCH-T1746)
+        ("agent_messages", ""), // 11: agent_messages, the agent mailbox, a new table (created with the rest below; M.ORCH-T1745)
     ];
 
     private void EnsureSchema(SqlConnection connection)

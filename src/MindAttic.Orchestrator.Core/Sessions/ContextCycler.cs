@@ -15,6 +15,10 @@ public sealed record SessionContext(string SessionId, string? Cwd, double Percen
 
     /// <summary>The window this session's last turn stopped for (the context gate's <c>limit_stop</c>, at its stop), and when that window resets; null when it isn't waiting on one.</summary>
     public LimitStop? LimitStop { get; init; }
+
+    /// <summary>The agent the session's CLI runs as (its <c>session_states</c> value's <c>"agent"</c>, the CLI's MINDATTIC_AGENT_ID:
+    /// M.ORCH-T1743), which its mail is addressed to (M.ORCH-T1745); null when it was started without one.</summary>
+    public string? Agent { get; init; }
 }
 
 /// <summary>A turn that ended held by a window: which one (<c>5-hour</c> or <c>weekly</c>), when it resets, and when it stopped.</summary>
@@ -88,6 +92,7 @@ public sealed class ContextCycler(string? directory = null)
             int? pid = null;
             string? goal = null;
             LimitStop? limitStop = null;
+            string? agent = null;
             var turn = DateTime.MinValue;
             // The session_states row or the exported file, whichever was written later, as the hooks read it; the file read
             // shared (a hook may be writing it), and a read that fails falls back on the row rather than dropping the session,
@@ -116,6 +121,7 @@ public sealed class ContextCycler(string? directory = null)
                 // A malformed number (a fraction, out of range) skips the field rather than throwing past the catch (bughunt 2026-10-27).
                 if (t.RootElement.TryGetProperty("pid", out var pp) && pp.ValueKind == JsonValueKind.Number && pp.TryGetInt32(out var p)) pid = p;
                 if (t.RootElement.TryGetProperty("goal", out var g) && g.ValueKind == JsonValueKind.String) goal = g.GetString();
+                if (t.RootElement.TryGetProperty("agent", out var ag) && ag.ValueKind == JsonValueKind.String) agent = Term.AgentIds.Normalize(ag.GetString());
                 if (cwd is null && t.RootElement.TryGetProperty("cwd", out var tc) && tc.ValueKind == JsonValueKind.String) cwd = tc.GetString();
                 if (t.RootElement.TryGetProperty("limit_stop", out var ls) && ls.ValueKind == JsonValueKind.Object &&
                     ls.TryGetProperty("until", out var u) && u.ValueKind == JsonValueKind.Number
@@ -127,7 +133,7 @@ public sealed class ContextCycler(string? directory = null)
                         DateTime.UnixEpoch.AddSeconds(untilSeconds), stopped);
                 }
             }
-            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid, Goal = goal, LimitStop = limitStop };
+            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid, Goal = goal, LimitStop = limitStop, Agent = agent };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {

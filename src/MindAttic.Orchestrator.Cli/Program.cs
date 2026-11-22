@@ -283,6 +283,13 @@ internal static class CliApp
                 a.AddCommand<AgentsResumeCommand>("resume").WithDescription("resume <id>: a paused agent goes back to idle.");
                 a.AddCommand<AgentsRetireCommand>("retire").WithDescription("retire <id>: the agent is terminated; its row is kept so the id still names it.");
             });
+            config.AddBranch("mail", m =>
+            {
+                m.SetDescription("The agent mailbox (M.ORCH-T1745, roadmap Phase 1): durable, addressed handoffs between agents by their stable ids; the daemon hands an agent's unread mail to its CLI on its next prompt and marks it read. Bare or list shows the unread.");
+                m.SetDefaultCommand<MailListCommand>();
+                m.AddCommand<MailSendCommand>("send").WithDescription("send <agent> \"<body>\" [[--unit <ID>]] [[--from <who>]]: leaves a message for the agent (agt-...), from this CLI's own agent (MINDATTIC_AGENT_ID) by default.");
+                m.AddCommand<MailListCommand>("list").WithDescription("list [[<agent>]]: the unread mail (--all: the read too), this CLI's own agent's by default (--everyone: every agent's); --json as data.");
+            });
             // Let crashes reach the catch below so they're logged, not just printed.
             config.PropagateExceptions();
         });
