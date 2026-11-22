@@ -392,6 +392,11 @@ public sealed record OrchestratorSettings
     /// texts no backlog.</summary>
     public bool InboxAlerts { get; init; } = true;
 
+    /// <summary>Whether a reminder that nags (M.ORCH-T1864, <see cref="Reminders.NagBook"/>) is also texted to
+    /// <see cref="PsstAlertTo"/> through Psst each time it comes due on its backoff (M.ORCH-T1934). Off, it's still toasted on
+    /// the dashboard and pushed to <see cref="NotifyUrl"/>.</summary>
+    public bool NagAlerts { get; init; } = true;
+
     /// <summary>The default psst alert to constant.</summary>
     public const string DefaultPsstAlertTo = "ryan";
 

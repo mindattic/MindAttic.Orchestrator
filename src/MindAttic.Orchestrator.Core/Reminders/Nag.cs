@@ -119,6 +119,11 @@ public static class NagSchedule
     public static Nag Nagged(Nag nag, DateTime nowUtc) =>
         nag with { Nags = nag.Nags + 1, LastNagUtc = nowUtc, NextUtc = nowUtc + Gap(nag, nag.Nags + 1) };
 
+    /// <summary>What a nag says when it's delivered (M.ORCH-T1934: the dashboard's toast, the push, the Psst text): its message,
+    /// what ends it, and how to stop it.</summary>
+    public static string Text(Nag nag) =>
+        nag.Message + (nag.UntilTicket is { } t ? $" (until {t} closes; " : " (") + $"orchestrator remind dismiss {nag.Id} to stop)";
+
     /// <summary>Why <paramref name="every"/>, <paramref name="backoff"/> and <paramref name="maxEvery"/> can't make a nag; null
     /// when they can.</summary>
     public static string? Problem(TimeSpan every, double backoff, TimeSpan? maxEvery) =>
@@ -217,6 +222,17 @@ public sealed class NagBook(OrchestratorDb db)
                     break;
             }
         return due;
+    }
+
+    /// <summary>The nags still active that last nagged after <paramref name="sinceUtc"/>, oldest nag first: what the dashboard
+    /// toasts (M.ORCH-T1934), the daemon having marked each with <see cref="MarkNagged"/> as it delivered it.</summary>
+    public IReadOnlyList<Nag> NaggedSince(DateTime sinceUtc)
+    {
+        using var connection = db.OpenData();
+        // The times are saved as fixed-width ISO text, so the text comparison is the time order.
+        return Sql.Read(connection, null,
+            $"SELECT {Columns} FROM {Table} WHERE ended_utc IS NULL AND last_nag_utc IS NOT NULL AND last_nag_utc > @since ORDER BY last_nag_utc, id;",
+            Row, ("@since", Text(sinceUtc)));
     }
 
     /// <summary>Records that <paramref name="id"/> nagged at <paramref name="nowUtc"/> (<see cref="NagSchedule.Nagged"/>), on

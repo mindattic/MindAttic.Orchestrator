@@ -267,6 +267,11 @@ public sealed class OrchestratorVaultSettings
         Help = "Text the alert recipient through Psst when something new waits on you in the owner inbox (orchestrator inbox): a ticket to approve, one parked as waiting-on-owner, a stale or orphaned ticket nobody picked up, a login to sign in again. Once per item, never repeated. Off, the inbox still lists them.")]
     public bool InboxAlerts { get; set; } = true;
 
+    /// <summary>Text the alert recipient through Psst each time a reminder that nags comes due.</summary>
+    [Setting("Text reminders that nag", Group = "Alerts", Order = 1,
+        Help = "Text the alert recipient through Psst each time a reminder that nags (orchestrator remind add) comes due on its backoff, until it's dismissed or its ticket closes. Off, it's still a dashboard toast and a phone push.")]
+    public bool NagAlerts { get; set; } = true;
+
     /// <summary>A URL that takes a plain-text POST, like an ntfy.sh topic, for phone pushes.</summary>
     [Setting("Push alerts to", Group = "Alerts", Order = 2, Help = "A URL that takes a plain-text POST, like an ntfy.sh topic, for phone pushes. Empty sends nothing.")]
     [UrlSetting]
@@ -1065,6 +1070,7 @@ public sealed class OrchestratorVaultSettings
         OrphanRedispatches = s.OrphanRedispatches,
         OrphanQuietMinutes = s.OrphanQuietMinutes,
         InboxAlerts = s.InboxAlerts,
+        NagAlerts = s.NagAlerts,
         EditClaims = s.EditClaims,
         EditClaimMinutes = s.EditClaimMinutes,
         AutoLogin = s.AutoLogin,
@@ -1253,6 +1259,7 @@ public sealed class OrchestratorVaultSettings
         OrphanRedispatches = OrphanRedispatches,
         OrphanQuietMinutes = OrphanQuietMinutes,
         InboxAlerts = InboxAlerts,
+        NagAlerts = NagAlerts,
         EditClaims = string.IsNullOrWhiteSpace(EditClaims) ? s.EditClaims : EditClaims,
         EditClaimMinutes = EditClaimMinutes,
         AutoLogin = AutoLogin,
