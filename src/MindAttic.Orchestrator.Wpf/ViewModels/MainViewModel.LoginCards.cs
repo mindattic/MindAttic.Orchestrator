@@ -395,6 +395,45 @@ public sealed partial class MainViewModel
         _ = RefreshAsync();
     }, () => !IsApiKeyTab && IsTabSignedIn);
 
+    // ── Disable / Enable, from a login's right-click menu (M.ORCH-T1958) ──────
+
+    private ICommand? toggleDisabledCommand;
+
+    /// <summary>Whether this tab's login is disabled (M.ORCH-T1952): its member row's own status, read live so the menu's
+    /// label follows a change made elsewhere (another dashboard, the CLI's own <c>orchestrator members set --status</c>)
+    /// without waiting for a restart. False for the API key tab, the global login, or a login with no member row at all.</summary>
+    internal bool IsLoginDisabled => AccountDirs.Normalize(ScopeEmail) is { } email
+        && MemberRoster.Find(Root.aggregator.Db, email) is { } member && MemberRoster.IsDisabled(member);
+
+    /// <summary>
+    /// "Disable"/"Enable" (M.ORCH-T1958), on a per-CLI login's right-click menu (never the API key's or the global login's):
+    /// toggles the member's status between <see cref="MemberRoster.Disabled"/> and active, the same
+    /// <c>orchestrator members set &lt;email&gt; --status disabled|active</c> M.ORCH-T1952 added - the only thing that hides
+    /// a login's node from the tree and keeps every pick, move and pace off it. The node itself stays shown either way
+    /// (M.ORCH-T1950); disabling just marks it and stops work landing there, same as re-enabling a lapsed member.
+    /// </summary>
+    public ICommand ToggleDisabledCommand => toggleDisabledCommand ??= new RelayCommand(async () =>
+    {
+        if (IsApiKeyTab || AccountDirs.Normalize(ScopeEmail) is not { } email) return;
+        var root = Root;
+        var disabling = !IsLoginDisabled;
+        try
+        {
+            await Task.Run(() => MemberRoster.Set(root.aggregator.Db, email, null, null, null,
+                disabling ? MemberRoster.Disabled : "active", DateTime.UtcNow, unique: true));
+            AccountsMessage = disabling
+                ? $"{email} is disabled: its node stays shown, but nothing is picked, moved or paced to it until it's enabled again."
+                : $"{email} is enabled again.";
+            NoteLocalChange();
+            await root.RefreshAsync();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            AccountsMessage = $"Couldn't {(disabling ? "disable" : "enable")} {email}: {ex.Message}";
+            Toasts.Insert(0, new ToastViewModel($"{email} not changed", AccountsMessage, Palette.Over, null));
+        }
+    }, () => !IsApiKeyTab && ScopeEmail is not null);
+
     // ── Delete, from a login's right-click menu (M.ORCH-T1953) ──────
 
     private ICommand? deleteLoginCommand;
