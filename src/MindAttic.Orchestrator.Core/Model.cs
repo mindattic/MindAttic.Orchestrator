@@ -152,7 +152,15 @@ public sealed record RepoStatus(
     /// <summary>The repo's work that exists only on this machine (M.ORCH-T2036), read on a slow cadence off the UI thread;
     /// null before its first read and for the pseudo-repos.</summary>
     public RepoLocalWork? LocalWork { get; init; }
+
+    /// <summary>The repo's GitHub standing (M.ORCH-T2038) from a rare background sweep of the token's repos; null while
+    /// unknown (not swept yet, no token, GitHub unreachable) and for the pseudo-repos.</summary>
+    public GitHubRepoState? GitHub { get; init; }
 }
+
+/// <summary>A repo's standing on GitHub (M.ORCH-T2038), the Launcher's TicketsMenu.GitHubCell values: no github.com origin,
+/// not among the token's repos, archived, tagged <c>wip</c>, or live but untagged.</summary>
+public enum GitHubRepoState { NoRemote, NotFound, Archived, Wip, Untagged }
 
 /// <summary>What a repo holds only on this machine (M.ORCH-T2036), from MindAttic.Tickets' <c>Repos.RepoStatus.Read</c>:
 /// uncommitted files (its linked worktrees' too), commits no remote has, stashes, and ignored paths a build doesn't regenerate.

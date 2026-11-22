@@ -62,6 +62,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// <summary>Each repo's uncommitted/unpushed/stash/local-only-ignored counts (M.ORCH-T2036), read in the background on
     /// a slow cadence; replaceable for tests.</summary>
     internal RepoLocalWorkReader LocalWork { get; init; } = new();
+
+    /// <summary>Each repo's GitHub archived/wip/untagged standing (M.ORCH-T2038), swept rarely in the background;
+    /// replaceable for tests.</summary>
+    internal RepoGitHubReader GitHubStanding { get; init; } = new();
     private readonly Dictionary<string, Sessions.ContextCycler> loginMarks = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The global login's context gate and each per-CLI login's own marks folder, where the gate marks that login's
@@ -379,7 +383,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         var result = new List<RepoStatus>(repos.Count + 2);
         foreach (var repo in repos)
-            result.Add(Repo(repo.Name, repo.Path, tickets.OpenFor(repo, warnings)) with { LocalWork = LocalWork.Get(repo.Name, repo.Path, now) });
+            result.Add(Repo(repo.Name, repo.Path, tickets.OpenFor(repo, warnings)) with { LocalWork = LocalWork.Get(repo.Name, repo.Path, now), GitHub = GitHubStanding.Get(repo.Path, now) });
 
         foreach (var pseudo in new[] { (WorkspaceRootName, workspace.Root), (OutsideName, "") })
         {
