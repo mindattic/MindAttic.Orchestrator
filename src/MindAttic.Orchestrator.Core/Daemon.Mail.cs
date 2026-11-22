@@ -4,7 +4,8 @@ using Serilog.Events;
 namespace MindAttic.Orchestrator;
 
 /// <summary>The delivery of the agent mailbox (M.ORCH-T1745, on <see cref="Mailbox"/>): each live agent's unread mail handed to its
-/// CLI as a <c>nudge-&lt;pid&gt;-mail.txt</c> file, which the UserPromptSubmit hook adds to its next turn.</summary>
+/// CLI as a <c>nudge-&lt;pid&gt;-mail.txt</c> file, which the UserPromptSubmit hook adds to its next turn; an idle agent with mail
+/// also gets a wake queued (<see cref="Wakeups"/>, M.ORCH-T2067), said to you once per idle stretch.</summary>
 public sealed partial class Daemon
 {
     /// <summary>The nudge kind mail goes under.</summary>
@@ -55,13 +56,22 @@ public sealed partial class Daemon
             .Select(g => g.MaxBy(c => c.TurnUtc)!)
             .Where(c => isAlive(c.Pid!.Value))
             .GroupBy(c => c.Agent!, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.MaxBy(c => c.TurnUtc)!.Pid!.Value, StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(g => g.Key, g => g.MaxBy(c => c.TurnUtc)!, StringComparer.OrdinalIgnoreCase);
 
         var keep = new List<int>();
-        foreach (var (agent, pid) in live)
+        var idle = new List<int>();
+        foreach (var (agent, session) in live)
         {
+            var pid = session.Pid!.Value;
             if (!unread.TryGetValue(agent, out var messages) || messages.Count == 0) continue;
             keep.Add(pid);
+            // Idle (settled, not waiting on a window nor running a /goal): it only takes its mail at its next prompt, so a wake
+            // is queued for it (M.ORCH-T2067), said to you once per idle stretch.
+            if (session is { Idle: true, LimitStop: null, Goal: null } && nowUtc - session.TurnUtc >= AllocateWaker.Settle)
+            {
+                idle.Add(pid);
+                WakeQueue.Enqueue(pid, session.TurnUtc, MailKind, MailWakeLine(agent, LimitWaker.Where(session.Cwd), messages.Count), nowUtc);
+            }
             var ids = messages.Select(m => m.Id).ToHashSet(StringComparer.Ordinal);
             if (mailLeft.TryGetValue(pid, out var left) && left.Agent.Equals(agent, StringComparison.OrdinalIgnoreCase)
                 && left.Ids.SetEquals(ids) && nowUtc - left.WrittenUtc < MailStale && File.Exists(MailPath(cycler, pid))) continue;
@@ -72,7 +82,30 @@ public sealed partial class Daemon
         // A CLI that ended, or whose agent has nothing unread now, keeps no mail file.
         foreach (var pid in mailLeft.Keys.Where(p => !keep.Contains(p)).ToList()) mailLeft.Remove(pid);
         CliNudges.Retain(cycler.Directory, MailKind, keep);
+        // A CLI that took its mail, went busy or ended has no mail wake standing.
+        WakeQueue.Retain(MailKind, idle);
         return read;
+    }
+
+    private Wakeups? wakeQueue;
+
+    /// <summary>The wakeup queue (<see cref="Wakeups"/>) in the orchestrator's store.</summary>
+    internal Wakeups WakeQueue => wakeQueue ??= new Wakeups(store);
+
+    /// <summary>What's said when an idle agent has mail waiting (M.ORCH-T2067).</summary>
+    internal static string MailWakeLine(string agent, string where, int count) =>
+        $"Agent {agent} in {where} is idle with {count} unread message{(count == 1 ? "" : "s")} waiting. It takes {(count == 1 ? "it" : "them")} at its next prompt; " +
+        "nothing is typed into its box, so it carries on when you next talk to it.";
+
+    /// <summary>Says each wake the queue has not said yet (log and the Needs-you alert): an idle CLI only takes what was left for
+    /// its hook at its next prompt (M.ORCH-T864).</summary>
+    internal void ReportQueuedWakes()
+    {
+        foreach (var w in WakeQueue.Take())
+        {
+            Say(LogEventLevel.Warning, w.Line);
+            Alert("Needs you", w.Line);
+        }
     }
 
     private static string MailPath(ContextCycler cycler, int pid) => Path.Combine(cycler.Directory, $"{CliNudges.Prefix}{pid}-{MailKind}.txt");

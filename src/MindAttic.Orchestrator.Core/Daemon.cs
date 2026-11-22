@@ -306,7 +306,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     // them now (M.ORCH-T529: two sat unstarted at a projected 65% of 98% until the user asked).
                     ReportAllocateWakes(pilotWaker.TickClaims(snapshot, plan, s, DateTime.UtcNow), alert: false);
                     // The agent mailbox (M.ORCH-T1745): each live agent's unread mail left for its CLI's next prompt, marked read once taken.
-                    try { DeliverMail(cycler, DateTime.UtcNow); }
+                    try { DeliverMail(cycler, DateTime.UtcNow); ReportQueuedWakes(); }
                     catch (Exception ex) { Say(LogEventLevel.Warning, $"mail: couldn't deliver it (retrying next tick): {ex.Message}"); }
                     // A dispatch whose CLI or tab exited mid-task (closed, crashed, slept) is orphaned: said at once, and handed back to
                     // the repo's /allocate CLI or started again in a new tab in its repo's checkout (M.ORCH-T748), as a window's stop is resumed.
