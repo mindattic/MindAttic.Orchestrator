@@ -224,6 +224,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 1440)]
     public double EditClaimMinutes { get; set; } = OrchestratorSettings.DefaultEditClaimMinutes;
 
+    /// <summary>The size of one task (one unit of work) in uncached tokens (M.ORCH-T1905).</summary>
+    [Setting("Task size (tokens)", Group = "Scheduler", Order = 17,
+        Help = "The size of one task (one unit of work) in uncached tokens: a dispatched agent aims to finish its ticket within it, and work bigger than it is split into child tickets.")]
+    [SettingRange(OrchestratorSettings.MinUnitTokenBudget, OrchestratorSettings.MaxUnitTokenBudget)]
+    public int UnitTokenBudget { get; set; } = OrchestratorSettings.DefaultUnitTokenBudget;
+
     // ── Logins ─────────────────────────────────────────────────────────────
 
     /// <summary>A new Claude tab with no login chosen goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login.</summary>
@@ -1161,6 +1167,7 @@ public sealed class OrchestratorVaultSettings
         SymbolTabLabels = s.SymbolTabLabels,
         TreeMenuLayout = s.TreeMenuLayout,
         TabBlinkTokens = s.TabBlinkTokens,
+        UnitTokenBudget = s.UnitTokenBudget,
         ExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = s.AutoOpenLaunchers,
         ConfirmCliClose = s.ConfirmCliClose,
@@ -1343,6 +1350,7 @@ public sealed class OrchestratorVaultSettings
         SymbolTabLabels = SymbolTabLabels,
         TreeMenuLayout = TreeMenuLayout,
         TabBlinkTokens = TabBlinkTokens,
+        UnitTokenBudget = UnitTokenBudget,
         ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = AutoOpenLaunchers,
         ConfirmCliClose = ConfirmCliClose,

@@ -236,6 +236,7 @@ public sealed class LampSettingsTests
         Case("symbolTabLabels", s => s with { SymbolTabLabels = false }, false, v => v.SymbolTabLabels = true, true, s => s.SymbolTabLabels),
         Case("treeMenuLayout", s => s with { TreeMenuLayout = false }, false, v => v.TreeMenuLayout = true, true, s => s.TreeMenuLayout),
         Case("tabBlinkTokens", s => s with { TabBlinkTokens = 5000 }, 5000, v => v.TabBlinkTokens = 250, 250, s => s.TabBlinkTokens),
+        Case("unitTokenBudget", s => s with { UnitTokenBudget = 120_000 }, 120_000, v => v.UnitTokenBudget = 40_000, 40_000, s => s.UnitTokenBudget),
         Case("excludeLauncherFromTeamWall", s => s with { ExcludeLauncherFromTeamWall = true }, true, v => v.ExcludeLauncherFromTeamWall = false, false,
             s => s.ExcludeLauncherFromTeamWall),
         Case("endedTabMinutes", s => s with { EndedTabMinutes = 60 }, 60d, v => v.EndedTabMinutes = 15, 15d, s => s.EndedTabMinutes),

@@ -373,6 +373,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The dashboard's person tabs: a busy login's green play arrow blinks once for every N tokens it spends, uncached (default 1000; 1 to 10000000).")]
         public int? TabBlinkTokens { get; init; }
 
+        [CommandOption("--unit-token-budget <N>")]
+        [Description("The size of one task (one unit of work) in uncached tokens (default 80000; 20000 to 400000).")]
+        public int? UnitTokenBudget { get; init; }
+
         [CommandOption("--symbol-tab-labels <ON>")]
         [Description("The dashboard's tab trailing text: true (default), symbols, \"Σ: 15% | λ: 29%\"; false, words, \"wk: 15% | 5h: 29%\". Same figures either way.")]
         public bool? SymbolTabLabels { get; init; }
@@ -740,6 +744,12 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { TabBlinkTokens = blink };
             changed = true;
         }
+        if (settings.UnitTokenBudget is { } unit)
+        {
+            if (unit is < OrchestratorSettings.MinUnitTokenBudget or > OrchestratorSettings.MaxUnitTokenBudget) { AnsiConsole.MarkupLine($"[red]--unit-token-budget is {OrchestratorSettings.MinUnitTokenBudget} to {OrchestratorSettings.MaxUnitTokenBudget}.[/]"); return 1; }
+            s = s with { UnitTokenBudget = unit };
+            changed = true;
+        }
         if (settings.SymbolTabLabels is { } symbolTabLabels)
         {
             s = s with { SymbolTabLabels = symbolTabLabels };
@@ -891,6 +901,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             " · a CLI whose login runs out waits for its reset (API billing is only ever switched on by you)" +
             " · CLIs open in Windows Terminal, a window per person" +
             $" · a busy person tab's play arrow blinks once per {s.TabBlinkTokens:N0} tokens" +
+            $" · one task is {WorkUnits.Size(WorkUnits.Budget(s))} tokens" +
             $" · tab trailing text: {(s.SymbolTabLabels ? "symbols (Σ/λ)" : "words (wk/5h)")}" +
             $" · login sidebar: {(s.TreeMenuLayout ? "tree menu" : "flat tabs")}" +
             $" · Team Wall: {(s.ExcludeLauncherFromTeamWall ? "excludes" : "includes")} the Launcher's menu pane");

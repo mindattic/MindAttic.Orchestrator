@@ -309,6 +309,14 @@ public sealed record OrchestratorSettings
     /// <summary>The constants default tab blink tokens, min tab blink tokens, max tab blink tokens.</summary>
     public const int DefaultTabBlinkTokens = 1000, MinTabBlinkTokens = 1, MaxTabBlinkTokens = 10_000_000;
 
+    /// <summary>The size of one task, one unit of work, in uncached tokens (M.ORCH-T1905): a dispatched agent aims to finish
+    /// its ticket within it. <see cref="MinUnitTokenBudget"/> to <see cref="MaxUnitTokenBudget"/>; read it clamped through
+    /// <see cref="Scheduling.WorkUnits.Budget"/>.</summary>
+    public int UnitTokenBudget { get; init; } = DefaultUnitTokenBudget;
+
+    /// <summary>The constants default, min and max unit token budget.</summary>
+    public const int DefaultUnitTokenBudget = 80_000, MinUnitTokenBudget = 20_000, MaxUnitTokenBudget = 400_000;
+
     /// <summary>The dashboard's tab trailing text (M.ORCH-T1255): symbols, "Σ: 15% | λ: 29%" (the default, M.ORCH-T1251), or
     /// words, "wk: 15% | 5h: 29%" -- same figures and the same omit-the-5-hour-part-while-it's-unknown rule either way.</summary>
     public bool SymbolTabLabels { get; init; } = true;
