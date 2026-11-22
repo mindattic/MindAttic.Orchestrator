@@ -36,18 +36,35 @@ public sealed class ClosedTicketSource
     /// <paramref name="nowUtc"/> less <see cref="Window"/>, newest first; none when the workspace has no ticket database.</summary>
     public IReadOnlyList<ClosedTicket> Read(string? workspaceRoot, DateTime nowUtc)
     {
+        // The database's change version where the last read left it (M.ORCH-T1938): nothing changed, so the candidates and
+        // assignees stand and only the window moves; the database is opened only for a history still to read.
+        var version = VersionOf(TicketsDb.DefaultPath(workspaceRoot));
+        if (last is { } kept && kept.Root == workspaceRoot && TicketDbVersion.Unchanged(kept.Version, version, kept.ReadUtc, DateTime.UtcNow))
+        {
+            TicketsDb? lazy = null;
+            try { return Recent(kept.Candidates, kept.Assignees, id => (lazy ??= TicketsDb.OpenIfMigrated(workspaceRoot))?.History(id) ?? [], nowUtc); }
+            finally { lazy?.Dispose(); }
+        }
+        last = null;
+        var readUtc = DateTime.UtcNow;
         using var db = TicketsDb.OpenIfMigrated(workspaceRoot);
         if (db is null) return [];
         var assignees = OpenTicketSource.WorkState.Of(db).Assignees;
-        if (assignees.Count == 0) return [];
         // Open tickets aren't filtered out here (M.ORCH-T1163): Recent needs to see a ticket go through Open itself,
         // so a reopen-then-reclose can't reuse the stale close time its cache keyed only on the "closed" status string.
-        var candidates = db.Tickets()
+        List<(string Repo, Ticket Ticket)> candidates = assignees.Count == 0 ? [] : [.. db.Tickets()
             .Where(t => assignees.ContainsKey(t.Ticket.Id))
-            .OrderByDescending(t => t.Ticket.Date, StringComparer.Ordinal).ThenByDescending(t => t.Ticket.Number ?? 0)
-            .ToList();
-        return Recent(candidates, assignees, id => db.History(id), nowUtc);
+            .OrderByDescending(t => t.Ticket.Date, StringComparer.Ordinal).ThenByDescending(t => t.Ticket.Number ?? 0)];
+        last = (workspaceRoot, version, readUtc, candidates, assignees);
+        return assignees.Count == 0 ? [] : Recent(candidates, assignees, id => db.History(id), nowUtc);
     }
+
+    /// <summary>The store's change version for a database path (<see cref="TicketDbVersion.Of"/>); a test's stands in for a server.</summary>
+    internal Func<string, long?> VersionOf { get; init; } = TicketDbVersion.Of;
+
+    // The last full read (M.ORCH-T1938): kept while the database's change version stays where it was.
+    private (string? Root, long? Version, DateTime ReadUtc, IReadOnlyList<(string Repo, Ticket Ticket)> Candidates,
+        IReadOnlyDictionary<string, string> Assignees)? last;
 
     /// <summary>The candidates closed within the window (<see cref="Read"/>, with the database's parts given).</summary>
     internal IReadOnlyList<ClosedTicket> Recent(IReadOnlyList<(string Repo, Ticket Ticket)> candidates, IReadOnlyDictionary<string, string> assignees,

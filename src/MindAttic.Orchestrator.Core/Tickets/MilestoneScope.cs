@@ -26,21 +26,23 @@ public sealed record MilestoneScope(string Id, string Name, string State, int At
         WaitingTickets > 0 ? $"{WaitingTickets} waiting" : Waiting.Count > 0 ? $"{Waiting.Count} waiting (no new tickets)" : null,
     }.Where(p => p is not null));
 
-    /// <summary>Every active and accepting milestone's scope, in milestone order. Reads the ticket graph only when there is one.</summary>
-    public static IReadOnlyList<MilestoneScope> Read(TicketsDb db)
+    /// <summary>Every active and accepting milestone's scope, in milestone order. Reads the ticket graph only when there is one,
+    /// and not at all when <paramref name="graph"/> is given: the caller's own read of it (M.ORCH-T1938, the whole tickets and
+    /// links tables read once per refresh, not once per caller).</summary>
+    public static IReadOnlyList<MilestoneScope> Read(TicketsDb db, TicketGraph? graph = null)
     {
         var locked = db.Milestones().Where(m => m.IsLocked).ToList();
         if (locked.Count == 0) return [];
-        var graph = db.Graph();
+        graph ??= db.Graph();
         var pending = db.MilestonePending().ToLookup(p => p.MilestoneId, StringComparer.OrdinalIgnoreCase);
         return [.. locked.Select(m => Of(m, db.MilestoneGrowth(m.Id, graph), [.. pending[m.Id]]))];
     }
 
     /// <summary>As <see cref="Read"/>, but a read that fails (a database from before the scope lock, or one locked) gives
     /// <paramref name="last"/>, the read before it, or none: never a failed ticket read.</summary>
-    internal static IReadOnlyList<MilestoneScope> ReadOr(TicketsDb db, IReadOnlyList<MilestoneScope>? last = null)
+    internal static IReadOnlyList<MilestoneScope> ReadOr(TicketsDb db, IReadOnlyList<MilestoneScope>? last = null, TicketGraph? graph = null)
     {
-        try { return Read(db); }
+        try { return Read(db, graph); }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or KeyNotFoundException or System.Data.Common.DbException)
         {
             return last ?? [];

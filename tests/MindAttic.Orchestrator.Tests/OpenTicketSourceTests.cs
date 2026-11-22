@@ -214,4 +214,26 @@ public sealed class OpenTicketSourceTests
         File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(10));
         Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(good), "read again once it can be");
     }
+
+    [Test]
+    public void An_unmoved_change_version_keeps_the_last_read_and_a_moved_one_reads_again()
+    {
+        // M.ORCH-T1938: a database on SQL Server is read in full again only when its change version moves.
+        var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one | — |\n| A-T2 | 2026-10-01 | fix | open | two | — |\n");
+        var path = TicketsDb.DefaultPath(root);
+        using (var db = TicketsDb.Open(path)) db.Import([a]);
+        long version = 1;
+        var source = new OpenTicketSource { VersionOf = _ => version };
+        var warnings = new List<string>();
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }));
+
+        using (var db = TicketsDb.Open(path)) db.Close("A-T1", reference: "done");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(5));
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }), "version unmoved: the last read stands");
+
+        version = 2;
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(10));
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T2" }), "version moved: read again");
+        Assert.That(warnings, Is.Empty);
+    }
 }

@@ -1,4 +1,6 @@
+using Microsoft.Data.Sqlite;
 using MindAttic.Orchestrator.Tickets;
+using MindAttic.Tickets;
 using MindAttic.Tickets.Data;
 using MindAttic.Tickets.Log;
 using NUnit.Framework;
@@ -67,5 +69,43 @@ public sealed class ClosedTicketSourceTests
         ];
         Assert.That(ClosedTicketSource.ClosedAt(events), Is.EqualTo(new DateTime(2026, 10, 20, 10, 0, 0, DateTimeKind.Utc)));
         Assert.That(ClosedTicketSource.ClosedAt([]), Is.Null);
+    }
+
+    [Test]
+    public void An_unchanged_change_version_keeps_the_last_read_and_a_moved_one_reads_again()
+    {
+        // M.ORCH-T1938: the whole tickets table is read again only when the store's change version moves.
+        var root = Path.Combine(Path.GetTempPath(), "orch-closed-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(root, "A");
+        Directory.CreateDirectory(Path.Combine(dir, ".git"));
+        Directory.CreateDirectory(Path.Combine(dir, "docs"));
+        File.WriteAllText(Path.Combine(dir, "docs", "USER_STORIES.md"),
+            "---\ncode: A\n---\n\n# A\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n" +
+            "| A-T1 | 2026-10-01 | fix | open | one | — |\n| A-T2 | 2026-10-01 | fix | open | two | — |\n");
+        try
+        {
+            var path = TicketsDb.DefaultPath(root);
+            using (var db = TicketsDb.Open(path))
+            {
+                db.Import([new Repo("A", dir)]);
+                db.Assign("A-T1", Ryan);
+                db.Assign("A-T2", Ryan);
+                db.Close("A-T1", reference: "done");
+            }
+            long version = 1;
+            var source = new ClosedTicketSource { VersionOf = _ => version };
+            Assert.That(source.Read(root, DateTime.UtcNow).Select(c => c.Id), Is.EqualTo(new[] { "A-T1" }));
+
+            using (var db = TicketsDb.Open(path)) db.Close("A-T2", reference: "done");
+            Assert.That(source.Read(root, DateTime.UtcNow).Select(c => c.Id), Is.EqualTo(new[] { "A-T1" }), "version unchanged: the last read stands");
+
+            version = 2;
+            Assert.That(source.Read(root, DateTime.UtcNow).Select(c => c.Id), Is.EquivalentTo(new[] { "A-T1", "A-T2" }), "version moved: read again");
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            Directory.Delete(root, recursive: true);
+        }
     }
 }

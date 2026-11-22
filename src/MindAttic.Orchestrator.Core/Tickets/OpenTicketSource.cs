@@ -42,6 +42,15 @@ public sealed class OpenTicketSource
 
     private DbRead? fromDb;
 
+    // The store's change version as of fromDb, and when fromDb was last read in full (M.ORCH-T1938): a look that finds the
+    // version unmoved keeps fromDb (a scalar query, not the whole tickets, links and labels tables) up to TicketDbVersion.MaxAge.
+    private long? dbVersion;
+    private DateTime dbFullReadUtc;
+
+    /// <summary>The store's change version for a database path (<see cref="TicketDbVersion.Of"/>, M.ORCH-T1938); a test's stands
+    /// in for a server.</summary>
+    internal Func<string, long?> VersionOf { get; init; } = TicketDbVersion.Of;
+
     /// <summary>
     /// How long a refresh waits on a ticket-database read before going on with the last good read (M.ORCH-T1937): a read on a
     /// pegged Azure SQL ran 1358s inside the daemon's refresh, and rl-status.json (written later in that same refresh) and the
@@ -54,7 +63,7 @@ public sealed class OpenTicketSource
     internal Action? BeforeRead { get; init; }
 
     // The database read in flight (M.ORCH-T1937): its database path, its task, and when a refresh stops waiting on it.
-    private (string Path, Task<DbRead?> Read, DateTime WaitUntilUtc)? reading;
+    private (string Path, Task<(DbRead? Read, long? Version, bool Kept)> Read, DateTime WaitUntilUtc)? reading;
 
     /// <summary>Each active and accepting milestone's scope (M.ORCH-T1685): what waits for its owner's approval and how much it
     /// has grown since activation; empty with none, or with a database that predates the scope lock.</summary>
@@ -203,7 +212,20 @@ public sealed class OpenTicketSource
             if (reading is not { } r || r.Path != path)
             {
                 var before = BeforeRead;
-                reading = r = (path, Task.Run(() => { before?.Invoke(); return Read(root, path, written, prior); }), DateTime.UtcNow + ReadWait);
+                var versionOf = VersionOf;
+                var (priorVersion, priorFullUtc) = (dbVersion, dbFullReadUtc);
+                reading = r = (path, Task.Run(() =>
+                {
+                    before?.Invoke();
+                    // The change version first (M.ORCH-T1938), read before the rows it stands for: unmoved, the last read stands.
+                    var version = versionOf(path);
+                    if (prior is { } kept && TicketDbVersion.Unchanged(priorVersion, version, priorFullUtc, DateTime.UtcNow))
+                    {
+                        kept.WriteUtc = written;
+                        return ((DbRead?)kept, version, true);
+                    }
+                    return (Read(root, path, written, prior), version, false);
+                }), DateTime.UtcNow + ReadWait);
             }
             var left = r.WaitUntilUtc - DateTime.UtcNow;
             try { r.Read.Wait(left > TimeSpan.Zero ? left : TimeSpan.Zero); }
@@ -224,9 +246,12 @@ public sealed class OpenTicketSource
             reading = null;
             try
             {
-                if (r.Read.GetAwaiter().GetResult() is not { } read) return null;
+                var (got, version, kept) = r.Read.GetAwaiter().GetResult();
+                if (got is not { } read) return null;
                 fromDb = read;
                 dbReadUtc = DateTime.UtcNow;
+                dbVersion = version;
+                if (!kept) dbFullReadUtc = dbReadUtc;
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)
             {
@@ -265,7 +290,12 @@ public sealed class OpenTicketSource
             .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
         var queue = db.QueueStates();
-        var open = db.Tickets().Where(t => t.Ticket.Status == TicketRules.Open).ToList();
+        var tickets = db.Tickets();
+        var names = db.Names();
+        // One graph from the rows already read (M.ORCH-T1938): GraphWeights() and MilestoneScope.Read each read the whole
+        // tickets, links and names tables again for their own TicketsDb.Graph(), three of each per refresh.
+        var graph = TicketGraph.Build(tickets, links, names);
+        var open = tickets.Where(t => t.Ticket.Status == TicketRules.Open).ToList();
         var openIds = open.Select(t => t.Ticket.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var labels = db.AllLabels();
         // An open ticket some open ticket is part-of is a container (M.ORCH-T1904): its children are the work.
@@ -279,10 +309,10 @@ public sealed class OpenTicketSource
             queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
             WorkState.Of(db), partOf,
             labels.Where(l => l.Value.Contains(WaitingOnOwnerLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
-            db.GraphWeights().Where(w => w.Value.Value != 0).ToDictionary(w => w.Key, w => (long)w.Value.Value, StringComparer.OrdinalIgnoreCase),
-            db.Names().ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
+            GraphWeight.Of(graph).Where(w => w.Value.Value != 0).ToDictionary(w => w.Key, w => (long)w.Value.Value, StringComparer.OrdinalIgnoreCase),
+            names.ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
             MilestonesOf(db, openIds, prior?.Milestones),
-            MilestoneScope.ReadOr(db, prior?.MilestoneScopes),
+            MilestoneScope.ReadOr(db, prior?.MilestoneScopes, graph),
             containers, LevelsOf(labels));
     }
 }
