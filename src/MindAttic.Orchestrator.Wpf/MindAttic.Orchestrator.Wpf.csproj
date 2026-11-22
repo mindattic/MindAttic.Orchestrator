@@ -32,6 +32,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- M.ORCH-T2028, from the Launcher (M.LNCH-T111): Ciantic/VirtualDesktopAccessor (MIT,
+         https://github.com/Ciantic/VirtualDesktopAccessor), a vendored prebuilt x64 DLL behind Services\VirtualDesktops.
+         It lives under Native\, but DllImport("VirtualDesktopAccessor.dll") needs it flat next to the exe (the Windows
+         loader's search path), hence the Link. -->
+    <Content Include="Native\VirtualDesktopAccessor.dll" Link="VirtualDesktopAccessor.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Native\VirtualDesktopAccessor.LICENSE.txt" Link="VirtualDesktopAccessor.LICENSE.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Each person's Terminals panel (M.ORCH-T810): the Windows Terminal renderer over ConPTY, a true TTY. -->
     <PackageReference Include="EasyWindowsTerminalControl" Version="1.0.38" />
     <PackageReference Include="MindAttic.Components.Wpf" Version="46.0.0" />
