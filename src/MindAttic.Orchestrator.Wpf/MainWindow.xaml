@@ -607,28 +607,15 @@
                             <!-- The name has its own column and trims with an ellipsis (M.ORCH-T1812): it used to share
                                  one with the usage bars, so in a narrow sidebar the two drew over each other. -->
                             <DockPanel Grid.Column="2" Margin="{StaticResource SpaceLS}">
-                                <!-- The same status-at-a-glance badges as the flat strip's own header (M.ORCH-T630/757/1173/1261/1270),
-                                     copied rather than shared: that template is inline in LoginTabStrip's ItemTemplate above, not a
-                                     keyed resource, and must stay exactly as it is for the flat layout. -->
+                                <!-- A plain person icon (M.ORCH-T1973, owner: "users shouldn't be a spinner with the accumulated
+                                     CLIs, just a person icon"), in the slot the flat strip's status badges use: what's active
+                                     already shows on each CLI row's own badge below. The same Segoe Fluent "Contact" glyph as the
+                                     title bar's Logins button. A disabled login still shows its disabled glyph instead. The flat
+                                     strip's own header (LoginTabStrip's ItemTemplate above) keeps its badges unchanged. -->
                                 <Grid x:Name="TreeTabStatusIcon" DockPanel.Dock="Left" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{StaticResource SpaceRS}">
-                                    <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="zzz" Background="{DynamicResource MaMuted}"
-                                                Foreground="{DynamicResource MaOnAccent}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
-                                                Visibility="{Binding ShowsIdleBadge, Converter={StaticResource Visible}}" />
-                                    <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Background="{DynamicResource MaGood}"
-                                                Foreground="{DynamicResource MaOnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                AutomationProperties.Name="{Binding TabActivityWord}"
-                                                Visibility="{Binding ShowsBusyBadge, Converter={StaticResource Visible}}">
-                                        <Grid>
-                                            <mc:MaSpinner Kind="Ring" Width="14" Height="14" StrokeThickness="1.327" Stroke="{DynamicResource MaOnAccent}" />
-                                            <TextBlock Text="{Binding TabThinkingCountText}" FontSize="7" FontWeight="Bold" Foreground="{DynamicResource MaOnAccent}"
-                                                       HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabThinkingWord}"
-                                                       Visibility="{Binding ShowsTabThinkingCount, Converter={StaticResource Visible}}" />
-                                        </Grid>
-                                    </mc:MaBadge>
-                                    <mc:MaBadge Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="?" Background="{DynamicResource MaWarn}"
-                                                Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                mc:MaCallout.ToolTip="{Binding TabNeedsYouTip}" AutomationProperties.Name="Blocked waiting on you"
-                                                Visibility="{Binding TabNeedsYou, Converter={StaticResource Visible}}" />
+                                    <TextBlock Text="&#xE77B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabFaceTitle}"
+                                               Visibility="{Binding IsTabDisabled, Converter={x:Static vm:Converters.FalseToVisible}}" />
                                     <TextBlock Text="{Binding TabDisabledGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                                                Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                                Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
