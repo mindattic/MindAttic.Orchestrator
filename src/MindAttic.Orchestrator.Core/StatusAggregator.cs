@@ -58,6 +58,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         init => billingSwitch = value;
     }
     private readonly SubagentActivityReader subagents = new(options.ClaudeProjectsDir);
+
+    /// <summary>Each repo's uncommitted/unpushed/stash/local-only-ignored counts (M.ORCH-T2036), read in the background on
+    /// a slow cadence; replaceable for tests.</summary>
+    internal RepoLocalWorkReader LocalWork { get; init; } = new();
     private readonly Dictionary<string, Sessions.ContextCycler> loginMarks = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The global login's context gate and each per-CLI login's own marks folder, where the gate marks that login's
@@ -375,7 +379,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         var result = new List<RepoStatus>(repos.Count + 2);
         foreach (var repo in repos)
-            result.Add(Repo(repo.Name, repo.Path, tickets.OpenFor(repo, warnings)));
+            result.Add(Repo(repo.Name, repo.Path, tickets.OpenFor(repo, warnings)) with { LocalWork = LocalWork.Get(repo.Name, repo.Path, now) });
 
         foreach (var pseudo in new[] { (WorkspaceRootName, workspace.Root), (OutsideName, "") })
         {

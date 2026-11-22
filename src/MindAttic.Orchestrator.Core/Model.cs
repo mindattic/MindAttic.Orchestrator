@@ -147,7 +147,21 @@ public sealed record RepoStatus(
     IReadOnlyList<TranscriptSession> Sessions,
     IReadOnlyList<Ticket> OpenTickets,
     DateTime? LastActivityUtc,
-    TokenUsage UsageToday);
+    TokenUsage UsageToday)
+{
+    /// <summary>The repo's work that exists only on this machine (M.ORCH-T2036), read on a slow cadence off the UI thread;
+    /// null before its first read and for the pseudo-repos.</summary>
+    public RepoLocalWork? LocalWork { get; init; }
+}
+
+/// <summary>What a repo holds only on this machine (M.ORCH-T2036), from MindAttic.Tickets' <c>Repos.RepoStatus.Read</c>:
+/// uncommitted files (its linked worktrees' too), commits no remote has, stashes, and ignored paths a build doesn't regenerate.
+/// <c>ReadUtc</c> is when it was read; <c>Error</c> names a git check that couldn't run, and then the counts aren't trusted.</summary>
+public sealed record RepoLocalWork(int Uncommitted, int Unpushed, int Stashes, int LocalOnlyIgnored, DateTime ReadUtc, string? Error = null)
+{
+    /// <summary>Anything a folder delete would lose.</summary>
+    public bool HasLocalOnlyWork => Uncommitted > 0 || Unpushed > 0 || Stashes > 0 || LocalOnlyIgnored > 0;
+}
 
 /// <summary>The active milestone a ticket is on (M.ORCH-T1683): its <c>MS-n</c> ID and its place among the active
 /// milestones in milestone order, 0 first.</summary>
