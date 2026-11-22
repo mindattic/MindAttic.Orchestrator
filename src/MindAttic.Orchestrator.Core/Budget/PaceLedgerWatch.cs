@@ -95,9 +95,11 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         // the per-CLI login is the account signed in globally, its rows include the global windows' own, which stay (M.ORCH-T725).
         var own = AccountDirs?.All().Select(d => d.Account).OfType<string>().ToHashSet(StringComparer.Ordinal) ?? [];
         var accountAt = Account is null ? null : PaceLedger.AccountAt(Account, nowUtc);
-        var due = PaceLedger.Due([.. recorded.Where(r => r.Account is null || !own.Contains(r.Account) || accountAt?.Invoke(r.EndUtc.AddMinutes(-1)) == r.Account)],
+        var due = PaceLedger.Due([.. recorded.Where(r => r.Account is null || !own.Contains(r.Account) || (accountAt?.Invoke(r.EndUtc.AddMinutes(-1)) is not { } signed || signed == r.Account))],
             samples, hits, events, nowUtc, accountAt);
-        TickAccounts(recorded, events, nowUtc);
+        // The per-CLI pass sees this pass's own rows too: it graded the same stretch from its own samples and mustn't add a second
+        // window a couple of hours off the one just taken (M.ORCH-T2008). An unknown global account can't prove a row is another's.
+        TickAccounts([.. recorded, .. due], events, nowUtc);
         if (due.Count == 0) return;
         try { Db.AppendLedger(due); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return; }
