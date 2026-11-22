@@ -106,7 +106,8 @@ public sealed partial class MainViewModel
             }));
 
             // The package: every tab as the session-restore file has it (the same order as its panes), plus what was read above.
-            var live = AllTerminals.Panes.Where(p => !p.Ended).ToList();
+            // The same tabs, in the same order, as CaptureRestore keeps (parked ones too, M.ORCH-T2073).
+            var live = AllTerminals.Panes.Where(p => !p.Ended || p.Parked).ToList();
             var state = CaptureRestore(SaveStateStore.SaveAllReason, clean: false);
             var tabs = state.Tabs.Select((tab, i) => i < live.Count && marks.TryGetValue(live[i], out var m)
                 ? tab with { Allocate = m.Allocate, Crossrepo = m.Crossrepo } : tab).ToList();
@@ -151,6 +152,14 @@ public sealed partial class MainViewModel
                 var tab = state.Tabs[i];
                 var pane = OpenPaneOf(tab);
                 var isNew = false;
+                // A parked stub of it (M.ORCH-T2073) resumes in its own tab rather than a second tab opening beside it.
+                if (pane is null && ParkedPaneOf(tab) is { } stub && AllTerminals.Resume(stub) is null)
+                {
+                    OrchestratorLog.For("SaveState").Information("Quick Load All: {Title:l}: resumed its parked tab", stub.Title);
+                    pane = stub;
+                    isNew = true;
+                    reopened++;
+                }
                 if (pane is null)
                 {
                     var (opened, line) = ReopenTab(tab);
@@ -206,6 +215,11 @@ public sealed partial class MainViewModel
         (tab.HostId is { Length: > 0 } host && string.Equals(p.TermId, host, StringComparison.OrdinalIgnoreCase)
          || tab.SessionId is { Length: > 0 } session && string.Equals(p.SessionId, session, StringComparison.OrdinalIgnoreCase)
          || tab.Request.IsMenu && p.Request.IsMenu && string.Equals(p.Login, tab.Login, StringComparison.OrdinalIgnoreCase)));
+
+    /// <summary>The parked tab (M.ORCH-T2073) that is <paramref name="tab"/>: parked on the same Claude session.</summary>
+    private TerminalPaneViewModel? ParkedPaneOf(RestoreTab tab) => tab.SessionId is { Length: > 0 } session
+        ? AllTerminals.Panes.FirstOrDefault(p => p.Parked && string.Equals(p.ParkedSession, session, StringComparison.OrdinalIgnoreCase))
+        : null;
 
     /// <summary>One CLI back where it was: (once a reopened one is up) its handoff loaded, then /crossrepo and /allocate as
     /// saved, each typed as its own prompt (Claude queues one typed while it's busy). True once the first was typed.

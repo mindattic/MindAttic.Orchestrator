@@ -87,7 +87,7 @@ public sealed partial class MainViewModel
     /// borrowed by another account, or disabled -- so <see cref="EnsureGeneralPrompts"/> keeps no General Prompt on it, and it
     /// has none open. A merely disconnected login is eligible (M.ORCH-T1959) and gets a real one instead of this stand-in.</summary>
     public bool ShowsGeneralPromptPlaceholder => IsPersonTab && !tab.IsApiKey && ScopeEmail is not null && Root.autoOpenGeneralPrompts
-        && !EligibleForGeneralPrompt && !Terminals.Panes.Any(p => !p.Ended && IsGeneralPromptOf(p, AccountDirs.Normalize(ScopeEmail), Root.WorkspaceRoot));
+        && !EligibleForGeneralPrompt && !Terminals.Panes.Any(p => (!p.Ended || p.Parked) && IsGeneralPromptOf(p, AccountDirs.Normalize(ScopeEmail), Root.WorkspaceRoot));
 
     /// <summary>The Launcher stand-in's spine runs on below it: into the General Prompt stand-in or the panes (M.ORCH-T1957).</summary>
     public bool LauncherPlaceholderContinues => ShowsGeneralPromptPlaceholder || Terminals.HasPanes;

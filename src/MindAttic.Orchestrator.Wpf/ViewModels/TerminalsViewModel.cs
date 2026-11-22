@@ -351,7 +351,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public bool InputNotSent { get => inputNotSent; private set { if (Set(ref inputNotSent, value)) Raise(nameof(StateText)); } }
 
     /// <summary>The state text.</summary>
-    public string StateText => Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
+    public string StateText => Parked ? "parked: show it to resume" : Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
 
     /// <summary>Set while this CLI itself is between logins (M.ORCH-T1884's own same-login reorder, past its 500ms
     /// threshold, <see cref="SetReorderPending"/>); the other half of <see cref="IsMoving"/>.</summary>
@@ -724,7 +724,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
     private void UseRelay()
     {
         var relay = new RelayTerminal(Campbell);
-        relay.Exited += _ => { hostEnded = true; Ended = true; };
+        // A relay replaced since (a revive, or a parked tab resumed, M.ORCH-T2073) never ends the tab it no longer draws.
+        relay.Exited += _ => { if (!ReferenceEquals(Relay, relay)) return; hostEnded = true; Ended = true; };
         relay.ReconnectingChanged += on =>
         {
             if (on && !Reconnecting && !killRequested) OrchestratorLog.For("Terminals").Information("{Title:l}: lost its TermHost's pipe; reconnecting", Title);
@@ -734,7 +735,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         relay.InputDropped += () => { if (!killRequested && !Ended) ShowInputNotSent(); };
         relay.Detached += why =>
         {
-            if (killRequested) return;
+            if (killRequested || !ReferenceEquals(Relay, relay)) return;
             OrchestratorLog.For("Terminals").Information("{Title:l}: detached from its TermHost ({Why:l})", Title, why);
             hostEnded = true;
             Ended = true;
@@ -814,6 +815,63 @@ public sealed class TerminalPaneViewModel : ObservableObject
             Attach(session);
         }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Reviving {Title:l} failed; contained", Title); }
+    }
+
+    private bool parked;
+
+    /// <summary>Parked (M.ORCH-T2073, part of M.ORCH-T1739): its claude process was closed to free its memory, and the tab stays
+    /// as a stub showing its last lines, <see cref="Ended"/> but kept: never pruned as long-ended, still its login's tab (a parked
+    /// General Prompt still counts as that login's one, M.ORCH-T1957), and shown again it resumes the conversation
+    /// (<see cref="ParkedSession"/>, <c>orchestrator start --resume</c>) in place (<see cref="TerminalsViewModel.Resume"/>).</summary>
+    public bool Parked
+    {
+        get => parked;
+        private set { if (Set(ref parked, value)) Raise(nameof(StateText)); }
+    }
+
+    /// <summary>The Claude session a <see cref="Parked"/> tab resumes on; null while it isn't parked.</summary>
+    public string? ParkedSession { get; private set; }
+
+    /// <summary>Marks the tab parked on <paramref name="session"/> once its CLI was ended (<see cref="TerminalsViewModel.Park"/>):
+    /// parked first, then ended, so whatever follows its end already sees it as a stub.</summary>
+    internal void MarkParked(string session)
+    {
+        ParkedSession = session;
+        Parked = true;
+        hostEnded = true;
+        Reconnecting = false;
+        Ended = true;
+    }
+
+    /// <summary>A parked tab made live again (M.ORCH-T2073): <paramref name="request"/> (its own, resuming <see cref="ParkedSession"/>)
+    /// replaces what opened it, and a fresh relay waits for the host <see cref="TerminalsViewModel.Resume"/> starts. Its name,
+    /// colour, place and session are kept. On the UI thread.</summary>
+    internal void Unpark(PaneRequest request)
+    {
+        var session = ParkedSession;
+        // Out of the window first: its native window is released only once it's no longer shown.
+        ((TerminalView)Control).Child = null;
+        Relay?.Dispose();
+        Relay = null;
+        Request = request;
+        System.Windows.Automation.AutomationProperties.SetName(Control, Title);
+        Raise(nameof(Request)); Raise(nameof(Name)); Raise(nameof(Title)); Raise(nameof(Tooltip)); Raise(nameof(TabHoverTip));
+        TabBrush = BrushFor(Request);
+        killRequested = false;
+        hostEnded = false;
+        Reconnecting = false;
+        Session = null;
+        TermId = null;
+        HostPid = null;
+        SessionId = session;
+        ParkedSession = null;
+        // The closed CLI's status row is no reading of the resumed one: what waits for it to come up waits afresh.
+        pushed = null;
+        ApplyAgentStatus(null, DateTime.UtcNow);
+        // Unparked before it's live again, so its revival is never read as a parked tab's.
+        Parked = false;
+        Ended = false;
+        UseRelay();
     }
 
     /// <summary>Its host couldn't start: the CLI runs in this process after all, as before T926.</summary>
@@ -988,6 +1046,13 @@ public sealed class TerminalsViewModel : ObservableObject
                     if (!ReferenceEquals(selected, shown) || clock.Elapsed <= SlowShowThreshold) return;
                     OrchestratorLog.For("Terminals").Warning("Showing {Title:l}'s tab took {Ms}ms", shown.Title, clock.ElapsedMilliseconds);
                 }, DispatcherPriority.Render);
+                // A parked tab shown (clicked, M.ORCH-T2073) resumes its conversation: queued, so the click itself isn't held up.
+                if (pane.Parked)
+                    pane.Control.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (!ReferenceEquals(selected, pane) || !pane.Parked) return;
+                        if (Resume(pane) is { } why) OrchestratorLog.For("Terminals").Warning("{Title:l} stays parked: {Why:l}", pane.Title, why);
+                    }, DispatcherPriority.Background);
             }
             Raise();
         }
@@ -1291,7 +1356,8 @@ public sealed class TerminalsViewModel : ObservableObject
     /// refresh, from <see cref="Update"/>; never throws.</summary>
     internal void PruneEnded(DateTime nowUtc)
     {
-        foreach (var pane in Panes.Where(p => p.Ended && p.EndedAtUtc is { } at && nowUtc - at >= (p.Request.IsMenu ? EndedMenuLifetime : EndedLifetime)).ToList())
+        // A parked tab (M.ORCH-T2073) is ended on purpose and kept: it resumes when shown, never pruned as long-ended.
+        foreach (var pane in Panes.Where(p => p.Ended && !p.Parked && p.EndedAtUtc is { } at && nowUtc - at >= (p.Request.IsMenu ? EndedMenuLifetime : EndedLifetime)).ToList())
         {
             try { Close(pane); }
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Pruning {Title:l}'s long-ended tab failed; contained", pane.Title); }
@@ -1569,6 +1635,75 @@ public sealed class TerminalsViewModel : ObservableObject
         }
         Changed?.Invoke();
     }
+
+    /// <summary>
+    /// Parks <paramref name="pane"/> (M.ORCH-T2073, part of M.ORCH-T1739): its claude process (its TermHost and everything under
+    /// it) is closed, freeing its memory, and its tab stays as a stub that resumes the conversation when shown
+    /// (<see cref="Resume"/>). Whether it is safe to park is <see cref="ParkCheck"/>'s call, made before this; this only refuses a
+    /// tab that couldn't come back: a Launcher menu, one not in a TermHost, one whose Claude session isn't known or whose
+    /// command can't be resumed. Returns why it wasn't parked, or null. On the UI thread; never throws.
+    /// </summary>
+    internal string? Park(TerminalPaneViewModel pane)
+    {
+        try
+        {
+            if (!Panes.Contains(pane)) return "its tab isn't open";
+            if (pane.Parked) return "it is parked already";
+            if (pane.Ended) return "its CLI has ended";
+            if (pane.Request.IsMenu) return "it is a Launcher menu";
+            if (!pane.IsHosted || pane.Session is null) return "it doesn't run in a TermHost";
+            if (pane.SessionId is not { Length: > 0 } session) return "its Claude session isn't known yet";
+            if (!SessionRestoreStore.Resumes(ParkedTab(pane, session))) return "its command can't be resumed with --resume";
+            if (!pane.Kill()) return "its CLI couldn't be ended (its host may run elevated)";
+            // Its host is gone on purpose: a late term-session for it never adds the tab again.
+            if (pane.TermId is { Length: > 0 } termId) lock (closedLately) closedLately[termId] = DateTime.UtcNow;
+            pane.MarkParked(session);
+            OrchestratorLog.For("Terminals").Information("{Title:l}: parked (its CLI closed; session {Session:l} resumes when its tab is shown)", pane.Title, session);
+            Changed?.Invoke();
+            return null;
+        }
+        catch (Exception ex)
+        {
+            OrchestratorLog.For("Terminals").Error(ex, "Parking {Title:l} failed; contained", pane.Title);
+            return ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// A parked tab resumed in place (M.ORCH-T2073): its own request reopened as a restore would
+    /// (<see cref="SessionRestoreStore.ReopenRequest"/>: <c>--resume &lt;session&gt;</c>, on the login it was on last, its first
+    /// <c>--prompt</c> dropped), started in a fresh TermHost the tab attaches to. Its place in its login's list, its name and
+    /// colour are kept. Returns why it wasn't resumed, or null. On the UI thread; never throws.
+    /// </summary>
+    internal string? Resume(TerminalPaneViewModel pane)
+    {
+        try
+        {
+            if (!Panes.Contains(pane)) return "its tab isn't open";
+            if (!pane.Parked || pane.ParkedSession is not { Length: > 0 } session) return "it isn't parked";
+            var hosted = false;
+            try { hosted = UseTermHost && HostAvailable(); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Terminals").Error(ex, "Looking for TermHost failed"); }
+            if (!hosted) return "TermHost isn't installed, so it can't be resumed in its tab";
+            var dirs = new AccountDirs();
+            string ConfigDirOf(string? login) => login is null ? Setup.AgentGate.ClaudeDir : dirs.For(login).Directory;
+            var request = SessionRestoreStore.ReopenRequest(ParkedTab(pane, session), ConfigDirOf, LoginLook.ForConfigDir);
+            if (request.Problem() is { } problem) return problem;
+            OrchestratorLog.For("Terminals").Information("{Title:l}: resuming its parked session {Session:l}", pane.Title, session);
+            pane.Unpark(request);
+            _ = StartHostedAsync(pane);
+            Changed?.Invoke();
+            return null;
+        }
+        catch (Exception ex)
+        {
+            OrchestratorLog.For("Terminals").Error(ex, "Resuming {Title:l} failed; contained", pane.Title);
+            return ex.Message;
+        }
+    }
+
+    private static RestoreTab ParkedTab(TerminalPaneViewModel pane, string session) =>
+        new() { Request = pane.Request, SessionId = session, Login = pane.Login };
 
     /// <summary>Closes <paramref name="pane"/>, ending its CLI (a hosted one's TermHost is killed).</summary>
     public void Close(TerminalPaneViewModel pane)

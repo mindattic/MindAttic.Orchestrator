@@ -17,7 +17,8 @@ public sealed partial class MainViewModel
     internal RestoreState CaptureRestore(string reason, bool clean)
     {
         var all = Root.AllTerminals;
-        var panes = all.Panes.Where(p => !p.Ended).ToList();
+        // A parked tab (M.ORCH-T2073) is a conversation still to resume: kept, on its parked session, with no host to reattach.
+        var panes = all.Panes.Where(p => !p.Ended || p.Parked).ToList();
         // Each CLI's /allocate and /crossrepo, so the autosave carries them too (M.ORCH-T2071). A CLI Quick Save All wound down
         // keeps the marks it had then until /allocate is on again, so the newer autosave never loses what the save state had.
         var cycler = new ContextCycler();
@@ -39,12 +40,12 @@ public sealed partial class MainViewModel
             Allocate = x.Allocate,
             Crossrepo = x.Crossrepo,
             Request = x.Pane.Request,
-            SessionId = x.Pane.SessionId,
+            SessionId = x.Pane.ParkedSession ?? x.Pane.SessionId,
             Login = x.Pane.Login,
             Chosen = Root.loginTabs.Any(t => ReferenceEquals(t.Terminals?.SelectedPane, x.Pane)),
             // Its TermHost session (M.ORCH-T926): while that host lives the next dashboard reattaches the tab, so a restore
             // never offers it (M.ORCH-T928). Null for an in-process tab.
-            HostId = x.Pane.IsHosted ? x.Pane.TermId : null,
+            HostId = x.Pane.IsHosted && !x.Pane.Parked ? x.Pane.TermId : null,
             HandoffCode = x.Pane.HandoffCode,
             Subagents = x.Pane.StatusRow?.Subagents.Count ?? 0,
         }).ToList();

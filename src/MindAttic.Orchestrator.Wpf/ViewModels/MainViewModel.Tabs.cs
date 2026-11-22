@@ -495,10 +495,12 @@ public sealed partial class MainViewModel
             if (!t.EligibleForGeneralPrompt || IsBeingDeleted(t.ScopeEmail)) continue;
             var key = t.tab.Key;
             var login = AccountDirs.Normalize(t.ScopeEmail);
-            var live = AllTerminals.Panes.Where(p => !p.Ended && IsGeneralPromptOf(p, login, root)).ToList();
+            // A parked General Prompt's stub (M.ORCH-T2073) is still this login's General Prompt: it resumes when shown, so
+            // keep-one never opens a second beside it; with two, the running one is kept over the stub.
+            var live = AllTerminals.Panes.Where(p => (!p.Ended || p.Parked) && IsGeneralPromptOf(p, login, root)).ToList();
             if (live.Count > 1)
             {
-                var keep = live.FirstOrDefault(p => p.IsSelected) ?? live[0];
+                var keep = live.FirstOrDefault(p => p.IsSelected) ?? live.FirstOrDefault(p => !p.Parked) ?? live[0];
                 foreach (var extra in live.Where(p => p != keep))
                 {
                     if (!tabsGone.TryGetValue(extra, out _)) tabsGone.Add(extra, null);
@@ -539,7 +541,7 @@ public sealed partial class MainViewModel
                 return true;
             });
             if (!ready || ShuttingDown || RestoringTerminals) return;
-            if (AllTerminals.Panes.Any(p => !p.Ended && IsGeneralPromptOf(p, AccountDirs.Normalize(email), root))) return;
+            if (AllTerminals.Panes.Any(p => (!p.Ended || p.Parked) && IsGeneralPromptOf(p, AccountDirs.Normalize(email), root))) return;
             if (OpenTerminal(control.RepoPaneRequest("General", root, "Claude", null, dir.Directory, email)) is { } error)
                 log.Warning("Couldn't open {Login:l}'s General Prompt tab: {Error:l}", title, error);
         }
@@ -615,7 +617,8 @@ public sealed partial class MainViewModel
             // With automatic Launchers off (M.ORCH-T1585), any other tab gone opens nothing: Open Project on the tab's right-click does.
             if (!autoOpenLaunchers || IsBeingDeleted(owner.ScopeEmail)) return;
             var key = owner.tab.Key;
-            var hasLive = AllTerminals.Panes.Any(p => !p.Ended && ReferenceEquals(OwnerOf(p), owner));
+            // A parked tab (M.ORCH-T2073) is still theirs: it resumes when shown, so it leaves no person without a tab.
+            var hasLive = AllTerminals.Panes.Any(p => (!p.Ended || p.Parked) && ReferenceEquals(OwnerOf(p), owner));
             var outcome = launcherRespawn.Decide(key, owner.IsTabSignedIn, hasLive, ShuttingDown, RestoringTerminals, DateTime.UtcNow);
             var log = OrchestratorLog.For("Launcher");
             switch (outcome)
