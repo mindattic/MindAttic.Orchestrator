@@ -17,6 +17,8 @@
     <PackageReference Include="MindAttic.Tickets" Version="6.0.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.7" />
+    <!-- M.ORCH-T2047: the Azure SQL backup's schema-and-data .sql export, as the Launcher's AzureSqlExportService does. -->
+    <PackageReference Include="Microsoft.SqlServer.SqlManagementObjects" Version="181.46.0" />
     <!-- SqlClient's own (9.0.x) has known vulnerabilities; the build treats NU1902/NU1903 as errors. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <PackageReference Include="System.Management" Version="10.0.0" />

@@ -1,19 +1,24 @@
 namespace MindAttic.Orchestrator.Backup;
 
-/// <summary>What one backup run produced: the dated folder, each SQLite dump and the AppData zip.</summary>
+/// <summary>What one backup run produced: the dated folder, each SQLite dump, each Azure SQL export and the AppData zip.</summary>
 public sealed record BackupRunResult(
     string Folder,
     IReadOnlyList<SqliteBackupResult> Sqlite,
-    AppDataBackupResult AppData)
+    AppDataBackupResult AppData,
+    IReadOnlyList<AzureSqlExportResult>? AzureSql = null)
 {
-    /// <summary>True when every database dumped and the AppData zip didn't fail (a missing AppData tree is OK).</summary>
-    public bool Ok => AppData.Ok && Sqlite.All(r => r.Ok);
+    /// <summary>Each Azure SQL database's export (M.ORCH-T2047); empty when the run named none.</summary>
+    public IReadOnlyList<AzureSqlExportResult> AzureSql { get; init; } = AzureSql ?? [];
+
+    /// <summary>True when every database dumped or exported and the AppData zip didn't fail (a missing AppData tree is OK).</summary>
+    public bool Ok => AppData.Ok && Sqlite.All(r => r.Ok) && this.AzureSql.All(r => r.Ok);
 }
 
 /// <summary>
 /// The Orchestrator's backup engine (M.ORCH-T2046, part of M.ORCH-T1983): makes the dated folder under the backup
 /// base (<c>yyyy-MM-dd</c>, <c>_a</c>..<c>_z</c> on a second run that day), dumps each SQLite database into
-/// <c>Databases\SQLite\{project}\{db}.sql</c> and zips <c>%APPDATA%\MindAttic</c> into <c>AppData.zip</c>.
+/// <c>Databases\SQLite\{project}\{db}.sql</c>, exports each Azure SQL database into
+/// <c>Databases\{server}\{db}.sql</c> (M.ORCH-T2047) and zips <c>%APPDATA%\MindAttic</c> into <c>AppData.zip</c>.
 /// Every step's failure lands in the result instead of throwing, so one bad database doesn't lose the rest.
 /// The clock, the sqlite3 runner and the AppData source are injectable for tests.
 /// </summary>
@@ -22,15 +27,18 @@ public sealed class BackupService
     public string BackupBase { get; }
     private readonly SqliteBackup sqlite;
     private readonly AppDataBackup appData;
+    private readonly AzureSqlExport azureSql;
     private readonly Func<DateTime> now;
 
     public BackupService() : this(BackupFolders.DefaultBackupBase) { }
 
-    public BackupService(string backupBase, SqliteBackup? sqlite = null, AppDataBackup? appData = null, Func<DateTime>? now = null)
+    public BackupService(string backupBase, SqliteBackup? sqlite = null, AppDataBackup? appData = null, Func<DateTime>? now = null,
+        AzureSqlExport? azureSql = null)
     {
         BackupBase = backupBase;
         this.sqlite = sqlite ?? new SqliteBackup();
         this.appData = appData ?? new AppDataBackup();
+        this.azureSql = azureSql ?? new AzureSqlExport();
         this.now = now ?? (() => DateTime.Now);
     }
 
@@ -41,15 +49,21 @@ public sealed class BackupService
     public BackupRunResult Run(
         IReadOnlyList<SqliteBackupTarget> databases,
         Action<SqliteBackupResult>? onDatabaseDone = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        IReadOnlyList<AzureSqlTarget>? azureDatabases = null,
+        Action<AzureSqlExportResult>? onAzureDone = null,
+        Action<string>? progress = null)
     {
         var folder = ResolveTargetFolder();
         Directory.CreateDirectory(folder);
         var dumps = sqlite.Backup(databases, folder, onDatabaseDone, ct);
+        var exports = azureDatabases is { Count: > 0 } && !ct.IsCancellationRequested
+            ? azureSql.Export(azureDatabases, folder, progress, onAzureDone, ct)
+            : [];
         var zip = ct.IsCancellationRequested
             ? new AppDataBackupResult(false, AppDataBackup.ResolveZipPath(folder), 0, TimeSpan.Zero, "cancelled")
             : appData.Zip(folder);
-        return new BackupRunResult(folder, dumps, zip);
+        return new BackupRunResult(folder, dumps, zip, exports);
     }
 
     /// <summary>
