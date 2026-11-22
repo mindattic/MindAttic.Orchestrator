@@ -103,6 +103,7 @@ public sealed class LampSettingsTests
         Case("orphanRedispatches", s => s with { OrphanRedispatches = 0 }, 0, v => v.OrphanRedispatches = 5, 5, s => s.OrphanRedispatches),
         Case("orphanQuietMinutes", s => s with { OrphanQuietMinutes = 30 }, 30, v => v.OrphanQuietMinutes = 45, 45, s => s.OrphanQuietMinutes),
         Case("inboxAlerts", s => s with { InboxAlerts = false }, false, v => v.InboxAlerts = true, true, s => s.InboxAlerts),
+        Case("nagAlerts", s => s with { NagAlerts = false }, false, v => v.NagAlerts = true, true, s => s.NagAlerts),
         Case("editClaims", s => s with { EditClaims = "Off" }, "Off", v => v.EditClaims = "Block", "Block", s => s.EditClaims),
         Case("editClaimMinutes", s => s with { EditClaimMinutes = 45 }, 45d, v => v.EditClaimMinutes = 10, 10d, s => s.EditClaimMinutes),
         Case("dbBusyRetries", s => s with { DbBusyRetries = 3 }, 3, v => v.DbBusyRetries = 10, 10, s => s.DbBusyRetries),

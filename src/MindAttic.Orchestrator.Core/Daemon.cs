@@ -432,6 +432,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // Beside the watchdog: every reminder due, missed ones too (the machine slept), is texted through Psst (M.ORCH-T477).
                 try { if (remindLease.TryAcquire()) reminders.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"reminders: {ex.Message}"); }
+                // And the reminders that nag (M.ORCH-T1934), by the same lease holder: each due one toasted, pushed and texted.
+                try { if (remindLease.TryAcquire()) ReportNags(s, options.WorkspaceRoot, DateTime.UtcNow); }
+                catch (Exception ex) { Say(LogEventLevel.Warning, $"reminders that nag: couldn't deliver them (retrying next minute): {ex.Message}"); }
 
                 // The owner inbox (M.ORCH-T1689): what newly waits on the owner is texted through Psst, once per item.
                 ReportInbox(snapshot, plan, s, DateTime.UtcNow);

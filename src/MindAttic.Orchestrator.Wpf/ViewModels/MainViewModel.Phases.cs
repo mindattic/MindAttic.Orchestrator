@@ -36,6 +36,10 @@ public sealed partial class MainViewModel
     private sealed class Seen { public DateTime LastSeenUtc { get; init; } }
     /// <summary>The newest rebalance move toasted; moves made before the window opened aren't.</summary>
     private DateTime rebalanceSeenUtc = DateTime.UtcNow;
+    /// <summary>The newest nag toasted (M.ORCH-T1934); nags delivered before the window opened aren't.</summary>
+    private DateTime nagSeenUtc = DateTime.UtcNow;
+    /// <summary>When the nags were last read: once a minute, the daemon delivering them no more often.</summary>
+    private DateTime nagsReadUtc;
     private bool isLoginsOpen;
     private string queueMessage = "";
 
@@ -661,6 +665,22 @@ public sealed partial class MainViewModel
                 Toasts.Insert(0, new ToastViewModel("Moved a CLI", move.Text, Palette.Working, null));
                 rebalanceSeenUtc = move.AtUtc;
             }
+
+        // A reminder that nags came due (M.ORCH-T1934): the daemon delivered and marked it; each delivery since the last one
+        // shown is toasted once, on the global login's tab, and stays up longer than most, being something to act on.
+        if (IsGlobalTab && DateTime.UtcNow - nagsReadUtc >= TimeSpan.FromMinutes(1))
+        {
+            nagsReadUtc = DateTime.UtcNow;
+            try
+            {
+                foreach (var nag in new MindAttic.Orchestrator.Reminders.NagBook(store.Db).NaggedSince(nagSeenUtc))
+                {
+                    Toasts.Insert(0, new ToastViewModel("Reminder", MindAttic.Orchestrator.Reminders.NagSchedule.Text(nag), Palette.Waiting, null) { Lifetime = TimeSpan.FromMinutes(15) });
+                    if (nag.LastNagUtc is { } at && at > nagSeenUtc) nagSeenUtc = at;
+                }
+            }
+            catch (Exception ex) { OrchestratorLog.For("Dashboard").Warning(ex, "Couldn't read the reminders that nag"); }
+        }
 
         // The queue and the "while you were away" summary are the whole workspace's, the same in every tab (M.ORCH-T613): planned
         // once, by the global login's tab (applied first), whose rows every tab shows (M.ORCH-T654).
