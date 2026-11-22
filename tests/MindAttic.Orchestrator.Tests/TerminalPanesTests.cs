@@ -909,7 +909,17 @@ public sealed class TerminalPanesTests
         var pane = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe" }, hosted: true);
         Assert.That(pane.ShowsPaneBusyBadge, Is.False);
         Assert.That(pane.ShowsPaneAskingBadge, Is.False);
-        Assert.That(pane.ShowsPaneIdleBadge, Is.False, "no agent matched yet: none of the three badges");
+        Assert.That(pane.ShowsPaneIdleBadge, Is.True, "a live non-menu CLI with no agent matched yet shows only the idle badge (M.ORCH-T1961)");
+
+        var menu = new TerminalPaneViewModel(new PaneRequest("Launcher", temp.New()) { IsMenu = true, CommandLine = "cmd.exe" }, hosted: true);
+        Assert.That(menu.ShowsPaneBusyBadge, Is.False);
+        Assert.That(menu.ShowsPaneAskingBadge, Is.False);
+        Assert.That(menu.ShowsPaneIdleBadge, Is.False, "a Launcher menu pane shows none of the three");
+
+        var ended = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe" }, hosted: true) { Ended = true };
+        Assert.That(ended.ShowsPaneBusyBadge, Is.False);
+        Assert.That(ended.ShowsPaneAskingBadge, Is.False);
+        Assert.That(ended.ShowsPaneIdleBadge, Is.False, "an ended pane with no agent shows none of the three");
 
         AgentBoardRow Row(AgentState state, bool asking) => new("s", "Repo", null, null, DateTime.UtcNow, DateTime.UtcNow, state, "", false, default, []) { Asking = asking };
 
@@ -929,7 +939,7 @@ public sealed class TerminalPanesTests
         Assert.That(pane.ShowsPaneIdleBadge, Is.True);
 
         pane.ApplyAgentStatus(null, DateTime.UtcNow);
-        Assert.That(pane.ShowsPaneIdleBadge, Is.False, "unmatched again: back to none of the three");
+        Assert.That(pane.ShowsPaneIdleBadge, Is.True, "unmatched again: back to the fresh-pane idle badge only");
     }
 
     /// <summary>M.ORCH-T1856: working under a /goal, the infinity sign stands in for the busy ring; idle and asking are unchanged.</summary>
