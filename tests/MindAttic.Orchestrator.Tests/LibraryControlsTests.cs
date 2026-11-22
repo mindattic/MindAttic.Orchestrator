@@ -235,7 +235,7 @@ public sealed class LibraryControlsTests
         var boxes = window.Descendants(P + "TextBox").ToList();
         Assert.That(boxes.Select(b => (string?)b.Attribute("Style")), Has.All.Matches<string?>(s => s is "{StaticResource MaTextBox}" or "{StaticResource MaTextArea}"));
         var placeholders = boxes.Select(b => (string?)b.Attribute(Mc + "MaTextBox.Placeholder")).OfType<string>().ToList();
-        Assert.That(placeholders, Is.EquivalentTo(new[] { "name@company.com", "{Binding ApiCreditPlaceholder}" }), "the Repos view's search and the repo pane's boxes went to Tickets Desktop (M.ORCH-T763); the API starting-credit box's hint is bound (M.ORCH-T954)");
+        Assert.That(placeholders, Is.EquivalentTo(new[] { "name@company.com", "{Binding ApiCreditPlaceholder}", "Password" }), "the Repos view's search and the repo pane's boxes went to Tickets Desktop (M.ORCH-T763); the API starting-credit box's hint is bound (M.ORCH-T954); the User Credentials row's plain-text password box has its own literal hint (M.ORCH-T1898)");
         Assert.That(boxes.Where(b => (string?)b.Attribute("AcceptsReturn") == "True"), Is.Empty, "a multi-line box is an MaTextArea");
 
         var build = File.ReadAllText(Wpf("BuildWorkspaceWindow.cs"));
