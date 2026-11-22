@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
+using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Status;
 using MindAttic.Orchestrator.Term;
+using MindAttic.Orchestrator.Tickets;
 
 namespace MindAttic.Orchestrator.Health;
 
@@ -15,6 +17,11 @@ public sealed record DaemonReach(double? Ms, string? Error = null);
 /// <list type="bullet">
 /// <item><c>link:latency</c> <c>probe-&gt;daemon</c>: the round trip to the daemon's first line on the status stream, graded by
 /// <see cref="HealthCheck.LinkLatencyMs"/>; a daemon that doesn't answer is unhealthy.</item>
+/// <item><c>link:latency</c> <c>probe-&gt;tickets-db</c> (<c>daemon-&gt;tickets-db</c> run in the daemon): one timed read of the
+/// ticket database (<see cref="TicketDbPing"/>, M.ORCH-T2032), graded by the same line; no answer is unhealthy.</item>
+/// <item><c>daemon:tick</c> <c>daemon</c>: the daemon's tick so far, or its last one when that was longer, in seconds
+/// (<see cref="DaemonTick"/>, M.ORCH-T2032), graded by <see cref="DaemonTick.Line"/>: the M.ORCH-T1922 stall held one tick for
+/// many minutes. No tick kept, or a daemon no longer running, is degraded with no reading.</item>
 /// <item><c>link:up</c> for each other end the daemon holds, a state graded by rule: <c>daemon-&gt;dashboard</c> and
 /// <c>daemon-&gt;tickets-desktop</c> from their presences, <c>daemon-&gt;termhost:&lt;pid&gt;</c> for each hosted session kept and
 /// <c>daemon-&gt;cli:&lt;pid&gt;</c> for each CLI whose activity it follows. <c>up</c> (its process runs) is healthy; <c>gone</c>
@@ -46,6 +53,18 @@ public sealed class LinkProbe
 
     /// <summary>Reaches the daemon once; <see cref="ReachAsync"/> on the real stream by default.</summary>
     public Func<CancellationToken, Task<DaemonReach>> ReachDaemon { get; init; } = ct => ReachAsync(null, TimeSpan.FromSeconds(5), ct);
+
+    /// <summary>Times one read of the ticket database; null skips the ticket-database link.</summary>
+    public Func<CancellationToken, Task<TicketDbRead>>? ReadTicketDb { get; init; }
+
+    /// <summary>The ticket-database link's instance: <c>probe-&gt;tickets-db</c>, or <c>daemon-&gt;tickets-db</c> run in the daemon.</summary>
+    public string TicketDbLink { get; init; } = "probe->tickets-db";
+
+    /// <summary>The daemon's tick timing as last kept; null skips the tick check.</summary>
+    public Func<DaemonTick?>? Tick { get; init; }
+
+    /// <summary>Whether the daemon process that kept <see cref="Tick"/> still runs.</summary>
+    public Func<int, bool> DaemonAlive { get; init; } = pid => Term.TermSessions.HostStartOf(pid) is not null;
 
     /// <summary>The app presences heard; null skips the app links.</summary>
     public AppPresences? Presences { get; init; }
@@ -79,9 +98,20 @@ public sealed class LinkProbe
     public static LinkProbe ForHub(AppBusHub hub, string? pipeName = null) => new()
     {
         ReachDaemon = ct => ReachAsync(pipeName, TimeSpan.FromSeconds(5), ct),
+        TicketDbLink = "daemon->tickets-db",
         Presences = hub.Presences,
         TermSessions = hub.TermSessionsKept,
         CliPids = hub.Activity.CliPids,
+    };
+
+    /// <summary>The probe as <c>orchestrator probe links</c> runs it, outside the daemon: the status stream, one timed read of
+    /// <paramref name="workspaceRoot"/>'s ticket database and the daemon's tick as <paramref name="db"/> keeps it (M.ORCH-T2032).
+    /// The app, TermHost and CLI links are the daemon's own to read, so they're left out here.</summary>
+    public static LinkProbe ForCli(string? workspaceRoot, OrchestratorDb db, HealthThresholds thresholds) => new()
+    {
+        ReadTicketDb = ct => TicketDbPing.TimeAsync(workspaceRoot, TimeSpan.FromSeconds(15), ct),
+        Tick = () => DaemonTick.Load(db),
+        Thresholds = thresholds,
     };
 
     /// <summary>One run: every link read and graded. Never throws for a source that fails; that link reports degraded with no
@@ -101,6 +131,22 @@ public sealed class LinkProbe
                 Thresholds.LinkLatencyMs.Degraded, Thresholds.LinkLatencyMs.Unhealthy, reach.Error ?? "the daemon didn't answer"),
             { } ms => HealthResult.Graded(HealthCheck.LinkLatencyMs, Thresholds, ms, at, DaemonLink, reach.Error),
         });
+
+        if (ReadTicketDb is { } readDb)
+        {
+            TicketDbRead read;
+            try { read = await readDb(ct).ConfigureAwait(false); }
+            catch (Exception ex) when (ex is not OutOfMemoryException and not OperationCanceledException) { read = new(null, ex.Message); }
+            var readAt = Clock();
+            results.Add(read.Ms switch
+            {
+                null => new HealthResult(LatencyCheck, TicketDbLink, "datastore", null, "ms", HealthGrade.Unhealthy, readAt,
+                    Thresholds.LinkLatencyMs.Degraded, Thresholds.LinkLatencyMs.Unhealthy, read.Error ?? "the ticket database didn't answer"),
+                { } ms => HealthResult.Graded(HealthCheck.LinkLatencyMs, Thresholds, ms, readAt, TicketDbLink, read.Error) with { ComponentType = "datastore" },
+            });
+        }
+
+        if (Tick is { } tick) results.Add(TickResult(tick));
 
         if (Presences is { } presences)
             foreach (var (app, link) in Apps)
@@ -122,6 +168,27 @@ public sealed class LinkProbe
 
         return new HealthReport(Name, Host, "The daemon's status stream and every app, TermHost and CLI it holds", Clock(),
             watch.ElapsedMilliseconds, IntervalSeconds, results);
+
+        HealthResult TickResult(Func<DaemonTick?> read)
+        {
+            var now = Clock();
+            var line = DaemonTick.Line;
+            HealthResult None(string why) =>
+                new(DaemonTick.Check, DaemonTick.Component, "component", null, "s", HealthGrade.Degraded, now, line.Degraded, line.Unhealthy, why);
+            try
+            {
+                if (read() is not { } t) return None("no tick kept: the daemon hasn't run here yet");
+                if (!DaemonAlive(t.Pid)) return None($"the daemon that kept it (pid {t.Pid}) isn't running");
+                var seconds = t.SecondsAt(now.UtcDateTime);
+                var grade = line.Grade(seconds);
+                string? output = t.Running && (now.UtcDateTime - t.StartedUtc).TotalSeconds >= seconds - 0.5
+                    ? $"a tick has run {seconds:0} s so far"
+                    : t.LastTookSeconds is { } last ? $"the last tick took {last:0} s" : null;
+                return new HealthResult(DaemonTick.Check, DaemonTick.Component, "component", Math.Round(seconds, 1), "s", grade, now,
+                    line.Degraded, line.Unhealthy, grade == HealthGrade.Healthy ? null : output);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { return None("no reading: " + ex.Message); }
+        }
 
         HealthResult Read(string link, Func<(string State, HealthGrade Grade, string? Output)> read)
         {

@@ -158,6 +158,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         while (!cancel.IsCancellationRequested)
         {
             tick.Start();
+            NoteTick(tick, ended: false);
             try
             {
                 // The dashboard's first run may pick the workspace after Scheduler already started this.
@@ -521,6 +522,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             }
             // Between ticks the loop's own refresh is next; nothing runs beside it (M.ORCH-T1111).
             refresher.Ticking = false;
+            NoteTick(tick, ended: true);
             if (tick.Slow() is { } slow) Say(LogEventLevel.Warning, slow);
             WaitForNextRefresh(interval, cancel);
         }
@@ -867,6 +869,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             started = last = now();
         }
 
+        /// <summary>When the tick began (<see cref="Start"/>).</summary>
+        public DateTime StartedUtc => started;
+
+        /// <summary>How long the tick has run so far.</summary>
+        public TimeSpan Total => now() - started;
+
         public void Lap(string name)
         {
             var at = now();
@@ -889,6 +897,22 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     ? "rl-status.json waited on its own refresh, which nothing runs beside (M.ORCH-T1937)"
                     : "rl-status.json was refreshed beside it meanwhile (M.ORCH-T1111)");
         }
+    }
+
+    // The last tick kept for the links probe (M.ORCH-T2032), so a tick's start carries the one before's length.
+    private Health.DaemonTick? keptTick;
+
+    /// <summary>Keeps the tick's timing where <c>orchestrator probe links</c> reads it (<see cref="Health.DaemonTick"/>, M.ORCH-T2032):
+    /// at its start, so a tick that stalls shows as running; at its end, with how long it took. A local state row; failing to
+    /// write it is logged and never stops the tick.</summary>
+    private void NoteTick(TickTimer tick, bool ended)
+    {
+        var kept = ended
+            ? new Health.DaemonTick(Environment.ProcessId, tick.StartedUtc, DateTime.UtcNow, tick.Total.TotalSeconds)
+            : new Health.DaemonTick(Environment.ProcessId, tick.StartedUtc, null, keptTick?.LastTookSeconds);
+        keptTick = kept;
+        try { kept.Save(store.Db); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { log.Debug(ex, "Couldn't keep the tick's timing for the links probe"); }
     }
 
     /// <summary>Installs the agent hooks; the default writes Claude's and the other providers'. A test's stands in for it.</summary>
