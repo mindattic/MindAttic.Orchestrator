@@ -152,6 +152,7 @@ public sealed class Installer
             throw;
         }
         InstallLegacyCopy(runningExe);
+        InstallDaemonCopy(runningExe);
         foreach (var aside in SafeFiles(InstallDir, ExeName + ".*.old"))
             try { File.Delete(aside); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         CleanupTermHosts();
@@ -215,6 +216,39 @@ public sealed class Installer
             try { File.Delete(old); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
+    /// <summary>
+    /// The headless daemon exe (M.ORCH-T1944): run.ps1 publishes <see cref="DaemonExeName"/> beside the dashboard exe it installs from,
+    /// and it is copied in beside <see cref="InstalledExe"/>, so the daemon that restarts after the upgrade (<see cref="EnsureDaemon"/>,
+    /// through <see cref="DaemonStartInfo"/>) is this build's. <see cref="StopInstalledCopies"/> has already stopped the old one; a copy
+    /// it still locks is moved aside first (a running exe can be renamed) and whatever still runs from it is stopped. With no daemon
+    /// exe beside <paramref name="runningExe"/> (a lone drag-and-drop exe) the installed one is left as it is. Never throws.
+    /// </summary>
+    private void InstallDaemonCopy(string runningExe)
+    {
+        var source = Path.Combine(Path.GetDirectoryName(runningExe) ?? "", DaemonExeName);
+        if (!File.Exists(source) || SamePath(source, InstalledDaemonExe)) return;
+        try { File.Copy(source, InstalledDaemonExe, overwrite: true); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            try
+            {
+                if (File.Exists(InstalledDaemonExe))
+                    File.Move(InstalledDaemonExe, $"{InstalledDaemonExe}.{Environment.ProcessId}.{DateTime.UtcNow:yyyyMMddHHmmss}.old", overwrite: true);
+                File.Copy(source, InstalledDaemonExe, overwrite: true);
+                StopInstalledCopies();
+            }
+            catch (Exception ex2) when (ex2 is IOException or UnauthorizedAccessException)
+            {
+                // A partly written copy is no exe to forward to: removed, the dashboard exe runs the daemon itself (DaemonForwardTarget).
+                if (File.Exists(InstalledDaemonExe) && new FileInfo(InstalledDaemonExe).Length != new FileInfo(source).Length)
+                    try { File.Delete(InstalledDaemonExe); } catch (Exception ex3) when (ex3 is IOException or UnauthorizedAccessException) { }
+                OrchestratorLog.For("Installer").Warning(ex2, "Installing the headless daemon exe failed; contained");
+            }
+        }
+        foreach (var old in SafeFiles(InstallDir, DaemonExeName + ".*.old"))
+            try { File.Delete(old); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
     private static string[] SafeFiles(string dir, string pattern)
     {
         try { return Directory.GetFiles(dir, pattern); }
@@ -269,19 +303,22 @@ public sealed class Installer
 
     private string LegacyExe => Path.Combine(InstallDir, LegacyExeName);
 
-    /// <summary>An old build <see cref="CopyOverInstalled"/> moved aside: <c>{InstalledExe}.{pid}.{stamp}.old</c> in the install folder.</summary>
+    /// <summary>An old build <see cref="CopyOverInstalled"/> or <see cref="InstallDaemonCopy"/> moved aside: <c>{InstalledExe}.{pid}.{stamp}.old</c>
+    /// (or the same for <see cref="InstalledDaemonExe"/>) in the install folder.</summary>
     private bool IsMovedAside(string path) =>
         SamePath(Path.GetDirectoryName(path) ?? "", InstallDir) &&
-        Path.GetFileName(path).StartsWith(ExeName + ".", StringComparison.OrdinalIgnoreCase) && path.EndsWith(".old", StringComparison.OrdinalIgnoreCase);
+        (Path.GetFileName(path).StartsWith(ExeName + ".", StringComparison.OrdinalIgnoreCase) ||
+         Path.GetFileName(path).StartsWith(DaemonExeName + ".", StringComparison.OrdinalIgnoreCase)) &&
+        path.EndsWith(".old", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Stops the installed dashboard and daemon, by their exact exe paths. Never a TermHost (M.ORCH-T932): it is a different
-    /// exe name under <c>TermHost\&lt;version&gt;\</c>, each running CLI keeps its host across an upgrade, and the path check below
-    /// leaves anything under that folder alone.</summary>
+    /// <summary>Stops the installed dashboard and daemon, by their exact exe paths: the dashboard exe, its old-named copy and the headless
+    /// daemon exe (M.ORCH-T1944). Never a TermHost (M.ORCH-T932): it is a different exe name under <c>TermHost\&lt;version&gt;\</c>, each
+    /// running CLI keeps its host across an upgrade, and the path check below leaves anything under that folder alone.</summary>
     public void StopInstalledCopies()
     {
         Run("schtasks", "/End", "/TN", LegacyTaskName);
-        var installed = new[] { InstalledExe, LegacyExe };
-        foreach (var p in new[] { ExeName, LegacyExeName }.SelectMany(n => Process.GetProcessesByName(Path.GetFileNameWithoutExtension(n))))
+        var installed = new[] { InstalledExe, LegacyExe, InstalledDaemonExe };
+        foreach (var p in new[] { ExeName, LegacyExeName, DaemonExeName }.SelectMany(n => Process.GetProcessesByName(Path.GetFileNameWithoutExtension(n))))
         {
             try
             {

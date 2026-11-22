@@ -12,11 +12,13 @@
     missing. So there is no setup script; this one only builds:
 
       artifacts\MindAttic.Orchestrator.Desktop.exe   the drag-and-drop file (self-contained single file)
+      artifacts\MindAttic.Orchestrator.Daemon.exe    the headless daemon (self-contained single file, no WPF)
       C:\Apps\MindAttic.Orchestrator\Cli\    the orchestrator CLI, for scripting and the terminal
 
     then runs `artifacts\MindAttic.Orchestrator.Desktop.exe --install`: exactly what a double-click does,
-    minus the window. Installing over a running copy stops it (and its daemon) first; the daemon
-    starts again from the new build.
+    minus the window. Installing over a running copy stops it (and its daemon) first, by their exact
+    paths; the installer copies the daemon exe beside it in, and the daemon starts again from the new
+    build. TermHosts are never stopped, so every hosted CLI survives (M.ORCH-T1944).
 
     Without -Force each part is rebuilt only when a source file under its project or
     MindAttic.Orchestrator.Core (or Directory.Build.props) is newer than its output.
@@ -46,8 +48,8 @@
     "1) Deploy & Run" passes, so it never just says "up to date" (MAT-T67).
 
 .PARAMETER UiOnly
-Deploy only the dashboard (MindAttic.Orchestrator.Desktop): the CLI, TermHost, Gateway and TermViewer are neither built
-nor installed, so their installed copies stay exactly as they are (M.ORCH-T1323). The busy-CLI check still runs, since
+Deploy only the dashboard (MindAttic.Orchestrator.Desktop): the CLI, the daemon exe, TermHost, Gateway and TermViewer are
+neither built nor installed, so their installed copies stay exactly as they are (M.ORCH-T1323). The busy-CLI check still runs, since
 installing the dashboard restarts it.
 
 .PARAMETER LauncherOnly
@@ -216,7 +218,10 @@ $cliDir     = Join-Path $repo 'src\MindAttic.Orchestrator.Cli'
 $termDir    = Join-Path $repo 'src\MindAttic.Orchestrator.Term'
 $termHostDir = Join-Path $repo 'src\MindAttic.Orchestrator.TermHost'
 $termWpfDir = Join-Path $repo 'src\MindAttic.Orchestrator.Term.Wpf'
+$daemonDir  = Join-Path $repo 'src\MindAttic.Orchestrator.Daemon'
 $artifact   = Join-Path $repo 'artifacts\MindAttic.Orchestrator.Desktop.exe'
+# Beside the dashboard exe, where --install looks for it (Installer.InstallDaemonCopy, M.ORCH-T1944).
+$daemonArtifact = Join-Path $repo 'artifacts\MindAttic.Orchestrator.Daemon.exe'
 $appDir     = 'C:\Apps\MindAttic.Orchestrator'
 $cliOut     = Join-Path $appDir 'Cli'
 $cliExe     = Join-Path $cliOut 'orchestrator.exe'
@@ -340,7 +345,7 @@ function Find-Installed {
 }
 
 if ($Force) {
-    foreach ($d in @($coreDir, $wpfDir, $cliDir)) {
+    foreach ($d in @($coreDir, $wpfDir, $cliDir, $daemonDir)) {
         foreach ($sub in 'bin', 'obj') {
             $path = Join-Path $d $sub
             if (Test-Path $path) {
@@ -426,6 +431,20 @@ if (Test-Stale $artifact @($wpfDir, $coreDir, $termWpfDir, $termDir)) {
     else { $built = $true; Write-Host ("Built {0} ({1:N0} MB)" -f $artifact, ((Get-Item $artifact).Length / 1MB)) -ForegroundColor Green }
 }
 
+# ── The headless daemon exe (M.ORCH-T1942, M.ORCH-T1944) ───────────────────
+# Published beside the dashboard exe; --install copies it in beside the installed one, and every --daemon launch hands off to it
+# (M.ORCH-T1943). -UiOnly leaves it: the artifact already there is the installed build, so the installer's copy changes nothing.
+$daemonBuilt = $false
+if ($UiOnly) { Write-Host '-UiOnly: the daemon exe is left as installed.' -ForegroundColor DarkGray }
+elseif (Test-Stale $daemonArtifact @($daemonDir, $coreDir)) {
+    Write-Host "Publishing the daemon -> $daemonArtifact" -ForegroundColor Cyan
+    dotnet publish (Join-Path $daemonDir 'MindAttic.Orchestrator.Daemon.csproj') --configuration Release --runtime win-x64 `
+        --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true `
+        /p:DebugType=None --output (Split-Path $daemonArtifact) | Out-Host
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $daemonArtifact)) { Write-Host 'Publishing the daemon FAILED.' -ForegroundColor Red; $failed = $true }
+    else { $daemonBuilt = $true; Write-Host ("Built {0} ({1:N0} MB)" -f $daemonArtifact, ((Get-Item $daemonArtifact).Length / 1MB)) -ForegroundColor Green }
+}
+
 # ── The CLI ─────────────────────────────────────────────────────────────────
 # Published to a staging folder here and swapped in only after the busy gate below (M.ORCH-T1007): a refused deploy installs
 # nothing, so no new CLI runs against the old daemon and dashboard. The swap goes file by file: a running CLI call (hooks,
@@ -466,6 +485,13 @@ function Install-StagedCli {
 # the Gateway or the TermViewer either), so a refused deploy leaves the old build whole. The staged CLI answers when there is one.
 $installed = Find-Installed
 $step = Get-InstallStep $artifact $installed $built ([bool]$Force)
+# A daemon-only change (Program.cs, say) still installs: the dashboard exe is copied over unchanged and the daemon exe takes the new
+# build (M.ORCH-T1944). As is an install that has no daemon exe yet, or one that isn't this build.
+if ($step -eq 'current' -and -not $UiOnly -and (Test-Path $daemonArtifact)) {
+    $installedDaemon = Join-Path (Split-Path $installed) 'MindAttic.Orchestrator.Daemon.exe'
+    if ($daemonBuilt -or -not (Test-Path $installedDaemon) -or
+        (Get-FileHash $daemonArtifact).Hash -ne (Get-FileHash $installedDaemon).Hash) { $step = 'install' }
+}
 if ($step -eq 'install') {
     $busyExe = if ($cliStaged) { Join-Path $cliStage 'orchestrator.exe' } else { $cliExe }
     if (-not (Test-ClisIdle $busyExe)) {
