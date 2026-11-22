@@ -795,26 +795,8 @@
                                                     AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
                                                     mc:MaCallout.ToolTip="Close this terminal, ending its CLI"
                                                     Visibility="{Binding ShowsCloseButton, Converter={StaticResource Visible}}" />
-                                            <!-- The Launcher's own pane (M.ORCH-T1873): its close X is this redeploy/reopen icon instead, same
-                                                 CloseCommand underneath (closing it already redeploys MindAttic.Launcher and reopens it fresh,
-                                                 M.ORCH-T1511's OnLauncherTabGone) - only its face says "reload" up front rather than "close".
-                                                 Hidden again, in favor of the spinner below, once this pane is itself the inert placeholder
-                                                 standing in for the real one while that redeploy's in flight (ShowsLauncherReloadIcon), so it
-                                                 can't be clicked a second time until the real Launcher pane replaces it. -->
-                                            <Button DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE72C;" Margin="8,-2,0,-2"
-                                                    Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
-                                                    Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                    CommandParameter="{Binding}"
-                                                    AutomationProperties.Name="{Binding Title, StringFormat='Redeploy and reopen {0}'}"
-                                                    mc:MaCallout.ToolTip="Redeploy MindAttic.Launcher, then close and reopen this Launcher"
-                                                    Visibility="{Binding ShowsLauncherReloadIcon, Converter={StaticResource Visible}}" />
-                                            <mc:MaSpinner DockPanel.Dock="Right" Kind="Ring" Width="14" Height="14" Margin="8,0,0,0" VerticalAlignment="Center"
-                                                          StrokeThickness="1.327" Stroke="{DynamicResource MaMuted}"
-                                                          Visibility="{Binding Redeploying, Converter={StaticResource Visible}}"
-                                                          AutomationProperties.Name="Redeploying the Launcher" />
                                             <!-- M.ORCH-T1883/M.ORCH-T1884's own moving placeholder: in the ellipsis/close buttons' own
-                                                 slot (both hidden, ShowsCloseButton/ShowsMoreButton, while this is shown), the exact
-                                                 same ring as Redeploying's above. -->
+                                                 slot (both hidden, ShowsCloseButton/ShowsMoreButton, while this is shown). -->
                                             <mc:MaSpinner DockPanel.Dock="Right" Kind="Ring" Width="14" Height="14" Margin="8,0,0,0" VerticalAlignment="Center"
                                                           StrokeThickness="1.327" Stroke="{DynamicResource MaMuted}"
                                                           Visibility="{Binding IsMoving, Converter={StaticResource Visible}}"
@@ -1076,19 +1058,6 @@
                                                 AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
                                                 mc:MaCallout.ToolTip="Close this terminal, ending its CLI"
                                                 Visibility="{Binding ShowsCloseButton, Converter={StaticResource Visible}}" />
-                                        <!-- The Launcher's own tab (M.ORCH-T1873): the tree row's own twin above, same CloseCommand, reload
-                                             face, and spinner-while-busy swap - see TreePaneRow's own copy for why. -->
-                                        <Button x:Name="TerminalReloadButton" DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE72C;" Margin="8,-4,-2,-4"
-                                                Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
-                                                Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
-                                                CommandParameter="{Binding}"
-                                                AutomationProperties.Name="{Binding Title, StringFormat='Redeploy and reopen {0}'}"
-                                                mc:MaCallout.ToolTip="Redeploy MindAttic.Launcher, then close and reopen this Launcher"
-                                                Visibility="{Binding ShowsLauncherReloadIcon, Converter={StaticResource Visible}}" />
-                                        <mc:MaSpinner x:Name="TerminalReloadSpinner" DockPanel.Dock="Right" Kind="Ring" Width="14" Height="14" Margin="8,0,-2,0" VerticalAlignment="Center"
-                                                      StrokeThickness="1.327" Stroke="{DynamicResource MaMuted}"
-                                                      Visibility="{Binding Redeploying, Converter={StaticResource Visible}}"
-                                                      AutomationProperties.Name="Redeploying the Launcher" />
                                         <!-- M.ORCH-T1883/M.ORCH-T1884's own moving placeholder: in the ellipsis/close buttons' own
                                              slot (both hidden, ShowsCloseButton/ShowsMoreButton, while this is shown), the tree
                                              row's own twin above. -->

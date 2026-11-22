@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
@@ -121,9 +122,29 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     /// <summary>The CLI tab's callout (M.ORCH-T1553, mc:MaCallout.ToolTip as M.ORCH-T1552 has every tooltip): <see cref="Tooltip"/>
     /// plus this CLI's live figures from the agent row its status read already matched (<see cref="ApplyAgentStatus"/>): its state
-    /// and subagents, tokens spent this session, uptime, and its Launcher/claude.exe PIDs. Nothing is read to build it; the
-    /// text is built only when WPF reads it, which <see cref="ApplyAgentStatus"/> asks for only once a shown figure changes.</summary>
-    public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow);
+    /// and subagents, tokens spent this session, uptime, its Launcher/claude.exe PIDs, and its own RAM line
+    /// (<see cref="RamTipLine"/>, M.ORCH-T1876). Nothing is read to build the rest; the text is built only when WPF reads it,
+    /// which <see cref="ApplyAgentStatus"/> asks for only once a shown figure changes - RAM alone is read fresh on every one
+    /// of those reads, not held in <see cref="tipKey"/>, since it moves on its own and a tooltip that's open a while should
+    /// still read live when it's reopened.</summary>
+    public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow, RamTipLine);
+
+    /// <summary>This pane's own RAM line (M.ORCH-T1876): its whole process tree's working set (<see cref="MemoryReclaim.TreeWorkingSetBytes"/>,
+    /// the Launcher/TermHost/claude.exe/subagents it owns, the same tree <see cref="RootPid"/> already identifies for session
+    /// matching), in MB, and that as a percent of this machine's installed RAM. Null before its root process is known, once it's
+    /// exited, or while Windows can't say either figure.</summary>
+    private string? RamTipLine => RootPid is { } root && MachineHealth.TotalPhysGb() is { } totalGb
+        ? RamTipLineOf(MemoryReclaim.TreeWorkingSetBytes(root), totalGb) : null;
+
+    /// <summary><see cref="RamTipLine"/>'s text for a tree using <paramref name="bytes"/> out of <paramref name="totalPhysGb"/>
+    /// installed; null once the tree's root has exited (0 bytes) or either figure is nonsensical.</summary>
+    internal static string? RamTipLineOf(long bytes, double totalPhysGb)
+    {
+        if (bytes <= 0 || totalPhysGb <= 0) return null;
+        var mb = bytes / (1024.0 * 1024);
+        var percent = bytes / (totalPhysGb * 1024 * 1024 * 1024) * 100;
+        return $"{mb.ToString("N0", CultureInfo.InvariantCulture)} MB RAM ({percent.ToString("0.#", CultureInfo.InvariantCulture)}% of {totalPhysGb.ToString("0.#", CultureInfo.InvariantCulture)} GB)";
+    }
 
     private AgentBoardRow? statusRow;
 
@@ -134,8 +155,9 @@ public sealed class TerminalPaneViewModel : ObservableObject
     private (bool Known, AgentState State, bool Asking, int Subagents, int Jobs, long TokenStep, long Tokens, long UpStep, long Up, int? Cli, int? Host) tipKey;
 
     /// <summary><see cref="TabHoverTip"/>'s text for <paramref name="row"/> (null while its agent isn't known: the plain lines,
-    /// and the Launcher PID once found).</summary>
-    internal static string TabHoverTipOf(string tooltip, AgentBoardRow? row, int? hostPid, DateTime nowUtc)
+    /// and the Launcher PID once found), plus <paramref name="ramLine"/> (<see cref="RamTipLine"/>) on its own trailing line
+    /// once known.</summary>
+    internal static string TabHoverTipOf(string tooltip, AgentBoardRow? row, int? hostPid, DateTime nowUtc, string? ramLine = null)
     {
         var text = new System.Text.StringBuilder(tooltip);
         if (row is not null)
@@ -162,6 +184,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
             if (hostPid is not null && row?.CliPid is not null) text.Append(" · ");
             if (row?.CliPid is { } cli) text.Append("claude.exe PID ").Append(cli);
         }
+        if (ramLine is { Length: > 0 }) text.Append('\n').Append(ramLine);
         return text.ToString();
     }
 
@@ -333,22 +356,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>Keys or a paste were just dropped because the relay is reconnecting (M.ORCH-T979); clears after a few seconds.</summary>
     public bool InputNotSent { get => inputNotSent; private set { if (Set(ref inputNotSent, value)) Raise(nameof(StateText)); } }
 
-    /// <summary>An inert placeholder standing in the Launcher's own slot while MindAttic.Launcher redeploys after its tab closed
-    /// (M.ORCH-T1511): never a real CLI's, never attached to a process. Shown ahead of every other state in
-    /// <see cref="StateText"/>, so a placeholder that's also marked <see cref="Ended"/> still reads "redeploying…", not "ended".</summary>
-    public bool Redeploying { get => redeploying; internal set { if (Set(ref redeploying, value)) { Raise(nameof(StateText)); Raise(nameof(ShowsLauncherReloadIcon)); } } }
     /// <summary>The state text.</summary>
-    private bool redeploying;
-
-    /// <summary>The state text.</summary>
-    public string StateText => Redeploying ? "redeploying…" : Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
-
-    /// <summary>Whether this pane's close "x" (the flat tab strip and the tree row, M.ORCH-T1873) shows as a redeploy/reopen
-    /// icon instead of an ordinary close: the Launcher's own pane, since closing it already redeploys MindAttic.Launcher and
-    /// reopens it fresh (<see cref="MainViewModel.OnLauncherTabGone"/>) rather than just ending it for good - so the icon says
-    /// what clicking it really does. False again once this pane is itself the inert "redeploying…" placeholder
-    /// (<see cref="Redeploying"/>): nothing to click there until the real one replaces it, a spinner standing in its place.</summary>
-    public bool ShowsLauncherReloadIcon => Request.IsMenu && !Redeploying;
+    public string StateText => Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
 
     /// <summary>Set while this CLI itself is between logins (M.ORCH-T1884's own same-login reorder, past its 500ms
     /// threshold, <see cref="SetReorderPending"/>); the other half of <see cref="IsMoving"/>.</summary>
@@ -391,15 +400,15 @@ public sealed class TerminalPaneViewModel : ObservableObject
         Raise(nameof(ShowsCloseButton)); Raise(nameof(ShowsMoreButton)); Raise(nameof(ShowsTabMoreButton));
     }
 
-    /// <summary>Whether this pane's own close "x" shows at all (the flat tab strip and the tree row): never the
-    /// Launcher's own pane (<see cref="ShowsLauncherReloadIcon"/>/its spinner stand in for it there) nor a pane that's
-    /// itself the M.ORCH-T1883/M.ORCH-T1884 moving placeholder, whose spinner takes this same slot instead.</summary>
-    public bool ShowsCloseButton => !Request.IsMenu && !IsMoving;
+    /// <summary>Whether this pane's own close "x" shows at all (the flat tab strip and the tree row): the Launcher's own
+    /// pane gets an ordinary close like any other tab now (M.ORCH-T1902 dropped the redeploy-on-close special case); only
+    /// hidden while this is itself the M.ORCH-T1883/M.ORCH-T1884 moving placeholder, whose spinner takes this same slot
+    /// instead.</summary>
+    public bool ShowsCloseButton => !IsMoving;
 
-    /// <summary>Whether the tree row's own "more actions" ellipsis shows: not the Launcher's own pane (it already has its
-    /// own reload icon there), and not while it's the moving placeholder either, same reasoning as
-    /// <see cref="ShowsCloseButton"/>.</summary>
-    public bool ShowsMoreButton => !Request.IsMenu && !IsMoving;
+    /// <summary>Whether the tree row's own "more actions" ellipsis shows: hidden only while this is the moving placeholder,
+    /// same reasoning as <see cref="ShowsCloseButton"/>.</summary>
+    public bool ShowsMoreButton => !IsMoving;
 
     /// <summary>Whether the flat tab strip's own "more actions" ellipsis shows: unlike <see cref="ShowsMoreButton"/>,
     /// this one's always shown even on the Launcher's own tab (TerminalMoreButton, MainWindow.xaml, had no Request.IsMenu

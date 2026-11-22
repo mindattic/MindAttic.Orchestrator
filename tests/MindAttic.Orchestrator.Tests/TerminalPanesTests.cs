@@ -405,20 +405,6 @@ public sealed class TerminalPanesTests
         Assert.That(cli.Name, Is.EqualTo("Repo"), "nor a Claude CLI tab its provider tag (M.ORCH-T1176): every tab was one");
     }
 
-    [Test, Apartment(ApartmentState.STA)]
-    public void A_redeploying_placeholder_reads_redeploying_even_once_its_inert_relay_marks_it_ended()
-    {
-        // M.ORCH-T1511: the "redeploying…" placeholder that stands in the Launcher's slot while MindAttic.Launcher rebuilds
-        // must still read "redeploying…", not "ended", however its own (never-attached) state settles.
-        var placeholder = new TerminalPaneViewModel(new PaneRequest("RD: Launcher", temp.New()) { Repo = "Launcher", Provider = "Launcher", CommandLine = "cmd.exe", IsMenu = true, Initials = "RD" }, hosted: true)
-        { Redeploying = true };
-        Assert.That(placeholder.StateText, Is.EqualTo("redeploying…"));
-        placeholder.Ended = true;
-        Assert.That(placeholder.StateText, Is.EqualTo("redeploying…"), "Redeploying still wins over Ended");
-        placeholder.Redeploying = false;
-        Assert.That(placeholder.StateText, Is.EqualTo("ended"), "once redeploying is over, the usual state shows again");
-    }
-
     [Test]
     public void The_terminal_draws_in_Windows_Terminal_s_own_colors()
     {

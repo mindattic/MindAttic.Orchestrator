@@ -495,21 +495,9 @@ public sealed partial class MainViewModel
         try
         {
             var owner = OwnerOf(pane);
-            // The Launcher's own tab, gone (closed by hand, or its menu exited on its own): always redeploys before reopening
-            // (M.ORCH-T1511), regardless of whether the person has other CLI tabs open -- unlike any other tab, never routed
-            // through the generic last-tab-gone decision below. Except when the Launcher's own in-app Redeploy is why it's
-            // gone: that already sent a PaneRequest{IsMenu:true} down the pipe for its replacement (received and opened by
-            // OpenTerminal before this tab's process even exited, M.LNCH-T107) before spawning run.ps1 -WaitPid -Force itself.
-            // Running our own LauncherRedeployer on top of that races a second dotnet publish against the one already in
-            // flight, which can catch the deployed exe mid-move and fail the replacement's own relaunch (M.ORCH-T1524).
-            // The Launcher itself always comes back (M.ORCH-T1848), even with automatic Launchers off.
-            if (pane.Request.IsMenu)
-            {
-                if (AllTerminals.Panes.Any(p => p != pane && p.Request.IsMenu && !p.Ended && ReferenceEquals(OwnerOf(p), owner)))
-                    return;
-                OnLauncherTabGone(owner, pane);
-                return;
-            }
+            // The Launcher's own tab is just another tab now (M.ORCH-T1902 dropped the old always-redeploy special case: the
+            // Launcher's own in-app Redeploy menu item already handles redeploying and relaunching itself, so the dashboard
+            // doesn't need to): it falls through to the same last-tab-gone decision as everything else below.
             // With automatic Launchers off (M.ORCH-T1585), any other tab gone opens nothing: Open Project on the tab's right-click does.
             if (!autoOpenLaunchers) return;
             var key = owner.tab.Key;
@@ -534,72 +522,6 @@ public sealed partial class MainViewModel
             }
         }
         catch (Exception ex) { OrchestratorLog.For("Launcher").Error(ex, "Respawning a Launcher after a last tab closed failed; contained"); }
-    }
-
-    /// <summary>Redeploys MindAttic.Launcher before a closed Launcher tab reopens (M.ORCH-T1511): the workspace root in, an
-    /// error out, or null on success. The default runs its real run.ps1 -Force (<see cref="LauncherRedeploy.Run"/>); tests
-    /// replace it so they never shell out.</summary>
-    internal Func<string, string?> LauncherRedeployer { get; init; } = LauncherRedeploy.Run;
-
-    /// <summary>
-    /// M.ORCH-T1511: the Launcher's own tab just closed or ended. Unlike any other tab, this always redeploys MindAttic.Launcher
-    /// before reopening it (the same run.ps1 -Force its own in-app Redeploy uses), so closing it is how you pick up a newer
-    /// build. A "redeploying…" placeholder sits in its slot meanwhile: it's inert (never a process) and, being a Launcher pane
-    /// itself, sorts first the same way the real one always does (<c>MainViewModel.Terminals.cs</c>'s
-    /// <c>OrderByDescending(IsMenu)</c>), so it's never seen landing after other open CLI tabs. A failed rebuild is logged and
-    /// falls back to reopening the exe already deployed (the same non-fatal fallback its own run.bat menu uses), never leaving
-    /// the tab gone for good. Shares <see cref="launcherRespawn"/>'s 30s-per-login cap with every other Launcher respawn, so a
-    /// build that somehow exits at once can't loop.
-    /// </summary>
-    private void OnLauncherTabGone(MainViewModel owner, TerminalPaneViewModel pane)
-    {
-        if (ShuttingDown || RestoringTerminals || !owner.IsTabSignedIn) return;
-        var key = owner.tab.Key;
-        var log = OrchestratorLog.For("Launcher");
-        if (!launcherRespawn.TryTake(key, DateTime.UtcNow))
-        {
-            launchersEmbedded.Remove(key);
-            launchersOpened.Remove(key);
-            log.Warning("{Login:l}'s Launcher tab ({Title:l}) is gone, but one opened for them under 30s ago: the next refresh reopens it", owner.TabTitle, pane.Title);
-            return;
-        }
-        log.Information("{Login:l}'s Launcher tab ({Title:l}) is gone: redeploying MindAttic.Launcher, then reopening it", owner.TabTitle, pane.Title);
-        launchersEmbedded.Remove(key);
-        launchersOpened.Add(key);
-        CloseEndedLaunchers(owner);
-        var request = control.LauncherPaneRequest(owner.ScopeEmail);
-        var placeholder = new TerminalPaneViewModel(request, null, hosted: true) { Redeploying = true };
-        AllTerminals.Panes.Add(placeholder);
-        _ = RedeployThenReopenLauncherAsync(placeholder, request, owner);
-    }
-
-    /// <summary>The background half of <see cref="OnLauncherTabGone"/>: runs <see cref="LauncherRedeployer"/> off the UI thread,
-    /// then (whatever it said) drops <paramref name="placeholder"/> and reopens <paramref name="request"/> for real. Never
-    /// throws.</summary>
-    private async Task RedeployThenReopenLauncherAsync(TerminalPaneViewModel placeholder, PaneRequest request, MainViewModel owner)
-    {
-        var log = OrchestratorLog.For("Launcher");
-        string? error;
-        try { error = await Task.Run(() => LauncherRedeployer(aggregator.Options.WorkspaceRoot)); }
-        catch (Exception ex) { error = ex.Message; }
-        if (error is { } e)
-        {
-            log.Warning("Redeploying MindAttic.Launcher for {Login:l} failed; reopening the build already deployed: {Error:l}", owner.TabTitle, e);
-            // Not lost, just stale (M.ORCH-T1873): the build already deployed reopens below regardless, so this is a heads-up,
-            // not the "CLI not ended"-style error toast a truly failed reopen gets further down.
-            owner.Toasts.Insert(0, new ToastViewModel($"{owner.TabTitle}'s Launcher didn't redeploy", $"{e} Reopening the build already deployed instead.", Palette.Waiting, null));
-        }
-        else log.Information("Redeployed MindAttic.Launcher for {Login:l}", owner.TabTitle);
-        AllTerminals.Panes.Remove(placeholder);
-        placeholder.DisposeControl();
-        if (Root.OpenTerminal(request) is { } openError)
-        {
-            log.Warning("Couldn't reopen {Login:l}'s Launcher after redeploying: {Error:l}", owner.TabTitle, openError);
-            launchersOpened.Remove(owner.tab.Key);
-            // The reload icon's one real failure mode (M.ORCH-T1873): its Launcher is gone and didn't come back, so this one
-            // is surfaced as the ordinary error toast rather than the softer heads-up above.
-            owner.Toasts.Insert(0, new ToastViewModel($"Couldn't reopen {owner.TabTitle}'s Launcher", openError, Palette.Over, null));
-        }
     }
 
     /// <summary>Opens <paramref name="email"/>'s Launcher menu (M.LNCH-T77): embedded as a Terminals panel tab, first among
