@@ -113,6 +113,8 @@ public sealed partial class MainViewModel
                 // The dashboard's intervals, live from the Vault (M.ORCH-T1595): the poll and resync timers read them at their next tick.
                 DashboardTimings.Apply(settings);
                 launcherRespawn.Spacing = DashboardTimings.LauncherSpacing;
+                // Idle CLIs parked (M.ORCH-T2074): the idle time, live from the Vault; 0 never parks one.
+                idleParker?.SetIdleFor(TimeSpan.FromMinutes(Math.Clamp(settings.ParkIdleCliMinutes, 0, Settings.OrchestratorSettings.MaxParkIdleCliMinutes)));
             }
             // Each login's own cutoffs and who's allowed past the weekly one, for the tabs' disabled icon (M.ORCH-T757); kept as
             // they were when the store can't be read now.

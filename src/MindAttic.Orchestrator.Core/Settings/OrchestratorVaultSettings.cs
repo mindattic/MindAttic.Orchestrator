@@ -928,6 +928,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 10080)]
     public double HiddenRendererMinutes { get; set; } = OrchestratorSettings.DefaultHiddenRendererMinutes;
 
+    /// <summary>How long a CLI's turn must have been idle before it's parked (closed, its tab kept to resume it); 0 never parks one.</summary>
+    [Setting("Park an idle CLI after (minutes)", Group = "Dashboard", Order = 6,
+        Help = "How long a CLI's turn must have been idle before the dashboard parks it: its claude process (~1.2 GB) is closed and its tab stays as a stub that resumes the conversation when you show it. Only a CLI with /allocate off, no pending ScheduleWakeup, CronCreate or /loop, no pace hold, nothing running and not on a /goal is parked, never the tab on screen. 0 never parks one.")]
+    [SettingRange(0, OrchestratorSettings.MaxParkIdleCliMinutes)]
+    public int ParkIdleCliMinutes { get; set; } = OrchestratorSettings.DefaultParkIdleCliMinutes;
+
     /// <summary>How long the first load waits on the ticket database before the dashboard shows anyway (M.ORCH-T1936).</summary>
     [Setting("First load waits for tickets (seconds)", Group = "Dashboard", Order = 7,
         Help = "How long the dashboard's loader waits on the ticket database when it opens. Past it the dashboard shows and says tickets are loading until the read lands, rather than sitting on the loader while the database is slow.")]
@@ -1380,6 +1386,7 @@ public sealed class OrchestratorVaultSettings
         UiAutomation = s.UiAutomation,
         EndedTabMinutes = s.EndedTabMinutes,
         HiddenRendererMinutes = s.HiddenRendererMinutes,
+        ParkIdleCliMinutes = s.ParkIdleCliMinutes,
         AutoTabNameMinutes = s.AutoTabNameMinutes,
         AutoTabNameMaxChars = s.AutoTabNameMaxChars,
         CliTooltipDelayMs = s.CliTooltipDelayMs,
@@ -1599,6 +1606,7 @@ public sealed class OrchestratorVaultSettings
         UiAutomation = UiAutomation,
         EndedTabMinutes = EndedTabMinutes,
         HiddenRendererMinutes = HiddenRendererMinutes,
+        ParkIdleCliMinutes = ParkIdleCliMinutes,
         AutoTabNameMinutes = AutoTabNameMinutes,
         AutoTabNameMaxChars = AutoTabNameMaxChars,
         CliTooltipDelayMs = CliTooltipDelayMs,

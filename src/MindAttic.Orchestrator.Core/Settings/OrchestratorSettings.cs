@@ -917,6 +917,18 @@ public sealed record OrchestratorSettings
     /// <summary>The default hidden renderer minutes constant.</summary>
     public const double DefaultHiddenRendererMinutes = 10;
 
+    /// <summary>Minutes a CLI's turn must have been idle before the dashboard parks it (M.ORCH-T2074, part of M.ORCH-T1739): closes
+    /// its claude process (about 1.2 GB) and keeps its tab as a stub that resumes the conversation when shown. Only a CLI the park
+    /// check passes (<see cref="Sessions.ParkCheck"/>: /allocate off, no pending ScheduleWakeup, CronCreate or /loop, no pace hold,
+    /// nothing running, not on a /goal) and whose tab isn't the one on screen is parked. 0 never parks one.</summary>
+    public int ParkIdleCliMinutes { get; init; } = DefaultParkIdleCliMinutes;
+
+    /// <summary>The default park idle CLI minutes constant.</summary>
+    public const int DefaultParkIdleCliMinutes = 60;
+
+    /// <summary>The longest <see cref="ParkIdleCliMinutes"/> (a week).</summary>
+    public const int MaxParkIdleCliMinutes = 10080;
+
     /// <summary>Minutes between the dashboard's passes that name a workspace CLI tab ("General", "MindAttic") for what its CLI
     /// is doing (M.ORCH-T1817, <c>AutoTabName</c>): the first pass comes this long after the tab is first seen, and a tab not
     /// renamed by hand is reconsidered at every one. 0 never renames a tab.</summary>

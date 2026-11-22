@@ -13,7 +13,12 @@ public sealed record ParkFacts(int Pid, string? SessionId, CliActivity Activity,
     LimitStop? LimitStop, bool LimitResume, IReadOnlyList<string>? PendingWakes, DateTime? IdleSinceUtc);
 
 /// <summary>Whether one CLI may be parked now, and every reason it may not (empty when <see cref="Safe"/>).</summary>
-public sealed record ParkVerdict(int Pid, string? SessionId, bool Safe, IReadOnlyList<string> Why);
+public sealed record ParkVerdict(int Pid, string? SessionId, bool Safe, IReadOnlyList<string> Why)
+{
+    /// <summary>When its turn will have been idle for the idle time asked (M.ORCH-T2074): its idle start plus that time; null when
+    /// it isn't idle, when it went idle isn't recorded, or parking is off. What the dashboard's park timer waits for next.</summary>
+    public DateTime? IdleDueUtc { get; init; }
+}
 
 /// <summary>
 /// Whether an open Claude CLI is safe to park (M.ORCH-T2072, part of M.ORCH-T1739): closing it (about 1.2 GB each) and keeping its
@@ -65,7 +70,9 @@ public static class ParkCheck
             if (f.IdleSinceUtc is not { } since || since <= DateTime.MinValue) why.Add("when it went idle isn't recorded");
             else if (nowUtc - since < idleFor) why.Add($"idle only {Formatting.Ago(since, nowUtc)}, under {idleFor.TotalMinutes:0} min");
         }
-        return new ParkVerdict(f.Pid, f.SessionId, why.Count == 0, why);
+        DateTime? due = idleFor > TimeSpan.Zero && f.Activity == CliActivity.Idle && f.IdleSinceUtc is { } idle && idle > DateTime.MinValue
+            ? idle + idleFor : null;
+        return new ParkVerdict(f.Pid, f.SessionId, why.Count == 0, why) { IdleDueUtc = due };
     }
 
     /// <summary>The wakes a transcript still holds at <paramref name="nowUtc"/>, one line each: every ScheduleWakeup not yet due

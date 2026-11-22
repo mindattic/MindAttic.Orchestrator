@@ -419,6 +419,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The dashboard's person tabs: a busy login's green play arrow blinks once for every N tokens it spends, uncached (default 1000; 1 to 10000000).")]
         public int? TabBlinkTokens { get; init; }
 
+        [CommandOption("--park-idle-cli-minutes <MINUTES>")]
+        [Description("Minutes a CLI's turn must have been idle before the dashboard parks it: closes its claude process (~1.2 GB) and keeps its tab as a stub that resumes the conversation when shown. Only a CLI with /allocate off, no pending ScheduleWakeup, CronCreate or /loop, no pace hold, nothing running and not on a /goal, never the tab on screen (default 60; 0 never parks one; 0 to 10080).")]
+        public int? ParkIdleCliMinutes { get; init; }
+
         [CommandOption("--unit-token-budget <N>")]
         [Description("The size of one task (one unit of work) in uncached tokens (default 80000; 20000 to 400000).")]
         public int? UnitTokenBudget { get; init; }
@@ -997,6 +1001,12 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { TabBlinkTokens = blink };
             changed = true;
         }
+        if (settings.ParkIdleCliMinutes is { } park)
+        {
+            if (park is < 0 or > OrchestratorSettings.MaxParkIdleCliMinutes) { AnsiConsole.MarkupLine($"[red]--park-idle-cli-minutes is 0 to {OrchestratorSettings.MaxParkIdleCliMinutes} (0 never parks a CLI).[/]"); return 1; }
+            s = s with { ParkIdleCliMinutes = park };
+            changed = true;
+        }
         if (settings.UnitTokenBudget is { } unit)
         {
             if (unit is < OrchestratorSettings.MinUnitTokenBudget or > OrchestratorSettings.MaxUnitTokenBudget) { AnsiConsole.MarkupLine($"[red]--unit-token-budget is {OrchestratorSettings.MinUnitTokenBudget} to {OrchestratorSettings.MaxUnitTokenBudget}.[/]"); return 1; }
@@ -1160,6 +1170,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             " · a CLI whose login runs out waits for its reset (API billing is only ever switched on by you)" +
             " · CLIs open in Windows Terminal, a window per person" +
             $" · a busy person tab's play arrow blinks once per {s.TabBlinkTokens:N0} tokens" +
+            (s.ParkIdleCliMinutes > 0 ? $" · a CLI idle {s.ParkIdleCliMinutes} min that the park check passes is parked (closed, its tab resumes it)" : " · idle CLIs are never parked") +
             $" · one task is {WorkUnits.Size(WorkUnits.Budget(s))} tokens" +
             $" · the dashboard's first load waits {OrchestratorSettings.FirstLoadWait(s).TotalSeconds:0}s on the ticket database" +
             $" · tab trailing text: {(s.SymbolTabLabels ? "symbols (Σ/λ)" : "words (wk/5h)")}" +

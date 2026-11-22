@@ -14,6 +14,9 @@ public sealed partial class MainViewModel
     /// <summary>Every terminal open in the dashboard, whoever's; the same list in every tab, the global login's.</summary>
     public TerminalsViewModel AllTerminals { get; private set; } = null!;
 
+    /// <summary>The park trigger (M.ORCH-T2074): the global login's tab's only; null on every other tab.</summary>
+    private IdleParker? idleParker;
+
     /// <summary>This person's terminals, on their page.</summary>
     public PersonTerminalsViewModel Terminals { get; private set; } = null!;
 
@@ -29,6 +32,8 @@ public sealed partial class MainViewModel
             AllTerminals.Recolored += RaiseTaskAccents;
             TerminalPaneViewModel.PresumptionChanged += () => { foreach (var t in loginTabs) t.RaiseTabStatus(); };
             WatchForLastTab();
+            // Idle CLIs parked past ParkIdleCliMinutes (M.ORCH-T2074): off until the first refresh applies the setting.
+            idleParker = new IdleParker(AllTerminals);
         }
         else AllTerminals = root.AllTerminals;
         Terminals = new PersonTerminalsViewModel(AllTerminals);

@@ -260,6 +260,7 @@ public sealed class LampSettingsTests
             s => s.ExcludeLauncherFromTeamWall),
         Case("endedTabMinutes", s => s with { EndedTabMinutes = 60 }, 60d, v => v.EndedTabMinutes = 15, 15d, s => s.EndedTabMinutes),
         Case("hiddenRendererMinutes", s => s with { HiddenRendererMinutes = 10 }, 10d, v => v.HiddenRendererMinutes = 30, 30d, s => s.HiddenRendererMinutes),
+        Case("parkIdleCliMinutes", s => s with { ParkIdleCliMinutes = 45 }, 45, v => v.ParkIdleCliMinutes = 0, 0, s => s.ParkIdleCliMinutes),
         Case("autoTabNameMinutes", s => s with { AutoTabNameMinutes = 5 }, 5d, v => v.AutoTabNameMinutes = 15, 15d, s => s.AutoTabNameMinutes),
         Case("autoTabNameMaxChars", s => s with { AutoTabNameMaxChars = 20 }, 20d, v => v.AutoTabNameMaxChars = 30, 30d, s => s.AutoTabNameMaxChars),
         Case("cliTooltipDelayMs", s => s with { CliTooltipDelayMs = 250 }, 250d, v => v.CliTooltipDelayMs = 0, 0d, s => s.CliTooltipDelayMs),
