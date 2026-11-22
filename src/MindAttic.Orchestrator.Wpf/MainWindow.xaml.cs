@@ -1858,6 +1858,15 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Bootstrap from the toolbar failed; contained"); }
     }
 
+    /// <summary>The toolbar's Backup &amp; Restore button (M.ORCH-T2050): opens <see cref="BackupRestoreWindow"/>.</summary>
+    private void ToolbarBackupRestoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        var root = OrchestratorOptions.Load().WorkspaceRoot;
+        if (string.IsNullOrWhiteSpace(root)) return;
+        try { new BackupRestoreWindow(root) { Owner = this }.Show(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Backup & Restore failed; contained"); }
+    }
+
     private void OpenKickstart()
     {
         var root = OrchestratorOptions.Load().WorkspaceRoot;
