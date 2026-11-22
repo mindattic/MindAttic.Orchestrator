@@ -11,7 +11,7 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('honey@mindattic.com', 'Honey', 'member', 'premium', 'active', 1792771886.805, 1793634549.737462);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'member', 'premium', 'active', 1792771886.302, 1795080818.092266);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1795081138.8817503);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1795322871.5167456);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1795328023.2180867);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'member', 'premium', 'active', 1792771885.882, 1795159223.7072804);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'member', 'premium', 'active', 1792866937.886, 1793635021.5990849);
 
@@ -1739,7 +1739,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'Mods.RogueTrader.Brevity', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1122856);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7017847);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-20', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5737604);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 839478);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1066023);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13368877);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 447854);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 210685);
@@ -1748,11 +1748,14 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'GridGame.Studio', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1039285);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'IdiotProof', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 677892);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'IdiotProof', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1547792);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3160528);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3161990);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Mods.RogueTrader.Brevity', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 157996);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Provenance', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 96427);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 15793848);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22445541);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 134616);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 90797);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6261);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -33334,7 +33337,106 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|PRS-T1078": "2026-11-22T05:30:36.6126757Z",
     "approval|PRS-T1079": "2026-11-22T05:30:36.6126757Z",
     "approval|PRS-T1080": "2026-11-22T05:30:36.6126757Z",
-    "approval|GAD-T394": "2026-11-22T05:32:41.4539831Z"
+    "approval|GAD-T394": "2026-11-22T05:32:41.4539831Z",
+    "approval|M.COMP-T203": "2026-11-22T06:13:17.3006005Z",
+    "approval|M.COMP-T204": "2026-11-22T06:13:17.3006005Z",
+    "approval|M.COMP-T205": "2026-11-22T06:13:17.3006005Z",
+    "approval|M.COMP-T206": "2026-11-22T06:13:17.3006005Z",
+    "approval|M.TIX-T367": "2026-11-22T06:13:17.3006005Z",
+    "approval|M.TIX-T368": "2026-11-22T06:13:17.3006005Z",
+    "approval|M.TIX-T369": "2026-11-22T06:13:17.3006005Z",
+    "approval|M.TIX-T370": "2026-11-22T06:13:17.3006005Z",
+    "approval|M.TIX-T371": "2026-11-22T06:13:17.3006005Z",
+    "approval|PRS-T1081": "2026-11-22T06:13:17.3006005Z",
+    "approval|PRS-T1082": "2026-11-22T06:13:17.3006005Z",
+    "approval|PRS-T1083": "2026-11-22T06:13:17.3006005Z",
+    "approval|PRS-T1084": "2026-11-22T06:13:17.3006005Z",
+    "approval|PRS-T1085": "2026-11-22T06:13:17.3006005Z",
+    "approval|PRS-T1086": "2026-11-22T06:13:17.3006005Z",
+    "approval|PRS-T1087": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T590": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T591": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T592": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T593": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T597": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T598": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T599": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T600": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T601": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T602": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T603": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T604": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T605": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T606": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T607": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T608": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T609": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T610": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T611": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T612": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T613": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T614": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T615": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T616": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T617": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T618": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T619": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T620": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T621": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T622": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T623": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T624": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T625": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T626": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T627": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T628": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T629": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T630": "2026-11-22T06:13:17.3006005Z",
+    "approval|GG-T631": "2026-11-22T06:13:17.3006005Z",
+    "approval|COR-T20": "2026-11-22T06:28:25.6078853Z",
+    "approval|COR-T21": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.ORCH-T1913": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.RLY-T39": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.RLY-T40": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.RLY-T41": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.RLY-T42": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.RLY-T43": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.RLY-T44": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.RLY-T45": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.RLY-T46": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.RLY-T47": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.RLY-T48": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.VALT-T95": "2026-11-22T06:28:25.6078853Z",
+    "approval|M.VALT-T96": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1088": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1089": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1090": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1091": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1092": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1093": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1094": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1095": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1096": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1097": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1098": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1099": "2026-11-22T06:28:25.6078853Z",
+    "approval|PRS-T1100": "2026-11-22T06:28:25.6078853Z",
+    "approval|TUT-T65": "2026-11-22T06:28:25.6078853Z",
+    "approval|TUT-T66": "2026-11-22T06:28:25.6078853Z",
+    "approval|TUT-T67": "2026-11-22T06:28:25.6078853Z",
+    "approval|TUT-T68": "2026-11-22T06:28:25.6078853Z",
+    "approval|U.SPC-T607": "2026-11-22T06:28:25.6078853Z",
+    "approval|U.SPC-T608": "2026-11-22T06:28:25.6078853Z",
+    "approval|U.SPC-T610": "2026-11-22T06:28:25.6078853Z",
+    "approval|U.SPC-T611": "2026-11-22T06:28:25.6078853Z",
+    "approval|U.SPC-T612": "2026-11-22T06:28:25.6078853Z",
+    "approval|UNR-T93": "2026-11-22T06:28:25.6078853Z",
+    "approval|UNR-T94": "2026-11-22T06:28:25.6078853Z",
+    "approval|UNR-T95": "2026-11-22T06:28:25.6078853Z",
+    "approval|UNR-T96": "2026-11-22T06:28:25.6078853Z",
+    "approval|UNR-T97": "2026-11-22T06:28:25.6078853Z",
+    "approval|UNR-T98": "2026-11-22T06:28:25.6078853Z",
+    "approval|UNR-T99": "2026-11-22T06:28:25.6078853Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
