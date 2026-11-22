@@ -721,6 +721,21 @@ public sealed class OrchestratorVaultSettings
     [Setting("Link lines learn no higher than (ms)", Group = "Health", Order = 21, Help = "The highest round-trip milliseconds a learned link line may go.")]
     [SettingRange(1, 600000)]
     public double HealthLinkLatencyLearnCeilingMs { get; set; } = 15000;
+
+    /// <summary>Seconds between the daemon's runs of the machine probe (0: never).</summary>
+    [Setting("Run the machine probe every (seconds)", Group = "Health", Order = 22, Help = "Seconds between the daemon's runs of orchestrator probe machine (RAM, commit, handles, disks); 0 never runs it.")]
+    [SettingRange(0, 86400)]
+    public double HealthProbeMachineSeconds { get; set; } = 30;
+
+    /// <summary>Seconds between the daemon's runs of the links probe (0: never).</summary>
+    [Setting("Run the links probe every (seconds)", Group = "Health", Order = 23, Help = "Seconds between the daemon's runs of orchestrator probe links (status stream, ticket database, daemon tick); 0 never runs it.")]
+    [SettingRange(0, 86400)]
+    public double HealthProbeLinksSeconds { get; set; } = 30;
+
+    /// <summary>Seconds between the daemon's runs of the Azure probe (0: never).</summary>
+    [Setting("Run the Azure probe every (seconds)", Group = "Health", Order = 24, Help = "Seconds between the daemon's runs of orchestrator probe azure (every Azure SQL database through az); 0 never runs it.")]
+    [SettingRange(0, 86400)]
+    public double HealthProbeAzureSeconds { get; set; } = 300;
     /// <summary>Minutes between prunes of old log entries and finished terminal hosts' log files.</summary>
     [Setting("Prune old logs every (minutes)", Group = "Alerts", Order = 65, Help = "Minutes between prunes of old log entries and finished terminal hosts' log files.")]
     [SettingRange(1, 10080)]
@@ -1235,6 +1250,9 @@ public sealed class OrchestratorVaultSettings
         HealthDtuLearnCeilingPercent = s.HealthDtuLearnCeilingPercent,
         HealthStorageLearnCeilingPercent = s.HealthStorageLearnCeilingPercent,
         HealthLinkLatencyLearnCeilingMs = s.HealthLinkLatencyLearnCeilingMs,
+        HealthProbeMachineSeconds = s.HealthProbeMachineSeconds,
+        HealthProbeLinksSeconds = s.HealthProbeLinksSeconds,
+        HealthProbeAzureSeconds = s.HealthProbeAzureSeconds,
         LogPruneMinutes = s.LogPruneMinutes,
         DiskCleanupEveryMinutes = s.DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = s.GitHubIntakeMinutes,
@@ -1443,6 +1461,9 @@ public sealed class OrchestratorVaultSettings
         HealthDtuLearnCeilingPercent = HealthDtuLearnCeilingPercent,
         HealthStorageLearnCeilingPercent = HealthStorageLearnCeilingPercent,
         HealthLinkLatencyLearnCeilingMs = HealthLinkLatencyLearnCeilingMs,
+        HealthProbeMachineSeconds = HealthProbeMachineSeconds,
+        HealthProbeLinksSeconds = HealthProbeLinksSeconds,
+        HealthProbeAzureSeconds = HealthProbeAzureSeconds,
         LogPruneMinutes = LogPruneMinutes,
         DiskCleanupEveryMinutes = DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = GitHubIntakeMinutes,

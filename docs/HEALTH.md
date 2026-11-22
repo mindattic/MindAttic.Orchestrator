@@ -171,6 +171,12 @@ orchestrator probe links     [--once] [--json] [--interval <s>]
   Psst's `--when` or Task Scheduler with no daemon at all.
 - Each run has a timeout (default its interval, as ASP.NET's publisher does); a check that times out is reported `warn`
   with `output: "timed out after N s"`, the others in the run still report.
+- The daemon's schedule (M.ORCH-T2037, Core/Daemon.Health.cs): the daemon holding the `health-probes.lock` lease starts
+  `probe machine`, `probe links` and `probe azure` with `--once --interval <its interval>` as hidden processes, each on
+  its own interval (`--health-probe-machine-seconds` 30, `--health-probe-links-seconds` 30,
+  `--health-probe-azure-seconds` 300; 0 turns one off), never two runs of one probe at once, and kills a run still going
+  60 s past its timeout. It logs a probe that couldn't run (exit 3 with its stderr, another code, no start, killed)
+  once per new failure and again when it runs again; a warn or critical exit is the probe's verdict, left to its report.
 - Probes only read and report. They never reclaim memory, kill processes or resume databases; MemoryGuard, DiskGuard,
   MemoryReclaim, the reaper and `/kickstart` keep doing that on their own rules, and may later *read* health reports.
 

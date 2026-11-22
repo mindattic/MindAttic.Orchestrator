@@ -102,6 +102,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         using var ledgerLease = new DispatchLease(store.Directory, PaceLedgerWatch.LeaseName, store.Db);
         using var remindLease = new DispatchLease(store.Directory, Reminders.ReminderSender.LeaseName, store.Db);
         using var costLease = new DispatchLease(store.Directory, Billing.ApiCostWatch.LeaseName, store.Db);
+        // The health probe CLIs on their intervals (M.ORCH-T2037); one daemon runs them.
+        using var probeLease = new DispatchLease(store.Directory, HealthProbeLeaseName, store.Db);
         var apiCost = new Billing.ApiCostWatch(store.Directory, (level, line) => Say(level, line));
         // Each repo's full suite on its main line after a landing, with no LLM (M.ORCH-T561); one daemon runs them.
         using var testsLease = new DispatchLease(store.Directory, MainlineTests.LeaseName, store.Db);
@@ -196,6 +198,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 try { WatchHealth(allocate); } catch (Exception ex) { Say(LogEventLevel.Warning, $"machine health: couldn't read it (retrying next tick): {ex.Message}"); }
                 if (hub is not null)
                     try { LearnHealthLines(hub, s); } catch (Exception ex) { Say(LogEventLevel.Warning, $"health lines: couldn't learn them (retrying next tick): {ex.Message}"); }
+                try { if (probeLease.TryAcquire()) RunHealthProbes(s, DateTime.UtcNow); }
+                catch (Exception ex) { Say(LogEventLevel.Warning, $"health probes: couldn't run them (retrying next tick): {ex.Message}"); }
                 try { WatchMemory(s); } catch (Exception ex) { Say(LogEventLevel.Warning, $"memory guard: couldn't read it (retrying next tick): {ex.Message}"); }
                 try { CapSqlServerMemory(s); } catch (Exception ex) { Say(LogEventLevel.Warning, $"SQL Server memory cap: couldn't apply it (retrying next tick): {ex.Message}"); }
                 try { WatchPagefile(); } catch (Exception ex) { Say(LogEventLevel.Warning, $"pagefile check: couldn't read it (retrying next tick): {ex.Message}"); }

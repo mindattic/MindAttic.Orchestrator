@@ -745,6 +745,17 @@ public sealed record OrchestratorSettings
     /// <summary>The highest round-trip milliseconds a learned link line may go.</summary>
     public double HealthLinkLatencyLearnCeilingMs { get; init; } = 15000;
 
+    // ── Probe runs (M.ORCH-T2037): the daemon launches each probe CLI on its own interval; 0 turns that probe off ──
+
+    /// <summary>Seconds between the daemon's runs of <c>orchestrator probe machine</c> (0: never).</summary>
+    public double HealthProbeMachineSeconds { get; init; } = 30;
+
+    /// <summary>Seconds between the daemon's runs of <c>orchestrator probe links</c> (0: never).</summary>
+    public double HealthProbeLinksSeconds { get; init; } = 30;
+
+    /// <summary>Seconds between the daemon's runs of <c>orchestrator probe azure</c> (0: never; each run lists every database through az).</summary>
+    public double HealthProbeAzureSeconds { get; init; } = 300;
+
     /// <summary>Minutes between prunes of old log entries and finished terminal hosts' logs (was <see cref="LogPruner.Every"/>).</summary>
     public double LogPruneMinutes { get; init; } = 60;
 

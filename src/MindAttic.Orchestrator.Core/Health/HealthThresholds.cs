@@ -106,6 +106,8 @@ public sealed record HealthThresholds(HealthLine RamFreeGb, HealthLine CommitPer
             return "--health-link-learn-ceiling-ms is over 0.";
         if (!(s.HealthLearnMinSamples >= 1 && s.HealthLearnMarginPercent >= 0 && s.HealthLearnMarginPercent <= 100))
             return "--health-learn-min-samples is at least 1 and --health-learn-margin-percent 0 to 100.";
+        if (!new[] { s.HealthProbeMachineSeconds, s.HealthProbeLinksSeconds, s.HealthProbeAzureSeconds }.All(v => v >= 0 && v <= 86_400))
+            return "--health-probe-machine-seconds, --health-probe-links-seconds and --health-probe-azure-seconds are 0 (off) to 86400.";
         return null;
     }
 

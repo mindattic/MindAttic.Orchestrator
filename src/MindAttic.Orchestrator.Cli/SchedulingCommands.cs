@@ -679,6 +679,18 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The highest round-trip milliseconds a learned link line may go (default 15000).")]
         public double? HealthLinkLatencyLearnCeilingMs { get; init; }
 
+        [CommandOption("--health-probe-machine-seconds <SECONDS>")]
+        [Description("Seconds between the daemon's runs of orchestrator probe machine; 0 never runs it (default 30).")]
+        public double? HealthProbeMachineSeconds { get; init; }
+
+        [CommandOption("--health-probe-links-seconds <SECONDS>")]
+        [Description("Seconds between the daemon's runs of orchestrator probe links; 0 never runs it (default 30).")]
+        public double? HealthProbeLinksSeconds { get; init; }
+
+        [CommandOption("--health-probe-azure-seconds <SECONDS>")]
+        [Description("Seconds between the daemon's runs of orchestrator probe azure; 0 never runs it (default 300).")]
+        public double? HealthProbeAzureSeconds { get; init; }
+
         [CommandOption("--model <REPO_OR_TICKET=MODEL>")]
         [Description("The model /allocate starts a repo's (or one ticket's) subagents on, overriding the pick: Prose=opus, M.ORCH-T12=sonnet, GTFO.*=sonnet; =auto clears. A ticket's wins over its repo's. Repeatable.")]
         public string[] Model { get; init; } = [];
@@ -814,7 +826,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             || settings.HealthDiskFreeLearnFloorGb is not null
             || settings.HealthDtuLearnCeilingPercent is not null
             || settings.HealthStorageLearnCeilingPercent is not null
-            || settings.HealthLinkLatencyLearnCeilingMs is not null;
+            || settings.HealthLinkLatencyLearnCeilingMs is not null
+            || settings.HealthProbeMachineSeconds is not null
+            || settings.HealthProbeLinksSeconds is not null
+            || settings.HealthProbeAzureSeconds is not null;
         if (healthChanged)
         {
             s = s with
@@ -840,6 +855,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
                 HealthDtuLearnCeilingPercent = settings.HealthDtuLearnCeilingPercent ?? s.HealthDtuLearnCeilingPercent,
                 HealthStorageLearnCeilingPercent = settings.HealthStorageLearnCeilingPercent ?? s.HealthStorageLearnCeilingPercent,
                 HealthLinkLatencyLearnCeilingMs = settings.HealthLinkLatencyLearnCeilingMs ?? s.HealthLinkLatencyLearnCeilingMs,
+                HealthProbeMachineSeconds = settings.HealthProbeMachineSeconds ?? s.HealthProbeMachineSeconds,
+                HealthProbeLinksSeconds = settings.HealthProbeLinksSeconds ?? s.HealthProbeLinksSeconds,
+                HealthProbeAzureSeconds = settings.HealthProbeAzureSeconds ?? s.HealthProbeAzureSeconds,
             };
             if (HealthThresholds.Problem(s) is { } healthError) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(healthError)}[/]"); return 1; }
         }
@@ -1135,6 +1153,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             $"commit {s.HealthCommitDegradedPercent:0.#}/{s.HealthCommitUnhealthyPercent:0.#}% · disk under {s.HealthDiskFreeDegradedGb:0.#}/{s.HealthDiskFreeUnhealthyGb:0.#} GB free · " +
             $"database DTU {s.HealthDtuDegradedPercent:0.#}/{s.HealthDtuUnhealthyPercent:0.#}% · storage {s.HealthStorageDegradedPercent:0.#}/{s.HealthStorageUnhealthyPercent:0.#}% · " +
             $"links {s.HealthLinkLatencyDegradedMs:0.#}/{s.HealthLinkLatencyUnhealthyMs:0.#} ms");
+        // How often the daemon runs each probe CLI (M.ORCH-T2037).
+        static string Every(double seconds) => seconds > 0 ? $"every {seconds:0.#} s" : "off";
+        AnsiConsole.MarkupLine(Markup.Escape($"  health probes the daemon runs: machine {Every(s.HealthProbeMachineSeconds)} · links {Every(s.HealthProbeLinksSeconds)} · " +
+            $"azure {Every(s.HealthProbeAzureSeconds)}"));
         // What the daemon has learned of them (M.ORCH-T2057), beside what they're set to, and the last move with its reason.
         var learnedLines = store.TryLoad<LearnedHealthLines>(HealthLearning.StoreName, out var learnedBook) ? learnedBook : null;
         AnsiConsole.MarkupLine("  health learning " + (s.HealthLearn
