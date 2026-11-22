@@ -1830,7 +1830,19 @@ public partial class MainWindow : Window
         kick.ToolTip = "Lists every Azure web app with its state and its database's status; wake one or all";
         kick.Click += (_, _) => OpenKickstart();
         menu.Items.Add(kick);
+        var export = DropdownItem("", "Export Azure SQL DB…");
+        export.ToolTip = "Exports Azure SQL databases (pick which, and a folder) to .sql scripts, schema and data (M.ORCH-T2056)";
+        export.Click += (_, _) => OpenAzureExport();
+        menu.Items.Add(export);
         menu.IsOpen = true;
+    }
+
+    private void OpenAzureExport()
+    {
+        var root = OrchestratorOptions.Load().WorkspaceRoot;
+        if (string.IsNullOrWhiteSpace(root)) return;
+        try { new AzureExportWindow(root) { Owner = this }.Show(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Azure export failed; contained"); }
     }
 
     private void OpenKickstart()
