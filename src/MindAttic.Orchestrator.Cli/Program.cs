@@ -191,6 +191,11 @@ internal static class CliApp
             config.AddCommand<MoveCommand>("move").WithDescription("Move a running Claude CLI (<repo|pid>) to another signed-in login (--account <email> or --global): its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session.");
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
             config.AddCommand<MemoryCommand>("memory").WithDescription("What each hosted CLI's whole process tree holds (private and working-set MB, by exe), beside the dashboard, the daemon, the hubs and the other MindAttic processes; --json for scripts (M.ORCH-T1733).");
+            config.AddBranch("probe", p =>
+            {
+                p.SetDescription("Health probes (M.ORCH-T1935, docs/HEALTH.md): each takes its readings, grades them against the health lines, publishes a health report on the app bus and prints it; [[--once]] exits with the Nagios code (0 ok, 1 warn, 2 critical, 3 couldn't run), [[--json]] prints health+json, [[--interval <s>]] sets the loop period.");
+                p.AddCommand<MachineProbeCommand>("machine").WithDescription("Free RAM, commit charge, kernel handles and each fixed drive's free space (memory:free, memory:commit, memory:handles, disk:free), M.ORCH-T2022.");
+            });
             config.AddCommand<BusyCommand>("busy").WithDescription("Whether any Claude CLI on this machine (any login) is still working: mid-turn, a subagent running, an /allocate claim in flight, or holding on a prompt. Exits 1 when any is working or can't be read, 0 when all are idle; the calling CLI is left out. --wait polls until all are idle. run.ps1 runs it before a redeploy (M.ORCH-T873).");
             config.AddBranch("db", d =>
             {
