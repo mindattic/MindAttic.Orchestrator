@@ -53,7 +53,10 @@ public sealed record LedgerWindow(
     int PromptsAnswered,
     IReadOnlyList<MeterGap> Gaps,
     int Exempt = 0,
-    string? Account = null)
+    string? Account = null,
+    double OvershootPercent = 0,
+    int ExemptAtStop = 0,
+    double? MinutesRefusalToFull = null)
 {
     /// <summary>The blind.</summary>
     public TimeSpan Blind => Gaps.Aggregate(TimeSpan.Zero, (t, g) => t + g.Length);
@@ -150,7 +153,14 @@ public static class PaceLedger
         return new LedgerWindow(start, endUtc, grade, why, peak, final, fresh, mine.Count, Math.Round(atTarget, 1),
             hit?.HitUtc, weekly?.HitUtc, held.Count, Math.Round(held.Sum(e => e.HeldSeconds) / 60, 1),
             gate.Count(e => e.Decision == GateEvent.Refused), gate.Count(e => e.Decision == GateEvent.PromptAnswered), gaps,
-            gate.Count(e => e.Decision == GateEvent.Exempt), owner);
+            gate.Count(e => e.Decision == GateEvent.Exempt), owner,
+            // What got past the stop (M.ORCH-T2003): how far the peak ran over it, the exempt calls logged at or above it, and
+            // how long passed between the first refusal and Claude's first 100% report.
+            peak is { } pk ? Math.Round(Math.Max(0, pk - TargetPercent), 1) : 0,
+            mine.FirstOrDefault(s => s.Percent >= TargetPercent) is { } atStop ? gate.Count(e => e.Decision == GateEvent.Exempt && e.AtUtc >= atStop.AtUtc) : 0,
+            gate.Where(e => e.Decision == GateEvent.Refused).Select(e => (DateTime?)e.AtUtc).Min() is { } refusedAt
+                && mine.FirstOrDefault(s => s.Percent >= 100) is { } full && full.AtUtc >= refusedAt
+                ? Math.Round((full.AtUtc - refusedAt).TotalMinutes, 1) : null);
     }
 
     /// <summary>

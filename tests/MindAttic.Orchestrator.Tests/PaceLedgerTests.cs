@@ -36,6 +36,32 @@ public sealed class PaceLedgerTests
         Assert.That(PaceLedger.Build(End, Steady(final), [], []).Grade, Is.EqualTo(grade));
 
     [Test]
+    public void An_over_window_records_what_got_past_the_stop()
+    {
+        // M.ORCH-T2003: 99% at 2h, 100% at 3h; a refusal at 2h30, and exempt calls before and after the stop.
+        List<UsageSample> samples = [new(Start.AddHours(1), 50, End, 5_000_000), new(Start.AddHours(2), 99, End, 9_900_000), new(Start.AddHours(3), 100, End, 10_000_000)];
+        List<GateEvent> events =
+        [
+            new(Start.AddMinutes(90), GateEvent.Exempt, 0, "Bash"), new(Start.AddHours(2).AddMinutes(10), GateEvent.Exempt, 0, "Bash"),
+            new(Start.AddHours(2).AddMinutes(20), GateEvent.Exempt, 0, "Edit"), new(Start.AddHours(2).AddMinutes(30), GateEvent.Refused, 0, "Edit"),
+        ];
+        var w = PaceLedger.Build(End, samples, [], events);
+        Assert.That(w.Grade, Is.EqualTo(WindowGrade.Over));
+        Assert.That((w.OvershootPercent, w.ExemptAtStop, w.MinutesRefusalToFull), Is.EqualTo((1.0, 2, (double?)30)));
+        Assert.That(PaceLedger.Build(End, Steady(70), [], []).MinutesRefusalToFull, Is.Null);
+    }
+
+    [Test]
+    public void An_over_window_with_no_hit_files_a_ticket_saying_what_got_past_the_stop()
+    {
+        var h = new Harness(temp.New());
+        h.Store.SaveLimits([]);
+        h.Watch.Db.AddUsageSamples(Steady(100), DateTime.MinValue);
+        h.Watch.Tick(End.AddMinutes(5));
+        Assert.That(h.Filed, Has.Some.StartsWith("[pace-ledger over ").And.Contain("1 points past the 99% stop").And.Contain("exempt calls logged at or above it"));
+    }
+
+    [Test]
     public void The_running_windows_minutes_at_target_stop_at_now()
     {
         // At 99% from 2 hours in, an hour ago: an hour at the target so far, not the three left until the window ends.

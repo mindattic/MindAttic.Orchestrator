@@ -204,6 +204,10 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         if (w.Grade == WindowGrade.Over && w.LimitHitUtc is not null && hitAlreadyRaised) return;
         if (w.Grade == WindowGrade.Over)
         {
+            // With no limit hit, say what got past the stop (M.ORCH-T2003).
+            if (w.LimitHitUtc is null)
+                line += FormattableString.Invariant($"; ran {w.OvershootPercent:0.#} points past the {PaceLedger.TargetPercent:0}% stop, {w.ExemptAtStop} exempt calls logged at or above it") +
+                        (w.MinutesRefusalToFull is { } m ? FormattableString.Invariant($", {m:0.#} min from the first refusal to the first 100% report") : ", no refusal before the first 100% report");
             alert("Window went over", line, true);
             var summary = w.LimitHitUtc is not null
                 ? FormattableString.Invariant($"[pace-ledger over {w.EndUtc:yyyy-MM-ddTHH:mmZ}] Agents ran out of tokens in the 5-hour window ending {w.EndUtc.ToLocalTime():MMM d h:mm tt}: {line}. Find what got past the 99% stop.")
