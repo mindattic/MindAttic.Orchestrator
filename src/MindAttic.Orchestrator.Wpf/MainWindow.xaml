@@ -734,11 +734,11 @@
                                     <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="4,0,0,0"
                                           Fill="{DynamicResource MaMuted}" />
                                 </Grid>
-                                <DockPanel Grid.Column="1" Margin="0,2,0,2" mc:MaCallout.ToolTip="Not signed in as itself: sign this login in from its menu to get its General Prompt"
-                                           AutomationProperties.Name="General Prompt, unavailable while signed out">
+                                <DockPanel Grid.Column="1" Margin="0,2,0,2" mc:MaCallout.ToolTip="Disabled, or its folder is signed in as another account: fix that from this login's menu to get its General Prompt"
+                                           AutomationProperties.Name="General Prompt, unavailable">
                                     <TextBlock Text="&#xE756;" FontFamily="Segoe MDL2 Assets" FontSize="12" Width="20" Margin="6,0,7,0" TextAlignment="Center"
                                                VerticalAlignment="Center" Foreground="{DynamicResource MaMuted}" />
-                                    <TextBlock Text="General Prompt (signed out)" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
+                                    <TextBlock Text="General Prompt (unavailable)" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
                                 </DockPanel>
                             </Grid>
                         </Grid>

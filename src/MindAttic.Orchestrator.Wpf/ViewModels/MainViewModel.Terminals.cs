@@ -82,11 +82,12 @@ public sealed partial class MainViewModel
     /// The API key keeps its own behaviour (no stand-in).</summary>
     public bool ShowsLauncherPlaceholder => IsPersonTab && !tab.IsApiKey && !tab.SignedIn && !Terminals.Panes.Any(p => p.Request.IsMenu && !p.Ended);
 
-    /// <summary>Whether this login's node shows the disabled "General Prompt (signed out)" row (M.ORCH-T1957): a member login
-    /// (not the API key, not the global one) that isn't signed in as itself -- signed out, or its folder borrowed by another
-    /// account -- so <see cref="EnsureGeneralPrompts"/> keeps no General Prompt on it, and it has none open.</summary>
+    /// <summary>Whether this login's node shows the disabled "General Prompt (unavailable)" row (M.ORCH-T1957/M.ORCH-T1959): a
+    /// member login (not the API key, not the global one) that isn't <see cref="EligibleForGeneralPrompt"/> -- its folder
+    /// borrowed by another account, or disabled -- so <see cref="EnsureGeneralPrompts"/> keeps no General Prompt on it, and it
+    /// has none open. A merely disconnected login is eligible (M.ORCH-T1959) and gets a real one instead of this stand-in.</summary>
     public bool ShowsGeneralPromptPlaceholder => IsPersonTab && !tab.IsApiKey && ScopeEmail is not null && Root.autoOpenGeneralPrompts
-        && !SignedInAsItself && !Terminals.Panes.Any(p => !p.Ended && IsGeneralPromptOf(p, AccountDirs.Normalize(ScopeEmail), Root.WorkspaceRoot));
+        && !EligibleForGeneralPrompt && !Terminals.Panes.Any(p => !p.Ended && IsGeneralPromptOf(p, AccountDirs.Normalize(ScopeEmail), Root.WorkspaceRoot));
 
     /// <summary>The Launcher stand-in's spine runs on below it: into the General Prompt stand-in or the panes (M.ORCH-T1957).</summary>
     public bool LauncherPlaceholderContinues => ShowsGeneralPromptPlaceholder || Terminals.HasPanes;

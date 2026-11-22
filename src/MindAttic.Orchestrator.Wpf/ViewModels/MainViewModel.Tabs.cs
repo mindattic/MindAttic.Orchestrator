@@ -467,8 +467,15 @@ public sealed partial class MainViewModel
     /// (its folder isn't OAuth-signed in as another account, <see cref="SignedInAsOther"/>).</summary>
     private bool SignedInAsItself => ScopeEmail is not null && !tab.IsApiKey && tab.SignedIn && SignedInAsOther is null;
 
+    /// <summary>Eligible for a General Prompt CLI (M.ORCH-T1959): signed in as itself, or cleanly disconnected (not signed in
+    /// at all) - widening <see cref="SignedInAsItself"/> to a disconnected login too, so it gets a real, quiet,
+    /// unauthenticated CLI on its own folder to run its own <c>/login</c> in, scoped correctly, instead of just the
+    /// signed-out stand-in row. Never a login whose folder is borrowed by another account (signed in, but as somebody else -
+    /// opening a CLI there would silently run as them) or one that's <see cref="IsLoginDisabled"/>.</summary>
+    private bool EligibleForGeneralPrompt => ScopeEmail is not null && !tab.IsApiKey && !IsLoginDisabled && (SignedInAsItself || !tab.SignedIn);
+
     /// <summary>
-    /// One General Prompt CLI per login signed in as itself (M.ORCH-T1951/M.ORCH-T1957), kept open like its Launcher: one
+    /// One General Prompt CLI per eligible login (M.ORCH-T1951/M.ORCH-T1957/M.ORCH-T1959), kept open like its Launcher: one
     /// closed or ended is reopened at a later refresh (capped by <see cref="generalPromptRespawn"/>), extras are closed. Only
     /// per-CLI folder logins get one: the global (~/.claude) login has none, so a global login that is the same person as a
     /// folder login never doubles up. Opened quietly (<see cref="OpenGeneralPromptQuietlyAsync"/>), never through
@@ -483,7 +490,7 @@ public sealed partial class MainViewModel
         var now = DateTime.UtcNow;
         foreach (var t in loginTabs)
         {
-            if (!t.SignedInAsItself || IsBeingDeleted(t.ScopeEmail)) continue;
+            if (!t.EligibleForGeneralPrompt || IsBeingDeleted(t.ScopeEmail)) continue;
             var key = t.tab.Key;
             var login = AccountDirs.Normalize(t.ScopeEmail);
             var live = AllTerminals.Panes.Where(p => !p.Ended && IsGeneralPromptOf(p, login, root)).ToList();
@@ -510,8 +517,10 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>The unattended open (M.ORCH-T1957): skipped (and tried again at a later refresh) while RAM or the disk holds new
-    /// CLIs or the folder isn't signed in as itself; never a dialog or a sign-in window. Never throws.</summary>
+    /// <summary>The unattended open (M.ORCH-T1957/M.ORCH-T1959): skipped (and tried again at a later refresh) while RAM or the
+    /// disk holds new CLIs, or the folder is borrowed by another account; never a dialog or a sign-in window - a disconnected
+    /// (never-signed-in, or cleanly signed out) folder opens its own unauthenticated CLI just the same, so <c>/login</c> run
+    /// inside it is scoped to this account (M.ORCH-T1959). Never throws.</summary>
     private async Task OpenGeneralPromptQuietlyAsync(string key, string email, string title, string root)
     {
         var log = OrchestratorLog.For("Dashboard");
@@ -523,7 +532,7 @@ public sealed partial class MainViewModel
             var dir = accountDirs.For(email);
             var ready = await Task.Run(() =>
             {
-                if (!dir.SignedIn || dir.BorrowedFrom is not null) return false;
+                if (dir.BorrowedFrom is not null) return false;
                 accountDirs.Prepare(dir);
                 return true;
             });
