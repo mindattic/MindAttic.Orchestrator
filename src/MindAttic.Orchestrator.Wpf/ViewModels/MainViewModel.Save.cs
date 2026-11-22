@@ -7,9 +7,10 @@ using MindAttic.Orchestrator.Sessions;
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// The dashboard's Save button (M.ORCH-T1769) and its save states (M.ORCH-T1869), like an emulator's: a left click
-/// force-quicksaves the shown CLI alone (its handoff code kept on its tab, so the session-restore autosave carries it).
-/// The right-click menu's Quick Save All saves the whole dashboard as one package: it first stops new spending (/allocate off
+/// The dashboard's Save button (M.ORCH-T1769) and its save states (M.ORCH-T1869), like an emulator's. Its left click is
+/// Quick Save All (M.ORCH-T1803: the one Quicksave button that also pauses); its right-click menu force-quicksaves the shown
+/// CLI alone (its handoff code kept on its tab, so the session-restore autosave carries it) or runs Quick Load All.
+/// Quick Save All saves the whole dashboard as one package: it first stops new spending (/allocate off
 /// in every CLI, each letting its running subagents land), force-quicksaves every open CLI, then writes every tab (login,
 /// folder, Claude session, handoff code, /allocate and /crossrepo, subagents running) to a <see cref="SaveStateStore"/> slot.
 /// Quick Load All restores the newer of that package and the session-restore autosave (so a crash or a Windows restart comes

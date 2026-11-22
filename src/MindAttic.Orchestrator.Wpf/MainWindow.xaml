@@ -387,19 +387,20 @@
                         mc:MaCallout.ToolTip="User Management" AutomationProperties.Name="User Management" />
                 <Button x:Name="SettingsButton" Style="{StaticResource MaToolButton}" Content="&#xE713;" Command="{Binding OpenSettingsCommand}"
                         mc:MaCallout.ToolTip="Settings (opens MindAttic Vault)" AutomationProperties.Name="Settings" />
-                <!-- Save (M.ORCH-T1769, replacing Save all &amp; close's M.ORCH-T1724 force-close-and-exit, now retired):
-                     left click quicksaves the shown CLI alone; right click opens Quick Save All / Quick Load All
-                     (OnSaveButtonContextMenu), each confirmed first and reporting how long it took once it's done. -->
-                <Button x:Name="SaveButton" Style="{StaticResource MaToolButton}" Content="&#xE74E;" Command="{Binding QuicksaveShownCommand}"
+                <!-- Quicksave (M.ORCH-T1803, the owner's one button that absorbs pause and quicksave all; M.ORCH-T1769's
+                     split left click is gone): left click is Quick Save All, which pauses (/allocate off in every CLI,
+                     running subagents finish) and quicksaves every open CLI, confirmed first; non-destructive, nothing
+                     closes or exits. Right click opens the shown CLI's own quicksave and Quick Load All (OnSaveButtonContextMenu). -->
+                <Button x:Name="SaveButton" Style="{StaticResource MaToolButton}" Content="&#xE74E;" Click="SaveButton_Click"
                         ContextMenuOpening="OnSaveButtonContextMenu"
-                        mc:MaCallout.ToolTip="Quicksave the shown CLI; right-click (or the chevron beside it) for Quick Save All or Quick Load All"
-                        AutomationProperties.Name="Quicksave the shown CLI (right-click, or the chevron beside it, for Quick Save All or Quick Load All)" />
+                        mc:MaCallout.ToolTip="Quicksave: pause (/allocate off everywhere) and quicksave every open CLI; right-click (or the chevron beside it) to quicksave the shown CLI alone or Quick Load All"
+                        AutomationProperties.Name="Quicksave: pause and quicksave every open CLI (right-click, or the chevron beside it, to quicksave the shown CLI alone or Quick Load All)" />
                 <!-- The Save button's own menu, reachable with a left click (M.ORCH-T1793): a right-click-only menu isn't
-                     reachable on touch or in the phone layout, so this tiny chevron opens the exact same Quick Save
-                     All / Quick Load All menu the button's own right-click does (ShowSaveMenu). -->
+                     reachable on touch or in the phone layout, so this tiny chevron opens the exact same menu the
+                     button's own right-click does (ShowSaveMenu). -->
                 <Button x:Name="SaveMoreButton" Style="{StaticResource MaToolButton}" Content="&#xE70D;" Width="16" FontSize="8" Margin="2,0,8,0"
                         Click="SaveMoreButton_Click"
-                        mc:MaCallout.ToolTip="Quick Save All or Quick Load All" AutomationProperties.Name="Quick Save All or Quick Load All" />
+                        mc:MaCallout.ToolTip="Quicksave the shown CLI alone, or Quick Load All" AutomationProperties.Name="Quicksave the shown CLI alone, or Quick Load All" />
             </StackPanel>
             <!-- The global toolbar (M.ORCH-T1980): the structural shell for M.ORCH-T1972's wider migration of every
                  MindAttic.Launcher-only feature into this dashboard - one row, grouped and labeled, under the host

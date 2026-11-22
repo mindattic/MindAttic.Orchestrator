@@ -272,9 +272,18 @@ public partial class MainWindow : Window
         StateChanged += async (_, _) => await OnShownOrHidden();
     }
 
-    /// <summary>The Save button's right-click menu (M.ORCH-T1769, replacing Save all &amp; close's M.ORCH-T1724
-    /// force-quicksave-then-close-and-exit, now retired): Quick Save All and Quick Load All, the library's dark dropdown
-    /// like every other menu in this window.</summary>
+    /// <summary>The Quicksave button's left click (M.ORCH-T1803): the owner's one button that absorbs pause and quicksave
+    /// all - Quick Save All, which turns /allocate off in every CLI and quicksaves every open CLI (confirmed first). Nothing
+    /// closes or exits; Quick Load All, or the next start, picks the work back up.</summary>
+    private async void SaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        await RunQuickAllAsync(isSave: true);
+    }
+
+    /// <summary>The Save button's right-click menu (M.ORCH-T1769; since M.ORCH-T1803 the button itself is Quick Save
+    /// All): the shown CLI's own quicksave and Quick Load All, the library's dark dropdown like every other menu in this
+    /// window.</summary>
     private void OnSaveButtonContextMenu(object sender, ContextMenuEventArgs e)
     {
         if (sender is not Button button) return;
@@ -282,8 +291,7 @@ public partial class MainWindow : Window
         ShowSaveMenu(button, PlacementMode.Bottom);
     }
 
-    /// <summary>The Save button's own "more" chevron (M.ORCH-T1793, SaveMoreButton): the same Quick Save All / Quick Load
-    /// All menu as the right-click above, opened with a left click, since a right-click (or Shift+F10 on a button with no
+    /// <summary>The Save button's own "more" chevron (M.ORCH-T1793, SaveMoreButton): the same menu as the right-click above, opened with a left click, since a right-click (or Shift+F10 on a button with no
     /// keyboard equivalent at all) isn't reachable on touch or in the phone layout.</summary>
     private void SaveMoreButton_Click(object sender, RoutedEventArgs e)
     {
@@ -294,11 +302,12 @@ public partial class MainWindow : Window
 
     private void ShowSaveMenu(UIElement target, PlacementMode placement)
     {
-        var menu = DropdownMenu(target, "Quick save or load every open CLI", placement);
-        var saveAll = DropdownItem("", "Quick Save All");
-        saveAll.ToolTip = "Save everything as one save state (confirmed first): /allocate off everywhere so nothing new starts, every open CLI quicksaved, every tab, session and /allocate kept";
-        saveAll.Click += async (_, _) => await RunQuickAllAsync(isSave: true);
-        menu.Items.Add(saveAll);
+        var menu = DropdownMenu(target, "Quicksave the shown CLI, or quick load every open CLI", placement);
+        var saveShown = DropdownItem("", "Quicksave shown CLI");
+        saveShown.ToolTip = "Quicksave the CLI on screen alone; /allocate stays as it is (the Quicksave button itself pauses and saves every CLI)";
+        saveShown.IsEnabled = model.QuicksaveShownCommand.CanExecute(null);
+        saveShown.Click += (_, _) => model.QuicksaveShownCommand.Execute(null);
+        menu.Items.Add(saveShown);
         var loadAll = DropdownItem("", "Quick Load All");
         loadAll.ToolTip = "Restore the last save state (or the newer autosave) (confirmed first): every closed tab reopened and resumed, each CLI's handoff loaded, /allocate back on where it was";
         loadAll.Click += async (_, _) => await RunQuickAllAsync(isSave: false);
