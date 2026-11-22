@@ -543,9 +543,9 @@
              (TerminalsPanel) stays hidden and AgentsBody spans the whole right side (its Grid.Row/RowSpan, bound to
              TreeMenuLayout via Converters.BodyRow/BodyRowSpan, further down). Only the selected login starts expanded
              (MainViewModel.IsExpanded, forced true by Select); the chevron alone toggles it, never selection, so another
-             login's panes can be peeked at without leaving the one shown. Clicking the login's own header row toggles it
-             (M.ORCH-T1877: on release, never after a drag; collapsing it, or selecting and opening it, showing its
-             Usage), which is why there's no separate nested Usage row among the children below any more (M.ORCH-T1768: it
+             login's panes can be peeked at without leaving the one shown. Clicking the login's own header row selects it
+             (M.ORCH-T1877/T1962: on release, never after a drag; shows its Usage, never expands or collapses it - only
+             the chevron does), which is why there's no separate nested Usage row among the children below any more (M.ORCH-T1768: it
              was left over from before that header click did this, so it was redundant - removed, not merely hidden, by
              binding straight to Terminals.Panes instead of Terminals.StripItems, which still carries the pinned Usage
              marker for the flat strip below). v1 scope (not asked for, and the flat strip above keeps them): no

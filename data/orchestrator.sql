@@ -1761,14 +1761,14 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22445541);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 820324);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 58538);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 327187);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 355692);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 612230);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2154632);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 19222752);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'GridGame.Studio', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2806116);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'IdiotProof', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 716325);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 692009);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2618581);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2771277);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 0);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13002805);
 
@@ -31564,8 +31564,8 @@ INSERT INTO state (name, value) VALUES ('limits', '[
 ]');
 INSERT INTO state (name, value) VALUES ('mainline-tests', '{
   "Automata": {
-    "Tested": "f63c271e3cb91f175757992d1ad07cecf3ea0cb9",
-    "Green": "f63c271e3cb91f175757992d1ad07cecf3ea0cb9"
+    "Tested": "614a5d3180c94f4adcf687d50df17b563363ba7e",
+    "Green": "614a5d3180c94f4adcf687d50df17b563363ba7e"
   },
   "AutoWebNav": {
     "Tested": "dcd257b4640d3ae97fa2ae0fb306234feec90d7d",
@@ -31576,8 +31576,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "86a6b024f78bd7ad685fd09d03a00921b45c8c2f"
   },
   "Formicarium": {
-    "Tested": "1238669b9e71c50dbef8440e890196348066ac21",
-    "Green": "1238669b9e71c50dbef8440e890196348066ac21"
+    "Tested": "4179ed633d0e63fb60c91695e36cfb547aef77a0",
+    "Green": "4179ed633d0e63fb60c91695e36cfb547aef77a0"
   },
   "Gadfly": {
     "Tested": "dc912ccdf50c2222e3a38ed130bd5c5d3ae57aa3",
@@ -31588,32 +31588,32 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "1f4bb02f6762c23913cb05ce4ff9dcd0a88c1d8e"
   },
   "JobHunt": {
-    "Tested": "dea3fbd477f60a93b9a5a2bcc1b4c9d87e7dec86",
-    "Green": "dea3fbd477f60a93b9a5a2bcc1b4c9d87e7dec86"
+    "Tested": "99d566a31f5318097de147f69384756bfcc59b0b",
+    "Green": "99d566a31f5318097de147f69384756bfcc59b0b"
   },
   "MediaButler": {
-    "Tested": "0bafbc8867db4dee04e0b876c5359e384e488422",
-    "Green": "0bafbc8867db4dee04e0b876c5359e384e488422"
+    "Tested": "45565788ae7e38be3dab9cb25be85f49395ad8e4",
+    "Green": "45565788ae7e38be3dab9cb25be85f49395ad8e4"
   },
   "MindAttic.Authentication": {
-    "Tested": "bd39fe25051ade876ce537a8257bf0a3574a11ca",
+    "Tested": "3e370b8f9a70281873b937c99ceee7725d4c840f",
     "Green": "85f0907eb9d6bb5cbc1c8611454c6cf93e64a603"
   },
   "MindAttic.Browser": {
-    "Tested": "cda6f05cdc6a82efc0eecaaa3a4427b70416297e",
-    "Green": "cda6f05cdc6a82efc0eecaaa3a4427b70416297e"
+    "Tested": "42b3674ec5748325b9ac8499a31b83ba42daafd8",
+    "Green": "42b3674ec5748325b9ac8499a31b83ba42daafd8"
   },
   "MindAttic.Capture": {
     "Tested": "d9b314ba818da91f7c02b680f9d0aa3d487feb29",
     "Green": "d9b314ba818da91f7c02b680f9d0aa3d487feb29"
   },
   "MindAttic.Components": {
-    "Tested": "d9f361da7a39234480b5555f46ffc7f33c86f799",
+    "Tested": "a8ad7f4ebc139ce0995955e87cc217c8dabfea05",
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Deploy": {
-    "Tested": "6229c079cb5ec5b942859d131eb2931958338f44",
-    "Green": "6229c079cb5ec5b942859d131eb2931958338f44"
+    "Tested": "5ee0b9f39551c1b029ade92fd5fae7b40ccb411a",
+    "Green": "5ee0b9f39551c1b029ade92fd5fae7b40ccb411a"
   },
   "MindAttic.Export": {
     "Tested": "5c842021980c88bc7efa37f59ffc207a59e0aa79",
@@ -31868,8 +31868,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "5fa438626e39fe6d5823e3b6dd881bd6065f9af7"
   },
   "IdeaCms": {
-    "Tested": "956122f843453fb6c39f15d06681b9b63301b21b",
-    "Green": "956122f843453fb6c39f15d06681b9b63301b21b"
+    "Tested": "0a3fe582ba71c9046ed88f0568f8e75ca32808ca",
+    "Green": "0a3fe582ba71c9046ed88f0568f8e75ca32808ca"
   },
   "Mods.GTFO.EZ.AbsurdItems": {
     "Tested": "9656a663e6275dca6b99609dee2fd7b8ce1330fb"
@@ -31915,7 +31915,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "106a8dccff1e95bc0340918f24896896dc6c37dc"
   },
   "MindAttic.Components.SIDEBAR": {
-    "Tested": "d9f361da7a39234480b5555f46ffc7f33c86f799",
+    "Tested": "a8ad7f4ebc139ce0995955e87cc217c8dabfea05",
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
@@ -32023,8 +32023,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "e3e81acb7fd93dcadc979d2a01816fb618e20396"
   },
   "MindAttic.Avatar": {
-    "Tested": "8b4d64efa903667887dbec821676ecdafac8fc6a",
-    "Green": "8b4d64efa903667887dbec821676ecdafac8fc6a"
+    "Tested": "47f0de5f51bdbea10e0602f678b83163f6f85f8d",
+    "Green": "47f0de5f51bdbea10e0602f678b83163f6f85f8d"
   },
   "MindAttic.SpeechRecognition": {
     "Tested": "d6415177903d58591903af39c43f22ade7ccb159",
@@ -32043,8 +32043,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "c2d8507496148d0d231a03a1a0af756b3fede8c3"
   },
   "GridGame.Studio": {
-    "Tested": "e4ec3a10884c1ef80f7b9629a26e32bd50190897",
-    "Green": "e4ec3a10884c1ef80f7b9629a26e32bd50190897"
+    "Tested": "7c7a3fb191a5a44c98f37f757128fc77e2766089",
+    "Green": "7c7a3fb191a5a44c98f37f757128fc77e2766089"
   },
   "SpaceGod.Studio": {
     "Tested": "2a58756ae9edff66625b11d1c454b42d232ca926"
@@ -32053,19 +32053,19 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "2adf99e11659d33c3fb151fabda5483165832248"
   },
   "Auto.GamePlay": {
-    "Tested": "abaff25cd6a38023dab0aefac72bcccc33441ed2"
+    "Tested": "29c3d8beae05a9a9690a2f8cc2084e812134f8e1"
   },
   "Auto.MidjourneyNav": {
-    "Tested": "58e8f4ab98b3f36a82c63a244b4c2fe383a9f744"
+    "Tested": "c0ce48403026f15a3e21e1d03248f17807c23761"
   },
   "Auto.WebNav": {
-    "Tested": "dcd257b4640d3ae97fa2ae0fb306234feec90d7d"
+    "Tested": "8d5e556a7d3558928881e93e4b8b4a68f07ca25f"
   },
   "Hardware.ChiMesh": {
-    "Tested": "c529be8ff833cc707979e9c71c6adcd8e697c646"
+    "Tested": "e25ded6c4a26b527be5ae9559aac38342d7e8303"
   },
   "Hardware.Claudia": {
-    "Tested": "d62f16b6566b2654d011d00dc237c814fb5ee034"
+    "Tested": "31906fd34a0079b2cad17d3164d76c4832339b3a"
   },
   "ElenchusAtScale": {
     "Tested": "3244fc1aad5560077781477db4422ab6971c8925"

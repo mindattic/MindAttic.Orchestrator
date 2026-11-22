@@ -737,10 +737,9 @@ public partial class MainWindow : Window
         treeHeaderPressedAt = e.GetPosition(this);
     }
 
-    /// <summary>The tree sidebar's header row click (M.ORCH-T1877): a toggle, fired on release only when the press began on
-    /// this same header and the pointer hasn't moved past the system drag threshold since. Expanded (selected and peeked
-    /// alike) collapses it, same as the chevron; collapsed selects that login (showing its Usage) and expands it - set
-    /// explicitly, since selecting the login that's already selected is a no-op that wouldn't reopen it.</summary>
+    /// <summary>The tree sidebar's header row click (M.ORCH-T1877, M.ORCH-T1962): fired on release only when the press began
+    /// on this same header and the pointer hasn't moved past the system drag threshold since. Selects that login (showing its
+    /// Usage) and never expands or collapses it: only the chevron does that.</summary>
     private void LoginTreeHeader_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         var pressed = treeHeaderPressed;
@@ -751,9 +750,11 @@ public partial class MainWindow : Window
         if (Math.Abs(now.X - treeHeaderPressedAt.X) >= SystemParameters.MinimumHorizontalDragDistance
             || Math.Abs(now.Y - treeHeaderPressedAt.Y) >= SystemParameters.MinimumVerticalDragDistance) return;
         e.Handled = true;
-        if (vm.IsExpanded) { vm.IsExpanded = false; return; }
+        // Only the chevron expands or collapses (M.ORCH-T1962): the header click selects the login (showing its Usage) and
+        // leaves its node exactly as open or closed as it was, though selecting otherwise opens it.
+        var expanded = vm.IsExpanded;
         vm.SelectLoginCommand.Execute(null);
-        vm.IsExpanded = true;
+        vm.IsExpanded = expanded;
     }
 
     /// <summary>Whether <paramref name="source"/> sits inside a button (close X, '...' menu, ...) below

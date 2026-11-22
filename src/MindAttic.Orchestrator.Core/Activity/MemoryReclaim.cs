@@ -50,6 +50,22 @@ public static partial class MemoryReclaim
 
     private static bool StillOver(OrchestratorSettings s) => MachineHealth.Memory() is { } m && m.UsedPercent >= s.MemoryGuardStartPercent;
 
+    /// <summary>The combined working-set of <paramref name="rootPid"/> and everything it started (M.ORCH-T1876): a CLI
+    /// or Launcher tab's own RAM tooltip figure, the same process-tree walk <see cref="SelfTrim"/> already uses on this
+    /// process's own tree. 0 once <paramref name="rootPid"/> itself has exited.</summary>
+    public static long TreeWorkingSetBytes(int rootPid)
+    {
+        var total = WorkingSetBytes(rootPid);
+        try
+        {
+            var parents = ProcessTree.ParentMap();
+            foreach (var pid in parents.Keys)
+                if (pid != rootPid && ProcessTree.IsAncestor(rootPid, pid, parents)) total += WorkingSetBytes(pid);
+        }
+        catch (Exception e) when (e is InvalidOperationException or ExternalException) { }
+        return total;
+    }
+
     /// <summary>Step 1 (unchanged, M.ORCH-T1655): a compacting GC of this process, then a working-set trim of it and every
     /// process it started.</summary>
     private static string SelfTrim()
