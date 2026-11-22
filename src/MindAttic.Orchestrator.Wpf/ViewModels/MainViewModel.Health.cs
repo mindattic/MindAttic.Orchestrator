@@ -26,6 +26,7 @@ public sealed class HealthCheckRow(string probe, string checkId, string? compone
     private DateTimeOffset reportedAt;
     private TimeSpan interval = DefaultInterval;
     private bool stale;
+    private bool? learned;
 
     /// <summary>The probe that reports it (<c>machine</c>, <c>azure-sql</c>, <c>links</c>...).</summary>
     public string Probe { get; } = probe;
@@ -78,6 +79,51 @@ public sealed class HealthCheckRow(string probe, string checkId, string? compone
     /// <summary>When the latest result was taken, local time ("14:02:31"); empty before the first.</summary>
     public string TimeText => latest is null ? "" : latest.Time.ToLocalTime().ToString("HH:mm:ss", CultureInfo.CurrentCulture);
 
+    /// <summary>The line the latest reading was graded against (M.ORCH-T2034): "degraded under 10 GB, unhealthy under 5 GB",
+    /// "degraded at 80%, unhealthy at 95%", or empty when the result carries none (a state check).</summary>
+    public string ThresholdText
+    {
+        get
+        {
+            if (latest is not { DegradedAt: { } d, UnhealthyAt: { } u }) return "";
+            var past = d > u ? "under" : "at";
+            return $"degraded {past} {Amount(d)}, unhealthy {past} {Amount(u)}";
+        }
+    }
+
+    /// <summary>Whether the threshold is one the daemon learned (M.ORCH-T2057) rather than the configured one; null when unknown.</summary>
+    public bool? IsLearned => learned;
+
+    /// <summary>"learned" or "configured" for the threshold's source, empty when unknown or there's no threshold.</summary>
+    public string LineSourceText => ThresholdText.Length == 0 || learned is not { } l ? "" : l ? "learned" : "configured";
+
+    /// <summary>The sparkline's width and height in device-independent pixels.</summary>
+    public const double SparkWidth = 120, SparkHeight = 18;
+
+    /// <summary>The numeric readings in <see cref="History"/> as a polyline in a <see cref="SparkWidth"/> x
+    /// <see cref="SparkHeight"/> box, oldest on the left, higher values up; empty with fewer than two readings.</summary>
+    public PointCollection SparkPoints
+    {
+        get
+        {
+            var values = history.Where(r => r.ObservedValue is { } v && double.IsFinite(v)).Select(r => r.ObservedValue!.Value).ToList();
+            var points = new PointCollection();
+            if (values.Count < 2) { points.Freeze(); return points; }
+            double min = values.Min(), max = values.Max(), span = max - min;
+            for (var i = 0; i < values.Count; i++)
+            {
+                var x = SparkWidth * i / (values.Count - 1);
+                var y = span <= 0 ? SparkHeight / 2 : SparkHeight - 1 - (SparkHeight - 2) * (values[i] - min) / span;
+                points.Add(new System.Windows.Point(x, y));
+            }
+            points.Freeze();
+            return points;
+        }
+    }
+
+    private string Amount(double v) =>
+        $"{v.ToString("0.##", CultureInfo.InvariantCulture)}{(latest?.ObservedUnit is { Length: > 0 } u ? (u == "%" ? u : " " + u) : "")}";
+
     /// <summary>The history's grades as colours, oldest first: the heartbeat strip (docs/HEALTH.md, Uptime Kuma's bar).</summary>
     public IReadOnlyList<Brush> HistoryBrushes => [.. history.Select(r => BrushOf(r.Grade))];
 
@@ -91,18 +137,20 @@ public sealed class HealthCheckRow(string probe, string checkId, string? compone
 
     /// <summary>Takes one result of a report taken at <paramref name="reportTime"/> with period <paramref name="period"/>; one
     /// older than the newest held is dropped (the hub relays out-of-order reports). True when it was taken.</summary>
-    internal bool Take(HealthResult result, DateTimeOffset reportTime, TimeSpan period, DateTimeOffset now)
+    internal bool Take(HealthResult result, DateTimeOffset reportTime, TimeSpan period, DateTimeOffset now, bool? learnedLine = null)
     {
         if (latest is not null && reportTime < reportedAt) return false;
         history.Add(result);
         if (history.Count > AppBusHub.HealthHistoryLength) history.RemoveRange(0, history.Count - AppBusHub.HealthHistoryLength);
         latest = result;
+        learned = learnedLine;
         reportedAt = reportTime == default ? now : reportTime;
         interval = period > TimeSpan.Zero ? period : DefaultInterval;
         stale = now >= StaleAt;
         RaiseStatus();
         Raise(nameof(Latest)); Raise(nameof(History)); Raise(nameof(HistoryBrushes)); Raise(nameof(ValueText));
         Raise(nameof(Output)); Raise(nameof(TimeText)); Raise(nameof(Grade)); Raise(nameof(IsStale));
+        Raise(nameof(ThresholdText)); Raise(nameof(IsLearned)); Raise(nameof(LineSourceText)); Raise(nameof(SparkPoints));
         return true;
     }
 
@@ -132,6 +180,44 @@ public sealed partial class MainViewModel
 
     /// <summary>The worst status across the fresh rows (stale ones don't count, as they don't alert); healthy when none.</summary>
     public HealthGrade HealthStatus => Root.healthChecks.Where(r => !r.IsStale).Select(r => r.Grade).DefaultIfEmpty(HealthGrade.Healthy).Max();
+
+    /// <summary>The overall status as a word for the Health view (M.ORCH-T2034): "healthy", "degraded" or "unhealthy", or
+    /// "no reports yet" before any probe has been heard.</summary>
+    public string HealthStatusText => Root.healthChecks.Count == 0 ? "no reports yet" : HealthStatus switch
+    {
+        HealthGrade.Healthy => "healthy",
+        HealthGrade.Degraded => "degraded",
+        _ => "unhealthy",
+    };
+
+    /// <summary>The overall status's colour; grey before any report.</summary>
+    public Brush HealthStatusBrush => Root.healthChecks.Count == 0 ? Palette.Quiet : HealthCheckRow.BrushOf(HealthStatus);
+
+    /// <summary>Whether the Health view shows (the Misc area of the global tab).</summary>
+    public bool ShowsHealth => IsGlobalTab;
+
+    /// <summary>Whether the Health view says no probe has reported yet.</summary>
+    public bool ShowsHealthEmpty => IsGlobalTab && healthChecks.Count == 0;
+
+    /// <summary>Whether <paramref name="result"/>'s line is a learned one (M.ORCH-T2057): it differs from the configured line for
+    /// its check while learning is on. Null when its check isn't a graded one or the settings can't be read. Never throws.</summary>
+    private bool? IsLearnedLine(HealthResult result)
+    {
+        try
+        {
+            if (result.DegradedAt is not { } d || result.UnhealthyAt is not { } u) return null;
+            HealthCheck? check = null;
+            foreach (var c in Enum.GetValues<HealthCheck>())
+                if (HealthResult.Describe(c).CheckId == result.CheckId.Trim()) { check = c; break; }
+            if (check is not { } found) return null;
+            var s = shownSettings;
+            if (s is null) return null;
+            if (!s.HealthLearn) return false;
+            var line = HealthThresholds.Of(s)[found];
+            return Math.Abs(line.Degraded - d) > 1e-9 || Math.Abs(line.Unhealthy - u) > 1e-9;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { return null; }
+    }
 
     /// <summary>Reads one <see cref="AppBus.Health"/> envelope into the rows. One this build can't read is skipped. Never throws.</summary>
     internal void OnHealthEnvelope(StatusEnvelope envelope)
@@ -165,10 +251,15 @@ public sealed partial class MainViewModel
                 while (at < healthChecks.Count && CompareRows(healthChecks[at], row) <= 0) at++;
                 healthChecks.Insert(at, row);
             }
-            row.Take(result, report.Time, period, now);
+            row.Take(result, report.Time, period, now, IsLearnedLine(result));
         }
-        Raise(nameof(HealthStatus));
+        RaiseHealthStatus();
         ArmHealthStale();
+    }
+
+    private void RaiseHealthStatus()
+    {
+        Raise(nameof(HealthStatus)); Raise(nameof(HealthStatusText)); Raise(nameof(HealthStatusBrush)); Raise(nameof(ShowsHealthEmpty));
     }
 
     private static int CompareRows(HealthCheckRow a, HealthCheckRow b)
@@ -204,7 +295,7 @@ public sealed partial class MainViewModel
             timer.Stop();
             var now = DateTimeOffset.UtcNow;
             foreach (var row in healthChecks) row.Age(now);
-            Raise(nameof(HealthStatus));
+            RaiseHealthStatus();
             ArmHealthStale();
         };
         return timer;

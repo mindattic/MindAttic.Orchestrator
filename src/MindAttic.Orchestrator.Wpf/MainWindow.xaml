@@ -1763,6 +1763,51 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <!-- Health (M.ORCH-T2034, docs/HEALTH.md): every probe's check live off the bus (MainViewModel.Health.cs), each with
+                     its status, reading, the line it was graded against (learned or configured, M.ORCH-T2057), a sparkline of its
+                     readings and a strip of its recent grades; grey once its probe goes quiet. -->
+                <TextBlock Style="{StaticResource MaSectionLabel}" Visibility="{Binding ShowsHealth, Converter={StaticResource Visible}}"
+                           AutomationProperties.Name="{Binding HealthStatusText, StringFormat='Health: {0}'}">
+                    <Run Text="HEALTH " /><Run Text="{Binding HealthStatusText, Mode=OneWay}" Foreground="{Binding HealthStatusBrush, Mode=OneWay}" />
+                </TextBlock>
+                <TextBlock Text="No probe has reported since this window connected." Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                           Visibility="{Binding ShowsHealthEmpty, Converter={StaticResource Visible}}" />
+                <ItemsControl x:Name="HealthList" ItemsSource="{Binding HealthChecks}" Style="{StaticResource MaRowList}" AutomationProperties.Name="Health checks"
+                              Visibility="{Binding ShowsHealth, Converter={StaticResource Visible}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:HealthCheckRow}">
+                            <Border Style="{StaticResource MaListCard}" BorderBrush="{Binding StatusBrush}"
+                                    AutomationProperties.Name="{Binding Name}">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}">
+                                        <Polyline Points="{Binding SparkPoints}" Stroke="{Binding StatusBrush}" StrokeThickness="1.5"
+                                                  Width="120" Height="18" HorizontalAlignment="Right" />
+                                        <ItemsControl ItemsSource="{Binding HistoryBrushes}" HorizontalAlignment="Right" Margin="{StaticResource SpaceTS}" Focusable="False">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Rectangle Width="3" Height="8" Margin="0,0,1,0" Fill="{Binding}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock TextWrapping="Wrap">
+                                            <Run Text="{Binding StatusText, Mode=OneWay}" Foreground="{Binding StatusBrush, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="  " /><Run Text="{Binding Name, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding ValueText, Mode=OneWay}" FontWeight="SemiBold" />
+                                        </TextBlock>
+                                        <TextBlock Style="{StaticResource MaMutedText}" TextWrapping="Wrap">
+                                            <Run Text="{Binding Probe, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding TimeText, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding ThresholdText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding LineSourceText, Mode=OneWay}" FontStyle="Italic" />
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Output}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                                                   Visibility="{Binding Output, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
             </StackPanel>
         </ScrollViewer>
