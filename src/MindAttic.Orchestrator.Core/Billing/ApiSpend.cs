@@ -157,7 +157,7 @@ public sealed class ApiSpendLedger(string path)
     /// show nothing). A null report (no Admin API key any more) drops the bill, so the spend is the estimate again. True when
     /// anything changed. Call it after <see cref="Observe"/>, so the shape is the latest.
     /// </summary>
-    public bool Bill(AnthropicCostReport.Billed? report)
+    public bool Bill(AnthropicCostReport.Billed? report, DateTime? sinceUtc = null)
     {
         var all = Load();
         if (report is null)
@@ -176,16 +176,29 @@ public sealed class ApiSpendLedger(string path)
             var first = HourOf(day.StartUtc);
             var end = (long)Math.Floor((day.EndUtc - DateTime.UnixEpoch).TotalSeconds);
             var dayHours = new List<long>();
-            for (var h = first; h < end && h <= through; h += 3600) dayHours.Add(h);
-            // A day that starts after the read (a clock skew) still counts, in its first hour: a bill is never dropped.
+            // Hours before the read's hour only: Spend keeps the estimate from `through` on, so the two never overlap (M.ORCH-T1967).
+            for (var h = first; h < end && h < through; h += 3600) dayHours.Add(h);
+            // A day that starts at or after the read's hour (read just after midnight, or a clock skew) still counts, in its first
+            // hour: a bill is never dropped. billedThrough below moves past it, so its estimate isn't counted as well.
             if (dayHours.Count == 0) dayHours.Add(first);
             var weight = dayHours.Sum(h => shape.GetValueOrDefault(h));
+            // Nothing to shape it by: spread evenly over the hours from the credit's start only, as Spend drops the hours before it
+            // (the report reads the credit's whole UTC day) (M.ORCH-T1967).
+            if (weight <= 0 && sinceUtc is { } since)
+            {
+                var fromHour = HourOf(since);
+                var after = dayHours.Where(h => h >= fromHour).ToList();
+                if (after.Count > 0) dayHours = after;
+                else if (first <= fromHour && fromHour < end) dayHours = [fromHour];
+            }
             foreach (var h in dayHours)
             {
                 var share = weight > 0 ? shape.GetValueOrDefault(h) / weight : 1d / dayHours.Count;
                 if (share > 0) spread[h] = spread.GetValueOrDefault(h) + day.Usd * share;
             }
         }
+        // Any bill placed at or after the read's hour (the fallbacks above) takes that hour over from the estimate (M.ORCH-T1967).
+        if (spread.Count > 0) through = Math.Max(through, spread.Keys.Max() + 3600);
         var at = (long)Math.Floor((report.ReadAtUtc - DateTime.UnixEpoch).TotalSeconds);
         var changed = billed is null || billedThrough != through || billedAt != at || billed.Count != spread.Count ||
                       spread.Any(x => !billed.TryGetValue(x.Key, out var had) || Math.Abs(had - x.Value) > 1e-9);

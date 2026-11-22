@@ -135,6 +135,9 @@ public static class ClaudeKeyChoice
                 {
                     try { File.Move(tmp, configPath, overwrite: true); return true; }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && i < 20) { Thread.Sleep(50); }
+                    // The move failed, perhaps because Claude Code was writing it: retrying would overwrite that write, so start
+                    // over from its new text instead (M.ORCH-T1967).
+                    if (!ReadBytes(configPath).AsSpan().SequenceEqual(raw)) break;
                 }
             }
             finally

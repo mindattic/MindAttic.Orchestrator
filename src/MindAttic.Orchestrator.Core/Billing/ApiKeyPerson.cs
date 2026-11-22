@@ -67,8 +67,15 @@ public static class ApiKeyPerson
     {
         var path = Path.Combine(folder, LoginLook.FileName);
         JsonObject file;
-        try { file = File.Exists(path) && JsonNode.Parse(File.ReadAllText(path)) is JsonObject o ? o : []; }
-        catch (JsonException) { file = []; }
+        // One that won't parse, or isn't an object, is left alone, never rewritten with defaults over the user's own fields, as
+        // EnsureConfig does (M.ORCH-T1967); an empty one holds nothing to lose.
+        var text = File.Exists(path) ? File.ReadAllText(path) : "";
+        try
+        {
+            file = string.IsNullOrWhiteSpace(text) ? []
+                : JsonNode.Parse(text) as JsonObject ?? throw new InvalidDataException($"{path} isn't a JSON object; it's left as it is.");
+        }
+        catch (JsonException ex) { throw new InvalidDataException($"{path} couldn't be read as JSON; it's left as it is.", ex); }
         var before = file.ToJsonString();
         file["email"] = Email;
         file["alias"] ??= Name;

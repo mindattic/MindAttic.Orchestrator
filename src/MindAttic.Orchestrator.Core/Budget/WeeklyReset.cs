@@ -61,7 +61,7 @@ public readonly record struct WeeklyReset(DayOfWeek Day, TimeOnly Time)
         return (startUtc, ToUtc(start.AddDays(7), zone));
     }
 
-    private static DateTime ToUtc(DateTime local, TimeZoneInfo zone)
+    internal static DateTime ToUtc(DateTime local, TimeZoneInfo zone)
     {
         // A reset time that falls in a spring-forward gap doesn't exist; use the first moment after it.
         while (zone.IsInvalidTime(local)) local = local.AddMinutes(30);

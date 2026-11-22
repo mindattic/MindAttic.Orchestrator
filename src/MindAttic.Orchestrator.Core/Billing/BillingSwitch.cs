@@ -401,7 +401,10 @@ public sealed class BillingSwitch
     /// <summary>Records when the key was set aside, as the context gate does: by a hash of its last 20 characters, never the key.</summary>
     private void MarkSetAside(string key, DateTime nowUtc)
     {
-        var marks = File.Exists(SetAsidePath) && JsonNode.Parse(File.ReadAllText(SetAsidePath)) is JsonObject o ? o : new JsonObject();
+        // An empty or torn file starts over rather than failing the switch with a JsonException (M.ORCH-T1967).
+        JsonObject marks;
+        try { marks = File.Exists(SetAsidePath) && JsonNode.Parse(File.ReadAllText(SetAsidePath)) is JsonObject o ? o : new JsonObject(); }
+        catch (JsonException) { marks = new JsonObject(); }
         marks[KeyMark(key)] = (nowUtc - DateTime.UnixEpoch).TotalSeconds;
         Directory.CreateDirectory(SessionContextDir);
         var tmp = $"{SetAsidePath}.{Environment.ProcessId}.tmp";

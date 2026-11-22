@@ -116,8 +116,8 @@ public static class ScreenUsage
         catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException) { return null; }
     }
 
-    private static DateTime? ToUtc(DateTime local, TimeZoneInfo tz) =>
-        tz.IsInvalidTime(local) ? null : TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), tz);
+    // A reset in a spring-forward gap is the first moment after it, one in the fall-back hour its first occurrence (M.ORCH-T1967).
+    private static DateTime? ToUtc(DateTime local, TimeZoneInfo tz) => WeeklyReset.ToUtc(local, tz);
 
     private static int? Month(string name)
     {

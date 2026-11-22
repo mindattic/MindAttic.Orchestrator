@@ -621,7 +621,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             if (billStamp != apiBillStamp)
             {
                 apiBillStamp = billStamp;
-                billed = ledger.Bill(billStamp == DateTime.MinValue ? null : Billing.AnthropicCostReport.Load(billPath));
+                billed = ledger.Bill(billStamp == DateTime.MinValue ? null : Billing.AnthropicCostReport.Load(billPath), settings.ApiCreditSinceUtc);
             }
             if ((observed || billed) && writing) ledger.Save();
             apiSpend = ledger.Spend(settings.ApiCreditUsd, settings.ApiCreditSinceUtc, now, startOfTodayUtc);
