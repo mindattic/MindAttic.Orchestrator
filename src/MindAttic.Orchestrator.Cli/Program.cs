@@ -273,6 +273,16 @@ internal static class CliApp
                 b.AddCommand<BranchesPushedCommand>("pushed").WithDescription("On the remote host, the agent's last step (M.ORCH-T1661): pushed <repo> <branch> <head> marks the branch's ticket as awaiting its test; it stays open, isn't handed out again meanwhile, and the host closes it when it merges the branch into main (a failed run, failed build or merge conflict hands it back).");
                 b.AddCommand<BranchesFastForwardCommand>("ff").WithDescription("On the PC, after the host merged a signed-off branch into main (M.ORCH-T1636): fast-forward main in the named repos' checkouts (ff [[<repo>...]], every workspace repo when none), leaving any off main or with changes in the way as they are.");
             });
+            config.AddBranch("agents", a =>
+            {
+                a.SetDescription("Agents by a stable id (M.ORCH-T1744, roadmap Phase 1): each plays a role, runs on a login under a runtime, and is idle, running, paused or terminated. Bare or list shows them.");
+                a.SetDefaultCommand<AgentsListCommand>();
+                a.AddCommand<AgentsNewCommand>("new").WithDescription("new <role> [[--owner <email>]] [[--runtime claude]] [[--unit <ID>]] [[--id <agt-...>]] writes an idle agent's row; the role is checked against the roles table and mindattic-agent-standard\\shared\\roles (--force skips it).");
+                a.AddCommand<AgentsListCommand>("list").WithDescription("The agents not retired (--all: those too), filtered by --role and --owner; --json as data.");
+                a.AddCommand<AgentsPauseCommand>("pause").WithDescription("pause <id>: an idle or running agent is paused.");
+                a.AddCommand<AgentsResumeCommand>("resume").WithDescription("resume <id>: a paused agent goes back to idle.");
+                a.AddCommand<AgentsRetireCommand>("retire").WithDescription("retire <id>: the agent is terminated; its row is kept so the id still names it.");
+            });
             // Let crashes reach the catch below so they're logged, not just printed.
             config.PropagateExceptions();
         });
