@@ -756,6 +756,18 @@ public sealed record OrchestratorSettings
     /// <summary>Seconds between the daemon's runs of <c>orchestrator probe azure</c> (0: never; each run lists every database through az).</summary>
     public double HealthProbeAzureSeconds { get; init; } = 300;
 
+    // ── Alerts (M.ORCH-T2039): change-only, after N in a row; degraded never alerts ──
+
+    /// <summary>Whether a check turning unhealthy, and its recovery, is texted to <see cref="PsstAlertTo"/> through Psst. Off,
+    /// it's still logged, toasted and pushed to <see cref="NotifyUrl"/>.</summary>
+    public bool HealthAlerts { get; init; } = true;
+
+    /// <summary>Unhealthy results in a row before a check alerts unhealthy (Kubernetes' <c>failureThreshold</c>; at least 1).</summary>
+    public int HealthFailureThreshold { get; init; } = 2;
+
+    /// <summary>Non-unhealthy results in a row before an alerted check alerts its recovery (<c>successThreshold</c>; at least 1).</summary>
+    public int HealthSuccessThreshold { get; init; } = 1;
+
     /// <summary>Minutes between prunes of old log entries and finished terminal hosts' logs (was <see cref="LogPruner.Every"/>).</summary>
     public double LogPruneMinutes { get; init; } = 60;
 

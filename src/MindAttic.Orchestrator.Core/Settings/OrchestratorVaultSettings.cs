@@ -736,6 +736,20 @@ public sealed class OrchestratorVaultSettings
     [Setting("Run the Azure probe every (seconds)", Group = "Health", Order = 24, Help = "Seconds between the daemon's runs of orchestrator probe azure (every Azure SQL database through az); 0 never runs it.")]
     [SettingRange(0, 86400)]
     public double HealthProbeAzureSeconds { get; set; } = 300;
+
+    /// <summary>Text the alert recipient when a health check turns unhealthy, and when it recovers.</summary>
+    [Setting("Text health alerts", Group = "Health", Order = 25, Help = "Text the alert recipient through Psst when a health check turns unhealthy (after the set number in a row), and once when it recovers. Never on every run; degraded never alerts. Off, it's still a dashboard toast and a phone push.")]
+    public bool HealthAlerts { get; set; } = true;
+
+    /// <summary>Unhealthy results in a row before a check alerts.</summary>
+    [Setting("Alert unhealthy after (results in a row)", Group = "Health", Order = 26, Help = "How many unhealthy results in a row a health check needs before it alerts, so one bad reading doesn't text you.")]
+    [SettingRange(1, 100)]
+    public int HealthFailureThreshold { get; set; } = 2;
+
+    /// <summary>Non-unhealthy results in a row before an alerted check alerts its recovery.</summary>
+    [Setting("Alert recovered after (results in a row)", Group = "Health", Order = 27, Help = "How many results in a row back out of unhealthy an alerted health check needs before it alerts its recovery; more keeps a check hovering at its line from flapping.")]
+    [SettingRange(1, 100)]
+    public int HealthSuccessThreshold { get; set; } = 1;
     /// <summary>Minutes between prunes of old log entries and finished terminal hosts' log files.</summary>
     [Setting("Prune old logs every (minutes)", Group = "Alerts", Order = 65, Help = "Minutes between prunes of old log entries and finished terminal hosts' log files.")]
     [SettingRange(1, 10080)]
@@ -1253,6 +1267,9 @@ public sealed class OrchestratorVaultSettings
         HealthProbeMachineSeconds = s.HealthProbeMachineSeconds,
         HealthProbeLinksSeconds = s.HealthProbeLinksSeconds,
         HealthProbeAzureSeconds = s.HealthProbeAzureSeconds,
+        HealthAlerts = s.HealthAlerts,
+        HealthFailureThreshold = s.HealthFailureThreshold,
+        HealthSuccessThreshold = s.HealthSuccessThreshold,
         LogPruneMinutes = s.LogPruneMinutes,
         DiskCleanupEveryMinutes = s.DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = s.GitHubIntakeMinutes,
@@ -1464,6 +1481,9 @@ public sealed class OrchestratorVaultSettings
         HealthProbeMachineSeconds = HealthProbeMachineSeconds,
         HealthProbeLinksSeconds = HealthProbeLinksSeconds,
         HealthProbeAzureSeconds = HealthProbeAzureSeconds,
+        HealthAlerts = HealthAlerts,
+        HealthFailureThreshold = HealthFailureThreshold,
+        HealthSuccessThreshold = HealthSuccessThreshold,
         LogPruneMinutes = LogPruneMinutes,
         DiskCleanupEveryMinutes = DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = GitHubIntakeMinutes,

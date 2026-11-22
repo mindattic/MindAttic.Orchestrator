@@ -142,6 +142,29 @@ public sealed partial class Daemon
         Say(LogEventLevel.Warning, $"health probe {name}: {failure} (trying again next interval)");
     }
 
+    private Health.HealthAlerts? healthAlerts;
+
+    /// <summary>Each health report the hub keeps (M.ORCH-T2039, docs/HEALTH.md section 5): a check instance that turned unhealthy
+    /// (<see cref="OrchestratorSettings.HealthFailureThreshold"/> in a row) or recovered (<see cref="OrchestratorSettings.HealthSuccessThreshold"/>
+    /// in a row) is alerted once for that transition, and with <see cref="OrchestratorSettings.HealthAlerts"/> on texted to
+    /// <see cref="OrchestratorSettings.PsstAlertTo"/> through Psst on its own thread. Degraded never alerts.</summary>
+    internal IReadOnlyList<Health.HealthAlert> ReportHealth(Health.HealthReport report)
+    {
+        if (!store.TryLoadSettings(out var s)) return [];
+        healthAlerts ??= new Health.HealthAlerts(store);
+        var found = healthAlerts.Take(report, s.HealthFailureThreshold, s.HealthSuccessThreshold);
+        foreach (var a in found)
+        {
+            Say(a.Unhealthy ? LogEventLevel.Warning : LogEventLevel.Information, a.Text);
+            Alert(a.Unhealthy ? "Health: unhealthy" : "Health: recovered", a.Text, urgent: a.Unhealthy);
+            if (!s.HealthAlerts || s.PsstAlertTo is not { Length: > 0 } to || string.IsNullOrWhiteSpace(to)) continue;
+            psstAlerts ??= new Reminders.PsstAlerts(new Reminders.PsstClient(Runner), (level, line) => Say(level, line));
+            psstAlerts.Send($"health|{a.Instance}|{a.Unhealthy}", to, $"Orchestrator: {a.Text}",
+                $"{a.CheckId} {(a.Unhealthy ? "is unhealthy" : "recovered")}");
+        }
+        return found;
+    }
+
     private static bool Exited(Process p)
     {
         try { return p.HasExited; }

@@ -691,6 +691,18 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Seconds between the daemon's runs of orchestrator probe azure; 0 never runs it (default 300).")]
         public double? HealthProbeAzureSeconds { get; init; }
 
+        [CommandOption("--health-alerts <BOOL>")]
+        [Description("Text the alert recipient through Psst when a health check turns unhealthy, and when it recovers (default true).")]
+        public bool? HealthAlerts { get; init; }
+
+        [CommandOption("--health-failure-threshold <N>")]
+        [Description("Unhealthy results in a row before a health check alerts, 1 to 100 (default 2).")]
+        public int? HealthFailureThreshold { get; init; }
+
+        [CommandOption("--health-success-threshold <N>")]
+        [Description("Results in a row back out of unhealthy before an alerted check alerts its recovery, 1 to 100 (default 1).")]
+        public int? HealthSuccessThreshold { get; init; }
+
         [CommandOption("--model <REPO_OR_TICKET=MODEL>")]
         [Description("The model /allocate starts a repo's (or one ticket's) subagents on, overriding the pick: Prose=opus, M.ORCH-T12=sonnet, GTFO.*=sonnet; =auto clears. A ticket's wins over its repo's. Repeatable.")]
         public string[] Model { get; init; } = [];
@@ -829,7 +841,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             || settings.HealthLinkLatencyLearnCeilingMs is not null
             || settings.HealthProbeMachineSeconds is not null
             || settings.HealthProbeLinksSeconds is not null
-            || settings.HealthProbeAzureSeconds is not null;
+            || settings.HealthProbeAzureSeconds is not null
+            || settings.HealthAlerts is not null
+            || settings.HealthFailureThreshold is not null
+            || settings.HealthSuccessThreshold is not null;
         if (healthChanged)
         {
             s = s with
@@ -858,6 +873,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
                 HealthProbeMachineSeconds = settings.HealthProbeMachineSeconds ?? s.HealthProbeMachineSeconds,
                 HealthProbeLinksSeconds = settings.HealthProbeLinksSeconds ?? s.HealthProbeLinksSeconds,
                 HealthProbeAzureSeconds = settings.HealthProbeAzureSeconds ?? s.HealthProbeAzureSeconds,
+                HealthAlerts = settings.HealthAlerts ?? s.HealthAlerts,
+                HealthFailureThreshold = settings.HealthFailureThreshold ?? s.HealthFailureThreshold,
+                HealthSuccessThreshold = settings.HealthSuccessThreshold ?? s.HealthSuccessThreshold,
             };
             if (HealthThresholds.Problem(s) is { } healthError) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(healthError)}[/]"); return 1; }
         }
@@ -1157,6 +1175,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         static string Every(double seconds) => seconds > 0 ? $"every {seconds:0.#} s" : "off";
         AnsiConsole.MarkupLine(Markup.Escape($"  health probes the daemon runs: machine {Every(s.HealthProbeMachineSeconds)} · links {Every(s.HealthProbeLinksSeconds)} · " +
             $"azure {Every(s.HealthProbeAzureSeconds)}"));
+        // Change-only health alerts (M.ORCH-T2039).
+        AnsiConsole.MarkupLine(Markup.Escape($"  health alerts: unhealthy after {s.HealthFailureThreshold} in a row, recovered after {s.HealthSuccessThreshold} in a row, " +
+            (s.HealthAlerts ? "texted through Psst" : "not texted")));
         // What the daemon has learned of them (M.ORCH-T2057), beside what they're set to, and the last move with its reason.
         var learnedLines = store.TryLoad<LearnedHealthLines>(HealthLearning.StoreName, out var learnedBook) ? learnedBook : null;
         AnsiConsole.MarkupLine("  health learning " + (s.HealthLearn

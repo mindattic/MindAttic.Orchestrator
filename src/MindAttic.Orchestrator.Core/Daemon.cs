@@ -66,6 +66,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             // a deliberate org command (limit/allow/disallow/...) is rare and should be respected within a poll tick, not sat on
             // behind the floor that keeps routine signals from refreshing too often.
             OwnStore = Status.StateBus.StoreOf(store.Db), StateChanged = waiter.PokeNow,
+            // Change-only health alerts (M.ORCH-T2039): each probe report as it lands.
+            HealthTaken = r => ReportHealth(r),
         };
         using var inbox = status is null ? null : new Status.StatusInbox { Relay = e => hub!.Take(e) }
             .On(Status.StatusInbox.Poke, _ => waiter.Poke())

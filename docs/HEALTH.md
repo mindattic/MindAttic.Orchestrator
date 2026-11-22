@@ -143,7 +143,10 @@ daemon (the hub) fans out to every subscriber. Envelope kind `health`, version 1
 - **Change-only.** Alerts fire on a transition, never on every run (Uptime Kuma, Alertmanager).
 - **For N runs.** A check alerts unhealthy only after `failureThreshold` consecutive unhealthy reports (default 2), and
   recovers after `successThreshold` consecutive non-unhealthy ones (default 1): Kubernetes' names, Prometheus' `for:`.
-  Both are settings (M.ORCH-T2018).
+  Both are settings (M.ORCH-T2018): `HealthFailureThreshold` and `HealthSuccessThreshold` (Settings modal, Health;
+  `orchestrator settings --health-failure-threshold/--health-success-threshold`), and `HealthAlerts` turns the Psst off.
+  Implemented by `Health/HealthAlerts.cs` (M.ORCH-T2039): the daemon grades each report as the hub keeps it, one alert
+  per transition, the alerted set kept in the database so a restart neither repeats an alert nor loses a recovery.
 - **Hysteresis**, optional per check: once degraded, a reading stays degraded until it is back past the line by a margin
   (Netdata's `$status >= $WARNING ? 75 : 80`). Off by default; turn it on for a check that is seen to flap.
 - **Where.** An unhealthy transition sends a Psst (Reminders/PsstAlerts.cs, PsstClient.cs) with the check, value, line

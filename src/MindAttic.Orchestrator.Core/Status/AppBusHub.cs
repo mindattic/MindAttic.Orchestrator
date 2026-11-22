@@ -149,6 +149,10 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     /// <summary>Called after a ticket change went out: the daemon refreshes its plan so the queue follows within seconds.</summary>
     public Action? TicketChanged { get; init; }
 
+    /// <summary>Called with each health report kept (M.ORCH-T2039), off the hub's lock: the daemon grades it for change-only
+    /// alerts (<see cref="Health.HealthAlerts"/>). One older than the probe's newest, or unreadable, isn't passed on.</summary>
+    public Action<HealthReport>? HealthTaken { get; init; }
+
     /// <summary>The daemon's own store (<see cref="StateBus.StoreOf(Settings.OrchestratorDb)"/>, M.ORCH-T891): only its roster, orgs,
     /// settings, pause, reminders, cutoffs and allowances are kept for subscribers as they connect (another store's, a scratch
     /// one, still goes out but can't stand in for them). Null keeps every store's.</summary>
@@ -405,6 +409,8 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
             }
             stream.Publish(envelope, HealthKey(probe));
         }
+        try { HealthTaken?.Invoke(report); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { log.Warning(ex, "Couldn't grade a health report for alerts"); }
     }
 
     /// <summary>Sends <paramref name="envelope"/> on, by its kind.</summary>
