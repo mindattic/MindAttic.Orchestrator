@@ -40,6 +40,8 @@ internal sealed class Registration
             ConfigDir = Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR") is { Length: > 0 } dir ? dir : null,
             CommandLine = commandLine, Cols = cols, Rows = rows, State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow,
             Protocol = TermProtocol.Version, IsMenu = options.IsMenu, Account = AccountName(),
+            // The agent it runs as (M.ORCH-T1743), handed down by the launcher in the environment, as CLAUDE_CONFIG_DIR is.
+            AgentId = AgentIds.Current(),
         };
     }
 

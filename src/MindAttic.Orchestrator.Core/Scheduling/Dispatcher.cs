@@ -60,7 +60,11 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         // The claim is reserved before the tab opens (M.ORCH-T1975): a claim made elsewhere while the tab opened would leave a
         // second agent working the ticket, and a tab once started can't be told apart to be closed. A start that fails rolls it back.
         // Recorded as dispatched (the Worktree flag, M.ORCH-T1122) so the orphan watch and the claim counts see it, in the checkout.
-        var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, true) { Account = AccountDirs.Normalize(login?.Email) };
+        // The agent the tab's CLI runs as (M.ORCH-T1743) is named now, so the claim carries it from the start.
+        var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, true)
+        {
+            Account = AccountDirs.Normalize(login?.Email), AgentId = Term.AgentIds.New(),
+        };
         bool Mine(Assignment a) => a.TicketId == item.Id && a.Provider == assignment.Provider && a.StartedUtc == assignment.StartedUtc;
         var raced = false;
         Assignment? replaced = null;
@@ -82,7 +86,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         try
         {
             (startError, cameUp) = OpenTab is { } seam ? seam(title, directory, provider, prompt, submit)
-                : Open(title, directory, provider, prompt, submit, login, eligible, out pickedEmail);
+                : Open(title, directory, provider, prompt, submit, login, eligible, assignment.AgentId, out pickedEmail);
         }
         catch { RollBack(); throw; }
         if (startError is not null) { RollBack(); return new Result(false, startError, null); }
@@ -179,7 +183,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     }
 
     private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit, TabLogin? login, Func<string, bool>? eligible,
-        out string? pickedEmail)
+        string? agentId, out string? pickedEmail)
     {
         var before = sessions.HostIds();
         var focus = Foreground.Current();
@@ -206,8 +210,8 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         if (Activity.MemoryGuard.StartHeld(store.LoadSettings()) is { } low) return (low, null);
         // Nor under the disk floor (M.ORCH-T1679): a new CLI's transcript, scratch and builds are what fill the last few GB.
         if (Activity.DiskGuard.StartHeld(store.LoadSettings()) is { } full) return ($"{full}; no new CLI starts until then.", null);
-        var startError = sessions.Start(title, directory, provider, prompt, configDir);
-        if (startError is not null) return (startError, null);
+        var started = sessions.Start(title, directory, provider, prompt, configDir, agentId: agentId);
+        if (started.Error is { } startError) return (startError, null);
         _ = Foreground.RestoreAsync(focus, TimeSpan.FromSeconds(2));
         // Every tab is checked: one whose agent never starts would otherwise look like a free slot.
         return (null, Task.Run(async () => submit

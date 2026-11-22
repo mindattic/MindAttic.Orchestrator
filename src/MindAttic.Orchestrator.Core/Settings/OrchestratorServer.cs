@@ -217,7 +217,7 @@ public sealed class OrchestratorServer(string connectionString)
             position bigint NOT NULL PRIMARY KEY, ticket_id nvarchar(450) NULL, repo nvarchar(450) NULL, directory nvarchar(max) NULL,
             provider nvarchar(64) NULL, started_utc nvarchar(64) NULL, worktree bigint NULL, pilot bigint NULL, pilot_started_utc nvarchar(64) NULL,
             log nvarchar(max) NULL, cli bigint NULL, cli_session nvarchar(450) NULL, model nvarchar(128) NULL, reviewed_utc nvarchar(64) NULL,
-            account nvarchar(450) NULL
+            account nvarchar(450) NULL, agent nvarchar(64) NULL
             """, null),
         ("state", "name nvarchar(450) NOT NULL PRIMARY KEY, value nvarchar(max) NOT NULL, written_at float NOT NULL", null),
         // Organizations above people (M.ORCH-T655): each org, and each login's org and person (a login by its provider and itself).
@@ -263,8 +263,8 @@ public sealed class OrchestratorServer(string connectionString)
     /// <summary>The schema's version: 1, the tables of SQLite's first ten steps; 2, <c>members</c> (M.ORCH-T670); 3,
     /// <c>assignments.account</c> (M.ORCH-T668); 4, <c>organizations</c> and <c>org_members</c> (M.ORCH-T655); 5, <c>term_grants</c>
     /// and <c>term_audit</c> (M.ORCH-T934); 6, <c>resources</c> (M.ORCH-T1676); 7, <c>reminders</c> (M.ORCH-T1932); 8, <c>roles</c> and
-    /// <c>agents</c> (M.ORCH-T1742).</summary>
-    public const int SchemaVersion = 8;
+    /// <c>agents</c> (M.ORCH-T1742); 9, <c>assignments.agent</c> (M.ORCH-T1743).</summary>
+    public const int SchemaVersion = 9;
 
     /// <summary>The changes to tables already there, one step per version past 1, as SQLite's migrations add them: a column
     /// added to a table there is one more step here (an <c>ALTER TABLE ... ADD</c>, also added to its <see cref="Tables"/> row so
@@ -278,6 +278,7 @@ public sealed class OrchestratorServer(string connectionString)
         ("resources", ""), // 6: resources, the resource ledger, a new table (created with the rest below; M.ORCH-T1676)
         ("reminders", ""), // 7: reminders, the reminders that nag, a new table (created with the rest below; M.ORCH-T1932)
         ("roles", ""), // 8: roles and agents, new tables (created with the rest below; M.ORCH-T1742)
+        ("assignments", "IF COL_LENGTH(N'assignments', N'agent') IS NULL ALTER TABLE assignments ADD agent nvarchar(64) NULL;"), // 9: the agent working each (M.ORCH-T1743)
     ];
 
     private void EnsureSchema(SqlConnection connection)

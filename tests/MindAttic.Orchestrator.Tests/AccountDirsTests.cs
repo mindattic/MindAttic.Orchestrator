@@ -219,7 +219,7 @@ public sealed class AccountDirsTests
         Assert.That(seen, Does.StartWith(b.Directory + "|host --path"));
         Assert.That(seen, Does.Contain("--provider Claude").And.Contain("--prompt").And.Contain("it's 'quoted'; with a semicolon"));
 
-        Assert.That(control.Start("Repo A", dir, "Codex", null, b.Directory), Does.Contain("Claude login"), "only Claude has a login to pick");
+        Assert.That(control.Start("Repo A", dir, "Codex", null, b.Directory).Error, Does.Contain("Claude login"), "only Claude has a login to pick");
         var global = control.StartArguments("Repo A", dir, "Claude", null).ToList();
         Assert.That(global, Does.Contain("host").And.Not.Contain("powershell.exe"), "without one, the tab starts the Launcher directly");
         Assert.That(global[..5], Is.EqualTo(new[] { "-w", "jordan", "new-tab", "--title", "JO: Repo A" }), "the global login's own window");

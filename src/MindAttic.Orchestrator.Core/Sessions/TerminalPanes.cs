@@ -79,6 +79,12 @@ public sealed record PaneRequest(string Title, string Directory)
     /// so a renamed CLI keeps its name across a pop-out window, reattach and a dashboard restart.</summary>
     public string? CustomName { get; init; }
 
+    /// <summary>The agent its CLI runs as (M.ORCH-T1743, <see cref="Term.AgentIds"/>): set as <see cref="Term.AgentIds.EnvVar"/> by
+    /// <see cref="ProcessCommandLine"/> and on a TermHost's environment (<see cref="TermLaunchSpec.From"/>), so the id outlives
+    /// the CLI's pid, a <c>/clear</c> and a restart, and its session's record carries it. Kept with the request (its sidecar),
+    /// so a reattached tab keeps it too. Null for a pane that isn't an agent (a shell, the Launcher's menu).</summary>
+    public string? AgentId { get; init; }
+
     /// <summary><see cref="CustomName"/> was given by the dashboard for what the CLI is doing (M.ORCH-T1817,
     /// <see cref="AutoTabName"/>), not typed by the person: such a name is reconsidered on the next pass, and a rename by hand
     /// clears this for good. Rides in the request with the name, so the difference survives a reattach and a restart.</summary>
@@ -171,7 +177,8 @@ public sealed record PaneRequest(string Title, string Directory)
     public string ProcessCommandLine(string? pipeName = null)
     {
         var setup = $"Remove-Item Env:NO_COLOR -ErrorAction SilentlyContinue; $env:COLORTERM = 'truecolor'; " +
-                    $"$env:{PaneBroker.InsideVariable} = {AccountDirs.Ps(pipeName ?? PaneBroker.PipeName)}; " + ApiKeySetup();
+                    $"$env:{PaneBroker.InsideVariable} = {AccountDirs.Ps(pipeName ?? PaneBroker.PipeName)}; " + ApiKeySetup() +
+                    (Term.AgentIds.Normalize(AgentId) is { } agent ? $"$env:{Term.AgentIds.EnvVar} = {AccountDirs.Ps(agent)}; " : "");
         var run = Command is { Count: > 0 } command
             ? "& " + string.Join(' ', command.Select(AccountDirs.Ps))
             : $"& cmd.exe /d /c {AccountDirs.Ps(CommandLine ?? "")}";

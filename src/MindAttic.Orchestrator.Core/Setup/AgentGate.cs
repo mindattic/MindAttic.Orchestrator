@@ -1165,6 +1165,11 @@ public static class AgentGate
             return row[0] if row else None
         def write_exported_mark(name, path, value, table="state", key="name"):
             # The row in one write transaction (when the database takes it), then the exported file.
+            # A session's state carries the agent its CLI runs as (M.ORCH-T1743): the stable id the orchestrator started it with,
+            # which outlives its pid, /clear and restarts, so a session_states row names its agent.
+            agent = (os.environ.get("MINDATTIC_AGENT_ID") or "").strip()
+            if table == "session_states" and agent and isinstance(value, dict) and value.get("agent") != agent:
+                value = dict(value, agent=agent)
             db = state_tx(table=table)
             if db is not None:
                 try:

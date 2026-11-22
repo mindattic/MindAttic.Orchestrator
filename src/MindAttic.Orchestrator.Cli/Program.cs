@@ -422,10 +422,10 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             AnsiConsole.MarkupLine($"[red]{Markup.Escape(full)}. Not started.[/]");
             return 1;
         }
-        var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Resume is null ? settings.Prompt : null, configDir, settings.Resume);
-        if (error is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }
+        var started = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Resume is null ? settings.Prompt : null, configDir, settings.Resume);
+        if (started.Error is { } error) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }
         AnsiConsole.MarkupLine($"{(settings.Resume is null ? "Started" : "Resumed")} [bold]{provider}[/] in {Markup.Escape(repo.Name)}" +
-            (email is null ? "." : $" on {Markup.Escape(email)}'s own login."));
+            (email is null ? "" : $" on {Markup.Escape(email)}'s own login") + $" as agent {Markup.Escape(started.AgentId ?? "?")}.");
         return 0;
     }
 

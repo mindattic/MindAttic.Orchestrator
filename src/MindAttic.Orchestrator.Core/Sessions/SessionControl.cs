@@ -4,6 +4,19 @@ using System.Text;
 
 namespace MindAttic.Orchestrator.Sessions;
 
+/// <summary>What <see cref="SessionControl.Start"/> did (M.ORCH-T1743): the agent id the new tab's CLI runs as, or why it
+/// didn't start.</summary>
+/// <param name="AgentId">The new agent's stable id (<see cref="Term.AgentIds"/>); null when it didn't start.</param>
+/// <param name="Error">Why it didn't start; null when it did.</param>
+public sealed record SessionStart(string? AgentId, string? Error)
+{
+    /// <summary>It started.</summary>
+    public bool Started => Error is null;
+
+    /// <summary>A start that failed for <paramref name="error"/>.</summary>
+    public static SessionStart Failed(string error) => new(null, error);
+}
+
 /// <summary>
 /// Starts and talks to agent sessions through the Launcher, the same way its own menus do: a new
 /// Windows Terminal tab running <c>MindAttic.Launcher.exe host --path …</c>, and text written to a
@@ -14,36 +27,43 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// <summary>The providers.</summary>
     public static readonly IReadOnlyList<string> Providers = ["Claude", "Codex", "Gemini", "Kimi"];
 
-    /// <summary>Opens a new tab for <paramref name="directory"/>; returns an error, or null on success.</summary>
+    /// <summary>Opens a new tab for <paramref name="directory"/>; returns the agent id its CLI runs as (M.ORCH-T1743), or the
+    /// error it didn't start for.</summary>
     /// <param name="configDir">A Claude login of its own (M.ORCH-T559, <see cref="AccountDir.Directory"/>) the tab's CLI runs
     /// under; null runs it on the global login, as every tab did before.</param>
     /// <param name="resumeSession">Undock's own reopen (M.ORCH-Tnnn): <c>claude --resume &lt;session&gt;</c> instead of a fresh
     /// start, so the relocated CLI's conversation carries over. Claude only (as <see cref="Start"/>'s own provider check
     /// already implies for <paramref name="configDir"/>); ignored alongside <paramref name="prompt"/>, which a relocation
     /// never sets anyway.</param>
-    public string? Start(string title, string directory, string provider, string? prompt = null, string? configDir = null, string? resumeSession = null)
+    /// <param name="agentId">The agent id to start it as (a caller that records it before the tab opens, as the dispatcher's
+    /// claim does); null makes a new one. A Claude tab on a login of its own carries it as <see cref="Term.AgentIds.EnvVar"/>,
+    /// set by the PowerShell that already sets its <c>CLAUDE_CONFIG_DIR</c>; a tab on the global login starts the Launcher
+    /// directly, from Windows Terminal's environment, so its CLI doesn't (the id is still returned and recorded).</param>
+    public SessionStart Start(string title, string directory, string provider, string? prompt = null, string? configDir = null, string? resumeSession = null,
+        string? agentId = null)
     {
         if (configDir is not null && provider != "Claude")
-            return $"--account is a Claude login: {provider} has none.";
+            return SessionStart.Failed($"--account is a Claude login: {provider} has none.");
         if (!File.Exists(options.LauncherExe))
-            return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1).";
+            return SessionStart.Failed($"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1).");
         if (!Directory.Exists(directory))
-            return $"Folder not found: {directory}";
+            return SessionStart.Failed($"Folder not found: {directory}");
+        var agent = Term.AgentIds.Normalize(agentId) ?? Term.AgentIds.New();
 
         // Kimi's Vault key into its config.toml before it starts (M.ORCH-T2042). A Windows Terminal tab takes its environment
         // from Windows Terminal, not this process, so Codex's and Gemini's keys are left to the Launcher's host here.
         PrepareProvider(provider);
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
-        foreach (var a in StartArguments(title, directory, provider, prompt, configDir, resumeSession)) psi.ArgumentList.Add(a);
+        foreach (var a in StartArguments(title, directory, provider, prompt, configDir, resumeSession, agent)) psi.ArgumentList.Add(a);
         try
         {
             // Outside the caller's job (M.ORCH-T1691): a terminal opened by a command run in a hosted CLI outlives that CLI.
             Term.Breakaway.Start(psi);
-            return null;
+            return new SessionStart(agent, null);
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
-            return $"Couldn't start Windows Terminal: {ex.Message}";
+            return SessionStart.Failed($"Couldn't start Windows Terminal: {ex.Message}");
         }
     }
 
@@ -151,6 +171,8 @@ public sealed class SessionControl(OrchestratorOptions options)
         var look = provider == "Claude" ? Look(configDir) : null;
         var tabTitle = TabTitle(title, provider, look, RepoNames);
         List<string> command = [options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider];
+        // Every repo CLI opened here is an agent with a stable id (M.ORCH-T1743), carried on the pane and its TermHost.
+        var agentId = Term.AgentIds.New();
         if (configDir is not null) command.AddRange(["--config-dir", configDir]);
         if (!string.IsNullOrWhiteSpace(prompt)) command.AddRange(["--prompt", SafePrompt(prompt)]);
         return new PaneRequest(tabTitle, directory)
@@ -163,6 +185,7 @@ public sealed class SessionControl(OrchestratorOptions options)
             Initials = look?.Initials,
             Alias = look?.Alias,
             TabColor = look?.TabColor,
+            AgentId = agentId,
         };
     }
 
@@ -253,7 +276,8 @@ public sealed class SessionControl(OrchestratorOptions options)
     internal Func<IReadOnlyCollection<string>> RepoNames { get; init; } =
         () => [.. new MindAttic.Tickets.Workspace(options.WorkspaceRoot).Repos().Select(r => r.Name)];
 
-    internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt, string? configDir = null, string? resumeSession = null)
+    internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt, string? configDir = null, string? resumeSession = null,
+        string? agentId = null)
     {
         // A Claude tab gathers in its login's own window, badged and colored as that login; other providers have no login.
         var look = provider == "Claude" ? Look(configDir) : null;
@@ -270,7 +294,9 @@ public sealed class SessionControl(OrchestratorOptions options)
             // CLI it hosts) is started by a PowerShell that sets CLAUDE_CONFIG_DIR first. Encoded, so no quote, space or ';' in
             // the folder, title or prompt reaches wt's parse.
             // Its long-lived token (M.ORCH-T696), when the login has one, goes in beside the folder.
-            var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {AccountDirs.Ps(options.LauncherExe)} host --path {AccountDirs.Ps(directory)} " +
+            // Its agent id (M.ORCH-T1743) beside them, which the Launcher's CLI inherits through /clear and its restarts.
+            var agentEnv = Term.AgentIds.Normalize(agentId) is { } agent ? $"$env:{Term.AgentIds.EnvVar} = {AccountDirs.Ps(agent)}; " : "";
+            var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}{agentEnv}& {AccountDirs.Ps(options.LauncherExe)} host --path {AccountDirs.Ps(directory)} " +
                 $"--title {AccountDirs.Ps(tabTitle)} --provider {AccountDirs.Ps(provider)}" + resumeArg +
                 (resumeArg.Length > 0 || string.IsNullOrWhiteSpace(prompt) ? "" : $" --prompt {AccountDirs.Ps(SafePrompt(prompt))}") + "; exit $LASTEXITCODE";
             string[] wrapped = [.. tab, "-d", directory, "--",

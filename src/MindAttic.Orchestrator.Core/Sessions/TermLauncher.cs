@@ -69,8 +69,17 @@ public sealed record TermLaunchSpec
         IsMenu = request.IsMenu,
         Unlisted = request.Unlisted,
         Elevated = request.Elevated,
-        Environment = request.Elevated ? new Dictionary<string, string?>() : ProviderCredentials.EnvironmentFor(request.Provider),
+        Environment = request.Elevated ? new Dictionary<string, string?>() : WithAgent(ProviderCredentials.EnvironmentFor(request.Provider), request.AgentId),
     };
+
+    /// <summary><paramref name="environment"/> with the agent id (M.ORCH-T1743) set, so the TermHost stamps it on its record
+    /// (<see cref="TermSessionRecord.AgentId"/>); as it is when there's none.</summary>
+    private static IReadOnlyDictionary<string, string?> WithAgent(IReadOnlyDictionary<string, string?> environment, string? agentId)
+    {
+        if (AgentIds.Normalize(agentId) is not { } agent) return environment;
+        var with = new Dictionary<string, string?>(environment) { [AgentIds.EnvVar] = agent };
+        return with;
+    }
 }
 
 /// <summary>
@@ -181,7 +190,7 @@ public static class TermLauncher
             {
                 Id = launched.Id, HostPid = launched.Pid, HostStartUtc = hostStart, Pipe = launched.Pipe, Title = spec.Title,
                 Login = spec.Login, Repo = spec.Repo, Cwd = spec.Directory, CommandLine = spec.CommandLine,
-                State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow, IsMenu = spec.IsMenu,
+                State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow, IsMenu = spec.IsMenu, AgentId = AgentOf(spec),
             };
         }
 
@@ -197,7 +206,7 @@ public static class TermLauncher
                 {
                     Id = launched.Id, HostPid = launched.Pid, HostStartUtc = hostStart.Value, Pipe = launched.Pipe, Title = spec.Title,
                     Login = spec.Login, Repo = spec.Repo, Cwd = spec.Directory, CommandLine = spec.CommandLine,
-                    State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow, IsMenu = spec.IsMenu,
+                    State = TermSessionStates.Running, StartedUtc = DateTime.UtcNow, IsMenu = spec.IsMenu, AgentId = AgentOf(spec),
                 };
             Thread.Sleep(50);
         }
@@ -287,6 +296,10 @@ public static class TermLauncher
     }
 
     /// <summary>The <c>--launch</c> arguments for <paramref name="spec"/> as session <paramref name="id"/>.</summary>
+    /// <summary>The agent id (M.ORCH-T1743) <paramref name="spec"/> hands its host, for a record built here; null for none.</summary>
+    private static string? AgentOf(TermLaunchSpec spec) =>
+        spec.Environment.TryGetValue(AgentIds.EnvVar, out var agent) ? AgentIds.Normalize(agent) : null;
+
     internal static IReadOnlyList<string> Arguments(TermLaunchSpec spec, string id)
     {
         var args = new List<string> { "--launch", "--id", id };

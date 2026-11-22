@@ -79,6 +79,11 @@ public record TermSessionRecord
     /// ledger (<see cref="TermMemberHosts"/>), which only the host's user writes, never from this field. Null from an older host.</summary>
     [JsonPropertyName("account")] public string? Account { get; init; }
 
+    /// <summary>The agent this session's CLI is (M.ORCH-T1743, <see cref="AgentIds"/>): its stable id, which outlives the CLI's
+    /// pid, a <c>/clear</c> and a restart, as the host found it in its own environment (<see cref="AgentIds.EnvVar"/>). Null for a
+    /// session the orchestrator didn't start as an agent, or from an older host.</summary>
+    [JsonPropertyName("agent")] public string? AgentId { get; init; }
+
     [JsonIgnore] public bool Exited => State == TermSessionStates.Exited;
 }
 
@@ -122,6 +127,6 @@ public sealed record TermSessionEvent : TermSessionRecord
     {
         Id = Id, HostPid = HostPid, HostStartUtc = HostStartUtc, Pipe = Pipe, Title = Title, Login = Login, ConfigDir = ConfigDir,
         Repo = Repo, Cwd = Cwd, CommandLine = CommandLine, Cols = Cols, Rows = Rows, State = State, ExitCode = ExitCode,
-        StartedUtc = StartedUtc, Protocol = Protocol, IsMenu = IsMenu, Account = Account,
+        StartedUtc = StartedUtc, Protocol = Protocol, IsMenu = IsMenu, Account = Account, AgentId = AgentId,
     };
 }

@@ -23,10 +23,10 @@ public sealed class SessionControlTests
     public void Start_says_what_is_missing_and_launches_nothing()
     {
         var dir = Path.Combine(Path.GetTempPath(), "orch-sc-" + Guid.NewGuid().ToString("N"));
-        Assert.That(new SessionControl(new OrchestratorOptions { LauncherExe = @"Z:\nope\MindAttic.Launcher.exe" }).Start("A", Path.GetTempPath(), "Claude"),
+        Assert.That(new SessionControl(new OrchestratorOptions { LauncherExe = @"Z:\nope\MindAttic.Launcher.exe" }).Start("A", Path.GetTempPath(), "Claude").Error,
             Does.StartWith("Launcher not found at"));
         var launcher = typeof(SessionControlTests).Assembly.Location; // any file that exists stands in for the Launcher
-        Assert.That(new SessionControl(new OrchestratorOptions { LauncherExe = launcher }).Start("A", dir, "Claude"), Is.EqualTo($"Folder not found: {dir}"));
+        Assert.That(new SessionControl(new OrchestratorOptions { LauncherExe = launcher }).Start("A", dir, "Claude").Error, Is.EqualTo($"Folder not found: {dir}"));
     }
 
     [TestCase(true, "hello\n")]

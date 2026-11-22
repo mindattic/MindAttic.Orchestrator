@@ -573,6 +573,12 @@ public sealed class OrchestratorDb(string path)
         CREATE INDEX agents_owner ON agents (owner);
         CREATE INDEX agents_role ON agents (role);
         """,
+        // 20: the agent working each assignment (M.ORCH-T1743, roadmap Phase 1): the stable id (an agents row's) of the tab's CLI
+        // the dispatcher opened, which outlives its pid, /clear and restarts as cli (a pid) doesn't. Rows already there keep NULL:
+        // made before agents had ids. A session's own agent rides in its session_states row's value ("agent"), as its turn does.
+        """
+        ALTER TABLE assignments ADD COLUMN agent TEXT;
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

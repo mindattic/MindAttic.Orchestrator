@@ -1179,6 +1179,11 @@ public sealed record Assignment(string TicketId, string Repo, string Directory, 
     /// with no email read yet, or an assignment made before this was recorded).</summary>
     public string? Account { get; init; }
 
+    /// <summary>The agent working it (M.ORCH-T1743, <see cref="Term.AgentIds"/>): the stable id of the tab's CLI the dispatcher
+    /// opened, which outlives its pid, a <c>/clear</c> and a restart, as <see cref="Cli"/> (a pid) doesn't. Null when unknown: a
+    /// claim or background agent's assignment, or one made before agents had ids.</summary>
+    public string? AgentId { get; init; }
+
     /// <summary>A claim for a CLI's subagent (or a tab the orchestrator opened): dispatched, no background agent on it.</summary>
     [JsonIgnore]
     public bool IsClaim => Worktree && Pilot is null && Log is null;
