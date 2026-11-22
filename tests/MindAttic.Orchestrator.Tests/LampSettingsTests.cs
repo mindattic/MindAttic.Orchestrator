@@ -256,6 +256,7 @@ public sealed class LampSettingsTests
         Case("activityEndedMinutes", s => s with { ActivityEndedMinutes = 20 }, 20d, v => v.ActivityEndedMinutes = 5, 5d, s => s.ActivityEndedMinutes),
         Case("endedLauncherTabMinutes", s => s with { EndedLauncherTabMinutes = 0 }, 0d, v => v.EndedLauncherTabMinutes = 5, 5d, s => s.EndedLauncherTabMinutes),
         Case("autoOpenLaunchers", s => s with { AutoOpenLaunchers = true }, true, v => v.AutoOpenLaunchers = false, false, s => s.AutoOpenLaunchers),
+        Case("autoOpenGeneralPrompts", s => s with { AutoOpenGeneralPrompts = false }, false, v => v.AutoOpenGeneralPrompts = true, true, s => s.AutoOpenGeneralPrompts),
         Case("confirmCliClose", s => s with { ConfirmCliClose = false }, false, v => v.ConfirmCliClose = true, true, s => s.ConfirmCliClose),
         Case("uiAutomation", s => s with { UiAutomation = false }, false, v => v.UiAutomation = true, true, s => s.UiAutomation),
         Case("memberUntil", s => s with { MemberUntil = "old@mindattic.com=2026-12-01" }, "old@mindattic.com=2026-12-01",

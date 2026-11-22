@@ -778,6 +778,11 @@ public sealed record OrchestratorSettings
     /// opens one by hand.</summary>
     public bool AutoOpenLaunchers { get; init; }
 
+    /// <summary>On by default (M.ORCH-T1951): every login signed in as itself keeps exactly one General Prompt CLI (a Claude
+    /// CLI at the workspace root) open on it, reopened when it closes or exits, so each account's own LLM is always one click
+    /// away. Off: none is opened or reopened; Open Project &gt; General Prompt still opens one by hand.</summary>
+    public bool AutoOpenGeneralPrompts { get; init; } = true;
+
     /// <summary>On by default (M.ORCH-T1442): closing a CLI tab by hand (its X) whose CLI is still running asks first, in the
     /// dashboard's own modal. A tab whose CLI already ended closes unasked either way.</summary>
     public bool ConfirmCliClose { get; init; } = true;

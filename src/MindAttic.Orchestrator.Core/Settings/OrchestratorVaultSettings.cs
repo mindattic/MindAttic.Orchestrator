@@ -747,6 +747,11 @@ public sealed class OrchestratorVaultSettings
         Help = "Every signed-in login always has its own Launcher (M.ORCH-T1886). Off (the default): closing a login's last other CLI tab opens nothing more; on, it opens a new Launcher for that login as well.")]
     public bool AutoOpenLaunchers { get; set; }
 
+    /// <summary>On (the default, M.ORCH-T1951): every login signed in as itself keeps one General Prompt CLI open, reopened when it closes.</summary>
+    [Setting("Keep a General Prompt open on every login", Group = "Dashboard", Order = 5,
+        Help = "On (the default): every login signed in as itself keeps exactly one General Prompt CLI (a Claude CLI at the workspace root, ~1 GB RAM each) open on it, reopened when it closes or exits. Off: none is opened automatically; Open Project > General Prompt still opens one.")]
+    public bool AutoOpenGeneralPrompts { get; set; } = true;
+
     /// <summary>How long a CLI tab whose CLI has ended stays for its last lines before it's closed unasked.</summary>
     [Setting("Ended tab lifetime (minutes)", Group = "Dashboard", Order = 6,
         Help = "How long a CLI tab whose CLI has ended stays for its last lines before it's closed unasked. Each holds its terminal renderer (~50 MB) until then.")]
@@ -1177,6 +1182,7 @@ public sealed class OrchestratorVaultSettings
         FirstLoadWaitSeconds = s.FirstLoadWaitSeconds,
         ExcludeLauncherFromTeamWall = s.ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = s.AutoOpenLaunchers,
+        AutoOpenGeneralPrompts = s.AutoOpenGeneralPrompts,
         ConfirmCliClose = s.ConfirmCliClose,
         UiAutomation = s.UiAutomation,
         EndedTabMinutes = s.EndedTabMinutes,
@@ -1361,6 +1367,7 @@ public sealed class OrchestratorVaultSettings
         FirstLoadWaitSeconds = FirstLoadWaitSeconds,
         ExcludeLauncherFromTeamWall = ExcludeLauncherFromTeamWall,
         AutoOpenLaunchers = AutoOpenLaunchers,
+        AutoOpenGeneralPrompts = AutoOpenGeneralPrompts,
         ConfirmCliClose = ConfirmCliClose,
         UiAutomation = UiAutomation,
         EndedTabMinutes = EndedTabMinutes,
