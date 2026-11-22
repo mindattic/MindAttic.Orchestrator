@@ -20,7 +20,7 @@ public sealed record DaemonReach(double? Ms, string? Error = null);
 /// <item><c>link:latency</c> <c>probe-&gt;tickets-db</c> (<c>daemon-&gt;tickets-db</c> run in the daemon): one timed read of the
 /// ticket database (<see cref="TicketDbPing"/>, M.ORCH-T2032), graded by the same line; no answer is unhealthy.</item>
 /// <item><c>daemon:tick</c> <c>daemon</c>: the daemon's tick so far, or its last one when that was longer, in seconds
-/// (<see cref="DaemonTick"/>, M.ORCH-T2032), graded by <see cref="DaemonTick.Line"/>: the M.ORCH-T1922 stall held one tick for
+/// (<see cref="DaemonTick"/>, M.ORCH-T2032), graded by <see cref="HealthThresholds.TickSeconds"/>: the M.ORCH-T1922 stall held one tick for
 /// many minutes. No tick kept, or a daemon no longer running, is degraded with no reading.</item>
 /// <item><c>link:up</c> for each other end the daemon holds, a state graded by rule: <c>daemon-&gt;dashboard</c> and
 /// <c>daemon-&gt;tickets-desktop</c> from their presences, <c>daemon-&gt;termhost:&lt;pid&gt;</c> for each hosted session kept and
@@ -172,7 +172,7 @@ public sealed class LinkProbe
         HealthResult TickResult(Func<DaemonTick?> read)
         {
             var now = Clock();
-            var line = DaemonTick.Line;
+            var line = Thresholds.TickSeconds;
             HealthResult None(string why) =>
                 new(DaemonTick.Check, DaemonTick.Component, "component", null, "s", HealthGrade.Degraded, now, line.Degraded, line.Unhealthy, why);
             try

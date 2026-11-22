@@ -21,12 +21,6 @@ public sealed record DaemonTick(int Pid, DateTime StartedUtc, DateTime? EndedUtc
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    /// <summary>The lines a tick is graded on: degraded once it's as long as the daemon itself logs as slow (a third of the way to
-    /// the pace gates' stale line), unhealthy once it's that stale line itself (rl-status.json, written by the tick's refresh,
-    /// would be stale by then).</summary>
-    public static HealthLine Line { get; } =
-        new(Daemon.TickTimer.SlowTick.TotalSeconds, RateLimitStatusWriter.GateStale.TotalSeconds, LowerIsWorse: false);
-
     /// <summary>Whether a tick is under way (started after the last one ended).</summary>
     public bool Running => EndedUtc is not { } ended || ended < StartedUtc;
 

@@ -655,6 +655,22 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("How far past the normal reading (percent of it) a learned degraded line goes (default 5).")]
         public double? HealthLearnMarginPercent { get; init; }
 
+        [CommandOption("--health-learn-percentile <PERCENT>")]
+        [Description("Which reading of the history counts as normal: this percentile, worst first, 50 up to 100 (default 90).")]
+        public double? HealthLearnPercentile { get; init; }
+
+        [CommandOption("--health-learn-changes-kept <N>")]
+        [Description("How many learned-line moves are kept to read back (default 200).")]
+        public int? HealthLearnChangesKept { get; init; }
+
+        [CommandOption("--health-tick-degraded-seconds <SECONDS>")]
+        [Description("A daemon tick this long reads degraded (default 60).")]
+        public double? HealthTickDegradedSeconds { get; init; }
+
+        [CommandOption("--health-tick-unhealthy-seconds <SECONDS>")]
+        [Description("A daemon tick this long reads unhealthy (default 180).")]
+        public double? HealthTickUnhealthySeconds { get; init; }
+
         [CommandOption("--health-ram-learn-floor-gb <GB>")]
         [Description("The lowest free RAM a learned RAM line may go (default 1).")]
         public double? HealthRamLearnFloorGb { get; init; }
@@ -837,6 +853,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             || settings.HealthLearn is not null
             || settings.HealthLearnMinSamples is not null
             || settings.HealthLearnMarginPercent is not null
+            || settings.HealthLearnPercentile is not null
+            || settings.HealthLearnChangesKept is not null
+            || settings.HealthTickDegradedSeconds is not null
+            || settings.HealthTickUnhealthySeconds is not null
             || settings.HealthRamLearnFloorGb is not null
             || settings.HealthCommitLearnCeilingPercent is not null
             || settings.HealthDiskFreeLearnFloorGb is not null
@@ -868,6 +888,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
                 HealthLearn = settings.HealthLearn ?? s.HealthLearn,
                 HealthLearnMinSamples = settings.HealthLearnMinSamples ?? s.HealthLearnMinSamples,
                 HealthLearnMarginPercent = settings.HealthLearnMarginPercent ?? s.HealthLearnMarginPercent,
+                HealthLearnPercentile = settings.HealthLearnPercentile ?? s.HealthLearnPercentile,
+                HealthLearnChangesKept = settings.HealthLearnChangesKept ?? s.HealthLearnChangesKept,
+                HealthTickDegradedSeconds = settings.HealthTickDegradedSeconds ?? s.HealthTickDegradedSeconds,
+                HealthTickUnhealthySeconds = settings.HealthTickUnhealthySeconds ?? s.HealthTickUnhealthySeconds,
                 HealthRamLearnFloorGb = settings.HealthRamLearnFloorGb ?? s.HealthRamLearnFloorGb,
                 HealthCommitLearnCeilingPercent = settings.HealthCommitLearnCeilingPercent ?? s.HealthCommitLearnCeilingPercent,
                 HealthDiskFreeLearnFloorGb = settings.HealthDiskFreeLearnFloorGb ?? s.HealthDiskFreeLearnFloorGb,
@@ -1191,7 +1215,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         // What the daemon has learned of them (M.ORCH-T2057), beside what they're set to, and the last move with its reason.
         var learnedLines = store.TryLoad<LearnedHealthLines>(HealthLearning.StoreName, out var learnedBook) ? learnedBook : null;
         AnsiConsole.MarkupLine("  health learning " + (s.HealthLearn
-            ? Markup.Escape($"on (from {s.HealthLearnMinSamples}+ readings, {s.HealthLearnMarginPercent:0.#}% past normal; bounds RAM {s.HealthRamLearnFloorGb:0.#} GB, " +
+            ? Markup.Escape($"on (from {s.HealthLearnMinSamples}+ readings, normal is p{s.HealthLearnPercentile:0.#}, {s.HealthLearnMarginPercent:0.#}% past normal, {s.HealthLearnChangesKept} moves kept; daemon tick {s.HealthTickDegradedSeconds:0.#}/{s.HealthTickUnhealthySeconds:0.#} s; bounds RAM {s.HealthRamLearnFloorGb:0.#} GB, " +
                 $"commit {s.HealthCommitLearnCeilingPercent:0.#}%, disk {s.HealthDiskFreeLearnFloorGb:0.#} GB, DTU {s.HealthDtuLearnCeilingPercent:0.#}%, " +
                 $"storage {s.HealthStorageLearnCeilingPercent:0.#}%, links {s.HealthLinkLatencyLearnCeilingMs:0.#} ms): " +
                 string.Join(" · ", Enum.GetValues<HealthCheck>().Select(c => HealthLearning.Describe(s, c, learnedLines))))

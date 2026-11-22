@@ -14,7 +14,7 @@ public sealed record HealthLineChange(DateTimeOffset At, string Check, double Fr
 /// <summary>
 /// The health lines the daemon has learned from the probes' history (M.ORCH-T2057), kept in the store under
 /// <see cref="HealthLearning.StoreName"/>: each check's current learned line by <see cref="HealthCheck"/> name, and the last
-/// <see cref="HealthLearning.ChangesKept"/> moves with their reasons. A check with no entry grades on its configured line.
+/// <see cref="OrchestratorSettings.HealthLearnChangesKept"/> moves with their reasons. A check with no entry grades on its configured line.
 /// </summary>
 public sealed class LearnedHealthLines
 {
@@ -33,7 +33,7 @@ public sealed class LearnedHealthLines
 /// within the user's bounds; the pacer's <see cref="Budget.LimitCalibration"/> is the same idea for usage limits). The
 /// configured line (<see cref="OrchestratorSettings"/> Health*) is the tightest a line goes; the bound
 /// (<see cref="OrchestratorSettings"/> Health*Learn*) the loosest. When the machine's normal reading (the
-/// <see cref="NormalPercentile"/>th worst of the history the daemon keeps, <see cref="Status.AppBusHub.HealthHistory"/>) sits
+/// <see cref="OrchestratorSettings.HealthLearnPercentile"/>th worst of the history the daemon keeps, <see cref="Status.AppBusHub.HealthHistory"/>) sits
 /// past the configured degraded line, that line only cries wolf, so it moves just past the normal reading
 /// (<see cref="OrchestratorSettings.HealthLearnMarginPercent"/>) and the unhealthy line moves with it, both clamped to the
 /// bound; once the normal reading is back inside the configured line, both go back to it. Each move is logged with its reason.
@@ -43,13 +43,6 @@ public static class HealthLearning
 {
     /// <summary>The store name the learned lines are kept under.</summary>
     public const string StoreName = "health-lines";
-
-    /// <summary>How many line moves are kept to read back.</summary>
-    public const int ChangesKept = 200;
-
-    /// <summary>Which reading counts as normal: the 90th worst percentile (the 10th for a lower-is-worse line), so an odd spike
-    /// never moves a line, but a reading the machine sits at most of the time does.</summary>
-    public const double NormalPercentile = 90;
 
     /// <summary>The loosest <paramref name="check"/>'s lines may be learned to, as <paramref name="s"/> sets it.</summary>
     public static double Bound(OrchestratorSettings s, HealthCheck check) => check switch
@@ -102,8 +95,10 @@ public static class HealthLearning
         var unit = HealthResult.Describe(check).Unit;
         var bound = Bound(s, check);
         var lower = configured.LowerIsWorse;
-        var normal = Percentile(sorted, lower ? 100 - NormalPercentile : NormalPercentile);
-        var pct = lower ? 100 - NormalPercentile : NormalPercentile;
+        // The normal reading: the setting's percentile worst (the mirror one for a lower-is-worse line), so an odd spike never
+        // moves a line but a reading the machine sits at most of the time does.
+        var pct = lower ? 100 - s.HealthLearnPercentile : s.HealthLearnPercentile;
+        var normal = Percentile(sorted, pct);
         var past = lower ? normal < configured.Degraded : normal >= configured.Degraded;
         if (!past)
             return (configured, $"p{pct:0} of {sorted.Count} readings is {F(normal)} {unit}, inside the configured degraded line {F(configured.Degraded)} {unit}");
@@ -153,7 +148,8 @@ public static class HealthLearning
             changes.Add(change);
             book.Changes.Add(change);
         }
-        if (book.Changes.Count > ChangesKept) book.Changes.RemoveRange(0, book.Changes.Count - ChangesKept);
+        var keep = Math.Max(1, s.HealthLearnChangesKept);
+        if (book.Changes.Count > keep) book.Changes.RemoveRange(0, book.Changes.Count - keep);
         return changes;
     }
 

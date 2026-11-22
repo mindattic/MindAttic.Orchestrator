@@ -33,5 +33,10 @@ public sealed class HealthThresholdsTests
         Assert.That(HealthThresholds.Problem(new OrchestratorSettings()), Is.Null);
         Assert.That(HealthThresholds.Problem(new OrchestratorSettings() with { HealthStorageDegradedPercent = 99, HealthStorageUnhealthyPercent = 90 }), Is.Not.Null);
         Assert.That(HealthThresholds.Problem(new OrchestratorSettings() with { HealthRamUnhealthyGb = 8 }), Is.Not.Null);
+        Assert.That(HealthThresholds.Problem(new OrchestratorSettings() with { HealthLearnPercentile = 100 }), Is.Not.Null);
+        Assert.That(HealthThresholds.Problem(new OrchestratorSettings() with { HealthLearnPercentile = 40 }), Is.Not.Null);
+        Assert.That(HealthThresholds.Problem(new OrchestratorSettings() with { HealthLearnChangesKept = 0 }), Is.Not.Null);
+        Assert.That(HealthThresholds.Problem(new OrchestratorSettings() with { HealthTickDegradedSeconds = 200 }), Is.Not.Null);
+        Assert.That(HealthThresholds.Problem(new OrchestratorSettings() with { HealthTickDegradedSeconds = 0 }), Is.Not.Null);
     }
 }

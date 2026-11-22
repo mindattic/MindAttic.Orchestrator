@@ -727,6 +727,19 @@ public sealed record OrchestratorSettings
     /// <summary>How far past the machine's normal reading (percent of it) a learned degraded line is put.</summary>
     public double HealthLearnMarginPercent { get; init; } = 5;
 
+    /// <summary>Which reading of the history counts as the machine's normal one: this percentile of the readings, worst first
+    /// (the mirror percentile, 100 minus it, for a lower-is-worse line).</summary>
+    public double HealthLearnPercentile { get; init; } = 90;
+
+    /// <summary>How many line moves the daemon keeps to read back with their reasons.</summary>
+    public int HealthLearnChangesKept { get; init; } = 200;
+
+    /// <summary>Seconds a daemon tick may run before daemon:tick reads degraded (the daemon logs a tick this long as slow).</summary>
+    public double HealthTickDegradedSeconds { get; init; } = 60;
+
+    /// <summary>Seconds a daemon tick may run before daemon:tick reads unhealthy (the pace gates' stale line).</summary>
+    public double HealthTickUnhealthySeconds { get; init; } = 180;
+
     /// <summary>The lowest free-RAM (GB) a learned RAM line may go.</summary>
     public double HealthRamLearnFloorGb { get; init; } = 1;
 

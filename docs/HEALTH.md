@@ -112,7 +112,7 @@ Initial check ids (the probe tickets may add more, and must list them here when 
 | | `sqldb:dtu` | `server/database` | % | `HealthCheck.DtuPercent` |
 | | `sqldb:storage` | `server/database` | % | `HealthCheck.StoragePercent` |
 | links (T2016) | `link:latency` | `from->to` (`probe->daemon`: connect to the first line on the status stream; `probe->tickets-db` (`daemon->tickets-db` in the daemon): one timed open of the ticket database, `TicketDbPing`, M.ORCH-T2032; `dashboard->daemon`, `daemon->termhost:<pid>`, ...) | ms | `HealthCheck.LinkLatencyMs`; unreachable is `fail` |
-| | `daemon:tick` | `daemon` | s | `DaemonTick.Line` (M.ORCH-T2032, Core/Health/DaemonTick.cs): the tick under way so far, or the last one when that was longer, from the volatile `daemon-tick` state row the daemon writes at each tick's start and end; `warn` at the daemon's slow-tick line (60 s), `fail` at the pace gates' stale line (180 s), the M.ORCH-T1922 stall; no row kept or its daemon gone is `warn` with no reading |
+| | `daemon:tick` | `daemon` | s | `HealthThresholds.TickSeconds` (M.ORCH-T2032, Core/Health/DaemonTick.cs): the tick under way so far, or the last one when that was longer, from the volatile `daemon-tick` state row the daemon writes at each tick's start and end; `warn` at `HealthTickDegradedSeconds` (default 60 s), `fail` at `HealthTickUnhealthySeconds` (default 180 s), the M.ORCH-T1922 stall; no row kept or its daemon gone is `warn` with no reading |
 | | `link:up` | `daemon->dashboard`, `daemon->tickets-desktop`, `daemon->termhost:<pid>`, `daemon->cli:<pid>` | state | rule (M.ORCH-T2031, Core/Health/LinkProbe.cs): `up` (its process runs) `pass`; `gone` (still held by the daemon, process not running) `warn` for a TermHost or CLI pid but `pass` for the dashboard and Tickets Desktop, whose closing leaves its presence behind (M.ORCH-T2062); `absent` (an app never heard) `pass` |
 
 ## 4. Transport: the `health` kind on the app bus
@@ -152,9 +152,15 @@ daemon (the hub) fans out to every subscriber. Envelope kind `health`, version 1
 - **Where.** An unhealthy transition sends a Psst (Reminders/PsstAlerts.cs, PsstClient.cs) with the check, value, line
   and the element's `output`; a recovery sends one line. Degraded never alerts; it shows on the dashboard only.
 - **Thresholds** stay in `HealthThresholds`/`OrchestratorSettings`; the report carries the line used. Per the standing
-  rule that numbers are configurable and self-correcting, a later task may let a line drift within user-set bounds from
-  its alert history (e.g. a degraded line that fires daily with no unhealthy ever following is raised); that changes the
-  setting, never the contract.
+  rule that numbers are configurable and self-correcting, the daemon learns the lines (M.ORCH-T2057,
+  `Health/HealthLearning.cs`): the configured line is the tightest a line goes and its bound (`Health*Learn*`) the
+  loosest. When the machine's normal reading (the `HealthLearnPercentile`th worst of the probes' history, default 90;
+  the mirror percentile for free RAM and disk) sits past the configured degraded line, the line moves just past it
+  (`HealthLearnMarginPercent`) and the unhealthy line moves with it, both held to the bound; once the reading is back
+  inside the configured line they return to it. Learning needs `HealthLearnMinSamples` readings, and the last
+  `HealthLearnChangesKept` moves (default 200) are kept with their reasons. Every one of these numbers, and the
+  daemon-tick lines, is a setting (Settings modal, Health; `orchestrator settings --health-learn-percentile`,
+  `--health-learn-changes-kept`, `--health-tick-degraded-seconds`, `--health-tick-unhealthy-seconds`).
 
 ## 6. Probe CLIs
 

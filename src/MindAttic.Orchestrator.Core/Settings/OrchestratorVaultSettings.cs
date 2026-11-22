@@ -750,6 +750,26 @@ public sealed class OrchestratorVaultSettings
     [Setting("Alert recovered after (results in a row)", Group = "Health", Order = 27, Help = "How many results in a row back out of unhealthy an alerted health check needs before it alerts its recovery; more keeps a check hovering at its line from flapping.")]
     [SettingRange(1, 100)]
     public int HealthSuccessThreshold { get; set; } = 1;
+
+    /// <summary>Which reading of the history counts as the machine's normal one (the percentile, worst first).</summary>
+    [Setting("Normal reading is the percentile", Group = "Health", Order = 28, Help = "Which reading of the probes' history counts as the machine's normal one when the daemon learns the lines: this percentile, worst first (the mirror percentile for free RAM and disk). 90 means an odd spike never moves a line.")]
+    [SettingRange(50, 99.9)]
+    public double HealthLearnPercentile { get; set; } = 90;
+
+    /// <summary>How many learned-line moves are kept to read back.</summary>
+    [Setting("Keep learned-line moves (count)", Group = "Health", Order = 29, Help = "How many moves of the learned health lines the daemon keeps to read back with their reasons.")]
+    [SettingRange(1, 100000)]
+    public int HealthLearnChangesKept { get; set; } = 200;
+
+    /// <summary>Seconds before a daemon tick reads degraded.</summary>
+    [Setting("Daemon tick degraded after (seconds)", Group = "Health", Order = 30, Help = "How long one daemon tick may run before the daemon:tick check reads degraded.")]
+    [SettingRange(1, 86400)]
+    public double HealthTickDegradedSeconds { get; set; } = 60;
+
+    /// <summary>Seconds before a daemon tick reads unhealthy.</summary>
+    [Setting("Daemon tick unhealthy after (seconds)", Group = "Health", Order = 31, Help = "How long one daemon tick may run before the daemon:tick check reads unhealthy (an alert).")]
+    [SettingRange(1, 86400)]
+    public double HealthTickUnhealthySeconds { get; set; } = 180;
     /// <summary>Minutes between prunes of old log entries and finished terminal hosts' log files.</summary>
     [Setting("Prune old logs every (minutes)", Group = "Alerts", Order = 65, Help = "Minutes between prunes of old log entries and finished terminal hosts' log files.")]
     [SettingRange(1, 10080)]
@@ -1275,6 +1295,10 @@ public sealed class OrchestratorVaultSettings
         HealthAlerts = s.HealthAlerts,
         HealthFailureThreshold = s.HealthFailureThreshold,
         HealthSuccessThreshold = s.HealthSuccessThreshold,
+        HealthLearnPercentile = s.HealthLearnPercentile,
+        HealthLearnChangesKept = s.HealthLearnChangesKept,
+        HealthTickDegradedSeconds = s.HealthTickDegradedSeconds,
+        HealthTickUnhealthySeconds = s.HealthTickUnhealthySeconds,
         LogPruneMinutes = s.LogPruneMinutes,
         BackupKeepLocal = s.BackupKeepLocal,
         DiskCleanupEveryMinutes = s.DiskCleanupEveryMinutes,
@@ -1490,6 +1514,10 @@ public sealed class OrchestratorVaultSettings
         HealthAlerts = HealthAlerts,
         HealthFailureThreshold = HealthFailureThreshold,
         HealthSuccessThreshold = HealthSuccessThreshold,
+        HealthLearnPercentile = HealthLearnPercentile,
+        HealthLearnChangesKept = HealthLearnChangesKept,
+        HealthTickDegradedSeconds = HealthTickDegradedSeconds,
+        HealthTickUnhealthySeconds = HealthTickUnhealthySeconds,
         LogPruneMinutes = LogPruneMinutes,
         BackupKeepLocal = BackupKeepLocal,
         DiskCleanupEveryMinutes = DiskCleanupEveryMinutes,

@@ -55,8 +55,12 @@ public sealed record HealthLine(double Degraded, double Unhealthy, bool LowerIsW
 /// on their next run.
 /// </summary>
 public sealed record HealthThresholds(HealthLine RamFreeGb, HealthLine CommitPercent, HealthLine DiskFreeGb, HealthLine DtuPercent,
-    HealthLine StoragePercent, HealthLine LinkLatencyMs)
+    HealthLine StoragePercent, HealthLine LinkLatencyMs, HealthLine? DaemonTickSeconds = null)
 {
+    /// <summary>The line the daemon's tick length (seconds) is graded on: degraded once a tick is that long, unhealthy at the
+    /// second line (M.ORCH-T2032; settings <c>--health-tick-degraded-seconds</c> and <c>--health-tick-unhealthy-seconds</c>).</summary>
+    public HealthLine TickSeconds => DaemonTickSeconds ?? new(60, 180, LowerIsWorse: false);
+
     /// <summary>The lines as <paramref name="s"/> sets them.</summary>
     public static HealthThresholds Of(OrchestratorSettings s) => new(
         new(s.HealthRamDegradedGb, s.HealthRamUnhealthyGb, LowerIsWorse: true),
@@ -64,7 +68,8 @@ public sealed record HealthThresholds(HealthLine RamFreeGb, HealthLine CommitPer
         new(s.HealthDiskFreeDegradedGb, s.HealthDiskFreeUnhealthyGb, LowerIsWorse: true),
         new(s.HealthDtuDegradedPercent, s.HealthDtuUnhealthyPercent, LowerIsWorse: false),
         new(s.HealthStorageDegradedPercent, s.HealthStorageUnhealthyPercent, LowerIsWorse: false),
-        new(s.HealthLinkLatencyDegradedMs, s.HealthLinkLatencyUnhealthyMs, LowerIsWorse: false));
+        new(s.HealthLinkLatencyDegradedMs, s.HealthLinkLatencyUnhealthyMs, LowerIsWorse: false),
+        new(s.HealthTickDegradedSeconds, s.HealthTickUnhealthySeconds, LowerIsWorse: false));
 
     /// <summary>The lines to grade on (M.ORCH-T2057): <paramref name="s"/>'s, each moved to what the daemon has learned from the
     /// probes' history (<see cref="HealthLearning"/>) when learning is on, held between the configured line and its bound.</summary>
@@ -74,7 +79,7 @@ public sealed record HealthThresholds(HealthLine RamFreeGb, HealthLine CommitPer
         if (!s.HealthLearn || learned is null || learned.Lines.Count == 0) return configured;
         HealthLine L(HealthCheck c) => HealthLearning.Effective(s, c, configured[c], learned);
         return new(L(HealthCheck.RamFreeGb), L(HealthCheck.CommitPercent), L(HealthCheck.DiskFreeGb), L(HealthCheck.DtuPercent),
-            L(HealthCheck.StoragePercent), L(HealthCheck.LinkLatencyMs));
+            L(HealthCheck.StoragePercent), L(HealthCheck.LinkLatencyMs), configured.DaemonTickSeconds);
     }
 
     /// <summary>The lines as <paramref name="store"/>'s settings set them and as its daemon has learned them; the configured
@@ -104,6 +109,10 @@ public sealed record HealthThresholds(HealthLine RamFreeGb, HealthLine CommitPer
             return "--health-commit-learn-ceiling-percent, --health-dtu-learn-ceiling-percent and --health-storage-learn-ceiling-percent are at most 100.";
         if (!(s.HealthLinkLatencyLearnCeilingMs > 0))
             return "--health-link-learn-ceiling-ms is over 0.";
+        if (!(s.HealthLearnPercentile >= 50 && s.HealthLearnPercentile < 100 && s.HealthLearnChangesKept >= 1))
+            return "--health-learn-percentile is 50 up to (not including) 100 and --health-learn-changes-kept at least 1.";
+        if (!(s.HealthTickDegradedSeconds > 0 && s.HealthTickDegradedSeconds <= s.HealthTickUnhealthySeconds))
+            return "The daemon tick lines go 0 < --health-tick-degraded-seconds <= --health-tick-unhealthy-seconds.";
         if (!(s.HealthLearnMinSamples >= 1 && s.HealthLearnMarginPercent >= 0 && s.HealthLearnMarginPercent <= 100))
             return "--health-learn-min-samples is at least 1 and --health-learn-margin-percent 0 to 100.";
         if (!new[] { s.HealthProbeMachineSeconds, s.HealthProbeLinksSeconds, s.HealthProbeAzureSeconds }.All(v => v >= 0 && v <= 86_400))
