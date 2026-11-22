@@ -1,6 +1,16 @@
 using MindAttic.Tickets;
 using MindAttic.Tickets.Data;
 using MindAttic.Tickets.Log;
+using DbRead = (string Path, System.DateTime WriteUtc, System.Linq.ILookup<string, MindAttic.Tickets.Log.Ticket> Open,
+    System.Collections.Generic.HashSet<string> Repos, System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IReadOnlyList<string>> Requires,
+    System.Collections.Generic.IReadOnlySet<string> Approved, System.Collections.Generic.IReadOnlySet<string> Epics,
+    System.Collections.Generic.IReadOnlyDictionary<string, long> Priorities, MindAttic.Orchestrator.Tickets.OpenTicketSource.WorkState Work,
+    System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IReadOnlyList<string>> PartOf,
+    System.Collections.Generic.IReadOnlySet<string> OwnerWaiting, System.Collections.Generic.IReadOnlyDictionary<string, long> GraphWeights,
+    System.Collections.Generic.IReadOnlyDictionary<string, string> Names,
+    System.Collections.Generic.IReadOnlyDictionary<string, MindAttic.Orchestrator.TicketMilestone> Milestones,
+    System.Collections.Generic.IReadOnlyList<MindAttic.Orchestrator.Tickets.MilestoneScope> MilestoneScopes,
+    System.Collections.Generic.IReadOnlySet<string> Containers, System.Collections.Generic.IReadOnlyDictionary<string, string> Levels);
 
 namespace MindAttic.Orchestrator.Tickets;
 
@@ -30,12 +40,21 @@ public sealed class OpenTicketSource
 
     private DateTime dbReadUtc;
 
-    private (string Path, DateTime WriteUtc, ILookup<string, Ticket> Open, HashSet<string> Repos, IReadOnlyDictionary<string, IReadOnlyList<string>> Requires,
-        IReadOnlySet<string> Approved, IReadOnlySet<string> Epics, IReadOnlyDictionary<string, long> Priorities, WorkState Work,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> PartOf, IReadOnlySet<string> OwnerWaiting,
-        IReadOnlyDictionary<string, long> GraphWeights, IReadOnlyDictionary<string, string> Names,
-        IReadOnlyDictionary<string, TicketMilestone> Milestones, IReadOnlyList<MilestoneScope> MilestoneScopes,
-        IReadOnlySet<string> Containers, IReadOnlyDictionary<string, string> Levels)? fromDb;
+    private DbRead? fromDb;
+
+    /// <summary>
+    /// How long a refresh waits on a ticket-database read before going on with the last good read (M.ORCH-T1937): a read on a
+    /// pegged Azure SQL ran 1358s inside the daemon's refresh, and rl-status.json (written later in that same refresh) and the
+    /// tick's allocate and alerts waited on it the whole time. The read runs on in the background and lands on a later refresh;
+    /// none other starts while it runs, so a slow database isn't handed a pile of the same query.
+    /// </summary>
+    public TimeSpan ReadWait { get; init; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>Runs at the start of each background database read; a test's blocks it to stand in for a slow database.</summary>
+    internal Action? BeforeRead { get; init; }
+
+    // The database read in flight (M.ORCH-T1937): its database path, its task, and when a refresh stops waiting on it.
+    private (string Path, Task<DbRead?> Read, DateTime WaitUntilUtc)? reading;
 
     /// <summary>Each active and accepting milestone's scope (M.ORCH-T1685): what waits for its owner's approval and how much it
     /// has grown since activation; empty with none, or with a database that predates the scope lock.</summary>
@@ -178,38 +197,35 @@ public sealed class OpenTicketSource
         var written = File.GetLastWriteTimeUtc(path);
         if (fromDb is not { } c || c.Path != path || c.WriteUtc != written || DateTime.UtcNow - dbReadUtc >= DbMaxAge)
         {
+            // Read off the caller's thread, waited on for ReadWait at most per read (M.ORCH-T1937): past it the last good read
+            // stands, as it does for a read that fails, and the read lands on a later refresh.
+            var prior = fromDb is { } p && p.Path == path ? p : (DbRead?)null;
+            if (reading is not { } r || r.Path != path)
+            {
+                var before = BeforeRead;
+                reading = r = (path, Task.Run(() => { before?.Invoke(); return Read(root, path, written, prior); }), DateTime.UtcNow + ReadWait);
+            }
+            var left = r.WaitUntilUtc - DateTime.UtcNow;
+            try { r.Read.Wait(left > TimeSpan.Zero ? left : TimeSpan.Zero); }
+            catch (AggregateException) { } // thrown again below, by GetResult, as the read's own exception
+            if (!r.Read.IsCompleted)
+            {
+                var slow = prior is null
+                    ? $"ticket database: a read is still running after {ReadWait.TotalSeconds:0}s, with no earlier read to stand on (M.ORCH-T1937)"
+                    : $"ticket database: a read is still running after {ReadWait.TotalSeconds:0}s; using the read from {dbReadUtc.ToLocalTime():T} until it lands (M.ORCH-T1937)";
+                if (!warnings.Contains(slow)) warnings.Add(slow);
+                if (prior is null)
+                {
+                    unknown.Add(repo.Name); // unknown, not none, as for a first read that fails (M.ORCH-T1538)
+                    return null;
+                }
+                return fromDb!.Value.Repos.Contains(repo.Name) ? [.. fromDb.Value.Open[repo.Name]] : null;
+            }
+            reading = null;
             try
             {
-                using var db = TicketsDb.OpenIfMigrated(root);
-                if (db is null) return null;
-                var links = db.AllLinks();
-                var requires = links.Where(l => l.Kind == "requires")
-                    .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
-                var partOf = links.Where(l => l.Kind == "part-of")
-                    .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
-                var queue = db.QueueStates();
-                var open = db.Tickets().Where(t => t.Ticket.Status == TicketRules.Open).ToList();
-                var openIds = open.Select(t => t.Ticket.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                var labels = db.AllLabels();
-                // An open ticket some open ticket is part-of is a container (M.ORCH-T1904): its children are the work.
-                var containers = partOf.Where(p => openIds.Contains(p.Key)).SelectMany(p => p.Value).Where(openIds.Contains)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                var levels = LevelsOf(labels);
-                fromDb = (path, written,
-                    open.ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
-                    db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires,
-                    queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                    labels.Where(l => l.Value.Contains(EpicLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                    queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
-                    WorkState.Of(db), partOf,
-                    labels.Where(l => l.Value.Contains(WaitingOnOwnerLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                    db.GraphWeights().Where(w => w.Value.Value != 0).ToDictionary(w => w.Key, w => (long)w.Value.Value, StringComparer.OrdinalIgnoreCase),
-                    db.Names().ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
-                    MilestonesOf(db, openIds, fromDb is { } before && before.Path == path ? before.Milestones : null),
-                    MilestoneScope.ReadOr(db, fromDb is { } earlier && earlier.Path == path ? earlier.MilestoneScopes : null),
-                    containers, levels);
+                if (r.Read.GetAwaiter().GetResult() is not { } read) return null;
+                fromDb = read;
                 dbReadUtc = DateTime.UtcNow;
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)
@@ -232,5 +248,41 @@ public sealed class OpenTicketSource
             }
         }
         return fromDb!.Value.Repos.Contains(repo.Name) ? [.. fromDb.Value.Open[repo.Name]] : null;
+    }
+
+    /// <summary>One read of the ticket database at <paramref name="path"/> (written at <paramref name="written"/>), on a background
+    /// thread (M.ORCH-T1937): null when the workspace isn't migrated. <paramref name="prior"/> is the last good read of it, whose
+    /// milestones stand when theirs can't be read.</summary>
+    private static DbRead? Read(string? root, string path, DateTime written, DbRead? prior)
+    {
+        using var db = TicketsDb.OpenIfMigrated(root);
+        if (db is null) return null;
+        var links = db.AllLinks();
+        var requires = links.Where(l => l.Kind == "requires")
+            .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
+        var partOf = links.Where(l => l.Kind == "part-of")
+            .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
+        var queue = db.QueueStates();
+        var open = db.Tickets().Where(t => t.Ticket.Status == TicketRules.Open).ToList();
+        var openIds = open.Select(t => t.Ticket.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var labels = db.AllLabels();
+        // An open ticket some open ticket is part-of is a container (M.ORCH-T1904): its children are the work.
+        var containers = partOf.Where(p => openIds.Contains(p.Key)).SelectMany(p => p.Value).Where(openIds.Contains)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return (path, written,
+            open.ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
+            db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires,
+            queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+            labels.Where(l => l.Value.Contains(EpicLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+            queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
+            WorkState.Of(db), partOf,
+            labels.Where(l => l.Value.Contains(WaitingOnOwnerLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+            db.GraphWeights().Where(w => w.Value.Value != 0).ToDictionary(w => w.Key, w => (long)w.Value.Value, StringComparer.OrdinalIgnoreCase),
+            db.Names().ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
+            MilestonesOf(db, openIds, prior?.Milestones),
+            MilestoneScope.ReadOr(db, prior?.MilestoneScopes),
+            containers, LevelsOf(labels));
     }
 }

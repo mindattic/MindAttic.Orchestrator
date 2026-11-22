@@ -876,8 +876,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             if (total < SlowTick) return null;
             var parts = laps.Where(l => l.Took >= TimeSpan.FromSeconds(1)).OrderByDescending(l => l.Took)
                 .Select(l => $"{l.Name} {l.Took.TotalSeconds:0}s");
+            // Only the tick's work after its refresh has one run beside it: a refresh that itself ran long held rl-status.json
+            // the whole time, and the line used to say otherwise (M.ORCH-T1937: "refresh 1358s ... refreshed beside it").
+            var refresh = laps.FirstOrDefault(l => l.Name == "refresh").Took;
             return $"a tick took {total.TotalSeconds:0}s ({string.Join(", ", parts.DefaultIfEmpty("no one step over a second"))}); " +
-                "rl-status.json was refreshed beside it meanwhile (M.ORCH-T1111)";
+                (refresh >= SlowTick
+                    ? "rl-status.json waited on its own refresh, which nothing runs beside (M.ORCH-T1937)"
+                    : "rl-status.json was refreshed beside it meanwhile (M.ORCH-T1111)");
         }
     }
 

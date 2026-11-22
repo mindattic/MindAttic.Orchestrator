@@ -149,6 +149,40 @@ public sealed class OpenTicketSourceTests
     }
 
     [Test]
+    public void A_slow_database_read_is_waited_on_only_briefly_and_lands_on_a_later_call()
+    {
+        // M.ORCH-T1937: a read on a pegged Azure SQL held the daemon's refresh 1358s, and rl-status.json and the tick with it.
+        var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one | — |\n| A-T2 | 2026-10-01 | fix | open | two | — |\n");
+        var path = TicketsDb.DefaultPath(root);
+        using (var db = TicketsDb.Open(path)) db.Import([a]);
+        using var gate = new ManualResetEventSlim(false);
+        var hold = false;
+        var source = new OpenTicketSource { ReadWait = TimeSpan.FromMilliseconds(200), BeforeRead = () => { if (hold) gate.Wait(); } };
+        var warnings = new List<string>();
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }));
+
+        using (var db = TicketsDb.Open(path)) db.Close("A-T1", reference: "done");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(5));
+        hold = true;
+        try
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }), "the last good read while it runs");
+            Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }));
+            Assert.That(watch.Elapsed, Is.LessThan(TimeSpan.FromSeconds(3)), "waited ReadWait once, not per call nor until the read ends");
+            Assert.That(warnings, Has.Count.EqualTo(1).And.Some.Contains("still running"), "said once per refresh's warnings");
+            Assert.That(source.Unknown, Is.Empty, "a last good read stands: not unknown");
+        }
+        finally { gate.Set(); }
+
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        IEnumerable<string> ids;
+        do ids = source.OpenFor(a, warnings).Select(t => t.Id).ToList();
+        while (ids.Contains("A-T1") && DateTime.UtcNow < deadline);
+        Assert.That(ids, Is.EqualTo(new[] { "A-T2" }), "the read that ran long lands");
+    }
+
+    [Test]
     public void A_database_read_that_fails_keeps_the_last_good_read_not_the_markdown()
     {
         // The markdown lags the database: it still lists A-T1 open, and lacks A-T3, which allocate is working.

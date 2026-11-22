@@ -457,7 +457,12 @@ public sealed class DaemonSafetyTests
         now = now.AddSeconds(5); tick.Lap("refresh");
         now = now.AddSeconds(130); tick.Lap("allocate");
         now = now.AddMilliseconds(300); tick.Lap("audit");
-        Assert.That(tick.Slow(), Does.StartWith("a tick took 135s (allocate 130s, refresh 5s)").And.Contain("rl-status.json"));
+        Assert.That(tick.Slow(), Does.StartWith("a tick took 135s (allocate 130s, refresh 5s)").And.Contain("refreshed beside it"));
+
+        // A refresh that itself ran long had nothing beside it (M.ORCH-T1937): the line no longer says it did.
+        tick.Start();
+        now = now.AddSeconds(1358); tick.Lap("refresh");
+        Assert.That(tick.Slow(), Does.Contain("waited on its own refresh").And.Not.Contain("refreshed beside it"));
     }
 
     [Test]
