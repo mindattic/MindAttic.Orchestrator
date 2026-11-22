@@ -317,6 +317,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
             EndedAtUtc = value ? DateTime.UtcNow : null;
             if (value) SetPresumed(null);
             Raise(nameof(StateText));
+            RaiseBadges();
         }
     }
 
@@ -426,11 +427,15 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>The shows pane asking badge.</summary>
     public bool ShowsPaneAskingBadge => !IsPresumedBusy && paneKnown && paneAsking;
 
-    /// <summary>The shows pane idle badge.</summary>
-    public bool ShowsPaneIdleBadge => !IsPresumedBusy && paneKnown && !paneBusy && !paneAsking;
+    /// <summary>A live CLI not known to the status read yet (M.ORCH-T1961): a General Prompt (or any CLI) opened and sitting at
+    /// its prompt has no session, so no agent row, until its first prompt; it's idle, not unknown. Never a Launcher menu pane.</summary>
+    private bool PaneFresh => !paneKnown && !Request.IsMenu && !Ended;
+
+    /// <summary>The shows pane idle badge: idle at a prompt, or a live CLI nobody has prompted yet (<see cref="PaneFresh"/>).</summary>
+    public bool ShowsPaneIdleBadge => !IsPresumedBusy && (paneKnown || PaneFresh) && !paneBusy && !paneAsking;
 
     /// <summary>The icon in words, so it's never only a picture.</summary>
-    public string PaneActivityWord => ShowsPaneGoalBadge ? "Busy on a goal" : IsPresumedBusy ? "Busy" : !paneKnown ? "" : paneAsking ? "Blocked waiting on you" : paneBusy ? "Busy" : "Idle";
+    public string PaneActivityWord => ShowsPaneGoalBadge ? "Busy on a goal" : IsPresumedBusy ? "Busy" : !paneKnown ? (PaneFresh ? "Idle" : "") : paneAsking ? "Blocked waiting on you" : paneBusy ? "Busy" : "Idle";
 
     // ── Presumed busy (M.ORCH-T1413) ────────────────────────────────────────
     // Status is read every ~18 s, so an Enter typed here lights the badges at once, presuming its CLI started work, until a
