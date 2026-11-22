@@ -154,6 +154,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private ReportedUsage? lastReported;
     // Claude's week at the stop line, held until its reset as the hooks latch it (M.ORCH-T438).
     private ReportedWindow? weekStop;
+    private BudgetCalculator.StopHold? stopHold;
     private DateTime? probedReset;
     private DateTime historySavedUtc;
     private IReadOnlyDictionary<string, IReadOnlySet<string>> links = new Dictionary<string, IReadOnlySet<string>>();
@@ -716,8 +717,6 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// a report older than <see cref="ReportedUsage.MaxAge"/> drops out, so without the hold the daemon would lift the stop
     /// (and hand out tickets) while every tool call is still refused. Usage in a week never goes down.
     /// </summary>
-    private BudgetCalculator.StopHold? stopHold;
-
     internal BudgetStatus HoldWeeklyStop(BudgetStatus budget, DateTime now)
     {
         // A held stop below the line as it is now (the weekly reserve lowered, M.ORCH-T609) lifts: the week has room again.

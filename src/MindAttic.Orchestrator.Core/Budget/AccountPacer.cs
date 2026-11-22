@@ -80,8 +80,9 @@ public sealed class AccountPacer
         /// <summary>Claude's week at this login's stop line, held until its reset as the hooks latch it, and the account it was
         /// seen for (bughunt 2026-10-27: the global login's hold, M.ORCH-T438, per login).</summary>
         public ReportedWindow? WeekStop;
-        public BudgetCalculator.StopHold? StopHold;
         public string? WeekStopAccount;
+        /// <summary>The highest stop percent seen in this login's current window (M.ORCH-T2002).</summary>
+        public BudgetCalculator.StopHold? StopHold;
         /// <summary>The signed-in account's plan ("Ultra" has no 5-hour window, M.ORCH-T1885), read once per account signed in:
         /// its .claude.json can run to megabytes.</summary>
         public string? Plan;

@@ -262,10 +262,41 @@ public sealed class BudgetTests
         var b = Windowed(2_000_000) with { StopBlockPercent = 90 };
 
         Assert.That(b.TurnFreshTokens, Is.EqualTo(BudgetCalculator.TurnCap), "one huge turn never sizes the lead past the cap");
-        Assert.That(b.ControlFreshPerHour, Is.GreaterThan(0));
         var held = b with { ControlFreshPerHour = 0 };
         Assert.That(Pacer.StopPercentOf(held, 2), Is.EqualTo(98).Within(0.001), "2 x 400k = 8 points on top, with no burn at all");
         Assert.That(BudgetCalculator.SubagentLead(Windowed(), 5), Is.EqualTo(0), "no turns measured, no lead");
+    }
+
+    [Test]
+    public void The_turn_falls_back_to_the_window_when_nothing_landed_in_the_last_half_hour()
+    {
+        var now = Day.AddHours(11);
+        var old = new[] { new UsageEvent(now.AddHours(-2), new TokenUsage(0, 0, 0, 250_000)) };
+        var b = BudgetCalculator.Compute(old, new OrchestratorSettings { BlockBudget = 10_000_000 }, now, Day);
+
+        Assert.That(b.ControlFreshPerHour, Is.EqualTo(0), "every call held: no recent burn");
+        Assert.That(b.TurnFreshTokens, Is.EqualTo(250_000), "the window's median turn still sizes the lead");
+    }
+
+    [Test]
+    public void No_lead_when_the_window_is_not_sized_from_claudes_reports()
+    {
+        var b = Windowed(200_000);
+
+        Assert.That(b.StopBlockPercent, Is.Null);
+        Assert.That(BudgetCalculator.SubagentLead(b, 4), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void The_pace_stops_at_the_target_once_the_running_subagents_lead_reaches_it()
+    {
+        var now = Day.AddHours(11);
+        var b = Windowed(200_000, 200_000, 200_000) with { StopBlockPercent = 94 };
+        var s = new OrchestratorSettings { PaceTargetPercent = 98 };
+
+        Assert.That(Pacer.Compute(b, 1, null, s, now, 0, 1).Stop, Is.False, "94 + 2 = 96, under 98");
+        Assert.That(Pacer.Compute(b, 3, null, s, now, 0, 2).Stop, Is.True, "94 + 4 = 98 at the target");
+        Assert.That(Pacer.Compute(b with { ControlFreshPerHour = 0 }, 3, null, s, now, 0, 3).Stop, Is.True, "with no burn at all");
     }
 
     [Test]

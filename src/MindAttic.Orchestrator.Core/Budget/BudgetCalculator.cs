@@ -93,7 +93,7 @@ public sealed record BudgetStatus(
     /// Null when the window isn't sized from Claude's reports. Only the stop uses it: every display still shows Claude's number.</summary>
     public double? StopBlockPercent { get; init; }
 
-    /// <summary>The fresh tokens one recent turn costs (the median of the last <see cref="RecentWindow"/>'s turns, capped at
+    /// <summary>The fresh tokens one recent turn costs (the median of the last <see cref="RecentWindow"/>'s turns, else the window's, capped at
     /// <see cref="TurnCap"/>), what a running subagent is assumed to still spend after its last gate pass (M.ORCH-T2002).</summary>
     public long TurnFreshTokens { get; init; }
 
@@ -414,15 +414,18 @@ public static class BudgetCalculator
     /// <summary>The median fresh cost of the turns in the last <see cref="RecentWindow"/>, capped at <see cref="TurnCap"/>; 0 with none.</summary>
     internal static long TurnTokens(IEnumerable<UsageEvent> events, DateTime nowUtc)
     {
-        var from = nowUtc - RecentWindow;
-        var turns = events.Where(e => e.AtUtc >= from && e.AtUtc <= nowUtc && e.Usage.Fresh > 0).Select(e => e.Usage.Fresh).Order().ToList();
+        List<long> Turns(TimeSpan back) => events.Where(e => e.AtUtc >= nowUtc - back && e.AtUtc <= nowUtc && e.Usage.Fresh > 0)
+            .Select(e => e.Usage.Fresh).Order().ToList();
+        // While every call is held nothing lands in the last half hour: fall back to the whole window's turns, so the lead holds.
+        var turns = Turns(RecentWindow);
+        if (turns.Count == 0) turns = Turns(BlockLength);
         return turns.Count == 0 ? 0 : Math.Min(TurnCap, turns[turns.Count / 2]);
     }
 
     /// <summary>The points the stop adds for <paramref name="subagents"/> running now (M.ORCH-T2002): each is assumed to finish one more
     /// turn after its last gate pass (the stop is read only at a tool call), at <see cref="BudgetStatus.TurnFreshTokens"/> of the limit.</summary>
     internal static double SubagentLead(BudgetStatus b, int subagents) =>
-        b.BlockLimit > 0 && subagents > 0 ? 100.0 * subagents * b.TurnFreshTokens / b.BlockLimit : 0;
+        b.BlockLimit > 0 && subagents > 0 && !b.BlockLimitIsPeak && !b.BlockPercentUnknown && b.StopBlockPercent is not null ? 100.0 * subagents * b.TurnFreshTokens / b.BlockLimit : 0;
 
     /// <summary>The highest stop percent seen in a window (M.ORCH-T2002).</summary>
     internal sealed record StopHold(DateTime WindowEndUtc, double Percent);
