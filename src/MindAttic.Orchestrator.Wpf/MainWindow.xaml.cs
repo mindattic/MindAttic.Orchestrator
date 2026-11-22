@@ -397,7 +397,10 @@ public partial class MainWindow : Window
             .On<Status.AppPresence>(Status.AppBus.Presence, (_, presence) => model.Presences.Note(presence), Status.AppBus.Version)
             .On<Status.ShowWorkerRequest>(Status.AppBus.ShowWorker, (_, request) => OnShowWorker(request), Status.AppBus.Version)
             // A CLI's badge state changed (M.ORCH-T1997): its pane's badge follows at once, not at the next status read.
-            .On<Status.AgentStateNotice>(Status.AppBus.AgentState, (_, notice) => OnAgentState(notice), Status.AppBus.Version);
+            .On<Status.AgentStateNotice>(Status.AppBus.AgentState, (_, notice) => OnAgentState(notice), Status.AppBus.Version)
+            // A probe run's health report (M.ORCH-T2033): its results become the health dashboard's per-check rows and history.
+            // Read as raw JSON here, since health+json groups results under "checks"; HealthReport.FromJson reads that shape.
+            .On<System.Text.Json.Nodes.JsonObject>(Status.AppBus.Health, (e, _) => model.OnHealthEnvelope(e), Status.AppBus.HealthVersion);
         // Hosted CLIs (M.ORCH-T926): one started elsewhere (the Launcher, M.LNCH-T82) gets a tab, one that ended is marked ended.
         // /launcher (M.ORCH-T1487) rides the same message: cycle that login's Launcher tabs, or open one.
         bus.On<Term.TermSessionEvent>(Term.TermBus.Kind, (_, session) =>
