@@ -1761,16 +1761,17 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22445541);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 820324);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 58538);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 355692);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 377173);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 612230);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 47333);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2154632);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 19222752);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'GridGame.Studio', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2806116);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'IdiotProof', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 716325);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 692009);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2771277);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2951028);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 0);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13002805);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13485625);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -31580,7 +31581,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "4179ed633d0e63fb60c91695e36cfb547aef77a0"
   },
   "Gadfly": {
-    "Tested": "dc912ccdf50c2222e3a38ed130bd5c5d3ae57aa3",
+    "Tested": "4abdb2cb9032f245a0a6c51e1ffd3083a8ec80aa",
     "Green": "5feb532d1a339f89134f95ff4d8f2f8e21cfd894"
   },
   "IdiotProof": {
@@ -31616,8 +31617,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "5ee0b9f39551c1b029ade92fd5fae7b40ccb411a"
   },
   "MindAttic.Export": {
-    "Tested": "5c842021980c88bc7efa37f59ffc207a59e0aa79",
-    "Green": "5c842021980c88bc7efa37f59ffc207a59e0aa79"
+    "Tested": "d5c5f5774936599977fe5b8cf1475945bce82db1",
+    "Green": "d5c5f5774936599977fe5b8cf1475945bce82db1"
   },
   "MindAttic.Helpers": {
     "Tested": "093dd710ebd0d69cce200b7b790a28bfdec4a06a"
@@ -31631,12 +31632,12 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "24f3ad045b08eb81823bea6bd8781aed7c9d49dc"
   },
   "MindAttic.Legion": {
-    "Tested": "8064beb6cfb100a7953035b1a48da8cca33ce436",
-    "Green": "8064beb6cfb100a7953035b1a48da8cca33ce436"
+    "Tested": "c21a3dfa11713cce03af62bcdc806ff786fb0911",
+    "Green": "c21a3dfa11713cce03af62bcdc806ff786fb0911"
   },
   "MindAttic.Log": {
-    "Tested": "cbbc1e103b04a6aa4c52754850a411c73548200b",
-    "Green": "cbbc1e103b04a6aa4c52754850a411c73548200b"
+    "Tested": "a33af7b48301f1206aac5956e4de9086077b66d8",
+    "Green": "a33af7b48301f1206aac5956e4de9086077b66d8"
   },
   "MindAttic.Media": {
     "Tested": "3a029ca015439bb5a7f1892542593315b4bcc3a1",
@@ -31659,12 +31660,12 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
-    "Tested": "983484ad43dce5a52efc48fdff1c73b4b6eac5ff",
+    "Tested": "e76b9a815bb0cea14f3a283f2363c3e196aeec70",
     "Green": "8111a0ea2faf68b1576f27ab083f1a30991d8b62"
   },
   "OpenCredentials": {
-    "Tested": "dc7b963c623194c24d56a7d24db804f0aa5ef5fb",
-    "Green": "dc7b963c623194c24d56a7d24db804f0aa5ef5fb"
+    "Tested": "847e7b2780b11a403b96ade75ee31d1ab347c69a",
+    "Green": "847e7b2780b11a403b96ade75ee31d1ab347c69a"
   },
   "ProcessLogger": {
     "Tested": "cc3b135f2871814bf71a1646c7d2ea5e1d6422df",
@@ -31982,8 +31983,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "95c4ee516106a414b2f463d01bfe3cef1714faa1"
   },
   "Mods.MechWarrior5.SaveEditor": {
-    "Tested": "e2e9136d78cabeab7d6e39e2a5779cf20b5098d8",
-    "Green": "e2e9136d78cabeab7d6e39e2a5779cf20b5098d8"
+    "Tested": "c4cbfa69575b5eaf97c2908f084cda874009af3a",
+    "Green": "c4cbfa69575b5eaf97c2908f084cda874009af3a"
   },
   "Mods.MechWarrior5.Shared": {
     "Tested": "0038d22ac427af390c01fbcc9d6916806192b981",
@@ -32027,8 +32028,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "47f0de5f51bdbea10e0602f678b83163f6f85f8d"
   },
   "MindAttic.SpeechRecognition": {
-    "Tested": "d6415177903d58591903af39c43f22ade7ccb159",
-    "Green": "d6415177903d58591903af39c43f22ade7ccb159"
+    "Tested": "f16b124e7dd6d5ae9edc4487f018c6cf732be752",
+    "Green": "f16b124e7dd6d5ae9edc4487f018c6cf732be752"
   },
   "MindAttic.Webcam": {
     "Tested": "4eb07b3c8918a874673591cace8c9d5d31eacf71"
