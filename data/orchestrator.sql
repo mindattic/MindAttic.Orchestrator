@@ -1753,9 +1753,9 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Provenance', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 96427);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 15793848);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-21', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22445541);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 134616);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 90797);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6261);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 320591);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 176043);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 15021);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -33436,7 +33436,68 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|UNR-T96": "2026-11-22T06:28:25.6078853Z",
     "approval|UNR-T97": "2026-11-22T06:28:25.6078853Z",
     "approval|UNR-T98": "2026-11-22T06:28:25.6078853Z",
-    "approval|UNR-T99": "2026-11-22T06:28:25.6078853Z"
+    "approval|UNR-T99": "2026-11-22T06:28:25.6078853Z",
+    "approval|COR-T22": "2026-11-22T06:40:54.2727889Z",
+    "approval|COR-T23": "2026-11-22T06:40:54.2727889Z",
+    "approval|COR-T24": "2026-11-22T06:40:54.2727889Z",
+    "approval|IDEA-T61": "2026-11-22T06:40:54.2727889Z",
+    "approval|IDEA-T62": "2026-11-22T06:40:54.2727889Z",
+    "approval|IDEA-T63": "2026-11-22T06:40:54.2727889Z",
+    "approval|IDEA-T64": "2026-11-22T06:40:54.2727889Z",
+    "approval|IDEA-T65": "2026-11-22T06:40:54.2727889Z",
+    "approval|MAT-T179": "2026-11-22T06:40:54.2727889Z",
+    "approval|MAT-T180": "2026-11-22T06:40:54.2727889Z",
+    "approval|MAT-T181": "2026-11-22T06:40:54.2727889Z",
+    "approval|MAT-T182": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.LEGN-T52": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.LEGN-T53": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.LEGN-T54": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.ORCH-T1930": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.ORCH-T1931": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.ORCH-T1935": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T49": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T50": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T51": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T52": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T53": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T54": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T55": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T56": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T57": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T58": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T59": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T60": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T61": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T62": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T63": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T64": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T65": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.RLY-T66": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.VALT-T98": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.VALT-T99": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.VALT-T100": "2026-11-22T06:40:54.2727889Z",
+    "approval|M.VALT-T101": "2026-11-22T06:40:54.2727889Z",
+    "approval|OC-T42": "2026-11-22T06:40:54.2727889Z",
+    "approval|OC-T43": "2026-11-22T06:40:54.2727889Z",
+    "approval|OC-T44": "2026-11-22T06:40:54.2727889Z",
+    "approval|PRS-T1101": "2026-11-22T06:40:54.2727889Z",
+    "approval|PRS-T1102": "2026-11-22T06:40:54.2727889Z",
+    "approval|PRS-T1103": "2026-11-22T06:40:54.2727889Z",
+    "approval|PRS-T1104": "2026-11-22T06:40:54.2727889Z",
+    "approval|PRS-T1105": "2026-11-22T06:40:54.2727889Z",
+    "approval|TRC-T58": "2026-11-22T06:40:54.2727889Z",
+    "approval|TRC-T59": "2026-11-22T06:40:54.2727889Z",
+    "approval|TRC-T60": "2026-11-22T06:40:54.2727889Z",
+    "approval|TT-T62": "2026-11-22T06:40:54.2727889Z",
+    "approval|TT-T63": "2026-11-22T06:40:54.2727889Z",
+    "approval|TT-T64": "2026-11-22T06:40:54.2727889Z",
+    "approval|TUT-T69": "2026-11-22T06:40:54.2727889Z",
+    "approval|TUT-T70": "2026-11-22T06:40:54.2727889Z",
+    "approval|TUT-T71": "2026-11-22T06:40:54.2727889Z",
+    "approval|TUT-T72": "2026-11-22T06:40:54.2727889Z",
+    "approval|TUT-T73": "2026-11-22T06:40:54.2727889Z",
+    "approval|UNR-T100": "2026-11-22T06:40:54.2727889Z",
+    "approval|UNR-T101": "2026-11-22T06:40:54.2727889Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
