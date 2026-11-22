@@ -196,23 +196,25 @@ internal sealed class CommitProjectsWindow : Window
         int pushed = 0, nothing = 0, failed = 0;
         try
         {
-            foreach (var project in picked)
+            // One run (M.ORCH-T2044): each commit is aligned to a ticket, MindAttic.Tickets goes last, and the ticket database
+            // is synced after them when it wasn't picked; each result is told here as it lands.
+            void Heard(ProjectCommitResult r)
             {
-                ProjectCommitResult r;
-                try { r = await Task.Run(() => ProjectCommit.CommitAndPush(project, text)); }
-                catch (Exception ex) when (ex is not OutOfMemoryException)
-                {
-                    OrchestratorLog.For("Dashboard").Error(ex, "Commit and push {Project:l} failed; contained", project.Name);
-                    r = new(project, ProjectCommitOutcome.Failed, ex.Message);
-                }
                 switch (r.Outcome)
                 {
                     case ProjectCommitOutcome.Pushed: pushed++; break;
                     case ProjectCommitOutcome.NothingToDo: nothing++; break;
                     default: failed++; break;
                 }
-                Say($"  {project.Name}: {r.Detail}");
-                OrchestratorLog.For("Dashboard").Information("Commit and push {Project:l}: {Outcome} {Detail:l}", project.Name, r.Outcome, r.Detail);
+                Say($"  {r.Project.Name}: {r.Detail}");
+                OrchestratorLog.For("Dashboard").Information("Commit and push {Project:l}: {Outcome} {Detail:l}", r.Project.Name, r.Outcome, r.Detail);
+            }
+            try { await Task.Run(() => ProjectCommit.CommitAndPushAll(picked, text, r => Dispatcher.Invoke(() => Heard(r)))); }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                OrchestratorLog.For("Dashboard").Error(ex, "Commit and push failed; contained");
+                failed++;
+                Say($"  {ex.Message}");
             }
             Say($"Done: {pushed} pushed, {nothing} with nothing to do, {failed} failed.");
         }
