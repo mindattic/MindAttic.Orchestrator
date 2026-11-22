@@ -458,6 +458,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var budget = BudgetCalculator.Compute(events, paceSettings, now, startOfTodayUtc, learned: calibration,
             reported: reported, reportedLimit: reportedLimit, ledgerFromUtc: signIn?.LedgerFrom, reportedSeenUtc: ReportedLimit.FirstSeen(mine, reported));
         budget = HoldWeeklyStop(budget, now);
+        budget = BudgetCalculator.HoldStopPercent(budget, ref stopHold);
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = subscriptionSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
@@ -715,6 +716,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// a report older than <see cref="ReportedUsage.MaxAge"/> drops out, so without the hold the daemon would lift the stop
     /// (and hand out tickets) while every tool call is still refused. Usage in a week never goes down.
     /// </summary>
+    private BudgetCalculator.StopHold? stopHold;
+
     internal BudgetStatus HoldWeeklyStop(BudgetStatus budget, DateTime now)
     {
         // A held stop below the line as it is now (the weekly reserve lowered, M.ORCH-T609) lifts: the week has room again.

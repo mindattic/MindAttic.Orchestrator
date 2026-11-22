@@ -201,7 +201,7 @@ public static class Pacer
         {
             var spentOut = !b.BlockLimitIsPeak && b.BlockLimit > 0 && b.CurrentBlock is { } blk &&
                 (blk.Usage.Fresh >= b.BlockLimit * Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0 ||
-                 StopPercentOf(b) / 100.0 >= Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0);
+                 StopPercentOf(b, subagents) / 100.0 >= Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0);
             // Said when it's so: "Pacing is off." alone read as nothing held while the gate refused every call (M.ORCH-T466).
             var offNote = spentOut && b.CurrentBlock is { } end
                 ? $"Pacing is off, but the 5-hour window is at its target: tool calls are refused until it resets at {Formatting.ResetTime(end.EndUtc, nowUtc)}."
@@ -270,7 +270,7 @@ public static class Pacer
         // and the stop would wait for the hooks' own line (M.ORCH-T1087).
         // And by the percent the spend since Claude's last reading and the next minute's burn put it at, not the last reading alone
         // (M.ORCH-T1110: the 98% stop landed at the next refresh's 99%, and the window ran on to 100%).
-        var atTarget = windows.Any(w => w.Used >= w.Limit * target) || (b.CurrentBlock is not null && StopPercentOf(b) / 100.0 >= target);
+        var atTarget = windows.Any(w => w.Used >= w.Limit * target) || (b.CurrentBlock is not null && StopPercentOf(b, subagents) / 100.0 >= target);
         // No wind-down note at the target itself (M.ORCH-T741): the per-call hold (ThrottleAgents) already slows agents on
         // the way there; the owner's rule is just that nothing warns in advance of the cutoff, it simply refuses calls there.
 
@@ -330,6 +330,10 @@ public static class Pacer
     /// <summary>The 5-hour percent the stop goes by (M.ORCH-T1110): <see cref="BudgetStatus.StopBlockPercent"/> where the window is
     /// sized from Claude's reports, else <see cref="BudgetStatus.BlockPercent"/>.</summary>
     internal static double StopPercentOf(BudgetStatus b) => Math.Max(b.BlockPercent, b.StopBlockPercent ?? 0);
+
+    /// <summary><see cref="StopPercentOf(BudgetStatus)"/> plus the lead for the <paramref name="subagents"/> running now, each assumed to
+    /// finish one more turn after its last gate pass (M.ORCH-T2002): the lead the near-zero held burn could not give.</summary>
+    internal static double StopPercentOf(BudgetStatus b, int subagents) => StopPercentOf(b) + BudgetCalculator.SubagentLead(b, subagents);
 
     /// <summary>
     /// The uncached tokens per hour that keep a window on its pace curve. Linear (<paramref name="k"/> = 1): what's left of the

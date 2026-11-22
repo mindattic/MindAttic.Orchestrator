@@ -237,4 +237,56 @@ public sealed class BudgetTests
         }
         finally { File.Delete(path); }
     }
+
+    private static BudgetStatus Windowed(params long[] turns)
+    {
+        var now = Day.AddHours(11);
+        var events = turns.Select((t, i) => new UsageEvent(now.AddMinutes(-1 - i), new TokenUsage(0, 0, 0, t))).ToList();
+        return BudgetCalculator.Compute(events, new OrchestratorSettings { BlockBudget = 10_000_000 }, now, Day);
+    }
+
+    [Test]
+    public void The_stop_leads_by_each_running_subagents_next_turn_at_the_median_recent_turn()
+    {
+        var b = Windowed(100_000, 200_000, 300_000) with { StopBlockPercent = 90 };
+
+        Assert.That(b.TurnFreshTokens, Is.EqualTo(200_000), "the median turn");
+        Assert.That(Pacer.StopPercentOf(b, 0), Is.EqualTo(90).Within(0.001));
+        Assert.That(Pacer.StopPercentOf(b, 3), Is.EqualTo(96).Within(0.001), "3 x 200k of a 10M limit is 6 points");
+        Assert.That(BudgetCalculator.SubagentLead(b, 3), Is.EqualTo(6).Within(0.001));
+    }
+
+    [Test]
+    public void The_turn_is_capped_and_the_lead_stands_while_the_held_burn_is_near_zero()
+    {
+        var b = Windowed(2_000_000) with { StopBlockPercent = 90 };
+
+        Assert.That(b.TurnFreshTokens, Is.EqualTo(BudgetCalculator.TurnCap), "one huge turn never sizes the lead past the cap");
+        Assert.That(b.ControlFreshPerHour, Is.GreaterThan(0));
+        var held = b with { ControlFreshPerHour = 0 };
+        Assert.That(Pacer.StopPercentOf(held, 2), Is.EqualTo(98).Within(0.001), "2 x 400k = 8 points on top, with no burn at all");
+        Assert.That(BudgetCalculator.SubagentLead(Windowed(), 5), Is.EqualTo(0), "no turns measured, no lead");
+    }
+
+    [Test]
+    public void A_lower_fresh_report_never_lowers_the_stop_within_the_window()
+    {
+        BudgetCalculator.StopHold? hold = null;
+        var high = BudgetCalculator.HoldStopPercent(Windowed(1) with { StopBlockPercent = 97.8 }, ref hold);
+        var rebased = BudgetCalculator.HoldStopPercent(Windowed(1) with { StopBlockPercent = 95.0 }, ref hold);
+        var passed = BudgetCalculator.HoldStopPercent(Windowed(1) with { StopBlockPercent = 98.5 }, ref hold);
+
+        Assert.That(high.StopBlockPercent, Is.EqualTo(97.8));
+        Assert.That(rebased.StopBlockPercent, Is.EqualTo(97.8), "the re-based 95.0 is held at 97.8");
+        Assert.That(passed.StopBlockPercent, Is.EqualTo(98.5), "until the figure itself passes it");
+    }
+
+    [Test]
+    public void The_held_stop_lifts_when_the_window_resets()
+    {
+        BudgetCalculator.StopHold? hold = new(Day.AddHours(-9), 99);
+        var next = BudgetCalculator.HoldStopPercent(Windowed(1) with { StopBlockPercent = 10 }, ref hold);
+
+        Assert.That(next.StopBlockPercent, Is.EqualTo(10), "a different window starts clean");
+    }
 }

@@ -93,6 +93,10 @@ public sealed record BudgetStatus(
     /// Null when the window isn't sized from Claude's reports. Only the stop uses it: every display still shows Claude's number.</summary>
     public double? StopBlockPercent { get; init; }
 
+    /// <summary>The fresh tokens one recent turn costs (the median of the last <see cref="RecentWindow"/>'s turns, capped at
+    /// <see cref="TurnCap"/>), what a running subagent is assumed to still spend after its last gate pass (M.ORCH-T2002).</summary>
+    public long TurnFreshTokens { get; init; }
+
     /// <summary>True when the window has no percent at all (M.ORCH-T1669): no Claude reading and no earlier block to compare to, so
     /// <see cref="BlockPercent"/> holds 0 only as a safe number for the gates (they never read a peak-relative percent as a limit);
     /// displays (the 5hr pill, the chart) show it as unknown instead of 0%.</summary>
@@ -363,6 +367,7 @@ public static class BudgetCalculator
             week, weeklyLimit, weeklyPercent, perHour, projected, settings.WarnPercent)
         {
             StopBlockPercent = stopPercent is { } sp ? Math.Max(sp, blockPercent) : null,
+            TurnFreshTokens = TurnTokens(events, nowUtc),
             BlockPercentUnknown = reportedBlockPercent is null && isPeak && peak <= 0,
             WeekStartUtc = weekStart,
             WeekResetUtc = weekReset,
@@ -401,6 +406,43 @@ public static class BudgetCalculator
         if (limit <= 0) return Math.Min(100, reportedPercent);
         var since = events.Where(e => e.AtUtc > seenUtc && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh);
         return Math.Min(100, reportedPercent) + 100.0 * (since + Math.Max(0, perHour) * StopLead.TotalHours) / limit;
+    }
+
+    /// <summary>The most one turn is assumed to cost (M.ORCH-T2002): the Nov 22 resumed turns rewrote 180-410k of context each.</summary>
+    public const long TurnCap = 400_000;
+
+    /// <summary>The median fresh cost of the turns in the last <see cref="RecentWindow"/>, capped at <see cref="TurnCap"/>; 0 with none.</summary>
+    internal static long TurnTokens(IEnumerable<UsageEvent> events, DateTime nowUtc)
+    {
+        var from = nowUtc - RecentWindow;
+        var turns = events.Where(e => e.AtUtc >= from && e.AtUtc <= nowUtc && e.Usage.Fresh > 0).Select(e => e.Usage.Fresh).Order().ToList();
+        return turns.Count == 0 ? 0 : Math.Min(TurnCap, turns[turns.Count / 2]);
+    }
+
+    /// <summary>The points the stop adds for <paramref name="subagents"/> running now (M.ORCH-T2002): each is assumed to finish one more
+    /// turn after its last gate pass (the stop is read only at a tool call), at <see cref="BudgetStatus.TurnFreshTokens"/> of the limit.</summary>
+    internal static double SubagentLead(BudgetStatus b, int subagents) =>
+        b.BlockLimit > 0 && subagents > 0 ? 100.0 * subagents * b.TurnFreshTokens / b.BlockLimit : 0;
+
+    /// <summary>The highest stop percent seen in a window (M.ORCH-T2002).</summary>
+    internal sealed record StopHold(DateTime WindowEndUtc, double Percent);
+
+    /// <summary>
+    /// Keeps <see cref="BudgetStatus.StopBlockPercent"/> from falling inside a window: a fresh whole-percent report re-bases the
+    /// spend-since term and dropped the judged 97.8 to 95.0, lifting the stop while held calls could not rebuild it. The higher
+    /// figure stands until the window resets (or the report itself passes it).
+    /// </summary>
+    internal static BudgetStatus HoldStopPercent(BudgetStatus b, ref StopHold? held)
+    {
+        if (b.CurrentBlock is not { } block || b.StopBlockPercent is not { } now)
+        {
+            held = null;
+            return b;
+        }
+        if (held is not null && Math.Abs((held.WindowEndUtc - block.EndUtc).TotalMinutes) > 30) held = null;
+        var top = Math.Max(now, held?.Percent ?? 0);
+        held = new StopHold(block.EndUtc, top);
+        return top > now ? b with { StopBlockPercent = top } : b;
     }
 
     /// <summary>A window's limit in tokens from Claude's own percent: what the window had spent by the
