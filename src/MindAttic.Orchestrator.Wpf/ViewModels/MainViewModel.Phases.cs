@@ -54,6 +54,7 @@ public sealed partial class MainViewModel
         allocate = root?.allocate ?? new Allocate(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), lease) { WaitingPath = Allocate.DefaultWaitingPath };
         ToggleLoginsCommand = new RelayCommand(() => IsLoginsOpen = !IsLoginsOpen);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
+        OpenLauncherSettingsCommand = new RelayCommand(OpenLauncherSettings);
     }
 
     // ── Settings (LAMP, M.ORCH-T1308) ───────────────────────────────────────
@@ -84,6 +85,36 @@ public sealed partial class MainViewModel
         }
         return opened ? null : new ToastViewModel("Settings live in MindAttic Vault",
             "MindAttic.Vault.Desktop isn't installed or didn't start. Install it (MindAttic.Vault's run.ps1) to change the orchestrator's settings; orchestrator settings still changes them from the command line.",
+            Palette.Over, null);
+    }
+
+    /// <summary>The toolbar's Launcher settings button (M.ORCH-T2024): MindAttic.Vault.Desktop at the Launcher's own bucket (its agent
+    /// CLIs and their models, API keys, GitHub token, Windows Terminal path), as the Launcher's own SettingsMenu opens it. Says so
+    /// when Vault.Desktop isn't installed.</summary>
+    public ICommand OpenLauncherSettingsCommand { get; private set; } = null!;
+
+    /// <summary>What opens the Vault at the Launcher's bucket (a seam for tests): true when Vault.Desktop took the request.</summary>
+    internal Func<bool> OpenLauncherVault { get; set; } =
+        () => MindAttic.Vault.Launch.VaultSettings.Open(ProviderCredentials.LauncherAppId);
+
+    private void OpenLauncherSettings()
+    {
+        if (OpenLauncherSettingsWith(OpenLauncherVault) is { } toast) Toasts.Insert(0, toast);
+    }
+
+    /// <summary>What the Launcher settings button does: <paramref name="openVault"/> (MindAttic.Vault.Desktop at the Launcher's
+    /// bucket), and the toast to show when it didn't open, else null.</summary>
+    internal static ToastViewModel? OpenLauncherSettingsWith(Func<bool> openVault)
+    {
+        bool opened;
+        try { opened = openVault(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Dashboard").Warning(ex, "Opening MindAttic Vault at the Launcher's settings failed");
+            opened = false;
+        }
+        return opened ? null : new ToastViewModel("Launcher settings live in MindAttic Vault",
+            "MindAttic.Vault.Desktop isn't installed or didn't start. Install it (MindAttic.Vault's run.ps1) to change the Launcher's agent CLIs, models, API keys, GitHub token and Windows Terminal path.",
             Palette.Over, null);
     }
 

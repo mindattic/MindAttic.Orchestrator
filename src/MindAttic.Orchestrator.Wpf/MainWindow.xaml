@@ -452,6 +452,10 @@
                         <TextBlock Text="Settings" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
                         <Button x:Name="ToolbarSettingsButton" Style="{StaticResource MaToolButton}" Content="&#xE713;" Command="{Binding OpenSettingsCommand}"
                                 mc:MaCallout.ToolTip="Settings (opens MindAttic Vault)" AutomationProperties.Name="Settings" />
+                        <!-- Launcher settings (M.ORCH-T2024): MindAttic Vault at the Launcher's own bucket, as its SettingsMenu opens it. -->
+                        <Button x:Name="ToolbarLauncherSettingsButton" Style="{StaticResource MaToolButton}" Content="&#xE90F;" Command="{Binding OpenLauncherSettingsCommand}"
+                                mc:MaCallout.ToolTip="Launcher settings (opens MindAttic Vault at the Launcher's agent CLIs and models, API keys, GitHub token and Windows Terminal path)"
+                                AutomationProperties.Name="Launcher settings" />
                     </StackPanel>
                     <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
                     <!-- Launcher: tab.RunLauncherCommand, the same command the per-login menu's own "Run Launcher" item
