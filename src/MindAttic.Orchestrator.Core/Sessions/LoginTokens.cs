@@ -91,6 +91,11 @@ public sealed partial class LoginTokens(TokenStore? store = null)
 
     private TokenStore Store => store ?? Shared.Value;
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> Gates = new();
+
+    /// <summary>How long a save or read waits on the store's locks before saying it's busy.</summary>
+    private static readonly TimeSpan BusyWait = TimeSpan.FromSeconds(60);
+
     /// <summary>Holds a cross-process lock (a named mutex on the store's folder) while <paramref name="work"/> runs, so two
     /// processes' read-modify-write of tokens.json, or a read during the other's File.Replace, never interleave.</summary>
     private T Locked<T>(Func<TokenStore, T> work)
@@ -98,16 +103,24 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         var s = Store;
         var key = Path.GetFullPath(s.Directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).ToUpperInvariant();
         var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(key)))[..24];
-        using var mutex = new Mutex(false, @"Global\MindAttic.Orchestrator.LoginTokens." + hash);
-        var held = false;
+        // In-process callers queue here first (M.ORCH-T1992): on a pegged machine a dozen threads each polling the named mutex
+        // starved one another past its wait; now only one thread per store at a time ever waits on the cross-process mutex.
+        var gate = Gates.GetOrAdd(hash, _ => new SemaphoreSlim(1, 1));
+        if (!gate.Wait(BusyWait)) throw new StoreBusyException();
         try
         {
-            try { held = mutex.WaitOne(TimeSpan.FromSeconds(15)); }
-            catch (AbandonedMutexException) { held = true; }
-            if (!held) throw new StoreBusyException();
-            return work(s);
+            using var mutex = new Mutex(false, @"Global\MindAttic.Orchestrator.LoginTokens." + hash);
+            var held = false;
+            try
+            {
+                try { held = mutex.WaitOne(BusyWait); }
+                catch (AbandonedMutexException) { held = true; }
+                if (!held) throw new StoreBusyException();
+                return work(s);
+            }
+            finally { if (held) mutex.ReleaseMutex(); }
         }
-        finally { if (held) mutex.ReleaseMutex(); }
+        finally { gate.Release(); }
     }
 
     /// <summary>Throws unless tokens.json is absent, empty or readable JSON: a failed read (sharing violation, damage) must
