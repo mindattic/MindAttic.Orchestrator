@@ -937,6 +937,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 3600)]
     public double MeterStatesSeconds { get; set; } = 30;
 
+    /// <summary>Seconds between the dashboard's re-raises of every login's busy/subagent-sum figures (M.ORCH-T1838).</summary>
+    [Setting("Re-raise busy/subagent counts every (s)", Group = "Dashboard", Order = 14,
+        Help = "Seconds between the dashboard's re-raises of every login's busy/subagent-sum figures (the number in its busy spinner, and each CLI row's own share of it): a tick of its own, independent of the poll/push refresh, so those figures stay current between them.")]
+    [SettingRange(1, 3600)]
+    public double BusyCountRefreshSeconds { get; set; } = 5;
+
     /// <summary>Milliseconds the dashboard's UI thread may keep input waiting before the stall is logged with the work it was in; 0 turns the probe off.</summary>
     [Setting("Log a UI stall over (ms)", Group = "Dashboard", Order = 24,
         Help = "Milliseconds the dashboard's UI thread may keep input (your typing into a CLI tab) waiting before the stall is written to the log, with the work the thread was doing. 0 turns the probe off.")]
@@ -1107,6 +1113,7 @@ public sealed class OrchestratorVaultSettings
         LauncherRespawnSeconds = s.LauncherRespawnSeconds,
         ElevatedTermWaitSeconds = s.ElevatedTermWaitSeconds,
         MeterStatesSeconds = s.MeterStatesSeconds,
+        BusyCountRefreshSeconds = s.BusyCountRefreshSeconds,
         UiStallLogMs = s.UiStallLogMs,
         TestTermHostSweepMinutes = s.TestTermHostSweepMinutes,
         OrgReachSpacingMinutes = s.OrgReachSpacingMinutes,
@@ -1292,6 +1299,7 @@ public sealed class OrchestratorVaultSettings
         LauncherRespawnSeconds = LauncherRespawnSeconds,
         ElevatedTermWaitSeconds = ElevatedTermWaitSeconds,
         MeterStatesSeconds = MeterStatesSeconds,
+        BusyCountRefreshSeconds = BusyCountRefreshSeconds,
         UiStallLogMs = UiStallLogMs,
         TestTermHostSweepMinutes = TestTermHostSweepMinutes,
         OrgReachSpacingMinutes = OrgReachSpacingMinutes,

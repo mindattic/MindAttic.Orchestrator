@@ -32,6 +32,10 @@ internal static class DashboardTimings
     /// <summary>The login meters' reread: <see cref="OrchestratorSettings.MeterStatesSeconds"/>.</summary>
     public static TimeSpan MeterStates { get; private set; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>The busy/subagent-sum figures' own re-raise, independent of the poll/push refresh (M.ORCH-T1838):
+    /// <see cref="OrchestratorSettings.BusyCountRefreshSeconds"/>.</summary>
+    public static TimeSpan BusyCountRefresh { get; private set; } = TimeSpan.FromSeconds(5);
+
     /// <summary>How long the UI thread may keep input waiting before the stall is logged (M.ORCH-T1733); zero is off:
     /// <see cref="OrchestratorSettings.UiStallLogMs"/>.</summary>
     public static TimeSpan UiStallLog { get; private set; } = TimeSpan.FromMilliseconds(100);
@@ -75,6 +79,7 @@ internal static class DashboardTimings
         LauncherSpacing = OrchestratorSettings.SecondsSpan(s.LauncherRespawnSeconds, 1);
         ElevatedTermWait = OrchestratorSettings.SecondsSpan(s.ElevatedTermWaitSeconds, 5);
         MeterStates = OrchestratorSettings.SecondsSpan(s.MeterStatesSeconds, 1);
+        BusyCountRefresh = OrchestratorSettings.SecondsSpan(s.BusyCountRefreshSeconds, 1);
         UiStallLog = TimeSpan.FromMilliseconds(Math.Max(0, s.UiStallLogMs));
         // At least 50ms, so a refresh's blink queue stays bounded.
         TabBlinkMinSpacing = OrchestratorSettings.SecondsSpan(s.TabBlinkMinSpacingMs / 1000, 0.05);

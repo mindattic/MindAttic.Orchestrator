@@ -714,6 +714,10 @@ public sealed record OrchestratorSettings
     /// <summary>Seconds between the dashboard's rereads of each login's meter state (when it was last read, who must sign in again).</summary>
     public double MeterStatesSeconds { get; init; } = 30;
 
+    /// <summary>Seconds between the dashboard's re-raises of every login's busy/subagent-sum figures (M.ORCH-T1838): a tick of
+    /// its own, independent of the poll/push refresh, so those figures stay current between them.</summary>
+    public double BusyCountRefreshSeconds { get; init; } = 5;
+
     /// <summary>Milliseconds the dashboard's UI thread may keep input waiting before the stall is logged with the work it was in
     /// (M.ORCH-T1733, <c>UiStallProbe</c>); 0 turns the probe off.</summary>
     public double UiStallLogMs { get; init; } = 100;

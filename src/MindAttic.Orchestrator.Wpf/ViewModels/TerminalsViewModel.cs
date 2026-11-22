@@ -500,7 +500,9 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// signal takes over), or it was taken <see cref="PresumeConfirmAfter"/> or more after the Enter and still reads it idle.</summary>
     internal static bool EndsPresumption(DateTime sinceUtc, bool busy, DateTime takenUtc) => busy || takenUtc - sinceUtc >= PresumeConfirmAfter;
 
-    private void RaiseBadges()
+    /// <summary>Re-raises this pane's badges, including its own share of the busy/subagent-sum count (M.ORCH-T1838): also called
+    /// by <see cref="PersonTerminalsViewModel.RaiseWorkCounts"/>, the login's own tick independent of the poll/push refresh.</summary>
+    internal void RaiseBadges()
     {
         Raise(nameof(ShowsPaneBusyBadge)); Raise(nameof(ShowsPaneGoalBadge)); Raise(nameof(PaneGoalTip));
         Raise(nameof(ShowsPaneAskingBadge)); Raise(nameof(ShowsPaneIdleBadge)); Raise(nameof(PaneActivityWord));
@@ -1830,6 +1832,13 @@ public sealed class PersonTerminalsViewModel : ObservableObject
 
     /// <summary>Whether panes.</summary>
     public bool HasPanes => Panes.Count > 0;
+
+    /// <summary>Re-raises every pane's own share of the busy/subagent-sum count (M.ORCH-T1838, <see cref="MainViewModel.RaiseBusyCounts"/>'s
+    /// own tick, independent of the poll/push refresh).</summary>
+    internal void RaiseWorkCounts()
+    {
+        foreach (var pane in Panes) pane.RaiseBadges();
+    }
 
     /// <summary>The pinned Usage tab (M.ORCH-T1446, at index 0 of the strip, never one of <see cref="Panes"/>) is chosen:
     /// <see cref="ShowsTerminal"/> hides the terminal area so it shows this login's 5-hour/weekly charts instead, while

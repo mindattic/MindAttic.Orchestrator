@@ -541,6 +541,15 @@ public sealed partial class MainViewModel
              " Prices are Anthropic's list prices applied to the transcripts' tokens, an estimate.",
     };
 
+    /// <summary>Re-raises this login's busy/subagent-sum figures (M.ORCH-T1838): the number in its busy spinner, and each open
+    /// CLI row's own share of it, so both stay current on <see cref="MainWindow"/>'s own <c>BusyCountRefreshSeconds</c> tick,
+    /// independent of the poll/push refresh that would otherwise have to fire for either to move.</summary>
+    internal void RaiseBusyCounts()
+    {
+        Raise(nameof(TabThinkingCount)); Raise(nameof(TabThinkingCountText)); Raise(nameof(ShowsTabThinkingCount)); Raise(nameof(TabThinkingWord));
+        Terminals?.RaiseWorkCounts();
+    }
+
     /// <summary>Raises everything the tab strip shows for this tab.</summary>
     private void RaiseTabStatus()
     {
@@ -605,7 +614,10 @@ public sealed partial class MainViewModel
     private void OnClockTick(object? sender, EventArgs e)
     {
         clockTimer?.Stop();
-        foreach (var t in loginTabs) { t.RaiseTabStatus(); t.Raise(nameof(TabStaleLine)); }
+        // Re-raises the person page's own "N ago" tiles too (M.ORCH-T2000): LastUpdatedHeadline/LastUpdatedCaption (and
+        // WeeklyAccountLine's "checked N ago"/STALE wording) tick the same way the tab strip's figures do, instead of only
+        // moving on the next pushed reading (RaiseLiveNumbers' own RaiseOwnNumbers call).
+        foreach (var t in loginTabs) { t.RaiseTabStatus(); t.RaiseOwnNumbers(); t.Raise(nameof(TabStaleLine)); }
     }
 
     /// <summary>Marks <paramref name="email"/>'s sign-in as in progress (null: none) and relights every tab.</summary>
