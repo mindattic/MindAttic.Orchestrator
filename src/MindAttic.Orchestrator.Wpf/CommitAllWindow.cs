@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,7 +12,7 @@ namespace MindAttic.Orchestrator.Wpf;
 /// A blank message lets the Launcher write one per project from its status. Built from MindAttic.Components.Wpf, like
 /// <see cref="BuildWorkspaceWindow"/>.
 /// </summary>
-public sealed class CommitAllWindow : Window
+public sealed partial class CommitAllWindow : Window
 {
     private readonly TextBox message = new();
     private readonly TextBox output = new() { IsReadOnly = true, FontFamily = new System.Windows.Media.FontFamily("Consolas"), FontSize = 12 };
@@ -100,10 +101,15 @@ public sealed class CommitAllWindow : Window
         var text = string.IsNullOrWhiteSpace(message.Text) ? null : message.Text.Trim();
         Say(text is null ? "Committing every dirty project (messages written per project)…" : $"Committing every dirty project as \"{text}\"…");
         int exit;
+        var created = new List<string>();
         try
         {
             var dispatcher = Dispatcher;
-            exit = await run(text, line => dispatcher.BeginInvoke(() => Say(line)));
+            exit = await run(text, line => dispatcher.BeginInvoke(() =>
+            {
+                foreach (var id in CreatedTickets(line)) if (!created.Contains(id)) created.Add(id);
+                Say(line);
+            }));
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -115,6 +121,7 @@ public sealed class CommitAllWindow : Window
         await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Background);
         Say("");
         Say(exit == 0 ? "Done: every project committed and pushed, or had nothing to commit." : "Done, with failures: see the lines above.");
+        if (created.Count > 0) Say($"New tickets: {string.Join(", ", created)}");
         bar.IsIndeterminate = false;
         bar.Value = bar.Maximum;
         running = false;
@@ -122,4 +129,12 @@ public sealed class CommitAllWindow : Window
         commit.Content = "Close";
         commit.IsEnabled = true;
     }
+
+    [GeneratedRegex(@"\bnew ticket ((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)\b")]
+    private static partial Regex NewTicketPattern();
+
+    /// <summary>The tickets a line of the Launcher's <c>commit</c> output says its commit created ("new ticket ID", M.ORCH-T2045),
+    /// gathered so the run's end names every one.</summary>
+    internal static IEnumerable<string> CreatedTickets(string line) =>
+        NewTicketPattern().Matches(line).Select(m => m.Groups[1].Value);
 }

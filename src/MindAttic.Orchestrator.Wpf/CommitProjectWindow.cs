@@ -126,10 +126,10 @@ internal sealed class CommitProjectWindow : Window
             OrchestratorLog.For("Dashboard").Error(ex, "Commit {Project:l} failed; contained", project.Name);
             result = new(project, ProjectCommitOutcome.Failed, ex.Message);
         }
-        OrchestratorLog.For("Dashboard").Information("Commit {Project:l}: {Outcome} {Detail:l}", project.Name, result.Outcome, result.Detail);
+        OrchestratorLog.For("Dashboard").Information("Commit {Project:l}: {Outcome} {Detail:l}", project.Name, result.Outcome, result.DetailWithTicket);
         bar.IsIndeterminate = false;
         bar.Value = bar.Maximum;
-        status.Text = result.Detail;
+        status.Text = result.DetailWithTicket; // names the ticket the commit used or created (M.ORCH-T2045)
         running = false;
         if (result.Outcome == ProjectCommitOutcome.Failed)
         {

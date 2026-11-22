@@ -20,7 +20,17 @@ public enum ProjectCommitOutcome
 /// <summary>The project commit result record: <paramref name="TicketId"/> is the ticket the commit names (one the message already
 /// named, or one <see cref="ProjectCommit"/> created for it, then <paramref name="TicketCreated"/>).</summary>
 public sealed record ProjectCommitResult(
-    RosterProject Project, ProjectCommitOutcome Outcome, string Detail, string? TicketId = null, bool TicketCreated = false);
+    RosterProject Project, ProjectCommitOutcome Outcome, string Detail, string? TicketId = null, bool TicketCreated = false)
+{
+    /// <summary>The ticket the commit names, as the commit windows show it (M.ORCH-T2045): "new ticket ID" when the run created
+    /// it, "ticket ID" when the message already named it; empty when there is none.</summary>
+    public string TicketNote => TicketId is null ? "" : TicketCreated ? $"new ticket {TicketId}" : $"ticket {TicketId}";
+
+    /// <summary><see cref="Detail"/> with <see cref="TicketNote"/> added when the detail doesn't already name the ticket (a
+    /// failed push, say, after the commit was aligned).</summary>
+    public string DetailWithTicket =>
+        TicketId is null || Detail.Contains(TicketId, StringComparison.Ordinal) ? Detail : $"{Detail} ({TicketNote})";
+}
 
 /// <summary>
 /// The picker tree's "Commit and push" (M.ORCH-T1589): every project picked in the tree gets its whole working tree committed
@@ -44,16 +54,32 @@ public static partial class ProjectCommit
     /// <summary>The db sync commit's subject, before the ticket it carries is appended.</summary>
     public const string SyncMessage = "Sync the ticket database";
 
+    /// <summary>Prose's local agent state (ported from the Launcher's GitService.LocalStatePaths, M.ORCH-T2045): Prose's own
+    /// .gitignore keeps it out of every repo (<c>.prose/commands</c> is tracked), so a commit never stages it, and a repo whose
+    /// only changes are that state reads as clean.</summary>
+    public static readonly IReadOnlyList<string> LocalStatePaths =
+    [
+        ":(glob).prose/agent-session.json*",
+        ":(glob).prose/agent-queue.json*",
+        ".prose/quicksave.md",
+        ".prose/archive",
+    ];
+
+    /// <summary>The whole working tree minus <see cref="LocalStatePaths"/>, for <c>git status</c> only: <c>git add</c> refuses an
+    /// exclude naming a .gitignored path, so staging adds everything and then unstages <see cref="LocalStatePaths"/> instead.</summary>
+    public static readonly IReadOnlyList<string> WorkingTreePathspec =
+        [".", .. LocalStatePaths.Select(p => p.StartsWith(":(glob)", StringComparison.Ordinal) ? ":(exclude,glob)" + p[7..] : ":(exclude)" + p)];
+
     private static readonly HashSet<string> DocExtensions = new(StringComparer.OrdinalIgnoreCase) { ".md", ".htm", ".html", ".txt" };
 
-    /// <summary>How many files <paramref name="path"/>'s working tree has changed (git status --porcelain), or null when it
-    /// isn't a git checkout git can read.</summary>
+    /// <summary>How many files <paramref name="path"/>'s working tree has changed (git status --porcelain, Prose's local agent
+    /// state aside), or null when it isn't a git checkout git can read.</summary>
     public static int? ChangedFiles(string path, IProcessRunner? runner = null)
     {
         if (!Directory.Exists(path)) return null;
         try
         {
-            var r = (runner ?? ProcessRunner.Default).Run("git", ["-C", path, "status", "--porcelain"], GitTimeout);
+            var r = (runner ?? ProcessRunner.Default).Run("git", ["-C", path, "status", "--porcelain", "--", .. WorkingTreePathspec], GitTimeout);
             if (r.ExitCode != 0 || r.TimedOut) return null;
             return r.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
         }
@@ -132,7 +158,7 @@ public static partial class ProjectCommit
             var isTickets = IsTicketsRepo(project.Path, root);
             if (isTickets) WriteDump(root);
 
-            var status = Git("status", "--porcelain");
+            var status = Git(["status", "--porcelain", "--", .. WorkingTreePathspec]);
             if (status.ExitCode != 0 || status.TimedOut) return Fail("git status", status);
             var committed = false;
             if (!string.IsNullOrWhiteSpace(status.Output))
@@ -153,6 +179,9 @@ public static partial class ProjectCommit
 
                 var add = Git("add", "-A");
                 if (add.ExitCode != 0 || add.TimedOut) return Unaligned(Fail("git add", add));
+                // Prose's local agent state stays unstaged (M.ORCH-T2045), as the Launcher's commit leaves it.
+                var unstage = Git(["reset", "-q", "--", .. LocalStatePaths]);
+                if (unstage.ExitCode != 0 || unstage.TimedOut) return Unaligned(Fail("Unstaging Prose's local agent state", unstage));
                 var commit = Git("commit", "-q", "-m", text);
                 if (commit.ExitCode != 0 || commit.TimedOut) return Unaligned(Fail("git commit", commit));
                 committed = true;

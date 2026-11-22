@@ -194,6 +194,8 @@ internal sealed class CommitProjectsWindow : Window
         UpdateCommit();
         Say($"Committing and pushing {picked.Count} project(s)…");
         int pushed = 0, nothing = 0, failed = 0;
+        var created = new List<string>();
+        var used = new List<string>();
         try
         {
             // One run (M.ORCH-T2044): each commit is aligned to a ticket, MindAttic.Tickets goes last, and the ticket database
@@ -206,8 +208,10 @@ internal sealed class CommitProjectsWindow : Window
                     case ProjectCommitOutcome.NothingToDo: nothing++; break;
                     default: failed++; break;
                 }
-                Say($"  {r.Project.Name}: {r.Detail}");
-                OrchestratorLog.For("Dashboard").Information("Commit and push {Project:l}: {Outcome} {Detail:l}", r.Project.Name, r.Outcome, r.Detail);
+                // Each result names the ticket its commit used or created (M.ORCH-T2045).
+                if (r.TicketId is { } id && !created.Contains(id) && !used.Contains(id)) (r.TicketCreated ? created : used).Add(id);
+                Say($"  {r.Project.Name}: {r.DetailWithTicket}");
+                OrchestratorLog.For("Dashboard").Information("Commit and push {Project:l}: {Outcome} {Detail:l}", r.Project.Name, r.Outcome, r.DetailWithTicket);
             }
             try { await Task.Run(() => ProjectCommit.CommitAndPushAll(picked, text, r => Dispatcher.Invoke(() => Heard(r)))); }
             catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -217,6 +221,8 @@ internal sealed class CommitProjectsWindow : Window
                 Say($"  {ex.Message}");
             }
             Say($"Done: {pushed} pushed, {nothing} with nothing to do, {failed} failed.");
+            if (created.Count > 0) Say($"New tickets: {string.Join(", ", created)}");
+            if (used.Count > 0) Say($"Tickets named: {string.Join(", ", used)}");
         }
         finally
         {
