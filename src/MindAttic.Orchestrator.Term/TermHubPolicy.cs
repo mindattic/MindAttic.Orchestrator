@@ -23,7 +23,9 @@ public enum TermLaunchKind
 /// <summary>A launch decision: how, under which account (for <see cref="TermLaunchKind.MemberUser"/>), or why not.</summary>
 public sealed record TermLaunchPlan(TermLaunchKind Kind, string? Account = null, string? Why = null)
 {
+    /// <summary>Launch as the host's own user.</summary>
     public static TermLaunchPlan Host { get; } = new(TermLaunchKind.HostUser);
+    /// <summary>Don't launch, for <paramref name="why"/>.</summary>
     public static TermLaunchPlan Refuse(string why) => new(TermLaunchKind.Refused, null, why);
 }
 

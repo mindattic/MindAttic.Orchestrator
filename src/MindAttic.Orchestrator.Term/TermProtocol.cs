@@ -108,7 +108,17 @@ public enum TermModes : uint
 }
 
 /// <summary>How a host's protocol compares to the ones a viewer speaks.</summary>
-public enum TermCompatStatus { Compatible, HostTooNew, HostTooOld }
+public enum TermCompatStatus
+{
+    /// <summary>The host speaks a protocol the viewer speaks too.</summary>
+    Compatible,
+
+    /// <summary>The host's protocol is newer than any the viewer speaks.</summary>
+    HostTooNew,
+
+    /// <summary>The host's protocol is older than any the viewer speaks.</summary>
+    HostTooOld,
+}
 
 /// <summary>The result of <see cref="TermProtocol.Check"/>: <see cref="Message"/> is empty when compatible, else a clear status for the user.</summary>
 public sealed record TermCompatibility(TermCompatStatus Status, ushort HostProtocol, string Message)

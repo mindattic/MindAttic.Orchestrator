@@ -22,6 +22,7 @@ public sealed record TermMemberHost
     /// <summary>The TermHost's pid and start time (UTC): a process with that pid that started at another time is a reused pid.</summary>
     [JsonPropertyName("hostPid")] public int HostPid { get; init; }
 
+    /// <summary>When the TermHost process started (UTC); checked against <see cref="HostPid"/> to catch a reused pid.</summary>
     [JsonPropertyName("hostStartUtc")] public DateTime HostStartUtc { get; init; }
 
     /// <summary>The folder the host writes its registry file in (the member's own folder under <see cref="TermMemberHosts.DefaultRegistryRoot"/>).</summary>
@@ -30,6 +31,7 @@ public sealed record TermMemberHost
     /// <summary>Its pipe (<see cref="TermProtocol.PipeName"/> for the member's user name).</summary>
     [JsonPropertyName("pipe")] public string Pipe { get; init; } = "";
 
+    /// <summary>When this host record was started (UTC).</summary>
     [JsonPropertyName("startedUtc")] public DateTime StartedUtc { get; init; }
 }
 

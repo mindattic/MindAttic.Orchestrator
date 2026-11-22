@@ -11,6 +11,7 @@ namespace MindAttic.Orchestrator.Term;
 /// </summary>
 public sealed record TermGatewayStatus
 {
+    /// <summary>The gateway process's id.</summary>
     [JsonPropertyName("pid")] public int Pid { get; init; }
 
     /// <summary>When the gateway process started (UTC), to tell it from a reused pid (<see cref="TermSessions.HostStartOf"/>).</summary>
@@ -18,6 +19,7 @@ public sealed record TermGatewayStatus
 
     /// <summary>The address and port Kestrel listens on.</summary>
     [JsonPropertyName("bind")] public string Bind { get; init; } = "";
+    /// <summary>The port Kestrel listens on.</summary>
     [JsonPropertyName("port")] public int Port { get; init; }
 
     /// <summary>The SHA-256 of the TLS certificate it serves (hex, no separators): what a client pins.</summary>
@@ -26,6 +28,7 @@ public sealed record TermGatewayStatus
     /// <summary>The command line it was started with, minus the executable: the daemon restarts it when its settings change this.</summary>
     [JsonPropertyName("config")] public string Config { get; init; } = "";
 
+    /// <summary>The version of the gateway build that wrote this status.</summary>
     [JsonPropertyName("version")] public string Version { get; init; } = "";
 
     /// <summary>The full path of the exe it runs from (M.ORCH-T1028): the daemon restarts it when a redeploy installs a newer one.

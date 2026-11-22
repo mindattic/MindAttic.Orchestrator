@@ -34,8 +34,11 @@ public sealed record TermAclGrant(
 /// </summary>
 public sealed record TermGatewayAclSnapshot
 {
+    /// <summary>The members the gateway knows.</summary>
     [JsonPropertyName("members")] public List<TermAclMember> Members { get; init; } = [];
+    /// <summary>The logins the members use.</summary>
     [JsonPropertyName("logins")] public List<TermAclLogin> Logins { get; init; } = [];
+    /// <summary>What each member may do with which session.</summary>
     [JsonPropertyName("grants")] public List<TermAclGrant> Grants { get; init; } = [];
 
     /// <summary>Hub phase 2 (M.ORCH-T1641): what org members may do with their own CLIs on the host. Null, and left out of the file
@@ -54,6 +57,7 @@ public sealed record TermGatewayAuditRecord
 {
     /// <summary>A random id, so importing the spool twice (after a crash between insert and delete) adds a record once.</summary>
     [JsonPropertyName("id")] public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    /// <summary>When it happened (UTC).</summary>
     [JsonPropertyName("atUtc")] public DateTime AtUtc { get; init; }
 
     /// <summary><see cref="TermGatewayAudit.Attach"/>, <see cref="TermGatewayAudit.Detach"/>, <see cref="TermGatewayAudit.Input"/>
@@ -65,6 +69,7 @@ public sealed record TermGatewayAuditRecord
 
     /// <summary>The gateway's owner, whose session it is.</summary>
     [JsonPropertyName("owner")] public string? Owner { get; init; }
+    /// <summary>The id of the session it concerns.</summary>
     [JsonPropertyName("session")] public string Session { get; init; } = "";
 
     /// <summary>watch, interact, or none for a refusal.</summary>

@@ -54,7 +54,9 @@ public record TermSessionRecord
     /// <summary>The command line the host started the CLI with. Never a secret: variables go through the environment.</summary>
     [JsonPropertyName("commandLine")] public string CommandLine { get; init; } = "";
 
+    /// <summary>The terminal's width in columns.</summary>
     [JsonPropertyName("cols")] public int Cols { get; init; }
+    /// <summary>The terminal's height in rows.</summary>
     [JsonPropertyName("rows")] public int Rows { get; init; }
 
     /// <summary><see cref="TermSessionStates.Running"/> or <see cref="TermSessionStates.Exited"/>.</summary>
@@ -84,6 +86,7 @@ public record TermSessionRecord
     /// session the orchestrator didn't start as an agent, or from an older host.</summary>
     [JsonPropertyName("agent")] public string? AgentId { get; init; }
 
+    /// <summary>True once the session's process has exited.</summary>
     [JsonIgnore] public bool Exited => State == TermSessionStates.Exited;
 }
 

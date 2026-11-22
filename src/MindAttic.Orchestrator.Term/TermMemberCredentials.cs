@@ -33,6 +33,7 @@ public interface IMemberCredentials
 /// </summary>
 public sealed class CredentialManagerMemberCredentials : IMemberCredentials
 {
+    /// <summary>The one shared instance.</summary>
     public static readonly CredentialManagerMemberCredentials Instance = new();
 
     /// <summary>The credential's target name prefix.</summary>
@@ -48,6 +49,7 @@ public sealed class CredentialManagerMemberCredentials : IMemberCredentials
     /// <summary>The target an account's credential is stored under.</summary>
     public static string TargetOf(string account) => TargetPrefix + account.Trim().ToLowerInvariant();
 
+    /// <inheritdoc/>
     public bool Has(string account)
     {
         if (!CredReadW(TargetOf(account), CRED_TYPE_GENERIC, 0, out var credential)) return false;
@@ -56,6 +58,7 @@ public sealed class CredentialManagerMemberCredentials : IMemberCredentials
         return true;
     }
 
+    /// <inheritdoc/>
     public void Save(string account, ReadOnlySpan<char> password)
     {
         if (password.IsEmpty) throw new InvalidOperationException("An empty password isn't stored.");
@@ -86,6 +89,7 @@ public sealed class CredentialManagerMemberCredentials : IMemberCredentials
         }
     }
 
+    /// <inheritdoc/>
     public bool Forget(string account)
     {
         if (CredDeleteW(TargetOf(account), CRED_TYPE_GENERIC, 0)) return true;
@@ -93,6 +97,7 @@ public sealed class CredentialManagerMemberCredentials : IMemberCredentials
         return error == ERROR_NOT_FOUND ? false : throw new InvalidOperationException($"Credential Manager refused it: {new Win32Exception(error).Message}");
     }
 
+    /// <inheritdoc/>
     public T Use<T>(string account, Func<IntPtr, T> use)
     {
         if (!CredReadW(TargetOf(account), CRED_TYPE_GENERIC, 0, out var credential))

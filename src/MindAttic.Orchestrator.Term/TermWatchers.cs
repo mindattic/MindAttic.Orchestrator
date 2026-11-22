@@ -10,6 +10,7 @@ public sealed record TermWatcher
     /// <summary>This attachment's id, unique in the gateway's run.</summary>
     [JsonPropertyName("connection")] public string Connection { get; init; } = "";
 
+    /// <summary>The session the viewer is attached to.</summary>
     [JsonPropertyName("sessionId")] public string SessionId { get; init; } = "";
 
     /// <summary>Who: the token's subject.</summary>
@@ -21,6 +22,7 @@ public sealed record TermWatcher
     /// <summary>The viewer's address.</summary>
     [JsonPropertyName("from")] public string? From { get; init; }
 
+    /// <summary>When the viewer attached (UTC).</summary>
     [JsonPropertyName("sinceUtc")] public DateTime SinceUtc { get; init; }
 }
 
@@ -43,13 +45,16 @@ public static class TermWatchersEvents
 /// </summary>
 public sealed record TermWatchersEvent
 {
+    /// <summary>What happened: one of <see cref="TermWatchersEvents"/>.</summary>
     [JsonPropertyName("event")] public string Event { get; init; } = "";
 
     /// <summary>Who attached or detached; null for <see cref="TermWatchersEvents.Reset"/>.</summary>
     [JsonPropertyName("watcher")] public TermWatcher? Watcher { get; init; }
 
+    /// <summary>Everyone attached right now, after this event.</summary>
     [JsonPropertyName("watchers")] public List<TermWatcher> Watchers { get; init; } = [];
 
+    /// <summary>The pid of the gateway that sent it, so a restarted gateway's list replaces the old one.</summary>
     [JsonPropertyName("gatewayPid")] public int GatewayPid { get; init; }
 }
 
