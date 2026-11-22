@@ -1442,7 +1442,8 @@ public partial class MainWindow : Window
                     if (tab.RunLauncherCommand.CanExecute(null)) tab.RunLauncherCommand.Execute(null);
                     return Task.CompletedTask;
                 }),
-                openProject: (project, kind) => Open(() => tab.OpenProjectAsync(project, kind)))
+                openProject: (project, kind) => Open(() => tab.OpenProjectAsync(project, kind)),
+                runCommand: (project, line) => Open(() => { tab.OpenRunCommand(project, line); return Task.CompletedTask; }))
             { Owner = this }.Show();
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening the Open Project window failed; contained"); }

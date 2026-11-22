@@ -19,6 +19,10 @@ namespace MindAttic.Orchestrator.Wpf;
 /// Claude, Codex, Gemini, Kimi) and a model combo above the picks, so General Prompt or a project opens on the provider
 /// chosen rather than always Claude. A model changed here is written into that provider's Launcher RunCommand (the
 /// Launcher's <c>host</c> has no <c>--model</c> of its own), exactly as the Launcher's own Settings model picker does.</para>
+/// <para>Run Command (M.ORCH-T2043): the Launcher's project "Run Command" (its ProjectActionMenu). Ticked, a picked project
+/// runs the command in the box below the provider row in its folder as a hosted tab, rather than opening an agent CLI there:
+/// the project's own Run Command from the Launcher's settings fills the box when it's picked, and any other command line can
+/// be typed over it. General Prompt and Run Launcher aren't projects, so they can't be picked while it's ticked.</para>
 /// </summary>
 internal sealed class OpenProjectWindow : Window
 {
@@ -26,13 +30,21 @@ internal sealed class OpenProjectWindow : Window
     private readonly Button add = new() { Content = "_Add", IsDefault = true, IsEnabled = false };
     private readonly ComboBox providerBox = new() { MinWidth = 150 };
     private readonly ComboBox modelBox = new() { MinWidth = 200, IsEditable = true };
+    private readonly CheckBox runMode = new() { Content = "_Run Command" };
+    private readonly TextBox commandBox = new() { MinWidth = 300, IsEnabled = false };
+    private readonly List<CheckBox> nonProjects = [];
     private Action<string>? picked;
+    private RosterProject? pickedProject;
+    /// <summary>What <see cref="commandBox"/> was last filled with from a project's own Run Command: replaced when another
+    /// project is picked, unless the person has since typed a command of their own.</summary>
+    private string prefilled = "";
     private bool settingAll;
 
     /// <summary>The model combo's own "no --model" entry: the CLI's default.</summary>
     private const string CliDefault = "(CLI default)";
 
-    internal OpenProjectWindow(IReadOnlyList<ProjectNode> tree, Action<string> generalPrompt, Action runLauncher, Action<RosterProject, string> openProject)
+    internal OpenProjectWindow(IReadOnlyList<ProjectNode> tree, Action<string> generalPrompt, Action runLauncher, Action<RosterProject, string> openProject,
+        Action<RosterProject, string> runCommand)
     {
         Title = "Open Project";
         Width = 460;
@@ -46,8 +58,9 @@ internal sealed class OpenProjectWindow : Window
         SetResourceReference(ForegroundProperty, "MaText");
 
         var list = new StackPanel();
-        list.Children.Add(Pick("General Prompt", "A CLI at the workspace root, every project in reach", generalPrompt));
-        list.Children.Add(Pick("Run Launcher", "Opens this login's standalone Launcher: its own process, outside this dashboard", _ => runLauncher()));
+        nonProjects.Add(Pick("General Prompt", "A CLI at the workspace root, every project in reach", generalPrompt));
+        nonProjects.Add(Pick("Run Launcher", "Opens this login's standalone Launcher: its own process, outside this dashboard", _ => runLauncher()));
+        foreach (var b in nonProjects) list.Children.Add(b);
         var header = new TextBlock { Text = "Projects" };
         header.SetResourceReference(StyleProperty, "MaMutedText");
         header.SetResourceReference(MarginProperty, "SpaceTS");
@@ -69,6 +82,13 @@ internal sealed class OpenProjectWindow : Window
         add.Click += (_, _) =>
         {
             if (picked is not { } go) return;
+            if (runMode.IsChecked == true)
+            {
+                if (pickedProject is not { } project || commandBox.Text.Trim() is not { Length: > 0 } line) return;
+                Close();
+                runCommand(project, line);
+                return;
+            }
             var kind = (providerBox.SelectedItem as ComboBoxItem)?.Tag as LauncherProviders.Provider;
             if (kind is not null) ApplyModel(kind);
             Close();
@@ -83,6 +103,7 @@ internal sealed class OpenProjectWindow : Window
         prompt.SetResourceReference(MarginProperty, "SpaceBXS");
 
         var agent = AgentRow();
+        var run = RunRow();
 
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         footer.SetResourceReference(MarginProperty, "SpaceTS");
@@ -93,9 +114,11 @@ internal sealed class OpenProjectWindow : Window
         panel.SetResourceReference(MarginProperty, "SpaceL");
         DockPanel.SetDock(prompt, Dock.Top);
         DockPanel.SetDock(agent, Dock.Top);
+        DockPanel.SetDock(run, Dock.Top);
         DockPanel.SetDock(footer, Dock.Bottom);
         panel.Children.Add(prompt);
         panel.Children.Add(agent);
+        panel.Children.Add(run);
         panel.Children.Add(footer);
         panel.Children.Add(scroll);
         Content = panel;
@@ -119,6 +142,55 @@ internal sealed class OpenProjectWindow : Window
         row.Children.Add(Labeled("Model", modelBox));
         return row;
     }
+
+    /// <summary>The Run Command toggle and its command line (M.ORCH-T2043). Ticking it greys the provider and model (a
+    /// command isn't an agent CLI), unpicks and greys General Prompt and Run Launcher (not projects), and fills the box from
+    /// the project picked, if any.</summary>
+    private FrameworkElement RunRow()
+    {
+        runMode.SetResourceReference(StyleProperty, "MaCheck");
+        runMode.ToolTip = "Run a command in the picked project's folder as a tab of its own, instead of opening an agent CLI there";
+        runMode.Margin = new Thickness(0, 2, 12, 2);
+        runMode.VerticalAlignment = VerticalAlignment.Center;
+        commandBox.SetResourceReference(StyleProperty, "MaTextBox");
+        commandBox.ToolTip = "The command line, run through cmd in the project's folder: the project's own Run Command from the Launcher's settings, or any other";
+        commandBox.TextChanged += (_, _) => UpdateAdd();
+        void Toggle()
+        {
+            var on = runMode.IsChecked == true;
+            commandBox.IsEnabled = on;
+            providerBox.IsEnabled = modelBox.IsEnabled = !on;
+            foreach (var b in nonProjects)
+            {
+                if (on) b.IsChecked = false;
+                b.IsEnabled = !on;
+            }
+            if (on) Prefill();
+            UpdateAdd();
+            if (on) commandBox.Focus();
+        }
+        runMode.Checked += (_, _) => Toggle();
+        runMode.Unchecked += (_, _) => Toggle();
+
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+        DockPanel.SetDock(runMode, Dock.Left);
+        row.Children.Add(runMode);
+        row.Children.Add(commandBox);
+        return row;
+    }
+
+    /// <summary>Fills the command box from the picked project's own Run Command, unless the person has typed one of their own.</summary>
+    private void Prefill()
+    {
+        if (commandBox.Text != prefilled && commandBox.Text.Trim().Length > 0) return;
+        prefilled = pickedProject?.RunCommand ?? "";
+        commandBox.Text = prefilled;
+        commandBox.CaretIndex = commandBox.Text.Length;
+    }
+
+    /// <summary>Add is live for a pick, and in Run Command mode only for a project with a command to run.</summary>
+    private void UpdateAdd() =>
+        add.IsEnabled = picked is not null && (runMode.IsChecked != true || (pickedProject is not null && commandBox.Text.Trim().Length > 0));
 
     private static FrameworkElement Labeled(string text, Control box)
     {
@@ -153,7 +225,7 @@ internal sealed class OpenProjectWindow : Window
     /// <summary>A single-select row: a check box that behaves like a radio button, ticking it clears every other one,
     /// since the library (MindAttic.Components.Wpf.Theme.xaml) has no radio button style of its own and this is the
     /// only place one's needed so far.</summary>
-    private CheckBox Pick(string label, string? tip, Action<string> go, int depth = 0)
+    private CheckBox Pick(string label, string? tip, Action<string> go, int depth = 0, RosterProject? project = null)
     {
         var box = new CheckBox { Content = label, Margin = new Thickness(depth * 20, 2, 0, 2) };
         box.SetResourceReference(StyleProperty, "MaCheck");
@@ -165,9 +237,11 @@ internal sealed class OpenProjectWindow : Window
             try { foreach (var b in picks) if (!ReferenceEquals(b, box)) b.IsChecked = false; }
             finally { settingAll = false; }
             picked = go;
-            add.IsEnabled = true;
+            pickedProject = project;
+            if (runMode.IsChecked == true) Prefill();
+            UpdateAdd();
         };
-        box.Unchecked += (_, _) => { if (!settingAll && ReferenceEquals(picked, go)) { picked = null; add.IsEnabled = false; } };
+        box.Unchecked += (_, _) => { if (!settingAll && ReferenceEquals(picked, go)) { picked = null; pickedProject = null; UpdateAdd(); } };
         picks.Add(box);
         return box;
     }
@@ -185,7 +259,7 @@ internal sealed class OpenProjectWindow : Window
                 foreach (var child in branch.Children) panel.Children.Add(Node(child, openProject, depth + 1));
                 return panel;
             case ProjectLeaf leaf:
-                var box = Pick(node.Label, $"{leaf.Project.Path}\nRight-click: commit and push it under a message you write", kind => openProject(leaf.Project, kind), depth);
+                var box = Pick(node.Label, $"{leaf.Project.Path}\nRight-click: commit and push it under a message you write", kind => openProject(leaf.Project, kind), depth, leaf.Project);
                 // Right-click a project (M.ORCH-T1588, carried over from the old tree menu): a commit-message modal
                 // (Save/Cancel) that commits and pushes it, without picking it to open a CLI.
                 box.PreviewMouseRightButtonUp += (_, e) => { e.Handled = true; CommitProjectWindow.Show(this, leaf.Project); };
