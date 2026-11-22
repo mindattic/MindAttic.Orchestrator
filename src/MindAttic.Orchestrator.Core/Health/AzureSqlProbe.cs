@@ -9,7 +9,8 @@ namespace MindAttic.Orchestrator.Health;
 /// One Azure SQL database as <c>az sql db list</c> describes it: its server (short name, resource group, FQDN), name,
 /// <see cref="Status"/> (<c>Online</c>, <c>Paused</c>, <c>Resuming</c>, ...), sku (<c>GP_S_Gen5_1</c>, tier, vCores) and,
 /// for a serverless database, its auto-pause delay in minutes (-1 when auto-pause is off; null when the database has none,
-/// a provisioned one).
+/// a provisioned one). <see cref="ResourceId"/> is its ARM id (<c>/subscriptions/.../databases/name</c>), what
+/// <c>az monitor metrics list</c> reads its metrics by (M.ORCH-T2027).
 /// </summary>
 public sealed record AzureSqlDatabase(
     string Server,
@@ -20,13 +21,64 @@ public sealed record AzureSqlDatabase(
     string Sku,
     string? Tier = null,
     int? Capacity = null,
-    int? AutoPauseDelayMinutes = null)
+    int? AutoPauseDelayMinutes = null,
+    string? ResourceId = null)
 {
     /// <summary>The health instance id, <c>server/database</c> (docs/HEALTH.md section 3).</summary>
     public string ComponentId => $"{Server}/{Name}";
 
     /// <summary>Serverless with auto-pause on.</summary>
     public bool AutoPauses => AutoPauseDelayMinutes is > 0;
+
+    /// <summary>The DTU purchasing model (Basic, Standard, Premium): its load is <c>dtu_consumption_percent</c>; a vCore
+    /// database's is <c>cpu_percent</c>. Read from the tier, or from the sku name (<c>Basic</c>, <c>S0</c>, <c>P1</c>) when
+    /// az gave no tier.</summary>
+    public bool IsDtuModel => Tier is { } tier
+        ? tier.Trim().ToLowerInvariant() is "basic" or "standard" or "premium"
+        : Sku.Equals("Basic", StringComparison.OrdinalIgnoreCase)
+            || (Sku.Length > 1 && (Sku[0] is 'S' or 'P') && Sku.Skip(1).All(char.IsDigit));
+
+    /// <summary>Serverless compute (a <c>GP_S_</c>/<c>HS_S_</c> sku), billed by <c>app_cpu_billed</c>.</summary>
+    public bool IsServerless => Sku.Contains("_S_", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Asleep: a paused serverless database has no compute and emits no metrics.</summary>
+    public bool IsPaused => Status.Equals("Paused", StringComparison.OrdinalIgnoreCase)
+        || Status.Equals("AutoClosed", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The Azure Monitor metrics this database's load and storage are read from (M.ORCH-T2027):
+    /// <c>dtu_consumption_percent</c> (DTU model) or <c>cpu_percent</c> (vCore), <c>storage_percent</c>, and
+    /// <c>app_cpu_billed</c> for serverless.</summary>
+    public IReadOnlyList<string> MetricNames => IsServerless
+        ? [IsDtuModel ? AzureSqlMetrics.DtuMetric : AzureSqlMetrics.CpuMetric, AzureSqlMetrics.StorageMetric, AzureSqlMetrics.AppCpuBilledMetric]
+        : [IsDtuModel ? AzureSqlMetrics.DtuMetric : AzureSqlMetrics.CpuMetric, AzureSqlMetrics.StorageMetric];
+}
+
+/// <summary>
+/// One database's latest Azure Monitor readings (M.ORCH-T2027): the newest point with a value of each metric over the
+/// probe's window, the percents by their maximum and <c>app_cpu_billed</c> (vCore-seconds) by its total. A metric az had no
+/// point for is null; <see cref="Error"/> says why none could be read at all.
+/// </summary>
+public sealed record AzureSqlMetrics(
+    double? DtuPercent = null,
+    double? CpuPercent = null,
+    double? StoragePercent = null,
+    double? AppCpuBilled = null,
+    string? Error = null)
+{
+    /// <summary>The DTU model's load metric.</summary>
+    public const string DtuMetric = "dtu_consumption_percent";
+    /// <summary>The vCore model's load metric.</summary>
+    public const string CpuMetric = "cpu_percent";
+    /// <summary>Data space used, percent of the max size.</summary>
+    public const string StorageMetric = "storage_percent";
+    /// <summary>Serverless compute billed, vCore-seconds.</summary>
+    public const string AppCpuBilledMetric = "app_cpu_billed";
+
+    /// <summary>The load <c>sqldb:dtu</c> grades: DTU percent where there is one, else CPU percent.</summary>
+    public double? LoadPercent => DtuPercent ?? CpuPercent;
+
+    /// <summary>Metrics that couldn't be read.</summary>
+    public static AzureSqlMetrics Failed(string error) => new(Error: error);
 }
 
 /// <summary>What a listing came back with: every database, or why there are none (<see cref="Error"/>), with
@@ -93,6 +145,130 @@ public sealed class AzureSqlProbe(IProcessRunner? runner = null, Func<string?>? 
             Output: $"{d.Status} ({d.Sku}{(d.AutoPauses ? $", auto-pause {d.AutoPauseDelayMinutes} min" : "")})",
             ObservedState: d.Status))];
 
+    /// <summary>How far back <see cref="Metrics"/> looks for the newest point; Azure SQL emits a point a minute, a few
+    /// minutes late.</summary>
+    public TimeSpan MetricsWindow { get; init; } = TimeSpan.FromMinutes(15);
+
+    /// <summary>
+    /// <paramref name="db"/>'s latest load, storage and (serverless) billed-CPU readings via <c>az monitor metrics list</c>
+    /// (M.ORCH-T2027): one call for all of its <see cref="AzureSqlDatabase.MetricNames"/> at 1-minute grain. When az refuses
+    /// the set (a tier missing one of them, e.g. Hyperscale without <c>storage_percent</c>) each is asked for alone, so one
+    /// unsupported metric never hides the others. A paused database isn't asked at all: it has no compute and emits nothing.
+    /// Never throws.
+    /// </summary>
+    public AzureSqlMetrics Metrics(AzureSqlDatabase db, DateTimeOffset? now = null)
+    {
+        if (db.IsPaused) return new AzureSqlMetrics();
+        if (string.IsNullOrWhiteSpace(db.ResourceId)) return AzureSqlMetrics.Failed("az sql db list gave no resource id.");
+        var az = resolveAz();
+        if (az is null) return AzureSqlMetrics.Failed("az (the Azure CLI) isn't installed or on PATH.");
+
+        var end = (now ?? DateTimeOffset.UtcNow).ToUniversalTime();
+        static string Iso(DateTimeOffset t) => t.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+        var window = new List<string> { "--interval", "PT1M", "--aggregation", "Maximum", "Total",
+            "--start-time", Iso(end - MetricsWindow), "--end-time", Iso(end), "-o", "json" };
+
+        var readings = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        string? lastError = null;
+        bool Read(IEnumerable<string> metrics)
+        {
+            var args = new List<string> { "monitor", "metrics", "list", "--resource", db.ResourceId!, "--metrics" };
+            args.AddRange(metrics);
+            args.AddRange(window);
+            var (json, error) = Az(az, args);
+            if (json is null) { lastError = error; return false; }
+            try { foreach (var (k, v) in ParseMetrics(json)) readings[k] = v; return true; }
+            catch (JsonException ex) { lastError = $"az monitor metrics list's output couldn't be read: {ex.Message}"; return false; }
+        }
+
+        var names = db.MetricNames;
+        if (!Read(names))
+        {
+            if (Kickstart.NeedsLogin(lastError)) return AzureSqlMetrics.Failed(lastError ?? "az isn't signed in.");
+            bool any = false;
+            foreach (var n in names) any |= Read([n]);
+            if (!any) return AzureSqlMetrics.Failed(lastError ?? "az monitor metrics list failed.");
+        }
+        double? Get(string n) => readings.TryGetValue(n, out var v) ? v : null;
+        return new AzureSqlMetrics(Get(AzureSqlMetrics.DtuMetric), Get(AzureSqlMetrics.CpuMetric), Get(AzureSqlMetrics.StorageMetric),
+            Get(AzureSqlMetrics.AppCpuBilledMetric));
+    }
+
+    /// <summary>Every database's <c>sqldb:state</c>, <c>sqldb:dtu</c> and <c>sqldb:storage</c> results (M.ORCH-T2027): the
+    /// state by rule, the two percents graded against <paramref name="thresholds"/> (default
+    /// <see cref="HealthThresholds.Default"/>). One az metrics call (a few when az refuses the set) per awake database.</summary>
+    public IReadOnlyList<HealthResult> Results(AzureSqlListing listing, HealthThresholds? thresholds = null, DateTimeOffset? time = null)
+    {
+        var t = thresholds ?? HealthThresholds.Default;
+        var at = time ?? DateTimeOffset.UtcNow;
+        var results = new List<HealthResult>(StateResults(listing.Databases, at));
+        foreach (var db in listing.Databases) results.AddRange(MetricResults(db, Metrics(db, at), t, at));
+        return results;
+    }
+
+    /// <summary>
+    /// <paramref name="db"/>'s <c>sqldb:dtu</c> and <c>sqldb:storage</c> results from <paramref name="m"/>, graded on
+    /// <see cref="HealthCheck.DtuPercent"/> and <see cref="HealthCheck.StoragePercent"/> with the line stamped in. The load is
+    /// DTU percent, else CPU percent; a serverless database's billed vCore-seconds ride in the load's output. A paused
+    /// database reads 0% load (healthy: asleep as designed) and has no storage result, since it emits no metrics; a missing
+    /// reading on an awake one is degraded ("no reading", with az's error when there was one).
+    /// </summary>
+    public static IReadOnlyList<HealthResult> MetricResults(AzureSqlDatabase db, AzureSqlMetrics m, HealthThresholds t, DateTimeOffset time)
+    {
+        if (db.IsPaused)
+            return [HealthResult.Graded(HealthCheck.DtuPercent, t, 0, time, db.ComponentId, $"{db.Status}: no compute running")];
+
+        static string Pct(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "%";
+        string NoReading(string what) => m.Error is { } e ? $"no {what} reading: {e}" : $"no {what} reading in the last window";
+
+        var loadName = db.IsDtuModel ? "DTU" : "CPU";
+        var loadOutput = m.LoadPercent is { } load ? $"{loadName} {Pct(load)} (max, latest minute)" : NoReading(loadName);
+        if (m.AppCpuBilled is { } billed)
+            loadOutput += $"; app CPU billed {billed.ToString("0.##", CultureInfo.InvariantCulture)} vCore-s";
+        return
+        [
+            HealthResult.Graded(HealthCheck.DtuPercent, t, m.LoadPercent ?? double.NaN, time, db.ComponentId, loadOutput),
+            HealthResult.Graded(HealthCheck.StoragePercent, t, m.StoragePercent ?? double.NaN, time, db.ComponentId,
+                m.StoragePercent is { } st ? $"storage {Pct(st)} of max size" : NoReading("storage")),
+        ];
+    }
+
+    /// <summary>Parses <c>az monitor metrics list -o json</c>: each metric's newest point that has a value, its maximum
+    /// (percent metrics) or total (<c>app_cpu_billed</c>), falling back to whichever aggregation is present.</summary>
+    internal static Dictionary<string, double> ParseMetrics(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var metrics = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("value", out var v) ? v : root;
+        var found = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var metric in Items(metrics))
+        {
+            var name = !metric.TryGetProperty("name", out var n) ? ""
+                : n.ValueKind == JsonValueKind.Object ? Str(n, "value")
+                : n.ValueKind == JsonValueKind.String ? n.GetString() ?? "" : "";
+            if (name.Length == 0 || !metric.TryGetProperty("timeseries", out var series)) continue;
+            string[] order = name.Equals(AzureSqlMetrics.AppCpuBilledMetric, StringComparison.OrdinalIgnoreCase)
+                ? ["total", "maximum", "average"] : ["maximum", "average", "total"];
+            (DateTimeOffset At, double Value)? best = null;
+            foreach (var ts in Items(series))
+            {
+                if (!ts.TryGetProperty("data", out var data)) continue;
+                foreach (var point in Items(data))
+                {
+                    double? value = null;
+                    foreach (var agg in order)
+                        if (point.TryGetProperty(agg, out var a) && a.ValueKind == JsonValueKind.Number) { value = a.GetDouble(); break; }
+                    if (value is null) continue;
+                    var at = StrOrNull(point, "timeStamp") is { } s && DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var p) ? p : DateTimeOffset.MinValue;
+                    if (best is null || at >= best.Value.At) best = (at, value.Value);
+                }
+            }
+            if (best is { } b) found[name] = b.Value;
+        }
+        return found;
+    }
+
     /// <summary>The rule grade of a database status word.</summary>
     public static HealthGrade GradeState(string? status) => status?.Trim().ToLowerInvariant() switch
     {
@@ -128,7 +304,7 @@ public sealed class AzureSqlProbe(IProcessRunner? runner = null, Func<string?>? 
             list.Add(new AzureSqlDatabase(server, resourceGroup, fqdn, name, Str(e, "status"), skuName,
                 sku.ValueKind == JsonValueKind.Object ? StrOrNull(sku, "tier") : null,
                 sku.ValueKind == JsonValueKind.Object ? Int(sku, "capacity") : null,
-                Int(e, "autoPauseDelay")));
+                Int(e, "autoPauseDelay"), StrOrNull(e, "id")));
         }
         return list;
     }

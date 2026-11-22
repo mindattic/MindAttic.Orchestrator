@@ -105,4 +105,62 @@ public sealed class AzureSqlProbeTests
         Assert.That((r.CheckId, r.ComponentId, r.ObservedState, r.Grade, r.Time), Is.EqualTo(("sqldb:state", "sql-a/Tickets", "Paused", HealthGrade.Healthy, at)));
         Assert.That(r.Output, Is.EqualTo("Paused (GP_S_Gen5, auto-pause 60 min)"));
     }
+
+    // M.ORCH-T2027: az monitor metrics list, newest valued point per metric (nulls at the tail skipped).
+    private const string Metrics = """
+        { "cost": 0, "interval": "PT1M", "value": [
+          { "name": { "value": "cpu_percent" }, "unit": "Percent", "timeseries": [ { "data": [
+            { "timeStamp": "2026-11-22T20:50:00Z", "maximum": 40.0, "total": 40.0 },
+            { "timeStamp": "2026-11-22T20:51:00Z", "maximum": 85.5, "total": 85.5 },
+            { "timeStamp": "2026-11-22T20:52:00Z", "maximum": null, "total": null } ] } ] },
+          { "name": { "value": "storage_percent" }, "unit": "Percent", "timeseries": [ { "data": [
+            { "timeStamp": "2026-11-22T20:51:00Z", "maximum": 41.25 } ] } ] },
+          { "name": { "value": "app_cpu_billed" }, "unit": "Count", "timeseries": [ { "data": [
+            { "timeStamp": "2026-11-22T20:51:00Z", "maximum": 1.0, "total": 12.0 } ] } ] }
+        ] }
+        """;
+
+    private static readonly AzureSqlDatabase Serverless = new("sql-a", "rg-a", "f", "Gadfly", "Online", "GP_S_Gen5",
+        "GeneralPurpose", 2, 60, "/subscriptions/x/resourceGroups/rg-a/providers/Microsoft.Sql/servers/sql-a/databases/Gadfly");
+
+    [Test]
+    public void Metrics_read_the_newest_point_and_grade_dtu_and_storage_against_the_thresholds()
+    {
+        var at = new DateTimeOffset(2026, 11, 22, 21, 0, 0, TimeSpan.Zero);
+        var az = new FakeAz(_ => Ok(Metrics));
+        var probe = new AzureSqlProbe(az, () => "az.cmd");
+        Assert.That(Serverless.MetricNames, Is.EqualTo(new[] { "cpu_percent", "storage_percent", "app_cpu_billed" }));
+
+        var m = probe.Metrics(Serverless, at);
+        Assert.That((m.CpuPercent, m.StoragePercent, m.AppCpuBilled, m.DtuPercent, m.Error), Is.EqualTo(((double?)85.5, (double?)41.25, (double?)12.0, (double?)null, (string?)null)));
+        Assert.That(az.Calls.Single(), Does.Contain("--resource").And.Contain(Serverless.ResourceId).And.Contain("app_cpu_billed"));
+
+        var results = AzureSqlProbe.MetricResults(Serverless, m, HealthThresholds.Default, at);
+        var dtu = results.Single(r => r.CheckId == "sqldb:dtu");
+        var storage = results.Single(r => r.CheckId == "sqldb:storage");
+        Assert.That((dtu.ComponentId, dtu.ObservedValue, dtu.ObservedUnit, dtu.Grade), Is.EqualTo(("sql-a/Gadfly", (double?)85.5, "%", HealthGrade.Degraded)));
+        Assert.That(dtu.Output, Does.Contain("CPU 85.5%").And.Contain("12 vCore-s"));
+        Assert.That((storage.ObservedValue, storage.Grade), Is.EqualTo(((double?)41.25, HealthGrade.Healthy)));
+    }
+
+    [Test]
+    public void Metrics_fall_back_to_one_call_per_metric_when_az_refuses_the_set_and_paused_reads_zero_load()
+    {
+        var at = new DateTimeOffset(2026, 11, 22, 21, 0, 0, TimeSpan.Zero);
+        var az = new FakeAz(a => a.Contains("storage_percent")
+            ? new ProcessResult(1, "", "ERROR: Failed to find metric configuration for provider", false) { Exited = true }
+            : Ok(Metrics));
+        var m = new AzureSqlProbe(az, () => "az.cmd").Metrics(Serverless, at);
+        Assert.That((m.CpuPercent, m.StoragePercent, m.Error), Is.EqualTo(((double?)85.5, (double?)null, (string?)null)));
+        Assert.That(az.Calls, Has.Count.EqualTo(4));
+        var storage = AzureSqlProbe.MetricResults(Serverless, m, HealthThresholds.Default, at).Single(r => r.CheckId == "sqldb:storage");
+        Assert.That((storage.ObservedValue, storage.Grade), Is.EqualTo(((double?)null, HealthGrade.Degraded)));
+
+        var paused = Serverless with { Status = "Paused" };
+        var none = new FakeAz(_ => throw new InvalidOperationException("never run"));
+        Assert.That(new AzureSqlProbe(none, () => "az.cmd").Metrics(paused, at).LoadPercent, Is.Null);
+        var only = AzureSqlProbe.MetricResults(paused, new AzureSqlMetrics(), HealthThresholds.Default, at).Single();
+        Assert.That((only.CheckId, only.ObservedValue, only.Grade), Is.EqualTo(("sqldb:dtu", (double?)0, HealthGrade.Healthy)));
+        Assert.That(new AzureSqlDatabase("s", "r", "f", "d", "Online", "S0").IsDtuModel, Is.True);
+    }
 }
