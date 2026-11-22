@@ -58,7 +58,7 @@ public sealed class PaceLedgerTests
         h.Store.SaveLimits([]);
         h.Watch.Db.AddUsageSamples(Steady(100), DateTime.MinValue);
         h.Watch.Tick(End.AddMinutes(5));
-        Assert.That(h.Filed, Has.Some.StartsWith("[pace-ledger over ").And.Contain("1 points past the 99% stop").And.Contain("exempt calls logged at or above it"));
+        Assert.That(h.Filed, Has.Some.StartsWith("[pace-ledger over ").And.Contain("1 points past the 99% stop").And.Contain("exempt calls logged at or above it").And.Contain("no refusal logged"));
     }
 
     [Test]
@@ -507,5 +507,58 @@ public sealed class PaceLedgerTests
         watch.Tick(End.AddMinutes(60));
         Assert.That(watch.Db.LoadLedger(), Has.Count.EqualTo(rows), "each window is recorded once");
         Assert.That(h.Alerts, Has.Count.EqualTo(alerts), "an over window is raised once");
+    }
+
+    private PaceLedgerWatch WatchWithAccountA(string dir, Harness h, bool withGlobalAccount, out MindAttic.Orchestrator.Sessions.AccountDir a)
+    {
+        var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, "accounts"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"));
+        a = dirs.For("a@example.com");
+        Directory.CreateDirectory(a.Directory);
+        File.WriteAllText(a.ConfigPath, """{"oauthAccount":{"accountUuid":"acct-a"}}""");
+        return new PaceLedgerWatch(h.Store, "unused", (l, s) => h.Said.Add((l, s)), (t, _, u) => h.Alerts.Add((t, u)))
+        {
+            EventsPath = h.Watch.EventsPath,
+            FileTicket = s => { h.Filed.Add(s); return "M.ORCH-T999"; },
+            AccountDirs = dirs,
+            Db = h.Watch.Db,
+            Account = withGlobalAccount
+                ? new ClaudeAccount { ConfigPath = Path.Combine(dir, ".claude.json"), StatePath = Path.Combine(dir, "account.json"), Db = h.Watch.Db }
+                : null,
+        };
+    }
+
+    /// <summary>M.ORCH-T2008: the per-CLI pass runs after the global pass in the same tick; it must see the rows the global pass just
+    /// took, or it grades the same stretch from its own samples and adds a second window a couple of hours off the first.</summary>
+    [Test]
+    public void The_per_cli_pass_doesnt_add_a_second_window_beside_one_the_global_pass_just_took()
+    {
+        var dir = temp.New();
+        var h = new Harness(Path.Combine(dir, "store"));
+        var watch = WatchWithAccountA(dir, h, withGlobalAccount: false, out var a);
+        // The global meter and the per-CLI login's own meter saw the same stretch, their windows' resets two hours apart.
+        h.Watch.Db.AddUsageSamples(Steady(70), DateTime.MinValue);
+        File.WriteAllText(a.SamplesPath, System.Text.Json.JsonSerializer.Serialize(Steady(70, End.AddHours(2))));
+
+        watch.Tick(End.AddHours(3));
+        Assert.That(watch.Db.LoadLedger(), Has.Count.EqualTo(1), "one window for the stretch, not one per pass");
+        watch.Tick(End.AddHours(3).AddMinutes(5));
+        Assert.That(watch.Db.LoadLedger(), Has.Count.EqualTo(1), "and the next tick doesn't add the other either");
+    }
+
+    /// <summary>M.ORCH-T2008: when the sign-in record can't say who was signed in globally (no record for the moment), a per-CLI
+    /// login's row overlapping a global window must still hide it from the overlap dedupe, not be dropped as "another account's".</summary>
+    [Test]
+    public void An_unknown_global_account_doesnt_hide_a_per_cli_row_from_the_overlap_dedupe()
+    {
+        var dir = temp.New();
+        var h = new Harness(Path.Combine(dir, "store"));
+        var watch = WatchWithAccountA(dir, h, withGlobalAccount: true, out _);
+        // a@example.com's own window is already in the ledger, ending two hours after the global meter's.
+        var perCli = PaceLedger.Build(End.AddHours(2), Steady(70, End.AddHours(2)), [], []) with { Account = "acct-a" };
+        watch.Db.AppendLedger([perCli]);
+        h.Watch.Db.AddUsageSamples(Steady(70), DateTime.MinValue);
+
+        watch.Tick(End.AddHours(3));
+        Assert.That(watch.Db.LoadLedger().Select(w => w.Account), Is.EqualTo(new string?[] { "acct-a" }), "the global window overlapping it isn't recorded a second time");
     }
 }
