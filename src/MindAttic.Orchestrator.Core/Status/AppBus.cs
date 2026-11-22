@@ -42,6 +42,14 @@ public static class AppBus
     /// <see cref="ActivityVersion"/>.</summary>
     public const string Activity = "activity";
 
+    /// <summary>A Claude CLI's badge state changed (M.ORCH-T1996): sent by the context gate as its hook exits, when a turn starts or
+    /// ends, a subagent starts or stops, or a badge-relevant field of its <c>.state.json</c> (asking, deciding, goal, closed,
+    /// limit_stop, needs_typed, exempt) changed. Relayed as is to every subscriber, not kept. Payload (v1):
+    /// <c>session</c> (the CLI's session id), <c>event</c> (the hook event), <c>state</c> (a hint: "working", "idle", "asking" or
+    /// ""), and when known <c>agent</c> (the subagent's id), <c>subagents</c> (the CLI's running subagents, on a subagent event) and
+    /// <c>cliPid</c>. A notice to re-read that session, not the truth itself.</summary>
+    public const string AgentState = "agent-state";
+
     /// <summary>The version of the <see cref="Activity"/> payload.</summary>
     public const int ActivityVersion = 1;
 
@@ -55,7 +63,7 @@ public static class AppBus
     public const string TicketsDesktop = "tickets-desktop";
 
     /// <summary>Every kind of this bus.</summary>
-    public static bool IsAppKind(string? kind) => kind is Ticket or OpenTicket or ShowWorker or Presence or Activity;
+    public static bool IsAppKind(string? kind) => kind is Ticket or OpenTicket or ShowWorker or Presence or Activity or AgentState;
 }
 
 /// <summary>A session's state in an <see cref="AppBus.Activity"/> message: <see cref="ActivityPayload.State"/>'s values.</summary>

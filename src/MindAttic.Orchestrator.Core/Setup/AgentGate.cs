@@ -3686,10 +3686,67 @@ public static class AgentGate
         # the two was written later.
         def load(path):
             value = exported_mark(path.name[:-len(".state.json")], path, table="session_states", key="session_id")
-            return value if isinstance(value, dict) else {}
+            value = value if isinstance(value, dict) else {}
+            AGENT_LOADED[str(path)] = agent_keys(value)
+            return value
 
         def save(path, value):
             write_exported_mark(path.name[:-len(".state.json")], path, value, table="session_states", key="session_id")
+            # Only a change the dashboard's badge could show is pushed, not every save (a tool call's bookkeeping).
+            if agent_keys(value) != AGENT_LOADED.get(str(path)):
+                AGENT_LOADED[str(path)] = agent_keys(value)
+                agent_state()
+
+        # The dashboard's per-CLI badge on a push (M.ORCH-T1996): a turn that started or ended, a question asked or answered, a
+        # subagent started or stopped, or a badge-relevant .state.json change says "agent-state" on the daemon's inbox, which
+        # relays it to every dashboard, so the badge needn't wait for its next read of the session files. Sent once per hook,
+        # as it exits (after every write this hook made), best effort: publish_status never blocks and swallows any failure.
+        AGENT_KEYS = ("asking", "deciding", "goal", "closed", "limit_stop", "needs_typed", "exempt")
+        AGENT_EVENT_STATE = {"UserPromptSubmit": "working", "PreToolUse": "working", "PostToolUse": "working",
+                             "SubagentStart": "working", "SubagentStop": "working", "Notification": "asking",
+                             "Stop": "idle", "SessionStart": "idle"}
+        AGENT_LOADED = {}
+        AGENT_PENDING = {}
+
+        def agent_keys(value):
+            return tuple(bool(value.get(k)) for k in AGENT_KEYS) if isinstance(value, dict) else None
+
+        def agent_state(subagents=False):
+            try:
+                if not AGENT_PENDING:
+                    import atexit
+                    atexit.register(agent_state_send)
+                AGENT_PENDING["at"] = time.time()
+                if subagents:
+                    AGENT_PENDING["subagents"] = True
+            except Exception:
+                pass
+
+        def agent_state_send():
+            try:
+                g = globals()
+                s, ev, hook = g.get("sid"), str(g.get("event") or ""), g.get("data")
+                if not s:
+                    return
+                hook = hook if isinstance(hook, dict) else {}
+                state = AGENT_EVENT_STATE.get(ev, "")
+                try:
+                    if load(DIR / (str(s) + ".state.json")).get("asking"):
+                        state = "asking"
+                except Exception:
+                    pass
+                payload = {"session": str(s), "event": ev, "state": state}
+                if hook.get("agent_id"):
+                    payload["agent"] = str(hook["agent_id"])
+                pid = os.environ.get("MINDATTIC_CLI_PID")
+                if AGENT_PENDING.get("subagents"):
+                    pid = pid or my_pid()
+                    payload["subagents"] = subagents_working(pid)
+                if str(pid or "").isdigit():
+                    payload["cliPid"] = int(pid)
+                publish_status("agent-state", payload)
+            except Exception:
+                pass
 
         {{{CliPid}}}
 
@@ -3788,6 +3845,9 @@ public static class AgentGate
         if provider != "Claude":
             activity_record(provider, data, event)
             sys.exit(0)  # /allocate runs in a Claude CLI; a Codex or Gemini CLI is never pushed onto tickets
+        # A turn started or ended, or a subagent did: the badge changes, so it is pushed as this hook exits (M.ORCH-T1996).
+        if sid and (event in ("UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop") or (event == "Stop" and not data.get("agent_id"))):
+            agent_state(subagents=event in ("SubagentStart", "SubagentStop"))
         # Claude's activity record (M.ORCH-T961), in the same format: working on a prompt and on a finished tool call (a subagent's
         # too: its session is its parent's), idle at a turn's end and at a session's start, asking on a permission prompt or an
         # AskUserQuestion (the reason never kept). The pace gate adds each tool call before it runs, and held while it waits.
