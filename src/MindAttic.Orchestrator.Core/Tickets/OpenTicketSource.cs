@@ -101,6 +101,12 @@ public sealed class OpenTicketSource
     /// <summary>Ticket → its level from its <c>level:</c> label (<see cref="LevelLabelPrefix"/>, M.ORCH-T1904).</summary>
     public IReadOnlyDictionary<string, string> Levels => fromDb?.Levels ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Ticket → its level from <paramref name="labels"/> (the database's labels, open or closed tickets alike; M.ORCH-T1908).</summary>
+    public static Dictionary<string, string> LevelsOf(IReadOnlyDictionary<string, IReadOnlyList<string>> labels) =>
+        labels.Select(l => (l.Key, Level: l.Value.FirstOrDefault(v => v.StartsWith(LevelLabelPrefix, StringComparison.OrdinalIgnoreCase))))
+            .Where(l => l.Level is not null)
+            .ToDictionary(l => l.Key, l => l.Level![LevelLabelPrefix.Length..].Trim().ToLowerInvariant(), StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Ticket → its manual priority in the database's queue (higher runs sooner); missing means 0.</summary>
     public IReadOnlyDictionary<string, long> Priorities => fromDb?.Priorities ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
@@ -190,9 +196,7 @@ public sealed class OpenTicketSource
                 // An open ticket some open ticket is part-of is a container (M.ORCH-T1904): its children are the work.
                 var containers = partOf.Where(p => openIds.Contains(p.Key)).SelectMany(p => p.Value).Where(openIds.Contains)
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                var levels = labels.Select(l => (l.Key, Level: l.Value.FirstOrDefault(v => v.StartsWith(LevelLabelPrefix, StringComparison.OrdinalIgnoreCase))))
-                    .Where(l => l.Level is not null)
-                    .ToDictionary(l => l.Key, l => l.Level![LevelLabelPrefix.Length..].Trim().ToLowerInvariant(), StringComparer.OrdinalIgnoreCase);
+                var levels = LevelsOf(labels);
                 fromDb = (path, written,
                     open.ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
                     db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires,

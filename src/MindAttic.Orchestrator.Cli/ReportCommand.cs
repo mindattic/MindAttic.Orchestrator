@@ -49,11 +49,23 @@ internal sealed class ReportCommand : Command<ReportCommand.Settings>
             (unknown > 0 ? $" · {unknown} more with no model known" : "");
     }
 
+    /// <summary>Ticket → level from the ticket database's labels, closed tickets included (M.ORCH-T1908); empty when unreadable.</summary>
+    private static IReadOnlyDictionary<string, string> LevelLabels()
+    {
+        try
+        {
+            using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(OrchestratorOptions.Load().WorkspaceRoot);
+            if (db is not null) return MindAttic.Orchestrator.Tickets.OpenTicketSource.LevelsOf(db.AllLabels());
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException) { }
+        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    }
+
     internal static DateOnly WeekOf(DateOnly d) => d.AddDays(-(((int)d.DayOfWeek + 6) % 7)); // Mondays
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var (_, _, snapshot, _) = Ctx.Load();
+        var (_, store, snapshot, _) = Ctx.Load();
         var from = WeekOf(DateOnly.FromDateTime(DateTime.Now)).AddDays(-7 * (Math.Clamp(settings.Weeks, 1, 5200) - 1));
         var rows = snapshot.History.Where(d => d.Day >= from).ToList();
         var weeks = rows.Select(r => WeekOf(r.Day)).Distinct().Order().ToList();
@@ -77,6 +89,12 @@ internal sealed class ReportCommand : Command<ReportCommand.Settings>
 
         var open = snapshot.Repos.SelectMany(r => r.OpenTickets).Select(t => t.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         AnsiConsole.MarkupLine(Markup.Escape(ModelLine(tickets, open)));
+
+        // Work units (M.ORCH-T1908): what level:task tickets cost against the budget, closed ones too. Only a suggestion.
+        var levels = LevelLabels();
+        var units = MindAttic.Orchestrator.Scheduling.WorkUnits.Report(tickets,
+            id => levels.GetValueOrDefault(id) is "task", MindAttic.Orchestrator.Scheduling.WorkUnits.Budget(store.LoadSettings()));
+        AnsiConsole.MarkupLine("Work units: " + Markup.Escape(units.ToString()));
 
         if (settings.Csv is { } csv)
         {
