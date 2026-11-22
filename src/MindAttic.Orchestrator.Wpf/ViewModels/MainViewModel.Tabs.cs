@@ -405,6 +405,17 @@ public sealed partial class MainViewModel
             }
             if (liveLaunchers.Count > 0) launchersEmbedded.Add(key);
             else if (launchersEmbedded.Remove(key)) launchersOpened.Remove(key);
+            // An ended Launcher otherwise waits for CloseEndedLaunchers to run alongside a respawn -- which a login
+            // that isn't signed in here, or that keeps losing the 30s respawn race, may not do again for a long time,
+            // leaving stale "Launcher" rows piled up under its tree node. This pass closes them unconditionally, so
+            // none outlives the refresh that saw it end, whether or not a respawn follows.
+            var endedLaunchers = AllTerminals.Panes.Where(p => p.Request.IsMenu && p.Ended &&
+                string.Equals(p.Login, normalized, StringComparison.OrdinalIgnoreCase)).ToList();
+            foreach (var ended in endedLaunchers)
+            {
+                if (!tabsGone.TryGetValue(ended, out _)) tabsGone.Add(ended, null);
+                AllTerminals.Close(ended);
+            }
         }
         // Every signed-in login always has its Launcher (M.ORCH-T1886, the owner's request): it's the one child its tree node
         // always expands to, so a login with no CLIs open (Amy, the API key) isn't a leaf row with no way into its Launcher.
