@@ -245,6 +245,63 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
         stream.Publish(envelope, key);
     }
 
+    /// <summary>The key a hosted session's announcement is kept under on the stream (M.ORCH-T1998): one per session, so a
+    /// dashboard (re)connecting gets every live session's <c>started</c> replayed instead of waiting for its resync timer.</summary>
+    public static string TermSessionKey(string id) => Term.TermBus.Kind + ":" + id.Trim();
+
+    // The sessions kept under TermSessionKey, by id, with their records: ExpireTermSessions drops one whose host is gone without
+    // its ended ever arriving (a killed host), so no dashboard is handed a tab for it.
+    private readonly Dictionary<string, Term.TermSessionRecord> termKept = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>A <c>term-session</c> message (M.ORCH-T1998): its <c>started</c> kept per session for connecting subscribers;
+    /// its <c>ended</c> or <c>undock</c> sent once and the session no longer kept; anything else (a change, a launcher request)
+    /// only sent.</summary>
+    private void TakeTermSession(StatusEnvelope envelope)
+    {
+        if (envelope.V > Term.TermBus.Version || envelope.PayloadAs<Term.TermSessionEvent>() is not { Id.Length: > 0 } message)
+        {
+            stream.Publish(envelope);
+            return;
+        }
+        var key = TermSessionKey(message.Id);
+        lock (termKept)
+        {
+            switch (message.Event)
+            {
+                case Term.TermSessionEvents.Started:
+                    termKept[message.Id] = message.ToRecord();
+                    stream.Publish(envelope, key);
+                    return;
+                case Term.TermSessionEvents.Ended or Term.TermSessionEvents.Undock:
+                    termKept.Remove(message.Id);
+                    stream.Forget(key);
+                    break;
+            }
+        }
+        stream.Publish(envelope);
+    }
+
+    /// <summary>Stops keeping each hosted session whose host no longer runs (M.ORCH-T1998), its ended lost. Never throws.</summary>
+    public void ExpireTermSessions()
+    {
+        try
+        {
+            List<Term.TermSessionRecord> kept;
+            lock (termKept) kept = [.. termKept.Values];
+            foreach (var gone in kept.Where(s => !Term.TermSessions.IsHostRunning(s)))
+                lock (termKept)
+                    if (termKept.TryGetValue(gone.Id, out var now) && now.HostPid == gone.HostPid && now.HostStartUtc == gone.HostStartUtc)
+                    {
+                        termKept.Remove(gone.Id);
+                        stream.Forget(TermSessionKey(gone.Id));
+                    }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            log.Warning(ex, "Couldn't drop the gone hosted sessions");
+        }
+    }
+
     /// <summary>Sends <paramref name="envelope"/> on, by its kind.</summary>
     public void Take(StatusEnvelope envelope)
     {
@@ -272,6 +329,9 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                     }
                     if (envelope.PayloadAs<ActivityPayload>() is not { Session.Length: > 0 } activity) return;
                     OfferActivity(activity, DateTime.UtcNow);
+                    return;
+                case Term.TermBus.Kind:
+                    TakeTermSession(envelope);
                     return;
                 case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Reminders or StateBus.Cutoffs or StateBus.Allowances:
                     // The whole of its kind each time: the latest is kept, so a dashboard connecting gets it after the state.

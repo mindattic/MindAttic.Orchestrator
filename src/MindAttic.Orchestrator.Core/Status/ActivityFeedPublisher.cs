@@ -64,6 +64,7 @@ public sealed class ActivityFeedPublisher(AppBusHub hub, string folder)
                         LoadSettings();
                         Scan(now, starting: false);
                         hub.ExpireActivity(now, endedAfter, Alive);
+                        hub.ExpireTermSessions();
                         rescanAt = now + rescanEvery;
                     }
                     hub.FlushActivity(now);

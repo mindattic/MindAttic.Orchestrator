@@ -33,6 +33,9 @@ public partial class MainWindow : Window
     /// <summary>How often the hosted-session registry is read again for a host whose bus announcement was lost (M.ORCH-T1001; 45s).</summary>
     private static TimeSpan TermResyncInterval => DashboardTimings.TermResync;
 
+    // The hosted-session resync timer (M.ORCH-T1001), on only while the status stream is down (M.ORCH-T1998); null until loaded.
+    private DispatcherTimer? termResync;
+
     /// <summary>The global login's tab, which owns the refresh and every login's tab (M.ORCH-T613).</summary>
     private readonly MainViewModel model = new();
     private readonly DispatcherTimer timer;
@@ -215,7 +218,8 @@ public partial class MainWindow : Window
             model.RestoringTerminals = true;
             if (restoreOnLoad) await model.AllTerminals.ReattachAsync();
             // And every 45s after (M.ORCH-T1001): a term-session announcement lost on the bus (sent while the daemon restarted)
-            // never gave its host a tab, since the bus keeps no copy and the registry was read only here.
+            // never gave its host a tab, since the registry was read only here. Only while the stream is down (M.ORCH-T1998): the
+            // daemon keeps each live session's announcement and replays them on every (re)connection, which resyncs once too.
             if (restoreOnLoad)
             {
                 var resync = new DispatcherTimer(DispatcherPriority.Background) { Interval = TermResyncInterval };
@@ -224,8 +228,9 @@ public partial class MainWindow : Window
                     await model.AllTerminals.ResyncAsync();
                     if (resync.Interval != TermResyncInterval) resync.Interval = TermResyncInterval; // dialed live in the Vault
                 };
-                resync.Start();
-                Closed += (_, _) => resync.Stop();
+                termResync = resync;
+                resync.IsEnabled = !model.IsStreamLive;
+                Closed += (_, _) => { resync.Stop(); termResync = null; };
             }
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
             await model.RefreshAsync();
@@ -401,6 +406,12 @@ public partial class MainWindow : Window
                     // Gone with the stream: each listening app says so again on the next connection.
                     if (!live) model.Presences.Clear();
                     Retime();
+                    // The hosted-session resync runs only while the stream is down, and once on each (re)connection (M.ORCH-T1998).
+                    if (termResync is { } resync && resync.IsEnabled == live)
+                    {
+                        resync.IsEnabled = !live;
+                        if (live) _ = model.AllTerminals.ResyncAsync();
+                    }
                 });
             },
             token), token);
