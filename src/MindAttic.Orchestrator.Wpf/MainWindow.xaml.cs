@@ -1667,6 +1667,10 @@ public partial class MainWindow : Window
         refreshProjects.ToolTip = "Read the Launcher's roster and GitHub's wip-tagged repos again";
         refreshProjects.Click += (_, e) => { e.Handled = true; _ = tab.RefreshProjectListAsync(); };
         menu.Items.Add(refreshProjects);
+        var discoverProjects = DropdownItem("", "Discover projects…");
+        discoverProjects.ToolTip = "Find git repos under the workspace root that aren't on the Launcher's roster yet, and add the ones you pick";
+        discoverProjects.Click += (_, e) => { e.Handled = true; _ = DiscoverProjectsAsync(tab); };
+        menu.Items.Add(discoverProjects);
         var commitAll = DropdownItem("", "Commit + push all dirty projects…");
         commitAll.ToolTip = "One commit message for every project with changes, each pushed (also: right-click Open Project)";
         commitAll.Click += (_, e) => { e.Handled = true; CommitAllProjects(commitAll, tab); };
@@ -1737,6 +1741,37 @@ public partial class MainWindow : Window
         if (MainViewModel.ProjectTree is not { Count: > 0 } tree) return;
         try { new CommitProjectsWindow(tree) { Owner = this }.Show(); }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Commit and push projects failed; contained"); }
+    }
+
+    /// <summary>"Discover projects…" (M.ORCH-T1987), a sibling of "Refresh projects": finds git repos under the workspace
+    /// root the Launcher's roster doesn't know about yet (<see cref="ProjectDiscovery.FindUnregistered"/>), lets the user
+    /// pick which to add in <see cref="DiscoverProjectsWindow"/>, appends the picks to settings.json
+    /// (<see cref="ProjectDiscovery.Append"/>) and refreshes the project list the same way "Refresh projects" does.</summary>
+    private async Task DiscoverProjectsAsync(MainViewModel tab)
+    {
+        IReadOnlyList<DiscoveredRepo> repos;
+        try { repos = await Task.Run(() => ProjectDiscovery.FindUnregistered(ProjectRoster.Load(), tab.WorkspaceRoot)); }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Dashboard").Error(ex, "Discover projects failed reading the workspace root; contained");
+            return;
+        }
+        if (repos.Count == 0)
+        {
+            MaMessageBox.Show(this, "No git repos under the workspace root are missing from the Launcher's roster.", "Discover Projects",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            new DiscoverProjectsWindow(repos, async picked =>
+            {
+                await Task.Run(() => ProjectDiscovery.Append(picked));
+                await tab.RefreshProjectListAsync();
+            })
+            { Owner = this }.Show();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Discover Projects failed; contained"); }
     }
 
     /// <summary>The global toolbar's Projects group (M.ORCH-T1980): opens <see cref="OpenProjectWindow"/> for whichever
