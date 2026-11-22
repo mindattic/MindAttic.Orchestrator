@@ -519,6 +519,27 @@ public sealed class OrchestratorDb(string path)
         );
         CREATE INDEX resources_owner ON resources (owner);
         """,
+        // 18: the reminders that nag (M.ORCH-T1932; see Reminders.NagBook): one row per reminder, keyed by its short id, with
+        // what it says, its first gap (minutes), the backoff each gap grows by and the longest it grows to (NULL: the default
+        // cap), the ticket whose closing ends it (NULL: none), when it was added, when it next nags, how many times it has and
+        // when it last did, and when and why it ended (NULL while active). Times ISO-8601 UTC text. In the dump: it changes
+        // only when a reminder nags, is added or ends. (The one-shot texted reminders stay in the 'reminders' state row.)
+        """
+        CREATE TABLE reminders (
+            id                TEXT PRIMARY KEY,
+            message           TEXT NOT NULL,
+            every_minutes     REAL NOT NULL,
+            backoff           REAL NOT NULL,
+            max_every_minutes REAL,
+            until_ticket      TEXT,
+            created_utc       TEXT NOT NULL,
+            next_utc          TEXT NOT NULL,
+            nags              INTEGER NOT NULL,
+            last_nag_utc      TEXT,
+            ended_utc         TEXT,
+            ended_why         TEXT
+        );
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a
@@ -552,6 +573,7 @@ public sealed class OrchestratorDb(string path)
         ("organizations", "id", ""),
         ("org_members", "provider, login", ""),
         ("term_grants", "owner, viewer, session", ""),
+        ("reminders", "id", ""),
         ("state", "name", " WHERE name NOT IN (" + string.Join(", ", Volatile.Select(v => "'" + v + "'")) + ")"),
     ];
 

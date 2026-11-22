@@ -87,7 +87,10 @@ public sealed class LeaseTests
     internal const string DropStep16 = DropStep17 + "DROP TABLE term_grants; DROP TABLE term_audit; ";
 
     /// <summary>Undoes step 17 (M.ORCH-T1676's resources, the resource ledger).</summary>
-    internal const string DropStep17 = "DROP TABLE resources; ";
+    internal const string DropStep17 = DropStep18 + "DROP TABLE resources; ";
+
+    /// <summary>Undoes step 18 (M.ORCH-T1932's reminders, the reminders that nag).</summary>
+    internal const string DropStep18 = "DROP TABLE reminders; ";
 
     /// <summary>Undoes step 13 (M.ORCH-T655's organizations and org_members).</summary>
     internal const string DropStep13 = DropStep15 + "DROP TABLE org_members; DROP TABLE organizations; ";
@@ -143,7 +146,7 @@ public sealed class LeaseTests
             command.CommandText = "SELECT count(*) FROM pragma_table_info('cli_marks') WHERE name = 'since';";
             Assert.That(command.ExecuteScalar(), Is.EqualTo(1L), "step 9 (M.ORCH-T558): when each CLI's mark was first written");
         }
-        Assert.That(OrchestratorDb.Version, Is.EqualTo(17), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since, step 10 (M.ORCH-T563) the models, step 11 (M.ORCH-T670) the members, step 12 (M.ORCH-T668) assignments.account, step 13 (M.ORCH-T655) the organizations, step 14 (M.ORCH-T779) renames the Autopilot cli_marks kinds and settings to Allocate, step 15 (M.ORCH-T774) gate_events.account, step 16 (M.ORCH-T934) term_grants and term_audit, step 17 (M.ORCH-T1676) resources");
+        Assert.That(OrchestratorDb.Version, Is.EqualTo(18), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since, step 10 (M.ORCH-T563) the models, step 11 (M.ORCH-T670) the members, step 12 (M.ORCH-T668) assignments.account, step 13 (M.ORCH-T655) the organizations, step 14 (M.ORCH-T779) renames the Autopilot cli_marks kinds and settings to Allocate, step 15 (M.ORCH-T774) gate_events.account, step 16 (M.ORCH-T934) term_grants and term_audit, step 17 (M.ORCH-T1676) resources, step 18 (M.ORCH-T1932) reminders");
         Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(5555), "what it held is kept");
     }
 

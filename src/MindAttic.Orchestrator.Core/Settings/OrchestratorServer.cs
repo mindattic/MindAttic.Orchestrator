@@ -242,12 +242,18 @@ public sealed class OrchestratorServer(string connectionString)
             machine nvarchar(64) NOT NULL, kind nvarchar(32) NOT NULL, path nvarchar(320) NOT NULL, owner nvarchar(450) NOT NULL,
             ticket nvarchar(128) NULL, created_utc nvarchar(64) NOT NULL, expires_utc nvarchar(64) NULL, released_utc nvarchar(64) NULL
             """, "ALTER TABLE resources ADD CONSTRAINT resources_key PRIMARY KEY (machine, kind, path); CREATE INDEX resources_owner ON resources (owner);"),
+        // The reminders that nag (M.ORCH-T1932).
+        ("reminders", """
+            id nvarchar(64) NOT NULL PRIMARY KEY, message nvarchar(max) NOT NULL, every_minutes float NOT NULL, backoff float NOT NULL,
+            max_every_minutes float NULL, until_ticket nvarchar(128) NULL, created_utc nvarchar(64) NOT NULL, next_utc nvarchar(64) NOT NULL,
+            nags bigint NOT NULL, last_nag_utc nvarchar(64) NULL, ended_utc nvarchar(64) NULL, ended_why nvarchar(max) NULL
+            """, null),
     ];
 
     /// <summary>The schema's version: 1, the tables of SQLite's first ten steps; 2, <c>members</c> (M.ORCH-T670); 3,
     /// <c>assignments.account</c> (M.ORCH-T668); 4, <c>organizations</c> and <c>org_members</c> (M.ORCH-T655); 5, <c>term_grants</c>
-    /// and <c>term_audit</c> (M.ORCH-T934); 6, <c>resources</c> (M.ORCH-T1676).</summary>
-    public const int SchemaVersion = 6;
+    /// and <c>term_audit</c> (M.ORCH-T934); 6, <c>resources</c> (M.ORCH-T1676); 7, <c>reminders</c> (M.ORCH-T1932).</summary>
+    public const int SchemaVersion = 7;
 
     /// <summary>The changes to tables already there, one step per version past 1, as SQLite's migrations add them: a column
     /// added to a table there is one more step here (an <c>ALTER TABLE ... ADD</c>, also added to its <see cref="Tables"/> row so
@@ -259,6 +265,7 @@ public sealed class OrchestratorServer(string connectionString)
         ("organizations", ""), // 4: organizations and org_members, new tables (created with the rest below; M.ORCH-T655)
         ("term_grants", ""), // 5: term_grants and term_audit, new tables (created with the rest below; M.ORCH-T934)
         ("resources", ""), // 6: resources, the resource ledger, a new table (created with the rest below; M.ORCH-T1676)
+        ("reminders", ""), // 7: reminders, the reminders that nag, a new table (created with the rest below; M.ORCH-T1932)
     ];
 
     private void EnsureSchema(SqlConnection connection)
