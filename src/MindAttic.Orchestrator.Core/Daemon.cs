@@ -193,6 +193,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // 5-hour window, so an idle /allocate CLI stayed idle and a login the last-resort cool-off should have bent
                 // back under its pace target instead ran unchecked to 100%).
                 try { WatchHealth(allocate); } catch (Exception ex) { Say(LogEventLevel.Warning, $"machine health: couldn't read it (retrying next tick): {ex.Message}"); }
+                if (hub is not null)
+                    try { LearnHealthLines(hub, s); } catch (Exception ex) { Say(LogEventLevel.Warning, $"health lines: couldn't learn them (retrying next tick): {ex.Message}"); }
                 try { WatchMemory(s); } catch (Exception ex) { Say(LogEventLevel.Warning, $"memory guard: couldn't read it (retrying next tick): {ex.Message}"); }
                 try { CapSqlServerMemory(s); } catch (Exception ex) { Say(LogEventLevel.Warning, $"SQL Server memory cap: couldn't apply it (retrying next tick): {ex.Message}"); }
                 try { WatchPagefile(); } catch (Exception ex) { Say(LogEventLevel.Warning, $"pagefile check: couldn't read it (retrying next tick): {ex.Message}"); }
@@ -1097,6 +1099,25 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private Activity.HealthLevel alertedHealth;
+
+    private DateTime healthLearnedUtc;
+
+    /// <summary>
+    /// Every health sample period, relearns the health lines from the probes' history the hub keeps (M.ORCH-T2057,
+    /// <see cref="Health.HealthLearning"/>): each line held between its configured value and its bound, kept in the store for
+    /// the probes to grade on, and each move logged with its reason.
+    /// </summary>
+    private void LearnHealthLines(Status.AppBusHub hub, OrchestratorSettings s)
+    {
+        if (DateTime.UtcNow - healthLearnedUtc < OrchestratorSettings.SecondsSpan(s.HealthSampleSeconds)) return;
+        healthLearnedUtc = DateTime.UtcNow;
+        if (!store.TryLoad<Health.LearnedHealthLines>(Health.HealthLearning.StoreName, out var book)) return;
+        var moves = Health.HealthLearning.Pass(book, s, c => hub.HealthReadings(Health.HealthResult.Describe(c).CheckId), DateTimeOffset.UtcNow);
+        if (moves.Count == 0) return;
+        store.Save(Health.HealthLearning.StoreName, book);
+        foreach (var m in moves)
+            Say(LogEventLevel.Information, $"health line {m.Check}: {m.FromDegraded:0.##}/{m.FromUnhealthy:0.##} -> {m.ToDegraded:0.##}/{m.ToUnhealthy:0.##} ({m.Reason})");
+    }
 
     private Activity.MemoryLevel memoryLevel;
 

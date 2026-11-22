@@ -66,6 +66,22 @@ public sealed record HealthThresholds(HealthLine RamFreeGb, HealthLine CommitPer
         new(s.HealthStorageDegradedPercent, s.HealthStorageUnhealthyPercent, LowerIsWorse: false),
         new(s.HealthLinkLatencyDegradedMs, s.HealthLinkLatencyUnhealthyMs, LowerIsWorse: false));
 
+    /// <summary>The lines to grade on (M.ORCH-T2057): <paramref name="s"/>'s, each moved to what the daemon has learned from the
+    /// probes' history (<see cref="HealthLearning"/>) when learning is on, held between the configured line and its bound.</summary>
+    public static HealthThresholds Of(OrchestratorSettings s, LearnedHealthLines? learned)
+    {
+        var configured = Of(s);
+        if (!s.HealthLearn || learned is null || learned.Lines.Count == 0) return configured;
+        HealthLine L(HealthCheck c) => HealthLearning.Effective(s, c, configured[c], learned);
+        return new(L(HealthCheck.RamFreeGb), L(HealthCheck.CommitPercent), L(HealthCheck.DiskFreeGb), L(HealthCheck.DtuPercent),
+            L(HealthCheck.StoragePercent), L(HealthCheck.LinkLatencyMs));
+    }
+
+    /// <summary>The lines as <paramref name="store"/>'s settings set them and as its daemon has learned them; the configured
+    /// lines alone when the learned ones can't be read.</summary>
+    public static HealthThresholds Of(OrchestratorSettings s, JsonStore store) =>
+        Of(s, store.TryLoad<LearnedHealthLines>(HealthLearning.StoreName, out var learned) ? learned : null);
+
     /// <summary>What's wrong with <paramref name="s"/>'s health lines, for the CLI to refuse, or null when they're in order:
     /// none negative, percents at most 100, latencies over 0, and each check's unhealthy line no better than its degraded one.</summary>
     public static string? Problem(OrchestratorSettings s)
@@ -82,6 +98,14 @@ public sealed record HealthThresholds(HealthLine RamFreeGb, HealthLine CommitPer
             return "The storage lines go 0 < --health-storage-degraded-percent <= --health-storage-unhealthy-percent <= 100.";
         if (!(s.HealthLinkLatencyDegradedMs > 0 && s.HealthLinkLatencyDegradedMs <= s.HealthLinkLatencyUnhealthyMs))
             return "The link lines go 0 < --health-link-degraded-ms <= --health-link-unhealthy-ms.";
+        if (!(s.HealthRamLearnFloorGb >= 0 && s.HealthDiskFreeLearnFloorGb >= 0))
+            return "--health-ram-learn-floor-gb and --health-disk-learn-floor-gb can't be negative.";
+        if (!(s.HealthCommitLearnCeilingPercent <= 100 && s.HealthDtuLearnCeilingPercent <= 100 && s.HealthStorageLearnCeilingPercent <= 100))
+            return "--health-commit-learn-ceiling-percent, --health-dtu-learn-ceiling-percent and --health-storage-learn-ceiling-percent are at most 100.";
+        if (!(s.HealthLinkLatencyLearnCeilingMs > 0))
+            return "--health-link-learn-ceiling-ms is over 0.";
+        if (!(s.HealthLearnMinSamples >= 1 && s.HealthLearnMarginPercent >= 0 && s.HealthLearnMarginPercent <= 100))
+            return "--health-learn-min-samples is at least 1 and --health-learn-margin-percent 0 to 100.";
         return null;
     }
 

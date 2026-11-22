@@ -85,7 +85,8 @@ internal abstract class ProbeCommand : AsyncCommand<ProbeCommand.Settings>
         IReadOnlyList<HealthResult> results;
         using var run = CancellationTokenSource.CreateLinkedTokenSource(stop);
         run.CancelAfter(timeout);
-        try { results = await Check(s, HealthThresholds.Of(s), run.Token).WaitAsync(run.Token); }
+        // The lines as set, moved to what the daemon has learned of them (M.ORCH-T2057), read every run like the settings.
+        try { results = await Check(s, HealthThresholds.Of(s, Ctx.Store()), run.Token).WaitAsync(run.Token); }
         catch (OperationCanceledException) when (!stop.IsCancellationRequested)
         {
             return Failed($"timed out after {timeout.TotalSeconds:0} s");

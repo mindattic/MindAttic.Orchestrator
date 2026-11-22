@@ -677,6 +677,50 @@ public sealed class OrchestratorVaultSettings
     [Setting("Link unhealthy past (ms)", Group = "Health", Order = 12, Help = "Round-trip milliseconds at or past which the health screen grades a link unhealthy (and can alert).")]
     [SettingRange(1, 600000)]
     public double HealthLinkLatencyUnhealthyMs { get; set; } = 5000;
+
+    /// <summary>Let the daemon learn each health line from the probes' history: a line the machine's normal reading sits past moves just past it, never looser than its bound below. Off grades on the lines as set.</summary>
+    [Setting("Learn the health lines", Group = "Health", Order = 13, Help = "Let the daemon learn each health line from the probes' history: a line the machine's normal reading sits past moves just past it, never looser than its bound below. Off grades on the lines as set.")]
+    public bool HealthLearn { get; set; } = true;
+
+    /// <summary>The fewest readings of a check the daemon learns its lines from (60 is half an hour at the 30 s sample).</summary>
+    [Setting("Learn from at least (readings)", Group = "Health", Order = 14, Help = "The fewest readings of a check the daemon learns its lines from (60 is half an hour at the 30 s sample).")]
+    [SettingRange(1, 100000)]
+    public int HealthLearnMinSamples { get; set; } = 60;
+
+    /// <summary>How far past the machine's normal reading (percent of it) a learned degraded line is put.</summary>
+    [Setting("Learned line margin (%)", Group = "Health", Order = 15, Help = "How far past the machine's normal reading (percent of it) a learned degraded line is put.")]
+    [SettingRange(0, 100)]
+    public double HealthLearnMarginPercent { get; set; } = 5;
+
+    /// <summary>The lowest free RAM a learned RAM line may go.</summary>
+    [Setting("RAM lines learn no lower than (free GB)", Group = "Health", Order = 16, Help = "The lowest free RAM a learned RAM line may go.")]
+    [SettingRange(0, 1048576)]
+    public double HealthRamLearnFloorGb { get; set; } = 1;
+
+    /// <summary>The highest commit percent a learned commit line may go.</summary>
+    [Setting("Commit lines learn no higher than (%)", Group = "Health", Order = 17, Help = "The highest commit percent a learned commit line may go.")]
+    [SettingRange(1, 100)]
+    public double HealthCommitLearnCeilingPercent { get; set; } = 97;
+
+    /// <summary>The lowest free space a learned disk line may go.</summary>
+    [Setting("Disk lines learn no lower than (free GB)", Group = "Health", Order = 18, Help = "The lowest free space a learned disk line may go.")]
+    [SettingRange(0, 1048576)]
+    public double HealthDiskFreeLearnFloorGb { get; set; } = 2;
+
+    /// <summary>The highest DTU percent a learned database-load line may go.</summary>
+    [Setting("Database load lines learn no higher than (DTU %)", Group = "Health", Order = 19, Help = "The highest DTU percent a learned database-load line may go.")]
+    [SettingRange(1, 100)]
+    public double HealthDtuLearnCeilingPercent { get; set; } = 99;
+
+    /// <summary>The highest storage percent a learned database-storage line may go.</summary>
+    [Setting("Database storage lines learn no higher than (%)", Group = "Health", Order = 20, Help = "The highest storage percent a learned database-storage line may go.")]
+    [SettingRange(1, 100)]
+    public double HealthStorageLearnCeilingPercent { get; set; } = 98;
+
+    /// <summary>The highest round-trip milliseconds a learned link line may go.</summary>
+    [Setting("Link lines learn no higher than (ms)", Group = "Health", Order = 21, Help = "The highest round-trip milliseconds a learned link line may go.")]
+    [SettingRange(1, 600000)]
+    public double HealthLinkLatencyLearnCeilingMs { get; set; } = 15000;
     /// <summary>Minutes between prunes of old log entries and finished terminal hosts' log files.</summary>
     [Setting("Prune old logs every (minutes)", Group = "Alerts", Order = 65, Help = "Minutes between prunes of old log entries and finished terminal hosts' log files.")]
     [SettingRange(1, 10080)]
@@ -1182,6 +1226,15 @@ public sealed class OrchestratorVaultSettings
         HealthStorageUnhealthyPercent = s.HealthStorageUnhealthyPercent,
         HealthLinkLatencyDegradedMs = s.HealthLinkLatencyDegradedMs,
         HealthLinkLatencyUnhealthyMs = s.HealthLinkLatencyUnhealthyMs,
+        HealthLearn = s.HealthLearn,
+        HealthLearnMinSamples = s.HealthLearnMinSamples,
+        HealthLearnMarginPercent = s.HealthLearnMarginPercent,
+        HealthRamLearnFloorGb = s.HealthRamLearnFloorGb,
+        HealthCommitLearnCeilingPercent = s.HealthCommitLearnCeilingPercent,
+        HealthDiskFreeLearnFloorGb = s.HealthDiskFreeLearnFloorGb,
+        HealthDtuLearnCeilingPercent = s.HealthDtuLearnCeilingPercent,
+        HealthStorageLearnCeilingPercent = s.HealthStorageLearnCeilingPercent,
+        HealthLinkLatencyLearnCeilingMs = s.HealthLinkLatencyLearnCeilingMs,
         LogPruneMinutes = s.LogPruneMinutes,
         DiskCleanupEveryMinutes = s.DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = s.GitHubIntakeMinutes,
@@ -1381,6 +1434,15 @@ public sealed class OrchestratorVaultSettings
         HealthStorageUnhealthyPercent = HealthStorageUnhealthyPercent,
         HealthLinkLatencyDegradedMs = HealthLinkLatencyDegradedMs,
         HealthLinkLatencyUnhealthyMs = HealthLinkLatencyUnhealthyMs,
+        HealthLearn = HealthLearn,
+        HealthLearnMinSamples = HealthLearnMinSamples,
+        HealthLearnMarginPercent = HealthLearnMarginPercent,
+        HealthRamLearnFloorGb = HealthRamLearnFloorGb,
+        HealthCommitLearnCeilingPercent = HealthCommitLearnCeilingPercent,
+        HealthDiskFreeLearnFloorGb = HealthDiskFreeLearnFloorGb,
+        HealthDtuLearnCeilingPercent = HealthDtuLearnCeilingPercent,
+        HealthStorageLearnCeilingPercent = HealthStorageLearnCeilingPercent,
+        HealthLinkLatencyLearnCeilingMs = HealthLinkLatencyLearnCeilingMs,
         LogPruneMinutes = LogPruneMinutes,
         DiskCleanupEveryMinutes = DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = GitHubIntakeMinutes,

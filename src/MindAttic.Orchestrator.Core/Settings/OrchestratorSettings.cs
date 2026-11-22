@@ -715,6 +715,36 @@ public sealed record OrchestratorSettings
     /// <summary>Round-trip milliseconds at or past which the links probe grades a link unhealthy.</summary>
     public double HealthLinkLatencyUnhealthyMs { get; init; } = 5000;
 
+    // ── Health line self-correction (M.ORCH-T2057): each line above is the tightest it goes; the bounds below the loosest ──
+
+    /// <summary>Whether the daemon learns the health lines from the probes' history (<see cref="Health.HealthLearning"/>): a line
+    /// the machine's normal reading sits past moves just past it, never looser than its bound; false grades on the lines as set.</summary>
+    public bool HealthLearn { get; init; } = true;
+
+    /// <summary>The fewest readings of a check the daemon learns its lines from (60 is half an hour at the 30 s sample).</summary>
+    public int HealthLearnMinSamples { get; init; } = 60;
+
+    /// <summary>How far past the machine's normal reading (percent of it) a learned degraded line is put.</summary>
+    public double HealthLearnMarginPercent { get; init; } = 5;
+
+    /// <summary>The lowest free-RAM (GB) a learned RAM line may go.</summary>
+    public double HealthRamLearnFloorGb { get; init; } = 1;
+
+    /// <summary>The highest commit percent a learned commit line may go.</summary>
+    public double HealthCommitLearnCeilingPercent { get; init; } = 97;
+
+    /// <summary>The lowest free GB a learned disk line may go.</summary>
+    public double HealthDiskFreeLearnFloorGb { get; init; } = 2;
+
+    /// <summary>The highest DTU percent a learned database-load line may go.</summary>
+    public double HealthDtuLearnCeilingPercent { get; init; } = 99;
+
+    /// <summary>The highest storage percent a learned database-storage line may go.</summary>
+    public double HealthStorageLearnCeilingPercent { get; init; } = 98;
+
+    /// <summary>The highest round-trip milliseconds a learned link line may go.</summary>
+    public double HealthLinkLatencyLearnCeilingMs { get; init; } = 15000;
+
     /// <summary>Minutes between prunes of old log entries and finished terminal hosts' logs (was <see cref="LogPruner.Every"/>).</summary>
     public double LogPruneMinutes { get; init; } = 60;
 

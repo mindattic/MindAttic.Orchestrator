@@ -364,6 +364,18 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
             return healthKept.TryGetValue(HealthInstance(probe, checkId, componentId), out var ring) ? [.. ring] : [];
     }
 
+    /// <summary>Every numeric reading kept for <paramref name="checkId"/> across all its probes and instances, oldest first per
+    /// instance: what the health lines are learned from (M.ORCH-T2057). Results with no reading are left out.</summary>
+    public IReadOnlyList<double> HealthReadings(string checkId)
+    {
+        var id = checkId.Trim();
+        lock (healthKept)
+            return [.. healthKept.Where(kv => string.Equals(kv.Key.CheckId, id, StringComparison.Ordinal))
+                .SelectMany(kv => kv.Value)
+                .Where(r => r.ObservedValue is { } v && double.IsFinite(v))
+                .Select(r => r.ObservedValue!.Value)];
+    }
+
     /// <summary>A <c>health</c> message (M.ORCH-T2021): relayed to every subscriber, its report kept per probe for connecting ones,
     /// and each of its results added to its check instance's history. One older than the probe's newest is only relayed; one this
     /// daemon can't read (a later version, not a report) is relayed unread.</summary>

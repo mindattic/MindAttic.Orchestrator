@@ -643,6 +643,42 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Round-trip milliseconds at or past which the health screen grades a link unhealthy (default 5000).")]
         public double? HealthLinkLatencyUnhealthyMs { get; init; }
 
+        [CommandOption("--health-learn <BOOL>")]
+        [Description("Learn the health lines from the probes' history, each within its bound (default true).")]
+        public bool? HealthLearn { get; init; }
+
+        [CommandOption("--health-learn-min-samples <N>")]
+        [Description("The fewest readings of a check its lines are learned from (default 60).")]
+        public int? HealthLearnMinSamples { get; init; }
+
+        [CommandOption("--health-learn-margin-percent <PERCENT>")]
+        [Description("How far past the normal reading (percent of it) a learned degraded line goes (default 5).")]
+        public double? HealthLearnMarginPercent { get; init; }
+
+        [CommandOption("--health-ram-learn-floor-gb <GB>")]
+        [Description("The lowest free RAM a learned RAM line may go (default 1).")]
+        public double? HealthRamLearnFloorGb { get; init; }
+
+        [CommandOption("--health-commit-learn-ceiling-percent <PERCENT>")]
+        [Description("The highest commit percent a learned commit line may go (default 97).")]
+        public double? HealthCommitLearnCeilingPercent { get; init; }
+
+        [CommandOption("--health-disk-learn-floor-gb <GB>")]
+        [Description("The lowest free GB a learned disk line may go (default 2).")]
+        public double? HealthDiskFreeLearnFloorGb { get; init; }
+
+        [CommandOption("--health-dtu-learn-ceiling-percent <PERCENT>")]
+        [Description("The highest DTU percent a learned database-load line may go (default 99).")]
+        public double? HealthDtuLearnCeilingPercent { get; init; }
+
+        [CommandOption("--health-storage-learn-ceiling-percent <PERCENT>")]
+        [Description("The highest storage percent a learned database-storage line may go (default 98).")]
+        public double? HealthStorageLearnCeilingPercent { get; init; }
+
+        [CommandOption("--health-link-learn-ceiling-ms <MS>")]
+        [Description("The highest round-trip milliseconds a learned link line may go (default 15000).")]
+        public double? HealthLinkLatencyLearnCeilingMs { get; init; }
+
         [CommandOption("--model <REPO_OR_TICKET=MODEL>")]
         [Description("The model /allocate starts a repo's (or one ticket's) subagents on, overriding the pick: Prose=opus, M.ORCH-T12=sonnet, GTFO.*=sonnet; =auto clears. A ticket's wins over its repo's. Repeatable.")]
         public string[] Model { get; init; } = [];
@@ -769,7 +805,16 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             || settings.HealthStorageDegradedPercent is not null
             || settings.HealthStorageUnhealthyPercent is not null
             || settings.HealthLinkLatencyDegradedMs is not null
-            || settings.HealthLinkLatencyUnhealthyMs is not null;
+            || settings.HealthLinkLatencyUnhealthyMs is not null
+            || settings.HealthLearn is not null
+            || settings.HealthLearnMinSamples is not null
+            || settings.HealthLearnMarginPercent is not null
+            || settings.HealthRamLearnFloorGb is not null
+            || settings.HealthCommitLearnCeilingPercent is not null
+            || settings.HealthDiskFreeLearnFloorGb is not null
+            || settings.HealthDtuLearnCeilingPercent is not null
+            || settings.HealthStorageLearnCeilingPercent is not null
+            || settings.HealthLinkLatencyLearnCeilingMs is not null;
         if (healthChanged)
         {
             s = s with
@@ -786,6 +831,15 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
                 HealthStorageUnhealthyPercent = settings.HealthStorageUnhealthyPercent ?? s.HealthStorageUnhealthyPercent,
                 HealthLinkLatencyDegradedMs = settings.HealthLinkLatencyDegradedMs ?? s.HealthLinkLatencyDegradedMs,
                 HealthLinkLatencyUnhealthyMs = settings.HealthLinkLatencyUnhealthyMs ?? s.HealthLinkLatencyUnhealthyMs,
+                HealthLearn = settings.HealthLearn ?? s.HealthLearn,
+                HealthLearnMinSamples = settings.HealthLearnMinSamples ?? s.HealthLearnMinSamples,
+                HealthLearnMarginPercent = settings.HealthLearnMarginPercent ?? s.HealthLearnMarginPercent,
+                HealthRamLearnFloorGb = settings.HealthRamLearnFloorGb ?? s.HealthRamLearnFloorGb,
+                HealthCommitLearnCeilingPercent = settings.HealthCommitLearnCeilingPercent ?? s.HealthCommitLearnCeilingPercent,
+                HealthDiskFreeLearnFloorGb = settings.HealthDiskFreeLearnFloorGb ?? s.HealthDiskFreeLearnFloorGb,
+                HealthDtuLearnCeilingPercent = settings.HealthDtuLearnCeilingPercent ?? s.HealthDtuLearnCeilingPercent,
+                HealthStorageLearnCeilingPercent = settings.HealthStorageLearnCeilingPercent ?? s.HealthStorageLearnCeilingPercent,
+                HealthLinkLatencyLearnCeilingMs = settings.HealthLinkLatencyLearnCeilingMs ?? s.HealthLinkLatencyLearnCeilingMs,
             };
             if (HealthThresholds.Problem(s) is { } healthError) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(healthError)}[/]"); return 1; }
         }
@@ -1081,6 +1135,17 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             $"commit {s.HealthCommitDegradedPercent:0.#}/{s.HealthCommitUnhealthyPercent:0.#}% · disk under {s.HealthDiskFreeDegradedGb:0.#}/{s.HealthDiskFreeUnhealthyGb:0.#} GB free · " +
             $"database DTU {s.HealthDtuDegradedPercent:0.#}/{s.HealthDtuUnhealthyPercent:0.#}% · storage {s.HealthStorageDegradedPercent:0.#}/{s.HealthStorageUnhealthyPercent:0.#}% · " +
             $"links {s.HealthLinkLatencyDegradedMs:0.#}/{s.HealthLinkLatencyUnhealthyMs:0.#} ms");
+        // What the daemon has learned of them (M.ORCH-T2057), beside what they're set to, and the last move with its reason.
+        var learnedLines = store.TryLoad<LearnedHealthLines>(HealthLearning.StoreName, out var learnedBook) ? learnedBook : null;
+        AnsiConsole.MarkupLine("  health learning " + (s.HealthLearn
+            ? Markup.Escape($"on (from {s.HealthLearnMinSamples}+ readings, {s.HealthLearnMarginPercent:0.#}% past normal; bounds RAM {s.HealthRamLearnFloorGb:0.#} GB, " +
+                $"commit {s.HealthCommitLearnCeilingPercent:0.#}%, disk {s.HealthDiskFreeLearnFloorGb:0.#} GB, DTU {s.HealthDtuLearnCeilingPercent:0.#}%, " +
+                $"storage {s.HealthStorageLearnCeilingPercent:0.#}%, links {s.HealthLinkLatencyLearnCeilingMs:0.#} ms): " +
+                string.Join(" · ", Enum.GetValues<HealthCheck>().Select(c => HealthLearning.Describe(s, c, learnedLines))))
+            : "off (--health-learn true)"));
+        if (learnedLines?.Changes is { Count: > 0 } moves && moves[^1] is var last)
+            AnsiConsole.MarkupLine(Markup.Escape($"    last move {last.At.ToLocalTime():g} {last.Check} {last.FromDegraded:0.##}/{last.FromUnhealthy:0.##} -> " +
+                $"{last.ToDegraded:0.##}/{last.ToUnhealthy:0.##}: {last.Reason}"));
         AnsiConsole.MarkupLine("  heavy-process lease " + (s.HeavyProcessLimit > 0
             ? $"on: {s.HeavyProcessLimit} game player, engine build or long soak at a time across the machine (orchestrator clis shows who holds it)"
             : "off (--heavy-processes 1)"));
