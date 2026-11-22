@@ -3907,9 +3907,90 @@ public static class AgentGate
                     save(state_file, state)
             except Exception:
                 pass
+        # The work-unit budget checkpoint (M.ORCH-T1907): a subagent working a ticket ("Work on ticket <ID>" or "Your ticket: <ID>"
+        # in its prompt) counts its own fresh tokens (input + cache creation + output, cache reads not, each response once at the
+        # most its lines say) from its transcript, read on from where the last call stopped. Past the UnitTokenBudget setting it
+        # is told once to land what's done and split the rest; past twice that, once more to stop. Any error says nothing.
+        def budget_note():
+            try:
+                agent = re.sub(r"[^A-Za-z0-9_.-]", "_", str(data.get("agent_id") or ""))
+                main = str(data.get("transcript_path") or "")
+                if not (sid and agent and event == "PostToolUse"):
+                    return None
+                path = data.get("agent_transcript_path")
+                if not path and main:
+                    path = main if Path(main).name.startswith("agent-") else str(Path(main).with_suffix("") / "subagents" / ("agent-" + agent + ".jsonl"))
+                if not path or not os.path.isfile(path):
+                    return None
+                mark = DIR / "budget" / (re.sub(r"[^A-Za-z0-9_.-]", "_", sid) + "." + agent + ".json")
+                mark.parent.mkdir(parents=True, exist_ok=True)
+                def save_mark(value):
+                    mark.write_text(json.dumps(value), encoding="utf-8")
+                try:
+                    st = json.loads(mark.read_text(encoding="utf-8"))
+                except Exception:
+                    st = {}
+                if st.get("none"):
+                    return None  # no ticket in its prompt: not a unit of work
+                off, fresh, ids = int(st.get("off") or 0), int(st.get("fresh") or 0), dict(st.get("ids") or {})
+                ticket = st.get("ticket")
+                with open(path, "rb") as f:
+                    f.seek(off)
+                    chunk = f.read()
+                end = chunk.rfind(b"\n") + 1
+                for raw in chunk[:end].splitlines():
+                    if not ticket and b'"user"' in raw:
+                        m = re.search(r"(?:Work on ticket|[Yy]our ticket:?)\s+((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)", raw.decode("utf-8", "ignore"))
+                        if m:
+                            ticket = m.group(1)
+                        elif off == 0:
+                            save_mark({"none": True})
+                            return None
+                    if b'"usage"' not in raw:
+                        continue
+                    try:
+                        msg = json.loads(raw).get("message") or {}
+                        u = msg.get("usage") or {}
+                        used = [int(u.get(k) or 0) for k in ("input_tokens", "cache_creation_input_tokens", "output_tokens")]
+                    except Exception:
+                        continue
+                    mid = str(msg.get("id") or "")
+                    had = ids.get(mid) or [0, 0, 0]
+                    fresh += sum(max(0, a - b) for a, b in zip(used, had))
+                    if mid:
+                        ids[mid] = [max(a, b) for a, b in zip(used, had)]
+                off += end
+                if len(ids) > 20:
+                    ids = dict(list(ids.items())[-20:])
+                budget = st.get("budget")
+                if not budget or time.time() - float(st.get("budget_at") or 0) > 300:
+                    try:
+                        budget = int(orch_settings().get("UnitTokenBudget") or {{{Settings.OrchestratorSettings.DefaultUnitTokenBudget}}})
+                    except Exception:
+                        budget = {{{Settings.OrchestratorSettings.DefaultUnitTokenBudget}}}
+                    budget = max({{{Settings.OrchestratorSettings.MinUnitTokenBudget}}}, min({{{Settings.OrchestratorSettings.MaxUnitTokenBudget}}}, budget))
+                    st["budget_at"] = time.time()
+                warned = list(st.get("warned") or [])
+                note = None
+                if ticket and fresh >= 2 * budget and 2 not in warned:
+                    warned += [1, 2]
+                    note = ("Twice the work-unit budget: stop now. Commit and land what builds, split the rest, and end. "
+                            "(" + format(fresh, ",") + " of " + format(budget, ",") + " tokens, " + ticket + ", M.ORCH-T1907)")
+                elif ticket and fresh >= budget and 1 not in warned:
+                    warned.append(1)
+                    note = ("Work-unit budget reached (" + format(fresh, ",") + " of " + format(budget, ",") + " tokens, M.ORCH-T1907): "
+                            "finish only the step you're on, build, commit and land what is complete now, then file what's left with "
+                            "`tickets ticket split " + ticket + " --task \"...\"` (or close the ticket if it's all done) and stop.")
+                st.update({"off": off, "fresh": fresh, "ids": ids, "ticket": ticket, "budget": budget, "warned": warned})
+                save_mark(st)
+                return note
+            except Exception:
+                return None
         if not sid or data.get("agent_id"):
-            if claim_note:
-                print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": claim_note}}))
+            budget_said = budget_note() if data.get("agent_id") else None
+            said_now = " ".join(n for n in (claim_note, budget_said) if n)
+            if said_now:
+                print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": said_now}}))
             sys.exit(0)  # subagents finish inside their parent's turn
         if event == "SessionStart":
             # Every CLI is told at its start what it bills (M.ORCH-T434), as Prose checks its hub first; recorded in the session's
