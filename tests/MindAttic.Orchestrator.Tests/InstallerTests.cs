@@ -6,6 +6,26 @@ namespace MindAttic.Orchestrator.Tests;
 
 public sealed class InstallerTests
 {
+    private int _taskEnds;
+    private readonly List<string> _daemonStarts = [];
+
+    // M.ORCH-T2007: Install() ends the real legacy task and can start a real daemon; neither may happen from a test run.
+    [SetUp]
+    public void StubMachineWideSideEffects()
+    {
+        _taskEnds = 0;
+        _daemonStarts.Clear();
+        Installer.EndLegacyTask = () => _taskEnds++;
+        Installer.StartDaemonHook = _daemonStarts.Add;
+    }
+
+    [TearDown]
+    public void RestoreMachineWideSideEffects()
+    {
+        Installer.EndLegacyTask = Installer.DefaultEndLegacyTask;
+        Installer.StartDaemonHook = Installer.DefaultStartDaemon;
+    }
+
     [Test]
     public void The_daemon_is_started_from_the_exe_with_the_daemon_arg_and_no_window()
     {
@@ -210,6 +230,8 @@ public sealed class InstallerTests
             File.WriteAllText(Path.Combine(publish, Installer.DaemonExeName), "daemon v2");
 
             installer.Install(Path.Combine(publish, Installer.ExeName), force: true);
+            Assert.That(_taskEnds, Is.GreaterThan(0), "the install asked to end the legacy task through the seam, not Windows");
+            Assert.That(_daemonStarts, Is.Empty, "a clean install starts no daemon itself");
             Assert.That(File.ReadAllText(installer.InstalledExe), Is.EqualTo("desktop v2"));
             Assert.That(File.ReadAllText(installer.InstalledDaemonExe), Is.EqualTo("daemon v2"), "copied in beside the dashboard exe");
             Assert.That(Installer.DaemonForwardTarget(installer.InstalledExe), Is.EqualTo(installer.InstalledDaemonExe));

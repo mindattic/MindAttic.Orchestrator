@@ -316,7 +316,7 @@ public sealed class Installer
     /// running CLI keeps its host across an upgrade, and the path check below leaves anything under that folder alone.</summary>
     public void StopInstalledCopies()
     {
-        Run("schtasks", "/End", "/TN", LegacyTaskName);
+        EndLegacyTask();
         var installed = new[] { InstalledExe, LegacyExe, InstalledDaemonExe };
         foreach (var p in new[] { ExeName, LegacyExeName, DaemonExeName }.SelectMany(n => Process.GetProcessesByName(Path.GetFileNameWithoutExtension(n))))
         {
@@ -386,7 +386,18 @@ public sealed class Installer
         return "starts the daemon at logon (no Scheduler job)";
     }
 
-    private static void StartDaemon(string exe)
+    /// <summary>Test seam: ends the legacy logon task (machine-wide). Tests replace it so an install into a temp folder never stops the
+    /// real task; restore <see cref="DefaultEndLegacyTask"/> afterwards.</summary>
+    internal static Action EndLegacyTask = DefaultEndLegacyTask;
+    internal static void DefaultEndLegacyTask() => Run("schtasks", "/End", "/TN", LegacyTaskName);
+
+    /// <summary>Test seam: starts the daemon from an exe (a real process). Tests replace it so no install starts a real daemon;
+    /// restore <see cref="DefaultStartDaemon"/> afterwards.</summary>
+    internal static Action<string> StartDaemonHook = DefaultStartDaemon;
+
+    private static void StartDaemon(string exe) => StartDaemonHook(exe);
+
+    internal static void DefaultStartDaemon(string exe)
     {
         // Outside the caller's job (M.ORCH-T1691): an install run from a hosted CLI leaves a daemon that outlives that CLI.
         try { Term.Breakaway.Start(DaemonStartInfo(exe)); }
