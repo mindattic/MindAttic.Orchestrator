@@ -477,8 +477,9 @@
                     <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceRL}">
                         <TextBlock Text="Azure" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}" />
-                        <Button x:Name="ToolbarAzureButton" Style="{StaticResource MaToolButton}" Content="&#xE733;" IsEnabled="False" ToolTipService.ShowOnDisabled="True"
-                                mc:MaCallout.ToolTip="Azure: coming soon (M.ORCH-T1985)" AutomationProperties.Name="Azure: coming soon" />
+                        <!-- Azure (M.ORCH-T2055): a dropdown of Azure tools; "Kickstart web apps…" opens KickstartWindow. -->
+                        <Button x:Name="ToolbarAzureButton" Style="{StaticResource MaToolButton}" Content="&#xE753;" Click="ToolbarAzureButton_Click"
+                                mc:MaCallout.ToolTip="Azure: kickstart (wake) the web apps and their databases" AutomationProperties.Name="Azure" />
                     </StackPanel>
                     <Separator Style="{StaticResource MaSeparator}" Width="1" Height="20" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

@@ -1820,6 +1820,27 @@ public partial class MainWindow : Window
     /// item makes.</summary>
     private void ToolbarRefreshProjectsButton_Click(object sender, RoutedEventArgs e) => _ = Shown.RefreshProjectListAsync();
 
+    /// <summary>The global toolbar's Azure group (M.ORCH-T2055): a dropdown of Azure tools under the button; "Kickstart web
+    /// apps…" opens <see cref="KickstartWindow"/> (list every web app with its state, wake one or all).</summary>
+    private void ToolbarAzureButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not UIElement target) return;
+        var menu = DropdownMenu(target, "Azure", PlacementMode.Bottom);
+        var kick = DropdownItem("", "Kickstart web apps…");
+        kick.ToolTip = "Lists every Azure web app with its state and its database's status; wake one or all";
+        kick.Click += (_, _) => OpenKickstart();
+        menu.Items.Add(kick);
+        menu.IsOpen = true;
+    }
+
+    private void OpenKickstart()
+    {
+        var root = OrchestratorOptions.Load().WorkspaceRoot;
+        if (string.IsNullOrWhiteSpace(root)) return;
+        try { new KickstartWindow(root) { Owner = this }.Show(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Kickstart failed; contained"); }
+    }
+
     /// <summary>The global toolbar's Shells group (M.ORCH-T1988): Command Prompt, elevated, at the workspace root.</summary>
     private void ToolbarCmdAdminButton_Click(object sender, RoutedEventArgs e) => OpenAdminShell("cmd.exe");
 
