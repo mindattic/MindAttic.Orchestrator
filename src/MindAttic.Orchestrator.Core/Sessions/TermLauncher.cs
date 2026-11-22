@@ -56,6 +56,8 @@ public sealed record TermLaunchSpec
     /// person's own <c>CLAUDE_CONFIG_DIR</c> and billing variables, M.ORCH-T906), in <see cref="PaneRequest.Directory"/>, with
     /// the caller's environment, as the tab's ConPTY gets the dashboard's. A pane on a login resolves its own token in the
     /// Launcher it runs (M.ORCH-T712), so none is set here; add one to <see cref="Environment"/> when a caller needs it.
+    /// A Codex or Gemini CLI gets its Vault API key's variable (M.ORCH-T2042, <see cref="ProviderCredentials.EnvironmentFor"/>)
+    /// in <see cref="Environment"/>, so it starts authenticated; never for an elevated one, whose UAC prompt can't carry it.
     /// </summary>
     public static TermLaunchSpec From(PaneRequest request, string? pipeName = null) => new()
     {
@@ -67,6 +69,7 @@ public sealed record TermLaunchSpec
         IsMenu = request.IsMenu,
         Unlisted = request.Unlisted,
         Elevated = request.Elevated,
+        Environment = request.Elevated ? new Dictionary<string, string?>() : ProviderCredentials.EnvironmentFor(request.Provider),
     };
 }
 

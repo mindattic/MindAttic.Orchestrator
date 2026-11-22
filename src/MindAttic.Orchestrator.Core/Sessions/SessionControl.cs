@@ -30,6 +30,9 @@ public sealed class SessionControl(OrchestratorOptions options)
         if (!Directory.Exists(directory))
             return $"Folder not found: {directory}";
 
+        // Kimi's Vault key into its config.toml before it starts (M.ORCH-T2042). A Windows Terminal tab takes its environment
+        // from Windows Terminal, not this process, so Codex's and Gemini's keys are left to the Launcher's host here.
+        PrepareProvider(provider);
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
         foreach (var a in StartArguments(title, directory, provider, prompt, configDir, resumeSession)) psi.ArgumentList.Add(a);
         try
@@ -142,6 +145,9 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// tracked, never embedded) used to.</summary>
     public PaneRequest RepoPaneRequest(string title, string directory, string provider, string? prompt, string? configDir, string? email)
     {
+        // A non-Claude CLI starts authenticated (M.ORCH-T2042): Kimi's Vault key is synced into its config.toml now; Codex's and
+        // Gemini's go on the hosted CLI's environment as it's launched (TermLaunchSpec.From, ProviderCredentials.EnvironmentFor).
+        PrepareProvider(provider);
         var look = provider == "Claude" ? Look(configDir) : null;
         var tabTitle = TabTitle(title, provider, look, RepoNames);
         List<string> command = [options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider];
@@ -159,6 +165,10 @@ public sealed class SessionControl(OrchestratorOptions options)
             TabColor = look?.TabColor,
         };
     }
+
+    /// <summary>Readies a provider's credentials on disk before its CLI starts (M.ORCH-T2042, <see cref="ProviderCredentials.Prepare"/>);
+    /// tests set their own, so a run never touches the real Vault or Kimi config.</summary>
+    internal Action<string> PrepareProvider { get; init; } = provider => ProviderCredentials.Prepare(provider);
 
     /// <summary>The command lines of the Launcher processes running now, by pid; tests set their own.</summary>
     internal Func<IReadOnlyDictionary<int, string>> LauncherMenus { get; init; } = HostSessionScanner.LauncherCommandLines;
