@@ -66,6 +66,7 @@ public sealed partial class MainViewModel
         var owners = AllTerminals.Panes.ToLookup(OwnerOf);
         foreach (var t in loginTabs)
             t.Terminals.SyncTo([.. owners[t].OrderBy(p => p.Request.Order ?? long.MaxValue)]);
+        foreach (var t in loginTabs) t.Terminals.RefreshLast(); // a pane moved between logins (M.ORCH-T1955)
         ShowChosenPane();
     }
 

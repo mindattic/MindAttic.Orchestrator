@@ -1653,8 +1653,16 @@ public sealed class PersonTerminalsViewModel : ObservableObject
             // even once it's the sole survivor of a run of removals that empties the list (M.ORCH-T1865).
             if (e.OldItems is not null)
                 foreach (TerminalPaneViewModel gone in e.OldItems) gone.IsLastOfPerson = false;
-            for (var i = 0; i < Panes.Count; i++) Panes[i].IsLastOfPerson = i == Panes.Count - 1;
+            RefreshLast();
         };
+    }
+
+    /// <summary>Re-stamps IsLastOfPerson on every pane here. Also run once every login has been synced: a pane regrouped
+    /// from one login to another (M.ORCH-T1949) is inserted into its new login, which may be synced before the old one's
+    /// removal clears the flag, and that clear would otherwise leave the new login's last row drawn as a tee (M.ORCH-T1955).</summary>
+    internal void RefreshLast()
+    {
+        for (var i = 0; i < Panes.Count; i++) Panes[i].IsLastOfPerson = i == Panes.Count - 1;
     }
 
     /// <summary>The CLI tab strip's items (M.ORCH-T1569): the pinned <see cref="UsageTab"/>, then <see cref="Panes"/>, kept in
