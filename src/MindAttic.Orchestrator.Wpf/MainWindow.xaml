@@ -543,8 +543,9 @@
              (TerminalsPanel) stays hidden and AgentsBody spans the whole right side (its Grid.Row/RowSpan, bound to
              TreeMenuLayout via Converters.BodyRow/BodyRowSpan, further down). Only the selected login starts expanded
              (MainViewModel.IsExpanded, forced true by Select); the chevron alone toggles it, never selection, so another
-             login's panes can be peeked at without leaving the one shown. Clicking the login's own header row shows its
-             Usage, which is why there's no separate nested Usage row among the children below any more (M.ORCH-T1768: it
+             login's panes can be peeked at without leaving the one shown. Clicking the login's own header row toggles it
+             (M.ORCH-T1877: on release, never after a drag; collapsing it, or selecting and opening it, showing its
+             Usage), which is why there's no separate nested Usage row among the children below any more (M.ORCH-T1768: it
              was left over from before that header click did this, so it was redundant - removed, not merely hidden, by
              binding straight to Terminals.Panes instead of Terminals.StripItems, which still carries the pinned Usage
              marker for the flat strip below). v1 scope (not asked for, and the flat strip above keeps them): no
@@ -572,6 +573,7 @@
                                 Background="{Binding TabBrush}" Margin="0,2,6,2" />
                     <StackPanel Grid.Column="1">
                         <Grid x:Name="LoginTreeHeader" Cursor="Hand" Background="Transparent" MouseLeftButtonDown="LoginTreeHeader_MouseLeftButtonDown"
+                              MouseLeftButtonUp="LoginTreeHeader_MouseLeftButtonUp"
                               ContextMenuOpening="LoginTreeHeader_ContextMenuOpening"
                               ToolTipService.InitialShowDelay="{Binding CliTooltipDelayMs}" mc:MaCallout.ToolTip="{Binding}" mc:MaCallout.ToolTipTemplate="{StaticResource LoginHoverTipTemplate}" AutomationProperties.Name="{Binding TabTip}">
                             <Grid.ColumnDefinitions>

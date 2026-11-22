@@ -721,15 +721,49 @@ public partial class MainWindow : Window
 
     private void OnTabPartSizeChanged(object sender, SizeChangedEventArgs e) => SizeTerminalTabs();
 
-    /// <summary>The tree sidebar's header row click (M.ORCH-T1877): a toggle. Already expanded (selected and peeked
-    /// alike) just collapses it, same as the chevron; collapsed selects that login instead, which already expands it
-    /// (<see cref="MainViewModel.Select"/>) and shows its Usage. Buttons inside the header (<c>LoginTreeMoreButton</c>)
-    /// mark their own click handled before it bubbles here, so they're never mistaken for this toggle.</summary>
+    /// <summary>The header a plain (non-Ctrl) left press landed on and where, until its release decides whether it was a
+    /// click (<see cref="LoginTreeHeader_MouseLeftButtonUp"/>); null between presses.</summary>
+    private FrameworkElement? treeHeaderPressed;
+    private Point treeHeaderPressedAt;
+
+    /// <summary>The tree sidebar's header row press (M.ORCH-T1877): only remembered here; the toggle itself waits for the
+    /// release, so a drag is never mistaken for a click. A Ctrl press never reaches this at all (<see cref="LoginDragDrop"/>'s
+    /// window-level tunnel marks it handled for its own quick-switch drag), and neither does a press on a button inside
+    /// the header (<c>LoginTreeMoreButton</c>, which handles its own press) or on the chevron (which marks its own handled).</summary>
     private void LoginTreeHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: MainViewModel vm }) return;
-        if (vm.IsExpanded) vm.IsExpanded = false;
-        else vm.SelectLoginCommand.Execute(null);
+        if (sender is not FrameworkElement header || IsInsideButton(e.OriginalSource as DependencyObject, header)) return;
+        treeHeaderPressed = header;
+        treeHeaderPressedAt = e.GetPosition(this);
+    }
+
+    /// <summary>The tree sidebar's header row click (M.ORCH-T1877): a toggle, fired on release only when the press began on
+    /// this same header and the pointer hasn't moved past the system drag threshold since. Expanded (selected and peeked
+    /// alike) collapses it, same as the chevron; collapsed selects that login (showing its Usage) and expands it - set
+    /// explicitly, since selecting the login that's already selected is a no-op that wouldn't reopen it.</summary>
+    private void LoginTreeHeader_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var pressed = treeHeaderPressed;
+        treeHeaderPressed = null;
+        if (!ReferenceEquals(pressed, sender) || sender is not FrameworkElement { DataContext: MainViewModel vm }) return;
+        if (IsInsideButton(e.OriginalSource as DependencyObject, (FrameworkElement)sender)) return;
+        var now = e.GetPosition(this);
+        if (Math.Abs(now.X - treeHeaderPressedAt.X) >= SystemParameters.MinimumHorizontalDragDistance
+            || Math.Abs(now.Y - treeHeaderPressedAt.Y) >= SystemParameters.MinimumVerticalDragDistance) return;
+        e.Handled = true;
+        if (vm.IsExpanded) { vm.IsExpanded = false; return; }
+        vm.SelectLoginCommand.Execute(null);
+        vm.IsExpanded = true;
+    }
+
+    /// <summary>Whether <paramref name="source"/> sits inside a button (close X, '...' menu, ...) below
+    /// <paramref name="row"/>: such a press is the button's own, never the row's click or a row drag.</summary>
+    private static bool IsInsideButton(DependencyObject? source, DependencyObject row)
+    {
+        for (var node = source; node is not null && !ReferenceEquals(node, row);
+             node = node is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node))
+            if (node is System.Windows.Controls.Primitives.ButtonBase) return true;
+        return false;
     }
 
     /// <summary>The tree sidebar's chevron click (M.ORCH-T1759): toggles this login's node alone, never its selection, so
@@ -738,6 +772,7 @@ public partial class MainWindow : Window
     private void LoginTreeChevron_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
+        treeHeaderPressed = null;
         if (sender is FrameworkElement { DataContext: MainViewModel vm }) vm.IsExpanded = !vm.IsExpanded;
     }
 
@@ -782,8 +817,10 @@ public partial class MainWindow : Window
     /// this one never even sees it then).</summary>
     private void LoginTreeChildRow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // The Launcher is locked first (M.ORCH-T1848): never dragged.
-        treeDragPane = sender is FrameworkElement { DataContext: TerminalPaneViewModel { Request.IsMenu: false } pane } ? pane : null;
+        // The Launcher is locked first (M.ORCH-T1848): never dragged. Nor is a press on the row's own close X or '...'
+        // button (M.ORCH-T1877): that press is the button's, not the start of a row drag.
+        treeDragPane = sender is FrameworkElement { DataContext: TerminalPaneViewModel { Request.IsMenu: false } pane } row
+            && !IsInsideButton(e.OriginalSource as DependencyObject, row) ? pane : null;
         treeDragOwner = treeDragPane is null ? null : FindAncestorDataContext<MainViewModel>(VisualTreeHelper.GetParent((DependencyObject)sender));
         treeDragStart = treeDragPane is null ? null : e.GetPosition(null);
     }
