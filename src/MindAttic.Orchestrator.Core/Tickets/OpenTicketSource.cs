@@ -25,13 +25,17 @@ public sealed class OpenTicketSource
     /// adds it; nothing hands the ticket out or counts it as work until the owner removes it.</summary>
     public const string WaitingOnOwnerLabel = "waiting-on-owner";
 
+    /// <summary>The prefix of a ticket's level label: <c>level:epic|feature|story|task</c> (M.ORCH-T1904).</summary>
+    public const string LevelLabelPrefix = "level:";
+
     private DateTime dbReadUtc;
 
     private (string Path, DateTime WriteUtc, ILookup<string, Ticket> Open, HashSet<string> Repos, IReadOnlyDictionary<string, IReadOnlyList<string>> Requires,
         IReadOnlySet<string> Approved, IReadOnlySet<string> Epics, IReadOnlyDictionary<string, long> Priorities, WorkState Work,
         IReadOnlyDictionary<string, IReadOnlyList<string>> PartOf, IReadOnlySet<string> OwnerWaiting,
         IReadOnlyDictionary<string, long> GraphWeights, IReadOnlyDictionary<string, string> Names,
-        IReadOnlyDictionary<string, TicketMilestone> Milestones, IReadOnlyList<MilestoneScope> MilestoneScopes)? fromDb;
+        IReadOnlyDictionary<string, TicketMilestone> Milestones, IReadOnlyList<MilestoneScope> MilestoneScopes,
+        IReadOnlySet<string> Containers, IReadOnlyDictionary<string, string> Levels)? fromDb;
 
     /// <summary>Each active and accepting milestone's scope (M.ORCH-T1685): what waits for its owner's approval and how much it
     /// has grown since activation; empty with none, or with a database that predates the scope lock.</summary>
@@ -90,6 +94,12 @@ public sealed class OpenTicketSource
     /// <summary>Tickets labelled <c>epic</c> in the database (M.ORCH-T1146): never work themselves, and a 'requires' link to
     /// one waits only until it's approved.</summary>
     public IReadOnlySet<string> Epics => fromDb?.Epics ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Open tickets that some open ticket is <c>part-of</c> (M.ORCH-T1904): containers, never work themselves.</summary>
+    public IReadOnlySet<string> Containers => fromDb?.Containers ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Ticket → its level from its <c>level:</c> label (<see cref="LevelLabelPrefix"/>, M.ORCH-T1904).</summary>
+    public IReadOnlyDictionary<string, string> Levels => fromDb?.Levels ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Ticket → its manual priority in the database's queue (higher runs sooner); missing means 0.</summary>
     public IReadOnlyDictionary<string, long> Priorities => fromDb?.Priorities ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
@@ -175,18 +185,27 @@ public sealed class OpenTicketSource
                     .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
                 var queue = db.QueueStates();
                 var open = db.Tickets().Where(t => t.Ticket.Status == TicketRules.Open).ToList();
+                var openIds = open.Select(t => t.Ticket.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var labels = db.AllLabels();
+                // An open ticket some open ticket is part-of is a container (M.ORCH-T1904): its children are the work.
+                var containers = partOf.Where(p => openIds.Contains(p.Key)).SelectMany(p => p.Value).Where(openIds.Contains)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var levels = labels.Select(l => (l.Key, Level: l.Value.FirstOrDefault(v => v.StartsWith(LevelLabelPrefix, StringComparison.OrdinalIgnoreCase))))
+                    .Where(l => l.Level is not null)
+                    .ToDictionary(l => l.Key, l => l.Level![LevelLabelPrefix.Length..].Trim().ToLowerInvariant(), StringComparer.OrdinalIgnoreCase);
                 fromDb = (path, written,
                     open.ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
                     db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires,
                     queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                    db.AllLabels().Where(l => l.Value.Contains(EpicLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                    labels.Where(l => l.Value.Contains(EpicLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
                     WorkState.Of(db), partOf,
-                    db.AllLabels().Where(l => l.Value.Contains(WaitingOnOwnerLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                    labels.Where(l => l.Value.Contains(WaitingOnOwnerLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     db.GraphWeights().Where(w => w.Value.Value != 0).ToDictionary(w => w.Key, w => (long)w.Value.Value, StringComparer.OrdinalIgnoreCase),
                     db.Names().ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
-                    MilestonesOf(db, open.Select(t => t.Ticket.Id).ToHashSet(StringComparer.OrdinalIgnoreCase), fromDb is { } before && before.Path == path ? before.Milestones : null),
-                    MilestoneScope.ReadOr(db, fromDb is { } earlier && earlier.Path == path ? earlier.MilestoneScopes : null));
+                    MilestonesOf(db, openIds, fromDb is { } before && before.Path == path ? before.Milestones : null),
+                    MilestoneScope.ReadOr(db, fromDb is { } earlier && earlier.Path == path ? earlier.MilestoneScopes : null),
+                    containers, levels);
                 dbReadUtc = DateTime.UtcNow;
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)

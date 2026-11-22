@@ -161,15 +161,19 @@ public static partial class Scheduler
         bool IsApproved(string id) => snapshot.Approved.Contains(id);
         // An epic (label 'epic', M.ORCH-T1146) is never work itself: it's started by approving it, and closes when its children are done.
         bool IsEpic(string id) => snapshot.Epics.Contains(id);
+        // A container (an open ticket with open part-of children, M.ORCH-T1904) is held out exactly like an epic: its children are the work.
+        bool IsContainer(string id) => snapshot.IsContainer(id);
 
         // A block set by hand is a 'requires' link in the ticket database (tickets ticket block, M.ORCH-T762), or a 'part-of'
-        // link to an epic (M.ORCH-T1210: nothing in an unapproved epic is picked up just because only 'part-of' names it, not
-        // 'requires' too). One on an epic waits only until the epic is approved (started), not until it closes (M.ORCH-T1146).
+        // link to an unapproved epic (M.ORCH-T1210: nothing in an unapproved epic is picked up just because only 'part-of'
+        // names it, not 'requires' too). One on an epic waits only until the epic is approved (started), not until it closes
+        // (M.ORCH-T1146). Any other part-of parent is a container whose children are the work, never their blocker (M.ORCH-T1904).
         IReadOnlyList<string> Blockers(Ticket t) =>
             [.. BlockedByPhrase().Matches(t.Summary).Select(m => m.Groups["id"].Value.ToUpperInvariant())
                 .Concat(snapshot.Requires.GetValueOrDefault(t.Id) ?? [])
-                .Concat(snapshot.PartOf.GetValueOrDefault(t.Id) ?? [])
-                .Where(id => id != t.Id && openIds.Contains(id) && !(IsEpic(id) && IsApproved(id)))
+                .Where(id => !(IsEpic(id) && IsApproved(id)))
+                .Concat((snapshot.PartOf.GetValueOrDefault(t.Id) ?? []).Where(id => IsEpic(id) && !IsApproved(id)))
+                .Where(id => id != t.Id && openIds.Contains(id))
                 .Distinct(StringComparer.Ordinal)];
 
         var groomBefore = settings.GroomAfterDays > 0
@@ -191,14 +195,14 @@ public static partial class Scheduler
         // Only fixes and tickets you approved are work; the rest wait for your yes outside the queue (one already
         // being worked stays, so its agent is still tracked). One whose assignment went stale waits for it too (M.ORCH-T394).
         var awaiting = snapshot.Repos
-            // An epic waits here for its yes, and once approved (started) it's neither waiting nor work (M.ORCH-T1146).
-            .SelectMany(r => r.OpenTickets.Where(t => !MayWork(t) && !(IsEpic(t.Id) && IsApproved(t.Id)) && (assigned.GetValueOrDefault(t.Id) is not { } a || StaleSince(a) is not null))
+            // An epic or container waits here for its yes, and once approved (started) it's neither waiting nor work (M.ORCH-T1146, M.ORCH-T1904).
+            .SelectMany(r => r.OpenTickets.Where(t => !MayWork(t) && !(IsContainer(t.Id) && IsApproved(t.Id)) && (assigned.GetValueOrDefault(t.Id) is not { } a || StaleSince(a) is not null))
                 .Select(t => new QueueItem(r.Name, r.Path, t, Priority(t.Id), null, false) { Old = IsOld(t), Approved = IsApproved(t.Id), Assignee = assignees.GetValueOrDefault(t.Id) }))
             .OrderBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Ticket.Number ?? int.MaxValue)
             .ToList();
         var queue = snapshot.Repos
             // A host branch ticket waiting on its pushed branch is open but not work (M.ORCH-T1661): never handed out again meanwhile.
-            .SelectMany(r => r.OpenTickets.Where(t => !IsEpic(t.Id) && !snapshot.AwaitingBranch.Contains(t.Id) && (MayWork(t) || assigned.ContainsKey(t.Id))).Select(t => new QueueItem(
+            .SelectMany(r => r.OpenTickets.Where(t => !IsContainer(t.Id) && !snapshot.AwaitingBranch.Contains(t.Id) && (MayWork(t) || assigned.ContainsKey(t.Id))).Select(t => new QueueItem(
                 r.Name, r.Path, t,
                 Priority(t.Id),
                 assigned.GetValueOrDefault(t.Id),

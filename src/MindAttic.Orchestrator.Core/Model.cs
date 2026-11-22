@@ -213,6 +213,19 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// 'requires' link to one is satisfied once it's <see cref="Approved"/> (started), not only once it closes.</summary>
     public IReadOnlySet<string> Epics { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Open tickets that some open ticket names in <see cref="PartOf"/> (M.ORCH-T1904): containers, whatever their
+    /// labels. Like an epic, one is never queued or dispatched as work; its open children are the work.</summary>
+    public IReadOnlySet<string> Containers { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Ticket → its level from its <c>level:epic|feature|story|task</c> label (M.ORCH-T1904); missing means unlabelled.</summary>
+    public IReadOnlyDictionary<string, string> Levels { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Whether <paramref name="id"/> is labelled <c>level:task</c> (M.ORCH-T1904).</summary>
+    public bool IsTask(string id) => Levels.GetValueOrDefault(id) is { } level && level.Equals("task", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether <paramref name="id"/> is never work itself: an epic (M.ORCH-T1146) or a container (M.ORCH-T1904).</summary>
+    public bool IsContainer(string id) => Epics.Contains(id) || Containers.Contains(id);
+
     /// <summary>Tickets parked as waiting on the owner (label <c>waiting-on-owner</c>, M.ORCH-T1425): never handed out as work until the label is removed.</summary>
     public IReadOnlySet<string> OwnerWaiting { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -258,8 +271,9 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
 
     /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one approved in the database's queue; never an epic
     /// (M.ORCH-T1146), and never one that's part-of an epic that isn't itself approved yet (M.ORCH-T1210) — a fix is no
-    /// exception to that part: nothing in an unapproved epic has started, so there's nothing in it to fix yet either.</summary>
-    public bool MayWork(Ticket ticket) => !Epics.Contains(ticket.Id) && !OwnerWaiting.Contains(ticket.Id) &&
+    /// exception to that part: nothing in an unapproved epic has started, so there's nothing in it to fix yet either.
+    /// Nor a container (an open ticket with open part-of children, M.ORCH-T1904): its children are the work.</summary>
+    public bool MayWork(Ticket ticket) => !IsContainer(ticket.Id) && !OwnerWaiting.Contains(ticket.Id) &&
         (PartOf.GetValueOrDefault(ticket.Id) ?? []).All(parent => !Epics.Contains(parent) || Approved.Contains(parent)) &&
         (ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id));
 
