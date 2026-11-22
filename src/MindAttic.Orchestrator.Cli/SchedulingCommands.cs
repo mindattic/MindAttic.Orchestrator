@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using MindAttic.Orchestrator;
 using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Health;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
@@ -594,6 +595,54 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("How far clear of a level's commit-percent line a reading must be before stepping back down from it (default 5).")]
         public double? MemoryResumeMarginCommit { get; init; }
 
+        [CommandOption("--health-ram-degraded-gb <GB>")]
+        [Description("Free RAM under which the health screen grades RAM degraded (default 4).")]
+        public double? HealthRamDegradedGb { get; init; }
+
+        [CommandOption("--health-ram-unhealthy-gb <GB>")]
+        [Description("Free RAM under which the health screen grades RAM unhealthy (default 2).")]
+        public double? HealthRamUnhealthyGb { get; init; }
+
+        [CommandOption("--health-commit-degraded-percent <PERCENT>")]
+        [Description("Commit charge percent at or past which the health screen grades commit degraded (default 80).")]
+        public double? HealthCommitDegradedPercent { get; init; }
+
+        [CommandOption("--health-commit-unhealthy-percent <PERCENT>")]
+        [Description("Commit charge percent at or past which the health screen grades commit unhealthy (default 90).")]
+        public double? HealthCommitUnhealthyPercent { get; init; }
+
+        [CommandOption("--health-disk-degraded-gb <GB>")]
+        [Description("Free space on a drive under which the health screen grades that disk degraded (default 20).")]
+        public double? HealthDiskFreeDegradedGb { get; init; }
+
+        [CommandOption("--health-disk-unhealthy-gb <GB>")]
+        [Description("Free space on a drive under which the health screen grades that disk unhealthy (default 5).")]
+        public double? HealthDiskFreeUnhealthyGb { get; init; }
+
+        [CommandOption("--health-dtu-degraded-percent <PERCENT>")]
+        [Description("An Azure SQL database's DTU (or vCore CPU) percent at or past which it grades degraded (default 80).")]
+        public double? HealthDtuDegradedPercent { get; init; }
+
+        [CommandOption("--health-dtu-unhealthy-percent <PERCENT>")]
+        [Description("An Azure SQL database's DTU (or vCore CPU) percent at or past which it grades unhealthy (default 95).")]
+        public double? HealthDtuUnhealthyPercent { get; init; }
+
+        [CommandOption("--health-storage-degraded-percent <PERCENT>")]
+        [Description("An Azure SQL database's storage percent at or past which it grades degraded (default 80).")]
+        public double? HealthStorageDegradedPercent { get; init; }
+
+        [CommandOption("--health-storage-unhealthy-percent <PERCENT>")]
+        [Description("An Azure SQL database's storage percent at or past which it grades unhealthy (default 95).")]
+        public double? HealthStorageUnhealthyPercent { get; init; }
+
+        [CommandOption("--health-link-degraded-ms <MS>")]
+        [Description("Round-trip milliseconds at or past which the health screen grades a link degraded (default 1000).")]
+        public double? HealthLinkLatencyDegradedMs { get; init; }
+
+        [CommandOption("--health-link-unhealthy-ms <MS>")]
+        [Description("Round-trip milliseconds at or past which the health screen grades a link unhealthy (default 5000).")]
+        public double? HealthLinkLatencyUnhealthyMs { get; init; }
+
         [CommandOption("--model <REPO_OR_TICKET=MODEL>")]
         [Description("The model /allocate starts a repo's (or one ticket's) subagents on, overriding the pick: Prose=opus, M.ORCH-T12=sonnet, GTFO.*=sonnet; =auto clears. A ticket's wins over its repo's. Repeatable.")]
         public string[] Model { get; init; } = [];
@@ -708,10 +757,42 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             if (!(s.MemoryResumeMarginGb >= 0 && s.MemoryResumeMarginCommit >= 0))
             { AnsiConsole.MarkupLine("[red]--memory-resume-margin-gb and --memory-resume-margin-commit can't be negative.[/]"); return 1; }
         }
+        // The health probes' lines (M.ORCH-T2035).
+        var healthChanged = settings.HealthRamDegradedGb is not null
+            || settings.HealthRamUnhealthyGb is not null
+            || settings.HealthCommitDegradedPercent is not null
+            || settings.HealthCommitUnhealthyPercent is not null
+            || settings.HealthDiskFreeDegradedGb is not null
+            || settings.HealthDiskFreeUnhealthyGb is not null
+            || settings.HealthDtuDegradedPercent is not null
+            || settings.HealthDtuUnhealthyPercent is not null
+            || settings.HealthStorageDegradedPercent is not null
+            || settings.HealthStorageUnhealthyPercent is not null
+            || settings.HealthLinkLatencyDegradedMs is not null
+            || settings.HealthLinkLatencyUnhealthyMs is not null;
+        if (healthChanged)
+        {
+            s = s with
+            {
+                HealthRamDegradedGb = settings.HealthRamDegradedGb ?? s.HealthRamDegradedGb,
+                HealthRamUnhealthyGb = settings.HealthRamUnhealthyGb ?? s.HealthRamUnhealthyGb,
+                HealthCommitDegradedPercent = settings.HealthCommitDegradedPercent ?? s.HealthCommitDegradedPercent,
+                HealthCommitUnhealthyPercent = settings.HealthCommitUnhealthyPercent ?? s.HealthCommitUnhealthyPercent,
+                HealthDiskFreeDegradedGb = settings.HealthDiskFreeDegradedGb ?? s.HealthDiskFreeDegradedGb,
+                HealthDiskFreeUnhealthyGb = settings.HealthDiskFreeUnhealthyGb ?? s.HealthDiskFreeUnhealthyGb,
+                HealthDtuDegradedPercent = settings.HealthDtuDegradedPercent ?? s.HealthDtuDegradedPercent,
+                HealthDtuUnhealthyPercent = settings.HealthDtuUnhealthyPercent ?? s.HealthDtuUnhealthyPercent,
+                HealthStorageDegradedPercent = settings.HealthStorageDegradedPercent ?? s.HealthStorageDegradedPercent,
+                HealthStorageUnhealthyPercent = settings.HealthStorageUnhealthyPercent ?? s.HealthStorageUnhealthyPercent,
+                HealthLinkLatencyDegradedMs = settings.HealthLinkLatencyDegradedMs ?? s.HealthLinkLatencyDegradedMs,
+                HealthLinkLatencyUnhealthyMs = settings.HealthLinkLatencyUnhealthyMs ?? s.HealthLinkLatencyUnhealthyMs,
+            };
+            if (HealthThresholds.Problem(s) is { } healthError) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(healthError)}[/]"); return 1; }
+        }
         var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.ThrottleAgents is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
             || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null
             || settings.DiskHoldGb is not null || settings.DiskHoldResumeMarginGb is not null
-            || settings.TempRetentionHours is not null || memoryChanged || settings.HeavyProcesses is not null;
+            || settings.TempRetentionHours is not null || memoryChanged || healthChanged || settings.HeavyProcesses is not null;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
         // The ledger sweep's settings (M.ORCH-T1677) and the lease it reads.
         if (settings.ScratchLeaseHours is not null || settings.LedgerSweepDryRun is not null || settings.LedgerSweepQuietMinutes is not null
@@ -996,6 +1077,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
               $"tool calls are refused under {s.MemoryEmergencyGb:0.#} GB or past {s.MemoryEmergencyCommitPercent:0.#}% commit; " +
               $"{s.MemoryPerSubagentGb:0.#} GB assumed per subagent; resumes {s.MemoryResumeMarginGb:0.#} GB / {s.MemoryResumeMarginCommit:0.#} points clear"
             : "off (--memory-guard true)"));
+        AnsiConsole.MarkupLine($"  health lines (degraded/unhealthy): RAM under {s.HealthRamDegradedGb:0.#}/{s.HealthRamUnhealthyGb:0.#} GB free · " +
+            $"commit {s.HealthCommitDegradedPercent:0.#}/{s.HealthCommitUnhealthyPercent:0.#}% · disk under {s.HealthDiskFreeDegradedGb:0.#}/{s.HealthDiskFreeUnhealthyGb:0.#} GB free · " +
+            $"database DTU {s.HealthDtuDegradedPercent:0.#}/{s.HealthDtuUnhealthyPercent:0.#}% · storage {s.HealthStorageDegradedPercent:0.#}/{s.HealthStorageUnhealthyPercent:0.#}% · " +
+            $"links {s.HealthLinkLatencyDegradedMs:0.#}/{s.HealthLinkLatencyUnhealthyMs:0.#} ms");
         AnsiConsole.MarkupLine("  heavy-process lease " + (s.HeavyProcessLimit > 0
             ? $"on: {s.HeavyProcessLimit} game player, engine build or long soak at a time across the machine (orchestrator clis shows who holds it)"
             : "off (--heavy-processes 1)"));

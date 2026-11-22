@@ -676,6 +676,45 @@ public sealed record OrchestratorSettings
     /// <summary>Hours between the daemon's checks for a system-managed pagefile (M.ORCH-T1493).</summary>
     public double PagefileCheckHours { get; init; } = 24;
 
+    // ── Health check thresholds (M.ORCH-T2035): the lines the health probes grade each reading against ──
+
+    /// <summary>Free physical RAM (GB) under which the machine probe grades RAM degraded.</summary>
+    public double HealthRamDegradedGb { get; init; } = 4;
+
+    /// <summary>Free physical RAM (GB) under which the machine probe grades RAM unhealthy.</summary>
+    public double HealthRamUnhealthyGb { get; init; } = 2;
+
+    /// <summary>Commit charge (percent of the commit limit) at or past which the machine probe grades commit degraded.</summary>
+    public double HealthCommitDegradedPercent { get; init; } = 80;
+
+    /// <summary>Commit charge percent at or past which the machine probe grades commit unhealthy.</summary>
+    public double HealthCommitUnhealthyPercent { get; init; } = 90;
+
+    /// <summary>Free space (GB) on any one drive under which the machine probe grades that disk degraded.</summary>
+    public double HealthDiskFreeDegradedGb { get; init; } = 20;
+
+    /// <summary>Free space (GB) on any one drive under which the machine probe grades that disk unhealthy.</summary>
+    public double HealthDiskFreeUnhealthyGb { get; init; } = 5;
+
+    /// <summary>An Azure SQL database's DTU (or vCore CPU) percent at or past which the database probe grades it degraded.</summary>
+    public double HealthDtuDegradedPercent { get; init; } = 80;
+
+    /// <summary>DTU (or vCore CPU) percent at or past which the database probe grades it unhealthy (the 2026-11-22 stall sat at 100).</summary>
+    public double HealthDtuUnhealthyPercent { get; init; } = 95;
+
+    /// <summary>An Azure SQL database's storage percent (of its max size) at or past which the database probe grades it degraded.</summary>
+    public double HealthStorageDegradedPercent { get; init; } = 80;
+
+    /// <summary>Storage percent at or past which the database probe grades it unhealthy.</summary>
+    public double HealthStorageUnhealthyPercent { get; init; } = 95;
+
+    /// <summary>Round-trip milliseconds at or past which the links probe grades a link (dashboard, daemon, TermHost, ticket DB,
+    /// Azure) degraded.</summary>
+    public double HealthLinkLatencyDegradedMs { get; init; } = 1000;
+
+    /// <summary>Round-trip milliseconds at or past which the links probe grades a link unhealthy.</summary>
+    public double HealthLinkLatencyUnhealthyMs { get; init; } = 5000;
+
     /// <summary>Minutes between prunes of old log entries and finished terminal hosts' logs (was <see cref="LogPruner.Every"/>).</summary>
     public double LogPruneMinutes { get; init; } = 60;
 

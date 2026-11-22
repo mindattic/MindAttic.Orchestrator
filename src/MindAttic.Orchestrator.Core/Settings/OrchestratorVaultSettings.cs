@@ -616,6 +616,67 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 8760)]
     public double PagefileCheckHours { get; set; } = 24;
 
+    // ── Health (M.ORCH-T2035): the lines the health probes grade each reading against ──
+
+    /// <summary>Free physical RAM under which the health screen grades RAM degraded.</summary>
+    [Setting("RAM degraded under (free GB)", Group = "Health", Order = 1, Help = "Free physical RAM under which the health screen grades RAM degraded.")]
+    [SettingRange(0, 1024)]
+    public double HealthRamDegradedGb { get; set; } = 4;
+
+    /// <summary>Free physical RAM under which the health screen grades RAM unhealthy (and can alert).</summary>
+    [Setting("RAM unhealthy under (free GB)", Group = "Health", Order = 2, Help = "Free physical RAM under which the health screen grades RAM unhealthy (and can alert).")]
+    [SettingRange(0, 1024)]
+    public double HealthRamUnhealthyGb { get; set; } = 2;
+
+    /// <summary>Commit charge (percent of the commit limit) at or past which the health screen grades commit/pagefile degraded.</summary>
+    [Setting("Commit degraded past (%)", Group = "Health", Order = 3, Help = "Commit charge (percent of the commit limit) at or past which the health screen grades commit/pagefile degraded.")]
+    [SettingRange(1, 100)]
+    public double HealthCommitDegradedPercent { get; set; } = 80;
+
+    /// <summary>Commit charge percent at or past which the health screen grades commit/pagefile unhealthy (and can alert).</summary>
+    [Setting("Commit unhealthy past (%)", Group = "Health", Order = 4, Help = "Commit charge percent at or past which the health screen grades commit/pagefile unhealthy (and can alert).")]
+    [SettingRange(1, 100)]
+    public double HealthCommitUnhealthyPercent { get; set; } = 90;
+
+    /// <summary>Free space on any one drive under which the health screen grades that disk degraded.</summary>
+    [Setting("Disk degraded under (free GB)", Group = "Health", Order = 5, Help = "Free space on any one drive under which the health screen grades that disk degraded.")]
+    [SettingRange(0, 1048576)]
+    public double HealthDiskFreeDegradedGb { get; set; } = 20;
+
+    /// <summary>Free space on any one drive under which the health screen grades that disk unhealthy (and can alert).</summary>
+    [Setting("Disk unhealthy under (free GB)", Group = "Health", Order = 6, Help = "Free space on any one drive under which the health screen grades that disk unhealthy (and can alert).")]
+    [SettingRange(0, 1048576)]
+    public double HealthDiskFreeUnhealthyGb { get; set; } = 5;
+
+    /// <summary>An Azure SQL database's DTU (or vCore CPU) percent at or past which the health screen grades it degraded.</summary>
+    [Setting("Database load degraded past (DTU %)", Group = "Health", Order = 7, Help = "An Azure SQL database's DTU (or vCore CPU) percent at or past which the health screen grades it degraded.")]
+    [SettingRange(1, 100)]
+    public double HealthDtuDegradedPercent { get; set; } = 80;
+
+    /// <summary>An Azure SQL database's DTU (or vCore CPU) percent at or past which the health screen grades it unhealthy (and can alert).</summary>
+    [Setting("Database load unhealthy past (DTU %)", Group = "Health", Order = 8, Help = "An Azure SQL database's DTU (or vCore CPU) percent at or past which the health screen grades it unhealthy (and can alert).")]
+    [SettingRange(1, 100)]
+    public double HealthDtuUnhealthyPercent { get; set; } = 95;
+
+    /// <summary>An Azure SQL database's storage percent (of its max size) at or past which the health screen grades it degraded.</summary>
+    [Setting("Database storage degraded past (%)", Group = "Health", Order = 9, Help = "An Azure SQL database's storage percent (of its max size) at or past which the health screen grades it degraded.")]
+    [SettingRange(1, 100)]
+    public double HealthStorageDegradedPercent { get; set; } = 80;
+
+    /// <summary>An Azure SQL database's storage percent at or past which the health screen grades it unhealthy (and can alert).</summary>
+    [Setting("Database storage unhealthy past (%)", Group = "Health", Order = 10, Help = "An Azure SQL database's storage percent at or past which the health screen grades it unhealthy (and can alert).")]
+    [SettingRange(1, 100)]
+    public double HealthStorageUnhealthyPercent { get; set; } = 95;
+
+    /// <summary>Round-trip milliseconds at or past which the health screen grades a link (dashboard, daemon, TermHost, ticket DB, Azure) degraded.</summary>
+    [Setting("Link degraded past (ms)", Group = "Health", Order = 11, Help = "Round-trip milliseconds at or past which the health screen grades a link (dashboard, daemon, TermHost, ticket DB, Azure) degraded.")]
+    [SettingRange(1, 600000)]
+    public double HealthLinkLatencyDegradedMs { get; set; } = 1000;
+
+    /// <summary>Round-trip milliseconds at or past which the health screen grades a link unhealthy (and can alert).</summary>
+    [Setting("Link unhealthy past (ms)", Group = "Health", Order = 12, Help = "Round-trip milliseconds at or past which the health screen grades a link unhealthy (and can alert).")]
+    [SettingRange(1, 600000)]
+    public double HealthLinkLatencyUnhealthyMs { get; set; } = 5000;
     /// <summary>Minutes between prunes of old log entries and finished terminal hosts' log files.</summary>
     [Setting("Prune old logs every (minutes)", Group = "Alerts", Order = 65, Help = "Minutes between prunes of old log entries and finished terminal hosts' log files.")]
     [SettingRange(1, 10080)]
@@ -1109,6 +1170,18 @@ public sealed class OrchestratorVaultSettings
         MemorySettleSeconds = s.MemorySettleSeconds,
         HealthSampleSeconds = s.HealthSampleSeconds,
         PagefileCheckHours = s.PagefileCheckHours,
+        HealthRamDegradedGb = s.HealthRamDegradedGb,
+        HealthRamUnhealthyGb = s.HealthRamUnhealthyGb,
+        HealthCommitDegradedPercent = s.HealthCommitDegradedPercent,
+        HealthCommitUnhealthyPercent = s.HealthCommitUnhealthyPercent,
+        HealthDiskFreeDegradedGb = s.HealthDiskFreeDegradedGb,
+        HealthDiskFreeUnhealthyGb = s.HealthDiskFreeUnhealthyGb,
+        HealthDtuDegradedPercent = s.HealthDtuDegradedPercent,
+        HealthDtuUnhealthyPercent = s.HealthDtuUnhealthyPercent,
+        HealthStorageDegradedPercent = s.HealthStorageDegradedPercent,
+        HealthStorageUnhealthyPercent = s.HealthStorageUnhealthyPercent,
+        HealthLinkLatencyDegradedMs = s.HealthLinkLatencyDegradedMs,
+        HealthLinkLatencyUnhealthyMs = s.HealthLinkLatencyUnhealthyMs,
         LogPruneMinutes = s.LogPruneMinutes,
         DiskCleanupEveryMinutes = s.DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = s.GitHubIntakeMinutes,
@@ -1296,6 +1369,18 @@ public sealed class OrchestratorVaultSettings
         MemorySettleSeconds = MemorySettleSeconds,
         HealthSampleSeconds = HealthSampleSeconds,
         PagefileCheckHours = PagefileCheckHours,
+        HealthRamDegradedGb = HealthRamDegradedGb,
+        HealthRamUnhealthyGb = HealthRamUnhealthyGb,
+        HealthCommitDegradedPercent = HealthCommitDegradedPercent,
+        HealthCommitUnhealthyPercent = HealthCommitUnhealthyPercent,
+        HealthDiskFreeDegradedGb = HealthDiskFreeDegradedGb,
+        HealthDiskFreeUnhealthyGb = HealthDiskFreeUnhealthyGb,
+        HealthDtuDegradedPercent = HealthDtuDegradedPercent,
+        HealthDtuUnhealthyPercent = HealthDtuUnhealthyPercent,
+        HealthStorageDegradedPercent = HealthStorageDegradedPercent,
+        HealthStorageUnhealthyPercent = HealthStorageUnhealthyPercent,
+        HealthLinkLatencyDegradedMs = HealthLinkLatencyDegradedMs,
+        HealthLinkLatencyUnhealthyMs = HealthLinkLatencyUnhealthyMs,
         LogPruneMinutes = LogPruneMinutes,
         DiskCleanupEveryMinutes = DiskCleanupEveryMinutes,
         GitHubIntakeMinutes = GitHubIntakeMinutes,
