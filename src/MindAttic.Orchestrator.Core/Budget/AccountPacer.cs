@@ -85,7 +85,21 @@ public sealed class AccountPacer
         /// its .claude.json can run to megabytes.</summary>
         public string? Plan;
         public string? PlanAccount;
+        /// <summary>The other member the folder is signed in as (M.ORCH-T1896); null when it's its own.</summary>
+        public string? BorrowedFrom;
     }
+
+    /// <summary>The pace of a login whose folder is signed in as <paramref name="other"/>, not its own <paramref name="email"/>
+    /// (M.ORCH-T1896): stopped, no subagents, so nothing more spends the other member's allowance through it.</summary>
+    internal static Pace Borrowed(Pace pace, string email, string other) => pace with
+    {
+        Mode = PaceMode.Over,
+        SessionCap = 0,
+        SubagentAllowance = 0,
+        Stop = true,
+        Note = $"{email}'s login is signed in as {other}: its usage is {other}'s, so nothing runs on it until it's signed in as {email} (orchestrator login --account {email}).",
+        AgentNote = $"This login is signed in as {other}, not {email}: every call spends {other}'s allowance. Finish the current step and stop.",
+    };
 
     /// <summary>Whether <paramref name="plan"/> has no 5-hour window (a solo Ultra account), as the dashboard reads it.</summary>
     internal static bool HasNoFiveHourWindow(string? plan) => plan == "Ultra";
@@ -138,8 +152,12 @@ public sealed class AccountPacer
             state.Account = account;
             if (state.PlanAccount != account)
             {
-                try { state.Plan = AccountProfile.Read(dir.ConfigPath)?.Plan; }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { state.Plan = null; }
+                AccountProfile? profile = null;
+                try { profile = AccountProfile.Read(dir.ConfigPath); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { }
+                state.Plan = profile?.Plan;
+                // Signed in as another member (M.ORCH-T1896), read with the plan: once per account signed in.
+                state.BorrowedFrom = profile?.Email is { } signed && !signed.Equals(dir.Email, StringComparison.OrdinalIgnoreCase) ? signed : null;
                 state.PlanAccount = account;
             }
             var ids =byEmail[dir.Email].ToHashSet(StringComparer.Ordinal);
@@ -226,6 +244,8 @@ public sealed class AccountPacer
         pace = Pacer.HoldForDisk(pace, Activity.DiskGuard.Shared.Observe(settings, now), settings);
         // Let past its weekly target by the user (M.ORCH-T694): said in its pace note, which its tab shows.
         if (why is not null) pace = pace with { Note = $"{pace.Note} {why}" };
+        // Signed in as another member (M.ORCH-T1896): every token its CLIs spend is that member's, so it gets no room at all.
+        if (state.BorrowedFrom is { } other) pace = Borrowed(pace, dir.Email, other);
         if (write)
         {
             state.Writer.Write(budget, pace);

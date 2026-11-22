@@ -89,6 +89,10 @@ public sealed record LoginCard(
     public int WeeklyStopPercent => Pace?.WeeklyStopPercent
         ?? Settings.OrchestratorSettings.WeeklyStopFor(Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
 
+    /// <summary>The other member the folder is signed in as (M.ORCH-T1896, <see cref="AccountDir.BorrowedFrom"/>); its meter is
+    /// theirs, so the card carries no 5-hour or week of its own. Null: it's its own (or not signed in).</summary>
+    public string? BorrowedFrom { get; init; }
+
     /// <summary>Its week is at or past <see cref="WeeklyStopPercent"/>: its CLIs are stopped until the week resets.</summary>
     public bool AtWeeklyStop => WeekPercent is { } week && week >= WeeklyStopPercent;
 }
@@ -108,13 +112,17 @@ public static class LoginBoard
         AccountProfile? profile = null;
         try { profile = AccountProfile.Read(dir.ConfigPath); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { }
-        var usage = ReportedUsage.Load(nowUtc, dir.UsagePath);
+        // Signed in as another member (M.ORCH-T1896): the meter in its folder is that member's usage, which must never read as
+        // this one's (the same 5-hour and week shown twice, as two people's), so the card has none.
+        var borrowed = dir.SignedIn && profile?.Email is { } signed && !signed.Equals(dir.Email, StringComparison.OrdinalIgnoreCase) ? signed : null;
+        var usage = borrowed is null ? ReportedUsage.Load(nowUtc, dir.UsagePath) : null;
         var five = ReportedUsage.Usable(usage?.FiveHour, nowUtc);
         var week = usage?.Week is { } w && w.ResetUtc > nowUtc ? w : null;
         return new LoginCard(dir.Email, dir.Directory, dir.SignedIn, profile?.Email, profile?.Plan,
             five?.Percent, five?.ResetUtc, week?.Percent, week?.ResetUtc, LoginPace.Read(dir.StatusPath), [])
         {
             Alias = LoginLook.For(dir.Directory, dir.Email).Alias,
+            BorrowedFrom = borrowed,
         };
     }
 

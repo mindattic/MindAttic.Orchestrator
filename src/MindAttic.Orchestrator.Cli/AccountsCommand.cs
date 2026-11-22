@@ -153,10 +153,13 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
             var card = LoginBoard.Own(dir, now);
             table.AddRow(
                 (card.Alias is { } alias ? $"{Markup.Escape(alias)} [grey]{Markup.Escape(dir.Email)}[/]" : Markup.Escape(dir.Email)),
-                card.SignedIn ? Markup.Escape(card.SignedInAs ?? "(signed in)") : "[red]not signed in[/] [grey](orchestrator login --account)[/]",
-                AccountRoster.Percent(card.FiveHourPercent),
+                card.BorrowedFrom is { } other
+                    ? $"[red]{Markup.Escape(other)}[/] [grey](not its own: no work goes here; orchestrator login --account {Markup.Escape(dir.Email)})[/]"
+                    : card.SignedIn ? Markup.Escape(card.SignedInAs ?? "(signed in)") : "[red]not signed in[/] [grey](orchestrator login --account)[/]",
+                // A folder signed in as another member reads that member's meter (M.ORCH-T1896): said, never shown as this one's.
+                card.BorrowedFrom is { } from ? $"[yellow]borrowed from {Markup.Escape(from)}[/]" : AccountRoster.Percent(card.FiveHourPercent),
                 card.FiveHourResetUtc is { } r ? Formatting.ResetTime(r, now) : "",
-                AccountRoster.Percent(card.WeekPercent) + $" [grey](stops at {card.WeeklyStopPercent}%)[/]",
+                card.BorrowedFrom is not null ? "[yellow]borrowed[/]" : AccountRoster.Percent(card.WeekPercent) + $" [grey](stops at {card.WeeklyStopPercent}%)[/]",
                 Markup.Escape(card.Pace?.Pace ?? "—"),
                 card.Pace?.Subagents ?? "—",
                 card.Pace?.AtUtc is { } a ? Formatting.Ago(a, now) : "[grey]not yet[/]");

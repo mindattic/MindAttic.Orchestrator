@@ -70,6 +70,11 @@ public sealed record AccountDir(string Email, string Directory)
         }
     }
 
+    /// <summary>The other member this folder is signed in as (M.ORCH-T1896): <see cref="SignedInEmail"/> when it isn't the folder's
+    /// own <see cref="Email"/>, else null. Its meter (<see cref="UsagePath"/>) then reads that member's 5-hour and week, not this
+    /// one's, and a CLI on it spends that member's allowance: its usage is "borrowed", never shown or paced as this login's.</summary>
+    public string? BorrowedFrom => SignedIn && SignedInEmail is { } signed && !signed.Equals(Email, StringComparison.OrdinalIgnoreCase) ? signed : null;
+
     /// <summary>The plan of the login here as its sign-in names it ("Ultra", "Team · Max"); null when signed out, unreadable or
     /// unnamed (M.ORCH-T1751).</summary>
     public string? SignedInPlan
@@ -145,8 +150,10 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
             .Select(n => new AccountDir(n, Path.Combine(Root, n)))];
     }
 
-    /// <summary>The accounts a CLI can run on now: a Claude login is signed in to in its folder.</summary>
-    public IReadOnlyList<AccountDir> SignedIn() => [.. All().Where(a => a.SignedIn)];
+    /// <summary>The accounts a CLI can run on now: a Claude login is signed in to in its folder, as the folder's own member. A
+    /// folder signed in as another member (<see cref="AccountDir.BorrowedFrom"/>, M.ORCH-T1896) is left out, so no pick, move or
+    /// rebalance puts work on it: it would spend that other member's allowance.</summary>
+    public IReadOnlyList<AccountDir> SignedIn() => [.. All().Where(a => a.SignedIn && a.BorrowedFrom is null)];
 
     /// <summary>Whether the global login (<see cref="HomeConfigPath"/>) is signed in to a Claude account, not the API key.</summary>
     public bool GlobalSignedIn
