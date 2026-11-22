@@ -10,22 +10,43 @@ public sealed partial class MainViewModel
     private TerminalPaneViewModel? restoredShown;
     private string? restoredPerson;
 
+    /// <summary>The /allocate and /crossrepo each tab had when Quick Save All wound its CLI down (M.ORCH-T2071).</summary>
+    private readonly Dictionary<TerminalPaneViewModel, (IReadOnlyList<string>? Allocate, IReadOnlyList<string>? Crossrepo)> windMarks = [];
+
     /// <summary>Every terminal tab now, the session its CLI is in, who's shown and which tab (global login's tab; UI thread).</summary>
     internal RestoreState CaptureRestore(string reason, bool clean)
     {
         var all = Root.AllTerminals;
         var panes = all.Panes.Where(p => !p.Ended).ToList();
-        var tabs = panes.Select(p => new RestoreTab
+        // Each CLI's /allocate and /crossrepo, so the autosave carries them too (M.ORCH-T2071). A CLI Quick Save All wound down
+        // keeps the marks it had then until /allocate is on again, so the newer autosave never loses what the save state had.
+        var cycler = new ContextCycler();
+        var allocating = Safe(() => cycler.AllocateClis(), new Dictionary<int, IReadOnlyList<string>>());
+        var tabs = panes.Select(p =>
         {
-            Request = p.Request,
-            SessionId = p.SessionId,
-            Login = p.Login,
-            Chosen = Root.loginTabs.Any(t => ReferenceEquals(t.Terminals?.SelectedPane, p)),
+            var pid = p.StatusRow?.CliPid;
+            IReadOnlyList<string>? allocate = null, crossrepo = null;
+            if (pid is { } id)
+            {
+                if (allocating.TryGetValue(id, out var repos)) { allocate = repos; windMarks.Remove(p); }
+                else if (windMarks.TryGetValue(p, out var held)) allocate = held.Allocate;
+                crossrepo = Safe(() => cycler.CrossRepoOf(id), null);
+                if (crossrepo is null && windMarks.TryGetValue(p, out var h2)) crossrepo = h2.Crossrepo;
+            }
+            return (Pane: p, Allocate: allocate, Crossrepo: crossrepo);
+        }).Select(x => new RestoreTab
+        {
+            Allocate = x.Allocate,
+            Crossrepo = x.Crossrepo,
+            Request = x.Pane.Request,
+            SessionId = x.Pane.SessionId,
+            Login = x.Pane.Login,
+            Chosen = Root.loginTabs.Any(t => ReferenceEquals(t.Terminals?.SelectedPane, x.Pane)),
             // Its TermHost session (M.ORCH-T926): while that host lives the next dashboard reattaches the tab, so a restore
             // never offers it (M.ORCH-T928). Null for an in-process tab.
-            HostId = p.IsHosted ? p.TermId : null,
-            HandoffCode = p.HandoffCode,
-            Subagents = p.StatusRow?.Subagents.Count ?? 0,
+            HostId = x.Pane.IsHosted ? x.Pane.TermId : null,
+            HandoffCode = x.Pane.HandoffCode,
+            Subagents = x.Pane.StatusRow?.Subagents.Count ?? 0,
         }).ToList();
         var shown = all.SelectedPane is { } s ? panes.IndexOf(s) : -1;
         return new RestoreState

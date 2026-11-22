@@ -93,6 +93,8 @@ public sealed partial class MainViewModel
                     ? (allocating.TryGetValue(pid, out var repos) ? repos : null, Safe(() => cycler.CrossRepoOf(pid), null))
                     : (null, null);
 
+            foreach (var (pane, m) in marks) if (m.Allocate is not null) windMarks[pane] = m;
+
             // Stop spending: nothing new is claimed or started; subagents already working finish and land.
             var wound = Safe(() => CliMarks.WindDownEverywhere(cycler.Directory), 0);
 
