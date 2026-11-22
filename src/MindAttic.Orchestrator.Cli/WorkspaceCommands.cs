@@ -81,7 +81,7 @@ internal sealed class WorkspaceBuildCommand : AsyncCommand<WorkspaceBuildCommand
         try
         {
             var folder = Path.GetFullPath(settings.Folder);
-            var r = await WorkspaceBootstrap.BuildAsync(folder, settings.Root, new Progress<string>(line => AnsiConsole.MarkupLine(Markup.Escape(line))));
+            var r = await WorkspaceBootstrap.BuildAsync(folder, settings.Root, new ConsoleProgress());
             AnsiConsole.MarkupLine($"[green]Cloned {r.Cloned}[/], {r.AlreadyThere} already there, {(r.Failed.Count == 0 ? "none failed" : $"[red]{r.Failed.Count} failed[/]")}.");
             foreach (var f in r.Failed) AnsiConsole.MarkupLine($"  [red]{Markup.Escape(f)}[/]");
             var appsFailed = settings.InstallApps ? await WorkspaceInstallAppsCommand.Run(folder) : 0;
@@ -96,6 +96,14 @@ internal sealed class WorkspaceBuildCommand : AsyncCommand<WorkspaceBuildCommand
     }
 }
 
+/// <summary>Prints each progress line as it's reported, in order (M.ORCH-T1968): <see cref="Progress{T}"/> in a console app
+/// posts to the thread pool, so lines arrived out of order or after the command had returned.</summary>
+internal sealed class ConsoleProgress : IProgress<string>
+{
+    private readonly object gate = new();
+    public void Report(string value) { lock (gate) AnsiConsole.MarkupLine(Markup.Escape(value)); }
+}
+
 internal sealed class WorkspaceInstallAppsCommand : AsyncCommand
 {
     public override async Task<int> ExecuteAsync(CommandContext context) =>
@@ -107,7 +115,7 @@ internal sealed class WorkspaceInstallAppsCommand : AsyncCommand
         {
             var apps = WorkspaceBootstrap.Apps(folder);
             AnsiConsole.MarkupLine($"Installing {apps.Count} apps: {Markup.Escape(string.Join(", ", apps))}");
-            var failed = await WorkspaceBootstrap.InstallAppsAsync(folder, new Progress<string>(line => AnsiConsole.MarkupLine(Markup.Escape(line))));
+            var failed = await WorkspaceBootstrap.InstallAppsAsync(folder, new ConsoleProgress());
             foreach (var f in failed) AnsiConsole.MarkupLine($"  [red]{Markup.Escape(f)}[/]");
             AnsiConsole.MarkupLine(failed.Count == 0 ? "[green]All installed.[/]" : $"[red]{failed.Count} failed.[/]");
             return failed.Count;

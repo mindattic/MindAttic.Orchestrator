@@ -140,7 +140,7 @@ internal sealed class BranchesReportCommand : Command<BranchesReportCommand.Sett
     public override int Execute(CommandContext context, Settings settings)
     {
         var branch = settings.Branch.StartsWith("origin/", StringComparison.Ordinal) ? settings.Branch["origin/".Length..] : settings.Branch;
-        var (report, warning) = Record(settings.Repo, branch, settings.Head, settings.Pass, settings.Note);
+        var (report, warning) = Record(settings.Repo, branch, settings.Head.Trim(), settings.Pass, settings.Note);
         if (settings.Json)
         {
             Console.WriteLine(JsonSerializer.Serialize(new { outcome = report.Outcome.ToString(), text = report.Text, ticket = report.Ticket, head = report.Head, warning },
@@ -211,7 +211,7 @@ internal sealed class BranchesPushedCommand : Command<BranchesPushedCommand.Sett
             AnsiConsole.MarkupLine($"[red]{Markup.Escape(branch)} names no ticket (work/<ticket>); nothing was marked.[/]");
             return 1;
         }
-        BranchBuilds.MarkAwaiting(Ctx.Store(), settings.Repo, branch, ticket, settings.Head, DateTime.UtcNow);
+        BranchBuilds.MarkAwaiting(Ctx.Store(), settings.Repo, branch, ticket, settings.Head.Trim(), DateTime.UtcNow);
         AnsiConsole.MarkupLine($"[green]{Markup.Escape(ticket)} awaits {Markup.Escape(settings.Repo)}'s {Markup.Escape(branch)} at {Markup.Escape(BranchesCommand.Short(settings.Head.Trim()))}[/]" +
             ": it stays open, isn't handed out again meanwhile, and is closed when the host merges it into main (a failed run hands it back).");
         return 0;

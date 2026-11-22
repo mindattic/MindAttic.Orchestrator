@@ -60,7 +60,7 @@ internal sealed class OrgsAddCommand : Command<OrgsAddCommand.Settings>
             return 1;
         }
         var orgs = db.LoadOrgs();
-        if (orgs.Find(id) is { } there)
+        if (orgs.Named(id) is { } there)
         {
             AnsiConsole.MarkupLine($"[red]There's already an org {Markup.Escape(id)} ({Markup.Escape(there.Name)}); rename it with orchestrator orgs rename.[/]");
             return 1;
@@ -87,7 +87,7 @@ internal sealed class OrgsRenameCommand : Command<OrgsRenameCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var db = Ctx.Store().Db;
-        if (db.LoadOrgs().Find(settings.Id.Trim()) is not { } org || settings.Name.Trim().Length == 0)
+        if (db.LoadOrgs().Named(settings.Id) is not { } org || settings.Name.Trim().Length == 0)
         {
             AnsiConsole.MarkupLine($"[red]No org {Markup.Escape(settings.Id)} (orchestrator orgs lists them), or no name given.[/]");
             return 1;
@@ -149,7 +149,7 @@ internal sealed class OrgsMemberCommand : Command<OrgsMemberCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var db = Ctx.Store().Db;
-        if (db.LoadOrgs().Find(settings.Org.Trim()) is not { } org)
+        if (db.LoadOrgs().Named(settings.Org) is not { } org)
         {
             AnsiConsole.MarkupLine($"[red]No org {Markup.Escape(settings.Org)} (orchestrator orgs lists them).[/]");
             return 1;
@@ -222,7 +222,7 @@ internal sealed class OrgsRepoCommand : Command<OrgsRepoCommand.Settings>
             AnsiConsole.MarkupLine($"{Markup.Escape(name)} is {Markup.Escape(routing.NameOf(routing.OrgOfRepo(name)))}'s.");
             return 0;
         }
-        if (orgs.Find(orgId) is not { } org)
+        if (orgs.Named(orgId) is not { } org)
         {
             AnsiConsole.MarkupLine($"[red]No org {Markup.Escape(orgId)} (orchestrator orgs lists them).[/]");
             return 1;

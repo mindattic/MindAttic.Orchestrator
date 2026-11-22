@@ -226,21 +226,32 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
     {
         var store = Ctx.Store();
         var a = store.LoadAssignments().FirstOrDefault(x => x.TicketId.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase));
-        // An orphaned ticket released is yours (M.ORCH-T748): the daemon no longer redispatches or holds it back.
-        var wasOrphan = OrphanWatch.Forget(store, settings.Ticket);
-        if (wasOrphan) AnsiConsole.MarkupLine($"{Markup.Escape(settings.Ticket)} is no longer tracked as orphaned; its work is left as it is.");
-        if (a is null && wasOrphan) return 0;
-        if (a is null) { AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(settings.Ticket)} isn't assigned.[/]"); return 1; }
+        // An orphaned ticket released is yours (M.ORCH-T748): the daemon no longer redispatches or holds it back. Forgotten
+        // only once the release went through, or when there's no assignment to release (M.ORCH-T1968).
+        bool ForgetOrphan()
+        {
+            var was = OrphanWatch.Forget(store, settings.Ticket);
+            if (was) AnsiConsole.MarkupLine($"{Markup.Escape(settings.Ticket)} is no longer tracked as orphaned; its work is left as it is.");
+            return was;
+        }
+        if (a is null)
+        {
+            if (ForgetOrphan()) return 0;
+            AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(settings.Ticket)} isn't assigned.[/]");
+            return 1;
+        }
         var dispatcher = Ctx.Dispatcher(store);
         if (!settings.RemoveWorktree)
         {
             dispatcher.Release(a.TicketId, OrchestratorOptions.Load().WorkspaceRoot);
+            ForgetOrphan();
             AnsiConsole.MarkupLine($"{a.TicketId} is back in the queue.");
             return 0;
         }
         var repo = new MindAttic.Tickets.Workspace(OrchestratorOptions.Load().WorkspaceRoot).Find(a.Repo);
         if (repo is null) { AnsiConsole.MarkupLine($"[red]Repo {Markup.Escape(a.Repo)} not found.[/]"); return 1; }
         var r = dispatcher.RemoveWorktree(a, repo.Path);
+        if (r.Ok) ForgetOrphan();
         AnsiConsole.MarkupLine(r.Ok ? Markup.Escape(r.Message) : $"[red]{Markup.Escape(r.Message)}[/]");
         return r.Ok ? 0 : 1;
     }

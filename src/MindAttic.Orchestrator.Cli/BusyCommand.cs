@@ -65,7 +65,7 @@ internal sealed class BusyCommand : Command<BusyCommand.Settings>
             // would otherwise cancel the disposed source and crash.
             try
             {
-                report = BusyClis.WaitForIdle(TimeSpan.FromSeconds(Math.Max(5, settings.Poll)),
+                report = BusyClis.WaitForIdle(TimeSpan.FromSeconds(Math.Clamp(settings.Poll, 5, 86400)),
                     settings.Timeout is { } m ? TimeSpan.FromMinutes(Math.Max(0, m)) : null,
                     r => AnsiConsole.MarkupLine($"[grey]{DateTime.Now:HH:mm:ss}[/] waiting on {r.Blocking.Count} CLI(s): " +
                         Markup.Escape(string.Join(" | ", BusyClis.Describe(r)))),

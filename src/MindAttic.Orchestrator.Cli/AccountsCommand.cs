@@ -28,7 +28,7 @@ internal sealed class AccountsPickCommand : Command<AccountsPickCommand.Settings
         try
         {
             pick = Ctx.Settings.AutoLogin
-                ? new LoginPicker(AccountsCommand.LoginsOverride?.Invoke(), StartCommand.LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow), Cutoffs = () => UsageCutoffs.Load(Ctx.Store()) }.Pick(DateTime.UtcNow, claim: true, Ctx.Settings.WeeklyStopPercent)
+                ? new LoginPicker(AccountsCommand.LoginsOverride?.Invoke(), StartCommand.LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow), Cutoffs = () => UsageCutoffs.Load(Ctx.Store()) }.Pick(DateTime.UtcNow, claim: false, Ctx.Settings.WeeklyStopPercent)
                 : new LoginPick(null, "Auto login is off (settings --auto-login): no per-CLI login");
         }
         // The contract is one line and exit 0: anything unreadable means no per-CLI login.
@@ -37,7 +37,8 @@ internal sealed class AccountsPickCommand : Command<AccountsPickCommand.Settings
             pick = new LoginPick(null, $"couldn't pick ({ex.Message}): no per-CLI login");
         }
         if (pick.Account is { } account)
-            try { (AccountsCommand.LoginsOverride?.Invoke() ?? new AccountDirs()).Prepare(account); }
+            // Claimed only once it's prepared, so a failed prepare leaves no claim holding the login (M.ORCH-T1968).
+            try { (AccountsCommand.LoginsOverride?.Invoke() ?? new AccountDirs()).Prepare(account); LoginPicker.Claim(account, DateTime.UtcNow); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { pick = new LoginPick(null, $"couldn't prepare {account.Email}'s login ({ex.Message}): no per-CLI login"); }
         // Plain Console, not AnsiConsole: the Launcher reads this line as is, with no markup or wrapping.
         Console.WriteLine(settings.Json

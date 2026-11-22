@@ -169,8 +169,10 @@ public static class BranchQueue
             if (wanted is null)
             {
                 var (ok, output) = run(script, ["job", "cancel", JobName, "--owner", JobOwner]);
-                // A job already gone is as good as cancelled.
-                store.Save(JobStateName, new JobState());
+                // A job already gone ("No job '...'" from the Scheduler) is as good as cancelled; any other failure keeps the
+                // registered state so the cancel is tried again (M.ORCH-T1968).
+                if (ok || output.Contains("No job '", StringComparison.Ordinal))
+                    store.Save(JobStateName, new JobState());
                 return ok ? "cancelled the branch queue fetch job" : $"the branch queue fetch job may still be registered: {FirstLine(output)}";
             }
             var (added, said) = run(script, ["job", "add", JobName, "--owner", JobOwner, "--every", wanted.Every, "--run", wanted.Command,
@@ -194,7 +196,10 @@ public static class BranchQueue
             using var p = Process.Start(psi)!;
             var stdout = p.StandardOutput.ReadToEndAsync();
             var stderr = p.StandardError.ReadToEndAsync();
-            if (!p.WaitForExit(60_000)) { try { p.Kill(true); } catch (InvalidOperationException) { } return (false, "timed out"); }
+            if (!p.WaitForExit(60_000)) { try { p.Kill(true); } catch (Exception ex) when (ex is InvalidOperationException or AggregateException) { } return (false, "timed out"); }
+            // A child holding the pipes open mustn't hang this forever (M.ORCH-T1968, as Dispatcher.Git).
+            if (!Task.WaitAll([stdout, stderr], TimeSpan.FromSeconds(10)))
+                return (p.ExitCode == 0, (stdout.IsCompletedSuccessfully ? stdout.Result : "") + (stderr.IsCompletedSuccessfully ? stderr.Result : ""));
             return (p.ExitCode == 0, stdout.Result + stderr.Result);
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)

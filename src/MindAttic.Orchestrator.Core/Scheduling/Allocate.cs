@@ -17,6 +17,13 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     internal Func<string, string, string, int?> Start { get; init; } = BackgroundAgent.Start;
     internal Func<Assignment, bool> IsRunning { get; init; } = a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
     internal Func<int, DateTime?> StartTimeOf { get; init; } = BackgroundAgent.StartTimeOf;
+    // Ends an agent just started whose ticket was claimed elsewhere meanwhile (M.ORCH-T1968); pid and its start time.
+    internal Action<int, DateTime?> StopAgent { get; init; } = (pid, startedUtc) =>
+    {
+        if (!BackgroundAgent.IsRunning(pid, startedUtc)) return;
+        try { using var p = System.Diagnostics.Process.GetProcessById(pid); p.Kill(true); }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or AggregateException or System.ComponentModel.Win32Exception) { }
+    };
     // The daemon no longer starts headless background agents (M.ORCH-T164): /allocate runs inside the CLI it's typed into, as
     // that CLI's subagents (see Next). Tick still reaps agents started before, lands their work and sweeps old finished worktrees.
     internal Func<IReadOnlyList<string>?> Order { get; init; } = () => null;
@@ -178,22 +185,34 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             // In the repo's own checkout, on main: no worktree, no branch (M.ORCH-T1122).
             var tree = repo.Path;
             var log = Path.Combine(LogDirectory, $"{next.Id}-{nowUtc.ToLocalTime():yyyyMMdd-HHmm}.log");
+            // The plan may be seconds old: a CLI's `next --claim` may have taken the ticket since (as Dispatcher guards,
+            // M.ORCH-T1968). Only the assignment the plan saw may be replaced.
+            bool ClaimedElsewhere(IEnumerable<Assignment> all) => all.Any(a => a.TicketId == next.Id && a != next.Assignment);
+            if (ClaimedElsewhere(store.LoadAssignments())) continue;
             if (Start(tree, PromptFor(next, tree, MainlineOf(repo.Path), branch: BranchWorkFor(settings, MachineTopology.Current, store, next)), log) is not { } pid)
             {
                 Tell(repo.Name, $"allocate: couldn't start an agent in {repo.Name}");
                 failed.Add(repo.Name);
                 continue;
             }
+            var started = new Assignment(next.Id, next.Repo, tree, Providers.Claude, nowUtc, true) { Pilot = pid, PilotStartedUtc = StartTimeOf(pid), Log = log };
+            var raced = false;
+            store.UpdateAssignments(all =>
+            {
+                if (ClaimedElsewhere(all)) { raced = true; return; }
+                all.RemoveAll(a => a.TicketId == next.Id);
+                all.Add(started);
+            });
+            if (raced)
+            {
+                // Lost the race after starting: the other claim stands, so the agent just started is ended (M.ORCH-T1968).
+                StopAgent(pid, started.PilotStartedUtc);
+                continue;
+            }
             running++;
             more--;
             inRepo[repo.Name]++;
             told.Remove(repo.Name);
-            var started = new Assignment(next.Id, next.Repo, tree, Providers.Claude, nowUtc, true) { Pilot = pid, PilotStartedUtc = StartTimeOf(pid), Log = log };
-            store.UpdateAssignments(all =>
-            {
-                all.RemoveAll(a => a.TicketId == next.Id);
-                all.Add(started);
-            });
             said.Add($"allocate: started {next.Id} in {repo.Name} in the background: {next.Ticket.Summary} (log {log})");
         }
         if (!paceBound)
