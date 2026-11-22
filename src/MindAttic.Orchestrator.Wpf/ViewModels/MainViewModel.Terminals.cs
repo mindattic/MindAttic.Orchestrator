@@ -43,10 +43,15 @@ public sealed partial class MainViewModel
     /// global login) the global login's.</summary>
     private MainViewModel OwnerOf(TerminalPaneViewModel pane)
     {
-        if (pane.Login is not { } login) return this;
+        if (TreeLoginKey(pane) is not { } login) return this;
         var global = workspace?.GlobalEmail;
         return loginTabs.FirstOrDefault(t => t.IsPersonTab && string.Equals(t.ScopeEmail ?? global, login, StringComparison.OrdinalIgnoreCase)) ?? this;
     }
+
+    /// <summary>The one grouping key for which login node a CLI/Launcher pane sits under (M.ORCH-T1949): the login folder it
+    /// was started with (<see cref="PaneRequest.Login"/>, its CLAUDE_CONFIG_DIR) or the one its CLI was since moved to, never
+    /// the account that folder happens to be OAuth-signed in as. Null is the global login's node.</summary>
+    internal static string? TreeLoginKey(TerminalPaneViewModel pane) => pane.Login;
 
     /// <summary>Hands each person's tab its own terminals (on the global login's tab, which holds them all), in their
     /// position (M.ORCH-T1170): the order they were first opened in, or last dragged to (M.ORCH-T1526,

@@ -1571,7 +1571,10 @@ public sealed class TerminalsViewModel : ObservableObject
             ConsiderAutoName(pane, agent, DateTime.UtcNow);
             if (pane.HostPid is not { } || session is not { Length: > 0 }) continue;
             // Its person is the login its CLI is on now: moved to another, it moves to that one's page.
-            var login = LoginScope.LoginOf(snapshot, session);
+            // A session the snapshot knows no login folder for (its hook hasn't written config_dir yet) keeps the folder it was
+            // started with (M.ORCH-T1949): reading that as "the global login" dropped a per-CLI login's CLIs under the global
+            // person's node.
+            var login = LoginScope.LoginOf(snapshot, session) ?? pane.Request.Login;
             if (!string.Equals(login, pane.Login, StringComparison.OrdinalIgnoreCase))
             {
                 pane.Login = login;

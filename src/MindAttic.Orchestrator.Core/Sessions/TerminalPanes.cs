@@ -134,9 +134,12 @@ public sealed record PaneRequest(string Title, string Directory)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException) { return null; }
     }
 
-    /// <summary>The person whose page the tab goes on: the login's email, or null for the global login's.</summary>
+    /// <summary>The person whose page the tab goes on: the login folder it was started with (its <see cref="ConfigDir"/>, the
+    /// CLAUDE_CONFIG_DIR the dashboard launched it on), else its email, or null for the global login's. The folder wins
+    /// (M.ORCH-T1949): <see cref="Email"/> is the login look's, which can be the account the folder is OAuth-signed in as, and
+    /// a folder signed in as someone else (honey's as ryandebraal) filed its CLIs under that other person's tree node.</summary>
     [JsonIgnore]
-    public string? Login => AccountDirs.Normalize(Email) ?? LoginOf(ConfigDir);
+    public string? Login => LoginOf(ConfigDir) ?? AccountDirs.Normalize(Email);
 
     /// <summary>The name its tab shows: <see cref="Repo"/>, else its folder's name.</summary>
     [JsonIgnore]
