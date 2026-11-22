@@ -57,21 +57,47 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         var title = $"{item.Repo} {item.Id}";
         Func<string, bool>? eligible = orgs.Active && !item.IsPinned ? email => orgs.OrgOfLogin(email) == orgId : null;
         string? pickedEmail = null;
-        var (startError, cameUp) = OpenTab is { } seam ? seam(title, directory, provider, prompt, submit)
-            : Open(title, directory, provider, prompt, submit, login, eligible, out pickedEmail);
-        if (startError is not null) return new Result(false, startError, null);
-
-        // With no login chosen, the one the picker chose works it (bughunt 2026-10-27).
+        // The claim is reserved before the tab opens (M.ORCH-T1975): a claim made elsewhere while the tab opened would leave a
+        // second agent working the ticket, and a tab once started can't be told apart to be closed. A start that fails rolls it back.
         // Recorded as dispatched (the Worktree flag, M.ORCH-T1122) so the orphan watch and the claim counts see it, in the checkout.
-        var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, true) { Account = AccountDirs.Normalize(login?.Email ?? pickedEmail) };
+        var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, true) { Account = AccountDirs.Normalize(login?.Email) };
+        bool Mine(Assignment a) => a.TicketId == item.Id && a.Provider == assignment.Provider && a.StartedUtc == assignment.StartedUtc;
         var raced = false;
+        Assignment? replaced = null;
         store.UpdateAssignments(all =>
         {
             if (ClaimedElsewhere(all)) { raced = true; return; }
+            replaced = all.FirstOrDefault(a => a.TicketId == item.Id);
             all.RemoveAll(a => a.TicketId == item.Id);
             all.Add(assignment);
         });
-        if (raced) return new Result(false, $"{item.Id} was claimed elsewhere while its tab opened; close the tab just opened, the other claim stands.", null);
+        if (raced) return new Result(false, $"{item.Id} was just claimed elsewhere; it isn't started twice.", null);
+        void RollBack() => store.UpdateAssignments(all =>
+        {
+            if (all.RemoveAll(Mine) > 0 && replaced is not null && !all.Any(a => a.TicketId == item.Id)) all.Add(replaced);
+        });
+
+        string? startError;
+        Task<bool>? cameUp;
+        try
+        {
+            (startError, cameUp) = OpenTab is { } seam ? seam(title, directory, provider, prompt, submit)
+                : Open(title, directory, provider, prompt, submit, login, eligible, out pickedEmail);
+        }
+        catch { RollBack(); throw; }
+        if (startError is not null) { RollBack(); return new Result(false, startError, null); }
+
+        // With no login chosen, the one the picker chose works it (bughunt 2026-10-27).
+        if (assignment.Account is null && AccountDirs.Normalize(pickedEmail) is { } picked)
+        {
+            var reserved = assignment;
+            assignment = assignment with { Account = picked };
+            store.UpdateAssignments(all =>
+            {
+                var i = all.FindIndex(a => a.TicketId == item.Id && a.Provider == reserved.Provider && a.StartedUtc == reserved.StartedUtc);
+                if (i >= 0) all[i] = all[i] with { Account = picked };
+            });
+        }
         // Who works it, for Tickets Desktop's link back (M.ORCH-T766): its login now, its session once the daemon sees the tab's.
         Tickets.TicketWorking.Set(Path.GetDirectoryName(item.RepoPath), item.Id, assignment.Account, null);
 

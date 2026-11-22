@@ -18,6 +18,8 @@ internal static class DockTarget
         if (string.IsNullOrEmpty(id))
             return (null, "No session id given, and this CLI has no MINDATTIC_TERM_ID of its own: it isn't running under a TermHost. Relaunch it through the Launcher (which starts CLIs hosted) to get a dockable session, or name the session id (orchestrator broadcast lists them).");
         var live = TermSessions.Enumerate();
+        // An exact id wins over a prefix it shares with a longer one (M.ORCH-T1975).
+        if (live.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.OrdinalIgnoreCase)) is { } exact) return (exact, null);
         var matches = live.Where(s => s.Id.StartsWith(id, StringComparison.OrdinalIgnoreCase)).ToList();
         return matches.Count switch
         {

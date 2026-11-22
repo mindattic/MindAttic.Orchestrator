@@ -60,7 +60,8 @@ internal static class MilestoneCli
     /// from before the scope lock), so a list still prints without its growth.</summary>
     public static IReadOnlyDictionary<string, MilestoneScope> Scopes(TicketsDb db)
     {
-        try { return MilestoneScope.Read(db).ToDictionary(m => m.Id, StringComparer.OrdinalIgnoreCase); }
+        // Grouped, not ToDictionary: two rows with one id (differing only in case) keep the first, never throw (M.ORCH-T1975).
+        try { return MilestoneScope.Read(db).GroupBy(m => m.Id, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase); }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or KeyNotFoundException or System.Data.Common.DbException)
         {
             return new Dictionary<string, MilestoneScope>(StringComparer.OrdinalIgnoreCase);
