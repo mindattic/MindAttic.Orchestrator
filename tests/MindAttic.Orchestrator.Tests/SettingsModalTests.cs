@@ -37,7 +37,7 @@ public sealed class SettingsModalTests
         Assert.That((string?)modal.Attribute("Grid.RowSpan"), Is.EqualTo(rows.ToString()), "it spans every row");
         Assert.That((string?)modal.Attribute("Grid.Row"), Is.Null.Or.EqualTo("0"));
         Assert.That((string?)modal.Attribute("CloseCommand"), Is.EqualTo("{Binding ToggleLoginsCommand}"));
-        Assert.That((string?)modal.Attribute("Title"), Is.EqualTo("Logins"));
+        Assert.That((string?)modal.Attribute("Title"), Is.EqualTo("User Management"));
         Assert.That(modal.Element(Mc + "MaModal.Footer"), Is.Null, "nothing to save: every action acts at once");
 
         // No settings dialog any more, and nothing binds what it bound.
