@@ -132,7 +132,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             if (samples.Count == 0) continue;
             var hits = AccountPacer.LoadLimits(dir, account);
             var mine = events.Where(e => e.Account == account).ToList();
-            var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account)], samples, hits, mine, nowUtc, _ => account);
+            var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account || r.Account is null)], samples, hits, mine, nowUtc, _ => account);
             if (due.Count == 0) continue;
             try { Db.AppendLedger(due); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { continue; }
