@@ -99,7 +99,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             samples, hits, events, nowUtc, accountAt);
         // The per-CLI pass sees this pass's own rows too: it graded the same stretch from its own samples and mustn't add a second
         // window a couple of hours off the one just taken (M.ORCH-T2008). An unknown global account can't prove a row is another's.
-        TickAccounts([.. recorded, .. due], events, nowUtc);
+        TickAccounts([.. recorded, .. due], events, nowUtc, accountAt);
         if (due.Count == 0) return;
         try { Db.AppendLedger(due); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return; }
@@ -120,7 +120,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     /// shared by every CLI, and an untagged event (from before this was kept) could be any of them, so a per-CLI row counts
     /// none sooner than risk counting another account's.
     /// </summary>
-    private void TickAccounts(List<LedgerWindow> recorded, List<GateEvent> events, DateTime nowUtc)
+    private void TickAccounts(List<LedgerWindow> recorded, List<GateEvent> events, DateTime nowUtc, Func<DateTime, string?>? accountAt)
     {
         if (AccountDirs is null) return;
         foreach (var dir in AccountDirs.All())
@@ -132,7 +132,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             if (samples.Count == 0) continue;
             var hits = AccountPacer.LoadLimits(dir, account);
             var mine = events.Where(e => e.Account == account).ToList();
-            var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account || r.Account is null)], samples, hits, mine, nowUtc, _ => account);
+            var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account || (r.Account is null && accountAt?.Invoke(r.EndUtc.AddMinutes(-1)) is null))], samples, hits, mine, nowUtc, _ => account);
             if (due.Count == 0) continue;
             try { Db.AppendLedger(due); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { continue; }
