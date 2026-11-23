@@ -440,6 +440,63 @@ public sealed partial class MainViewModel
         }
     }, () => !IsApiKeyTab && ScopeEmail is not null);
 
+    // ── Lock / Unlock, from a login's right-click menu (M.ORCH-T2118) ──────
+
+    private ICommand? toggleLockCommand;
+
+    /// <summary>The email <see cref="IsLoginLocked"/> and <see cref="ToggleLockCommand"/> act on: this tab's own login
+    /// (<see cref="ScopeEmail"/>), or the global login's email on its own tab (<see cref="OwnLogin"/>'s fallback); null for
+    /// the API key tab, or while the global login isn't known here yet.</summary>
+    private string? LockEmail => ScopeEmail ?? Root.workspace?.GlobalEmail;
+
+    /// <summary>Whether <paramref name="email"/> counts as locked for the menu: never the API key, read live off
+    /// <see cref="LoginLocks"/> so a lock set or cleared elsewhere (another dashboard, a CLI's own auto-lock, M.ORCH-T2123)
+    /// shows up without waiting for a restart. What <see cref="IsLoginLocked"/> calls with this tab's own state.</summary>
+    internal static bool IsLocked(JsonStore store, string? email, bool isApiKeyTab) =>
+        !isApiKeyTab && email is { Length: > 0 } && LoginLocks.IsLocked(LoginLocks.Load(store), email);
+
+    /// <summary>Whether this tab's login is locked (M.ORCH-T2108): false for the API key tab.</summary>
+    internal bool IsLoginLocked => IsLocked(store, LockEmail, IsApiKeyTab);
+
+    /// <summary>
+    /// "Lock"/"Unlock" (M.ORCH-T2118), on every real login's right-click menu (never the API key's): a locked login can't
+    /// open a CLI or take dispatched or moved work until it's unlocked again (<see cref="LoginLocks"/>, M.ORCH-T2122).
+    /// Unlocking a login whose lock came from its own weekly cutoff (<see cref="LoginLocks.ReasonWeeklyCutoff"/>) confirms
+    /// first, showing its current weekly usage, since the same cutoff may still apply once it's unlocked.
+    /// </summary>
+    public ICommand ToggleLockCommand => toggleLockCommand ??= new RelayCommand(async () =>
+    {
+        if (IsApiKeyTab || LockEmail is not { } email) return;
+        var existing = LoginLocks.For(LoginLocks.Load(store), email);
+        if (existing is { Reason: LoginLocks.ReasonWeeklyCutoff })
+        {
+            var percent = WeekUsed is { } used ? $"{used:0}%" : "an unknown amount";
+            if (MindAttic.Components.Wpf.Controls.MaMessageBox.Show(System.Windows.Application.Current?.MainWindow,
+                    $"Unlock {TabTitle} ({email})?\n\nIt was locked at its own weekly cutoff, and it's currently at {percent} of its week used. " +
+                    "Unlocking it now lets it take work again before its weekly reset, even past that cutoff.",
+                    "Unlock login?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning,
+                    System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes) return;
+        }
+        var root = Root;
+        var locking = existing is null;
+        // async void: the DB read and anything thrown below must stay inside the try, or it crashes the app (M.ORCH-T1970).
+        try
+        {
+            if (locking) await Task.Run(() => LoginLocks.Lock(store, email, TabTitle, LoginLocks.ReasonManual, "you", null, DateTime.UtcNow));
+            else await Task.Run(() => LoginLocks.Unlock(store, email, TabTitle, "you", DateTime.UtcNow));
+            AccountsMessage = locking
+                ? $"{email} is locked: it can't open a CLI or take dispatched or moved work until it's unlocked again."
+                : $"{email} is unlocked again.";
+            NoteLocalChange();
+            await root.RefreshAsync();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            AccountsMessage = $"Couldn't {(locking ? "lock" : "unlock")} {email}: {ex.Message}";
+            Toasts.Insert(0, new ToastViewModel($"{email} not changed", AccountsMessage, Palette.Over, null));
+        }
+    }, () => !IsApiKeyTab && LockEmail is not null);
+
     // ── Delete, from a login's right-click menu (M.ORCH-T1953) ──────
 
     private ICommand? deleteLoginCommand;

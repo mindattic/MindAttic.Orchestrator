@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using MindAttic.Components.Wpf.Mvvm;
+using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Wpf.ViewModels;
 using NUnit.Framework;
@@ -109,6 +110,30 @@ public sealed class ViewModelTests
 
         Assert.That(Quiet(TimeSpan.FromSeconds(20)).Headline, Is.EqualTo("Quiet. Last agent activity just now."));
         Assert.That(Quiet(TimeSpan.FromMinutes(5)).Headline, Is.EqualTo("Quiet. Last agent activity 5m ago."));
+    }
+
+    [Test]
+    public void Toggle_lock_state_locks_then_unlocks_a_login_never_the_api_key()
+    {
+        // M.ORCH-T2118: IsLoginLocked and ToggleLockCommand read/write through LoginLocks the same way; IsLocked is the
+        // static read both share, so exercising it here toggles the same lock state the command flips.
+        const string erin = "ohleo199@mindattic.com";
+        var temps = new TempDirs();
+        try
+        {
+            var store = new JsonStore(temps.New());
+            Assert.That(MainViewModel.IsLocked(store, erin, isApiKeyTab: false), Is.False);
+
+            Assert.That(LoginLocks.Lock(store, erin, "Erin", LoginLocks.ReasonManual, "you", null, DateTime.UtcNow), Is.Not.Null);
+            Assert.That(MainViewModel.IsLocked(store, erin, isApiKeyTab: false), Is.True, "locked: the menu now offers Unlock");
+
+            Assert.That(LoginLocks.Unlock(store, erin, "Erin", "you", DateTime.UtcNow), Is.Not.Null);
+            Assert.That(MainViewModel.IsLocked(store, erin, isApiKeyTab: false), Is.False, "unlocked again: the menu offers Lock once more");
+
+            Assert.That(MainViewModel.IsLocked(store, null, isApiKeyTab: false), Is.False, "no email known yet (the global login, not signed in anywhere): never locked");
+            Assert.That(MainViewModel.IsLocked(store, erin, isApiKeyTab: true), Is.False, "the API key tab is never considered locked");
+        }
+        finally { temps.DeleteAll(); }
     }
 
     private sealed class Row(string key, int value)
