@@ -249,12 +249,15 @@
              (row 2, TerminalsPanel) are the other fixed rows (M.ORCH-T1302): you always see who's selected and which CLI is
              shown. Everything else - the chosen terminal, the 5-hour chart right after it, the stats, the 5-hour chart and
              Tickets - lives in AgentsBody (row 3), one scrolling panel, so scrolling down past the terminal reaches the rest.
-             The status bar (row 4) stays its own fixed footer, as it always was. -->
+             The status bar (row 5) stays its own fixed footer, as it always was. Since M.ORCH-T1872 the menu bar sits in
+             row 4, bottom right over the status bar, so the sidebar and the CLI area run to the window's top edge; row 0
+             is empty on the desktop and holds the menu bar again only in the phone layout (MainWindow.Compact.cs). -->
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" MinHeight="120" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <!-- The login tabs are a sidebar on the left (M.ORCH-T1431): column 0 holds who, column 1 their CLIs and body. -->
@@ -276,13 +279,13 @@
         <!-- No emergency billing toggle any more (M.ORCH-T906, which replaced M.ORCH-T770's): the Vault's API key is a person
              with its own tab in the strip below, its own Launcher and CLIs billing API credits; orchestrator billing stays the
              command-line tool. -->
-        <!-- The app's menu bar (M.ORCH-T1499): a full-width strip above the sidebar and the terminal body, right-aligned.
+        <!-- The app's menu bar (M.ORCH-T1499): a strip under the terminal body, right of the sidebar (M.ORCH-T1872), right-aligned.
              Holds what used to be the sidebar's own window-tools row (Team Wall, Tickets, Logins, Settings, Wind down),
              moved here so it's reachable regardless of which login's tab is open, plus this host machine's own C: free
              space and RAM load (DiskFreeText/RamUtilizationText, MainViewModel.HostStats.cs), refreshed every RefreshAsync
              tick (5s). Bound to the global login's tab in code-behind (MenuBarTools.DataContext = model), like OrgStrip:
              these five tools and the two readouts are the same regardless of which login's tab is shown. -->
-        <Border x:Name="MenuBar" Style="{StaticResource MaStatusBar}" Grid.Row="0" Grid.ColumnSpan="2" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,0,1" Padding="12,8,12,8">
+        <Border x:Name="MenuBar" Style="{StaticResource MaStatusBar}" Grid.Row="4" Grid.Column="1" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,1,0,0" Padding="12,8,12,8">
             <Grid x:Name="MenuBarRow">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -414,7 +417,7 @@
                  will build it. -->
             <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
                 <Separator Style="{StaticResource MaSeparator}" Margin="0,8,0,8" />
-                <StackPanel x:Name="DashboardToolbar" Orientation="Horizontal" VerticalAlignment="Center"
+                <StackPanel x:Name="DashboardToolbar" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right"
                             AutomationProperties.Name="Dashboard toolbar: Projects, Git, Settings, Launcher, Shells, and what's still to come">
                     <!-- Projects: the same Open Project window the per-login row's own "+ Add" button and "⋯" menu item
                          already open (ShowOpenProjectWindow, M.ORCH-T1964), for whichever login is selected. -->
@@ -522,7 +525,7 @@
 
         <!-- Top-aligned with a star middle row (M.ORCH-T1431): the tools sit right under the last login, and a list too long for
              the window scrolls on its own rather than pushing the tools off the bottom. Its top matches the CLI tab bar's. -->
-        <Border x:Name="Sidebar" Style="{StaticResource MaSidePane}" Grid.Row="1" Grid.RowSpan="3" Grid.Column="0" MinWidth="170"
+        <Border x:Name="Sidebar" Style="{StaticResource MaSidePane}" Grid.Row="0" Grid.RowSpan="5" Grid.Column="0" MinWidth="170"
                 BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,1,0" Padding="12,8,12,8"
                 AutomationProperties.Name="People and window tools">
         <!-- Since M.ORCH-T1439 the logins are Auto, and the ticket cards take whatever height is left, scrolling on their own.
@@ -1859,7 +1862,7 @@
         </Border>
 
         <!-- Status bar: its own fixed footer (M.ORCH-T1302, restored from T1301's hide), not part of AgentsBody's scroll. -->
-        <Border x:Name="StatusBar" Grid.Row="4" Grid.ColumnSpan="2" Style="{StaticResource MaStatusBar}">
+        <Border x:Name="StatusBar" Grid.Row="5" Grid.ColumnSpan="2" Style="{StaticResource MaStatusBar}">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaMutedText}"
                            Text="F5 refresh · Ctrl+Tab next login · Ctrl +/− zoom · Esc close" />
@@ -1878,7 +1881,7 @@
 
         <!-- The phone layout's touch bar (M.ORCH-T1543, MainWindow.Compact.cs), in the status bar's place: the keys a phone
              keyboard over Remote Desktop lacks, sent to the CLI on screen. Not focusable, so the terminal keeps the keyboard. -->
-        <Border x:Name="TouchBar" Grid.Row="4" Grid.ColumnSpan="2" Style="{StaticResource MaStatusBar}" Visibility="Collapsed"
+        <Border x:Name="TouchBar" Grid.Row="5" Grid.ColumnSpan="2" Style="{StaticResource MaStatusBar}" Visibility="Collapsed"
                 AutomationProperties.Name="Touch keys for the CLI">
           <DockPanel>
             <!-- The phone layout's status line (M.ORCH-T1570), in its footer since M.ORCH-T1571: what the menu bar's readouts and
@@ -1942,7 +1945,7 @@
         </Border>
 
         <!-- Covers every row until the first refresh lands (M.ORCH-T184). -->
-        <Border x:Name="Loader" Grid.RowSpan="5" Grid.ColumnSpan="2" Style="{StaticResource MaCover}"
+        <Border x:Name="Loader" Grid.RowSpan="6" Grid.ColumnSpan="2" Style="{StaticResource MaCover}"
                 Visibility="{Binding IsLoading, Converter={StaticResource Visible}}"
                 AutomationProperties.Name="Loading the dashboard" AutomationProperties.LiveSetting="Polite">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -1962,7 +1965,7 @@
              Settings dialog's Logins tab (M.ORCH-T804) until LAMP moved every setting to MindAttic Vault (the cog opens it), and
              are the global login's tab's (MainWindow.xaml.cs sets OrgToolbar's DataContext). Esc, its close button and the backdrop
              close it through ToggleLoginsCommand. Last in the root grid, spanning every row, over the loader too. -->
-        <mc:MaModal x:Name="LoginsModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="User Management" AutomationProperties.Name="User Management" DialogWidth="720"
+        <mc:MaModal x:Name="LoginsModal" Grid.RowSpan="6" Grid.ColumnSpan="2" Title="User Management" AutomationProperties.Name="User Management" DialogWidth="720"
                     IsOpen="{Binding IsLoginsOpen}" CloseCommand="{Binding ToggleLoginsCommand}">
             <ScrollViewer x:Name="LoginsBody" Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,4,16,12" MaxHeight="560">
                 <StackPanel x:Name="OrgToolbar" MaxWidth="760" HorizontalAlignment="Left">
@@ -2037,7 +2040,7 @@
              right-click menu: the account's email (its ID, never edited); its Name (its tab's title; the member's name too) and
              Prefix (the badge its terminal titles start with, M.ORCH-T633); and its own 5-hour and weekly cutoffs (M.ORCH-T707), as
              orchestrator org limit sets them. Defaults fills in the default cutoffs; one Save keeps everything. -->
-        <mc:MaModal x:Name="UserSettingsModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="User Settings" AutomationProperties.Name="User Settings" DialogWidth="460"
+        <mc:MaModal x:Name="UserSettingsModal" Grid.RowSpan="6" Grid.ColumnSpan="2" Title="User Settings" AutomationProperties.Name="User Settings" DialogWidth="460"
                     IsOpen="{Binding IsUserSettingsOpen}" CloseCommand="{Binding CancelUserSettingsCommand}">
             <StackPanel>
                 <TextBlock Text="Email" Margin="{StaticResource SpaceBXS}" />
@@ -2082,7 +2085,7 @@
              (its TermHost tab file and the session-restore file, M.ORCH-T1432), so a reattach, undock and dock, a pop-out or a
              restarted dashboard keep it. Blank goes back to the name built from its repo. Driven from MainWindow.xaml.cs
              (OpenRenameTab/RenameTab*). -->
-        <mc:MaModal x:Name="RenameTabModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="Rename tab" AutomationProperties.Name="Rename tab" DialogWidth="400">
+        <mc:MaModal x:Name="RenameTabModal" Grid.RowSpan="6" Grid.ColumnSpan="2" Title="Rename tab" AutomationProperties.Name="Rename tab" DialogWidth="400">
             <StackPanel>
                 <TextBlock Text="Name" Margin="{StaticResource SpaceBXS}" />
                 <TextBox x:Name="RenameTabBox" Style="{StaticResource MaTextBox}" Height="32" AutomationProperties.Name="Tab name"
@@ -2102,7 +2105,7 @@
         <!-- Close CLI? (M.ORCH-T1442, was a separate message box, M.ORCH-T1437): a CLI tab's X on a CLI still running asks here
              first; Cancel (focused), Esc, its own X and the backdrop keep the tab. The ConfirmCliClose setting turns it off.
              Driven from MainWindow.xaml.cs (ConfirmCloseTerminal/CloseCli*). -->
-        <mc:MaModal x:Name="CloseCliModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="Close CLI?" AutomationProperties.Name="Close CLI" DialogWidth="400">
+        <mc:MaModal x:Name="CloseCliModal" Grid.RowSpan="6" Grid.ColumnSpan="2" Title="Close CLI?" AutomationProperties.Name="Close CLI" DialogWidth="400">
             <TextBlock x:Name="CloseCliQuestion" TextWrapping="Wrap" />
             <mc:MaModal.Footer>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -2116,7 +2119,7 @@
              approval, assignee, who's working it, prerequisites, estimate, opened, ref), or with no ticket the CLI's own
              description, then who it bills and what it's doing. Esc, its close button and the backdrop close it; Open in
              Tickets opens the ticket there. -->
-        <mc:MaModal x:Name="TaskDetailModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="{Binding TaskDetailTitle}" AutomationProperties.Name="Task details" DialogWidth="560"
+        <mc:MaModal x:Name="TaskDetailModal" Grid.RowSpan="6" Grid.ColumnSpan="2" Title="{Binding TaskDetailTitle}" AutomationProperties.Name="Task details" DialogWidth="560"
                     IsOpen="{Binding IsTaskDetailOpen}" CloseCommand="{Binding CloseTaskDetailCommand}">
             <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,0,12,0" MaxHeight="520">
                 <StackPanel>
@@ -2152,7 +2155,7 @@
              what it is, its own Approve/Clear/Release/Work it now/Delegate buttons (M.ORCH-T1732), and the command that answers
              it with a Copy button for whoever would rather paste it into a terminal. Every line wraps, so the cards read in the
              phone layout too. Esc, its close button and the backdrop close it. -->
-        <mc:MaModal x:Name="InboxModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="{Binding InboxTitle}" AutomationProperties.Name="Inbox" DialogWidth="560"
+        <mc:MaModal x:Name="InboxModal" Grid.RowSpan="6" Grid.ColumnSpan="2" Title="{Binding InboxTitle}" AutomationProperties.Name="Inbox" DialogWidth="560"
                     IsOpen="{Binding IsInboxOpen}" CloseCommand="{Binding CloseInboxCommand}">
             <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,0,12,0" MaxHeight="520">
                 <StackPanel>
@@ -2239,7 +2242,7 @@
              first: its title (a link that opens the file), a Show in folder button, its repo and when it was last
              written, its status when the file has a "Status:" line, and its summary. Every line wraps, so the cards read
              in the phone layout too. Esc, its close button and the backdrop close it. -->
-        <mc:MaModal x:Name="PlansModal" Grid.RowSpan="5" Grid.ColumnSpan="2" Title="{Binding PlansTitle}" AutomationProperties.Name="Plans" DialogWidth="560"
+        <mc:MaModal x:Name="PlansModal" Grid.RowSpan="6" Grid.ColumnSpan="2" Title="{Binding PlansTitle}" AutomationProperties.Name="Plans" DialogWidth="560"
                     IsOpen="{Binding IsPlansOpen}" CloseCommand="{Binding ClosePlansCommand}">
             <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,0,12,0" MaxHeight="520">
                 <StackPanel>
