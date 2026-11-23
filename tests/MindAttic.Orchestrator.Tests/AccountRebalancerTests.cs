@@ -155,6 +155,40 @@ public sealed class AccountRebalancerTests
         Assert.That(sent, Is.Empty);
     }
 
+    /// <summary>M.ORCH-T2115: a locked login (<see cref="MindAttic.Orchestrator.Budget.LoginLocks"/>, M.ORCH-T2108) is left out
+    /// of <see cref="AccountDirs.SignedIn"/> exactly as a disabled member's is, so it's never a move target even with the most
+    /// headroom.</summary>
+    [Test]
+    public void A_locked_login_is_never_a_move_target()
+    {
+        dirs = new AccountDirs(dirs.Root, dirs.ClaudeDir, dirs.HomeConfigPath) { Locked = () => new HashSet<string> { "b@x.com" } };
+        SignedIn("b@x.com");
+        usage[""] = Used(99);
+        usage["b@x.com"] = Used(0); // would otherwise be the free login with the most headroom
+
+        var moves = Rebalancer().Tick(null, [], [], settings, Now);
+        Assert.That(moves.Where(m => m.Cutoff is null), Is.Empty, "b is locked out: no login has room");
+        Assert.That(sent, Is.Empty);
+    }
+
+    /// <summary>M.ORCH-T2115: when the CLI's own (source) login is the locked one (a slightly different path from picking a
+    /// target), it's never moved onto another login either: a locked login is left out of <see cref="AccountDirs.SignedIn"/>
+    /// entirely, so there's nothing of its own to measure, let alone move off of.</summary>
+    [Test]
+    public void A_cli_already_on_a_locked_login_is_left_alone()
+    {
+        dirs = new AccountDirs(dirs.Root, dirs.ClaudeDir, dirs.HomeConfigPath) { Locked = () => new HashSet<string> { "b@x.com" } };
+        var b = SignedIn("b@x.com");
+        SignedIn("c@x.com");
+        onOwn["sess-1"] = b.Directory; // the live CLI (Tab) runs on b, which is locked
+        usage["b@x.com"] = Used(99);   // would otherwise be low enough to move off
+        usage["c@x.com"] = Used(0);    // would otherwise be the free login with the most headroom
+
+        var moves = Rebalancer().Tick(null, [], [], settings, Now);
+        Assert.That(moves.Where(m => m.Cutoff is null), Is.Empty, "b is locked out of SignedIn: nothing of its own to measure or move");
+        Assert.That(sent, Is.Empty);
+    }
+
     [Test]
     public void A_target_barely_better_than_the_source_is_not_worth_a_restart()
     {

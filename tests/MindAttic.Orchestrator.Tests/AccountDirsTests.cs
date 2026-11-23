@@ -193,6 +193,23 @@ public sealed class AccountDirsTests
         Assert.That(b.SignedInEmail, Is.EqualTo("b@example.com"));
     }
 
+    /// <summary>M.ORCH-T2115: a locked login (<see cref="LoginLocks"/>, M.ORCH-T2108) is left out of <see cref="AccountDirs.SignedIn"/>
+    /// exactly as a disabled member's is (M.ORCH-T1952), so no pick, auto-pick or rebalance move ever lands on it.</summary>
+    [Test]
+    public void SignedIn_leaves_out_a_locked_login_exactly_as_it_does_a_disabled_one()
+    {
+        var b = dirs.For("b@example.com");
+        Directory.CreateDirectory(b.Directory);
+        SignIn(b);
+        var c = dirs.For("c@example.com");
+        Directory.CreateDirectory(c.Directory);
+        SignIn(c, "acct-c");
+        Assert.That(dirs.SignedIn().Select(a => a.Email), Is.EquivalentTo(new[] { "b@example.com", "c@example.com" }));
+
+        var locked = new AccountDirs(Path.Combine(dir, ".claude-accounts"), ClaudeDir, HomeConfig) { Locked = () => new HashSet<string> { "b@example.com" } };
+        Assert.That(locked.SignedIn().Select(a => a.Email), Is.EqualTo(new[] { "c@example.com" }), "b is locked out, c is still free");
+    }
+
     [Test]
     public void A_tab_on_its_own_login_starts_the_launcher_with_claude_config_dir_set()
     {
