@@ -392,10 +392,11 @@ public static class BusyClis
         commandLine.Contains("--input-format", StringComparison.OrdinalIgnoreCase) &&
         commandLine.Contains("stream-json", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Whether a claude.exe's command line is Claude Code's background daemon (<c>daemon run</c>): it holds no session, so
-    /// it never counts toward the busy gate (M.ORCH-T2093). An unreadable command line doesn't match.</summary>
+    /// <summary>Whether a claude.exe's command line is Claude Code's background daemon (<c>daemon run</c>) or a daemon-hosted
+    /// background session (<c>--bg-pty-host</c>): neither is a dashboard-hosted terminal, so neither counts toward the busy gate
+    /// (M.ORCH-T2093, M.ORCH-T2094). An unreadable command line doesn't match.</summary>
     internal static bool IsDaemon(string? commandLine) => commandLine is not null &&
-        System.Text.RegularExpressions.Regex.IsMatch(commandLine, @"\sdaemon\s+run(\s|$)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        System.Text.RegularExpressions.Regex.IsMatch(commandLine, @"(\sdaemon\s+run|\s--bg-pty-host)(\s|$)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     /// <summary>Every running claude.exe's command line, by pid (WMI); empty when it can't be read, so nothing is ever excused by
     /// a command line that wasn't actually seen.</summary>
