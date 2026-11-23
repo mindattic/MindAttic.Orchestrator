@@ -448,7 +448,7 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                 case AppBus.Health:
                     TakeHealth(envelope);
                     return;
-                case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Reminders or StateBus.Cutoffs or StateBus.Allowances:
+                case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Reminders or StateBus.Cutoffs or StateBus.Allowances or StateBus.Locks:
                     // The whole of its kind each time: the latest is kept, so a dashboard connecting gets it after the state.
                     var own = OwnStore is null || StateBus.SameStore(StateBus.StoreOf(envelope), OwnStore);
                     // Each send is its own connection and the inbox's listeners relay at once, so two quick changes can arrive in

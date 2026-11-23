@@ -51,6 +51,9 @@ public sealed class StateBusTests
         Assert.That(StateBus.KindOf(new StoreChange(ReminderBook.Name, store.Db, store)), Is.EqualTo(StateBus.Reminders));
         Assert.That(StateBus.KindOf(new StoreChange(StoreChanges.Members, store.Db, null)), Is.EqualTo(StateBus.Members));
         Assert.That(StateBus.KindOf(new StoreChange(StoreChanges.Orgs, store.Db, null)), Is.EqualTo(StateBus.Orgs));
+        Assert.That(StateBus.KindOf(new StoreChange(Budget.UsageCutoffs.StateName, store.Db, store)), Is.EqualTo(StateBus.Cutoffs));
+        Assert.That(StateBus.KindOf(new StoreChange(Budget.WeeklyAllowances.StateName, store.Db, store)), Is.EqualTo(StateBus.Allowances));
+        Assert.That(StateBus.KindOf(new StoreChange(LoginLocks.StateName, store.Db, store)), Is.EqualTo(StateBus.Locks));
         Assert.That(StateBus.KindOf(new StoreChange(JsonStore.AssignmentsName, store.Db, store)), Is.Null);
         Assert.That(StateBus.KindOf(new StoreChange(StoreChanges.Members, store.Db, store)), Is.Null, "a state row named members is no table");
     }
@@ -99,6 +102,23 @@ public sealed class StateBusTests
         Assert.That(orgs.OrgOfClaude("amy@example.com"), Is.EqualTo("sales"));
 
         Assert.That(sent.Where(e => StateBus.IsStateKind(e.Kind)).Select(e => e.V), Is.All.EqualTo(StateBus.Version));
+    }
+
+    [Test]
+    public void A_lock_or_unlock_is_pushed_whole_as_the_login_locks_kind()
+    {
+        // M.ORCH-T2123: every open dashboard sees a lock change live, the same way usage-cutoffs/weekly-allowances are.
+        var store = Scratch();
+        StateBus.Enable(background: false);
+
+        LoginLocks.Lock(store, "erin@example.com", "Erin", LoginLocks.ReasonManual, "you", null, Now);
+        var locked = Last<LoginLocksPayload>(StateBus.Locks);
+        Assert.That(locked.Store, Is.EqualTo(store.Db.Path));
+        var only = locked.Locks.Single();
+        Assert.That((only.Email, only.Reason, only.By), Is.EqualTo(("erin@example.com", LoginLocks.ReasonManual, "you")));
+
+        LoginLocks.Unlock(store, "erin@example.com", "Erin", "you", Now.AddMinutes(1));
+        Assert.That(Last<LoginLocksPayload>(StateBus.Locks).Locks, Is.Empty);
     }
 
     [Test]

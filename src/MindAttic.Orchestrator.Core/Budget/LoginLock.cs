@@ -1,3 +1,4 @@
+using System.Data.Common;
 using MindAttic.Orchestrator.Billing;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
@@ -96,6 +97,28 @@ public static class LoginLocks
 
     /// <summary>Every locked login's email.</summary>
     public static IReadOnlyList<string> LockedEmails(IEnumerable<LoginLock>? locks) => [.. (locks ?? []).Select(l => l.Email)];
+
+    private static readonly object liveGate = new();
+    private static (DateTime At, IReadOnlySet<string> Emails) liveLocked = (DateTime.MinValue, new HashSet<string>());
+
+    /// <summary>The live database's locked logins' emails, read at most every few seconds, the same pattern as
+    /// <see cref="MemberRoster.LiveDisabled"/>; none when it can't be read.</summary>
+    public static IReadOnlySet<string> LiveLocked()
+    {
+        var now = DateTime.UtcNow;
+        lock (liveGate)
+        {
+            if (now - liveLocked.At < TimeSpan.FromSeconds(10)) return liveLocked.Emails;
+            IReadOnlySet<string> emails;
+            try { emails = LockedEmails(Load(new JsonStore())).ToHashSet(StringComparer.Ordinal); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or DbException) { emails = liveLocked.Emails; }
+            liveLocked = (now, emails);
+            return emails;
+        }
+    }
+
+    /// <summary>Clears <see cref="LiveLocked"/>'s cache (tests): the next call rereads immediately.</summary>
+    internal static void ResetLiveCache() => liveLocked = (DateTime.MinValue, new HashSet<string>());
 
     /// <summary>True when <paramref name="email"/>'s auto-lock for the weekly window ending <paramref name="weekResetUtc"/> was
     /// already unlocked, so that same window's cutoff must not re-lock it.</summary>

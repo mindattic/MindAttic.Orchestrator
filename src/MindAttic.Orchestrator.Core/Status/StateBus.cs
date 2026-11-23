@@ -40,14 +40,17 @@ public static class StateBus
     /// <summary>The logins allowed past their weekly target (<see cref="AllowancesPayload"/>, <c>org allow</c>/<c>org disallow</c>).</summary>
     public const string Allowances = "weekly-allowances";
 
+    /// <summary>Every login's lock in force (<see cref="LoginLocksPayload"/>, <see cref="Budget.LoginLocks"/>, M.ORCH-T2123).</summary>
+    public const string Locks = "login-locks";
+
     /// <summary>The version of each of these kinds' payloads.</summary>
     public const int Version = 1;
 
     /// <summary>Every kind of these.</summary>
-    public static IReadOnlyList<string> Kinds { get; } = [Members, Orgs, Settings, Reminders, Cutoffs, Allowances];
+    public static IReadOnlyList<string> Kinds { get; } = [Members, Orgs, Settings, Reminders, Cutoffs, Allowances, Locks];
 
     /// <summary>Whether state kind.</summary>
-    public static bool IsStateKind(string? kind) => kind is Members or Orgs or Settings or Reminders or Cutoffs or Allowances;
+    public static bool IsStateKind(string? kind) => kind is Members or Orgs or Settings or Reminders or Cutoffs or Allowances or Locks;
 
     /// <summary>The store <paramref name="db"/> is, as payloads name it: its full path.</summary>
     public static string StoreOf(OrchestratorDb db) => db.Path;
@@ -107,6 +110,7 @@ public static class StateBus
         {
             JsonStore.SettingsName => Settings, ReminderBook.Name => Reminders,
             Budget.UsageCutoffs.StateName => Cutoffs, Budget.WeeklyAllowances.StateName => Allowances,
+            Budget.LoginLocks.StateName => Locks,
             _ => null,
         };
 
@@ -190,6 +194,8 @@ public static class StateBus
                     return store is null ? null : new CutoffsPayload { Store = name, AtUtc = at, Cutoffs = Budget.UsageCutoffs.Load(store) };
                 case Allowances:
                     return store is null ? null : new AllowancesPayload { Store = name, AtUtc = at, Allowances = Budget.WeeklyAllowances.Load(store).Allowances };
+                case Locks:
+                    return store is null ? null : new LoginLocksPayload { Store = name, AtUtc = at, Locks = Budget.LoginLocks.Load(store) };
                 default:
                     return null;
             }
@@ -257,4 +263,11 @@ public sealed record AllowancesPayload : StatePayload
 {
     /// <summary>Each login allowed past its weekly target.</summary>
     [JsonPropertyName("allowances")] public IReadOnlyList<WeeklyAllowance> Allowances { get; init; } = [];
+}
+
+/// <summary>The <see cref="StateBus.Locks"/> payload: every login's lock in force (M.ORCH-T2123).</summary>
+public sealed record LoginLocksPayload : StatePayload
+{
+    /// <summary>Each login locked now.</summary>
+    [JsonPropertyName("locks")] public IReadOnlyList<LoginLock> Locks { get; init; } = [];
 }

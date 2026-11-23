@@ -16,7 +16,11 @@ public sealed class LoginLockTests
     private readonly TempDirs temps = new();
 
     [TearDown]
-    public void TearDown() => temps.DeleteAll();
+    public void TearDown()
+    {
+        LoginLocks.ResetLiveCache();
+        temps.DeleteAll();
+    }
 
     [Test]
     public void Locking_adds_the_login_and_logs_it()
@@ -103,6 +107,26 @@ public sealed class LoginLockTests
         var store = new JsonStore(temps.New());
         Assert.That(LoginLocks.Lock(store, ApiKeyPerson.Email, ApiKeyPerson.Name, LoginLocks.ReasonManual, "you", null, Now), Is.Null);
         Assert.That(LoginLocks.Load(store), Is.Empty);
+    }
+
+    [Test]
+    public void LiveLocked_reads_the_live_database_and_is_cached_for_about_ten_seconds()
+    {
+        // M.ORCH-T2123: the same caching shape as MemberRoster.LiveDisabled.
+        LoginLocks.ResetLiveCache();
+        var store = new JsonStore();
+        Assert.That(LoginLocks.LiveLocked(), Is.Empty, "nothing locked yet");
+
+        LoginLocks.Lock(store, Erin, "Erin", LoginLocks.ReasonManual, "you", null, Now);
+        Assert.That(LoginLocks.LiveLocked(), Is.Empty, "the lock just made isn't reread yet: still cached");
+
+        LoginLocks.ResetLiveCache();
+        Assert.That(LoginLocks.LiveLocked(), Is.EquivalentTo(new[] { Erin }));
+
+        LoginLocks.Unlock(store, Erin, "Erin", "you", Now.AddMinutes(1));
+        var cached = LoginLocks.LiveLocked();
+        Assert.That(cached, Is.EquivalentTo(new[] { Erin }), "the unlock isn't reread yet: still cached");
+        Assert.That(LoginLocks.LiveLocked(), Is.SameAs(cached), "the same cached set handed back, not reread");
     }
 
     [Test]
