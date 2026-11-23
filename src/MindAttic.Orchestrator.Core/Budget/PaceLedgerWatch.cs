@@ -132,7 +132,11 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             if (samples.Count == 0) continue;
             var hits = AccountPacer.LoadLimits(dir, account);
             var mine = events.Where(e => e.Account == account).ToList();
-            var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account || (r.Account is null && accountAt?.Invoke(r.EndUtc.AddMinutes(-1)) is null))], samples, hits, mine, nowUtc, _ => account);
+            // An account-less row nobody can name is this login's stretch only when it read the same peak as this login's own
+            // window over it (M.ORCH-T2008); another account's window ending minutes away reads its own (M.ORCH-T559).
+            var unnamed = recorded.Where(r => r.Account is null && accountAt?.Invoke(r.EndUtc.AddMinutes(-1)) is null).ToList();
+            var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account)], samples, hits, mine, nowUtc, _ => account)
+                .Where(w => !unnamed.Any(r => r.PeakPercent == w.PeakPercent && r.StartUtc < w.EndUtc && w.StartUtc < r.EndUtc)).ToList();
             if (due.Count == 0) continue;
             try { Db.AppendLedger(due); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { continue; }
