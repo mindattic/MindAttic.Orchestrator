@@ -91,6 +91,7 @@ public partial class MainWindow
         Hold(PhonePickers, VisibilityProperty, Visibility.Visible);
         // The menu bar sits bottom right beside the sidebar on the desktop (M.ORCH-T1872); with the sidebar a drawer, it goes
         // back to the full-width top strip so the drawer button stays top left.
+        Hold(MainMenuBar, VisibilityProperty, Visibility.Collapsed);
         Hold(MenuBar, Grid.RowProperty, 0);
         Hold(MenuBar, Grid.ColumnProperty, 0);
         Hold(MenuBar, Grid.ColumnSpanProperty, 2);

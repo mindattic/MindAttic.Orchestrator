@@ -279,6 +279,22 @@
         <!-- No emergency billing toggle any more (M.ORCH-T906, which replaced M.ORCH-T770's): the Vault's API key is a person
              with its own tab in the strip below, its own Launcher and CLIs billing API credits; orchestrator billing stays the
              command-line tool. -->
+        <!-- The window's menu bar (M.ORCH-T2100): the top line, full width, a normal menu of labeled dropdowns holding every
+             icon of the strip below, grouped as its sections are. Each top-level label opens its dropdown (MainMenu_Click
+             builds it from the library's MaDropdownMenu/MaDropdownMenuItem, MainWindow.MainMenu.cs), every item the same
+             icon and the same command or handler as its strip button. Collapsed in the phone layout, whose top strip is
+             the icon strip itself (MainWindow.Compact.cs). -->
+        <StackPanel x:Name="MainMenuBar" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="4,2,4,2"
+                    AutomationProperties.Name="Menu bar">
+            <Button Style="{StaticResource MaTextButton}" Content="Dashboard" Tag="Dashboard" Click="MainMenu_Click" Background="Transparent" Padding="10,4" Margin="0" AutomationProperties.Name="Dashboard menu" />
+            <Button Style="{StaticResource MaTextButton}" Content="Projects" Tag="Projects" Click="MainMenu_Click" Background="Transparent" Padding="10,4" Margin="0" AutomationProperties.Name="Projects menu" />
+            <Button Style="{StaticResource MaTextButton}" Content="Git" Tag="Git" Click="MainMenu_Click" Background="Transparent" Padding="10,4" Margin="0" AutomationProperties.Name="Git menu" />
+            <Button Style="{StaticResource MaTextButton}" Content="Settings" Tag="Settings" Click="MainMenu_Click" Background="Transparent" Padding="10,4" Margin="0" AutomationProperties.Name="Settings menu" />
+            <Button Style="{StaticResource MaTextButton}" Content="Launcher" Tag="Launcher" Click="MainMenu_Click" Background="Transparent" Padding="10,4" Margin="0" AutomationProperties.Name="Launcher menu" />
+            <Button Style="{StaticResource MaTextButton}" Content="Backup &amp; Restore" Tag="Backup" Click="MainMenu_Click" Background="Transparent" Padding="10,4" Margin="0" AutomationProperties.Name="Backup and Restore menu" />
+            <Button Style="{StaticResource MaTextButton}" Content="Azure" Tag="Azure" Click="MainMenu_Click" Background="Transparent" Padding="10,4" Margin="0" AutomationProperties.Name="Azure menu" />
+            <Button Style="{StaticResource MaTextButton}" Content="Shells" Tag="Shells" Click="MainMenu_Click" Background="Transparent" Padding="10,4" Margin="0" AutomationProperties.Name="Shells menu" />
+        </StackPanel>
         <!-- The app's menu bar (M.ORCH-T1499): a strip under the terminal body, right of the sidebar (M.ORCH-T1872), right-aligned.
              Holds what used to be the sidebar's own window-tools row (Team Wall, Tickets, Logins, Settings, Wind down),
              moved here so it's reachable regardless of which login's tab is open, plus this host machine's own C: free
@@ -525,7 +541,7 @@
 
         <!-- Top-aligned with a star middle row (M.ORCH-T1431): the tools sit right under the last login, and a list too long for
              the window scrolls on its own rather than pushing the tools off the bottom. Its top matches the CLI tab bar's. -->
-        <Border x:Name="Sidebar" Style="{StaticResource MaSidePane}" Grid.Row="0" Grid.RowSpan="5" Grid.Column="0" MinWidth="170"
+        <Border x:Name="Sidebar" Style="{StaticResource MaSidePane}" Grid.Row="1" Grid.RowSpan="4" Grid.Column="0" MinWidth="170"
                 BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,1,0" Padding="12,8,12,8"
                 AutomationProperties.Name="People and window tools">
         <!-- Since M.ORCH-T1439 the logins are Auto, and the ticket cards take whatever height is left, scrolling on their own.
