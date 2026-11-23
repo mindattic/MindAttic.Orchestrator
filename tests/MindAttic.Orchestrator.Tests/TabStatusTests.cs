@@ -461,4 +461,67 @@ public sealed class TabStatusTests
         Assert.That(MainViewModel.AllStoppedOf([Row("a", 0), Row("b", 0)], []), Is.EqualTo(2));
         Assert.That(MainViewModel.AllStoppedOf([Row("a", 0), Row("b", 1)], []), Is.Zero, "one CLI's background job means not all stopped");
     }
+
+    /// <summary>M.ORCH-T2119: "Locked (by you)" for a manual lock, "Locked at its weekly cutoff" for one its own weekly cutoff
+    /// set; null unlocked, so <see cref="MainViewModel.TabActivityWord"/> falls through to its usual wording.</summary>
+    [Test]
+    public void The_activity_word_says_who_locked_a_login_and_why()
+    {
+        var manual = new LoginLock { Email = "a@x.com", Reason = LoginLocks.ReasonManual, SinceUtc = Now, By = "you" };
+        var auto = new LoginLock { Email = "a@x.com", Reason = LoginLocks.ReasonWeeklyCutoff, SinceUtc = Now, By = "its own weekly cutoff" };
+
+        Assert.That(MainViewModel.LockedWordOf(null), Is.Null, "unlocked: falls through to Stopped/Busy/Idle as before");
+        Assert.That(MainViewModel.LockedWordOf(manual), Is.EqualTo("Locked (by you)"));
+        Assert.That(MainViewModel.LockedWordOf(auto), Is.EqualTo("Locked at its weekly cutoff"));
+    }
+
+    /// <summary>M.ORCH-T2119: the lock's reason and since-when, folded into <see cref="MainViewModel.TabCutoffsLine"/> so it
+    /// reaches both the tab's own tip and its hover tip (LoginHoverTipTemplate) with no other file touched to wire it in.</summary>
+    [Test]
+    public void The_tooltip_says_why_and_since_when_a_login_is_locked()
+    {
+        var since = new DateTime(2026, 11, 23, 14, 0, 0, DateTimeKind.Utc);
+        var manual = new LoginLock { Email = "a@x.com", Reason = LoginLocks.ReasonManual, SinceUtc = since, By = "you" };
+        var auto = new LoginLock { Email = "a@x.com", Reason = LoginLocks.ReasonWeeklyCutoff, SinceUtc = since, By = "its own weekly cutoff" };
+
+        Assert.That(MainViewModel.LockLineOf(null), Is.Empty, "unlocked: nothing said");
+        Assert.That(MainViewModel.LockLineOf(manual), Does.StartWith(" Locked: by you since ").And.EndWith("."));
+        Assert.That(MainViewModel.LockLineOf(auto), Does.StartWith(" Locked: at its weekly cutoff since ").And.EndWith("."));
+    }
+
+    /// <summary>M.ORCH-T2119: locked is slotted in at <see cref="MainViewModel.TabNeedsYou"/>'s own priority level
+    /// (<c>ShowsIdleBadge</c>/<c>ShowsBusyBadge</c>'s own "&amp;&amp; !IsTabLocked", right beside their existing
+    /// "&amp;&amp; !TabNeedsYou" in MainViewModel.TabStatus.cs) -- a locked login never shows the plain gray "zzz" or green
+    /// busy box underneath its red lock box, the same way an asking login never shows them under its orange "?" box.</summary>
+    [Test]
+    public void The_locked_badge_wins_over_the_idle_and_busy_badges_the_same_way_asking_already_does()
+    {
+        static (bool Idle, bool Busy) BadgesOf(bool isTabIdle, bool isTabAllStopped, bool isTabBusy, bool needsYou, bool locked) =>
+            ((isTabIdle || isTabAllStopped) && !needsYou && !locked, isTabBusy && !needsYou && !locked);
+
+        Assert.That(BadgesOf(true, false, false, false, false), Is.EqualTo((true, false)), "idle, unlocked: the idle badge shows");
+        Assert.That(BadgesOf(true, false, false, false, true), Is.EqualTo((false, false)), "idle but locked: the lock badge wins, neither shows");
+        Assert.That(BadgesOf(false, false, true, false, false), Is.EqualTo((false, true)), "busy, unlocked: the busy badge shows");
+        Assert.That(BadgesOf(false, false, true, false, true), Is.EqualTo((false, false)), "busy but locked: the lock badge wins, neither shows");
+        Assert.That(BadgesOf(false, true, false, false, true), Is.EqualTo((false, false)), "every CLI stopped but locked: still no idle badge");
+    }
+
+    /// <summary>M.ORCH-T2119: the lock badge is boxed the same 18x18 MaTag pattern as <c>TabIdleBadge</c>, in both the flat
+    /// strip's status icon and the tree row header's, with its own fixed glyph -- never <c>TabDisabledGlyph</c>'s own small
+    /// past-cutoff lock (M.ORCH-T1254), which means something else (merely past a cutoff, not locked at all).</summary>
+    [Test]
+    public void The_locked_badge_is_boxed_like_the_idle_badge_in_both_the_strip_and_the_tree()
+    {
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+
+        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
+        Assert.That(strip, Does.Contain("x:Name=\"TabLockedBadge\"").And.Contain("Style=\"{StaticResource MaTag}\"").And.Contain("Width=\"18\" Height=\"18\"")
+            .And.Contain("Content=\"&#x1F512;\"").And.Contain("Background=\"{DynamicResource MaBad}\"").And.Contain("{Binding ShowsLockedBadge,"),
+            "the same boxed MaTag pattern as TabIdleBadge, its own glyph, never reusing TabDisabledGlyph's binding");
+
+        var tree = xaml[xaml.IndexOf("x:Name=\"LoginTree\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"LoginTreeLauncherPlaceholder\"", StringComparison.Ordinal)];
+        Assert.That(tree, Does.Contain("x:Name=\"TreeTabLockedBadge\"").And.Contain("Content=\"&#x1F512;\"").And.Contain("{Binding ShowsLockedBadge,"));
+    }
 }

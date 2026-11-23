@@ -122,9 +122,10 @@ public sealed partial class MainViewModel
 
     internal string TabStaleLine => tab.SignedIn && !tab.IsApiKey ? TabStaleLineOf(FiveHourUsed, WeekUsed, MeterReadUtc, DateTime.UtcNow, Lambda, Root.symbolTabLabels, HasFiveHourWindow) : "";
 
-    /// <summary>The cutoffs the visible label leaves out (M.ORCH-T968), for the tooltip and accessible name: "cutoffs 5-hour 98%, weekly 90%".</summary>
+    /// <summary>The cutoffs the visible label leaves out (M.ORCH-T968), for the tooltip and accessible name: "cutoffs 5-hour 98%,
+    /// weekly 90%", plus why and since when this login is locked (<see cref="TabLockLine"/>, M.ORCH-T2119) when it is.</summary>
     internal string TabCutoffsLine => !tab.SignedIn || tab.IsApiKey ? ""
-        : HasFiveHourWindow ? $" Cutoffs: 5-hour {FiveHourCutoff}%, weekly {WeeklyCutoff}%." : $" Cutoff: weekly {WeeklyCutoff}%.";
+        : (HasFiveHourWindow ? $" Cutoffs: 5-hour {FiveHourCutoff}%, weekly {WeeklyCutoff}%." : $" Cutoff: weekly {WeeklyCutoff}%.") + TabLockLine;
 
     /// <summary>The hover tip's own lead line (M.ORCH-T1536): the same "Σ: 15% | λ: 29%" figures as the tab face's bars
     /// (ShowsTabUsageBars) and TabTrailing's own text, current rather than the cutoffs TabCutoffsLine gives; empty for the
@@ -294,6 +295,39 @@ public sealed partial class MainViewModel
     /// <summary>Whether tab disabled.</summary>
     public bool IsTabDisabled => IsPersonTab && TabActivity == TabActivity.Disabled;
 
+    /// <summary>This login's lock, if any (M.ORCH-T2119): read live off the lock book, gated by <see cref="LoginLocks.LiveLocked"/>
+    /// (cached a few seconds, M.ORCH-T2123) so the common unlocked tab never hits the database on every refresh -- only once
+    /// that cheap set says this login actually is locked does this read the full record for its reason, who set it and since
+    /// when. Never the API key's tab, which can't be locked (<see cref="LoginLocks.Lock"/>).</summary>
+    private LoginLock? OwnLock => !tab.IsApiKey && AccountDirs.Normalize(CutoffEmail) is { } email && LoginLocks.LiveLocked().Contains(email)
+        ? LoginLocks.For(LoginLocks.Load(store), email) : null;
+
+    /// <summary>Whether this login is locked (M.ORCH-T2108/T2119): manually, or by its own weekly cutoff. Wins over the idle
+    /// and busy badges the same way <see cref="TabNeedsYou"/> already does (<see cref="ShowsIdleBadge"/>/<see cref="ShowsBusyBadge"/>).</summary>
+    public bool IsTabLocked => OwnLock is not null;
+
+    /// <summary>The tab's red lock box (M.ORCH-T2119): distinct from the small past-cutoff lock glyph a disabled tab already
+    /// shows (<see cref="TabDisabledGlyph"/>, M.ORCH-T1254) -- that one means merely past a cutoff; this one means the login
+    /// can't open a CLI or take dispatched or moved work at all until it's unlocked again, whether or not it's also past a
+    /// cutoff.</summary>
+    public bool ShowsLockedBadge => IsTabLocked;
+
+    /// <summary>"Locked (by you)"/"Locked at its weekly cutoff" (M.ORCH-T2119), for <see cref="TabActivityWord"/>; null
+    /// unlocked, so that falls through to its usual wording.</summary>
+    internal static string? LockedWordOf(LoginLock? ownLock) => ownLock switch
+    {
+        null => null,
+        { Reason: LoginLocks.ReasonManual } => "Locked (by you)",
+        _ => "Locked at its weekly cutoff",
+    };
+
+    /// <summary>Why and since when this login is locked, for the tooltip (M.ORCH-T2119, folded into <see cref="TabCutoffsLine"/>):
+    /// " Locked: by you since Mon 11/23 2:00 PM." or " Locked: at its weekly cutoff since ..."; empty unlocked.</summary>
+    internal string TabLockLine => LockLineOf(OwnLock);
+
+    internal static string LockLineOf(LoginLock? ownLock) => ownLock is null ? ""
+        : $" Locked: {(ownLock.Reason == LoginLocks.ReasonManual ? "by you" : "at its weekly cutoff")} since {ownLock.SinceUtc.ToLocalTime():ddd M/d h:mm tt}.";
+
     /// <summary>The disabled icon's glyph (M.ORCH-T1254): a small lock while the login is signed in but past its own cutoff --
     /// never removed from the strip, just held back from new work until it's lifted (<c>org allow</c>) or its window resets --
     /// the old "blocked" glyph only while it's actually unusable (signed out, or the API key with no credit or no key).</summary>
@@ -305,11 +339,12 @@ public sealed partial class MainViewModel
     public bool IsTabAllStopped => IsPersonTab && TabActivity != TabActivity.Disabled && TabAllStopped;
 
     /// <summary>The tab's gray "zzz" box (M.ORCH-T1173): idle, or every open CLI has stopped, and none of them is asking (the
-    /// orange box below takes that instead).</summary>
-    public bool ShowsIdleBadge => (IsTabIdle || IsTabAllStopped) && !TabNeedsYou;
+    /// orange box below takes that instead), and the login isn't locked (the red box above takes that instead, M.ORCH-T2119).</summary>
+    public bool ShowsIdleBadge => (IsTabIdle || IsTabAllStopped) && !TabNeedsYou && !IsTabLocked;
 
-    /// <summary>The tab's green box (M.ORCH-T1173, its count M.ORCH-T1261): busy, and none of this person's CLIs is asking.</summary>
-    public bool ShowsBusyBadge => IsTabBusy && !TabNeedsYou;
+    /// <summary>The tab's green box (M.ORCH-T1173, its count M.ORCH-T1261): busy, and none of this person's CLIs is asking,
+    /// and the login isn't locked (M.ORCH-T2119).</summary>
+    public bool ShowsBusyBadge => IsTabBusy && !TabNeedsYou && !IsTabLocked;
 
     /// <summary>How many of this login's CLIs are open right now: kept for <see cref="TabActivityWord"/>'s tooltip/accessible
     /// text ("Busy: 3 CLIs open"), the same source <see cref="StoppedCliCount"/> counts from; the busy badge itself is a
@@ -420,6 +455,9 @@ public sealed partial class MainViewModel
     {
         // Past its until date (M.ORCH-T1401): still shown since M.ORCH-T1952, marked lapsed.
         _ when tab.Lapsed => tab.SignedIn ? "Lapsed: its until date has passed" : "Lapsed: its until date has passed, signed out",
+        // Locked (M.ORCH-T2119): says why, even over "Disabled: past its cutoff" for the weekly-cutoff auto-lock, since that's
+        // this same word said properly -- the login can't take work until it's unlocked, not merely until its window resets.
+        _ when LockedWordOf(OwnLock) is { } lockedWord => lockedWord,
         TabActivity.Disabled => tab.IsApiKey ? tab.SignedIn ? "Disabled: its API credit is spent" : "Disabled: no key in the Vault"
             : tab.SignedIn ? "Disabled: past its cutoff" : "Disabled: signed out",
         _ when IsPersonTab && StoppedCliCount is > 0 and var n => n == 1 ? "Stopped: its one open CLI is idle" : $"Stopped: all {n} open CLIs are idle",
@@ -554,7 +592,8 @@ public sealed partial class MainViewModel
     private void RaiseTabStatus()
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(WrongAccountLine), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabUsageLine), nameof(TabTip), nameof(TabHoverTip),
-                                     nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge), nameof(TabActivityWord),
+                                     nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge),
+                                     nameof(IsTabLocked), nameof(ShowsLockedBadge), nameof(TabActivityWord),
                                      nameof(TabCliCount), nameof(TabThinkingCount), nameof(ShowsTabThinkingCount), nameof(TabThinkingCountText), nameof(TabThinkingWord),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(TabFaceTitle), nameof(ApiSpendFace), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),

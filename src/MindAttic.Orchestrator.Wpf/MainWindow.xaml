@@ -420,6 +420,13 @@
                                         Foreground="{DynamicResource MaOnAccent}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
                                         mc:MaCallout.ToolTip="{Binding TabNeedsYouTip}" AutomationProperties.Name="Blocked waiting on you"
                                         Visibility="{Binding TabNeedsYou, Converter={StaticResource Visible}}" />
+                            <!-- Locked (M.ORCH-T2119): a red box, over the idle or busy box above the same way the asking box is, a
+                                 padlock emoji so it never reads as the same glyph as the small past-cutoff lock the disabled icon
+                                 below already shows (TabDisabledGlyph, M.ORCH-T1254) - that one means merely past a cutoff; this
+                                 one means the login can't open a CLI or take work at all until it's unlocked again. -->
+                            <mc:MaBadge x:Name="TabLockedBadge" Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="&#x1F512;" Background="{DynamicResource MaBad}"
+                                        Foreground="{DynamicResource MaOnAccent}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
+                                        Visibility="{Binding ShowsLockedBadge, Converter={StaticResource Visible}}" />
                             <TextBlock x:Name="TabDisabledIcon" Text="{Binding TabDisabledGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                                        Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
@@ -533,6 +540,12 @@
                                     <TextBlock Text="{Binding TabDisabledGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                                                Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                                Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
+                                    <!-- Locked (M.ORCH-T2119): the same boxed red lock as the flat strip's TabLockedBadge, over this
+                                         login's own person/disabled glyph above, distinct from the small past-cutoff lock glyph
+                                         (TabDisabledGlyph, M.ORCH-T1254). -->
+                                    <mc:MaBadge x:Name="TreeTabLockedBadge" Style="{StaticResource MaTag}" Width="18" Height="18" Padding="0" BorderThickness="0" Content="&#x1F512;" Background="{DynamicResource MaBad}"
+                                                Foreground="{DynamicResource MaOnAccent}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
+                                                Visibility="{Binding ShowsLockedBadge, Converter={StaticResource Visible}}" />
                                 </Grid>
                                 <!-- A folder OAuth-signed in as another account says so on its own node (M.ORCH-T1954), in the
                                      theme's warning colour; collapsed while it's signed in as itself. -->
