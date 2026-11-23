@@ -666,6 +666,27 @@ public sealed class StatusAggregatorTests
         Assert.That(snap.Repos.Single(r => r.Name == "B").UsageToday.Output, Is.EqualTo(5_000), "the key's work still shows");
     }
 
+    /// <summary>M.ORCH-T2117: the global login's own pace stops the same way a locked per-CLI login's does
+    /// (<see cref="AccountPacer.LockedPace"/>), scoped exactly as its own weekly cutoff is (never the API key's).</summary>
+    [Test]
+    public void A_locked_global_login_is_paced_to_a_stop_until_unlocked()
+    {
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(1), 100);
+        Config("""{"oauthAccount":{"accountUuid":"a","emailAddress":"locked@example.com"}}""");
+        var account = SignIn();
+        SignedInSince("a", TimeSpan.FromHours(1));
+        var daemon = Daemon(account);
+
+        LoginLocks.Lock(store, "locked@example.com", "Locked Person", LoginLocks.ReasonManual, "you", null, DateTime.UtcNow);
+        var locked = daemon.Refresh(now);
+        Assert.That(locked.Pace!.Stop, Is.True, "the global login's own email is locked");
+        Assert.That(locked.Pace.Note, Does.Contain("locked").And.Contain("orchestrator org unlock locked@example.com"));
+
+        LoginLocks.Unlock(store, "locked@example.com", "Locked Person", "you", DateTime.UtcNow);
+        var unlocked = daemon.Refresh(now);
+        Assert.That(unlocked.Pace!.Stop, Is.False, "unlocked: normal pacing again");
+    }
+
     [Test]
     public void A_limit_hit_is_learned_from_the_tokens_of_the_account_that_hit_it()
     {

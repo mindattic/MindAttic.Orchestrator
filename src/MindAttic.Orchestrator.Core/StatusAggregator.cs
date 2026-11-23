@@ -99,7 +99,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// process writing the real rl-status.json writes theirs, and only for the real account folders.</summary>
     public AccountPacer Accounts
     {
-        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, Allowances = Allowances, Cutoffs = Cutoffs, CliOnLogin = CliOnOwnLogin };
+        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, Allowances = Allowances, Cutoffs = Cutoffs, Locks = Locks, CliOnLogin = CliOnOwnLogin };
         init => accountPacer = value;
     }
 
@@ -183,6 +183,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
     /// <summary>The members' own usage cutoffs (M.ORCH-T707).</summary>
     private IReadOnlyList<UsageCutoff> Cutoffs() => UsageCutoffs.Load(Store);
+
+    /// <summary>The logins locked by hand or by their own weekly cutoff (M.ORCH-T2117, M.ORCH-T2122).</summary>
+    private IReadOnlyList<LoginLock> Locks() => LoginLocks.Load(Store);
 
     /// <summary>Keeps the members table's names and roles claude.ai's (M.ORCH-T701).</summary>
     internal MemberProfileSync MemberProfiles { get; } = new();
@@ -498,8 +501,14 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             budget = BudgetCalculator.Compute(events, settings with { BlockBudget = null, WeeklyBudget = null }, now, startOfTodayUtc);
             pace = new Pace(PaceMode.Unpaced, settings.MaxConcurrentSessions, 0, budget.RecentFreshPerHour, null, null, null, Pacer.ApiKeyNote);
         }
-        // The room under the stop limits a burst of new subagents (M.ORCH-T959): they spend past the stop while it waits for a tool call.
-        else pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, Pacer.StopPercent(paceSettings));
+        else
+        {
+            // The room under the stop limits a burst of new subagents (M.ORCH-T959): they spend past the stop while it waits for a tool call.
+            pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, Pacer.StopPercent(paceSettings));
+            // The global login's own lock (M.ORCH-T2117), scoped exactly as its own weekly cutoff just above: never the API key's.
+            if (cutoffEmail is { Length: > 0 } ownEmail && LoginLocks.For(Locks(), ownEmail) is { } locked)
+                pace = AccountPacer.LockedPace(pace, ownEmail, locked);
+        }
         // Short of RAM, nothing new starts, whatever the windows allow (M.ORCH-T1494).
         pace = Pacer.CapByMemory(pace, Activity.MemoryGuard.Shared.Observe(settings, now), settings);
         // Under the disk floor even after a self-cleanup, nothing new starts either (M.ORCH-T1679): the pace carries why.

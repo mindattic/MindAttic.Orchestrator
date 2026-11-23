@@ -40,6 +40,10 @@ public sealed class AccountPacer
     /// <summary>The members' own usage cutoffs (M.ORCH-T707, <see cref="UsageCutoffs"/>); null: the defaults for every login.</summary>
     public Func<IReadOnlyList<UsageCutoff>>? Cutoffs { get; init; }
 
+    /// <summary>The logins locked by hand or by their own weekly cutoff (M.ORCH-T2117, <see cref="LoginLocks"/>); null: none
+    /// locked.</summary>
+    public Func<IReadOnlyList<LoginLock>>? Locks { get; init; }
+
     /// <summary>Whether a live Claude CLI runs on the login (by email) right now (M.ORCH-T1119); null counts every login as having one.</summary>
     public Func<string, bool>? CliOnLogin { get; init; }
 
@@ -119,6 +123,19 @@ public sealed class AccountPacer
         AgentNote = $"{email} is a disabled member: finish the current step and stop.",
     };
 
+    /// <summary>The pace of a locked login (M.ORCH-T2117, <see cref="LoginLocks"/>): stopped, no subagents, as
+    /// <see cref="DisabledPace"/> is, until it's unlocked by hand.</summary>
+    internal static Pace LockedPace(Pace pace, string email, LoginLock @lock) => pace with
+    {
+        Mode = PaceMode.Over,
+        SessionCap = 0,
+        SubagentAllowance = 0,
+        Stop = true,
+        Note = $"{email}'s login is locked{(@lock.Reason == LoginLocks.ReasonWeeklyCutoff ? " (its weekly cutoff)" : "")}: " +
+            $"nothing runs on it until it's unlocked (orchestrator org unlock {email}).",
+        AgentNote = $"{email}'s login is locked: finish the current step and stop.",
+    };
+
     /// <summary>Whether <paramref name="plan"/> has no 5-hour window (a solo Ultra account), as the dashboard reads it.</summary>
     internal static bool HasNoFiveHourWindow(string? plan) => plan == "Ultra";
 
@@ -155,6 +172,10 @@ public sealed class AccountPacer
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
         // Disabled members (M.ORCH-T1952), read once a tick: paced to a stop like a borrowed login.
         var disabled = Dirs.DisabledNow();
+        // Locked logins (M.ORCH-T2117), read once a tick: paced to a stop the same way.
+        IReadOnlyList<LoginLock>? locks = null;
+        try { locks = Locks?.Invoke(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
         foreach (var (dir, account) in accounts)
         {
             if (!states.TryGetValue(dir.Email, out var state)) states[dir.Email] = state = new State(dir, this);
@@ -186,13 +207,13 @@ public sealed class AccountPacer
             var mine = sessions.Where(s => ids.Contains(s.SessionId)).ToList();
             // Let past its weekly target by the user (M.ORCH-T694): its week stops at the wall until the allowance ends.
             var (own, allowedWhy) = WeeklyAllowances.Apply(allowed, dir.Email, UsageCutoffs.Apply(cutoffs, dir.Email, settings), nowUtc);
-            result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, write, allowedWhy, disabled.Contains(dir.Email)));
+            result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, write, allowedWhy, disabled.Contains(dir.Email), LoginLocks.For(locks, dir.Email)));
         }
         return result;
     }
 
     private AccountPace Pace(AccountDir dir, State state, List<TranscriptSession> sessions, OrchestratorSettings settings,
-        DateTime now, DateTime startOfTodayUtc, bool write, string? why = null, bool disabled = false)
+        DateTime now, DateTime startOfTodayUtc, bool write, string? why = null, bool disabled = false, LoginLock? locked = null)
     {
         // Since the folder's last sign-in change (M.ORCH-T1976), read back from its limits file after a restart: a transcript
         // mapped to this folder may hold a previous account's spend and walls, which must never stop the one signed in now.
@@ -281,6 +302,8 @@ public sealed class AccountPacer
         if (state.BorrowedFrom is { } other) pace = Borrowed(pace, dir.Email, other);
         // A disabled member (M.ORCH-T1952): nothing new on it at all.
         if (disabled) pace = DisabledPace(pace, dir.Email);
+        // A locked login (M.ORCH-T2117): nothing new on it at all, until it's unlocked.
+        if (locked is not null) pace = LockedPace(pace, dir.Email, locked);
         if (write)
         {
             state.Writer.Write(budget, pace);
