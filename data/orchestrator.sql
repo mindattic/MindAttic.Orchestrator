@@ -31514,18 +31514,18 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 2.2515,
+      "Degraded": 2.2895,
       "Unhealthy": 1,
-      "Reason": "p10 of 320 readings is 2.37 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T09:46:30.2435741\u002B00:00",
-      "Basis": 320
+      "Reason": "p10 of 331 readings is 2.41 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T09:54:31.9825148\u002B00:00",
+      "Basis": 331
     },
     "CommitPercent": {
       "Degraded": 96.075,
       "Unhealthy": 97,
-      "Reason": "p90 of 320 readings is 91.5 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-23T09:46:30.2435741\u002B00:00",
-      "Basis": 320
+      "Reason": "p90 of 331 readings is 91.5 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-23T09:54:31.9825148\u002B00:00",
+      "Basis": 331
     }
   },
   "Changes": [
@@ -32347,6 +32347,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 96.075,
       "ToUnhealthy": 97,
       "Reason": "p90 of 320 readings is 91.5 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:54:31.9825148\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.2515,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.2895,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 331 readings is 2.41 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -32601,8 +32610,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "d6889b5d6e6239af130a53a1980607f90a9ae4b6",
-    "Green": "d6889b5d6e6239af130a53a1980607f90a9ae4b6"
+    "Tested": "3cde246882de04b76f90b3a1398752d7520c0c4c",
+    "Green": "3cde246882de04b76f90b3a1398752d7520c0c4c"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
@@ -32877,8 +32886,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "e7a8f918a027c4d6d2a0ea47d628b25b5bd57bc5",
-    "Green": "e7a8f918a027c4d6d2a0ea47d628b25b5bd57bc5"
+    "Tested": "3cde246882de04b76f90b3a1398752d7520c0c4c",
+    "Green": "3cde246882de04b76f90b3a1398752d7520c0c4c"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
