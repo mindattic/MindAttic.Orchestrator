@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Wpf.ViewModels;
@@ -16,6 +17,10 @@ namespace MindAttic.Orchestrator.Wpf;
 /// The tree itself is unchanged (dot-named projects nested on '.', M.ORCH-T1793) other than always showing fully
 /// expanded, since picking a project closes the window anyway; a branch is a plain label, never a pick itself. A
 /// leaf's own right-click-to-commit (M.ORCH-T1588) came along with it.
+/// <para>Tree component and filter (M.ORCH-T2107): the hand-rolled branch/leaf rows are now <see cref="MaTree"/>, built
+/// from the roster's flat <see cref="RosterProject"/> list rather than converting <see cref="ProjectNode"/> into
+/// <see cref="MaTreeNode"/>; a top-right filter box narrows that list to a case-insensitive Contains match at 3+
+/// characters (everything, under that). Every group still starts expanded, same as before.</para>
 /// <para>Provider and model (M.ORCH-T2041): General Prompt or a project opens on <see cref="ProviderKey"/>, one of the
 /// Launcher's own providers (<see cref="LauncherProviders"/>: Claude, Codex, Gemini, Kimi), rather than always Claude.
 /// Both pickers live under the menu bar's Settings menu (M.ORCH-T2106), not here.</para>
@@ -31,6 +36,11 @@ internal sealed class OpenProjectWindow : Window
     private readonly CheckBox runMode = new() { Content = "_Run Command" };
     private readonly TextBox commandBox = new() { MinWidth = 300, IsEnabled = false };
     private readonly List<CheckBox> nonProjects = [];
+    private readonly MaTree projectTree = new();
+    private readonly TextBox projectFilter = new() { MinWidth = 140 };
+    private readonly TextBlock noProjects = new() { IsEnabled = false };
+    private IReadOnlyList<RosterProject> allProjects = [];
+    private Action<RosterProject, string>? openProject;
     private Action<string>? picked;
     private RosterProject? pickedProject;
     /// <summary>What <see cref="commandBox"/> was last filled with from a project's own Run Command: replaced when another
@@ -55,26 +65,43 @@ internal sealed class OpenProjectWindow : Window
         SetResourceReference(BackgroundProperty, "MaChrome");
         SetResourceReference(ForegroundProperty, "MaText");
 
+        this.openProject = openProject;
         var list = new StackPanel();
         nonProjects.Add(Pick("General Prompt", "A CLI at the workspace root, every project in reach", generalPrompt));
         nonProjects.Add(Pick("Launcher", "A Launcher instance for this login, as a tab of its own in this dashboard", _ => runLauncher()));
         foreach (var b in nonProjects) list.Children.Add(b);
         var header = new TextBlock { Text = "Projects" };
         header.SetResourceReference(StyleProperty, "MaMutedText");
-        header.SetResourceReference(MarginProperty, "SpaceTS");
-        list.Children.Add(header);
-        var projects = new StackPanel();
-        list.Children.Add(projects);
-        if (tree.Count > 0) FillProjects(projects, tree, openProject);
+        DockPanel.SetDock(header, Dock.Left);
+        projectFilter.SetResourceReference(StyleProperty, "MaTextBox");
+        MaTextBox.SetPlaceholder(projectFilter, "Filter…");
+        projectFilter.ToolTip = "3 or more characters narrows the list to repos whose name contains it (case-insensitive)";
+        projectFilter.HorizontalAlignment = HorizontalAlignment.Right;
+        projectFilter.TextChanged += (_, _) => FillProjects();
+        var headerRow = new DockPanel();
+        headerRow.SetResourceReference(MarginProperty, "SpaceTS");
+        headerRow.Children.Add(header);
+        headerRow.Children.Add(projectFilter);
+        list.Children.Add(headerRow);
+
+        noProjects.SetResourceReference(StyleProperty, "MaMutedText");
+        list.Children.Add(noProjects);
+        projectTree.LeafSelected += OnLeafSelected;
+        projectTree.PreviewMouseRightButtonUp += OnTreeRightClick;
+        list.Children.Add(projectTree);
+
+        if (tree.Count > 0) { allProjects = Leaves(tree).ToList(); FillProjects(); }
         else
         {
             // Opened before the roster's first read finished (M.ORCH-T2105): every repo still belongs here, so wait for it.
-            projects.Children.Add(Muted("Reading the Launcher's roster…"));
+            noProjects.Text = "Reading the Launcher's roster…";
+            projectTree.Visibility = Visibility.Collapsed;
             Loaded += async (_, _) =>
             {
                 try { await MainViewModel.RefreshProjectsAsync(); }
                 catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Warning("Open Project: reading the roster failed: {Error}", ex.Message); }
-                FillProjects(projects, MainViewModel.ProjectTree ?? [], openProject);
+                allProjects = Leaves(MainViewModel.ProjectTree ?? []).ToList();
+                FillProjects();
             };
         }
         var scroll = new ScrollViewer
@@ -174,12 +201,13 @@ internal sealed class OpenProjectWindow : Window
     private void UpdateAdd() =>
         add.IsEnabled = picked is not null && (runMode.IsChecked != true || (pickedProject is not null && commandBox.Text.Trim().Length > 0));
 
-    /// <summary>A single-select row: a check box that behaves like a radio button, ticking it clears every other one,
-    /// since the library (MindAttic.Components.Wpf.Theme.xaml) has no radio button style of its own and this is the
-    /// only place one's needed so far.</summary>
-    private CheckBox Pick(string label, string? tip, Action<string> go, int depth = 0, RosterProject? project = null)
+    /// <summary>A single-select row: a check box that behaves like a radio button, ticking it clears every other one
+    /// (both each other and whatever's picked in <see cref="projectTree"/>), since the library
+    /// (MindAttic.Components.Wpf.Theme.xaml) has no radio button style of its own and this is the only place one's
+    /// needed so far (General Prompt, Launcher; a project is picked from the tree instead, M.ORCH-T2107).</summary>
+    private CheckBox Pick(string label, string? tip, Action<string> go)
     {
-        var box = new CheckBox { Content = label, Margin = new Thickness(depth * 20, 2, 0, 2) };
+        var box = new CheckBox { Content = label, Margin = new Thickness(0, 2, 0, 2) };
         box.SetResourceReference(StyleProperty, "MaCheck");
         if (tip is not null) box.ToolTip = tip;
         box.Checked += (_, _) =>
@@ -189,7 +217,7 @@ internal sealed class OpenProjectWindow : Window
             try { foreach (var b in picks) if (!ReferenceEquals(b, box)) b.IsChecked = false; }
             finally { settingAll = false; }
             picked = go;
-            pickedProject = project;
+            pickedProject = null;
             if (runMode.IsChecked == true) Prefill();
             UpdateAdd();
         };
@@ -198,41 +226,59 @@ internal sealed class OpenProjectWindow : Window
         return box;
     }
 
-    /// <summary>Puts <paramref name="tree"/>'s rows in <paramref name="projects"/>, or says the roster has none.</summary>
-    private void FillProjects(StackPanel projects, IReadOnlyList<ProjectNode> tree, Action<RosterProject, string> openProject)
+    /// <summary>(Re)builds <see cref="projectTree"/>'s roots from <see cref="allProjects"/>, narrowed by
+    /// <see cref="projectFilter"/> (3+ characters: a case-insensitive Contains on the name; fewer, everything),
+    /// fully expanded so every match stays visible - mirrors the old tree's "always showing fully expanded".</summary>
+    private void FillProjects()
     {
-        projects.Children.Clear();
-        if (tree.Count == 0) projects.Children.Add(Muted("No projects on the Launcher's roster"));
-        else foreach (var node in tree) projects.Children.Add(Node(node, openProject, 0));
+        var filter = projectFilter.Text.Trim();
+        var filtered = filter.Length >= 3
+            ? allProjects.Where(p => p.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList()
+            : allProjects;
+        noProjects.Text = allProjects.Count == 0 ? "No projects on the Launcher's roster" : "No repo matches that filter";
+        noProjects.Visibility = filtered.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        projectTree.Visibility = filtered.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        var roots = MaTreeNode.GroupByDelimiter(filtered, p => p.Name);
+        ExpandAll(roots);
+        projectTree.ItemsSource = roots;
     }
 
-    private static TextBlock Muted(string text)
+    private static void ExpandAll(IEnumerable<MaTreeNode> nodes)
     {
-        var block = new TextBlock { Text = text, IsEnabled = false };
-        block.SetResourceReference(StyleProperty, "MaMutedText");
-        return block;
-    }
-
-    /// <summary>A row of the tree: a branch is a plain label with its children indented under it, a leaf a pick.</summary>
-    private FrameworkElement Node(ProjectNode node, Action<RosterProject, string> openProject, int depth)
-    {
-        switch (node)
+        foreach (var node in nodes)
         {
-            case ProjectBranch branch:
-                var panel = new StackPanel();
-                var label = new TextBlock { Text = node.Label, Margin = new Thickness(depth * 20, 6, 0, 2) };
-                label.SetResourceReference(StyleProperty, "MaMutedText");
-                panel.Children.Add(label);
-                foreach (var child in branch.Children) panel.Children.Add(Node(child, openProject, depth + 1));
-                return panel;
-            case ProjectLeaf leaf:
-                var box = Pick(node.Label, $"{leaf.Project.Path}\nRight-click: commit and push it under a message you write", kind => openProject(leaf.Project, kind), depth, leaf.Project);
-                // Right-click a project (M.ORCH-T1588, carried over from the old tree menu): a commit-message modal
-                // (Save/Cancel) that commits and pushes it, without picking it to open a CLI.
-                box.PreviewMouseRightButtonUp += (_, e) => { e.Handled = true; CommitProjectWindow.Show(this, leaf.Project); };
-                return box;
-            default:
-                return new TextBlock();
+            if (!node.IsLeaf) node.IsExpanded = true;
+            ExpandAll(node.Children);
         }
+    }
+
+    /// <summary>Flattens a project tree back down to its leaves, dropping the branch labels (mirrors
+    /// <c>MainViewModel.Tabs.Leaves</c>, which is private to that file).</summary>
+    private static IEnumerable<RosterProject> Leaves(IEnumerable<ProjectNode> nodes) =>
+        nodes.SelectMany<ProjectNode, RosterProject>(n => n switch { ProjectLeaf l => [l.Project], ProjectBranch b => Leaves(b.Children), _ => [] });
+
+    /// <summary>A leaf pick in the tree behaves like the single-select <see cref="Pick"/> rows above it: it clears
+    /// General Prompt/Launcher and becomes the thing "Add" opens.</summary>
+    private void OnLeafSelected(object sender, RoutedPropertyChangedEventArgs<MaTreeNode?> e)
+    {
+        if (e.NewValue is not { IsLeaf: true, Tag: RosterProject project } || openProject is not { } open) return;
+        settingAll = true;
+        try { foreach (var b in nonProjects) b.IsChecked = false; }
+        finally { settingAll = false; }
+        picked = kind => open(project, kind);
+        pickedProject = project;
+        if (runMode.IsChecked == true) Prefill();
+        UpdateAdd();
+    }
+
+    /// <summary>Right-click a project leaf (M.ORCH-T1588, carried over from the old tree): a commit-message modal
+    /// (Save/Cancel) that commits and pushes it, without picking it to open a CLI.</summary>
+    private void OnTreeRightClick(object sender, MouseButtonEventArgs e)
+    {
+        var source = e.OriginalSource as DependencyObject;
+        while (source is not null and not MaTreeItem) source = VisualTreeHelper.GetParent(source);
+        if (source is not MaTreeItem { DataContext: MaTreeNode { IsLeaf: true, Tag: RosterProject project } }) return;
+        e.Handled = true;
+        CommitProjectWindow.Show(this, project);
     }
 }
