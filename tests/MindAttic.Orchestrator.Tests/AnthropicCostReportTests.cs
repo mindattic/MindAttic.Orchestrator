@@ -115,14 +115,14 @@ public sealed class AnthropicCostReportTests
         Assert.That(ledger.Bill(bill), Is.False, "the same read changes nothing");
         var spend = ledger.Spend(10, today, Now, today);
         Assert.That(spend.SpentUsd, Is.EqualTo(8.0 + 1.0).Within(1e-9),
-            "the bill, plus the estimate from the read's hour on (that hour may be counted twice in part, never too little)");
+            "the bill, plus the estimate from the read's hour on (the bill holds only the hours before it, so no hour counts twice)");
         Assert.That(spend.BilledAtUtc, Is.EqualTo(Now));
         Assert.That(spend.Line, Does.Contain("Anthropic's own figures"));
 
         // The bill is spread in the transcripts' shape, so a credit entered at noon counts only the afternoon's part of the day.
         var noon = today.AddHours(12);
-        Assert.That(ledger.Spend(10, noon, Now, today).SpentUsd, Is.EqualTo(8.0 * 4 / 5 + 1.0).Within(1e-9),
-            "14:00 and 18:00 carried 4/5 of the day's estimate: $6.40 of the $8 bill, plus the estimate from 18:00");
+        Assert.That(ledger.Spend(10, noon, Now, today).SpentUsd, Is.EqualTo(8.0 * 3 / 4 + 1.0).Within(1e-9),
+            "the bill is spread over the hours before the read's hour, and 14:00 carried 3/4 of their estimate: $6 of the $8 bill, plus the estimate from 18:00");
 
         Assert.That(ledger.Save(), Is.True);
         var again = new ApiSpendLedger(path);
