@@ -121,6 +121,19 @@ public sealed class HealthCheckRow(string probe, string checkId, string? compone
         }
     }
 
+    /// <summary><see cref="SparkPoints"/> as a geometry the card's Path draws; empty with fewer than two readings.</summary>
+    public Geometry SparkLine
+    {
+        get
+        {
+            var points = SparkPoints;
+            if (points.Count < 2) return Geometry.Empty;
+            var line = new PathGeometry([new PathFigure(points[0], [new PolyLineSegment(points.Skip(1), true)], false)]);
+            line.Freeze();
+            return line;
+        }
+    }
+
     private string Amount(double v) =>
         $"{v.ToString("0.##", CultureInfo.InvariantCulture)}{(latest?.ObservedUnit is { Length: > 0 } u ? (u == "%" ? u : " " + u) : "")}";
 
@@ -150,7 +163,7 @@ public sealed class HealthCheckRow(string probe, string checkId, string? compone
         RaiseStatus();
         Raise(nameof(Latest)); Raise(nameof(History)); Raise(nameof(HistoryBrushes)); Raise(nameof(ValueText));
         Raise(nameof(Output)); Raise(nameof(TimeText)); Raise(nameof(Grade)); Raise(nameof(IsStale));
-        Raise(nameof(ThresholdText)); Raise(nameof(IsLearned)); Raise(nameof(LineSourceText)); Raise(nameof(SparkPoints));
+        Raise(nameof(ThresholdText)); Raise(nameof(IsLearned)); Raise(nameof(LineSourceText)); Raise(nameof(SparkPoints)); Raise(nameof(SparkLine));
         return true;
     }
 

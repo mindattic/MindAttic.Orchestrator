@@ -57,10 +57,6 @@ public sealed class LibraryOnlyXamlTests
                    "(a style would leak into every library control that draws with Path internally), so a one-off icon the " +
                    "library's own glyph set can't safely render (a wrong icon-font codepoint is a blank tofu box) draws its own " +
                    "geometry instead; like TextBlock, its Fill may set no colour but a library token or a binding",
-        ["Polyline"] = "an unstyled sparkline (M.ORCH-T2034): the library has no chart-line control, so the health card draws its readings as " +
-                       "one Polyline; like Path, its Stroke may set no colour but a library token or a binding",
-        ["Rectangle"] = "an unstyled grade tick (M.ORCH-T2034): one small block of the health card's recent-grade strip; like Path, " +
-                        "its Fill may set no colour but a library token or a binding",
     };
 
     /// <summary>Setters an app style may add on top of a library style: behaviour, never looks.
@@ -147,7 +143,7 @@ public sealed class LibraryOnlyXamlTests
                 if (themeImplicit.Contains(name) && !ImplicitButKeyed.Contains(name)) continue;
                 if (name == "Window" && element == root) continue;
                 if (name == "TextBlock") continue; // Exceptions["TextBlock"]: its colours are checked above
-                if (name is "Path" or "Polyline" or "Rectangle") continue; // Exceptions: their Fill / Stroke is checked above too
+                if (name == "Path") continue; // Exceptions["Path"]: its Fill / Stroke is checked above too
                 problems.Add($"{Where(element)}: neither a library control nor library-styled");
             }
         }

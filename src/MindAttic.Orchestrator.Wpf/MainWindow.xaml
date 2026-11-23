@@ -1821,15 +1821,15 @@
                                     AutomationProperties.Name="{Binding Name}">
                                 <DockPanel>
                                     <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}">
-                                        <Polyline Points="{Binding SparkPoints}" Stroke="{Binding StatusBrush}" StrokeThickness="1.5"
-                                                  Width="120" Height="18" HorizontalAlignment="Right" />
+                                        <Path Data="{Binding SparkLine}" Stroke="{Binding StatusBrush}" StrokeThickness="1.5"
+                                              Width="120" Height="18" HorizontalAlignment="Right" />
                                         <ItemsControl ItemsSource="{Binding HistoryBrushes}" HorizontalAlignment="Right" Margin="{StaticResource SpaceTS}" Focusable="False">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Rectangle Width="3" Height="8" Margin="0,0,1,0" Fill="{Binding}" />
+                                                    <Path Data="M0,0 H3 V8 H0 Z" Margin="0,0,1,0" Fill="{Binding}" />
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
