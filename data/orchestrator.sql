@@ -10,7 +10,7 @@ INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, 
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('api-key@mindattic.vault', 'API key', 'member', 'standard', 'active', 1794878226.8228636, 1794878226.8228636);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'member', 'premium', 'active', 1792771886.302, 1795080818.092266);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1795081138.8817503);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'owner', 'premium', 'active', 1792771885.463, 1795413810.9876893);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1795414166.8092885);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'member', 'premium', 'active', 1792771885.882, 1795159223.7072804);
 
 -- usage_samples
@@ -31463,18 +31463,23 @@ INSERT INTO state (name, value) VALUES ('dashboard-repos', '{
   "Sort": "Open tickets"
 }');
 INSERT INTO state (name, value) VALUES ('health-alerts', '{
-  "Alerted": {
-    "machine/memory:commit": "2026-11-23T06:04:07.0799282\u002B00:00"
-  }
+  "Alerted": {}
 }');
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 1.9664999999999997,
+      "Degraded": 2.755,
       "Unhealthy": 1,
-      "Reason": "p10 of 251 readings is 2.07 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T04:51:32.3935288\u002B00:00",
-      "Basis": 251
+      "Reason": "p10 of 66 readings is 2.9 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T06:15:23.5147971\u002B00:00",
+      "Basis": 66
+    },
+    "CommitPercent": {
+      "Degraded": 95.55,
+      "Unhealthy": 97,
+      "Reason": "p90 of 66 readings is 91 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-23T06:15:23.5147971\u002B00:00",
+      "Basis": 66
     }
   },
   "Changes": [
@@ -31783,6 +31788,51 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 1.9664999999999997,
       "ToUnhealthy": 1,
       "Reason": "p10 of 251 readings is 2.07 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T06:10:19.2942899\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.9664999999999997,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.7455,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 60 readings is 2.89 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T06:10:19.2942899\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 80,
+      "FromUnhealthy": 90,
+      "ToDegraded": 95.025,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 60 readings is 90.5 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T06:11:00.6885016\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 95.025,
+      "FromUnhealthy": 97,
+      "ToDegraded": 95.13,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 61 readings is 90.6 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T06:12:06.7179277\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 95.13,
+      "FromUnhealthy": 97,
+      "ToDegraded": 95.34,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 62 readings is 90.8 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T06:15:23.5147971\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 95.34,
+      "FromUnhealthy": 97,
+      "ToDegraded": 95.55,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 66 readings is 91 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
@@ -32037,16 +32087,16 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "a7e6f20b19e71d13fccbd63d9fd75913e0073f02",
-    "Green": "a7e6f20b19e71d13fccbd63d9fd75913e0073f02"
+    "Tested": "98e8389729479d389131af93ea40e6d733493a41",
+    "Green": "98e8389729479d389131af93ea40e6d733493a41"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
     "Green": "1c8061f8499168728487d2c9f4b57238b40eb22b"
   },
   "MindAttic.Telemetry": {
-    "Tested": "191dc2a2e3f1b9f68654c17237884d514185a3d3",
-    "Green": "191dc2a2e3f1b9f68654c17237884d514185a3d3"
+    "Tested": "263d4d489acaa9e49d490bb786694d910ed0ce04",
+    "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
     "Tested": "b1559a29c44056ee6351a126cd79358fa2d06e75",
@@ -32130,7 +32180,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "fdd4b796ad3a822854e7bf03f95958b8fb442f58"
   },
   "MindAttic.Scheduler": {
-    "Tested": "b52ac1873c9231e086738bbbcdcae86601ec6c30",
+    "Tested": "25876471d5e59efea170f7fbf0196d97f6ced85e",
     "Green": "e9c064611aa73e776ce0305fa4a2f9791cc58790"
   },
   "MindAttic.Web": {
@@ -32313,8 +32363,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "067a5cf8f9499de8f7c0af3c8385fef313a3b2ac",
-    "Green": "980d39195c1065a9b2ebc8a2df8c4a806545650a"
+    "Tested": "98e8389729479d389131af93ea40e6d733493a41",
+    "Green": "98e8389729479d389131af93ea40e6d733493a41"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
