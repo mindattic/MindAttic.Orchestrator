@@ -31515,10 +31515,10 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 2.147,
+      "Degraded": 2.1945,
       "Unhealthy": 1,
-      "Reason": "p10 of 360 readings is 2.26 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T11:29:42.3509694\u002B00:00",
+      "Reason": "p10 of 360 readings is 2.31 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T13:55:30.2731887\u002B00:00",
       "Basis": 360
     }
   },
@@ -32620,6 +32620,24 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 80,
       "ToUnhealthy": 90,
       "Reason": "p90 of 360 readings is 78 %, inside the configured degraded line 80 %"
+    },
+    {
+      "At": "2026-11-23T13:54:54.9058824\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.147,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.1755,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.29 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T13:55:30.2731887\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.1755,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.1945,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.31 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -32874,8 +32892,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "32b1e91eeda2cf20eeb7c52c7eb65919e9b64797",
-    "Green": "32b1e91eeda2cf20eeb7c52c7eb65919e9b64797"
+    "Tested": "1c7df6f3921eacd91dfe23432fab52d973ed45ab",
+    "Green": "1c7df6f3921eacd91dfe23432fab52d973ed45ab"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
@@ -33150,8 +33168,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "32b1e91eeda2cf20eeb7c52c7eb65919e9b64797",
-    "Green": "32b1e91eeda2cf20eeb7c52c7eb65919e9b64797"
+    "Tested": "1c7df6f3921eacd91dfe23432fab52d973ed45ab",
+    "Green": "1c7df6f3921eacd91dfe23432fab52d973ed45ab"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
