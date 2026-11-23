@@ -1776,7 +1776,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 692009);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13521063);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 0);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22149038);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 23525438);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -4948,40 +4948,40 @@ INSERT INTO roles (name, brief, model, effort, tools, takes, source, updated_utc
 -- state
 INSERT INTO state (name, value) VALUES ('api-failovers', '[]');
 INSERT INTO state (name, value) VALUES ('audit', '{
-  "RanUtc": "2026-11-22T03:14:16.0096118Z",
-  "Took": "00:01:17.7935518",
-  "ReposScanned": 99,
-  "FilesScanned": 12471,
+  "RanUtc": "2026-11-23T03:17:33.5683304Z",
+  "Took": "00:03:03.5356208",
+  "ReposScanned": 100,
+  "FilesScanned": 12916,
   "Drift": [
     {
       "File": "AGENTS.md",
       "Repo": "MindAttic.Agency",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
-      "Similarity": 0.005,
+      "Similarity": 0.00477326968973747,
       "IsCustom": true
     },
     {
       "File": "AGENTS.md",
       "Repo": "Unity.Rea.Incognito",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Incognito\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.023255813953488372,
       "IsCustom": true
     },
     {
       "File": "AGENTS.md",
-      "Repo": "SyntheticExchangeTheory",
-      "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "Repo": "Dissertation.SyntheticExchangeTheory",
+      "Path": "D:\\Projects\\MindAttic\\Dissertation.SyntheticExchangeTheory\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.025974025974025976,
       "IsCustom": true
@@ -4990,9 +4990,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Mods.MechWarrior5.SaveEditor",
       "Path": "D:\\Projects\\MindAttic\\Mods.MechWarrior5.SaveEditor\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.029411764705882353,
       "IsCustom": true
@@ -5001,9 +5001,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unity.Rea.Overworld",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.04081632653061224,
       "IsCustom": true
@@ -5012,9 +5012,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unity.Rea.ProjectVania",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.04081632653061224,
       "IsCustom": true
@@ -5023,9 +5023,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "TownWalker",
       "Path": "D:\\Projects\\MindAttic\\TownWalker\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.044444444444444446,
       "IsCustom": true
@@ -5034,9 +5034,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unity.Rea.Hare",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Hare\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.05128205128205128,
       "IsCustom": true
@@ -5045,9 +5045,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unity.GridGame",
       "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.05263157894736842,
       "IsCustom": true
@@ -5056,9 +5056,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unity.Eve",
       "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.07272727272727272,
       "IsCustom": true
@@ -5067,9 +5067,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "UnityRonin",
       "Path": "D:\\Projects\\MindAttic\\UnityRonin\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.07547169811320754,
       "IsCustom": true
@@ -5078,9 +5078,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unreal.Eve",
       "Path": "D:\\Projects\\MindAttic\\Unreal.Eve\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.0784313725490196,
       "IsCustom": true
@@ -5089,9 +5089,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "MindAttic.Export",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.10526315789473684,
       "IsCustom": true
@@ -5100,9 +5100,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Corobs",
       "Path": "D:\\Projects\\MindAttic\\Corobs\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.11764705882352941,
       "IsCustom": true
@@ -5111,9 +5111,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Prose",
       "Path": "D:\\Projects\\MindAttic\\Prose\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.11764705882352941,
       "IsCustom": true
@@ -5122,9 +5122,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "RusNet",
       "Path": "D:\\Projects\\MindAttic\\RusNet\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.14814814814814814,
       "IsCustom": true
@@ -5133,9 +5133,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Auto.MidjourneyNav",
       "Path": "D:\\Projects\\MindAttic\\Auto.MidjourneyNav\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.15384615384615385,
       "IsCustom": true
@@ -5144,9 +5144,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Auto.GamePlay",
       "Path": "D:\\Projects\\MindAttic\\Auto.GamePlay\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.17647058823529413,
       "IsCustom": true
@@ -5155,9 +5155,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Auto.WebNav",
       "Path": "D:\\Projects\\MindAttic\\Auto.WebNav\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
@@ -5166,9 +5166,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "KdpPublish",
       "Path": "D:\\Projects\\MindAttic\\KdpPublish\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
@@ -5177,9 +5177,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unity.Rea.Chain",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
@@ -5188,9 +5188,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unity.Rea.QuickDuel",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.18867924528301888,
       "IsCustom": true
@@ -5199,9 +5199,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "MindAttic.Web",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.21052631578947367,
       "IsCustom": true
@@ -5210,9 +5210,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unity.Rea.Ricochet",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Ricochet\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.2222222222222222,
       "IsCustom": true
@@ -5221,20 +5221,20 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "GridGame.Studio",
       "Path": "D:\\Projects\\MindAttic\\GridGame.Studio\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
-      "Similarity": 0.25806451612903225,
+      "Similarity": 0.23529411764705882,
       "IsCustom": true
     },
     {
       "File": "AGENTS.md",
       "Repo": "MindPuck.Unreal",
       "Path": "D:\\Projects\\MindAttic\\MindPuck.Unreal\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.2608695652173913,
       "IsCustom": true
@@ -5243,9 +5243,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unreal.Playground",
       "Path": "D:\\Projects\\MindAttic\\Unreal.Playground\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.2727272727272727,
       "IsCustom": true
@@ -5254,9 +5254,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "JobHunt",
       "Path": "D:\\Projects\\MindAttic\\JobHunt\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.2857142857142857,
       "IsCustom": true
@@ -5265,9 +5265,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Mods.RogueTrader.Overwatch",
       "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Overwatch\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.3333333333333333,
       "IsCustom": false
@@ -5287,9 +5287,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Android.Emulator.Suite",
       "Path": "D:\\Projects\\MindAttic\\Android.Emulator.Suite\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.4,
       "IsCustom": false
@@ -5298,9 +5298,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "IdiotProof",
       "Path": "D:\\Projects\\MindAttic\\IdiotProof\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.4,
       "IsCustom": false
@@ -5309,9 +5309,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Prose.Wiki.GLMZ",
       "Path": "D:\\Projects\\MindAttic\\Prose.Wiki.GLMZ\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.4,
       "IsCustom": false
@@ -5320,9 +5320,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "REA.Bloodlines",
       "Path": "D:\\Projects\\MindAttic\\REA.Bloodlines\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.4,
       "IsCustom": false
@@ -5332,8 +5332,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "RusNet",
       "Path": "D:\\Projects\\MindAttic\\RusNet\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.4,
       "IsCustom": false
@@ -5342,9 +5342,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Mods.GTFO.EZ",
       "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.43478260869565216,
       "IsCustom": false
@@ -5353,9 +5353,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Mods.RogueTrader.Shared",
       "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Shared\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.45454545454545453,
       "IsCustom": false
@@ -5364,9 +5364,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\SpaceGod\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.45454545454545453,
       "IsCustom": false
@@ -5375,9 +5375,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "SpaceGod.Unity.CSharp",
       "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.45454545454545453,
       "IsCustom": false
@@ -5408,9 +5408,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Mods.RogueTrader.Brevity",
       "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.Brevity\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.5,
       "IsCustom": false
@@ -5420,8 +5420,19 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Corobs",
       "Path": "D:\\Projects\\MindAttic\\Corobs\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
+      "Variants": 8,
+      "Similarity": 0.5,
+      "IsCustom": false
+    },
+    {
+      "File": "CLAUDE.md",
+      "Repo": "Dissertation.SyntheticExchangeTheory",
+      "Path": "D:\\Projects\\MindAttic\\Dissertation.SyntheticExchangeTheory\\CLAUDE.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.5,
       "IsCustom": false
@@ -5431,19 +5442,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Export",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
-      "Variants": 8,
-      "Similarity": 0.5,
-      "IsCustom": false
-    },
-    {
-      "File": "CLAUDE.md",
-      "Repo": "SyntheticExchangeTheory",
-      "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\CLAUDE.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.5,
       "IsCustom": false
@@ -5453,8 +5453,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.QuickDuel",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.QuickDuel\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.5,
       "IsCustom": false
@@ -5463,9 +5463,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "SpaceGod.Unreal.Cpp",
       "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.5263157894736842,
       "IsCustom": false
@@ -5474,9 +5474,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "SpaceGod.Unreal.CSharp",
       "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.5263157894736842,
       "IsCustom": false
@@ -5496,9 +5496,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Automata",
       "Path": "D:\\Projects\\MindAttic\\Automata\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.5555555555555556,
       "IsCustom": false
@@ -5507,9 +5507,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Mods.GTFO.EZ.AbsurdItems",
       "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdItems\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
@@ -5518,9 +5518,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Mods.GTFO.EZ.AbsurdMoves",
       "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdMoves\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
@@ -5529,9 +5529,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Mods.GTFO.EZ.AbsurdWeapons",
       "Path": "D:\\Projects\\MindAttic\\Mods.GTFO.EZ.AbsurdWeapons\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
@@ -5540,9 +5540,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unreal.SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
@@ -5552,8 +5552,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\SpaceGod\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.6,
       "IsCustom": false
@@ -5563,8 +5563,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "SpaceGod.Unity.CSharp",
       "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.6,
       "IsCustom": false
@@ -5574,8 +5574,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "SpaceGod.Unreal.Cpp",
       "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.6,
       "IsCustom": false
@@ -5585,8 +5585,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "SpaceGod.Unreal.CSharp",
       "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.6,
       "IsCustom": false
@@ -5596,8 +5596,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "TownWalker",
       "Path": "D:\\Projects\\MindAttic\\TownWalker\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.6,
       "IsCustom": false
@@ -5607,8 +5607,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Chain",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Chain\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.6,
       "IsCustom": false
@@ -5618,8 +5618,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.6,
       "IsCustom": false
@@ -5629,8 +5629,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unreal.SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.6,
       "IsCustom": false
@@ -5640,8 +5640,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Web",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.6,
       "IsCustom": false
@@ -5650,9 +5650,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "MindAttic.Orchestrator",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.625,
       "IsCustom": false
@@ -5661,9 +5661,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Mods.Cyberpunk2077.ShootDodge",
       "Path": "D:\\Projects\\MindAttic\\Mods.Cyberpunk2077.ShootDodge\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.625,
       "IsCustom": false
@@ -5672,9 +5672,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Unity.SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.625,
       "IsCustom": false
@@ -5683,9 +5683,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "MindAttic.Webcam",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Webcam\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.6666666666666666,
       "IsCustom": false
@@ -5694,9 +5694,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "MindPuck.Web",
       "Path": "D:\\Projects\\MindAttic\\MindPuck.Web\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.7692307692307693,
       "IsCustom": false
@@ -5705,9 +5705,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": "AGENTS.md",
       "Repo": "Mods.RogueTrader.TakeTurns",
       "Path": "D:\\Projects\\MindAttic\\Mods.RogueTrader.TakeTurns\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 45,
-      "Total": 96,
+      "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
+      "CanonicalCount": 46,
+      "Total": 97,
       "Variants": 52,
       "Similarity": 0.8,
       "IsCustom": false
@@ -5717,8 +5717,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Eve",
       "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.8,
       "IsCustom": false
@@ -5728,8 +5728,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.GridGame",
       "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.8,
       "IsCustom": false
@@ -5739,8 +5739,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Incognito",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Incognito\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.8,
       "IsCustom": false
@@ -5750,8 +5750,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.Overworld",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.Overworld\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.8,
       "IsCustom": false
@@ -5761,8 +5761,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Rea.ProjectVania",
       "Path": "D:\\Projects\\MindAttic\\Unity.Rea.ProjectVania\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.8,
       "IsCustom": false
@@ -5772,8 +5772,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unreal.Eve",
       "Path": "D:\\Projects\\MindAttic\\Unreal.Eve\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.8,
       "IsCustom": false
@@ -5783,8 +5783,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Android.Emulator.Suite",
       "Path": "D:\\Projects\\MindAttic\\Android.Emulator.Suite\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.8,
       "IsCustom": false
@@ -5794,16 +5794,16 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "GridGame.Studio",
       "Path": "D:\\Projects\\MindAttic\\GridGame.Studio\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
-      "CanonicalCount": 38,
-      "Total": 60,
+      "CanonicalCount": 39,
+      "Total": 61,
       "Variants": 8,
       "Similarity": 0.8,
       "IsCustom": false
     },
     {
       "File": ".claude/hooks/quickload-on-do.ps1",
-      "Repo": "SyntheticExchangeTheory",
-      "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\.claude/hooks\\quickload-on-do.ps1",
+      "Repo": "Dissertation.SyntheticExchangeTheory",
+      "Path": "D:\\Projects\\MindAttic\\Dissertation.SyntheticExchangeTheory\\.claude/hooks\\quickload-on-do.ps1",
       "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
       "CanonicalCount": 5,
       "Total": 12,
@@ -6230,7 +6230,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Agency",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\shared\\hooks\\context-gate.py",
-          "Lines": 2439
+          "Lines": 2570
         },
         {
           "Repo": "MindAttic.Agency",
@@ -6240,7 +6240,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\AgentGate.cs",
-          "Lines": 3457
+          "Lines": 3603
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -6249,8 +6249,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         }
       ],
       "Identical": false,
-      "Similarity": 0.6497733827770911,
-      "SharedLines": 2423,
+      "Similarity": 0.612587959343237,
+      "SharedLines": 2392,
       "SuggestedHome": "a shared Python package",
       "RepoCount": 3
     },
@@ -6851,8 +6851,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         }
       ],
       "Identical": false,
-      "Similarity": 0.9486111111111111,
-      "SharedLines": 1371,
+      "Similarity": 0.9479166666666666,
+      "SharedLines": 1370,
       "SuggestedHome": "MindAttic.Components (WPF)",
       "RepoCount": 2
     },
@@ -6932,25 +6932,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 323,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 4
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
-          "Lines": 644
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
-          "Lines": 644
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 644,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
     },
     {
       "Files": [
@@ -8869,18 +8850,18 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PaceLedgerTests.cs",
-          "Lines": 315
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
+          "Lines": 647
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\PaceLedgerTests.cs",
-          "Lines": 315
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
+          "Lines": 644
         }
       ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 315,
+      "Identical": false,
+      "Similarity": 0.9904761904761905,
+      "SharedLines": 629,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -10310,25 +10291,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TerminalPanesTests.cs",
-          "Lines": 707
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TerminalPanesTests.cs",
-          "Lines": 512
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8735177865612648,
-      "SharedLines": 447,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\tests\\Core.Tests\\MenuAndNavigationTests.cs",
           "Lines": 222
@@ -10525,6 +10487,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TerminalPanesTests.cs",
+          "Lines": 706
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TerminalPanesTests.cs",
+          "Lines": 512
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8557312252964426,
+      "SharedLines": 438,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Cyberspace\\home-bg.js",
           "Lines": 218
@@ -10663,25 +10644,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\FallbackViewersTests.cs",
-          "Lines": 212
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\FallbackViewersTests.cs",
-          "Lines": 212
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 212,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\RenderLod.cs",
           "Lines": 141
@@ -10744,44 +10706,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountDirsTests.cs",
-          "Lines": 504
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountDirsTests.cs",
-          "Lines": 475
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.892933618843683,
-      "SharedLines": 422,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Daemon.cs",
-          "Lines": 741
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Daemon.cs",
-          "Lines": 604
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.6911519198664441,
-      "SharedLines": 419,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\Settings\\MaFieldEditors.cs",
           "Lines": 209
@@ -10838,6 +10762,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 208,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountDirsTests.cs",
+          "Lines": 504
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountDirsTests.cs",
+          "Lines": 475
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.880085653104925,
+      "SharedLines": 416,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -11270,6 +11213,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Daemon.cs",
+          "Lines": 778
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Daemon.cs",
+          "Lines": 604
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6510851419031719,
+      "SharedLines": 395,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AllocateHoldsTests.cs",
           "Lines": 197
         },
@@ -11466,25 +11428,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 128,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 3
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Allocate.cs",
-          "Lines": 554
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Allocate.cs",
-          "Lines": 476
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8046709129511678,
-      "SharedLines": 384,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
     },
     {
       "Files": [
@@ -11728,25 +11671,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\run.ps1",
-          "Lines": 399
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\run.ps1",
-          "Lines": 392
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.958656330749354,
-      "SharedLines": 376,
-      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\FleetPatterns.cs",
           "Lines": 125
@@ -11847,25 +11771,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TerminalsViewModel.cs",
-          "Lines": 878
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TerminalsViewModel.cs",
-          "Lines": 578
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.643979057591623,
-      "SharedLines": 374,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Saves.cs",
           "Lines": 186
@@ -11879,25 +11784,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 186,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\SchedulingCommands.cs",
-          "Lines": 642
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\SchedulingCommands.cs",
-          "Lines": 466
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.7960954446854663,
-      "SharedLines": 372,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -12249,7 +12135,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LampSettingsTests.cs",
-          "Lines": 522
+          "Lines": 562
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -12298,25 +12184,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 179,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
-          "Lines": 428
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
-          "Lines": 406
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8802992518703242,
-      "SharedLines": 358,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -12462,6 +12329,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TerminalsViewModel.cs",
+          "Lines": 996
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TerminalsViewModel.cs",
+          "Lines": 578
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6020942408376964,
+      "SharedLines": 350,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PacerTests.cs",
           "Lines": 370
         },
@@ -12584,6 +12470,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 173,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\SchedulingCommands.cs",
+          "Lines": 874
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\SchedulingCommands.cs",
+          "Lines": 466
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7396963123644251,
+      "SharedLines": 346,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -12723,6 +12628,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 0.9853801169590644,
       "SharedLines": 342,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\run.ps1",
+          "Lines": 416
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\run.ps1",
+          "Lines": 392
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8682170542635659,
+      "SharedLines": 341,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
       "RepoCount": 2
     },
     {
@@ -13074,18 +12998,18 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\ScreenUsage.cs",
-          "Lines": 166
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
+          "Lines": 433
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\ScreenUsage.cs",
-          "Lines": 166
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
+          "Lines": 406
         }
       ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 166,
+      "Identical": false,
+      "Similarity": 0.8179551122194514,
+      "SharedLines": 333,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -13273,25 +13197,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorDb.cs",
-          "Lines": 416
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorDb.cs",
-          "Lines": 383
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8492063492063492,
-      "SharedLines": 326,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PursuitTests.cs",
           "Lines": 162
@@ -13409,25 +13314,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Components.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Tests\\Runtime\\MenuStackTests.cs",
-          "Lines": 161
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 161,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermViewer\\RemoteViewer.cs",
-          "Lines": 161
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermViewer\\RemoteViewer.cs",
           "Lines": 161
         }
       ],
@@ -13655,25 +13541,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DaemonSafetyTests.cs",
-          "Lines": 355
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DaemonSafetyTests.cs",
-          "Lines": 355
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8911174785100286,
-      "SharedLines": 316,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\unity_extract.py",
           "Lines": 323
@@ -13737,25 +13604,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\OrgsCommands.cs",
-          "Lines": 155
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\OrgsCommands.cs",
-          "Lines": 155
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 155,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\MultiSystemLodTests.cs",
           "Lines": 155
@@ -13769,6 +13617,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 155,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DaemonSafetyTests.cs",
+          "Lines": 358
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DaemonSafetyTests.cs",
+          "Lines": 355
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8739255014326648,
+      "SharedLines": 310,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Allocate.cs",
+          "Lines": 609
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Allocate.cs",
+          "Lines": 476
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6475583864118896,
+      "SharedLines": 310,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -13951,6 +13837,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PaceLedgerTests.cs",
+          "Lines": 366
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\PaceLedgerTests.cs",
+          "Lines": 315
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9867986798679867,
+      "SharedLines": 304,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Bench\\CSharp\\src\\Digest.cs",
           "Lines": 101
@@ -14024,25 +13929,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 101,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 3
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\Program.cs",
-          "Lines": 446
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\Program.cs",
-          "Lines": 374
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8075880758807588,
-      "SharedLines": 303,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
     },
     {
       "Files": [
@@ -14163,17 +14049,17 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\BudgetCalculator.cs",
-          "Lines": 349
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorDb.cs",
+          "Lines": 475
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\BudgetCalculator.cs",
-          "Lines": 324
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorDb.cs",
+          "Lines": 383
         }
       ],
       "Identical": false,
-      "Similarity": 0.9216300940438872,
+      "Similarity": 0.7777777777777778,
       "SharedLines": 299,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -14320,44 +14206,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\JsonStore.cs",
-          "Lines": 320
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\JsonStore.cs",
-          "Lines": 312
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9348534201954397,
-      "SharedLines": 292,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermProtocol.cs",
-          "Lines": 145
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermProtocol.cs",
-          "Lines": 145
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 145,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude\\hooks\\quickload-on-do.ps1",
           "Lines": 58
@@ -14388,6 +14236,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 58,
       "SuggestedHome": "mindattic-agent-standard",
       "RepoCount": 5
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\BudgetCalculator.cs",
+          "Lines": 372
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\BudgetCalculator.cs",
+          "Lines": 324
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.890282131661442,
+      "SharedLines": 289,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -14536,6 +14403,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\Program.cs",
+          "Lines": 466
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\Program.cs",
+          "Lines": 374
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7669376693766937,
+      "SharedLines": 288,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\JsonStore.cs",
+          "Lines": 322
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\JsonStore.cs",
+          "Lines": 312
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9185667752442996,
+      "SharedLines": 287,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountRebalancerTests.cs",
           "Lines": 143
         },
@@ -14616,25 +14521,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Phases.cs",
-          "Lines": 380
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Phases.cs",
-          "Lines": 358
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.7875354107648725,
-      "SharedLines": 283,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Economy\\Smuggling.cs",
           "Lines": 94
@@ -14678,25 +14564,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\InstallerTests.cs",
-          "Lines": 138
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\InstallerTests.cs",
-          "Lines": 138
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 138,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PatrolWingTests.cs",
           "Lines": 138
@@ -14734,25 +14601,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 138,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\StatusStream.cs",
-          "Lines": 282
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\StatusStream.cs",
-          "Lines": 280
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9818181818181818,
-      "SharedLines": 275,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -15077,6 +14925,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 134,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\StatusStream.cs",
+          "Lines": 283
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\StatusStream.cs",
+          "Lines": 280
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9563636363636364,
+      "SharedLines": 268,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Phases.cs",
+          "Lines": 428
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Phases.cs",
+          "Lines": 358
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7450424929178471,
+      "SharedLines": 268,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -15747,25 +15633,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\ContextCycler.cs",
-          "Lines": 255
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\ContextCycler.cs",
-          "Lines": 252
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9796747967479674,
-      "SharedLines": 246,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\tests\\Core.Tests\\HudTests.cs",
           "Lines": 122
@@ -15866,25 +15733,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\AccountsCommand.cs",
-          "Lines": 121
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\AccountsCommand.cs",
-          "Lines": 121
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 121,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\HyperlaneTests.cs",
           "Lines": 121
@@ -15917,25 +15765,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 121,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DashboardViewModelTests.cs",
-          "Lines": 253
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DashboardViewModelTests.cs",
-          "Lines": 245
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9833333333333333,
-      "SharedLines": 241,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -16138,6 +15967,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 79,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DashboardViewModelTests.cs",
+          "Lines": 261
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DashboardViewModelTests.cs",
+          "Lines": 245
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9666666666666667,
+      "SharedLines": 237,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -16348,25 +16196,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.cs",
-          "Lines": 373
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.cs",
-          "Lines": 323
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.720125786163522,
-      "SharedLines": 234,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\imgdiff.py",
           "Lines": 58
@@ -16490,7 +16319,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorVaultSettings.cs",
-          "Lines": 1055
+          "Lines": 1241
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -17385,6 +17214,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.cs",
+          "Lines": 409
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.cs",
+          "Lines": 323
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6540880503144654,
+      "SharedLines": 213,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaTooltip.cs",
           "Lines": 106
@@ -17417,44 +17265,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 106,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingSwitch.cs",
-          "Lines": 218
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingSwitch.cs",
-          "Lines": 217
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9764150943396226,
-      "SharedLines": 212,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayApp.cs",
-          "Lines": 490
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\GatewayApp.cs",
-          "Lines": 296
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.711340206185567,
-      "SharedLines": 212,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -17535,6 +17345,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9808612440191388,
+      "SharedLines": 210,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\ContextCycler.cs",
+          "Lines": 268
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\ContextCycler.cs",
+          "Lines": 252
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8333333333333334,
       "SharedLines": 210,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -17629,6 +17458,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\FallbackViewersTests.cs",
+          "Lines": 213
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\FallbackViewersTests.cs",
+          "Lines": 212
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9758454106280193,
+      "SharedLines": 207,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LimitWaker.cs",
           "Lines": 103
         },
@@ -17641,6 +17489,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 103,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingSwitch.cs",
+          "Lines": 220
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\BillingSwitch.cs",
+          "Lines": 217
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9481132075471698,
+      "SharedLines": 206,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Gateway\\GatewayApp.cs",
+          "Lines": 496
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Gateway\\GatewayApp.cs",
+          "Lines": 296
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6907216494845361,
+      "SharedLines": 206,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -17744,25 +17630,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayConnection.cs",
-          "Lines": 349
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayConnection.cs",
-          "Lines": 259
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.7834645669291339,
-      "SharedLines": 204,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\WeeklyStopTests.cs",
           "Lines": 101
         },
@@ -17857,25 +17724,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\SingleInstance.cs",
-          "Lines": 100
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\SingleInstance.cs",
-          "Lines": 100
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 100,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "Unity.Shared",
           "Path": "D:\\Projects\\MindAttic\\Unity.Shared\\unity\\com.mindattic.unity.shared\\Runtime\\Core\\Json\\JsonObject.cs",
           "Lines": 100
@@ -17897,7 +17745,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LeaseTests.cs",
-          "Lines": 213
+          "Lines": 218
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -17944,6 +17792,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 200,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 5
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayConnection.cs",
+          "Lines": 351
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayConnection.cs",
+          "Lines": 259
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7677165354330708,
+      "SharedLines": 200,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -18130,25 +17997,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountDirs.cs",
-          "Lines": 246
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountDirs.cs",
-          "Lines": 216
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9004739336492891,
-      "SharedLines": 195,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\prototypes\\T923-relay\\TermHostStub\\Ring.cs",
           "Lines": 97
         },
@@ -18199,6 +18047,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 97,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountDirs.cs",
+          "Lines": 265
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountDirs.cs",
+          "Lines": 216
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8957345971563981,
+      "SharedLines": 194,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -18307,25 +18174,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ViewModelTests.cs",
-          "Lines": 96
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 96,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountSwitch.cs",
-          "Lines": 96
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountSwitch.cs",
           "Lines": 96
         }
       ],
@@ -18524,44 +18372,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginTokens.cs",
-          "Lines": 198
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginTokens.cs",
-          "Lines": 194
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9735449735449735,
-      "SharedLines": 189,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermViewer\\ViewerWindow.cs",
-          "Lines": 233
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermViewer\\ViewerWindow.cs",
-          "Lines": 220
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8558139534883721,
-      "SharedLines": 189,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\play.ps1",
           "Lines": 260
@@ -18634,25 +18444,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 94,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Scheduler.cs",
-          "Lines": 236
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Scheduler.cs",
-          "Lines": 223
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8394495412844036,
-      "SharedLines": 188,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -18822,6 +18613,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 46,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermViewer\\ViewerWindow.cs",
+          "Lines": 233
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermViewer\\ViewerWindow.cs",
+          "Lines": 220
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.827906976744186,
+      "SharedLines": 183,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -19323,6 +19133,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginTokens.cs",
+          "Lines": 204
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginTokens.cs",
+          "Lines": 194
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8888888888888888,
+      "SharedLines": 173,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "SpaceGod.Unreal.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\Screen.cs",
           "Lines": 86
@@ -19341,25 +19170,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 86,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\FallbackViewers.cs",
-          "Lines": 197
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\FallbackViewers.cs",
-          "Lines": 194
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8835978835978836,
-      "SharedLines": 172,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -19396,17 +19206,17 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LibraryOnlyXamlTests.cs",
-          "Lines": 207
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Scheduler.cs",
+          "Lines": 252
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LibraryOnlyXamlTests.cs",
-          "Lines": 191
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Scheduler.cs",
+          "Lines": 223
         }
       ],
       "Identical": false,
-      "Similarity": 0.8924731182795699,
+      "Similarity": 0.7614678899082569,
       "SharedLines": 171,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -19440,25 +19250,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Components.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\src\\MindAttic.Components.Wpf\\Controls\\MaToast.cs",
-          "Lines": 85
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 85,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ModeTracker.cs",
-          "Lines": 85
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ModeTracker.cs",
           "Lines": 85
         }
       ],
@@ -19690,6 +19481,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LibraryOnlyXamlTests.cs",
+          "Lines": 211
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LibraryOnlyXamlTests.cs",
+          "Lines": 191
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8602150537634409,
+      "SharedLines": 165,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Menus\\MenuStackModel.cs",
           "Lines": 82
@@ -19716,25 +19526,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Components.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\dotnet\\tests\\MindAttic.Components.Wpf.Tests\\MaHyperlinkTests.cs",
-          "Lines": 82
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 82,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AppBusTests.cs",
-          "Lines": 82
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AppBusTests.cs",
           "Lines": 82
         }
       ],
@@ -19929,25 +19720,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TabSwitchTests.cs",
-          "Lines": 169
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TabSwitchTests.cs",
-          "Lines": 169
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9629629629629629,
-      "SharedLines": 161,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\PageScrollbar\\page-scrollbar.js",
           "Lines": 80
@@ -20064,6 +19836,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 53,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\ScreenUsage.cs",
+          "Lines": 165
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\ScreenUsage.cs",
+          "Lines": 166
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9625,
+      "SharedLines": 159,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -20321,6 +20112,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermViewer\\RemoteViewer.cs",
+          "Lines": 161
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermViewer\\RemoteViewer.cs",
+          "Lines": 161
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9615384615384616,
+      "SharedLines": 155,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaStatusPill.cs",
           "Lines": 77
@@ -20398,17 +20208,17 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\Pacer.cs",
-          "Lines": 281
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TabSwitchTests.cs",
+          "Lines": 169
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\Pacer.cs",
-          "Lines": 200
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TabSwitchTests.cs",
+          "Lines": 169
         }
       ],
       "Identical": false,
-      "Similarity": 0.764102564102564,
+      "Similarity": 0.9197530864197531,
       "SharedLines": 154,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -20612,25 +20422,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\Installer.cs",
-          "Lines": 198
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\Installer.cs",
-          "Lines": 181
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8238636363636364,
-      "SharedLines": 150,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaProgressBar.cs",
           "Lines": 74
@@ -20695,25 +20486,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StatusStreamTests.cs",
-          "Lines": 74
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 74,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\RemindCommand.cs",
-          "Lines": 74
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\RemindCommand.cs",
           "Lines": 74
         }
       ],
@@ -20841,6 +20613,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\FallbackViewers.cs",
+          "Lines": 202
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\FallbackViewers.cs",
+          "Lines": 194
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7407407407407407,
+      "SharedLines": 145,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\SubagentActivity.cs",
           "Lines": 151
         },
@@ -20859,25 +20650,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
-          "Lines": 159
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
-          "Lines": 154
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9328859060402684,
-      "SharedLines": 144,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Hud\\MinimapFit.cs",
           "Lines": 71
@@ -20885,25 +20657,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Components.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Core\\Hud\\MinimapFit.cs",
-          "Lines": 71
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 71,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginBoard.cs",
-          "Lines": 71
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginBoard.cs",
           "Lines": 71
         }
       ],
@@ -20985,25 +20738,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9647887323943662,
-      "SharedLines": 142,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedger.cs",
-          "Lines": 148
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedger.cs",
-          "Lines": 148
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.958041958041958,
       "SharedLines": 142,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -21136,17 +20870,17 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Tabs.cs",
-          "Lines": 380
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermProtocol.cs",
+          "Lines": 148
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Tabs.cs",
-          "Lines": 218
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Term\\TermProtocol.cs",
+          "Lines": 145
         }
       ],
       "Identical": false,
-      "Similarity": 0.6291079812206573,
+      "Similarity": 0.9571428571428572,
       "SharedLines": 139,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -21167,6 +20901,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 69,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\Pacer.cs",
+          "Lines": 282
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\Pacer.cs",
+          "Lines": 200
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.676923076923077,
+      "SharedLines": 137,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -21547,7 +21300,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.LoginCards.cs",
-          "Lines": 197
+          "Lines": 262
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -21577,6 +21330,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.8113207547169812,
       "SharedLines": 134,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\InstallerTests.cs",
+          "Lines": 228
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\InstallerTests.cs",
+          "Lines": 138
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9624060150375939,
+      "SharedLines": 133,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -21746,6 +21518,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\OrgsCommands.cs",
+          "Lines": 155
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\OrgsCommands.cs",
+          "Lines": 155
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.84,
+      "SharedLines": 131,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\DbCommands.cs",
           "Lines": 65
         },
@@ -21764,25 +21555,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\ClaudeKeyChoice.cs",
-          "Lines": 137
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\ClaudeKeyChoice.cs",
-          "Lines": 134
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9689922480620154,
-      "SharedLines": 130,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\CaptureEvents.cs",
           "Lines": 135
@@ -21795,25 +21567,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9615384615384616,
-      "SharedLines": 130,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionControl.cs",
-          "Lines": 192
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionControl.cs",
-          "Lines": 148
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8741258741258742,
       "SharedLines": 130,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -21913,44 +21666,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 43,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 3
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountPacer.cs",
-          "Lines": 194
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountPacer.cs",
-          "Lines": 175
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.7294117647058823,
-      "SharedLines": 129,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\App.xaml.cs",
-          "Lines": 262
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\App.xaml.cs",
-          "Lines": 226
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.5610859728506787,
-      "SharedLines": 129,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
     },
     {
       "Files": [
@@ -22184,6 +21899,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\ClaudeKeyChoice.cs",
+          "Lines": 138
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\ClaudeKeyChoice.cs",
+          "Lines": 134
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9302325581395349,
+      "SharedLines": 125,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "SpaceGod.Unreal.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\UI\\FidelityShots.cs",
           "Lines": 62
@@ -22320,7 +22054,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\BudgetTests.cs",
-          "Lines": 151
+          "Lines": 203
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -22338,8 +22072,27 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
+          "Lines": 175
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
+          "Lines": 154
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7785234899328859,
+      "SharedLines": 121,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\BusyClis.cs",
-          "Lines": 222
+          "Lines": 225
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -22433,6 +22186,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 40,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\Installer.cs",
+          "Lines": 227
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\Installer.cs",
+          "Lines": 181
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6534090909090909,
+      "SharedLines": 120,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Tabs.cs",
+          "Lines": 411
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Tabs.cs",
+          "Lines": 218
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.539906103286385,
+      "SharedLines": 120,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -22642,6 +22433,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedger.cs",
+          "Lines": 166
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedger.cs",
+          "Lines": 148
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7762237762237763,
+      "SharedLines": 116,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "Automata",
           "Path": "D:\\Projects\\MindAttic\\Automata\\run.ps1",
           "Lines": 182
@@ -22797,25 +22607,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9646017699115044,
-      "SharedLines": 114,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedgerWatch.cs",
-          "Lines": 120
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedgerWatch.cs",
-          "Lines": 120
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9478260869565217,
       "SharedLines": 114,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -23119,44 +22910,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\MembersCommand.cs",
-          "Lines": 130
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\MembersCommand.cs",
-          "Lines": 131
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.860655737704918,
-      "SharedLines": 110,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorServer.cs",
-          "Lines": 168
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorServer.cs",
-          "Lines": 133
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8203125,
-      "SharedLines": 110,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\themes\\Spring\\spring.js",
           "Lines": 54
@@ -23214,25 +22967,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\ReportCommand.cs",
-          "Lines": 54
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\ReportCommand.cs",
-          "Lines": 54
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 54,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\PilotAim.cs",
           "Lines": 36
@@ -23269,6 +23003,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9626168224299065,
+      "SharedLines": 108,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionControl.cs",
+          "Lines": 204
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionControl.cs",
+          "Lines": 148
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7202797202797203,
       "SharedLines": 108,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -23381,18 +23134,18 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "Gadfly",
-          "Path": "D:\\Projects\\MindAttic\\Gadfly\\dissertation\\scripts\\export.ps1",
+          "Repo": "Dissertation.ElenchusAtScale",
+          "Path": "D:\\Projects\\MindAttic\\Dissertation.ElenchusAtScale\\scripts\\export.ps1",
           "Lines": 35
         },
         {
-          "Repo": "Provenance",
-          "Path": "D:\\Projects\\MindAttic\\Provenance\\template\\scripts\\export.ps1",
+          "Repo": "Dissertation.SyntheticExchangeTheory",
+          "Path": "D:\\Projects\\MindAttic\\Dissertation.SyntheticExchangeTheory\\scripts\\export.ps1",
           "Lines": 35
         },
         {
-          "Repo": "SyntheticExchangeTheory",
-          "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\scripts\\export.ps1",
+          "Repo": "Dissertation.Tools",
+          "Path": "D:\\Projects\\MindAttic\\Dissertation.Tools\\template\\scripts\\export.ps1",
           "Lines": 35
         }
       ],
@@ -23455,6 +23208,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Components.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Menus\\MaBackRouter.cs",
+          "Lines": 52
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 52,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Launcher",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\MindAttic.Launcher.Tests\\DesktopPinPolicyTests.cs",
+          "Lines": 52
+        },
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DesktopPinPolicyTests.cs",
           "Lines": 52
         }
       ],
@@ -23539,6 +23311,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\MembersCommand.cs",
+          "Lines": 130
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\MembersCommand.cs",
+          "Lines": 131
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8114754098360656,
+      "SharedLines": 104,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorServer.cs",
+          "Lines": 191
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorServer.cs",
+          "Lines": 133
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7734375,
+      "SharedLines": 104,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "SpaceGod.Unreal.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\Runtime\\Coop\\SpaceCoopLink.cs",
           "Lines": 109
@@ -23593,6 +23403,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 103,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
       "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountPacer.cs",
+          "Lines": 230
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountPacer.cs",
+          "Lines": 175
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5764705882352941,
+      "SharedLines": 103,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -23727,25 +23556,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OpenTicketSourceTests.cs",
-          "Lines": 115
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OpenTicketSourceTests.cs",
-          "Lines": 115
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8818181818181818,
-      "SharedLines": 102,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\AgentAbort.cs",
           "Lines": 172
         },
@@ -23758,25 +23568,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.751937984496124,
       "SharedLines": 102,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\CliMarks.cs",
-          "Lines": 144
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\CliMarks.cs",
-          "Lines": 106
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9504950495049505,
-      "SharedLines": 101,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -23803,17 +23594,17 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionRestore.cs",
-          "Lines": 137
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\AccountsCommand.cs",
+          "Lines": 123
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionRestore.cs",
-          "Lines": 117
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\AccountsCommand.cs",
+          "Lines": 121
         }
       ],
       "Identical": false,
-      "Similarity": 0.8571428571428571,
+      "Similarity": 0.8275862068965517,
       "SharedLines": 101,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -23955,25 +23746,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermGrants.cs",
-          "Lines": 113
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermGrants.cs",
-          "Lines": 113
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8703703703703703,
-      "SharedLines": 99,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Tag\\tag.js",
           "Lines": 49
@@ -24024,6 +23796,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9587628865979382,
+      "SharedLines": 98,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\OpenTicketSourceTests.cs",
+          "Lines": 152
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\OpenTicketSourceTests.cs",
+          "Lines": 115
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8454545454545455,
       "SharedLines": 98,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -24198,6 +23989,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\SingleInstance.cs",
+          "Lines": 102
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\SingleInstance.cs",
+          "Lines": 100
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9473684210526315,
+      "SharedLines": 95,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionRestore.cs",
+          "Lines": 137
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\SessionRestore.cs",
+          "Lines": 117
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8035714285714286,
+      "SharedLines": 95,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\tests\\MindAttic.Components.Tokens.Tests\\MaPaletteTests.cs",
           "Lines": 47
@@ -24312,25 +24141,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TerminalPanes.cs",
-          "Lines": 125
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TerminalPanes.cs",
-          "Lines": 100
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9263157894736842,
-      "SharedLines": 93,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unreal.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\ProceduralAsteroids.cs",
           "Lines": 101
@@ -24343,6 +24153,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9263157894736842,
+      "SharedLines": 93,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermGrants.cs",
+          "Lines": 113
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermGrants.cs",
+          "Lines": 113
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8148148148148148,
+      "SharedLines": 93,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedgerWatch.cs",
+          "Lines": 123
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedgerWatch.cs",
+          "Lines": 120
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7652173913043478,
       "SharedLines": 93,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -24560,6 +24408,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\CliMarks.cs",
+          "Lines": 150
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\CliMarks.cs",
+          "Lines": 106
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8613861386138614,
+      "SharedLines": 92,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\ProviderLogReader.cs",
           "Lines": 120
         },
@@ -24674,25 +24541,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\ClosedTicketSource.cs",
-          "Lines": 45
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\ClosedTicketSource.cs",
-          "Lines": 45
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 45,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\Sql.cs",
           "Lines": 45
         },
@@ -24742,6 +24590,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9883720930232558,
+      "SharedLines": 90,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountSwitch.cs",
+          "Lines": 97
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountSwitch.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9340659340659341,
       "SharedLines": 90,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -24837,7 +24704,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\PlanningCommands.cs",
-          "Lines": 161
+          "Lines": 162
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -25007,25 +24874,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ClosedTicketSourceTests.cs",
-          "Lines": 43
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ClosedTicketSourceTests.cs",
-          "Lines": 43
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 43,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StatusInboxTests.cs",
           "Lines": 43
         },
@@ -25070,25 +24918,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.AppBus.cs",
-          "Lines": 43
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 43,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\ApiKeyPerson.cs",
-          "Lines": 43
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\ApiKeyPerson.cs",
           "Lines": 43
         }
       ],
@@ -25745,44 +25574,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\AppBusHub.cs",
-          "Lines": 140
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\AppBusHub.cs",
-          "Lines": 89
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8928571428571429,
-      "SharedLines": 80,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorSettings.cs",
-          "Lines": 310
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorSettings.cs",
-          "Lines": 129
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.5967741935483871,
-      "SharedLines": 79,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "IdeaCms",
           "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\wwwroot\\js\\user-timeout.js",
           "Lines": 39
@@ -25936,6 +25727,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AppBusTests.cs",
+          "Lines": 103
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AppBusTests.cs",
+          "Lines": 82
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.948051948051948,
+      "SharedLines": 78,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Editor\\ProjectSetup.cs",
           "Lines": 106
@@ -26038,25 +25848,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\TerminalPaste.cs",
-          "Lines": 38
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 38,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\ModelChoice.cs",
-          "Lines": 38
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\ModelChoice.cs",
           "Lines": 38
         }
       ],
@@ -26251,25 +26042,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SessionControlTests.cs",
-          "Lines": 37
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SessionControlTests.cs",
-          "Lines": 37
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 37,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term.Wpf\\RelayInput.cs",
           "Lines": 37
         },
@@ -26358,6 +26130,63 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.8734177215189873,
       "SharedLines": 74,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ModeTracker.cs",
+          "Lines": 87
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ModeTracker.cs",
+          "Lines": 85
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8625,
+      "SharedLines": 74,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TerminalPanes.cs",
+          "Lines": 128
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TerminalPanes.cs",
+          "Lines": 100
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7157894736842105,
+      "SharedLines": 73,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorSettings.cs",
+          "Lines": 354
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Settings\\OrchestratorSettings.cs",
+          "Lines": 129
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5483870967741935,
+      "SharedLines": 73,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -26478,6 +26307,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Launcher",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\MindAttic.Launcher\\Services\\DesktopPinWatcher.cs",
+          "Lines": 112
+        },
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\Services\\DesktopPinWatcher.cs",
+          "Lines": 115
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6261682242990654,
+      "SharedLines": 72,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\QueueOrderTests.cs",
           "Lines": 136
@@ -26580,25 +26428,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Report.cs",
-          "Lines": 35
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 35,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyReset.cs",
-          "Lines": 35
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyReset.cs",
           "Lines": 35
         }
       ],
@@ -26735,25 +26564,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermLauncher.cs",
-          "Lines": 136
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermLauncher.cs",
-          "Lines": 93
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.7159090909090909,
-      "SharedLines": 68,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "Automata",
           "Path": "D:\\Projects\\MindAttic\\Automata\\Automata.Core\\Operator\\AnthropicToolCallingLlm.cs",
           "Lines": 96
@@ -26854,25 +26664,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ReplayScreen.cs",
-          "Lines": 33
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ReplayScreen.cs",
-          "Lines": 33
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 33,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\GameManualTests.cs",
           "Lines": 33
@@ -26911,6 +26702,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 33,
       "SuggestedHome": "MindAttic.Components (WPF)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermLauncher.cs",
+          "Lines": 143
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermLauncher.cs",
+          "Lines": 93
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6931818181818182,
+      "SharedLines": 66,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
@@ -26971,6 +26781,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9230769230769231,
+      "SharedLines": 65,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\AppBusHub.cs",
+          "Lines": 230
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\AppBusHub.cs",
+          "Lines": 89
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7142857142857143,
       "SharedLines": 65,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -27150,25 +26979,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\MemberRoster.cs",
-          "Lines": 127
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\MemberRoster.cs",
-          "Lines": 89
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.7023809523809523,
-      "SharedLines": 64,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "Automata",
           "Path": "D:\\Projects\\MindAttic\\Automata\\Automata.Tests\\KeyPoolFailoverTests.cs",
           "Lines": 95
@@ -27252,25 +27062,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ApiBurnChartData.cs",
-          "Lines": 31
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 31,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Show.cs",
-          "Lines": 31
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Show.cs",
           "Lines": 31
         }
       ],
@@ -27560,6 +27351,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\RemindCommand.cs",
+          "Lines": 110
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\RemindCommand.cs",
+          "Lines": 74
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.782608695652174,
+      "SharedLines": 59,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "SpaceGod.Unreal.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\race.ps1",
           "Lines": 67
@@ -27579,25 +27389,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 0.7741935483870968,
       "SharedLines": 59,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Model.cs",
-          "Lines": 96
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Model.cs",
-          "Lines": 86
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.6666666666666666,
-      "SharedLines": 59,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
     {
@@ -27672,6 +27463,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9137931034482759,
+      "SharedLines": 58,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Model.cs",
+          "Lines": 106
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Model.cs",
+          "Lines": 86
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.654320987654321,
       "SharedLines": 58,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -27851,17 +27661,17 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\SnapshotFile.cs",
-          "Lines": 65
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginBoard.cs",
+          "Lines": 74
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\SnapshotFile.cs",
-          "Lines": 61
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\LoginBoard.cs",
+          "Lines": 71
         }
       ],
       "Identical": false,
-      "Similarity": 0.8928571428571429,
+      "Similarity": 0.7575757575757576,
       "SharedLines": 55,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -28255,6 +28065,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\MemberRoster.cs",
+          "Lines": 142
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\MemberRoster.cs",
+          "Lines": 89
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5595238095238095,
+      "SharedLines": 52,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\Pipeline\\RenderPipelineSelection.cs",
           "Lines": 136
@@ -28267,25 +28096,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 1,
-      "SharedLines": 51,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SettingsModalTests.cs",
-          "Lines": 73
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SettingsModalTests.cs",
-          "Lines": 68
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.7301587301587301,
       "SharedLines": 51,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -28350,6 +28160,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Launcher",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\MindAttic.Launcher\\Services\\VirtualDesktops.cs",
+          "Lines": 25
+        },
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\Services\\VirtualDesktops.cs",
+          "Lines": 25
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 25,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermHostKill.cs",
           "Lines": 25
@@ -28388,25 +28217,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\OpenTicketSource.cs",
-          "Lines": 101
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\OpenTicketSource.cs",
-          "Lines": 73
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.6617647058823529,
-      "SharedLines": 50,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\Rendering\\ShipThumbnails.cs",
           "Lines": 75
@@ -28419,6 +28229,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.8461538461538461,
+      "SharedLines": 49,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\SnapshotFile.cs",
+          "Lines": 68
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\SnapshotFile.cs",
+          "Lines": 61
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7857142857142857,
       "SharedLines": 49,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -29046,6 +28875,11 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 56
         },
         {
+          "Repo": "Dissertation.SyntheticExchangeTheory",
+          "Path": "D:\\Projects\\MindAttic\\Dissertation.SyntheticExchangeTheory\\.claude\\hooks\\quickload-on-do.ps1",
+          "Lines": 56
+        },
+        {
           "Repo": "MindAttic.Agency",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\shared\\hooks\\quickload-on-do.ps1",
           "Lines": 57
@@ -29079,11 +28913,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude\\hooks\\quickload-on-do.ps1",
           "Lines": 58
-        },
-        {
-          "Repo": "SyntheticExchangeTheory",
-          "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\.claude\\hooks\\quickload-on-do.ps1",
-          "Lines": 56
         }
       ],
       "Identical": false,
@@ -29115,17 +28944,17 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\AppBus.cs",
-          "Lines": 76
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ClosedTicketSourceTests.cs",
+          "Lines": 67
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\AppBus.cs",
-          "Lines": 52
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ClosedTicketSourceTests.cs",
+          "Lines": 43
         }
       ],
       "Identical": false,
-      "Similarity": 0.8085106382978723,
+      "Similarity": 1,
       "SharedLines": 43,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -29401,6 +29230,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\ReportCommand.cs",
+          "Lines": 63
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\ReportCommand.cs",
+          "Lines": 54
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7346938775510204,
+      "SharedLines": 41,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Activity\\AgentBoard.cs",
           "Lines": 73
         },
@@ -29483,7 +29331,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Stream.cs",
-          "Lines": 76
+          "Lines": 79
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -29493,6 +29341,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.5932203389830508,
+      "SharedLines": 40,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\OpenTicketSource.cs",
+          "Lines": 164
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\OpenTicketSource.cs",
+          "Lines": 73
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5147058823529411,
       "SharedLines": 40,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -29615,6 +29482,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\AppBus.cs",
+          "Lines": 86
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\AppBus.cs",
+          "Lines": 52
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7021276595744681,
+      "SharedLines": 38,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\TermPaneFile.cs",
           "Lines": 56
         },
@@ -29659,6 +29545,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Components.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Theming\\ThemeProvider.cs",
+          "Lines": 18
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 18,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Launcher",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\MindAttic.Launcher\\Services\\DesktopPinPolicy.cs",
+          "Lines": 18
+        },
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\Services\\DesktopPinPolicy.cs",
           "Lines": 18
         }
       ],
@@ -29775,6 +29680,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 18,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Billing\\ApiKeyPerson.cs",
+          "Lines": 46
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Billing\\ApiKeyPerson.cs",
+          "Lines": 43
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8157894736842105,
+      "SharedLines": 36,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -30124,6 +30048,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Tickets\\ClosedTicketSource.cs",
+          "Lines": 54
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Tickets\\ClosedTicketSource.cs",
+          "Lines": 45
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.675,
+      "SharedLines": 32,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\ModelChoice.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\ModelChoice.cs",
+          "Lines": 38
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7878787878787878,
+      "SharedLines": 31,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "IdeaCms",
           "Path": "D:\\Projects\\MindAttic\\IdeaCms\\src\\IdeaCms.Blazor\\wwwroot\\js\\user-timeout.js",
           "Lines": 39
@@ -30304,6 +30266,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 15,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyReset.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\WeeklyReset.cs",
+          "Lines": 35
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8333333333333334,
+      "SharedLines": 30,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -30563,17 +30544,17 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\WorkspaceCommands.cs",
-          "Lines": 67
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\SessionControlTests.cs",
+          "Lines": 37
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\WorkspaceCommands.cs",
-          "Lines": 40
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\SessionControlTests.cs",
+          "Lines": 37
         }
       ],
       "Identical": false,
-      "Similarity": 0.6571428571428571,
+      "Similarity": 0.71875,
       "SharedLines": 28,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -30620,6 +30601,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Show.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Show.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8461538461538461,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\TicketsApp.cs",
           "Lines": 33
         },
@@ -30631,6 +30631,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.8148148148148148,
+      "SharedLines": 27,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ReplayScreen.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.TermHost\\Replay\\ReplayScreen.cs",
+          "Lines": 33
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7857142857142857,
       "SharedLines": 27,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -30737,25 +30756,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 13,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Terminals.cs",
-          "Lines": 38
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.Terminals.cs",
-          "Lines": 37
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.65625,
-      "SharedLines": 26,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -31007,7 +31007,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermSessionRecord.cs",
-          "Lines": 37
+          "Lines": 38
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -31017,6 +31017,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.6206896551724138,
+      "SharedLines": 23,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Launcher",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\MindAttic.Launcher\\Services\\AppDataBackupService.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Backup\\AppDataBackup.cs",
+          "Lines": 39
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5294117647058824,
       "SharedLines": 23,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -31074,6 +31093,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9444444444444444,
+      "SharedLines": 22,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Launcher",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\MindAttic.Launcher\\Services\\KimiConfigSync.cs",
+          "Lines": 35
+        },
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\KimiConfigSync.cs",
+          "Lines": 35
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5666666666666667,
       "SharedLines": 22,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -31189,25 +31227,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.65,
       "SharedLines": 18,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Setup\\DashboardRequest.cs",
-          "Lines": 21
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Setup\\DashboardRequest.cs",
-          "Lines": 18
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9230769230769231,
-      "SharedLines": 17,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
