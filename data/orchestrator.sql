@@ -1238,6 +1238,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-23T08:50:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-23T03:50:00Z', 'Under', 'ended at 13%', 13, 13, 890662, 68, 0, NULL, NULL, 1, 0.2, 1, 1, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-23T12:10:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-23T07:10:00Z', 'Under', 'ended at 6%', 6, 6, 910461, 61, 0, NULL, NULL, 68, 6, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-23T20:50:00Z', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-23T15:50:00Z', 'Under', 'ended at 55%', 55, 55, 9450103, 88, 0, NULL, NULL, 366, 119.8, 0, 0, 1, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-23T23:30:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-23T18:30:00Z', 'Under', 'ended at 24%', 24, 24, 4048472, 70, 0, NULL, NULL, 6, 3.2, 0, 0, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -33140,8 +33141,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "e7f5819de95ce854655ee0fdcc56b7a38cde86f9",
-    "Green": "e7f5819de95ce854655ee0fdcc56b7a38cde86f9"
+    "Tested": "7ae04fe81254902f5f244bd91698fcedb2e6fa40",
+    "Green": "7ae04fe81254902f5f244bd91698fcedb2e6fa40"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
@@ -33416,8 +33417,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "e7f5819de95ce854655ee0fdcc56b7a38cde86f9",
-    "Green": "e7f5819de95ce854655ee0fdcc56b7a38cde86f9"
+    "Tested": "7ae04fe81254902f5f244bd91698fcedb2e6fa40",
+    "Green": "7ae04fe81254902f5f244bd91698fcedb2e6fa40"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
