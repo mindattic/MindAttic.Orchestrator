@@ -167,7 +167,8 @@ public sealed class FallbackViewersTests
             Sessions = () => Live,
             HasViewer = _ => false,
             ResolveExe = () => @"C:\Apps\MindAttic.Orchestrator\TermViewer\MindAttic.Orchestrator.TermViewer.exe",
-            Launch = (_, s) => { if (FailLaunch) throw new InvalidOperationException("no"); Started.Add(s.Id); return null; },
+            // A running process, as a real viewer is: a null one counts as a crash (M.ORCH-T1978).
+            Launch = (_, s) => { if (FailLaunch) throw new InvalidOperationException("no"); Started.Add(s.Id); return System.Diagnostics.Process.GetCurrentProcess(); },
             Say = (_, _) => { },
             Memory = () => null,
         };
