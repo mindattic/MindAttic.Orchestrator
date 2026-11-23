@@ -31517,14 +31517,14 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "Degraded": 2.299,
       "Unhealthy": 1,
       "Reason": "p10 of 360 readings is 2.42 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T10:16:39.7975693\u002B00:00",
+      "At": "2026-11-23T11:02:04.5155942\u002B00:00",
       "Basis": 360
     },
     "CommitPercent": {
-      "Degraded": 95.76,
+      "Degraded": 95.34,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 91.2 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-23T10:16:39.7975693\u002B00:00",
+      "Reason": "p90 of 360 readings is 90.8 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-23T11:02:04.5155942\u002B00:00",
       "Basis": 360
     }
   },
@@ -32374,6 +32374,33 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 95.76,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 91.2 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T11:00:41.7805995\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 95.76,
+      "FromUnhealthy": 97,
+      "ToDegraded": 95.655,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 91.1 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T11:01:22.9287456\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 95.655,
+      "FromUnhealthy": 97,
+      "ToDegraded": 95.55,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 91 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T11:02:04.5155942\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 95.55,
+      "FromUnhealthy": 97,
+      "ToDegraded": 95.34,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 90.8 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
@@ -32628,8 +32655,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "eff4003fc30cf87105be6093118ea44b67f99e70",
-    "Green": "eff4003fc30cf87105be6093118ea44b67f99e70"
+    "Tested": "7b11b869610298f1b9eebe4e555e6a6095b23ec7",
+    "Green": "7b11b869610298f1b9eebe4e555e6a6095b23ec7"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
@@ -32904,8 +32931,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "eff4003fc30cf87105be6093118ea44b67f99e70",
-    "Green": "eff4003fc30cf87105be6093118ea44b67f99e70"
+    "Tested": "7b11b869610298f1b9eebe4e555e6a6095b23ec7",
+    "Green": "7b11b869610298f1b9eebe4e555e6a6095b23ec7"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
