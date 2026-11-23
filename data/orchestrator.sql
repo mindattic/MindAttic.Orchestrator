@@ -31468,11 +31468,11 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 1.7765,
+      "Degraded": 1.8239999999999998,
       "Unhealthy": 1,
-      "Reason": "p10 of 221 readings is 1.87 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T04:30:35.4229395\u002B00:00",
-      "Basis": 221
+      "Reason": "p10 of 241 readings is 1.92 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T04:44:05.5314036\u002B00:00",
+      "Basis": 241
     }
   },
   "Changes": [
@@ -31763,6 +31763,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 1.7765,
       "ToUnhealthy": 1,
       "Reason": "p10 of 221 readings is 1.87 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T04:44:05.5314036\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.7765,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.8239999999999998,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 241 readings is 1.92 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
