@@ -3,11 +3,12 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Sessions;
+using MindAttic.Orchestrator.Wpf.ViewModels;
 
 namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
-/// "+ Add" (M.ORCH-T1964): one pick among General Prompt, Run Launcher or a project leaf from the tree, "Add" in the
+/// "+ Add" (M.ORCH-T1964): one pick among General Prompt, Launcher or a project leaf from the tree, "Add" in the
 /// lower-right corner opens it on the login the button was pressed on. Replaces the Open Project cascading submenu
 /// that used to live in ShowLoginMenu's own "⋯" menu (M.ORCH-T1585): a long project tree made that submenu unwieldy
 /// to hover open level by level, so the tree moved here, alongside the General Prompt and Run Launcher picks that
@@ -22,7 +23,7 @@ namespace MindAttic.Orchestrator.Wpf;
 /// <para>Run Command (M.ORCH-T2043): the Launcher's project "Run Command" (its ProjectActionMenu). Ticked, a picked project
 /// runs the command in the box below the provider row in its folder as a hosted tab, rather than opening an agent CLI there:
 /// the project's own Run Command from the Launcher's settings fills the box when it's picked, and any other command line can
-/// be typed over it. General Prompt and Run Launcher aren't projects, so they can't be picked while it's ticked.</para>
+/// be typed over it. General Prompt and Launcher aren't projects, so they can't be picked while it's ticked.</para>
 /// </summary>
 internal sealed class OpenProjectWindow : Window
 {
@@ -59,19 +60,26 @@ internal sealed class OpenProjectWindow : Window
 
         var list = new StackPanel();
         nonProjects.Add(Pick("General Prompt", "A CLI at the workspace root, every project in reach", generalPrompt));
-        nonProjects.Add(Pick("Run Launcher", "Opens this login's standalone Launcher: its own process, outside this dashboard", _ => runLauncher()));
+        nonProjects.Add(Pick("Launcher", "A Launcher instance for this login, as a tab of its own in this dashboard", _ => runLauncher()));
         foreach (var b in nonProjects) list.Children.Add(b);
         var header = new TextBlock { Text = "Projects" };
         header.SetResourceReference(StyleProperty, "MaMutedText");
         header.SetResourceReference(MarginProperty, "SpaceTS");
         list.Children.Add(header);
-        if (tree.Count == 0)
+        var projects = new StackPanel();
+        list.Children.Add(projects);
+        if (tree.Count > 0) FillProjects(projects, tree, openProject);
+        else
         {
-            var none = new TextBlock { Text = "No projects on the Launcher's roster", IsEnabled = false };
-            none.SetResourceReference(StyleProperty, "MaMutedText");
-            list.Children.Add(none);
+            // Opened before the roster's first read finished (M.ORCH-T2105): every repo still belongs here, so wait for it.
+            projects.Children.Add(Muted("Reading the Launcher's roster…"));
+            Loaded += async (_, _) =>
+            {
+                try { await MainViewModel.RefreshProjectsAsync(); }
+                catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Warning("Open Project: reading the roster failed: {Error}", ex.Message); }
+                FillProjects(projects, MainViewModel.ProjectTree ?? [], openProject);
+            };
         }
-        else foreach (var node in tree) list.Children.Add(Node(node, openProject, 0));
         var scroll = new ScrollViewer
         {
             Content = list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
@@ -144,7 +152,7 @@ internal sealed class OpenProjectWindow : Window
     }
 
     /// <summary>The Run Command toggle and its command line (M.ORCH-T2043). Ticking it greys the provider and model (a
-    /// command isn't an agent CLI), unpicks and greys General Prompt and Run Launcher (not projects), and fills the box from
+    /// command isn't an agent CLI), unpicks and greys General Prompt and Launcher (not projects), and fills the box from
     /// the project picked, if any.</summary>
     private FrameworkElement RunRow()
     {
@@ -244,6 +252,21 @@ internal sealed class OpenProjectWindow : Window
         box.Unchecked += (_, _) => { if (!settingAll && ReferenceEquals(picked, go)) { picked = null; pickedProject = null; UpdateAdd(); } };
         picks.Add(box);
         return box;
+    }
+
+    /// <summary>Puts <paramref name="tree"/>'s rows in <paramref name="projects"/>, or says the roster has none.</summary>
+    private void FillProjects(StackPanel projects, IReadOnlyList<ProjectNode> tree, Action<RosterProject, string> openProject)
+    {
+        projects.Children.Clear();
+        if (tree.Count == 0) projects.Children.Add(Muted("No projects on the Launcher's roster"));
+        else foreach (var node in tree) projects.Children.Add(Node(node, openProject, 0));
+    }
+
+    private static TextBlock Muted(string text)
+    {
+        var block = new TextBlock { Text = text, IsEnabled = false };
+        block.SetResourceReference(StyleProperty, "MaMutedText");
+        return block;
     }
 
     /// <summary>A row of the tree: a branch is a plain label with its children indented under it, a leaf a pick.</summary>
