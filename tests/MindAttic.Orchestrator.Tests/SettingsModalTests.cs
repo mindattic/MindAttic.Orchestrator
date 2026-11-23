@@ -56,33 +56,36 @@ public sealed class SettingsModalTests
     [Test]
     public void A_single_cog_opens_the_settings_in_MindAttic_Vault()
     {
-        // M.ORCH-T804: the tools end cog. LAMP (M.ORCH-T1308) put Logins beside the cog. Since M.ORCH-T1499 they're the menu
-        // bar's own row, right-aligned, no longer under the login sidebar (M.ORCH-T1431); the theme toggle that used to end
+        // M.ORCH-T804: the tools end cog. LAMP (M.ORCH-T1308) put Logins beside the cog; the theme toggle that used to end
         // the row left it entirely for Vault's own Settings (M.ORCH-T1512), not used often enough to earn an icon here.
+        // Since M.ORCH-T2101 the icon strip is gone: the menu bar's Dashboard menu (M.ORCH-T2100) holds those window tools.
         var doc = Window();
-        var tools = Named(doc, "MenuBarTools");
-        Assert.That(tools.Ancestors().Contains(Named(doc, "MenuBar")), Is.True);
-        var row = tools.Elements().Where(e => (string?)e.Attribute(X + "Name") is { } n && n.EndsWith("Button", StringComparison.Ordinal))
-            .Select(e => (string?)e.Attribute(X + "Name")).ToList();
-        // Save (M.ORCH-T1769) ends the row with its own menu chevron beside it (SaveMoreButton, M.ORCH-T1793).
-        Assert.That(row, Is.EqualTo(new[] { "TeamWallButton", "PlansButton", "TicketsButton", "LoginsButton", "SettingsButton", "SaveButton", "SaveMoreButton" }));
-        Assert.That(tools.Descendants(Mc + "MaToggleIcon").Where(t => (string?)t.Attribute("IsThemeToggle") == "True"), Is.Empty,
+        foreach (var gone in new[] { "MenuBar", "MenuBarTools", "DashboardToolbar", "SettingsButton", "ToolbarSettingsButton", "SaveButton" })
+            Assert.That(doc.Descendants().Any(e => (string?)e.Attribute(X + "Name") == gone), Is.False, gone);
+        Assert.That(doc.Descendants(Mc + "MaToggleIcon").Where(t => (string?)t.Attribute("IsThemeToggle") == "True"), Is.Empty,
             "no theme toggle of its own any more");
         // No phone/desktop toggle (M.ORCH-T1560, removed by M.ORCH-T1567): the window's size alone switches the layout.
         Assert.That(doc.Descendants().Any(e => (string?)e.Attribute(X + "Name") == "LayoutToggle"), Is.False);
-        Assert.That((string?)Named(doc, "TicketsButton").Attribute("Command"), Is.EqualTo("{Binding OpenTicketsAppCommand}"));
-        Assert.That((string?)Named(doc, "LoginsButton").Attribute("Command"), Is.EqualTo("{Binding ToggleLoginsCommand}"));
 
-        var cog = Named(doc, "SettingsButton");
-        Assert.That((string?)cog.Attribute("Style"), Is.EqualTo("{StaticResource MaToolButton}"));
-        Assert.That((string?)cog.Attribute("Content"), Is.EqualTo(""), "Segoe's Settings (cog) glyph");
-        Assert.That((string?)cog.Attribute("Command"), Is.EqualTo("{Binding OpenSettingsCommand}"));
-        Assert.That((string?)cog.Attribute("AutomationProperties.Name"), Is.EqualTo("Settings"));
+        var bar = Named(doc, "MainMenuBar");
+        var labels = bar.Elements(P + "Button").ToList();
+        Assert.That(labels.Select(b => (string?)b.Attribute("Tag")), Is.EqualTo(new[] { "Dashboard", "Projects", "Git", "Settings", "Launcher", "Backup", "Azure", "Shells" }));
+        Assert.That(labels.All(b => (string?)b.Attribute("Click") == "MainMenu_Click"), Is.True);
 
-        // The only openers of the settings: the menu bar cog and the toolbar Settings group's button (M.ORCH-T2024).
-        var openers = doc.Descendants().Where(e => (string?)e.Attribute("Command") == "{Binding OpenSettingsCommand}").ToList();
-        Assert.That(openers, Is.EqualTo(new[] { cog, Named(doc, "ToolbarSettingsButton") }));
-        Assert.That(doc.Descendants(P + "Button").Any(b => (string?)b.Attribute("Content") == "Settings"), Is.False);
+        var menu = File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.MainMenu.cs"));
+        var dashboard = menu[menu.IndexOf("case \"Dashboard\":", StringComparison.Ordinal)..menu.IndexOf("case \"Projects\":", StringComparison.Ordinal)];
+        var items = Regex.Matches(dashboard, "Menu(?:Command|Action)\\(\".\", (?:model\\.HasInbox \\? [^:]+: )?\"([^\"]+)\"")
+            .Select(m => m.Groups[1].Value).ToList();
+        Assert.That(items, Is.EqualTo(new[] { "Team Wall", "Inbox", "Plans", "Open Tickets", "User Management", "Settings", "Quick Save All", "Quicksave shown CLI", "Quick Load All" }));
+        Assert.That(dashboard, Does.Contain("\"Open Tickets\", model.OpenTicketsAppCommand").And.Contain("\"User Management\", model.ToggleLoginsCommand"));
+        // The cog: Segoe's Settings glyph on the Dashboard menu's Settings item, opening MindAttic Vault.
+        Assert.That(dashboard, Does.Contain("MenuCommand(\"\", \"Settings\", model.OpenSettingsCommand)"));
+
+        // The only openers of the settings: the Dashboard menu's cog and the Settings menu's own first item (M.ORCH-T2024).
+        Assert.That(Regex.Matches(menu, @"\.OpenSettingsCommand\b").Count, Is.EqualTo(2));
+        Assert.That(doc.Descendants().Any(e => (string?)e.Attribute("Command") == "{Binding OpenSettingsCommand}"), Is.False);
+        Assert.That(doc.Descendants(P + "Button").Where(b => (string?)b.Attribute("Content") == "Settings"),
+            Is.EqualTo(new[] { labels.Single(b => (string?)b.Attribute("Tag") == "Settings") }), "the menu bar's own Settings label is the only button by that name");
     }
 
     [Test]

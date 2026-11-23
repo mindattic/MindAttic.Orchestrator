@@ -7,10 +7,10 @@ namespace MindAttic.Orchestrator.Wpf;
 
 public partial class MainWindow
 {
-    /// <summary>The menu bar's top-level labels (M.ORCH-T2100): each opens its dropdown under itself, every item the same icon
-    /// and the same command or handler as its button in the icon strip. The Dashboard menu holds the strip's leading window
-    /// tools, bound to the global login's tab as they are (<see cref="model"/>); the rest act on the selected login
-    /// (<see cref="Shown"/>), as the strip's toolbar does.</summary>
+    /// <summary>The menu bar's top-level labels (M.ORCH-T2100), the only home of the window's tools since the icon strip went
+    /// (M.ORCH-T2101): each opens its dropdown under itself. The Dashboard menu holds the window tools, bound to the global
+    /// login's tab (<see cref="model"/>), its Inbox item carrying the count the strip's badge did; the rest act on the
+    /// selected login (<see cref="Shown"/>).</summary>
     private void MainMenu_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string name, Content: string label } button) return;
@@ -21,7 +21,7 @@ public partial class MainWindow
         {
             case "Dashboard":
                 menu.Items.Add(MenuAction("", "Team Wall", () => TeamWallButton_Click(button, e)));
-                menu.Items.Add(MenuCommand("", "Inbox", model.ToggleInboxCommand));
+                menu.Items.Add(MenuCommand("", model.HasInbox ? $"Inbox ({model.InboxBadge})" : "Inbox", model.ToggleInboxCommand));
                 menu.Items.Add(MenuCommand("", "Plans", model.TogglePlansCommand));
                 menu.Items.Add(MenuCommand("", "Open Tickets", model.OpenTicketsAppCommand));
                 menu.Items.Add(MenuCommand("", "User Management", model.ToggleLoginsCommand));

@@ -87,14 +87,10 @@ public partial class MainWindow : Window
         // The org-wide login actions (Add login, Sign in all, Report), in the Logins dialog since LAMP moved the settings to
         // MindAttic Vault (M.ORCH-T1308), are the global login's tab's too (M.ORCH-T763), not the shown tab's.
         OrgToolbar.DataContext = model;
-        // The menu bar's window tools and host readout (M.ORCH-T1499) are the global login's tab's too, like the org strip:
-        // the same Team Wall/Tickets/Logins/Settings/Wind down/theme toggle and the same C: free space and RAM reading,
-        // regardless of which login's tab is shown.
-        MenuBarTools.DataContext = model;
-        // HostStatsBars (M.ORCH-T1875) sits in the menu bar's left column, a sibling of MenuBarTools rather than inside
-        // it, so it needs this same assignment on its own (M.ORCH-T1880): without it, its C:/RAM bars and text bound
-        // whatever ambient DataContext fell through instead of the global login's, showing no fill or percent.
-        HostStatsBars.DataContext = model;
+        // The status bar's host readouts (M.ORCH-T1499, at its lower right since M.ORCH-T2101) are the global login's tab's
+        // too, like the org strip: the same held-work notices and the same C: free space and RAM reading, regardless of which
+        // login's tab is shown (M.ORCH-T1880: without it they bound the shown tab's and showed no fill or percent).
+        HostStatus.DataContext = model;
         PhoneStatus.DataContext = model;
         Root.SizeChanged += (_, _) => SizeTerminalRow();
         TerminalFrame.IsVisibleChanged += (_, _) => SizeTerminalRow();
@@ -277,49 +273,6 @@ public partial class MainWindow : Window
         // Minimized, nobody is looking: no 5-second refresh (M.ORCH-T115). Shown again, it catches up at once.
         IsVisibleChanged += async (_, _) => await OnShownOrHidden();
         StateChanged += async (_, _) => await OnShownOrHidden();
-    }
-
-    /// <summary>The Quicksave button's left click (M.ORCH-T1803): the owner's one button that absorbs pause and quicksave
-    /// all - Quick Save All, which turns /allocate off in every CLI and quicksaves every open CLI (confirmed first). Nothing
-    /// closes or exits; Quick Load All, or the next start, picks the work back up.</summary>
-    private async void SaveButton_Click(object sender, RoutedEventArgs e)
-    {
-        e.Handled = true;
-        await RunQuickAllAsync(isSave: true);
-    }
-
-    /// <summary>The Save button's right-click menu (M.ORCH-T1769; since M.ORCH-T1803 the button itself is Quick Save
-    /// All): the shown CLI's own quicksave and Quick Load All, the library's dark dropdown like every other menu in this
-    /// window.</summary>
-    private void OnSaveButtonContextMenu(object sender, ContextMenuEventArgs e)
-    {
-        if (sender is not Button button) return;
-        e.Handled = true;
-        ShowSaveMenu(button, PlacementMode.Bottom);
-    }
-
-    /// <summary>The Save button's own "more" chevron (M.ORCH-T1793, SaveMoreButton): the same menu as the right-click above, opened with a left click, since a right-click (or Shift+F10 on a button with no
-    /// keyboard equivalent at all) isn't reachable on touch or in the phone layout.</summary>
-    private void SaveMoreButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not UIElement target) return;
-        e.Handled = true;
-        ShowSaveMenu(target, PlacementMode.Bottom);
-    }
-
-    private void ShowSaveMenu(UIElement target, PlacementMode placement)
-    {
-        var menu = DropdownMenu(target, "Quicksave the shown CLI, or quick load every open CLI", placement);
-        var saveShown = DropdownItem("", "Quicksave shown CLI");
-        saveShown.ToolTip = "Quicksave the CLI on screen alone; /allocate stays as it is (the Quicksave button itself pauses and saves every CLI)";
-        saveShown.IsEnabled = model.QuicksaveShownCommand.CanExecute(null);
-        saveShown.Click += (_, _) => model.QuicksaveShownCommand.Execute(null);
-        menu.Items.Add(saveShown);
-        var loadAll = DropdownItem("", "Quick Load All");
-        loadAll.ToolTip = "Restore the last save state (or the newer autosave) (confirmed first): every closed tab reopened and resumed, each CLI's handoff loaded, /allocate back on where it was";
-        loadAll.Click += async (_, _) => await RunQuickAllAsync(isSave: false);
-        menu.Items.Add(loadAll);
-        menu.IsOpen = true;
     }
 
     /// <summary>Confirms Quick Save All or Quick Load All (<see cref="MaMessageBox"/>, a themed Yes/No defaulting to No,
@@ -1847,39 +1800,6 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Discover Projects failed; contained"); }
     }
 
-    /// <summary>The global toolbar's Projects group (M.ORCH-T1980): opens <see cref="OpenProjectWindow"/> for whichever
-    /// login is currently selected (<see cref="Shown"/>) - the same window the per-login row's own "+ Add" button and
-    /// "Open Project…" menu item already reach (<see cref="AddTabButton_Click"/>, <see cref="OpenProjectMenuItem"/>),
-    /// just reachable without first clicking into that login's own row.</summary>
-    private void ToolbarOpenProjectButton_Click(object sender, RoutedEventArgs e) => ShowOpenProjectWindow(Shown);
-
-    /// <summary>The global toolbar's Git group, "Commit and push projects…" (M.ORCH-T1980): the same picker window the
-    /// per-login menu's own item opens (<see cref="OpenCommitProjects"/>); it isn't gated on the selected login, since
-    /// <see cref="OpenCommitProjects"/> never takes one either.</summary>
-    private void ToolbarCommitProjectsButton_Click(object sender, RoutedEventArgs e) => OpenCommitProjects();
-
-    /// <summary>The global toolbar's Git group, "Refresh projects" (M.ORCH-T1980): re-reads the roster for whichever
-    /// login is currently selected (<see cref="Shown"/>), the same call the per-login menu's own "Refresh projects"
-    /// item makes.</summary>
-    private void ToolbarRefreshProjectsButton_Click(object sender, RoutedEventArgs e) => _ = Shown.RefreshProjectListAsync();
-
-    /// <summary>The global toolbar's Azure group (M.ORCH-T2055): a dropdown of Azure tools under the button; "Kickstart web
-    /// apps…" opens <see cref="KickstartWindow"/> (list every web app with its state, wake one or all).</summary>
-    private void ToolbarAzureButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not UIElement target) return;
-        var menu = DropdownMenu(target, "Azure", PlacementMode.Bottom);
-        var kick = DropdownItem("", "Kickstart web apps…");
-        kick.ToolTip = "Lists every Azure web app with its state and its database's status; wake one or all";
-        kick.Click += (_, _) => OpenKickstart();
-        menu.Items.Add(kick);
-        var export = DropdownItem("", "Export Azure SQL DB…");
-        export.ToolTip = "Exports Azure SQL databases (pick which, and a folder) to .sql scripts, schema and data (M.ORCH-T2056)";
-        export.Click += (_, _) => OpenAzureExport();
-        menu.Items.Add(export);
-        menu.IsOpen = true;
-    }
-
     private void OpenAzureExport()
     {
         var root = OrchestratorOptions.Load().WorkspaceRoot;
@@ -1913,12 +1833,6 @@ public partial class MainWindow : Window
         try { new KickstartWindow(root) { Owner = this }.Show(); }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Kickstart failed; contained"); }
     }
-
-    /// <summary>The global toolbar's Shells group (M.ORCH-T1988): Command Prompt, elevated, at the workspace root.</summary>
-    private void ToolbarCmdAdminButton_Click(object sender, RoutedEventArgs e) => OpenAdminShell("cmd.exe");
-
-    /// <summary>The global toolbar's Shells group (M.ORCH-T1988): PowerShell, elevated, at the workspace root.</summary>
-    private void ToolbarPowerShellAdminButton_Click(object sender, RoutedEventArgs e) => OpenAdminShell("powershell.exe");
 
     /// <summary>Starts <paramref name="exe"/> with Verb=runas (the UAC prompt) in the workspace root, like Launcher's own admin-shell items.</summary>
     private static void OpenAdminShell(string exe)
