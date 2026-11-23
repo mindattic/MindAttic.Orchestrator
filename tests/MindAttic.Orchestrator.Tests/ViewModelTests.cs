@@ -136,6 +136,41 @@ public sealed class ViewModelTests
         finally { temps.DeleteAll(); }
     }
 
+    /// <summary>M.ORCH-T2125: EligibleForGeneralPrompt (MainViewModel.Tabs.cs), the Launcher auto-open/respawn's "wanted"
+    /// filter and RunLauncherCommand's CanExecute each add a locked check (IsLoginLocked, the same MainViewModel.IsLocked
+    /// just exercised above) alongside their existing signed-in/disabled ones, so a locked login never gets a new General
+    /// Prompt or Launcher opened on it. This composes those checks exactly as the view model does, pinning the outcome
+    /// without standing up a full MainViewModel (the same approach as
+    /// A_tabs_busy_idle_and_needs_you_badges_follow_the_live_agent_board in TabStatusTests).</summary>
+    [Test]
+    public void A_locked_login_is_never_eligible_for_a_new_General_Prompt_or_Launcher()
+    {
+        const string erin = "ohleo199@mindattic.com";
+        var temps = new TempDirs();
+        try
+        {
+            var store = new JsonStore(temps.New());
+            bool EligibleForGeneralPrompt(bool signedInAsItself, bool signedIn, bool disabled) =>
+                !disabled && !MainViewModel.IsLocked(store, erin, isApiKeyTab: false) && (signedInAsItself || !signedIn);
+            bool WantsLauncher(bool tabSignedIn) => tabSignedIn && !MainViewModel.IsLocked(store, erin, isApiKeyTab: false);
+            bool CanRunLauncher(bool tabSignedIn) => tabSignedIn && !MainViewModel.IsLocked(store, erin, isApiKeyTab: false);
+
+            Assert.That(EligibleForGeneralPrompt(signedInAsItself: true, signedIn: true, disabled: false), Is.True);
+            Assert.That(WantsLauncher(tabSignedIn: true), Is.True);
+            Assert.That(CanRunLauncher(tabSignedIn: true), Is.True);
+
+            LoginLocks.Lock(store, erin, "Erin", LoginLocks.ReasonManual, "you", null, DateTime.UtcNow);
+
+            Assert.That(EligibleForGeneralPrompt(signedInAsItself: true, signedIn: true, disabled: false), Is.False, "locked: no new General Prompt opens");
+            Assert.That(WantsLauncher(tabSignedIn: true), Is.False, "locked: no new Launcher respawns");
+            Assert.That(CanRunLauncher(tabSignedIn: true), Is.False, "locked: Run Launcher is disabled");
+
+            LoginLocks.Unlock(store, erin, "Erin", "you", DateTime.UtcNow);
+            Assert.That(EligibleForGeneralPrompt(signedInAsItself: true, signedIn: true, disabled: false), Is.True, "unlocked again: eligible once more");
+        }
+        finally { temps.DeleteAll(); }
+    }
+
     private sealed class Row(string key, int value)
     {
         public string Key { get; } = key;

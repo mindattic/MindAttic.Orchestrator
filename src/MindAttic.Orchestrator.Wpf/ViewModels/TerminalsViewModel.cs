@@ -10,6 +10,7 @@ using EasyWindowsTerminalControl.Internals;
 using Microsoft.Terminal.Wpf;
 using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Activity;
+using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Term;
 
@@ -999,6 +1000,10 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <summary>Ends an orphaned host (the default kills it and its tree). Tests replace it.</summary>
     internal Action<TermSessionRecord> KillOrphan { get; init; } = session => TerminalPaneViewModel.KillHost(session);
 
+    /// <summary>The locked logins' emails (M.ORCH-T2125, <see cref="Open"/>'s catch-all guard): the live database's, unless
+    /// set. Tests replace it.</summary>
+    internal Func<IReadOnlySet<string>> LockedLogins { get; init; } = LoginLocks.LiveLocked;
+
     /// <summary>After a failed launch, how long to look for its host having started anyway (to adopt it), and how long after
     /// falling back to keep watching for it (to end it) (M.ORCH-T971).</summary>
     internal TimeSpan OrphanWait { get; init; } = TimeSpan.FromSeconds(3);
@@ -1166,6 +1171,10 @@ public sealed class TerminalsViewModel : ObservableObject
     public string? Open(PaneRequest request)
     {
         if (request.Problem() is { } problem) return problem;
+        // Locked (M.ORCH-T2125, catch-all): a locked login can't open a new CLI, Launcher menu included -- only reattach to
+        // one already running (Reattach/Resume never call this) or keep one already open.
+        if (request.Login is { Length: > 0 } login && LockedLogins().Contains(login))
+            return $"{login} is locked: it can't open a CLI until it's unlocked again.";
         request = request with { Order = Interlocked.Increment(ref nextOrder) };
         var hosted = false;
         if (UseTermHost)

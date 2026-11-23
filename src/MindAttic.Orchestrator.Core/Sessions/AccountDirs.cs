@@ -153,13 +153,11 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
     /// <summary>The accounts a CLI can run on now: a Claude login is signed in to in its folder, as the folder's own member. A
     /// folder signed in as another member (<see cref="AccountDir.BorrowedFrom"/>, M.ORCH-T1896) is left out, so no pick, move or
     /// rebalance puts work on it: it would spend that other member's allowance. A disabled member's (<see cref="Disabled"/>,
-    /// M.ORCH-T1952) is left out the same way: it's never picked for work. So is a locked one's (<see cref="Locked"/>,
-    /// M.ORCH-T2108): no pick, auto-pick or rebalance move ever lands on a locked login.</summary>
+    /// M.ORCH-T1952) is left out the same way: it's never picked for work.</summary>
     public IReadOnlyList<AccountDir> SignedIn()
     {
         var off = DisabledNow();
-        var locked = LockedNow();
-        return [.. All().Where(a => a.SignedIn && a.BorrowedFrom is null && !off.Contains(a.Email) && !locked.Contains(a.Email))];
+        return [.. All().Where(a => a.SignedIn && a.BorrowedFrom is null && !off.Contains(a.Email))];
     }
 
     /// <summary>The disabled members' emails (M.ORCH-T1952, <see cref="Budget.MemberRoster.Disabled"/>): the live database's for
@@ -168,13 +166,6 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
 
     /// <summary><see cref="Disabled"/> read now; none when unset.</summary>
     public IReadOnlySet<string> DisabledNow() => Disabled?.Invoke() ?? EmptySet;
-
-    /// <summary>The locked logins' emails (M.ORCH-T2108, <see cref="Budget.LoginLocks.LiveLocked"/>): the live database's for the
-    /// real <c>~/.claude-accounts</c>, none for a folder given (a test's), unless set.</summary>
-    public Func<IReadOnlySet<string>>? Locked { get; init; } = root is null ? Budget.LoginLocks.LiveLocked : null;
-
-    /// <summary><see cref="Locked"/> read now; none when unset.</summary>
-    public IReadOnlySet<string> LockedNow() => Locked?.Invoke() ?? EmptySet;
 
     private static readonly IReadOnlySet<string> EmptySet = new HashSet<string>();
 

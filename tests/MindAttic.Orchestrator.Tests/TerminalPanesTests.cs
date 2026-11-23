@@ -792,6 +792,26 @@ public sealed class TerminalPanesTests
         terminals.Close(pane);
     }
 
+    /// <summary>M.ORCH-T2125: Open's catch-all guard refuses a new PaneRequest for a locked login with a status message
+    /// naming why, whichever path reaches it (the dashboard's own Start, the Launcher's pipe, /launcher); an unlocked
+    /// login's request still opens as before. Session restore (Reattach, Resume) never calls Open, so a pane already
+    /// running is left alone regardless of a later lock -- this only guards a genuinely new open.</summary>
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_locked_login_is_refused_a_new_pane_with_why_an_unlocked_one_still_opens()
+    {
+        var terminals = new TerminalsViewModel { HostAvailable = () => false, LockedLogins = () => new HashSet<string> { "amy@example.com" } };
+
+        var error = terminals.Open(new PaneRequest("AM: Repo [Claude]", temp.New())
+            { Command = ["cmd.exe"], ConfigDir = @"C:\a\.claude-accounts\amy@example.com" });
+        Assert.That(error, Does.Contain("amy@example.com").And.Contain("locked"));
+        Assert.That(terminals.Panes, Is.Empty, "never opened");
+
+        Assert.That(terminals.Open(new PaneRequest("JO: Repo [Claude]", temp.New())
+            { Command = ["cmd.exe"], ConfigDir = @"C:\a\.claude-accounts\jordan@example.com" }), Is.Null, "a different, unlocked login opens as usual");
+        var pane = terminals.Panes.Single();
+        terminals.Close(pane);
+    }
+
     [Test, Apartment(ApartmentState.STA)]
     public void A_live_session_is_reattached_once_on_its_login_s_page_and_a_bus_message_marks_it_ended()
     {

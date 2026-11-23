@@ -1706,7 +1706,8 @@ public partial class MainWindow : Window
         commitAll.Click += (_, e) => { e.Handled = true; CommitAllProjects(commitAll, tab); };
         menu.Items.Add(commitAll);
         menu.Items.Add(DropdownSeparator());
-        Add("", "Run Launcher", "Opens this login's standalone Launcher (its own process): Open Project above does the same in-app",
+        Add("", "Run Launcher",
+            tab.IsLoginLocked ? "Locked: it can't open a CLI until it's unlocked again" : "Opens this login's standalone Launcher (its own process): Open Project above does the same in-app",
             tab.RunLauncherCommand);
         Add("", "User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
             tab.UserSettingsCommand);
@@ -1744,8 +1745,10 @@ public partial class MainWindow : Window
     {
         _ = MainViewModel.RefreshProjectsAsync(DashboardTimings.ProjectsRefresh); // 10 minutes by default (M.ORCH-T1624)
         var item = DropdownItem("", "Open Project…");
-        item.ToolTip = "Open a CLI for a project, the General Prompt or this login's Launcher. Right-click: commit + push every dirty project under one message";
-        item.IsEnabled = tab.IsTabSignedIn;
+        item.ToolTip = tab.IsLoginLocked
+            ? "Locked: it can't open a CLI until it's unlocked again"
+            : "Open a CLI for a project, the General Prompt or this login's Launcher. Right-click: commit + push every dirty project under one message";
+        item.IsEnabled = tab.IsTabSignedIn && !tab.IsLoginLocked;
         ToolTipService.SetShowOnDisabled(item, true);
         item.Click += (_, e) => { e.Handled = true; ShowOpenProjectWindow(tab); };
         item.PreviewMouseRightButtonUp += (_, e) => { e.Handled = true; CommitAllProjects(item, tab); };

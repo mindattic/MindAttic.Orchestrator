@@ -738,6 +738,12 @@ public sealed partial class MainViewModel : ObservableObject
         var on = login;
         if (kind == "Claude" && ScopeEmail is { } own)
         {
+            // Locked (M.ORCH-T2125): a locked login can't open a new CLI, only reattach to one already running.
+            if (IsLocked(store, own, IsApiKeyTab))
+            {
+                StatusMessage = $"Not started: {own} is locked.";
+                return false;
+            }
             // This tab's login (M.ORCH-T613): the CLI opens on it, and shows on this tab.
             if (await OwnLoginDirAsync(own, m => StatusMessage = m) is not { } dir) return false;
             configDir = dir;

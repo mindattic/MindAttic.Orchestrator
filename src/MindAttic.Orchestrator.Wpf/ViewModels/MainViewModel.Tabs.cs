@@ -425,7 +425,8 @@ public sealed partial class MainViewModel
         if (ShuttingDown || !autoOpenLaunchers) return;
         // Through the same cap as a last tab's respawn (M.ORCH-T1150): a Launcher that exits at once is reopened at most every 30s.
         var now = DateTime.UtcNow;
-        var wanted = loginTabs.Where(t => t.IsTabSignedIn && !IsBeingDeleted(t.ScopeEmail) && !launchersOpened.Contains(t.tab.Key) && launcherRespawn.TryTake(t.tab.Key, now))
+        // Locked (M.ORCH-T2125): a locked login never gets a new Launcher opened here either.
+        var wanted = loginTabs.Where(t => t.IsTabSignedIn && !IsBeingDeleted(t.ScopeEmail) && !t.IsLoginLocked && !launchersOpened.Contains(t.tab.Key) && launcherRespawn.TryTake(t.tab.Key, now))
             .Select(t => { launchersOpened.Add(t.tab.Key); CloseEndedLaunchers(t); return (t.tab.Key, t.ScopeEmail, t.TabTitle); }).ToList();
         foreach (var (key, email, title) in wanted) _ = OpenLauncherQuietlyAsync(key, email, title);
     }
@@ -471,8 +472,10 @@ public sealed partial class MainViewModel
     /// at all) - widening <see cref="SignedInAsItself"/> to a disconnected login too, so it gets a real, quiet,
     /// unauthenticated CLI on its own folder to run its own <c>/login</c> in, scoped correctly, instead of just the
     /// signed-out stand-in row. Never a login whose folder is borrowed by another account (signed in, but as somebody else -
-    /// opening a CLI there would silently run as them) or one that's <see cref="IsLoginDisabled"/>.</summary>
-    private bool EligibleForGeneralPrompt => ScopeEmail is not null && !tab.IsApiKey && !IsLoginDisabled && (SignedInAsItself || !tab.SignedIn);
+    /// opening a CLI there would silently run as them) or one that's <see cref="IsLoginDisabled"/> or <see cref="IsLoginLocked"/>
+    /// (M.ORCH-T2125): a locked login never gets a new one opened here, though one already live is left running (this only
+    /// gates opening, never closes a live pane).</summary>
+    private bool EligibleForGeneralPrompt => ScopeEmail is not null && !tab.IsApiKey && !IsLoginDisabled && !IsLoginLocked && (SignedInAsItself || !tab.SignedIn);
 
     /// <summary>
     /// One General Prompt CLI per eligible login (M.ORCH-T1951/M.ORCH-T1957/M.ORCH-T1959), kept open like its Launcher: one
@@ -613,7 +616,8 @@ public sealed partial class MainViewModel
             // Launcher's own in-app Redeploy menu item already handles redeploying and relaunching itself, so the dashboard
             // doesn't need to): it falls through to the same last-tab-gone decision as everything else below.
             // With automatic Launchers off (M.ORCH-T1585), any other tab gone opens nothing: Open Project on the tab's right-click does.
-            if (!autoOpenLaunchers || IsBeingDeleted(owner.ScopeEmail)) return;
+            // Locked (M.ORCH-T2125): a locked login's last tab closing never respawns it a new Launcher either.
+            if (!autoOpenLaunchers || IsBeingDeleted(owner.ScopeEmail) || owner.IsLoginLocked) return;
             var key = owner.tab.Key;
             // A parked tab (M.ORCH-T2073) is still theirs: it resumes when shown, so it leaves no person without a tab.
             var hasLive = AllTerminals.Panes.Any(p => (!p.Ended || p.Parked) && ReferenceEquals(OwnerOf(p), owner));
@@ -696,7 +700,7 @@ public sealed partial class MainViewModel
         }
         if (error is { } e) Toasts.Insert(0, new ToastViewModel($"Couldn't run {TabTitle}'s Launcher", e, Palette.Over, null));
         AccountsMessage = status;
-    }, () => IsTabSignedIn);
+    }, () => IsTabSignedIn && !IsLoginLocked);
 
     /// <summary>
     /// /launcher (M.ORCH-T1487, <c>orchestrator launcher</c> over the bus; UI thread): brings up <paramref name="login"/>'s
