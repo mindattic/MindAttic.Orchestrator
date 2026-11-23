@@ -169,6 +169,7 @@ public sealed class FallbackViewersTests
             ResolveExe = () => @"C:\Apps\MindAttic.Orchestrator\TermViewer\MindAttic.Orchestrator.TermViewer.exe",
             Launch = (_, s) => { if (FailLaunch) throw new InvalidOperationException("no"); Started.Add(s.Id); return null; },
             Say = (_, _) => { },
+            Memory = () => null,
         };
     }
 

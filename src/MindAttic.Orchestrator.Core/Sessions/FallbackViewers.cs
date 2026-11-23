@@ -189,6 +189,8 @@ public sealed class FallbackViewers
     public Func<string, TermSessionRecord, Process?> Launch { get; init; } = StartViewer;
     /// <summary>The say.</summary>
     public Action<LogEventLevel, string>? Say { get; init; }
+    /// <summary>The memory level now (M.ORCH-T1496); tests stand in their own, since the shared guard is process-wide.</summary>
+    public Func<Activity.MemoryState?> Memory { get; init; } = () => Activity.MemoryGuard.Shared.Last;
 
     /// <summary>
     /// The sessions that need a window now: running (an exited CLI's host only lingers), with a pipe, no viewer holding its slot,
@@ -255,7 +257,7 @@ public sealed class FallbackViewers
             .Where(s => !crashes.TryGetValue(s.Id, out var c) || nowUtc >= c.RetryAfterUtc).ToList();
         if (need.Count == 0) return 0;
         // Each viewer is a whole WPF process: none new while RAM is short (M.ORCH-T1496); the CLIs run on without one.
-        if (Activity.MemoryGuard.Shared.Last is { Level: > Activity.MemoryLevel.Ok }) return 0;
+        if (Memory() is { Level: > Activity.MemoryLevel.Ok }) return 0;
         if (Exe(nowUtc) is not { } path) return 0;
         var started = 0;
         foreach (var session in need)
