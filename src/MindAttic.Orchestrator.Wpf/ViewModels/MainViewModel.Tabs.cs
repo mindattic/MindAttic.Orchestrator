@@ -382,9 +382,9 @@ public sealed partial class MainViewModel
     private readonly HashSet<string> launchersEmbedded = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// One Launcher tab per account (M.ORCH-T699), embedded first in its Terminals panel (M.LNCH-T77): every signed-in login
-    /// gets its Launcher's menu already signed in to it, left idle for you to drive. A login whose Launcher tab is already
-    /// open (embedded, or a standalone one running outside the dashboard) keeps it rather than getting a second.
+    /// At most one Launcher tab per account (M.ORCH-T699), embedded first in its Terminals panel (M.LNCH-T77): extras and ended
+    /// ones are closed; a new one is opened for every signed-in login only with <c>AutoOpenLaunchers</c> on (M.ORCH-T2103).
+    /// A login whose Launcher tab is already open (embedded, or a standalone one running outside the dashboard) keeps it.
     /// </summary>
     private void OpenLaunchers()
     {
@@ -420,11 +420,9 @@ public sealed partial class MainViewModel
                 AllTerminals.Close(ended);
             }
         }
-        // Every signed-in login always has its Launcher (M.ORCH-T1886, the owner's request): it's the one child its tree node
-        // always expands to, so a login with no CLIs open (Amy, the API key) isn't a leaf row with no way into its Launcher.
-        // This reverses M.ORCH-T1585's off-by-default for the Launcher itself, as M.ORCH-T1848 already did for its reopen;
-        // AutoOpenLaunchers now only governs the respawn after some other last tab is gone (OnTabGone).
-        if (ShuttingDown) return;
+        // No Launcher is opened for a login on its own any more (M.ORCH-T2103, reversing M.ORCH-T1886): every login's tree node
+        // always has its '+ Add' child to open one (or any repo) by hand. AutoOpenLaunchers (off by default) still opts back in.
+        if (ShuttingDown || !autoOpenLaunchers) return;
         // Through the same cap as a last tab's respawn (M.ORCH-T1150): a Launcher that exits at once is reopened at most every 30s.
         var now = DateTime.UtcNow;
         var wanted = loginTabs.Where(t => t.IsTabSignedIn && !IsBeingDeleted(t.ScopeEmail) && !launchersOpened.Contains(t.tab.Key) && launcherRespawn.TryTake(t.tab.Key, now))

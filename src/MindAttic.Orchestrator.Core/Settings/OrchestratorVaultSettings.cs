@@ -906,15 +906,15 @@ public sealed class OrchestratorVaultSettings
         Help = "Off (the default): the Launcher's own menu tab shows as a tile on the Team Wall like any other CLI.")]
     public bool ExcludeLauncherFromTeamWall { get; set; }
 
-    /// <summary>Every signed-in login always has its own Launcher (M.ORCH-T1886). Off (the default): closing a login's last other CLI tab opens nothing more; on, it opens a new Launcher for that login as well.</summary>
-    [Setting("Open a Launcher when a login's last tab closes", Group = "Dashboard", Order = 5,
-        Help = "Every signed-in login always has its own Launcher (M.ORCH-T1886). Off (the default): closing a login's last other CLI tab opens nothing more; on, it opens a new Launcher for that login as well.")]
+    /// <summary>Off (the default, M.ORCH-T2103): no Launcher is opened for a login on its own; its '+ Add' node opens one. On: every signed-in login gets one, and a new one when its last tab closes.</summary>
+    [Setting("Open a Launcher for every login", Group = "Dashboard", Order = 5,
+        Help = "Off (the default): no Launcher is opened for a login on its own; the login's '+ Add' node opens one. On: every signed-in login gets its own Launcher, and a new one when its last tab closes.")]
     public bool AutoOpenLaunchers { get; set; }
 
-    /// <summary>On (the default, M.ORCH-T1951): every login signed in as itself keeps one General Prompt CLI open, reopened when it closes.</summary>
+    /// <summary>Off (the default, M.ORCH-T2103): no General Prompt CLI is opened for a login on its own. On: every login signed in as itself keeps one open, reopened when it closes.</summary>
     [Setting("Keep a General Prompt open on every login", Group = "Dashboard", Order = 5,
-        Help = "On (the default): every login signed in as itself keeps exactly one General Prompt CLI (a Claude CLI at the workspace root, ~1 GB RAM each) open on it, reopened when it closes or exits. Off: none is opened automatically; Open Project > General Prompt still opens one.")]
-    public bool AutoOpenGeneralPrompts { get; set; } = true;
+        Help = "Off (the default): no General Prompt is opened automatically; the login's '+ Add' node opens one. On: every login signed in as itself keeps exactly one General Prompt CLI (a Claude CLI at the workspace root, ~1 GB RAM each) open on it, reopened when it closes or exits.")]
+    public bool AutoOpenGeneralPrompts { get; set; }
 
     /// <summary>How long a CLI tab whose CLI has ended stays for its last lines before it's closed unasked.</summary>
     [Setting("Ended tab lifetime (minutes)", Group = "Dashboard", Order = 6,
