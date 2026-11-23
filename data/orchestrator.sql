@@ -31512,18 +31512,18 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 3.0875,
-      "Unhealthy": 1.0875,
-      "Reason": "p10 of 221 readings is 3.25 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T08:28:25.9742905\u002B00:00",
-      "Basis": 221
+      "Degraded": 3.135,
+      "Unhealthy": 1.1349999999999998,
+      "Reason": "p10 of 231 readings is 3.3 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T08:37:35.7176614\u002B00:00",
+      "Basis": 231
     },
     "CommitPercent": {
       "Degraded": 97,
       "Unhealthy": 97,
-      "Reason": "p90 of 221 readings is 92.6 %, past the configured degraded line 80 %; moved 5% past it, held at the bound 97 %",
-      "At": "2026-11-23T08:28:25.9742905\u002B00:00",
-      "Basis": 221
+      "Reason": "p90 of 231 readings is 92.5 %, past the configured degraded line 80 %; moved 5% past it, held at the bound 97 %",
+      "At": "2026-11-23T08:37:35.7176614\u002B00:00",
+      "Basis": 231
     }
   },
   "Changes": [
@@ -32048,6 +32048,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 3.0875,
       "ToUnhealthy": 1.0875,
       "Reason": "p10 of 221 readings is 3.25 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T08:37:35.7176614\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.0875,
+      "FromUnhealthy": 1.0875,
+      "ToDegraded": 3.135,
+      "ToUnhealthy": 1.1349999999999998,
+      "Reason": "p10 of 231 readings is 3.3 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -32239,8 +32248,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "4179ed633d0e63fb60c91695e36cfb547aef77a0"
   },
   "Gadfly": {
-    "Tested": "cf1afd734f9e34e9162f409d37ea6137708d23f3",
-    "Green": "cf1afd734f9e34e9162f409d37ea6137708d23f3"
+    "Tested": "9d4fedf24a6df7df0d408900c5729a9a81013050",
+    "Green": "9d4fedf24a6df7df0d408900c5729a9a81013050"
   },
   "IdiotProof": {
     "Tested": "9e6e71f4590a40ca6dcfe8a537220c88033f9684",
@@ -32314,7 +32323,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
-    "Tested": "e7e24e3eab02aa510dc8792e09de5d9392087607",
+    "Tested": "76524942a2b0ba92043a61cdcdf621162b3bacc0",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
