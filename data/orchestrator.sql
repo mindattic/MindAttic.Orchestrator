@@ -31514,18 +31514,18 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 2.546,
+      "Degraded": 2.3085,
       "Unhealthy": 1,
-      "Reason": "p10 of 284 readings is 2.68 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T09:19:08.3528132\u002B00:00",
-      "Basis": 284
+      "Reason": "p10 of 295 readings is 2.43 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T09:28:00.0962219\u002B00:00",
+      "Basis": 295
     },
     "CommitPercent": {
       "Degraded": 96.81,
       "Unhealthy": 97,
-      "Reason": "p90 of 284 readings is 92.2 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-23T09:19:08.3528132\u002B00:00",
-      "Basis": 284
+      "Reason": "p90 of 295 readings is 92.2 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-23T09:28:00.0962219\u002B00:00",
+      "Basis": 295
     }
   },
   "Changes": [
@@ -32239,6 +32239,69 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 2.546,
       "ToUnhealthy": 1,
       "Reason": "p10 of 284 readings is 2.68 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:20:43.6722721\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.546,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.5174999999999996,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 286 readings is 2.65 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:21:23.051403\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.5174999999999996,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.4985,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 287 readings is 2.63 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:22:18.859683\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.4985,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.4225,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 288 readings is 2.55 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:22:55.6264136\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.4225,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.4034999999999997,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 289 readings is 2.53 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:25:47.0201624\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.4034999999999997,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.356,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 292 readings is 2.48 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:26:23.928786\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.356,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.3275,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 293 readings is 2.45 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:28:00.0962219\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.3275,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.3085,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 295 readings is 2.43 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -32493,8 +32556,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "e7a8f918a027c4d6d2a0ea47d628b25b5bd57bc5",
-    "Green": "e7a8f918a027c4d6d2a0ea47d628b25b5bd57bc5"
+    "Tested": "5e7f98ba7db7292ae18c5864c7ca6d3001809e17",
+    "Green": "5e7f98ba7db7292ae18c5864c7ca6d3001809e17"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
