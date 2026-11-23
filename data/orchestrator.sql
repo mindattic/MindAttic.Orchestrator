@@ -31512,18 +31512,18 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 3.021,
-      "Unhealthy": 1.021,
-      "Reason": "p10 of 201 readings is 3.18 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T08:14:28.5968312\u002B00:00",
-      "Basis": 201
+      "Degraded": 3.0875,
+      "Unhealthy": 1.0875,
+      "Reason": "p10 of 221 readings is 3.25 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T08:28:25.9742905\u002B00:00",
+      "Basis": 221
     },
     "CommitPercent": {
       "Degraded": 97,
       "Unhealthy": 97,
-      "Reason": "p90 of 201 readings is 92.6 %, past the configured degraded line 80 %; moved 5% past it, held at the bound 97 %",
-      "At": "2026-11-23T08:14:28.5968312\u002B00:00",
-      "Basis": 201
+      "Reason": "p90 of 221 readings is 92.6 %, past the configured degraded line 80 %; moved 5% past it, held at the bound 97 %",
+      "At": "2026-11-23T08:28:25.9742905\u002B00:00",
+      "Basis": 221
     }
   },
   "Changes": [
@@ -32030,6 +32030,24 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 3.021,
       "ToUnhealthy": 1.021,
       "Reason": "p10 of 201 readings is 3.18 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T08:21:45.2727238\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.021,
+      "FromUnhealthy": 1.021,
+      "ToDegraded": 3.04,
+      "ToUnhealthy": 1.04,
+      "Reason": "p10 of 211 readings is 3.2 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T08:28:25.9742905\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.04,
+      "FromUnhealthy": 1.04,
+      "ToDegraded": 3.0875,
+      "ToUnhealthy": 1.0875,
+      "Reason": "p10 of 221 readings is 3.25 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
