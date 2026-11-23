@@ -1768,7 +1768,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 58538);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3255901);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 612230);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13086912);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13173985);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2154632);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 19222752);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'GridGame.Studio', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2806116);
@@ -1776,7 +1776,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 692009);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13521063);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 0);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21445124);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21454410);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -31446,11 +31446,11 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 2.3465000000000003,
+      "Degraded": 1.7575,
       "Unhealthy": 1,
-      "Reason": "p10 of 86 readings is 2.47 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T02:34:17.5919852\u002B00:00",
-      "Basis": 86
+      "Reason": "p10 of 99 readings is 1.85 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T02:47:09.1180268\u002B00:00",
+      "Basis": 99
     }
   },
   "Changes": [
@@ -31570,6 +31570,60 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 2.3465000000000003,
       "ToUnhealthy": 1,
       "Reason": "p10 of 86 readings is 2.47 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T02:40:16.3433048\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.3465000000000003,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.2705,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 92 readings is 2.39 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T02:42:29.020249\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.2705,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.2135,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 94 readings is 2.33 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T02:43:45.0221226\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.2135,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.1374999999999997,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 95 readings is 2.25 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T02:44:55.4945067\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.1374999999999997,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.0614999999999997,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 96 readings is 2.17 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T02:45:26.8003854\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.0614999999999997,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.7765,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 97 readings is 1.87 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T02:47:09.1180268\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.7765,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.7575,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 99 readings is 1.85 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
