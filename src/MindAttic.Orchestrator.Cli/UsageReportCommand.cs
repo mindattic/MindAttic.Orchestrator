@@ -105,6 +105,6 @@ internal sealed class UsageReportCommand : Command<UsageReportCommand.Settings>
         MemberRoster.EnsureApiKey(db, now); // a real member, so its row isn't "(not a member)" (M.ORCH-T956)
         return UsageReport.Gather(db, snapshot, new AccountDirs(), settings, now, since,
             ReportedUsage.Load(now), ReportedUsage.DefaultDb,
-            WeeklyAllowances.Active(store, now), UsageCutoffs.Load(store));
+            WeeklyAllowances.Active(store, now), UsageCutoffs.Load(store), LoginLocks.Load(store));
     }
 }

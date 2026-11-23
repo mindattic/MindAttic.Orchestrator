@@ -169,7 +169,7 @@ internal static class CliApp
             // The global /org and /organization commands run these (M.ORCH-T686); each is a command above, a member named any way.
             config.AddBranch("org", o =>
             {
-                o.SetDescription("The organization: usage (the usage report), login <who>, members, start <repo> <who>, allow <who> [[--until reset|<time>]], disallow <who>, limit [[<who> --weekly <pct> --5h <pct> | --reset]]; <who> is a member's email, the part before the @, name, first name, login alias or initials. Each works on the org chosen in the dashboard's switcher, or --org <id|name>'s (M.ORCH-T755).");
+                o.SetDescription("The organization: usage (the usage report), login <who>, members, start <repo> <who>, allow <who> [[--until reset|<time>]], disallow <who>, limit [[<who> --weekly <pct> --5h <pct> | --reset]], lock <who>, unlock <who>, locks; <who> is a member's email, the part before the @, name, first name, login alias or initials. Each works on the org chosen in the dashboard's switcher, or --org <id|name>'s (M.ORCH-T755).");
                 o.SetDefaultCommand<OrgHelpCommand>();
                 o.AddCommand<OrgHelpCommand>("help").WithDescription("List the org subcommands.");
                 o.AddCommand<UsageReportCommand>("usage").WithDescription("The usage report, as orchestrator report prints it: --detail, --since <date>, --csv, --json, --md/--html <file>.");
@@ -187,6 +187,9 @@ internal static class CliApp
                 o.AddCommand<OrgAllowCommand>("allow").WithDescription("Let a member's login take work past its weekly target: allow <who> [[--until reset|<time>]], until its weekly reset by default (M.ORCH-T694).");
                 o.AddCommand<OrgLimitCommand>("limit").WithDescription("Per-user usage cutoffs (M.ORCH-T707): limit alone lists them; limit <who> --weekly <pct> --5h <pct> sets them, --reset puts back 90 and 96.");
                 o.AddCommand<OrgDisallowCommand>("disallow").WithDescription("Take back org allow: disallow <who>; that login stops at its weekly target again.");
+                o.AddCommand<OrgLockCommand>("lock").WithDescription("Lock a member's login by hand: lock <who>; it can't open a CLI, take work, or keep running CLIs until org unlock (M.ORCH-T2114).");
+                o.AddCommand<OrgUnlockCommand>("unlock").WithDescription("Take back org lock, or clear a login's own weekly-cutoff lock: unlock <who>; unlocking a weekly-cutoff lock also prints its current weekly use.");
+                o.AddCommand<OrgLocksCommand>("locks").WithDescription("Every locked login, with why and since.");
             });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
             config.AddCommand<MoveCommand>("move").WithDescription("Move a running Claude CLI (<repo|pid>) to another signed-in login (--account <email> or --global): its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session.");

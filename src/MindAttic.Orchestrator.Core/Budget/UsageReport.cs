@@ -66,6 +66,8 @@ public sealed record UsageReportRow
     public long? CliSince { get; init; }
     /// <summary>The user let this login past the weekly target (M.ORCH-T694, <see cref="WeeklyAllowance.Text"/>); null when not.</summary>
     public string? Allowed { get; init; }
+    /// <summary>This login is locked (M.ORCH-T2114, <see cref="LoginLocks"/>): why and since when; null when it isn't.</summary>
+    public string? Locked { get; init; }
 }
 
 /// <summary>
@@ -115,7 +117,7 @@ public sealed record UsageReport
         IReadOnlyList<DayUsage> history, IReadOnlyDictionary<string, BudgetStatus> estimates, int weeklyTargetPercent, DateTime nowUtc,
         DateOnly? since = null, string? globalAccount = null, Func<string, string?>? staleReason = null,
         IReadOnlyList<WeeklyAllowance>? allowances = null, IReadOnlyList<UsageCutoff>? cutoffs = null,
-        int paceTargetPercent = UsageCutoffs.DefaultFiveHourPercent)
+        int paceTargetPercent = UsageCutoffs.DefaultFiveHourPercent, IReadOnlyList<LoginLock>? locks = null)
     {
         var people = members.Select(m => (m.Email, m.Name, IsMember: true)).ToList();
         var known = people.Select(p => p.Email).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -197,6 +199,9 @@ public sealed record UsageReport
                 Allowed = WeeklyAllowances.For(allowances, email, nowUtc) is { } allowed
                     ? new WeeklyAllowance { Name = name ?? alias ?? LoginLook.DefaultAlias(email) ?? email, UntilUtc = allowed.EndsUtc, By = allowed.By }.Text
                     : null,
+                Locked = LoginLocks.For(locks, email) is { } locked
+                    ? $"{name ?? alias ?? LoginLook.DefaultAlias(email) ?? email}: locked ({locked.Reason}) since {WeeklyAllowances.When(locked.SinceUtc)}"
+                    : null,
             });
         }
 
@@ -229,7 +234,7 @@ public sealed record UsageReport
     /// </summary>
     public static UsageReport Gather(OrchestratorDb db, Snapshot snapshot, AccountDirs dirs, OrchestratorSettings settings, DateTime nowUtc,
         DateOnly? since = null, ReportedUsage? globalReading = null, OrchestratorDb? stateDb = null,
-        IReadOnlyList<WeeklyAllowance>? allowances = null, IReadOnlyList<UsageCutoff>? cutoffs = null)
+        IReadOnlyList<WeeklyAllowance>? allowances = null, IReadOnlyList<UsageCutoff>? cutoffs = null, IReadOnlyList<LoginLock>? locks = null)
     {
         var members = MemberRoster.Load(db);
         var current = snapshot.Account is { } key && key != ClaudeAccount.ApiKey ? key : null;
@@ -260,7 +265,7 @@ public sealed record UsageReport
         foreach (var a in snapshot.Accounts)
             if (a.Account is { } k) estimates[k] = a.Budget;
         return Build(members, roster, logins, snapshot.History, estimates, settings.WeeklyStopPercent, nowUtc, since, current,
-                email => reasons.GetValueOrDefault(email), allowances, cutoffs, settings.PaceTargetPercent);
+                email => reasons.GetValueOrDefault(email), allowances, cutoffs, settings.PaceTargetPercent, locks);
     }
 
     /// <summary>Each login's meter probe trouble from its <see cref="AccountPacer.ProbeStateName"/> row: why it isn't asking, or
@@ -387,6 +392,7 @@ public sealed record UsageReport
             notes.Add("At or past their weekly cutoff, so access is cut off until their week resets (org allow <who> lets one past): " +
                 string.Join(", ", atTarget.Select(r => $"{r.Name} ({r.WeeklyCutoff}%; {When(r.WeekResetUtc, GeneratedUtc)}, in {Countdown(r.WeekResetUtc, GeneratedUtc)})")) + ".");
         foreach (var r in Rows.Where(r => r.Allowed is not null)) notes.Add(r.Allowed + ".");
+        foreach (var r in Rows.Where(r => r.Locked is not null)) notes.Add(r.Locked + ".");
         notes.Add("Cutoffs (week / 5-hour; nothing throttles below them, access is cut off at them): " +
             string.Join("; ", Rows.Select(r => $"{r.Name} {r.WeeklyCutoff}% / {r.FiveHourCutoff}%" + (r.CustomCutoff ? " (set)" : ""))) + ".");
         var room = known.Where(r => r.WeekUsed < r.WeeklyCutoff && !(r.FiveHourUsed >= r.FiveHourCutoff))

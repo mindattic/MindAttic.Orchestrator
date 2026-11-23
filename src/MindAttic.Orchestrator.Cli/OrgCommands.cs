@@ -24,6 +24,9 @@ internal sealed class OrgHelpCommand : Command
         ("allow <who> [--until <reset|time>]", "let that member's login take work past its weekly target, until its weekly reset (the default) or the time given"),
         ("disallow <who>", "take that back: the login stops at its weekly target again"),
         ("limit [<who> --weekly <pct> --5h <pct> | --reset]", "each member's usage cutoffs (90% of the week and 96% of the 5-hour window by default); with <who>, set them or put the defaults back with --reset"),
+        ("lock <who>", "lock that member's login by hand: it can't open a CLI, take work, or keep running CLIs until unlocked"),
+        ("unlock <who>", "take back lock, or clear a login's own weekly-cutoff lock (prints its current weekly use)"),
+        ("locks", "every locked login, with why and since"),
         ("help", "this list"),
     ];
 
@@ -306,6 +309,97 @@ internal sealed class OrgDisallowCommand : Command<OrgDisallowCommand.Settings>
     }
 }
 
+/// <summary><c>orchestrator org lock &lt;who&gt;</c> (M.ORCH-T2114): locks that member's login by hand (<see cref="LoginLocks.ReasonManual"/>),
+/// so it can't open a CLI, take dispatched or moved work, or keep running CLIs until <c>org unlock</c>. Saved in orchestrator.db,
+/// logged, and shown in <c>org usage</c> and <c>org limit</c>. Idempotent: already locked, this is a no-op.</summary>
+internal sealed class OrgLockCommand : Command<OrgLockCommand.Settings>
+{
+    public sealed class Settings : OrgSettings
+    {
+        [CommandArgument(0, "<WHO>")]
+        [Description("The member: email, the part before the @, name (quoted or not), first name, login alias or initials.")]
+        public string[] Who { get; init; } = [];
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        if (OrgChoice.Resolve(settings.Org) is not { } scope || OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is not { } who) return 1;
+        var name = OrgDisallowCommand.NameOf(who);
+        var locked = LoginLocks.Lock(Ctx.Store(), who.Email, name, LoginLocks.ReasonManual, WeeklyAllowances.ByYou, null, OrgAllowCommand.Now);
+        if (locked is null)
+        {
+            AnsiConsole.MarkupLine($"{Markup.Escape(name)}'s login is already locked: nothing to do.");
+            return 0;
+        }
+        AnsiConsole.MarkupLine($"{Markup.Escape(name)} ({Markup.Escape(who.Email)}) locked by {Markup.Escape(locked.By)}.");
+        AnsiConsole.MarkupLine($"[grey]It can't open a CLI, take work, or keep running CLIs until org unlock {Markup.Escape(string.Join(' ', settings.Who))}.[/]");
+        return 0;
+    }
+}
+
+/// <summary><c>orchestrator org unlock &lt;who&gt;</c> (M.ORCH-T2114): takes back <c>org lock</c>, or clears that login's own
+/// weekly-cutoff lock (<see cref="LoginLocks.ReasonWeeklyCutoff"/>), so it can open a CLI and take work again; logged. Unlocking a
+/// weekly-cutoff lock also prints the login's current weekly use, the same percent the usage report shows.</summary>
+internal sealed class OrgUnlockCommand : Command<OrgUnlockCommand.Settings>
+{
+    public sealed class Settings : OrgSettings
+    {
+        [CommandArgument(0, "<WHO>")]
+        [Description("The member: email, the part before the @, name (quoted or not), first name, login alias or initials.")]
+        public string[] Who { get; init; } = [];
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        if (OrgChoice.Resolve(settings.Org) is not { } scope || OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is not { } who) return 1;
+        var name = OrgDisallowCommand.NameOf(who);
+        var store = Ctx.Store();
+        var existing = LoginLocks.For(LoginLocks.Load(store), who.Email);
+        var line = LoginLocks.Unlock(store, who.Email, name, WeeklyAllowances.ByYou, OrgAllowCommand.Now);
+        if (line is null)
+        {
+            AnsiConsole.MarkupLine($"{Markup.Escape(name)}'s login isn't locked: nothing to take back.");
+            return 0;
+        }
+        AnsiConsole.MarkupLine(Markup.Escape(line));
+        if (existing?.Reason == LoginLocks.ReasonWeeklyCutoff)
+        {
+            var report = UsageReportCommand.Override?.Invoke(null) ?? UsageReportCommand.Load(null);
+            var row = report.Rows.FirstOrDefault(r => string.Equals(r.Email, who.Email, StringComparison.OrdinalIgnoreCase));
+            AnsiConsole.MarkupLine($"[grey]Its week is now at {Markup.Escape(AccountRoster.Percent(row?.WeekUsed))}.[/]");
+        }
+        return 0;
+    }
+}
+
+/// <summary><c>orchestrator org locks</c> (M.ORCH-T2114): every locked login, with why and since; <c>org lock</c>/<c>org unlock</c>
+/// change them.</summary>
+internal sealed class OrgLocksCommand : Command<OrgLocksCommand.Settings>
+{
+    public sealed class Settings : OrgSettings
+    {
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        if (OrgChoice.Resolve(settings.Org) is not { } scope) return 1;
+        var locks = LoginLocks.Load(Ctx.Store());
+        var rows = scope.Keep(OrgHelpCommand.People(), p => p.Email)
+            .Select(p => (Person: p, Lock: LoginLocks.For(locks, p.Email)))
+            .Where(r => r.Lock is not null).ToList();
+        if (scope.Scoped) AnsiConsole.MarkupLine($"[bold]{Markup.Escape(scope.Org.Name)}[/]");
+        if (rows.Count == 0)
+        {
+            AnsiConsole.MarkupLine("No logins are locked.");
+            return 0;
+        }
+        foreach (var (p, l) in rows)
+            AnsiConsole.MarkupLine($"  {Markup.Escape(OrgDisallowCommand.NameOf(p))} ({Markup.Escape(p.Email)}): " +
+                $"{Markup.Escape(l!.Reason)} since {Markup.Escape(WeeklyAllowances.When(l.SinceUtc))}, by {Markup.Escape(l.By)}.");
+        return 0;
+    }
+}
+
 /// <summary>
 /// <c>orchestrator org limit [&lt;who&gt; [--weekly &lt;pct&gt;] [--5h &lt;pct&gt;] | --reset]</c> (M.ORCH-T707): each member's usage
 /// cutoffs. Alone it lists every member's; with a member it sets the cutoffs given, or <c>--reset</c> puts back the defaults (90% of
@@ -344,14 +438,17 @@ internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
                 return 1;
             }
             var cutoffs = UsageCutoffs.Load(store);
+            var locks = LoginLocks.Load(store);
             var people = scope.Keep(OrgHelpCommand.People(), p => p.Email);
             if (scope.Scoped) AnsiConsole.MarkupLine($"[bold]{Markup.Escape(scope.Org.Name)}[/]");
             foreach (var p in people)
             {
                 var custom = UsageCutoffs.Custom(cutoffs, p.Email) is not null;
+                var locked = LoginLocks.For(locks, p.Email);
                 AnsiConsole.MarkupLine($"  {Markup.Escape(OrgDisallowCommand.NameOf(p))} ({Markup.Escape(p.Email)}): " +
                     Markup.Escape(UsageCutoffs.Text(UsageCutoffs.WeeklyFor(cutoffs, p.Email, Ctx.Settings.WeeklyStopPercent),
-                        UsageCutoffs.FiveHourFor(cutoffs, p.Email, Ctx.Settings.PaceTargetPercent))) + (custom ? " (set)" : " (default)"));
+                        UsageCutoffs.FiveHourFor(cutoffs, p.Email, Ctx.Settings.PaceTargetPercent))) + (custom ? " (set)" : " (default)") +
+                    (locked is not null ? $" (locked: {Markup.Escape(locked.Reason)} since {Markup.Escape(WeeklyAllowances.When(locked.SinceUtc))})" : ""));
             }
             AnsiConsole.MarkupLine("[grey]Below a cutoff nothing throttles; at it, access is cut off and you are asked. org limit <who> --weekly <pct> --5h <pct> changes one; --reset puts back 90 and 96.[/]");
             return 0;
