@@ -287,6 +287,8 @@ public static class BusyClis
                 // for a CLI of unknown state, it refused every redeploy while the app had one open, though it isn't hosted in any
                 // TermHost and a dashboard restart can't touch it (M.ORCH-T1813).
                 if (IsDesktopSdkSession(commandLines.GetValueOrDefault(p.Id))) continue;
+                // Claude Code's own background `claude.exe daemon run` is no terminal either: no session state, no host (M.ORCH-T2093).
+                if (IsDaemon(commandLines.GetValueOrDefault(p.Id))) continue;
                 DateTime? started = null;
                 try { started = p.StartTime.ToUniversalTime(); }
                 catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
@@ -389,6 +391,11 @@ public static class BusyClis
     internal static bool IsDesktopSdkSession(string? commandLine) => commandLine is not null &&
         commandLine.Contains("--input-format", StringComparison.OrdinalIgnoreCase) &&
         commandLine.Contains("stream-json", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether a claude.exe's command line is Claude Code's background daemon (<c>daemon run</c>): it holds no session, so
+    /// it never counts toward the busy gate (M.ORCH-T2093). An unreadable command line doesn't match.</summary>
+    internal static bool IsDaemon(string? commandLine) => commandLine is not null &&
+        System.Text.RegularExpressions.Regex.IsMatch(commandLine, @"\sdaemon\s+run(\s|$)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     /// <summary>Every running claude.exe's command line, by pid (WMI); empty when it can't be read, so nothing is ever excused by
     /// a command line that wasn't actually seen.</summary>
