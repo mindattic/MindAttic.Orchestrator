@@ -76,6 +76,21 @@ public sealed class LoginPickerTests
         Assert.That(Picker.Pick(Now).Account?.Email, Is.EqualTo("b@example.com"));
     }
 
+    /// <summary>M.ORCH-T2115: a locked login (<see cref="MindAttic.Orchestrator.Budget.LoginLocks"/>, M.ORCH-T2108) is left out of <see cref="AccountDirs.SignedIn"/>
+    /// exactly as a disabled member's is, so neither <see cref="LoginPicker.Pick"/> nor <see cref="LoginPicker.ForNewTab"/> ever
+    /// picks it, even with the most headroom.</summary>
+    [Test]
+    public void A_locked_login_is_never_picked_even_with_the_most_headroom()
+    {
+        Account("a@example.com", fiveHour: 60, week: 10);
+        Account("b@example.com", fiveHour: 10, week: 30);
+        var locked = new AccountDirs(Path.Combine(dir, ".claude-accounts"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"))
+            { Locked = () => new HashSet<string> { "b@example.com" } };
+        var picker = new LoginPicker(locked, () => live) { ApiBilling = () => apiBilling };
+        Assert.That(picker.Pick(Now).Account?.Email, Is.EqualTo("a@example.com"), "b has far more headroom but is locked out");
+        Assert.That(picker.ForNewTab("Claude", autoLogin: true, Now, out _)?.Email, Is.EqualTo("a@example.com"));
+    }
+
     [Test]
     public void An_orgs_tab_is_picked_only_among_its_own_members_logins_else_it_waits()
     {
