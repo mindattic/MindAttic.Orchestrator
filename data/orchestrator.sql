@@ -31515,10 +31515,10 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 2.1945,
-      "Unhealthy": 1,
-      "Reason": "p10 of 360 readings is 2.31 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T13:55:30.2731887\u002B00:00",
+      "Degraded": 3.4105,
+      "Unhealthy": 1.4104999999999999,
+      "Reason": "p10 of 360 readings is 3.59 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T14:06:53.7518183\u002B00:00",
       "Basis": 360
     }
   },
@@ -32638,6 +32638,105 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 2.1945,
       "ToUnhealthy": 1,
       "Reason": "p10 of 360 readings is 2.31 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T13:58:33.2395656\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.1945,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.2135,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.33 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T13:59:52.6451654\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.2135,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.2515,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.37 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T14:01:38.9535655\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.2515,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.3655,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.49 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T14:02:17.3537906\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.3655,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.413,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.54 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T14:02:52.1227133\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.413,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.7929999999999997,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.94 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T14:03:30.872959\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.7929999999999997,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.8499999999999996,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 3 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T14:04:21.3431906\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.8499999999999996,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.9259999999999997,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 3.08 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T14:04:59.0276242\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.9259999999999997,
+      "FromUnhealthy": 1,
+      "ToDegraded": 3.1635,
+      "ToUnhealthy": 1.1635,
+      "Reason": "p10 of 360 readings is 3.33 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T14:05:33.2426189\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.1635,
+      "FromUnhealthy": 1.1635,
+      "ToDegraded": 3.2775,
+      "ToUnhealthy": 1.2774999999999999,
+      "Reason": "p10 of 360 readings is 3.45 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T14:06:14.4872456\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.2775,
+      "FromUnhealthy": 1.2774999999999999,
+      "ToDegraded": 3.3249999999999997,
+      "ToUnhealthy": 1.3249999999999997,
+      "Reason": "p10 of 360 readings is 3.5 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T14:06:53.7518183\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.3249999999999997,
+      "FromUnhealthy": 1.3249999999999997,
+      "ToDegraded": 3.4105,
+      "ToUnhealthy": 1.4104999999999999,
+      "Reason": "p10 of 360 readings is 3.59 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -32892,8 +32991,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "1c7df6f3921eacd91dfe23432fab52d973ed45ab",
-    "Green": "1c7df6f3921eacd91dfe23432fab52d973ed45ab"
+    "Tested": "cfaecb9ea688b222df2a596d7e9f53ede78e2145",
+    "Green": "cfaecb9ea688b222df2a596d7e9f53ede78e2145"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
@@ -33168,8 +33267,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "1c7df6f3921eacd91dfe23432fab52d973ed45ab",
-    "Green": "1c7df6f3921eacd91dfe23432fab52d973ed45ab"
+    "Tested": "cfaecb9ea688b222df2a596d7e9f53ede78e2145",
+    "Green": "cfaecb9ea688b222df2a596d7e9f53ede78e2145"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
