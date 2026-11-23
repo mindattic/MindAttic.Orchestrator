@@ -18,14 +18,24 @@ public sealed class CutoffAlertsTests
         new(new(five, Now.AddHours(2)), new(week, Now.AddDays(3)), Now);
 
     [Test]
-    public void A_crossing_is_reported_once_and_names_org_allow_and_org_limit()
+    public void A_crossing_is_reported_once_and_names_org_unlock_and_org_limit()
     {
         var alerts = new CutoffAlerts(new JsonStore(temps.New()));
         var first = alerts.Check(Erin, "Erin", Usage(91, 50), 90, 98, false, Now);
         Assert.That(first, Has.Count.EqualTo(1));
         Assert.That(first[0].Weekly, Is.True);
-        Assert.That(first[0].Text, Does.Contain("org allow ohleo199").And.Contain("org limit ohleo199"));
+        Assert.That(first[0].Text, Does.Contain("org unlock ohleo199").And.Contain("org limit ohleo199"));
         Assert.That(alerts.Check(Erin, "Erin", Usage(95, 50), 90, 98, false, Now.AddMinutes(1)), Is.Empty);
+    }
+
+    [Test]
+    public void The_weekly_crossing_text_says_locked_and_how_to_unlock_it()
+    {
+        var alerts = new CutoffAlerts(null);
+        var first = alerts.Check(Erin, "Erin", Usage(91, 50), 90, 98, false, Now);
+        Assert.That(first[0].Text, Is.EqualTo(
+            "Erin reached its weekly cutoff (91% of the week, cutoff 90%) and is now locked: right-click Unlock, or " +
+            "orchestrator org unlock ohleo199; to change the cutoff: orchestrator org limit ohleo199 --weekly <pct>."));
     }
 
     [Test]

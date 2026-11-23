@@ -42,8 +42,8 @@ public sealed class CutoffAlerts(JsonStore? store)
         var who = email.IndexOf('@') is > 0 and var at ? email[..at] : email;
         if (!allowedPastWeek && ReportedUsage.Usable(usage?.Week, nowUtc) is { } week && week.Percent >= weeklyCutoff && Fresh(email, "week", week.ResetUtc))
             found.Add(new(email, name, true,
-                $"{name} reached its weekly cutoff ({Pct(week.Percent)}% of the week, cutoff {weeklyCutoff}%) and is cut off until its reset at " +
-                $"{week.ResetUtc.ToLocalTime():ddd h:mm tt}. To let it keep going: orchestrator org allow {who}; to change the cutoff: orchestrator org limit {who} --weekly <pct>."));
+                $"{name} reached its weekly cutoff ({Pct(week.Percent)}% of the week, cutoff {weeklyCutoff}%) and is now locked: right-click Unlock, or " +
+                $"orchestrator org unlock {who}; to change the cutoff: orchestrator org limit {who} --weekly <pct>."));
         if (ReportedUsage.Usable(usage?.FiveHour, nowUtc) is { } five && five.Percent >= fiveHourCutoff && Fresh(email, "5h", five.ResetUtc))
             found.Add(new(email, name, false,
                 $"{name} reached its 5-hour cutoff ({Pct(five.Percent)}% of the window, cutoff {fiveHourCutoff}%) and is cut off until the window resets at " +
