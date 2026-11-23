@@ -76,7 +76,6 @@ public sealed partial class MainViewModel
             t.Terminals.RefreshLast(); // a pane moved between logins (M.ORCH-T1955)
             t.Raise(nameof(ShowsLauncherPlaceholder));
             t.Raise(nameof(ShowsGeneralPromptPlaceholder));
-            t.Raise(nameof(LauncherPlaceholderContinues));
         }
         ShowChosenPane();
     }
@@ -93,9 +92,6 @@ public sealed partial class MainViewModel
     /// has none open. A merely disconnected login is eligible (M.ORCH-T1959) and gets a real one instead of this stand-in.</summary>
     public bool ShowsGeneralPromptPlaceholder => IsPersonTab && !tab.IsApiKey && ScopeEmail is not null && Root.autoOpenGeneralPrompts
         && !EligibleForGeneralPrompt && !Terminals.Panes.Any(p => (!p.Ended || p.Parked) && IsGeneralPromptOf(p, AccountDirs.Normalize(ScopeEmail), Root.WorkspaceRoot));
-
-    /// <summary>The Launcher stand-in's spine runs on below it: into the General Prompt stand-in or the panes (M.ORCH-T1957).</summary>
-    public bool LauncherPlaceholderContinues => ShowsGeneralPromptPlaceholder || Terminals.HasPanes;
 
     /// <summary>The one terminal on screen is the shown person's chosen one; every other is hidden.</summary>
     private void ShowChosenPane()

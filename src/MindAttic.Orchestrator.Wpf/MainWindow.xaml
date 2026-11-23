@@ -511,13 +511,12 @@
                                     Visibility="{Binding IsTabSelected, Converter={StaticResource Visible}}" />
                             <!-- The expand/collapse chevron alone (M.ORCH-T1759): its own click is marked handled so it never
                                  also selects this login via the header's handler above it in the visual tree. Collapsed, not
-                                 merely hidden, on a login with nothing to expand into (M.ORCH-T1824, e.g. the API key's row,
-                                 which has no CLI/Launcher panes of its own): Terminals.HasPanes, so the row never offers to
-                                 open a node with no children, and its Auto column drops to 0 width, letting the name column
-                                 shift left to fill the gap rather than leaving a blank chevron-sized hole. -->
+                                 merely hidden, on a login with nothing to expand into (M.ORCH-T1824): every person's node
+                                 always has at least its "+ Add" leaf (LoginTreeAddLeaf, M.ORCH-T2104), so IsPersonTab; otherwise
+                                 its Auto column drops to 0 width, letting the name column shift left rather than leaving a hole. -->
                             <TextBlock Grid.Column="1" Text="{Binding IsExpanded, Converter={x:Static vm:Converters.Chevron}}" Width="14"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"
-                                       Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}"
+                                       Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}"
                                        MouseLeftButtonDown="LoginTreeChevron_MouseLeftButtonDown" />
                             <!-- The name has its own column and trims with an ellipsis (M.ORCH-T1812): it used to share
                                  one with the usage bars, so in a narrow sidebar the two drew over each other. -->
@@ -568,10 +567,8 @@
                             <TextBlock Grid.Column="3" Text="{Binding ApiSpendFace}" Style="{StaticResource MaMutedText}" FontSize="11" VerticalAlignment="Center"
                                        HorizontalAlignment="Right" Margin="{StaticResource SpaceLS}"
                                        Visibility="{Binding ApiSpendFace, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                            <!-- The same size as a row's own ellipsis and Close X below, and in the X's column (M.ORCH-T1812);
-                                 "+ Add" (M.ORCH-T1964) joins it here, at the end of the row, opening the Open Project window
-                                 (General Prompt, Run Launcher, or a project from the tree) with one click instead of hovering
-                                 Open Project's own cascading submenu in the "⋯" menu. Disabled, not hidden, while signed out. -->
+                            <!-- The same size as a row's own ellipsis and Close X below, and in the X's column (M.ORCH-T1812).
+                                 "+ Add" is no longer on this row: it is the node's own last child (LoginTreeAddLeaf, M.ORCH-T2104). -->
                             <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center"
                                         Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}">
                                 <Button x:Name="LoginTreeMoreButton" Style="{StaticResource MaToolButton}" Content="&#xE712;"
@@ -579,18 +576,12 @@
                                         Margin="{StaticResource SpaceLS}" Click="LoginTreeMoreButton_Click"
                                         mc:MaCallout.ToolTip="Open Project, Run Launcher, User Settings, Change Color"
                                         AutomationProperties.Name="{Binding TabTitle, StringFormat='More actions for {0}'}" />
-                                <Button x:Name="LoginTreeAddButton" Style="{StaticResource MaToolButton}" Content="+ Add" FontFamily="Segoe UI"
-                                        Width="46" Height="18" FontSize="9" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}"
-                                        Click="AddTabButton_Click" IsEnabled="{Binding IsTabSignedIn}" ToolTipService.ShowOnDisabled="True"
-                                        mc:MaCallout.ToolTip="Open a CLI: General Prompt, Run Launcher, or a project from the tree"
-                                        AutomationProperties.Name="{Binding TabTitle, StringFormat='Open a new CLI for {0}'}" />
                             </StackPanel>
                         </Grid>
                         <!-- A signed-out login's Launcher stand-in (M.ORCH-T1950): every org member's node stays in the
                              tree for good, and keeps its Launcher child (M.ORCH-T1886), but a Launcher can't run on a login
                              that isn't signed in, so this disabled row takes its place, first like the Launcher itself
-                             (SyncTo sorts it first). Its elbow is an "L" when it's the node's only child, else a tee into
-                             the panes below it (whose own last row keeps the "L", RefreshLast). -->
+                             (SyncTo sorts it first). Always a tee: the "+ Add" leaf (M.ORCH-T2104) is the node's last child. -->
                         <Grid x:Name="LoginTreeLauncherPlaceholder" Margin="0,2,0,-2" Opacity="0.65"
                               Visibility="{Binding IsExpanded, Converter={StaticResource Visible}}">
                             <Grid Visibility="{Binding ShowsLauncherPlaceholder, Converter={StaticResource Visible}}">
@@ -606,8 +597,7 @@
                                     <Path Grid.Row="0" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Stretch"
                                           Fill="{DynamicResource MaMuted}" />
                                     <Path Grid.Row="1" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Stretch"
-                                          Fill="{DynamicResource MaMuted}"
-                                          Visibility="{Binding LauncherPlaceholderContinues, Converter={StaticResource Visible}}" />
+                                          Fill="{DynamicResource MaMuted}" />
                                     <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="4,0,0,0"
                                           Fill="{DynamicResource MaMuted}" />
                                 </Grid>
@@ -625,7 +615,7 @@
                         </Grid>
                         <!-- A login not signed in as itself (signed out, or its folder borrowed by another account) keeps no
                              General Prompt (M.ORCH-T1957), so this disabled row stands in for it under the Launcher's. Its
-                             spine runs on below only when panes follow (whose last row keeps the "L", RefreshLast). -->
+                             spine always runs on below, into the panes and the "+ Add" leaf (M.ORCH-T2104). -->
                         <Grid x:Name="LoginTreeGeneralPromptPlaceholder" Margin="0,2,0,-2" Opacity="0.65"
                               Visibility="{Binding IsExpanded, Converter={StaticResource Visible}}">
                             <Grid Visibility="{Binding ShowsGeneralPromptPlaceholder, Converter={StaticResource Visible}}">
@@ -641,8 +631,7 @@
                                     <Path Grid.Row="0" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Stretch"
                                           Fill="{DynamicResource MaMuted}" />
                                     <Path Grid.Row="1" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Stretch"
-                                          Fill="{DynamicResource MaMuted}"
-                                          Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}" />
+                                          Fill="{DynamicResource MaMuted}" />
                                     <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="4,0,0,0"
                                           Fill="{DynamicResource MaMuted}" />
                                 </Grid>
@@ -743,7 +732,7 @@
                                              at every sibling boundary, so the breathing room moved onto TreePaneRow below
                                              instead - only the row's actual content insets now, while this connector column and
                                              the selection highlight both run edge-to-edge, sibling rows' spines touching to read
-                                             as one continuous line, its last segment an "L" (IsLastOfPerson below, kept current on every add, remove, move and drag, M.ORCH-T1857), never a "T". -->
+                                             as one continuous line. Every pane row is a tee: the node's last child, and so its one "L", is always the "+ Add" leaf below (LoginTreeAddLeaf, M.ORCH-T2104). -->
                                         <!-- Where they sit (M.ORCH-T1812, the owner's mockup): the list starts where the header's
                                              chevron starts (right after the login's stripe), this column is as wide as the header's chevron (14) and
                                              the spine runs down its middle, so it drops straight from the chevron; the tee
@@ -766,8 +755,7 @@
                                             <Path Grid.Row="0" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Stretch"
                                                   Fill="{DynamicResource MaMuted}" />
                                             <Path Grid.Row="1" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Stretch"
-                                                  Fill="{DynamicResource MaMuted}"
-                                                  Visibility="{Binding IsLastOfPerson, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                                                  Fill="{DynamicResource MaMuted}" />
                                             <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="4,0,0,0"
                                                   Fill="{DynamicResource MaMuted}" />
                                         </Grid>
@@ -872,10 +860,39 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <!-- "+ Add" (M.ORCH-T2104, owner: "a child node off the user, that way you always have a expandable
+                             collapsible User root"): always this node's last child, so its elbow is the "L" (spine's top half
+                             and tee only) and every pane row above it keeps its tee. Opens the Add window for this login
+                             (AddTabButton_Click). Its -2 top margin closes LoginTreeChildren's bottom gap so the spine stays
+                             unbroken. Disabled, not hidden, while signed out. -->
+                        <Grid x:Name="LoginTreeAddLeaf" Margin="0,-2,0,2"
+                              Visibility="{Binding IsExpanded, Converter={StaticResource Visible}}">
+                            <Grid Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="14" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid Grid.Column="0" IsHitTestVisible="False" Margin="0,0,-6,0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <Path Grid.Row="0" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Width="1" HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Stretch"
+                                          Fill="{DynamicResource MaMuted}" />
+                                    <Path Grid.RowSpan="2" Data="M0,0 L1,0 L1,1 L0,1 Z" Stretch="Fill" Height="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="4,0,0,0"
+                                          Fill="{DynamicResource MaMuted}" />
+                                </Grid>
+                                <Button Grid.Column="1" Style="{StaticResource MaToolButton}" Content="+ Add" FontFamily="Segoe UI"
+                                        HorizontalAlignment="Left" Height="20" FontSize="11" Margin="6,2,0,2" Padding="6,0"
+                                        Click="AddTabButton_Click" IsEnabled="{Binding IsTabSignedIn}" ToolTipService.ShowOnDisabled="True"
+                                        mc:MaCallout.ToolTip="Open a CLI: a repo from the list, or a Launcher"
+                                        AutomationProperties.Name="{Binding TabTitle, StringFormat='Open a new CLI for {0}'}" />
+                            </Grid>
+                        </Grid>
                         <!-- This login's Agents panel (M.ORCH-T1747, roadmap Phase 1): each agent the agents table has on it
                              (AgentBook, M.ORCH-T1744; retired ones left out), its role, then its state, the unit it's on and
                              its last heartbeat. Read with the refresh and a pushed snapshot's figures, never polled. Below the
-                             panes and off their spine, so the last pane's elbow stays an "L". Shown only while expanded and
+                             "+ Add" leaf and off their spine, so that leaf's elbow stays an "L". Shown only while expanded and
                              the login has an agent. -->
                         <Grid x:Name="LoginTreeAgents" Margin="14,2,0,2" Visibility="{Binding IsExpanded, Converter={StaticResource Visible}}">
                             <StackPanel Visibility="{Binding HasAgents, Converter={StaticResource Visible}}"
