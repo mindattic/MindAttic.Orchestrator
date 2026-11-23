@@ -31514,18 +31514,18 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 2.3085,
+      "Degraded": 2.242,
       "Unhealthy": 1,
-      "Reason": "p10 of 295 readings is 2.43 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T09:28:00.0962219\u002B00:00",
-      "Basis": 295
+      "Reason": "p10 of 310 readings is 2.36 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T09:40:07.1896024\u002B00:00",
+      "Basis": 310
     },
     "CommitPercent": {
-      "Degraded": 96.81,
+      "Degraded": 96.28500000000001,
       "Unhealthy": 97,
-      "Reason": "p90 of 295 readings is 92.2 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-23T09:28:00.0962219\u002B00:00",
-      "Basis": 295
+      "Reason": "p90 of 310 readings is 91.7 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-23T09:40:07.1896024\u002B00:00",
+      "Basis": 310
     }
   },
   "Changes": [
@@ -32302,6 +32302,42 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 2.3085,
       "ToUnhealthy": 1,
       "Reason": "p10 of 295 readings is 2.43 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:31:41.2931542\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.3085,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.2895,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 299 readings is 2.41 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:32:43.7454181\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.2895,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.2515,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 300 readings is 2.37 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:32:43.7454181\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 96.81,
+      "FromUnhealthy": 97,
+      "ToDegraded": 96.39,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 300 readings is 91.8 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:40:07.1896024\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 96.39,
+      "FromUnhealthy": 97,
+      "ToDegraded": 96.28500000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 310 readings is 91.7 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
@@ -32556,8 +32592,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "5e7f98ba7db7292ae18c5864c7ca6d3001809e17",
-    "Green": "5e7f98ba7db7292ae18c5864c7ca6d3001809e17"
+    "Tested": "f56876437450ce3c518b4334d8ed64d51db9a684",
+    "Green": "f56876437450ce3c518b4334d8ed64d51db9a684"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
