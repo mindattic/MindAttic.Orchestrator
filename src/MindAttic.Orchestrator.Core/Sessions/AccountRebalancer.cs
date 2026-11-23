@@ -367,6 +367,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     /// <summary>
     /// Each login that reached its own weekly or 5-hour cutoff gets one urgent alert and one Psst text to the owner, once per
     /// crossing (M.ORCH-T742): it's cut off, and the owner decides (<c>org allow</c> for the week, <c>org limit</c> to change a cutoff).
+    /// Also auto-locks a login whose week reached its own weekly cutoff (<see cref="LoginLocks.AutoLock"/>, M.ORCH-T2126), whatever
+    /// an active <c>org allow</c> says: run every tick, even with rebalancing itself off.
     /// </summary>
     private void CheckCutoffs(IReadOnlyList<AccountDir> signedIn, Func<string?, AccountDir?> dirOf, Func<AccountDir, ReportedUsage?> usageOf,
         Lazy<ReportedUsage?> globalUsage, string? globalEmail, IReadOnlyList<UsageCutoff> cutoffs, IReadOnlyList<WeeklyAllowance> allowed,
@@ -378,7 +380,11 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             logins.Add((g, mover.NameFor("", g), () => globalUsage.Value));
         foreach (var (email, name, usage) in logins)
         {
-            var crossed = cutoffAlerts.Check(email, name, usage(), UsageCutoffs.WeeklyFor(cutoffs, email, settings.WeeklyStopPercent),
+            var reading = usage();
+            var weeklyCutoff = UsageCutoffs.WeeklyFor(cutoffs, email, settings.WeeklyStopPercent);
+            // Fires at the cutoff whatever an active org allow says (M.ORCH-T2126): only this login's own Unlock defers it.
+            if (Store is not null) LoginLocks.AutoLock(Store, email, name, reading, weeklyCutoff, nowUtc);
+            var crossed = cutoffAlerts.Check(email, name, reading, weeklyCutoff,
                 UsageCutoffs.FiveHourFor(cutoffs, email, settings.PaceTargetPercent),
                 WeeklyAllowances.For(allowed, email, nowUtc) is not null, nowUtc);
             foreach (var c in crossed)

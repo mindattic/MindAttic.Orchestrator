@@ -149,6 +149,18 @@ public static class LoginLocks
         return result;
     }
 
+    /// <summary>
+    /// Locks <paramref name="email"/>'s login with <see cref="ReasonWeeklyCutoff"/> when <paramref name="usage"/>'s week is at or
+    /// past <paramref name="weeklyCutoff"/>, keyed to that week's reset; a no-op when nothing's usable yet, it's already
+    /// locked, or that same weekly window was already unlocked (<see cref="Lock"/>). Never unlocks anything, not even at the
+    /// reset: only an explicit Unlock does. Resolved (epic M.ORCH-T2108, 2026-11-23): fires regardless of any active
+    /// <c>org allow</c> for <paramref name="email"/> — reaching 100% of the week must stay impossible no matter what.
+    /// </summary>
+    public static LoginLock? AutoLock(JsonStore store, string email, string name, ReportedUsage? usage, int weeklyCutoff, DateTime nowUtc) =>
+        ReportedUsage.Usable(usage?.Week, nowUtc) is { } week && week.Percent >= weeklyCutoff
+            ? Lock(store, email, name, ReasonWeeklyCutoff, "its weekly cutoff", week.ResetUtc, nowUtc)
+            : null;
+
     /// <summary>Unlocks <paramref name="email"/>'s login; logged. A <see cref="ReasonWeeklyCutoff"/> lock's weekly reset is
     /// recorded in <see cref="LoginLockBook.UnlockedInWeek"/>, so the same window's cutoff doesn't re-lock it. The line said,
     /// or null when it wasn't locked.</summary>

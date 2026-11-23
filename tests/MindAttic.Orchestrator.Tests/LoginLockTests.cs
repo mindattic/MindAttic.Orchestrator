@@ -143,4 +143,58 @@ public sealed class LoginLockTests
             Assert.That(LoginLocks.Load(store), Is.Empty, "held right now: defaults rather than thrown");
         }
     }
+
+    private static ReportedUsage Week(double percent, DateTime resetUtc) => new(null, new ReportedWindow(percent, resetUtc), Now);
+
+    [Test]
+    public void AutoLock_fires_at_the_weekly_cutoff()
+    {
+        var store = new JsonStore(temps.New());
+        Assert.That(LoginLocks.AutoLock(store, Erin, "Erin", Week(89, WeekReset), 90, Now), Is.Null, "under the cutoff: nothing to do");
+        Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), Erin), Is.False);
+
+        var locked = LoginLocks.AutoLock(store, Erin, "Erin", Week(90, WeekReset), 90, Now);
+        Assert.That(locked, Is.Not.Null);
+        Assert.That((locked!.Email, locked.Reason, locked.WeekResetUtc), Is.EqualTo((Erin, LoginLocks.ReasonWeeklyCutoff, (DateTime?)WeekReset)));
+        Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), Erin), Is.True);
+    }
+
+    [Test]
+    public void AutoLock_fires_at_the_cutoff_whatever_an_active_org_allow_says()
+    {
+        // The epic's resolved decision (2026-11-23): AutoLock takes no allowance parameter at all, so an org allow in force for
+        // this same login makes no difference to it.
+        var store = new JsonStore(temps.New());
+        WeeklyAllowances.Allow(store, Erin, "Erin", Now.AddDays(1), WeekReset, 90, Now);
+        Assert.That(WeeklyAllowances.For(WeeklyAllowances.Active(store, Now), Erin, Now), Is.Not.Null, "the allowance is in force");
+
+        var locked = LoginLocks.AutoLock(store, Erin, "Erin", Week(95, WeekReset), 90, Now);
+        Assert.That(locked, Is.Not.Null, "a lock always wins over an active org allow");
+        Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), Erin), Is.True);
+    }
+
+    [Test]
+    public void AutoLock_does_not_relock_after_an_explicit_unlock_within_the_same_week()
+    {
+        var store = new JsonStore(temps.New());
+        Assert.That(LoginLocks.AutoLock(store, Erin, "Erin", Week(92, WeekReset), 90, Now), Is.Not.Null);
+        LoginLocks.Unlock(store, Erin, "Erin", "you", Now.AddMinutes(1));
+        Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), Erin), Is.False);
+
+        var relocked = LoginLocks.AutoLock(store, Erin, "Erin", Week(96, WeekReset), 90, Now.AddHours(1));
+        Assert.That(relocked, Is.Null, "unlocked in this same weekly window: the cutoff doesn't re-lock it before the reset");
+        Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), Erin), Is.False);
+    }
+
+    [Test]
+    public void AutoLock_leaves_the_login_locked_after_the_weekly_reset_passes()
+    {
+        var store = new JsonStore(temps.New());
+        Assert.That(LoginLocks.AutoLock(store, Erin, "Erin", Week(93, WeekReset), 90, Now), Is.Not.Null);
+
+        // Past the reset, Claude's own meter would report a fresh, low week; AutoLock never unlocks, not even then.
+        var nextReset = WeekReset.AddDays(7);
+        Assert.That(LoginLocks.AutoLock(store, Erin, "Erin", Week(2, nextReset), 90, WeekReset.AddMinutes(1)), Is.Null, "still locked: a no-op");
+        Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), Erin), Is.True, "only an explicit Unlock clears it");
+    }
 }
