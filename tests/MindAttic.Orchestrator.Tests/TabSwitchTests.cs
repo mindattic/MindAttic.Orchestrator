@@ -42,8 +42,9 @@ public sealed class TabSwitchTests
         // M.ORCH-T763: the Orchestrator shows only what's running; Tickets Desktop owns the Repos, the Queue and the audit. The
         // Current work agent card board is gone too (M.ORCH-T837): each CLI is its own terminal tab.
         var doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        Assert.That(doc.Descendants().Any(e => (string?)e.Attribute("ItemsSource") == "{Binding Agents}"), Is.False, "no agent board");
-        Assert.That(typeof(MainViewModel).GetProperty("Agents"), Is.Null);
+        // The Agents panel under each login in the tree (M.ORCH-T1747) is the one place Agents is bound; it is not a board.
+        Assert.That(doc.Descendants().Where(e => (string?)e.Attribute("ItemsSource") == "{Binding Agents}")
+            .All(e => e.Ancestors().Any(a => (string?)a.Attribute(X + "Name") == "LoginTreeAgents")), Is.True, "no agent board outside the login tree's Agents panel");
         foreach (var gone in new[] { "AgentCards", "WorkHeading", "ReposBody", "DetailPane", "QueueView", "QueueList", "AuditBody", "AccountsBody", "LoginCardList", "SearchBox" })
             Assert.That(doc.Descendants().Any(e => (string?)e.Attribute(X + "Name") == gone), Is.False, gone);
         Assert.That(doc.Descendants().Any(e => (string?)e.Attribute("ItemsSource") == "{Binding ViewChoices}"), Is.False, "no view pills");
