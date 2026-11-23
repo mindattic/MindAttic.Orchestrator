@@ -33055,8 +33055,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "65892b256548b5de20c6947ccf8dd080d7c900f2",
-    "Green": "65892b256548b5de20c6947ccf8dd080d7c900f2"
+    "Tested": "90f8319f7ffa9a7763a55c82ab693da49de8fe67",
+    "Green": "90f8319f7ffa9a7763a55c82ab693da49de8fe67"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
@@ -33331,8 +33331,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "65892b256548b5de20c6947ccf8dd080d7c900f2",
-    "Green": "65892b256548b5de20c6947ccf8dd080d7c900f2"
+    "Tested": "90f8319f7ffa9a7763a55c82ab693da49de8fe67",
+    "Green": "90f8319f7ffa9a7763a55c82ab693da49de8fe67"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
@@ -35370,8 +35370,9 @@ INSERT INTO state (name, value) VALUES ('reminders', '[
     "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
     "DueUtc": "2026-11-23T15:00:00Z",
     "CreatedUtc": "2026-11-22T22:04:21.2351738Z",
+    "SentUtc": "2026-11-23T15:00:26.4123698Z",
     "Failures": 0,
-    "Pending": true,
+    "Pending": false,
     "ToLabel": "you",
     "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
   },
