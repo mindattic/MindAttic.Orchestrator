@@ -16,10 +16,9 @@ namespace MindAttic.Orchestrator.Wpf;
 /// The tree itself is unchanged (dot-named projects nested on '.', M.ORCH-T1793) other than always showing fully
 /// expanded, since picking a project closes the window anyway; a branch is a plain label, never a pick itself. A
 /// leaf's own right-click-to-commit (M.ORCH-T1588) came along with it.
-/// <para>Provider and model (M.ORCH-T2041): a provider combo (the Launcher's own, <see cref="LauncherProviders"/>:
-/// Claude, Codex, Gemini, Kimi) and a model combo above the picks, so General Prompt or a project opens on the provider
-/// chosen rather than always Claude. A model changed here is written into that provider's Launcher RunCommand (the
-/// Launcher's <c>host</c> has no <c>--model</c> of its own), exactly as the Launcher's own Settings model picker does.</para>
+/// <para>Provider and model (M.ORCH-T2041): General Prompt or a project opens on <see cref="ProviderKey"/>, one of the
+/// Launcher's own providers (<see cref="LauncherProviders"/>: Claude, Codex, Gemini, Kimi), rather than always Claude.
+/// Both pickers live under the menu bar's Settings menu (M.ORCH-T2106), not here.</para>
 /// <para>Run Command (M.ORCH-T2043): the Launcher's project "Run Command" (its ProjectActionMenu). Ticked, a picked project
 /// runs the command in the box below the provider row in its folder as a hosted tab, rather than opening an agent CLI there:
 /// the project's own Run Command from the Launcher's settings fills the box when it's picked, and any other command line can
@@ -29,8 +28,6 @@ internal sealed class OpenProjectWindow : Window
 {
     private readonly List<CheckBox> picks = [];
     private readonly Button add = new() { Content = "_Add", IsDefault = true, IsEnabled = false };
-    private readonly ComboBox providerBox = new() { MinWidth = 150 };
-    private readonly ComboBox modelBox = new() { MinWidth = 200, IsEditable = true };
     private readonly CheckBox runMode = new() { Content = "_Run Command" };
     private readonly TextBox commandBox = new() { MinWidth = 300, IsEnabled = false };
     private readonly List<CheckBox> nonProjects = [];
@@ -41,8 +38,8 @@ internal sealed class OpenProjectWindow : Window
     private string prefilled = "";
     private bool settingAll;
 
-    /// <summary>The model combo's own "no --model" entry: the CLI's default.</summary>
-    private const string CliDefault = "(CLI default)";
+    /// <summary>The Launcher provider key General Prompt and projects open on: the Settings menu's Provider pick, this run.</summary>
+    internal static string ProviderKey { get; set; } = MindAttic.Orchestrator.Providers.Claude;
 
     internal OpenProjectWindow(IReadOnlyList<ProjectNode> tree, Action<string> generalPrompt, Action runLauncher, Action<RosterProject, string> openProject,
         Action<RosterProject, string> runCommand)
@@ -97,10 +94,8 @@ internal sealed class OpenProjectWindow : Window
                 runCommand(project, line);
                 return;
             }
-            var kind = (providerBox.SelectedItem as ComboBoxItem)?.Tag as LauncherProviders.Provider;
-            if (kind is not null) ApplyModel(kind);
             Close();
-            go(kind?.Key ?? MindAttic.Orchestrator.Providers.Claude);
+            go(ProviderKey);
         };
         var cancel = new Button { Content = "_Cancel", IsCancel = true };
         cancel.SetResourceReference(StyleProperty, "MaButton");
@@ -110,7 +105,6 @@ internal sealed class OpenProjectWindow : Window
         prompt.SetResourceReference(StyleProperty, "MaMutedText");
         prompt.SetResourceReference(MarginProperty, "SpaceBXS");
 
-        var agent = AgentRow();
         var run = RunRow();
 
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
@@ -121,11 +115,9 @@ internal sealed class OpenProjectWindow : Window
         var panel = new DockPanel();
         panel.SetResourceReference(MarginProperty, "SpaceL");
         DockPanel.SetDock(prompt, Dock.Top);
-        DockPanel.SetDock(agent, Dock.Top);
         DockPanel.SetDock(run, Dock.Top);
         DockPanel.SetDock(footer, Dock.Bottom);
         panel.Children.Add(prompt);
-        panel.Children.Add(agent);
         panel.Children.Add(run);
         panel.Children.Add(footer);
         panel.Children.Add(scroll);
@@ -135,25 +127,8 @@ internal sealed class OpenProjectWindow : Window
         Loaded += (_, _) => picks.FirstOrDefault()?.Focus();
     }
 
-    /// <summary>The Provider and Model combos, filled from the Launcher's providers with the first (Claude) picked.</summary>
-    private FrameworkElement AgentRow()
-    {
-        foreach (var p in LauncherProviders.All())
-            providerBox.Items.Add(new ComboBoxItem { Content = p.Name == p.Key ? p.Key : $"{p.Key} ({p.Name})", Tag = p });
-        providerBox.SelectionChanged += (_, _) => FillModels();
-        providerBox.ToolTip = "Which agent CLI the pick opens";
-        modelBox.ToolTip = "The model it runs: saved to that provider's Launcher command, as the Launcher's own Settings does";
-        if (providerBox.Items.Count > 0) providerBox.SelectedIndex = 0;
-
-        var row = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
-        row.Children.Add(Labeled("Provider", providerBox));
-        row.Children.Add(Labeled("Model", modelBox));
-        return row;
-    }
-
-    /// <summary>The Run Command toggle and its command line (M.ORCH-T2043). Ticking it greys the provider and model (a
-    /// command isn't an agent CLI), unpicks and greys General Prompt and Launcher (not projects), and fills the box from
-    /// the project picked, if any.</summary>
+    /// <summary>The Run Command toggle and its command line (M.ORCH-T2043). Ticking it unpicks and greys General Prompt and
+    /// Launcher (not projects), and fills the box from the project picked, if any.</summary>
     private FrameworkElement RunRow()
     {
         runMode.SetResourceReference(StyleProperty, "MaCheck");
@@ -167,7 +142,6 @@ internal sealed class OpenProjectWindow : Window
         {
             var on = runMode.IsChecked == true;
             commandBox.IsEnabled = on;
-            providerBox.IsEnabled = modelBox.IsEnabled = !on;
             foreach (var b in nonProjects)
             {
                 if (on) b.IsChecked = false;
@@ -199,36 +173,6 @@ internal sealed class OpenProjectWindow : Window
     /// <summary>Add is live for a pick, and in Run Command mode only for a project with a command to run.</summary>
     private void UpdateAdd() =>
         add.IsEnabled = picked is not null && (runMode.IsChecked != true || (pickedProject is not null && commandBox.Text.Trim().Length > 0));
-
-    private static FrameworkElement Labeled(string text, Control box)
-    {
-        var label = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) };
-        label.SetResourceReference(StyleProperty, "MaMutedText");
-        var pair = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 16, 2) };
-        pair.Children.Add(label);
-        pair.Children.Add(box);
-        return pair;
-    }
-
-    /// <summary>The model combo for the provider picked: its current model (selected), the known ones, and the CLI's default.</summary>
-    private void FillModels()
-    {
-        modelBox.Items.Clear();
-        if ((providerBox.SelectedItem as ComboBoxItem)?.Tag is not LauncherProviders.Provider p) return;
-        foreach (var m in LauncherProviders.ModelsFor(p)) modelBox.Items.Add(m);
-        modelBox.Items.Add(CliDefault);
-        modelBox.Text = p.Model ?? CliDefault;
-    }
-
-    /// <summary>Writes the model chosen into <paramref name="p"/>'s Launcher command when it differs from what's there.</summary>
-    private void ApplyModel(LauncherProviders.Provider p)
-    {
-        var chosen = modelBox.Text?.Trim();
-        var model = string.IsNullOrEmpty(chosen) || chosen == CliDefault ? null : chosen;
-        if (string.Equals(model, p.Model, StringComparison.OrdinalIgnoreCase)) return;
-        if (LauncherProviders.SetModel(p.Key, model) is { } error)
-            OrchestratorLog.For("Dashboard").Warning("Open Project: {Error}", error);
-    }
 
     /// <summary>A single-select row: a check box that behaves like a radio button, ticking it clears every other one,
     /// since the library (MindAttic.Components.Wpf.Theme.xaml) has no radio button style of its own and this is the

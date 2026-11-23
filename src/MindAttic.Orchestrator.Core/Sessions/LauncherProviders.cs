@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 namespace MindAttic.Orchestrator.Sessions;
 
 /// <summary>
-/// The Launcher's agent providers as the Open Project window's provider and model pickers offer them (M.ORCH-T2041):
+/// The Launcher's agent providers as the Settings menu's Provider and Model pickers offer them (M.ORCH-T2041, M.ORCH-T2106):
 /// read straight from MindAttic.Launcher's own settings.json (<c>agentProviders</c>), the way
 /// <see cref="BackgroundAgent.ClaudeCommand"/> already reads its Claude command, rather than a project reference to the
 /// Launcher's exe. Mirrors the Launcher's <c>AgentProviderRegistry</c> (its <c>Defaults</c> when nothing's configured, its

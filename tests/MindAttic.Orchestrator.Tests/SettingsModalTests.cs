@@ -81,6 +81,12 @@ public sealed class SettingsModalTests
         // The cog: Segoe's Settings glyph on the Dashboard menu's Settings item, opening MindAttic Vault.
         Assert.That(dashboard, Does.Contain("MenuCommand(\"\", \"Settings\", model.OpenSettingsCommand)"));
 
+        // Model selection lives under Settings alone (M.ORCH-T2106): its Provider and Model submenus, no combo in the Add modal.
+        var settings = menu[menu.IndexOf("case \"Settings\":", StringComparison.Ordinal)..menu.IndexOf("case \"Launcher\":", StringComparison.Ordinal)];
+        Assert.That(settings, Does.Contain("ProviderMenu(providers)").And.Contain("ModelMenu(providers)"));
+        var add = File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "OpenProjectWindow.cs"));
+        Assert.That(add, Does.Not.Contain("ComboBox"));
+
         // The only openers of the settings: the Dashboard menu's cog and the Settings menu's own first item (M.ORCH-T2024).
         Assert.That(Regex.Matches(menu, @"\.OpenSettingsCommand\b").Count, Is.EqualTo(2));
         Assert.That(doc.Descendants().Any(e => (string?)e.Attribute("Command") == "{Binding OpenSettingsCommand}"), Is.False);
