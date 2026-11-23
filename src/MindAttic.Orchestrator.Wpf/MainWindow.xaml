@@ -196,7 +196,7 @@
                                 Command="{Binding DataContext.OpenTaskDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
                                 mc:MaCallout.ToolTip="Review its whole ticket or task" AutomationProperties.Name="{Binding TicketText, StringFormat='Review {0}'}" />
                     </StackPanel>
-                    <Border Margin="{Binding Indent}">
+                    <StackPanel Margin="{Binding Indent}">
                     <StackPanel Margin="8,6,8,6">
                         <TextBlock FontSize="12" TextTrimming="CharacterEllipsis">
                             <Run Text="{Binding Owner, Mode=OneWay}" Foreground="{Binding OwnerBrush, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" · " /><Run Text="{Binding Kind, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
@@ -206,7 +206,7 @@
                         <TextBlock Text="{Binding Repo}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding Doing}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                    </Border>
+                    </StackPanel>
                 </DockPanel>
             </Border>
         </DataTemplate>

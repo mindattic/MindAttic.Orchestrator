@@ -57,13 +57,17 @@ public sealed class LibraryOnlyXamlTests
                    "(a style would leak into every library control that draws with Path internally), so a one-off icon the " +
                    "library's own glyph set can't safely render (a wrong icon-font codepoint is a blank tofu box) draws its own " +
                    "geometry instead; like TextBlock, its Fill may set no colour but a library token or a binding",
+        ["Polyline"] = "an unstyled sparkline (M.ORCH-T2034): the library has no chart-line control, so the health card draws its readings as " +
+                       "one Polyline; like Path, its Stroke may set no colour but a library token or a binding",
+        ["Rectangle"] = "an unstyled grade tick (M.ORCH-T2034): one small block of the health card's recent-grade strip; like Path, " +
+                        "its Fill may set no colour but a library token or a binding",
     };
 
     /// <summary>Setters an app style may add on top of a library style: behaviour, never looks.
-    /// <c>ToolTipService.InitialShowDelay</c> (M.ORCH-T1536) is timing, not a look - unlike <c>ToolTipService.ShowDuration</c>
+    /// <c>IsEnabled</c> (M.ORCH-T2085) is behaviour: a button that can't act yet. <c>ToolTipService.InitialShowDelay</c> (M.ORCH-T1536) is timing, not a look - unlike <c>ToolTipService.ShowDuration</c>
     /// and <c>ToolTipService.HasDropShadow</c>, which stay banned by <see cref="Every_tooltip_is_the_librarys_never_windows_default"/>
     /// as a tooltip chrome of the app's own.</summary>
-    private static readonly HashSet<string> BehaviourSetters = ["Command", "CommandParameter", "ToolTip", "Visibility", "ToolTipService.InitialShowDelay"];
+    private static readonly HashSet<string> BehaviourSetters = ["Command", "CommandParameter", "ToolTip", "Visibility", "IsEnabled", "ToolTipService.InitialShowDelay"];
 
     /// <summary>A library attached property (e.g. mc:MaCallout.ToolTip, M.ORCH-T1441): the library's own look or behaviour,
     /// so an app style may set it like one of the library type's own properties.</summary>
@@ -143,7 +147,7 @@ public sealed class LibraryOnlyXamlTests
                 if (themeImplicit.Contains(name) && !ImplicitButKeyed.Contains(name)) continue;
                 if (name == "Window" && element == root) continue;
                 if (name == "TextBlock") continue; // Exceptions["TextBlock"]: its colours are checked above
-                if (name == "Path") continue; // Exceptions["Path"]: its Fill is checked above too
+                if (name is "Path" or "Polyline" or "Rectangle") continue; // Exceptions: their Fill / Stroke is checked above too
                 problems.Add($"{Where(element)}: neither a library control nor library-styled");
             }
         }
