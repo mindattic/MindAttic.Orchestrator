@@ -1778,6 +1778,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 14505878);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 24295153);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1228667);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 26859);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'Gadfly', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5416647);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 804957);
 
@@ -33078,8 +33079,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "d3041bdbd4b29d63451d934bbbf980f543ab3de8",
-    "Green": "d3041bdbd4b29d63451d934bbbf980f543ab3de8"
+    "Tested": "19cc658ec3852c415694083cb31371d740e54e85",
+    "Green": "19cc658ec3852c415694083cb31371d740e54e85"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
@@ -33354,8 +33355,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "d3041bdbd4b29d63451d934bbbf980f543ab3de8",
-    "Green": "d3041bdbd4b29d63451d934bbbf980f543ab3de8"
+    "Tested": "19cc658ec3852c415694083cb31371d740e54e85",
+    "Green": "19cc658ec3852c415694083cb31371d740e54e85"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
@@ -35365,7 +35366,8 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|GAD-T665": "2026-11-23T07:35:10.9235307Z",
     "approval|GAD-T666": "2026-11-23T07:35:10.9235307Z",
     "approval|GAD-T667": "2026-11-23T07:35:10.9235307Z",
-    "approval|GAD-T670": "2026-11-23T15:55:52.0573387Z"
+    "approval|GAD-T670": "2026-11-23T15:55:52.0573387Z",
+    "approval|GAD-T688": "2026-11-23T18:56:51.4886963Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
