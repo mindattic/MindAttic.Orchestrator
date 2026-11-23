@@ -1235,6 +1235,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-23T03:50:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-22T22:50:00Z', 'Under', 'ended at 84%', 84, 84, 10722914, 90, 0, NULL, NULL, 2025, 848.2, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-23T07:10:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-23T02:10:00Z', 'Under', 'ended at 2%', 2, 2, 125517, 94, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-23T08:40:00Z', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-23T03:40:00Z', 'Under', 'ended at 21%', 21, 21, 3668363, 150, 0, NULL, NULL, 73, 4.4, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-23T08:50:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-23T03:50:00Z', 'Under', 'ended at 13%', 13, 13, 890662, 68, 0, NULL, NULL, 1, 0.2, 1, 1, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -31513,18 +31514,18 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 3.135,
-      "Unhealthy": 1.1349999999999998,
-      "Reason": "p10 of 231 readings is 3.3 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T08:37:35.7176614\u002B00:00",
-      "Basis": 231
+      "Degraded": 3.021,
+      "Unhealthy": 1.021,
+      "Reason": "p10 of 255 readings is 3.18 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T08:59:28.5488166\u002B00:00",
+      "Basis": 255
     },
     "CommitPercent": {
       "Degraded": 97,
       "Unhealthy": 97,
-      "Reason": "p90 of 231 readings is 92.5 %, past the configured degraded line 80 %; moved 5% past it, held at the bound 97 %",
-      "At": "2026-11-23T08:37:35.7176614\u002B00:00",
-      "Basis": 231
+      "Reason": "p90 of 255 readings is 92.4 %, past the configured degraded line 80 %; moved 5% past it, held at the bound 97 %",
+      "At": "2026-11-23T08:59:28.5488166\u002B00:00",
+      "Basis": 255
     }
   },
   "Changes": [
@@ -32058,6 +32059,42 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 3.135,
       "ToUnhealthy": 1.1349999999999998,
       "Reason": "p10 of 231 readings is 3.3 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T08:55:36.2579219\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.135,
+      "FromUnhealthy": 1.1349999999999998,
+      "ToDegraded": 3.1065,
+      "ToUnhealthy": 1.1065,
+      "Reason": "p10 of 250 readings is 3.27 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T08:57:51.3243365\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.1065,
+      "FromUnhealthy": 1.1065,
+      "ToDegraded": 3.0875,
+      "ToUnhealthy": 1.0875,
+      "Reason": "p10 of 253 readings is 3.25 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T08:58:51.4578894\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.0875,
+      "FromUnhealthy": 1.0875,
+      "ToDegraded": 3.04,
+      "ToUnhealthy": 1.04,
+      "Reason": "p10 of 254 readings is 3.2 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T08:59:28.5488166\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.04,
+      "FromUnhealthy": 1.04,
+      "ToDegraded": 3.021,
+      "ToUnhealthy": 1.021,
+      "Reason": "p10 of 255 readings is 3.18 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -32324,7 +32361,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
-    "Tested": "b05674d1776ee7e502429687fa42dc272624854f",
+    "Tested": "583f7b1deafd176bc048116e3caf34978ae44c14",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
