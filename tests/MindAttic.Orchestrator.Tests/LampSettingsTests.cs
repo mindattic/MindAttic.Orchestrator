@@ -161,6 +161,22 @@ public sealed class LampSettingsTests
         Case("healthLearnChangesKept", s => s with { HealthLearnChangesKept = 50 }, 50, v => v.HealthLearnChangesKept = 500, 500, s => s.HealthLearnChangesKept),
         Case("healthTickDegradedSeconds", s => s with { HealthTickDegradedSeconds = 30 }, 30d, v => v.HealthTickDegradedSeconds = 45, 45d, s => s.HealthTickDegradedSeconds),
         Case("healthTickUnhealthySeconds", s => s with { HealthTickUnhealthySeconds = 240 }, 240d, v => v.HealthTickUnhealthySeconds = 300, 300d, s => s.HealthTickUnhealthySeconds),
+        Case("busyCountRefreshSeconds", s => s with { BusyCountRefreshSeconds = 5 }, 5d, v => v.BusyCountRefreshSeconds = 10, 10d, s => s.BusyCountRefreshSeconds),
+        Case("healthLearn", s => s with { HealthLearn = false }, false, v => v.HealthLearn = true, true, s => s.HealthLearn),
+        Case("healthLearnMinSamples", s => s with { HealthLearnMinSamples = 30 }, 30, v => v.HealthLearnMinSamples = 90, 90, s => s.HealthLearnMinSamples),
+        Case("healthLearnMarginPercent", s => s with { HealthLearnMarginPercent = 10 }, 10d, v => v.HealthLearnMarginPercent = 2, 2d, s => s.HealthLearnMarginPercent),
+        Case("healthRamLearnFloorGb", s => s with { HealthRamLearnFloorGb = 2 }, 2d, v => v.HealthRamLearnFloorGb = 3, 3d, s => s.HealthRamLearnFloorGb),
+        Case("healthCommitLearnCeilingPercent", s => s with { HealthCommitLearnCeilingPercent = 95 }, 95d, v => v.HealthCommitLearnCeilingPercent = 98, 98d, s => s.HealthCommitLearnCeilingPercent),
+        Case("healthDiskFreeLearnFloorGb", s => s with { HealthDiskFreeLearnFloorGb = 4 }, 4d, v => v.HealthDiskFreeLearnFloorGb = 6, 6d, s => s.HealthDiskFreeLearnFloorGb),
+        Case("healthDtuLearnCeilingPercent", s => s with { HealthDtuLearnCeilingPercent = 95 }, 95d, v => v.HealthDtuLearnCeilingPercent = 98, 98d, s => s.HealthDtuLearnCeilingPercent),
+        Case("healthStorageLearnCeilingPercent", s => s with { HealthStorageLearnCeilingPercent = 95 }, 95d, v => v.HealthStorageLearnCeilingPercent = 97, 97d, s => s.HealthStorageLearnCeilingPercent),
+        Case("healthLinkLatencyLearnCeilingMs", s => s with { HealthLinkLatencyLearnCeilingMs = 10000 }, 10000d, v => v.HealthLinkLatencyLearnCeilingMs = 20000, 20000d, s => s.HealthLinkLatencyLearnCeilingMs),
+        Case("healthProbeMachineSeconds", s => s with { HealthProbeMachineSeconds = 60 }, 60d, v => v.HealthProbeMachineSeconds = 15, 15d, s => s.HealthProbeMachineSeconds),
+        Case("healthProbeLinksSeconds", s => s with { HealthProbeLinksSeconds = 60 }, 60d, v => v.HealthProbeLinksSeconds = 15, 15d, s => s.HealthProbeLinksSeconds),
+        Case("healthProbeAzureSeconds", s => s with { HealthProbeAzureSeconds = 600 }, 600d, v => v.HealthProbeAzureSeconds = 120, 120d, s => s.HealthProbeAzureSeconds),
+        Case("healthAlerts", s => s with { HealthAlerts = false }, false, v => v.HealthAlerts = true, true, s => s.HealthAlerts),
+        Case("healthFailureThreshold", s => s with { HealthFailureThreshold = 3 }, 3, v => v.HealthFailureThreshold = 4, 4, s => s.HealthFailureThreshold),
+        Case("healthSuccessThreshold", s => s with { HealthSuccessThreshold = 2 }, 2, v => v.HealthSuccessThreshold = 3, 3, s => s.HealthSuccessThreshold),
         Case("logPruneMinutes", s => s with { LogPruneMinutes = 60 }, 60d, v => v.LogPruneMinutes = 30, 30d, s => s.LogPruneMinutes),
         Case("backupKeepLocal", s => s with { BackupKeepLocal = 30 }, 30d, v => v.BackupKeepLocal = 7, 7d, s => s.BackupKeepLocal),
         Case("diskCleanupEveryMinutes", s => s with { DiskCleanupEveryMinutes = 5 }, 5d, v => v.DiskCleanupEveryMinutes = 15, 15d, s => s.DiskCleanupEveryMinutes),
@@ -360,7 +376,7 @@ public sealed class LampSettingsTests
         }
         Assert.That(manifest.Credentials.Select(c => c.ProviderId), Is.EqualTo(new[] { "claude" }), "Claude's key, from the shared named keys");
         Assert.That(manifest.AllFields().Select(f => f.Group).Distinct(),
-            Is.EquivalentTo(new[] { "Budget", "Pacing", "Scheduler", "Logins", "Reviews", "Alerts", "Memory", "Dashboard", "Folders", "Gateway" }));
+            Is.EquivalentTo(new[] { "Budget", "Pacing", "Scheduler", "Logins", "Reviews", "Alerts", "Memory", "Health", "Dashboard", "Folders", "Gateway" }));
     }
 
     [Test]
