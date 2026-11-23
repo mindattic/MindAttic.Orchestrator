@@ -351,6 +351,14 @@ internal sealed class MachineStartCommand : AsyncCommand<MachineStartCommand.Set
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
+        // A locked login (M.ORCH-T2122, M.ORCH-T2124) never opens here either: checked locally, before the host is even asked,
+        // naming the lock the same way --account and org start do.
+        var login = AccountDirs.Normalize(settings.Login) ?? AccountDirs.Normalize(LoginLook.GlobalEmail(new AccountDirs()));
+        if (login is not null && LoginLocks.Refusal(LoginLocks.Load(Ctx.Store()), login, login) is { } refusal)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(refusal)}.[/]");
+            return 1;
+        }
         using var client = MachineHub.Client();
         if (client is null) return 1;
         var (code, output) = await client.StartSessionAsync(settings.Repo.Trim(), settings.Login?.Trim(), CancellationToken.None);

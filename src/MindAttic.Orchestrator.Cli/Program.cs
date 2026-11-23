@@ -465,9 +465,16 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             AnsiConsole.MarkupLine($"[red]--account is a Claude login: {Markup.Escape(provider)} has none.[/]");
             return null;
         }
-        if (AccountDirs.Normalize(email) is null)
+        if (AccountDirs.Normalize(email) is not { } normalized)
         {
             AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(email)}\" isn't an email address: --account takes the account's whole email.[/]");
+            return null;
+        }
+        // A locked login (M.ORCH-T2122, M.ORCH-T2124) never opens, org start included (it's --account under the hood): refused
+        // before any sign-in dance, naming the lock.
+        if (LoginLocks.Refusal(LoginLocks.Load(Ctx.Store()), normalized, normalized) is { } refusal)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(refusal)}.[/]");
             return null;
         }
         var dir = dirs.For(email);

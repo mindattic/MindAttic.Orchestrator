@@ -95,6 +95,15 @@ public static class LoginLocks
     /// <summary>True when <paramref name="email"/> is locked.</summary>
     public static bool IsLocked(IEnumerable<LoginLock>? locks, string? email) => For(locks, email) is not null;
 
+    /// <summary>
+    /// Why an explicit open (<c>orchestrator start --account</c>, <c>org start</c>, <c>machine start --login</c>, and a ticket
+    /// dispatched to its assignee's login, M.ORCH-T2124) refuses <paramref name="email"/>'s login: "<paramref name="who"/> is
+    /// locked (manual since Tue 5:00 PM): orchestrator org unlock <paramref name="who"/>" (no trailing period, so a caller can add
+    /// its own). Null while it isn't locked.
+    /// </summary>
+    public static string? Refusal(IEnumerable<LoginLock>? locks, string? email, string who) =>
+        For(locks, email) is { } locked ? $"{who} is locked ({locked.Reason} since {WeeklyAllowances.When(locked.SinceUtc)}): orchestrator org unlock {who}" : null;
+
     /// <summary>Every locked login's email.</summary>
     public static IReadOnlyList<string> LockedEmails(IEnumerable<LoginLock>? locks) => [.. (locks ?? []).Select(l => l.Email)];
 

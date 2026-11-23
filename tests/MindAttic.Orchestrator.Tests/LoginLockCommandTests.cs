@@ -115,6 +115,56 @@ public sealed class LoginLockCommandTests
         }
     }
 
+    [Test, NonParallelizable] // Ctx.StoreDirectory and the org overrides are process-wide
+    public void Org_start_refuses_a_locked_login_the_same_way_start_account_does()
+    {
+        // M.ORCH-T2124: org start is orchestrator start --account underneath (OrgStartCommand), so a locked login is refused
+        // before a tab opens, naming the lock, exactly as --account does on its own.
+        var previousStore = Ctx.StoreDirectory;
+        var storeDir = temps.New();
+        Ctx.StoreDirectory = storeDir;
+        var workspace = Path.Combine(storeDir, "workspace");
+        var repoDir = Path.Combine(workspace, "A");
+        Directory.CreateDirectory(Path.Combine(repoDir, ".git"));
+        Directory.CreateDirectory(Path.Combine(repoDir, "docs"));
+        File.WriteAllText(Path.Combine(repoDir, "docs", "USER_STORIES.md"),
+            "---\ncode: A\n---\n\n# A\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n");
+        var store = new JsonStore(storeDir);
+        store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
+        var path = MindAttic.Tickets.Data.TicketsDb.DefaultPath(workspace);
+        using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path)) db.Import([new MindAttic.Tickets.Repo("A", repoDir)]);
+        OrgHelpCommand.PeopleOverride = () => [new(Erin, "Erin", [], [])];
+        LoginLocks.Lock(store, Erin, "Erin", LoginLocks.ReasonManual, "you", null, Now);
+        try
+        {
+            var said = Cli(out var exit, "org", "start", "A", "erin");
+            Assert.That(exit, Is.EqualTo(1), said);
+            Assert.That(said, Does.Contain($"{Erin} is locked (manual since").And.Contain($"orchestrator org unlock {Erin}"));
+        }
+        finally
+        {
+            Ctx.StoreDirectory = previousStore;
+            OrgHelpCommand.PeopleOverride = null;
+        }
+    }
+
+    [Test, NonParallelizable] // Ctx.StoreDirectory is process-wide
+    public void Machine_start_refuses_a_locked_login_before_asking_the_host()
+    {
+        // M.ORCH-T2124: checked locally, before the host is even asked.
+        var previousStore = Ctx.StoreDirectory;
+        var storeDir = temps.New();
+        Ctx.StoreDirectory = storeDir;
+        LoginLocks.Lock(new JsonStore(storeDir), Erin, "Erin", LoginLocks.ReasonManual, "you", null, Now);
+        try
+        {
+            var said = Cli(out var exit, "machine", "start", "SomeRepo", "--login", Erin);
+            Assert.That(exit, Is.EqualTo(1), said);
+            Assert.That(said, Does.Contain($"{Erin} is locked (manual since").And.Contain($"orchestrator org unlock {Erin}"));
+        }
+        finally { Ctx.StoreDirectory = previousStore; }
+    }
+
     [Test]
     public void The_usage_report_says_whos_locked_in_its_notes_not_a_column()
     {

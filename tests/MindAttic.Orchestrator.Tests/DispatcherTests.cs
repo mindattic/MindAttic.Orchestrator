@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
@@ -298,6 +299,29 @@ public sealed class DispatcherTests
         store.UpdateAssignments(all => all.Clear());
         Assert.That(Org(OrgRouting.Single).Dispatch(Item("A-T1"), "Claude", login: new Dispatcher.TabLogin(@"D:\acc\amy", "amy@example.com")).Ok,
             Is.True, "one org: any login, as before");
+    }
+
+    [Test]
+    public void A_ticket_pinned_to_a_locked_login_is_held_not_opened()
+    {
+        // M.ORCH-T2124: an assignment is a pin (TicketPins); a locked login (M.ORCH-T2122) never opens one, same as an
+        // explicit --account start refuses it, and names the lock so org unlock can be pasted back.
+        const string email = "ryan@example.com";
+        LoginLocks.Lock(store, email, "Ryan", LoginLocks.ReasonManual, "you", null, Now);
+        var opened = 0;
+        var dispatcher = new Dispatcher(new SessionControl(new OrchestratorOptions { LauncherExe = Path.Combine(dir, "no-launcher.exe") }), store)
+        {
+            OpenTab = (_, _, _, _, _) => { opened++; return (null, Task.FromResult(true)); },
+            PinnedLogin = _ => new Dispatcher.TabLogin(@"D:\acc\ryan", email),
+        };
+
+        var result = dispatcher.Dispatch(Item("A-T1") with { Assignee = email }, "Claude");
+
+        Assert.That(result.Ok, Is.False);
+        Assert.That(result.Message, Does.Contain("A-T1 is assigned to ryan@example.com"));
+        Assert.That(result.Message, Does.Contain("ryan@example.com is locked (manual since"));
+        Assert.That(result.Message, Does.Contain("orchestrator org unlock ryan@example.com"));
+        Assert.That((opened, store.LoadAssignments().Count), Is.EqualTo((0, 0)), "nothing opened or claimed");
     }
 
     private Dispatcher Make(Func<string, string, string, string, bool, (string?, Task<bool>?)>? open = null) =>

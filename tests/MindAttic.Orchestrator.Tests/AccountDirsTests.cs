@@ -720,6 +720,30 @@ public sealed class AccountDirsTests
         }
     }
 
+    [Test, NonParallelizable] // Ctx.StoreDirectory is process-wide
+    public void A_locked_account_refuses_to_open_before_any_sign_in_dance()
+    {
+        // M.ORCH-T2124: orchestrator start --account (and org start, which is --account underneath) never opens a locked
+        // login; refused before OwnLogin's sign-in dance even starts, naming the lock.
+        var previousStore = Ctx.StoreDirectory;
+        var realLoginInto = AccountSwitch.LoginInto;
+        var storeDir = Path.Combine(dir, "store");
+        Ctx.StoreDirectory = storeDir;
+        LoginLocks.Lock(new JsonStore(storeDir), "b@example.com", "B", LoginLocks.ReasonManual, "you", null, DateTime.UtcNow);
+        var calls = 0;
+        AccountSwitch.LoginInto = (_, _, _) => { calls++; return 0; };
+        try
+        {
+            Assert.That(StartCommand.OwnLogin(dirs, "b@example.com", "Claude"), Is.Null);
+            Assert.That(calls, Is.Zero, "a locked login is never signed in to open it");
+        }
+        finally
+        {
+            Ctx.StoreDirectory = previousStore;
+            AccountSwitch.LoginInto = realLoginInto;
+        }
+    }
+
     [Test]
     public void Ps_doubles_every_single_quote_form_PowerShell_accepts()
     {

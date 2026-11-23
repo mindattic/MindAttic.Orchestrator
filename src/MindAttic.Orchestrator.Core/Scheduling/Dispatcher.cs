@@ -43,6 +43,10 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             login ??= (PinnedLogin ?? LoginOf)(who);
             if (login is null)
                 return new Result(false, $"{item.Id} is assigned to {who}, who isn't signed in on this machine: it waits for them (or Redelegate now).", null);
+            // A pin (an assignment, M.ORCH-T668) never opens a locked login (M.ORCH-T2122, M.ORCH-T2124): held, not started, until
+            // org unlock, the same as an explicit --account open refuses it.
+            if (Budget.LoginLocks.Refusal(Budget.LoginLocks.Load(store), login.Email, who) is { } refusal)
+                return new Result(false, $"{item.Id} is assigned to {who}: {refusal}.", null);
         }
         // An org's ticket (M.ORCH-T753) starts only on its own members' logins: a login chosen in another org is refused, and the
         // Auto pick below picks only among the org's. The global login (no email) and the API key aren't judged here.
