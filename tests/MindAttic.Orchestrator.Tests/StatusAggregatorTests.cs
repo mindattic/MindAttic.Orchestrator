@@ -31,7 +31,14 @@ public sealed class StatusAggregatorTests
     }
 
     [TearDown]
-    public void TearDown() => Directory.Delete(dir, recursive: true);
+    public void TearDown()
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try { Directory.Delete(dir, recursive: true); return; }
+            catch (IOException) when (attempt < 20) { Thread.Sleep(250); }
+        }
+    }
 
     private void Repo(string name, string rows)
     {
