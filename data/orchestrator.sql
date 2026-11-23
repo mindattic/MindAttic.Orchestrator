@@ -1768,7 +1768,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 58538);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3255901);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 612230);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13173985);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13176880);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2154632);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Gadfly', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 19222752);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'GridGame.Studio', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2806116);
@@ -1776,7 +1776,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 692009);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13521063);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 0);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21454410);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'Unity.GridGame', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21456802);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -31446,11 +31446,11 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 1.7575,
+      "Degraded": 1.5675,
       "Unhealthy": 1,
-      "Reason": "p10 of 99 readings is 1.85 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T02:47:09.1180268\u002B00:00",
-      "Basis": 99
+      "Reason": "p10 of 112 readings is 1.65 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T03:01:59.8871994\u002B00:00",
+      "Basis": 112
     }
   },
   "Changes": [
@@ -31624,6 +31624,60 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 1.7575,
       "ToUnhealthy": 1,
       "Reason": "p10 of 99 readings is 1.85 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T02:53:00.9024169\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.7575,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.7765,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 101 readings is 1.87 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T02:53:58.8149848\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.7765,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.7575,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 102 readings is 1.85 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T02:55:18.4176804\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.7575,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.672,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 104 readings is 1.76 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T02:57:28.723476\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.672,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.6244999999999998,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 106 readings is 1.71 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T03:00:45.754238\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.6244999999999998,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.6055,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 110 readings is 1.69 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T03:01:59.8871994\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.6055,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.5675,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 112 readings is 1.65 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -31815,8 +31869,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "4179ed633d0e63fb60c91695e36cfb547aef77a0"
   },
   "Gadfly": {
-    "Tested": "999849aabd75174d41774dc1a1db7063310492cc",
-    "Green": "c8678cfad7fb926a447150254c9b2b4d9944e960"
+    "Tested": "cf1afd734f9e34e9162f409d37ea6137708d23f3",
+    "Green": "cf1afd734f9e34e9162f409d37ea6137708d23f3"
   },
   "IdiotProof": {
     "Tested": "9e6e71f4590a40ca6dcfe8a537220c88033f9684",
