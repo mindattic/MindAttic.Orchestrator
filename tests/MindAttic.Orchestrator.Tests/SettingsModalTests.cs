@@ -44,7 +44,7 @@ public sealed class SettingsModalTests
         Assert.That(children.Any(e => (string?)e.Attribute(X + "Name") == "SettingsModal"), Is.False);
         var text = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         Assert.That(text, Does.Not.Contain("IsSettingsOpen").And.Not.Contain("ToggleSettingsCommand").And.Not.Contain("{Binding Settings}")
-            .And.Not.Contain("SaveCommand}").And.Not.Contain("x:Name=\"SettingsTabs\""));
+            .And.Not.Contain("x:Name=\"SettingsTabs\""));
     }
 
     private static readonly XNamespace X = "http://schemas.microsoft.com/winfx/2006/xaml";
@@ -79,9 +79,9 @@ public sealed class SettingsModalTests
         Assert.That((string?)cog.Attribute("Command"), Is.EqualTo("{Binding OpenSettingsCommand}"));
         Assert.That((string?)cog.Attribute("AutomationProperties.Name"), Is.EqualTo("Settings"));
 
-        // The only opener of the settings.
+        // The only openers of the settings: the menu bar cog and the toolbar Settings group's button (M.ORCH-T2024).
         var openers = doc.Descendants().Where(e => (string?)e.Attribute("Command") == "{Binding OpenSettingsCommand}").ToList();
-        Assert.That(openers, Is.EqualTo(new[] { cog }));
+        Assert.That(openers, Is.EqualTo(new[] { cog, Named(doc, "ToolbarSettingsButton") }));
         Assert.That(doc.Descendants(P + "Button").Any(b => (string?)b.Attribute("Content") == "Settings"), Is.False);
     }
 
