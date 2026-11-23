@@ -31514,18 +31514,18 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 2.242,
+      "Degraded": 2.2515,
       "Unhealthy": 1,
-      "Reason": "p10 of 310 readings is 2.36 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-23T09:40:07.1896024\u002B00:00",
-      "Basis": 310
+      "Reason": "p10 of 320 readings is 2.37 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-23T09:46:30.2435741\u002B00:00",
+      "Basis": 320
     },
     "CommitPercent": {
-      "Degraded": 96.28500000000001,
+      "Degraded": 96.075,
       "Unhealthy": 97,
-      "Reason": "p90 of 310 readings is 91.7 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-23T09:40:07.1896024\u002B00:00",
-      "Basis": 310
+      "Reason": "p90 of 320 readings is 91.5 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-23T09:46:30.2435741\u002B00:00",
+      "Basis": 320
     }
   },
   "Changes": [
@@ -32338,6 +32338,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 96.28500000000001,
       "ToUnhealthy": 97,
       "Reason": "p90 of 310 readings is 91.7 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-23T09:46:30.2435741\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 96.28500000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 96.075,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 320 readings is 91.5 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
@@ -32592,8 +32601,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "f56876437450ce3c518b4334d8ed64d51db9a684",
-    "Green": "f56876437450ce3c518b4334d8ed64d51db9a684"
+    "Tested": "d6889b5d6e6239af130a53a1980607f90a9ae4b6",
+    "Green": "d6889b5d6e6239af130a53a1980607f90a9ae4b6"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
