@@ -170,14 +170,14 @@ public sealed class AzureSqlProbe(IProcessRunner? runner = null, Func<string?>? 
 
         var readings = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         string? lastError = null;
-        bool Read(IEnumerable<string> metrics)
+        bool Read(IReadOnlyCollection<string> metrics)
         {
             var args = new List<string> { "monitor", "metrics", "list", "--resource", db.ResourceId!, "--metrics" };
             args.AddRange(metrics);
             args.AddRange(window);
             var (json, error) = Az(az, args);
             if (json is null) { lastError = error; return false; }
-            try { foreach (var (k, v) in ParseMetrics(json)) readings[k] = v; return true; }
+            try { foreach (var (k, v) in ParseMetrics(json)) if (metrics.Contains(k, StringComparer.OrdinalIgnoreCase)) readings[k] = v; return true; }
             catch (JsonException ex) { lastError = $"az monitor metrics list's output couldn't be read: {ex.Message}"; return false; }
         }
 
