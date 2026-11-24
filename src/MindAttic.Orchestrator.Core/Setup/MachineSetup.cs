@@ -463,11 +463,12 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
     }
 
     /// <summary>Copies the pulled <c>data/Tickets.db</c> over the mirror. A mirror changed here since the last copy (a ticket
-    /// written on this machine) is kept beside it first, and said: the host's database is the one that counts.</summary>
-    internal void RefreshTicketsMirror()
+    /// written on this machine) is kept beside it first, and said: the host's database is the one that counts.
+    /// <paramref name="mirror"/> defaults to <see cref="MachineRole.ClientTicketsDb"/>.</summary>
+    internal void RefreshTicketsMirror(string? mirror = null)
     {
         var source = Path.Combine(TicketsRepo, "data", "Tickets.db");
-        var mirror = MachineRole.ClientTicketsDb;
+        mirror ??= MachineRole.ClientTicketsDb;
         var stamp = mirror + ".copied";
         if (!File.Exists(source)) return;
         try
