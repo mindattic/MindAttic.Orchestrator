@@ -37,10 +37,10 @@ public static class ProcessReaper
 
     private static readonly string[] TargetNames = ["find", "rg", "grep", "git", "bash", "python", "node", "dotnet"];
 
-    /// <summary>The start utc record.</summary>
+    /// <summary>One process in a scan: its id, name, parent, handle count, start time (<see cref="Unknown"/> when WMI gave none) and command line.</summary>
     public sealed record ProcessInfo(int Pid, string Name, int ParentPid, long HandleCount, DateTime StartUtc, string? CommandLine);
 
-    /// <summary>The reason record.</summary>
+    /// <summary>A process <see cref="Select"/> picked to kill, and why.</summary>
     public sealed record Reaped(ProcessInfo Process, string Reason);
 
     /// <summary>

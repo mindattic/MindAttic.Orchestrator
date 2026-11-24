@@ -215,8 +215,9 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
     private static readonly object GlobalSignedOutLock = new();
     private static (string Path, (DateTime, long) Stamp, bool SignedOut)? globalSignedOutRead;
 
-    /// <summary>Whether any Claude account is signed in here at all, the global login or one of its own (M.ORCH-T1545).</summary>
-    public bool AnySignedIn => GlobalSignedIn || SignedIn().Count > 0;
+    /// <summary>Whether any Claude account is signed in here at all, the global login or one of its own (M.ORCH-T1545), locked
+    /// or disabled ones included: locking every login isn't a first run.</summary>
+    public bool AnySignedIn => GlobalSignedIn || All().Any(a => a.SignedIn && a.BorrowedFrom is null);
 
     /// <summary>The account folder <paramref name="configDir"/> (a <c>CLAUDE_CONFIG_DIR</c>) is; null when it's unset, the global
     /// <c>~/.claude</c>, or anything that isn't one of these.</summary>

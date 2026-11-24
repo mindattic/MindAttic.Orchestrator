@@ -270,7 +270,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 
         var results = new List<Rebalanced>();
         CheckCutoffs(signedIn, DirOf, UsageOf, globalUsage, globalEmail, cutoffs, allowed, settings, nowUtc, results);
-        var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, TargetOf, StopOf, AllowedFor, nowUtc, results, locked: !settings.FailoverToApiKey);
+        var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, TargetOf, StopOf, AllowedFor, globalEmail, nowUtc, results, locked: !settings.FailoverToApiKey);
         // Rebalancing is off, and failover to the API key is hard-coded off: nothing more to move.
         if (!settings.RebalanceLogins && !settings.FailoverToApiKey) return results;
 
@@ -366,9 +366,9 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 
     /// <summary>
     /// Each login that reached its own weekly or 5-hour cutoff gets one urgent alert and one Psst text to the owner, once per
-    /// crossing (M.ORCH-T742): it's cut off, and the owner decides (<c>org allow</c> for the week, <c>org limit</c> to change a cutoff).
-    /// Also auto-locks a login whose week reached its own weekly cutoff (<see cref="LoginLocks.AutoLock"/>, M.ORCH-T2126), whatever
-    /// an active <c>org allow</c> says: run every tick, even with rebalancing itself off.
+    /// crossing (M.ORCH-T742). A login whose week reached its own weekly cutoff is also auto-locked (<see cref="LoginLocks.AutoLock"/>,
+    /// M.ORCH-T2126) whatever an active <c>org allow</c> says, and stays locked until the owner unlocks it (<c>org unlock</c>);
+    /// <c>org limit</c> changes a cutoff. Run every tick, even with rebalancing itself off.
     /// </summary>
     private void CheckCutoffs(IReadOnlyList<AccountDir> signedIn, Func<string?, AccountDir?> dirOf, Func<AccountDir, ReportedUsage?> usageOf,
         Lazy<ReportedUsage?> globalUsage, string? globalEmail, IReadOnlyList<UsageCutoff> cutoffs, IReadOnlyList<WeeklyAllowance> allowed,
@@ -442,7 +442,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     /// still on the key.</summary>
     private HashSet<string> MoveBack(IReadOnlyList<CliBilling> live, Func<string?, AccountDir?> dirOf, Func<AccountDir, ReportedUsage?> usageOf,
         Lazy<ReportedUsage?> globalUsage, Pace? globalPace, IReadOnlyDictionary<string, Pace> paces, Func<string?, int> targetOf, Func<string?, int> stopOf,
-        Func<string?, bool> allowedFor, DateTime nowUtc,
+        Func<string?, bool> allowedFor, string? globalEmail, DateTime nowUtc,
         List<Rebalanced> results, bool locked = false)
     {
         // locked: failover to the API key is hard-coded off (M.ORCH-T706). A failover from before that is cancelled if it's still only asked
@@ -456,6 +456,9 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             var cli = live.FirstOrDefault(c => c.SessionId == f.SessionId) ??
                       (f.HostPid is { } hp ? live.FirstOrDefault(c => c.Host?.ProcessId == hp) : null);
             var home = dirOf(f.FromEmail);
+            // The login it came off holds its approval: the global one's at mover.Billing.ConfigPath, and a per-CLI one's in
+            // its own folder even when it's no longer in signedIn (locked, disabled), never the global config.
+            var homeConfig = home?.ConfigPath ?? (f.FromEmail is { } fromEmail ? mover.Dirs.For(fromEmail).ConfigPath : mover.Billing.ConfigPath);
 
             // Asked onto the key and not yet seen there (M.ORCH-T681): counted (and toasted) only once the CLI bills the key; a tab
             // that took the request and dropped it (one opened before M.LNCH-T67) is said, and the failover asked again later.
@@ -463,8 +466,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             {
                 book.Remove(f);
                 changed = true;
-                // home is null for the global login (bughunt 2026-10-28): its approval lives at mover.Billing.ConfigPath instead.
-                SetKeyChoice(home?.ConfigPath ?? mover.Billing.ConfigPath, false);
+                SetKeyChoice(homeConfig, false);
                 results.Add(new(false, $"rebalance: cancelled the move to the API key asked for {f.Name}: API billing is only ever switched on by you.") { NeedsYou = true });
                 continue;
             }
@@ -482,8 +484,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
                 {
                     book.Remove(f);
                     changed = true;
-                    // home is null for the global login (bughunt 2026-10-28): its approval lives at mover.Billing.ConfigPath instead.
-                    SetKeyChoice(home?.ConfigPath ?? mover.Billing.ConfigPath, false);
+                    SetKeyChoice(homeConfig, false);
                     // Asked again once BackRetry passes, not after the whole cool-down.
                     tried[cli?.SessionId ?? f.SessionId] = nowUtc - CoolDown + BackRetry;
                     var where = cli?.Where ?? LimitWaker.Where(f.Cwd);
@@ -525,8 +526,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
                 book[book.IndexOf(f)] = f with { SessionId = cli.SessionId, Pid = cli.Pid, SeenUtc = nowUtc, BackAskedUtc = null };
                 changed = true;
                 onKey.Add(cli.SessionId);
-                // home is null for the global login (bughunt 2026-10-28): its approval lives at mover.Billing.ConfigPath instead.
-                SetKeyChoice(home?.ConfigPath ?? mover.Billing.ConfigPath, true);
+                SetKeyChoice(homeConfig, true);
                 backTried[cli.SessionId] = nowUtc;
                 results.Add(new(false, $"rebalance: the CLI in {cli.Where} didn't move back to {f.Name} off the API key: its Launcher tab took the request but " +
                                        $"{(cli.Pid != f.AskedPid ? "restarted it still on the key" : "never restarted it")} (a tab opened before M.LNCH-T67 drops it). " +
@@ -539,7 +539,9 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             changed = true;
             onKey.Add(cli.SessionId);
 
-            if (seen.FromEmail is not null && home is null) continue; // signed out meanwhile: it stays on the key
+            if (seen.FromEmail is not null && home is null) continue; // signed out, disabled or locked meanwhile: it stays on the key
+            if (seen.FromEmail is null && globalEmail is { Length: > 0 } g &&
+                mover.Dirs.LockedNow().Any(e => string.Equals(e, g, StringComparison.OrdinalIgnoreCase))) continue; // the global login is locked
             // It waits for its reset, unless the user lets its login past the weekly target meanwhile (M.ORCH-T694).
             if (!locked && seen.UntilUtc is { } until && nowUtc < until && !allowedFor(seen.FromEmail)) continue;
             var homeUsage = home is null ? globalUsage.Value : usageOf(home);
@@ -559,8 +561,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             }
             // Counted once it bills its login again (M.ORCH-T681); until then it stays booked, and on the key.
             book[book.IndexOf(seen)] = seen with { BackAskedUtc = nowUtc, AskedPid = cli.Pid };
-            // home is null for the global login (bughunt 2026-10-28): its approval lives at mover.Billing.ConfigPath instead.
-            SetKeyChoice(home?.ConfigPath ?? mover.Billing.ConfigPath, false);
+            SetKeyChoice(homeConfig, false);
             results.Add(new(false, $"rebalance: {seen.Name} has reset: asked the Launcher tab running the CLI in {cli.Where} (pid {cli.Pid}) to move it back " +
                                    "off the API key at its next idle point; it's counted once the CLI shows it billing its login.") { Asked = true });
         }

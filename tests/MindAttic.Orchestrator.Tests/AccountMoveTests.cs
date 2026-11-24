@@ -141,6 +141,27 @@ public sealed class AccountMoveTests
         Assert.That(refused.Message, Does.Contain("no control pipe"));
     }
 
+    /// <summary>M.ORCH-T2138: a move onto a locked login (a per-CLI one, or the global one by its email) is refused, and
+    /// nothing is sent to the tab.</summary>
+    [Test]
+    public async Task A_move_onto_a_locked_login_is_refused()
+    {
+        dirs = new AccountDirs(dirs.Root, dirs.ClaudeDir, dirs.HomeConfigPath) { Locked = () => new HashSet<string> { "b@x.com", "g@x.com" } };
+        var a = SignedIn("a@x.com");
+        SignedIn("b@x.com");
+        File.WriteAllText(dirs.HomeConfigPath, JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "u-g", emailAddress = "g@x.com" } }));
+
+        var toB = await Mover().MoveAsync(live[0], "B@x.com", Now);
+        Assert.That(toB.Ok, Is.False);
+        Assert.That(toB.Message, Does.Contain("b@x.com is locked"));
+
+        onOwn["sess-1"] = a.Directory;
+        var toGlobal = await Mover().MoveAsync(live[0], null, Now);
+        Assert.That(toGlobal.Ok, Is.False);
+        Assert.That(toGlobal.Message, Does.Contain("g@x.com is locked"));
+        Assert.That(sent, Is.Empty);
+    }
+
     [Test]
     public void The_move_command_moves_a_cli_named_by_its_repo()
     {

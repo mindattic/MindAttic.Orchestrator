@@ -78,7 +78,7 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
     /// Picks the login a new Claude CLI should run on now; with <paramref name="claim"/>, holds it (<see cref="ClaimFor"/>)
     /// for the CLI about to start. Never throws for an unreadable folder: anything it can't read gets no login of its own.
     /// <paramref name="weeklyStopPercent"/> is where every account's CLIs stop in its week (M.ORCH-T609: 100 minus the weekly
-    /// reserve setting, 95% by default); an account at or past it has no headroom, so it's never picked.
+    /// reserve setting, 90% by default); an account at or past it has no headroom, so it's never picked.
     /// </summary>
     /// <param name="eligible">Which logins (by email) it may pick from (M.ORCH-T753: the ticket's org's members'); null: every one.</param>
     public LoginPick Pick(DateTime nowUtc, bool claim = false, int? weeklyStopPercent = null, Func<string, bool>? eligible = null)
@@ -135,7 +135,7 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
             .FirstOrDefault();
 
     /// <summary>The percent an account has left before its tighter limit: the smaller of its 5-hour room and its weekly room up
-    /// to its stop line (<paramref name="weeklyStopPercent"/>, the weekly reserve's: 95% by default, M.ORCH-T609), by Claude's
+    /// to its stop line (<paramref name="weeklyStopPercent"/>, the weekly reserve's: 90% by default, M.ORCH-T609), by Claude's
     /// meter for it. A window not read, or already reset, counts as untouched.</summary>
     public static double Headroom(ReportedUsage? usage, DateTime nowUtc, int? weeklyStopPercent = null)
     {

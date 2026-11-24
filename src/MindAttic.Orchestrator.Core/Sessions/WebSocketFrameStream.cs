@@ -14,7 +14,8 @@ namespace MindAttic.Orchestrator.Sessions;
 /// frame per message; a close from the gateway reads as the end of the stream;</item>
 /// <item>each write is one whole frame (RelayConnection writes a frame in one call) and goes as one binary message. It is queued
 /// and sent by a loop of its own, so a slow link never blocks the caller (the UI thread typing); a queue that backs up past
-/// <see cref="MaxQueued"/> frames, or a send that fails, breaks the stream with an <see cref="IOException"/>.</item>
+/// <see cref="MaxQueued"/> frames, or a send that fails, makes every later write throw an <see cref="IOException"/>; reads go on
+/// until the socket closes or the stream is disposed.</item>
 /// </list>
 /// Disposing it aborts the socket. Nothing it does logs a byte of the stream.
 /// </summary>
@@ -106,7 +107,7 @@ public sealed class WebSocketFrameStream : Stream
         }
         catch (Exception)
         {
-            // Cancelled by Dispose, or the link failed: either way nothing more can be sent, and the read side ends too.
+            // Cancelled by Dispose, or the link failed: either way nothing more can be sent; reads end only with the socket.
             broken = true;
         }
     }

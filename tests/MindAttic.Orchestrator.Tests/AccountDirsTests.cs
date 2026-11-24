@@ -210,6 +210,21 @@ public sealed class AccountDirsTests
         Assert.That(locked.SignedIn().Select(a => a.Email), Is.EqualTo(new[] { "c@example.com" }), "b is locked out, c is still free");
     }
 
+    /// <summary>M.ORCH-T2138: with the global login signed out and every per-CLI login locked, something is still signed in,
+    /// so the dashboard doesn't show first-run onboarding.</summary>
+    [Test]
+    public void AnySignedIn_counts_locked_logins()
+    {
+        var b = dirs.For("b@example.com");
+        Directory.CreateDirectory(b.Directory);
+        SignIn(b);
+        var locked = new AccountDirs(Path.Combine(dir, ".claude-accounts"), ClaudeDir, HomeConfig) { Locked = () => new HashSet<string> { "b@example.com" } };
+
+        Assert.That(locked.GlobalSignedIn, Is.False);
+        Assert.That(locked.SignedIn(), Is.Empty);
+        Assert.That(locked.AnySignedIn, Is.True);
+    }
+
     [Test]
     public void A_tab_on_its_own_login_starts_the_launcher_with_claude_config_dir_set()
     {

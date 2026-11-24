@@ -263,4 +263,51 @@ public sealed class AccountRebalancerTests
         Assert.That(AccountRebalancer.LoadFailovers(jsonStore), Is.Empty);
     }
 
+    /// <summary>M.ORCH-T2138: a failover booked from a per-CLI login that's locked now (so out of SignedIn) reverts the key's
+    /// approval in that login's own config, never the global ~/.claude.json.</summary>
+    [Test]
+    public void A_failover_from_a_now_locked_login_reverts_the_approval_in_that_logins_own_config()
+    {
+        dirs = new AccountDirs(dirs.Root, dirs.ClaudeDir, dirs.HomeConfigPath) { Locked = () => new HashSet<string> { "b@x.com" } };
+        var b = SignedIn("b@x.com");
+        var jsonStore = new JsonStore(Path.Combine(temps.New(), "store"));
+        store = jsonStore;
+        jsonStore.Save(AccountRebalancer.FailoversName, new List<ApiFailover>
+        {
+            new("sess-1", 4242, null, null, FromEmail: "b@x.com", ConfigDir: b.Directory, "Bee", "its 5-hour pace is at the limit", Now)
+            {
+                Pending = true, SeenUtc = Now,
+            },
+        });
+
+        Rebalancer().Tick(null, [], [], settings, Now);
+
+        Assert.That(keyChoices, Is.EqualTo(new[] { (b.ConfigPath, false) }));
+    }
+
+    /// <summary>M.ORCH-T2138: a CLI failed over from the global login isn't moved back onto it while the global login's email
+    /// is locked; unlocked, it is.</summary>
+    [Test]
+    public void A_cli_on_the_key_isnt_moved_back_onto_a_locked_global_login()
+    {
+        var lockedEmails = new HashSet<string> { "g@x.com" };
+        dirs = new AccountDirs(dirs.Root, dirs.ClaudeDir, dirs.HomeConfigPath) { Locked = () => lockedEmails };
+        File.WriteAllText(dirs.HomeConfigPath, JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "u-g", emailAddress = "g@x.com" } }));
+        live = [new CliBilling(4242, "sess-1", @"D:\Projects\Prose", BillingModes.Api, Tab)];
+        var jsonStore = new JsonStore(Path.Combine(temps.New(), "store"));
+        store = jsonStore;
+        jsonStore.Save(AccountRebalancer.FailoversName, new List<ApiFailover>
+        {
+            new("sess-1", 4242, 77, null, FromEmail: null, ConfigDir: "", "Global login", "its 5-hour pace is at the limit", Now) { SeenUtc = Now },
+        });
+
+        Rebalancer().Tick(null, [], [], settings, Now);
+        Assert.That(sent, Is.Empty, "locked: it stays on the key");
+        Assert.That(keyChoices, Is.Empty);
+
+        lockedEmails.Clear();
+        Rebalancer().Tick(null, [], [], settings, Now);
+        Assert.That(sent, Has.Count.EqualTo(1), "unlocked: asked back onto the global login");
+    }
+
 }

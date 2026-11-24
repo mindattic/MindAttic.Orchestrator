@@ -109,7 +109,10 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         if (!gate.Wait(BusyWait)) throw new StoreBusyException();
         try
         {
-            using var mutex = new Mutex(false, @"Global\MindAttic.Orchestrator.LoginTokens." + hash);
+            Mutex opened;
+            try { opened = new Mutex(false, @"Global\MindAttic.Orchestrator.LoginTokens." + hash); }
+            catch (WaitHandleCannotBeOpenedException ex) { throw new IOException($"Couldn't open the login-token store's lock ({ex.Message}).", ex); }
+            using var mutex = opened;
             var held = false;
             try
             {

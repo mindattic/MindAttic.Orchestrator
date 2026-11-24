@@ -163,7 +163,7 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
 
     /// <summary>
     /// Moves <paramref name="cli"/> to <paramref name="email"/>'s per-CLI login (null: the global login): refused when it's
-    /// already there, the login isn't signed in, or the CLI isn't in a Launcher tab; otherwise the login's folder is brought up
+    /// already there, the login is locked or isn't signed in, or the CLI isn't in a Launcher tab; otherwise the login's folder is brought up
     /// to date (its settings follow <c>~/.claude</c>'s) and the tab is asked to restart the CLI on it at its next idle point.
     /// </summary>
     /// <remarks>With <see cref="Locks"/>, the CLI and the tickets it holds (its claims, and <paramref name="holding"/>) are
@@ -178,6 +178,9 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
         var current = CurrentLogin(cli);
         if (string.Equals(current, normalized, StringComparison.OrdinalIgnoreCase))
             return new(false, $"The CLI in {cli.Where} (pid {cli.Pid}) is already on {(current ?? GlobalLabel.ToLowerInvariant())}.");
+        if ((normalized ?? LoginLook.GlobalEmail(Dirs)) is { Length: > 0 } toEmail &&
+            Dirs.LockedNow().FirstOrDefault(e => string.Equals(e, toEmail, StringComparison.OrdinalIgnoreCase)) is { } lockedEmail)
+            return new(false, $"{lockedEmail} is locked, so the CLI in {cli.Where} wasn't moved: orchestrator org unlock {lockedEmail}.");
         string configDir;
         if (normalized is null)
         {
