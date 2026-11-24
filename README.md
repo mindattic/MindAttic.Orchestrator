@@ -585,6 +585,7 @@ Don't run `dotnet test` by hand or from a subagent. Under the workspace's agent 
 
 - [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md): how the measure, pace and steer loop works, and what happens when something fails.
 - [docs/USER_STORIES.md](docs/USER_STORIES.md): every ticket, open and closed (a view generated from the ticket database).
+- [docs/FEATURES.md](docs/FEATURES.md): the team gateway, broadcast, milestones, branches, named agents, mail, inbox, health probes, dock/undock/quickload-all and pace-watch: what each is for, its commands, defaults and limits (M.ORCH-T2150).
 - [docs/HEALTH.md](docs/HEALTH.md): the health-check probe contract and which parts are reused (M.ORCH-T2019).
 - [docs/WORK_UNITS.md](docs/WORK_UNITS.md): why every dispatch is one small task, and the epic > feature > story > task tree (M.ORCH-T1901).
 - [docs/ELEVATED_TABS.md](docs/ELEVATED_TABS.md): how an Administrator CLI tab is started under a TermHost (M.ORCH-T1656).
