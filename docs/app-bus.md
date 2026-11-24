@@ -69,7 +69,7 @@ target app is present and that its `handles` list includes the request kind. If 
 
 - The dashboard sends `{"app":"orchestrator-desktop","handles":["show-worker"]}`.
 - Tickets.Desktop should send `{"app":"tickets-desktop","handles":["open-ticket"]}`.
-- MindAttic.MediaViewer sends `{"app":"viewer","handles":["show-preview"]}`.
+- MindAttic.Media.Viewer sends `{"app":"viewer","handles":["show-preview"]}`.
 
 ### `open-ticket` (v1): the Orchestrator asks Tickets.Desktop to show a ticket
 
@@ -93,7 +93,7 @@ If no one is working the ticket, its status line says so. Send this only while `
 handles `show-worker`. Call `AllowSetForegroundWindow(<its pid>)` before sending. Fallback: start
 `MindAttic.Orchestrator.Desktop.exe`, which only brings the dashboard forward.
 
-### `show-preview` (v1): an agent asks MindAttic.MediaViewer to show a preview set (M.ORCH-T2133)
+### `show-preview` (v1): an agent asks MindAttic.Media.Viewer to show a preview set (M.ORCH-T2133)
 
 `{"set":"R:\\MindAttic\\Preview\\Gadfly\\2026-11-23T14.05.11_GAD-T725_exam-caption","select":"002_phone.png","ticket":"GAD-T725","title":"Exam caption","from":"capture-agent","to":"viewer"}`
 
@@ -106,12 +106,12 @@ handles `show-worker`. Call `AllowSetForegroundWindow(<its pid>)` before sending
 | `to` | `viewer`, or empty for any app that handles it. |
 
 Any process may send it, including an agent with no desktop of its own (a scheduled one-shot, a headless CLI): the daemon
-runs in the owner's interactive session and puts the set on the owner's desktop. MindAttic.MediaViewer sends
+runs in the owner's interactive session and puts the set on the owner's desktop. MindAttic.Media.Viewer sends
 `{"app":"viewer","handles":["show-preview"]}` as its presence, and on `show-preview` with `to` `viewer` or empty opens the
 set (selecting `select`) and comes forward.
 
 How the daemon handles it: it relays the line to every subscriber, as any request. Then, when no live `viewer` presence
-handles `show-preview`, it shows the set itself: it starts `C:\Apps\MindAttic.MediaViewer\MindAttic.MediaViewer.exe "<set>"
+handles `show-preview`, it shows the set itself: it starts `C:\Apps\MindAttic.Media.Viewer\MindAttic.Media.Viewer.exe "<set>"
 [--select <file>]`, and when that isn't installed it opens the set's media file named by `select`, else its first media
 file by name, with the file's default app (Photos). It only ever opens an image, video or audio file. A `to` naming another
 app, a `set` that isn't an existing full path, or a `v` above 1 gets no fallback.

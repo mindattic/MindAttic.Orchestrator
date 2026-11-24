@@ -3,8 +3,8 @@ using System.Diagnostics;
 namespace MindAttic.Orchestrator.Status;
 
 /// <summary>
-/// How the daemon shows a preview set no MindAttic.MediaViewer is present to take (<see cref="AppBus.ShowPreview"/>, M.ORCH-T2133): it
-/// starts the installed viewer on the set (<c>MindAttic.MediaViewer.exe "&lt;set&gt;" [--select FILE]</c>), whose single-instance handoff
+/// How the daemon shows a preview set no MindAttic.Media.Viewer is present to take (<see cref="AppBus.ShowPreview"/>, M.ORCH-T2133): it
+/// starts the installed viewer on the set (<c>MindAttic.Media.Viewer.exe "&lt;set&gt;" [--select FILE]</c>), whose single-instance handoff
 /// passes it on to a copy that is still starting; without the viewer installed it opens the set's first media file with its default
 /// app. The daemon runs in the owner's interactive session, so either appears on the owner's desktop. Only a media file is ever
 /// shell-opened. Never throws.
@@ -13,8 +13,8 @@ public static class ShowPreviewFallback
 {
     private static readonly Serilog.ILogger log = OrchestratorLog.For("Preview");
 
-    /// <summary>Where run.ps1 deploys MindAttic.MediaViewer.</summary>
-    public const string ViewerExe = @"C:\Apps\MindAttic.MediaViewer\MindAttic.MediaViewer.exe";
+    /// <summary>Where run.ps1 deploys MindAttic.Media.Viewer.</summary>
+    public const string ViewerExe = @"C:\Apps\MindAttic.Media.Viewer\MindAttic.Media.Viewer.exe";
 
     private static readonly HashSet<string> MediaExtensions = new(StringComparer.OrdinalIgnoreCase)
     {

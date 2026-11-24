@@ -57,7 +57,7 @@ public static class AppBus
     /// <see cref="HealthVersion"/>.</summary>
     public const string Health = "health";
 
-    /// <summary>"Show preview set X" (<see cref="ShowPreviewRequest"/>, M.ORCH-T2133): MindAttic.MediaViewer opens the set and comes
+    /// <summary>"Show preview set X" (<see cref="ShowPreviewRequest"/>, M.ORCH-T2133): MindAttic.Media.Viewer opens the set and comes
     /// forward. Any process may write it to the inbox, even one with no desktop of its own (a scheduled one-shot, a headless CLI);
     /// the daemon relays it, and when no <see cref="MediaViewer"/> is present that handles it, starts the viewer on the set itself
     /// in the owner's session (or, without the viewer installed, opens the set's first media file).</summary>
@@ -78,7 +78,7 @@ public static class AppBus
     /// <summary>MindAttic.Tickets.Desktop.</summary>
     public const string TicketsDesktop = "tickets-desktop";
 
-    /// <summary>MindAttic.MediaViewer, which shows preview sets (<see cref="ShowPreview"/>).</summary>
+    /// <summary>MindAttic.Media.Viewer, which shows preview sets (<see cref="ShowPreview"/>).</summary>
     public const string MediaViewer = "viewer";
 
     /// <summary>Whether <paramref name="kind"/> is one of this bus's message kinds.</summary>
