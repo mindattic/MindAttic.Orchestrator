@@ -52,11 +52,20 @@ public sealed class CutoffAlertsTests
     }
 
     [Test]
-    public void A_custom_cutoff_and_an_allowance_are_respected()
+    public void A_custom_cutoff_is_respected()
     {
         var alerts = new CutoffAlerts(null);
         Assert.That(alerts.Check(Erin, "Erin", Usage(85, 10), 90, 98, false, Now), Is.Empty);
-        Assert.That(alerts.Check(Erin, "Erin", Usage(85, 10), 80, 98, true, Now), Is.Empty);
         Assert.That(alerts.Check(Erin, "Erin", Usage(85, 10), 80, 98, false, Now), Has.Count.EqualTo(1));
+    }
+
+    /// <summary>M.ORCH-T2137: an allowed login is auto-locked at its cutoff all the same, so it's alerted too.</summary>
+    [Test]
+    public void An_allowed_login_is_still_alerted_at_its_weekly_cutoff()
+    {
+        var crossed = new CutoffAlerts(null).Check(Erin, "Erin", Usage(91, 10), 90, 98, true, Now);
+        Assert.That(crossed, Has.Count.EqualTo(1));
+        Assert.That(crossed[0].Weekly, Is.True);
+        Assert.That(crossed[0].Text, Does.Contain("now locked (a lock wins over its org allow)"));
     }
 }

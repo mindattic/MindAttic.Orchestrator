@@ -403,10 +403,12 @@ public static class Pacer
     /// <summary>The burst-overshoot margin M.ORCH-T1462 built by lowering the default stop to 96%, under the 98% line
     /// (M.ORCH-T1608: the subagent headroom counts it as room, not a second margin). M.ORCH-T1750 (2026-11-17) put the
     /// default stop back to 98% at the user's explicit request, now that the restored per-call hold (ThrottleAgents)
-    /// is the real defense against a burst throughout the window; this constant is left wired to
-    /// <see cref="UsageCutoffs.DefaultFiveHourPercent"/> (96, M.ORCH-T707's unrelated per-member cutoff default) so a
-    /// member whose own 5-hour cutoff still sits at or above it keeps the same ±2-point room up to the hooks' hard line.</summary>
-    public const double StopBurstMarginPercent = 98 - UsageCutoffs.DefaultFiveHourPercent;
+    /// is the real defense against a burst throughout the window; this margin is kept from <see cref="BurstMarginFromPercent"/>
+    /// (the old 96% stop) so a 5-hour cutoff at or above it keeps the same ±2-point room up to the hooks' hard line.</summary>
+    public const double StopBurstMarginPercent = 98 - BurstMarginFromPercent;
+
+    /// <summary>The lowest 5-hour stop that gets <see cref="StopBurstMarginPercent"/>: the old 96% default (M.ORCH-T1462).</summary>
+    public const int BurstMarginFromPercent = 96;
 
     /// <summary>
     /// The room under the 5-hour stop limits how many subagents run at once (M.ORCH-T959). The stop is only read at tool calls, and
@@ -423,7 +425,7 @@ public static class Pacer
         // that margin instead (never past the hooks' own line). M.ORCH-T1750 put the stop itself back to 98%, so this
         // margin now just extends the room to the hooks' 99% line for anyone at or above the old 96% default.
         // Only a stop at the default or above has that margin: a lower, member-set cutoff (org limit --5h) keeps its own room unchanged.
-        var room = stopPercent >= UsageCutoffs.DefaultFiveHourPercent
+        var room = stopPercent >= BurstMarginFromPercent
             ? Math.Min(stopPercent + StopBurstMarginPercent, Math.Max(stopPercent, PaceLedger.TargetPercent))
             : stopPercent;
         if (percent is { } near && pace is { Stop: false, WindDown: false } && room - near < HeadroomPerSubagentPercent)

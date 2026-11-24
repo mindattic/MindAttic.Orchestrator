@@ -18,7 +18,7 @@ public sealed class LoginLockTests
     [TearDown]
     public void TearDown()
     {
-        LoginLocks.ResetLiveCache();
+        LoginLocks.InvalidateLiveCache();
         temps.DeleteAll();
     }
 
@@ -113,14 +113,14 @@ public sealed class LoginLockTests
     public void LiveLocked_reads_the_live_database_and_is_cached_for_about_ten_seconds()
     {
         // M.ORCH-T2123: the same caching shape as MemberRoster.LiveDisabled.
-        LoginLocks.ResetLiveCache();
+        LoginLocks.InvalidateLiveCache();
         var store = new JsonStore();
         Assert.That(LoginLocks.LiveLocked(), Is.Empty, "nothing locked yet");
 
         LoginLocks.Lock(store, Erin, "Erin", LoginLocks.ReasonManual, "you", null, Now);
         Assert.That(LoginLocks.LiveLocked(), Is.Empty, "the lock just made isn't reread yet: still cached");
 
-        LoginLocks.ResetLiveCache();
+        LoginLocks.InvalidateLiveCache();
         Assert.That(LoginLocks.LiveLocked(), Is.EquivalentTo(new[] { Erin }));
 
         LoginLocks.Unlock(store, Erin, "Erin", "you", Now.AddMinutes(1));
@@ -183,6 +183,31 @@ public sealed class LoginLockTests
 
         var relocked = LoginLocks.AutoLock(store, Erin, "Erin", Week(96, WeekReset), 90, Now.AddHours(1));
         Assert.That(relocked, Is.Null, "unlocked in this same weekly window: the cutoff doesn't re-lock it before the reset");
+        Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), Erin), Is.False);
+    }
+
+    /// <summary>M.ORCH-T2137: a manual lock on a login already past its cutoff, unlocked, stays unlocked for the week.</summary>
+    [Test]
+    public void Unlocking_a_manual_lock_holds_for_the_rest_of_the_week()
+    {
+        var store = new JsonStore(temps.New());
+        LoginLocks.Lock(store, Erin, "Erin", LoginLocks.ReasonManual, "you", null, Now);
+        LoginLocks.Unlock(store, Erin, "Erin", "you", Now.AddMinutes(1), WeekReset);
+
+        Assert.That(LoginLocks.AutoLock(store, Erin, "Erin", Week(95, WeekReset), 90, Now.AddMinutes(2)), Is.Null);
+        Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), Erin), Is.False);
+    }
+
+    /// <summary>M.ORCH-T2137: the statusline's and the meter probe's readings of one reset differ by seconds.</summary>
+    [Test]
+    public void The_unlocked_week_matches_a_reset_read_a_few_seconds_off()
+    {
+        var store = new JsonStore(temps.New());
+        LoginLocks.AutoLock(store, Erin, "Erin", Week(92, WeekReset), 90, Now);
+        LoginLocks.Unlock(store, Erin, "Erin", "you", Now.AddMinutes(1));
+
+        Assert.That(LoginLocks.AutoLock(store, Erin, "Erin", Week(93, WeekReset.AddSeconds(40)), 90, Now.AddMinutes(2)), Is.Null);
+        Assert.That(LoginLocks.AutoLock(store, Erin, "Erin", Week(93, WeekReset.AddSeconds(-40)), 90, Now.AddMinutes(3)), Is.Null);
         Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), Erin), Is.False);
     }
 

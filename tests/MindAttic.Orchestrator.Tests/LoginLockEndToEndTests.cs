@@ -38,7 +38,7 @@ public sealed class LoginLockEndToEndTests
     [TearDown]
     public void TearDown()
     {
-        LoginLocks.ResetLiveCache();
+        LoginLocks.InvalidateLiveCache();
         temps.DeleteAll();
     }
 

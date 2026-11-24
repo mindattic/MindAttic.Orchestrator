@@ -6,7 +6,7 @@ using Spectre.Console;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>M.ORCH-T707: per-user usage cutoffs, 90% of the week and 96% of the 5-hour window by default, changed only by
+/// <summary>M.ORCH-T707: per-user usage cutoffs, 90% of the week and 98% of the 5-hour window by default, changed only by
 /// <c>org limit</c>; no 75% line.</summary>
 public sealed class UsageCutoffTests
 {
@@ -17,11 +17,11 @@ public sealed class UsageCutoffTests
     public void TearDown() => temps.DeleteAll();
 
     [Test]
-    public void Everyone_defaults_to_90_and_96_and_a_set_cutoff_applies_to_that_login_only()
+    public void Everyone_defaults_to_90_and_98_and_a_set_cutoff_applies_to_that_login_only()
     {
         var settings = new OrchestratorSettings();
         var store = new JsonStore(temps.New());
-        Assert.That((UsageCutoffs.WeeklyFor(null, Erin), UsageCutoffs.FiveHourFor(null, Erin)), Is.EqualTo((90, 96)));
+        Assert.That((UsageCutoffs.WeeklyFor(null, Erin), UsageCutoffs.FiveHourFor(null, Erin)), Is.EqualTo((90, 98)));
 
         UsageCutoffs.Set(store, Erin, "Erin", 80, null);
         var cutoffs = UsageCutoffs.Load(store);

@@ -6,13 +6,13 @@ namespace MindAttic.Orchestrator.Budget;
 /// access is cut off. Set only with <c>orchestrator org limit &lt;who&gt; --weekly &lt;pct&gt; --5h &lt;pct&gt;</c>.</summary>
 public sealed class UsageCutoff
 {
-    /// <summary>Gets or sets the email.</summary>
+    /// <summary>The member's login email: the key the cutoff is found by.</summary>
     public string Email { get; set; } = "";
-    /// <summary>Gets or sets the name.</summary>
+    /// <summary>The member's display name when it was set.</summary>
     public string Name { get; set; } = "";
-    /// <summary>Gets or sets the weekly percent.</summary>
+    /// <summary>The percent of its week at which the login is cut off (and auto-locked).</summary>
     public int WeeklyPercent { get; set; } = UsageCutoffs.DefaultWeeklyPercent;
-    /// <summary>Gets or sets the five hour percent.</summary>
+    /// <summary>The percent of its 5-hour window at which the login is cut off until that window resets.</summary>
     public int FiveHourPercent { get; set; } = UsageCutoffs.DefaultFiveHourPercent;
     /// <summary>True when this member never set a weekly cutoff of their own (only a 5-hour one): <see cref="WeeklyPercent"/>
     /// is then a placeholder and the login follows the live global weekly target. Absent (false) on rows written before
@@ -27,7 +27,7 @@ public sealed class UsageCutoff
 /// equal to the defaults: an explicit cutoff is pinned, while a member without one follows the live global dial).</summary>
 public sealed class UsageCutoffBook
 {
-    /// <summary>Gets or sets the cutoffs.</summary>
+    /// <summary>The members' own cutoffs, at most one row per email.</summary>
     public List<UsageCutoff> Cutoffs { get; set; } = [];
 }
 
@@ -38,14 +38,15 @@ public sealed class UsageCutoffBook
 /// </summary>
 public static class UsageCutoffs
 {
-    /// <summary>The state name constant.</summary>
+    /// <summary>The <c>state</c> row they're kept in.</summary>
     public const string StateName = "usage-cutoffs";
-    /// <summary>The constants default weekly percent, default five hour percent.</summary>
-    public const int DefaultWeeklyPercent = 90, DefaultFiveHourPercent = 96;
+    /// <summary>The owner's rule: 90% of the week, 98% of the 5-hour window (the same as
+    /// <see cref="OrchestratorSettings.PaceTargetPercent"/>'s default, M.ORCH-T1750).</summary>
+    public const int DefaultWeeklyPercent = 90, DefaultFiveHourPercent = 98;
     /// <summary>The lowest weekly cutoff (the weekly reserve's own limit, 50) and the lowest 5-hour one.</summary>
     public const int MinWeeklyPercent = 100 - OrchestratorSettings.MaxWeeklyReservePercent, MinFiveHourPercent = 1;
 
-    /// <summary>Loads the book.</summary>
+    /// <summary>What <paramref name="store"/> keeps; empty when nothing is, or it can't be read now.</summary>
     public static UsageCutoffBook LoadBook(JsonStore? store)
     {
         if (store is null) return new();
@@ -53,10 +54,10 @@ public static class UsageCutoffs
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return new(); }
     }
 
-    /// <summary>Loads.</summary>
+    /// <summary>The members' own cutoffs in <paramref name="store"/>; none when it can't be read now.</summary>
     public static IReadOnlyList<UsageCutoff> Load(JsonStore? store) => LoadBook(store).Cutoffs;
 
-    /// <summary>Custom.</summary>
+    /// <summary><paramref name="email"/>'s own cutoff row, or null when it follows the defaults on both.</summary>
     public static UsageCutoff? Custom(IEnumerable<UsageCutoff>? cutoffs, string? email) =>
         email is not { Length: > 0 } ? null
         : cutoffs?.FirstOrDefault(c => string.Equals(c.Email, email, StringComparison.OrdinalIgnoreCase));
@@ -135,6 +136,6 @@ public static class UsageCutoffs
     public static string Text(UsageCutoff cutoff, int globalWeekly, int globalFiveHour) =>
         Text(cutoff.WeeklyFollowsGlobal ? globalWeekly : cutoff.WeeklyPercent, cutoff.FiveHourFollowsGlobal ? globalFiveHour : cutoff.FiveHourPercent);
 
-    /// <summary>Text.</summary>
+    /// <summary>The cutoffs as a phrase: "90% of the week, 98% of the 5-hour window".</summary>
     public static string Text(int weekly, int fiveHour) => $"{weekly}% of the week, {fiveHour}% of the 5-hour window";
 }

@@ -483,7 +483,7 @@ public sealed partial class MainViewModel
         try
         {
             if (locking) await Task.Run(() => LoginLocks.Lock(store, email, TabTitle, LoginLocks.ReasonManual, "you", null, DateTime.UtcNow));
-            else await Task.Run(() => LoginLocks.Unlock(store, email, TabTitle, "you", DateTime.UtcNow));
+            else { var reset = WeekReset; await Task.Run(() => LoginLocks.Unlock(store, email, TabTitle, "you", DateTime.UtcNow, reset)); }
             AccountsMessage = locking
                 ? $"{email} is locked: it can't open a CLI or take dispatched or moved work until it's unlocked again."
                 : $"{email} is unlocked again.";

@@ -10,13 +10,13 @@ namespace MindAttic.Orchestrator.Budget;
 /// time, not even at <see cref="WeekResetUtc"/>: only an explicit Unlock clears it.</summary>
 public sealed class LoginLock
 {
-    /// <summary>Gets or sets the email.</summary>
+    /// <summary>The locked login's normalized email (<see cref="AccountDirs.Normalize"/>): the key this lock is found by.</summary>
     public string Email { get; set; } = "";
-    /// <summary>Gets or sets the name.</summary>
+    /// <summary>The login's display name when it was locked, for the log and messages.</summary>
     public string Name { get; set; } = "";
-    /// <summary>Gets or sets the reason: <see cref="LoginLocks.ReasonManual"/> or <see cref="LoginLocks.ReasonWeeklyCutoff"/>.</summary>
+    /// <summary>Why it's locked: <see cref="LoginLocks.ReasonManual"/> or <see cref="LoginLocks.ReasonWeeklyCutoff"/>.</summary>
     public string Reason { get; set; } = LoginLocks.ReasonManual;
-    /// <summary>Gets or sets when it was locked.</summary>
+    /// <summary>When it was locked (UTC).</summary>
     public DateTime SinceUtc { get; set; }
     /// <summary>Who locked it ("you" for a manual lock; a description for an auto one).</summary>
     public string By { get; set; } = "";
@@ -27,20 +27,20 @@ public sealed class LoginLock
 /// <summary>One line of the locks' log: locked or unlocked.</summary>
 public sealed class LoginLockEvent
 {
-    /// <summary>Gets or sets the at utc.</summary>
+    /// <summary>When it happened (UTC).</summary>
     public DateTime AtUtc { get; set; }
-    /// <summary>Gets or sets the text.</summary>
+    /// <summary>The line itself, e.g. "Erin (ohleo199@mindattic.com) unlocked by you."</summary>
     public string Text { get; set; } = "";
 }
 
-/// <summary>Records that <see cref="Email"/>'s auto-lock was explicitly unlocked within the weekly window ending
-/// <see cref="WeekResetUtc"/>, so the same weekly cutoff never re-locks it before that reset comes (the epic's decision,
-/// 2026-11-23).</summary>
+/// <summary>Records that <see cref="Email"/> was explicitly unlocked within the weekly window ending
+/// <see cref="WeekResetUtc"/>, whatever its lock's reason, so the same weekly cutoff never re-locks it before that reset comes
+/// (the epic's decision, 2026-11-23: an owner Unlock holds for the rest of that week).</summary>
 public sealed class UnlockedWeek
 {
-    /// <summary>Gets or sets the email.</summary>
+    /// <summary>The unlocked login's normalized email.</summary>
     public string Email { get; set; } = "";
-    /// <summary>Gets or sets the week reset utc.</summary>
+    /// <summary>The reset ending the weekly window it was unlocked in; matched within <see cref="LoginLocks.SameWeekTolerance"/>.</summary>
     public DateTime WeekResetUtc { get; set; }
 }
 
@@ -48,19 +48,21 @@ public sealed class UnlockedWeek
 /// unlocked out of which weekly window.</summary>
 public sealed class LoginLockBook
 {
-    /// <summary>Gets or sets the locks.</summary>
+    /// <summary>The locks in force, at most one per login.</summary>
     public List<LoginLock> Locks { get; set; } = [];
-    /// <summary>Gets or sets the log.</summary>
+    /// <summary>Every lock and unlock, oldest first, the last <see cref="LoginLocks.KeepLog"/> kept.</summary>
     public List<LoginLockEvent> Log { get; set; } = [];
-    /// <summary>Gets or sets the unlocked in week.</summary>
+    /// <summary>Per login, the weekly window it was last unlocked in, which its weekly cutoff doesn't re-lock.</summary>
     public List<UnlockedWeek> UnlockedInWeek { get; set; } = [];
 }
 
 /// <summary>
 /// Lock/unlock a login (M.ORCH-T2108): a locked login (any real login, including the global one, never the API key,
 /// <see cref="ApiKeyPerson"/>) can't open a CLI, take dispatched or moved work, or keep running CLIs, until it's unlocked.
-/// Kept in orchestrator.db, keyed by normalized email, logged. This book is only the state; enforcement, the context menu and
-/// auto-lock itself are separate (M.ORCH-T2114, T2117, T2118, T2123, T2124).
+/// Kept in orchestrator.db, keyed by normalized email, logged. Set by hand (<c>org lock</c>, right-click Lock) or by
+/// <see cref="AutoLock"/> at the login's own weekly cutoff, whatever an <c>org allow</c> says; cleared only by the owner's
+/// <see cref="Unlock"/>, which then holds for the rest of that weekly window. Enforcement reads <see cref="Load"/> or
+/// <see cref="LiveLocked"/> (M.ORCH-T2114, T2117, T2118, T2123, T2124).
 /// </summary>
 public static class LoginLocks
 {
@@ -81,10 +83,10 @@ public static class LoginLocks
     {
         if (store is null) return new();
         try { return store.Load<LoginLockBook>(StateName); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return new(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or DbException) { return new(); }
     }
 
-    /// <summary>Loads.</summary>
+    /// <summary>The locks in force in <paramref name="store"/>; none when it can't be read now (<see cref="LoadBook"/>).</summary>
     public static IReadOnlyList<LoginLock> Load(JsonStore? store) => LoadBook(store).Locks;
 
     /// <summary><paramref name="email"/>'s lock, or null when it isn't locked.</summary>
@@ -126,14 +128,22 @@ public static class LoginLocks
         }
     }
 
-    /// <summary>Clears <see cref="LiveLocked"/>'s cache (tests): the next call rereads immediately.</summary>
-    internal static void ResetLiveCache() => liveLocked = (DateTime.MinValue, new HashSet<string>());
+    /// <summary>Clears <see cref="LiveLocked"/>'s cache, so its next call rereads the database: after a local Lock/Unlock or a
+    /// pushed <see cref="StateName"/> change, rather than waiting out the cache.</summary>
+    public static void InvalidateLiveCache()
+    {
+        lock (liveGate) liveLocked = (DateTime.MinValue, liveLocked.Emails);
+    }
 
-    /// <summary>True when <paramref name="email"/>'s auto-lock for the weekly window ending <paramref name="weekResetUtc"/> was
-    /// already unlocked, so that same window's cutoff must not re-lock it.</summary>
+    /// <summary>Two readings of one weekly reset (the statusline's and the meter probe's) differ by seconds; resets of
+    /// different weeks are days apart.</summary>
+    public static readonly TimeSpan SameWeekTolerance = TimeSpan.FromHours(1);
+
+    /// <summary>True when <paramref name="email"/> was already unlocked in the weekly window ending
+    /// <paramref name="weekResetUtc"/> (within <see cref="SameWeekTolerance"/>), so that same window's cutoff must not re-lock it.</summary>
     public static bool UnlockedThisWeek(IEnumerable<UnlockedWeek>? unlocked, string? email, DateTime weekResetUtc) =>
         email is { Length: > 0 } &&
-        (unlocked ?? []).Any(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase) && u.WeekResetUtc == weekResetUtc);
+        (unlocked ?? []).Any(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase) && (u.WeekResetUtc - weekResetUtc).Duration() < SameWeekTolerance);
 
     /// <summary>
     /// Locks <paramref name="email"/>'s login, keyed by its normalized form (never the API key's, <see cref="ApiKeyPerson"/>).
@@ -170,10 +180,11 @@ public static class LoginLocks
             ? Lock(store, email, name, ReasonWeeklyCutoff, "its weekly cutoff", week.ResetUtc, nowUtc)
             : null;
 
-    /// <summary>Unlocks <paramref name="email"/>'s login; logged. A <see cref="ReasonWeeklyCutoff"/> lock's weekly reset is
-    /// recorded in <see cref="LoginLockBook.UnlockedInWeek"/>, so the same window's cutoff doesn't re-lock it. The line said,
-    /// or null when it wasn't locked.</summary>
-    public static string? Unlock(JsonStore store, string email, string name, string by, DateTime nowUtc)
+    /// <summary>Unlocks <paramref name="email"/>'s login; logged. Whatever the lock's reason, the weekly window it's unlocked in
+    /// (<paramref name="weekResetUtc"/>, the login's current week reset when the caller knows it, else the one the lock was set
+    /// in) is recorded in <see cref="LoginLockBook.UnlockedInWeek"/>, so the owner's Unlock holds for the rest of that week: the
+    /// login's weekly cutoff doesn't re-lock it before the reset. The line said, or null when it wasn't locked.</summary>
+    public static string? Unlock(JsonStore store, string email, string name, string by, DateTime nowUtc, DateTime? weekResetUtc = null)
     {
         var normalized = AccountDirs.Normalize(email) ?? email;
         string? line = null;
@@ -181,7 +192,7 @@ public static class LoginLocks
         {
             if (For(book.Locks, normalized) is not { } existing) return;
             book.Locks.RemoveAll(l => string.Equals(l.Email, normalized, StringComparison.OrdinalIgnoreCase));
-            if (existing.Reason == ReasonWeeklyCutoff && existing.WeekResetUtc is { } reset)
+            if ((weekResetUtc ?? existing.WeekResetUtc) is { } reset)
             {
                 book.UnlockedInWeek.RemoveAll(u => string.Equals(u.Email, normalized, StringComparison.OrdinalIgnoreCase));
                 book.UnlockedInWeek.Add(new UnlockedWeek { Email = normalized, WeekResetUtc = reset });

@@ -262,7 +262,7 @@ internal sealed class OrgAllowCommand : Command<OrgAllowCommand.Settings>
 
     /// <summary>The login's next weekly reset by Claude's meter: its own login's reading here, else the account roster's last
     /// (rolled on a week at a time), else the global login's when it's signed in as them; null when none was ever read.</summary>
-    private static DateTime? WeekReset(string email, DateTime nowUtc)
+    internal static DateTime? WeekReset(string email, DateTime nowUtc)
     {
         var resets = new List<DateTime>();
         try
@@ -355,7 +355,8 @@ internal sealed class OrgUnlockCommand : Command<OrgUnlockCommand.Settings>
         var name = OrgDisallowCommand.NameOf(who);
         var store = Ctx.Store();
         var existing = LoginLocks.For(LoginLocks.Load(store), who.Email);
-        var line = LoginLocks.Unlock(store, who.Email, name, WeeklyAllowances.ByYou, OrgAllowCommand.Now);
+        var line = LoginLocks.Unlock(store, who.Email, name, WeeklyAllowances.ByYou, OrgAllowCommand.Now,
+            (OrgAllowCommand.WeekResetOverride ?? OrgAllowCommand.WeekReset)(who.Email, OrgAllowCommand.Now));
         if (line is null)
         {
             AnsiConsole.MarkupLine($"{Markup.Escape(name)}'s login isn't locked: nothing to take back.");
