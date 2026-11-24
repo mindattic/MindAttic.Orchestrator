@@ -58,6 +58,17 @@ public sealed class DiskWatch
         return drives;
     }
 
+    /// <summary>Every fixed, ready drive's root on this machine (M.ORCH-T2169, the menu bar's per-drive bars): found anew
+    /// each read rather than a fixed list, so a drive added or removed later just appears or disappears.</summary>
+    public static IReadOnlyList<string> FixedRoots()
+    {
+        var roots = new List<string>();
+        foreach (var d in DriveInfo.GetDrives())
+            try { if (d.DriveType == DriveType.Fixed && d.IsReady) roots.Add(d.RootDirectory.FullName); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        return roots;
+    }
+
     /// <summary>Percent of <paramref name="root"/>'s own capacity in use right now (M.ORCH-T1875, the menu bar's disk bar);
     /// null if it can't be read. Kept separate from <see cref="DriveFree"/> (a record other callers already construct
     /// positionally) rather than adding a field to it.</summary>

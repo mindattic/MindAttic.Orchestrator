@@ -1,31 +1,61 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows.Media;
 using MindAttic.Orchestrator.Activity;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
+/// <summary>One fixed drive's own usage bar (M.ORCH-T2169, beside the menu bar's drive letters): every fixed, ready drive
+/// found on this machine gets one, discovered anew each refresh rather than a fixed list, so a drive added or removed
+/// later just appears or disappears.</summary>
+public sealed class DriveStatusViewModel
+{
+    public DriveStatusViewModel(string root, double freeGb, double? usedPercent)
+    {
+        Label = root.TrimEnd('\\', '/');
+        FreeText = $"{freeGb.ToString("0.00", CultureInfo.InvariantCulture)} GB free ({Label})";
+        UsedPercent = Math.Max(0, usedPercent ?? 0);
+        UsedBrush = MainViewModel.BandBrush(usedPercent);
+        ToolTip = $"Free space on {Label}";
+        Key = $"{root}|{freeGb:0.00}|{usedPercent}";
+    }
+
+    /// <summary>The drive's own letter, "C:".</summary>
+    public string Label { get; }
+    /// <summary>Free space, two decimals: "16.45 GB free (C:)".</summary>
+    public string FreeText { get; }
+    /// <summary>This bar's own value (M.ORCH-T1875): the same MaProgressBar the login strip's Sigma/Lambda bars use. 0
+    /// when it can't be read, so the bar just sits empty rather than binding to null.</summary>
+    public double UsedPercent { get; }
+    /// <summary>That bar's colour: the same band <see cref="MainViewModel.BandBrush"/> already gives the Sigma/Lambda bars.</summary>
+    public Brush UsedBrush { get; }
+    /// <summary>What the bar and its free-space text say in their tooltip.</summary>
+    public string ToolTip { get; }
+    /// <summary>What names it across refreshes: everything it shows.</summary>
+    internal string Key { get; }
+}
+
 public sealed partial class MainViewModel
 {
-    // ── The menu bar's host readout (M.ORCH-T1499) ─────────────────────────
-    // This machine's own C: free space and RAM load, not any login's: read once a refresh (RefreshAsync, every 5s) off
-    // the UI thread, alongside the snapshot build, then set here on the root tab only. MainWindow.xaml binds the menu
-    // bar to the root tab's DataContext (like OrgStrip), so these two figures show the same regardless of which login
-    // tab is selected.
+    // The menu bar's host readout (M.ORCH-T1499): this machine's own fixed drives' free space and RAM load, not any
+    // login's: read once a refresh (RefreshAsync, every 5s) off the UI thread, alongside the snapshot build, then set
+    // here on the root tab only. MainWindow.xaml binds the menu bar to the root tab's DataContext (like OrgStrip), so
+    // these figures show the same regardless of which login tab is selected.
 
-    private double diskFreeGb;
-    private double? diskUsedPercent;
+    private readonly ObservableCollection<DriveStatusViewModel> driveRows = [];
+
+    /// <summary>Every fixed, ready drive on this machine (M.ORCH-T2169): one bar each, discovered anew at every refresh
+    /// rather than from a fixed list, so a drive added or removed later just appears or disappears.</summary>
+    public ObservableCollection<DriveStatusViewModel> Drives => driveRows;
+
+    private void ShowDrives(IReadOnlyList<DriveStatusViewModel> rows)
+    {
+        if (driveRows.Select(r => r.Key).SequenceEqual(rows.Select(r => r.Key), StringComparer.Ordinal)) return;
+        driveRows.Clear();
+        foreach (var row in rows) driveRows.Add(row);
+    }
+
     private double? ramUtilizationPercent;
-
-    /// <summary>Free space on the system drive, two decimals: "16.45 GB free (C:)". Empty before the first read.</summary>
-    public string DiskFreeText => diskFreeGb <= 0 ? "" : $"{diskFreeGb.ToString("0.00", CultureInfo.InvariantCulture)} GB free (C:)";
-
-    /// <summary>C:'s own usage bar (M.ORCH-T1875, beside the menu bar's "C:" label, upper left): the same MaProgressBar
-    /// the login strip's Sigma/Lambda bars use. 0 before the first read or when it can't be read, so the bar just sits
-    /// empty rather than binding to null.</summary>
-    public double DiskUsedPercent => Math.Max(0, diskUsedPercent ?? 0);
-
-    /// <summary>That bar's colour: the same band <see cref="BandBrush"/> already gives the Sigma/Lambda bars.</summary>
-    public Brush DiskUsedBrush => BandBrush(diskUsedPercent);
 
     /// <summary>Physical RAM in use right now, Windows' own reading: "RAM 62%". Empty before the first read, or when
     /// Windows can't say.</summary>
@@ -167,11 +197,10 @@ public sealed partial class MainViewModel
         if (consentsToasted.Count > 512) consentsToasted.Clear();
     }
 
-    private void SetHostStats(double freeGb, double? diskUsed, double? ramPercent, MemoryState? memoryNow = null, bool allocatePausedNow = false, DiskHold? diskHoldNow = null)
+    private void SetHostStats(IReadOnlyList<(string Root, double FreeGb, double? UsedPercent)> drives, double? ramPercent, MemoryState? memoryNow = null, bool allocatePausedNow = false, DiskHold? diskHoldNow = null)
     {
         ShowConsentToasts();
-        diskFreeGb = freeGb;
-        diskUsedPercent = diskUsed;
+        ShowDrives([.. drives.Select(d => new DriveStatusViewModel(d.Root, d.FreeGb, d.UsedPercent))]);
         ramUtilizationPercent = ramPercent;
         memory = memoryNow;
         allocatePaused = allocatePausedNow;
@@ -182,9 +211,6 @@ public sealed partial class MainViewModel
         Raise(nameof(ConnectedMembersText));
         Raise(nameof(ConnectedMembersToolTip));
         Raise(nameof(AllocatePausedText));
-        Raise(nameof(DiskFreeText));
-        Raise(nameof(DiskUsedPercent));
-        Raise(nameof(DiskUsedBrush));
         Raise(nameof(RamUtilizationText));
         Raise(nameof(RamUsedPercent));
         Raise(nameof(RamUsedBrush));

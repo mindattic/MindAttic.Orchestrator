@@ -480,7 +480,7 @@ public sealed partial class MainViewModel : ObservableObject
             var dirs = OwnLoginDirs();
             IReadOnlyList<Member> readMembers = [];
             (Snapshot, SchedulePlan, IReadOnlyDictionary<string, string>)? planned = null;
-            var (next, tabs, nextOrgs, diskFree, diskUsed, ramPercent, allocatePausedNow) = await BuiltAfterChanges(() => Task.Run(() =>
+            var (next, tabs, nextOrgs, driveReads, ramPercent, allocatePausedNow) = await BuiltAfterChanges(() => Task.Run(() =>
             {
                 var built = aggregator.Refresh();
                 // Each login's name and color, read with the snapshot, off the UI thread; and the organization's members, so
@@ -498,10 +498,13 @@ public sealed partial class MainViewModel : ObservableObject
                 catch (Exception ex) when (ex is not OutOfMemoryException) { }
                 lastApiKey = hasKey;
                 lastApiKeyTail = keyTail;
-                // The menu bar's own host readout (M.ORCH-T1499): this machine's C: free space and RAM load, not any login's,
-                // reused from the same cheap stat calls the disk-space and memory alerts already read (M.ORCH-T471/M.ORCH-T1494).
-                var diskFreeGb = DiskWatch.Read(["C:\\"]) is [{ } drive, ..] ? drive.FreeGb : 0;
-                var diskUsedPercent = DiskWatch.UsedPercent("C:\\");
+                // The menu bar's own host readout (M.ORCH-T1499): every fixed drive's free space and RAM load, not any
+                // login's, reused from the same cheap stat calls the disk-space and memory alerts already read
+                // (M.ORCH-T471/M.ORCH-T1494). Each fixed, ready drive found anew (M.ORCH-T2169), not a fixed list, so one
+                // added or removed later just appears or disappears.
+                var driveReads = DiskWatch.FixedRoots()
+                    .Select(root => (Root: root, FreeGb: DiskWatch.Read([root]) is [{ } drive, ..] ? drive.FreeGb : 0, UsedPercent: DiskWatch.UsedPercent(root)))
+                    .ToList();
                 var ramUtilizationPercent = MachineHealth.RamUtilizationPercent();
                 // The master switch for /allocate (M.ORCH-T1491): only a setting that was read and is off shows the banner.
                 var paused = store.TryLoadSettings(out var settingsNow) && !settingsNow.Allocate;
@@ -521,13 +524,13 @@ public sealed partial class MainViewModel : ObservableObject
                 plansRead = PlansNow(built, settingsNow);
                 // Each login's agents (M.ORCH-T1747): the agents table, spread over the tabs when they're applied.
                 if (AgentsNow() is { } agents) agentsRead = agents;
-                return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, diskFreeGb, diskUsedPercent, ramUtilizationPercent, paused);
+                return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, driveReads, ramUtilizationPercent, paused);
             }), () => localChanges);
             precomputedPlan = planned;
             ApplyTabs(next, tabs, nextOrgs);
             // The memory guard's level (M.ORCH-T1498): the daemon's, stepped, as the snapshot's pace carries it; else this process's own.
             // And the disk floor's hold (M.ORCH-T1692): the daemon's, as the snapshot's pace carries it; else this process's own.
-            SetHostStats(diskFree, diskUsed, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow, next.Pace?.Disk ?? DiskGuard.Shared.Last);
+            SetHostStats(driveReads, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow, next.Pace?.Disk ?? DiskGuard.Shared.Last);
             ApplyInbox();
             ApplyPlans();
             // What a pushed snapshot's figures are laid over until the next read (M.ORCH-T872).

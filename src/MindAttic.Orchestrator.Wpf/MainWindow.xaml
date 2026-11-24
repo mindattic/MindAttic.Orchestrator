@@ -1703,13 +1703,24 @@
                                Visibility="{Binding DiskHoldText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                     <StackPanel x:Name="HostStatsBars" Orientation="Horizontal" VerticalAlignment="Center"
                                 AutomationProperties.Name="This machine's disk and RAM use">
-                        <TextBlock Text="C:" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" />
-                        <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
-                                     Margin="{StaticResource SpaceLXS}" Value="{Binding DiskUsedPercent, Mode=OneWay}"
-                                     Foreground="{Binding DiskUsedBrush}" mc:MaCallout.ToolTip="Free space on the system drive" />
-                        <TextBlock x:Name="DiskFreeText" Text="{Binding DiskFreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}"
-                                   mc:MaCallout.ToolTip="Free space on the system drive" AutomationProperties.Name="{Binding DiskFreeText}"
-                                   Visibility="{Binding DiskFreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                        <ItemsControl ItemsSource="{Binding Drives}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:DriveStatusViewModel}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Label}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}" />
+                                        <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
+                                                     Margin="{StaticResource SpaceLXS}" Value="{Binding UsedPercent, Mode=OneWay}"
+                                                     Foreground="{Binding UsedBrush}" mc:MaCallout.ToolTip="{Binding ToolTip}" />
+                                        <TextBlock Text="{Binding FreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}"
+                                                   mc:MaCallout.ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding FreeText}"
+                                                   Visibility="{Binding FreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                         <TextBlock Text="RAM" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}" />
                         <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
                                      Margin="{StaticResource SpaceLXS}" Value="{Binding RamUsedPercent, Mode=OneWay}"
@@ -1728,7 +1739,7 @@
                     </StackPanel>
                 </StackPanel>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRL}"
-                           Text="F5 refresh · Ctrl+Tab next login · Ctrl +/− zoom · Esc close" />
+                           Text="Ctrl+Tab next login" />
                 <TextBlock DockPanel.Dock="Left" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRL}">
                     <Run Text="{Binding RepoCount, Mode=OneWay}" /><Run Text=" repos under " /><Run Text="{Binding WorkspaceRoot, Mode=OneWay}" />
                 </TextBlock>
