@@ -16,9 +16,10 @@ namespace MindAttic.Orchestrator.Activity;
 /// (hosted CLIs, their subagents, builds), so pages they aren't touching go back to Windows;</item>
 /// <item>if that alone wasn't enough, the same working-set trim on every other process on the machine, biggest first -
 /// still non-destructive, nothing closes;</item>
-/// <item>if even that wasn't enough, one process is actually closed: first an idle, headless Orchestrator CLI of ours (its
-/// ticket, if any, simply stays open - nothing it held is lost), and only once none of those exist, one foreign desktop
-/// app from a small vetted list, least disruptive first.</item>
+/// <item>if even that wasn't enough, one process is actually closed: first an idle, headless Orchestrator CLI of ours with
+/// everything it started (its ticket, if any, simply stays open - nothing it held is lost; only from a fresh roster, and
+/// only if its pid is still that CLI), and only once none of those exist, one foreign desktop app from a small vetted
+/// list, least disruptive first.</item>
 /// </list>
 /// Nothing under a Claude CLI or an Orchestrator hosting process (<see cref="ProcessTree.IsProtected"/>) is ever closed by
 /// this, only trimmed at step 1 - that's where the actual automation lives.
@@ -112,19 +113,37 @@ public static partial class MemoryReclaim
     private static string KillLeastImportant() => KillOwnIdleHeadless() ?? KillForeignAllowList();
 
     /// <summary>The longest-idle Orchestrator CLI with no Launcher tab (so no one's watching it) that this can close without
-    /// losing anyone's conversation or any ticket progress; null when the roster can't be read or none qualify.</summary>
+    /// losing anyone's conversation or any ticket progress, closed with everything it started (its subagents and node
+    /// children hold most of its RAM); null when the roster can't be read, is stale, or none qualify.</summary>
     private static string? KillOwnIdleHeadless()
     {
         try
         {
             var db = new OrchestratorDb(OrchestratorDb.LivePath);
-            var target = CliRoster.Read(db)?.Clis
-                .Where(c => !c.InLauncher && c.Idle)
-                .OrderBy(c => c.LastTurnUtc ?? DateTime.MinValue)
-                .FirstOrDefault();
-            return target is { } t && Kill(t.Pid) ? $"closed idle headless CLI {t.Pid} ({t.Repo})" : null;
+            var target = PickIdleHeadless(CliRoster.Read(db), DateTime.UtcNow, Identify);
+            return target is { } t && Kill(t.Pid, entireProcessTree: true) ? $"closed idle headless CLI {t.Pid} ({t.Repo})" : null;
         }
         catch (Exception e) when (e is System.Data.Common.DbException or IOException or UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>The CLI <see cref="KillOwnIdleHeadless"/> closes (a seam for tests): none from a roster older than
+    /// <see cref="CliRoster.FreshFor"/> (no running daemon wrote it, so its pids may be gone or reused), and none whose pid
+    /// isn't now a claude/node process that started before the roster was written (<paramref name="identify"/>: a pid's
+    /// process name and UTC start, null once it's gone).</summary>
+    internal static CliRow? PickIdleHeadless(CliRosterFile? roster, DateTime nowUtc, Func<int, (string Name, DateTime StartedUtc)?> identify)
+    {
+        if (roster is null || nowUtc - roster.WrittenUtc > CliRoster.FreshFor) return null;
+        return roster.Clis
+            .Where(c => !c.InLauncher && c.Idle)
+            .OrderBy(c => c.LastTurnUtc ?? DateTime.MinValue)
+            .FirstOrDefault(c => identify(c.Pid) is { } p && p.StartedUtc <= roster.WrittenUtc
+                && (Providers.IsClaudeProcess(p.Name) || p.Name.Equals("node", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static (string Name, DateTime StartedUtc)? Identify(int pid)
+    {
+        try { using var p = Process.GetProcessById(pid); return (p.ProcessName, p.StartTime.ToUniversalTime()); }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return null; }
     }
 
     /// <summary>The first running process, in <see cref="ForeignKillAllowList"/> order, that this closes; "nothing left to
@@ -162,12 +181,12 @@ public static partial class MemoryReclaim
         }
     }
 
-    private static bool Kill(int pid)
+    private static bool Kill(int pid, bool entireProcessTree = false)
     {
         try
         {
             using var p = Process.GetProcessById(pid);
-            p.Kill();
+            p.Kill(entireProcessTree);
             return true;
         }
         catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
