@@ -1,7 +1,7 @@
 # How orchestration works
 
 MindAttic.Orchestrator keeps Claude agents working around the clock on the workspace's tickets, and spends each
-5-hour usage window almost to its end (96% by default, adjustable) without ever reaching Claude's limit.
+5-hour usage window almost to its end (98% by default, adjustable) without ever reaching Claude's limit.
 
 ## Why spend almost all of every window, and never the limit
 
@@ -9,7 +9,7 @@ Claude's subscription meters usage in 5-hour windows. Whatever a window doesn't 
 idle hour is lost work. Reaching the limit is worse than stopping early: every session, tab and subagent stops
 mid-step until the reset, work is left half done, and nothing can run, not even a typed question. So the goal is to
 land as close to the limit as possible at the moment the window resets, never on it before. The target is
-`PaceTargetPercent` (96% by default, set in the dashboard's Settings). The gap above it is room for what the
+`PaceTargetPercent` (98% by default, set in the dashboard's Settings; a login's own `orchestrator org limit <who> --5h <pct>` overrides it for that login). The gap above it is room for what the
 orchestrator can't predict: you typing a question, an agent it didn't start, a reply bigger than usual.
 
 ## Never past the machine's RAM either
@@ -43,16 +43,13 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
    since that report are added back, so the hard cutoff still sees real spend during a quiet statusline (M.ORCH-T783).
    The window's size in tokens is learned from how far Claude's percent moved while a known number of tokens was spent.
 2. **Pace.** What's left of the target, divided by the hours until the reset, is the sustainable rate. The draw over
-   the last few minutes, every session and subagent together, is compared with it. That is the `linear` pace profile,
-   the default. The `front-loaded` profile (`orchestrator settings --pace-profile front-loaded`, or the dashboard's
-   Settings) instead follows the curve target × elapsed^k (`--pace-curve-k`, 0.55 by default): the rate is whatever
-   reaches that curve 30 minutes from now, so it spends faster early and eases off. In the last 30 minutes it matches
-   the linear rate, and the curve never aims past the target. Above the curve, agents are held until it catches up.
-   That is a hold, not the stop: the stop comes only at the target. Past 85% it starts no new subagent or ticket. The
-   profile is read on every check, so a switch mid-window applies to the next call; going back to linear spreads
-   what's left evenly again. The utilization chart draws the active profile's curve.
+   the last few minutes, every session and subagent together, is compared with it. Above it, agents are held until it
+   catches up. That is a hold, not the stop: the stop comes only at the target. The pace is always the `linear`
+   profile: `PaceProfile` is hard-coded to it, and `orchestrator settings --pace-profile` and `--pace-curve-k` are
+   refused ("Pace profiles are gone", M.ORCH-T706). The front-loaded curve (target x elapsed^k) is retired, and with it
+   its "no new subagent or ticket past 85%" rule.
 
-   *Front-loaded spike (M.ORCH-T399).* Front-loaded ran from 2026-10-18 17:19Z with k 0.55 and target 98%, and
+   *Front-loaded spike (M.ORCH-T399, historical).* Front-loaded ran from 2026-10-18 17:19Z with k 0.55 and target 98%, and
    nothing else changed. Results come from the pace ledger, Claude's meter readings (then `pace-ledger.jsonl` and `usage-samples.json`, now orchestrator.db's `pace_ledger` and `usage_samples`) and `pace-gate.jsonl`. The
    subagents running at each crossing come from the subagent transcripts' first and last timestamps.
 
@@ -64,8 +61,8 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
    | 10-19 14:30 to 19:30 | 96 | 96 | 0 | none | 0 | 15 (Agent, 38 to 76%) | 3 (GG-T97, GG-T100, GG-T110, all started 46 min before at about 76%) / 2 (GG-T97, GG-T110) |
 
    No window passed 99%. The highest peak was 96%, there was no overshoot, and no limit was hit. The 85% rule held:
-   every subagent running past 85% had started before 85%, and later Agent calls were refused. Front-loaded stays as
-   an option. No window reached the 98% target. The 65% and 49% windows were short on demand, not held back:
+   every subagent running past 85% had started before 85%, and later Agent calls were refused. Front-loaded was
+   later retired (M.ORCH-T706). No window reached the 98% target. The 65% and 49% windows were short on demand, not held back:
    pacing held agents for 47 minutes and 1 minute in those windows.
 3. **Steer.** The result goes into orchestrator.db's `rl-status` row (and `~/.claude/rl-status.json`, the same status
    exported for rl-check.py and the Launcher), which the hooks in every Claude CLI read, taking whichever is newer. Their
@@ -185,8 +182,10 @@ The same arithmetic both speeds up and slows down:
 - **Near the reset**, the hours left shrink faster than the budget left, so the sustainable rate rises and the
   window's last stretch is spent instead of wasted.
 
-The week is shown but never paced: spending each 5-hour window to its target is the goal, and only a weekly limit
-Claude actually reports stops new work.
+The week is shown but never paced (weekly-aware pacing is hard-coded off, M.ORCH-T706): spending each 5-hour window to
+its target is the goal. The week has a hard cutoff per login instead: 90% of it by default (`WeeklyStopPercent`, 100
+minus the 10-point weekly reserve), or the login's own `orchestrator org limit <who> --weekly <pct>` (M.ORCH-T707).
+Reaching it locks that login (see "Login lock" below).
 
 ## When something fails
 
@@ -199,6 +198,52 @@ Claude actually reports stops new work.
   and that cause is stopped at its source: whole-drive searches are refused and runaway or orphaned agent tool
   processes are reaped. Memory commit has sat at 97-100% many times under full load without an agent crashing
   (M.ORCH-T374).
+
+## Login lock (M.ORCH-T2108)
+
+A locked login can't open a CLI, take work or keep running CLIs until it is unlocked. Nothing unlocks it by time, not
+even the weekly reset. The API key is never locked; every real login is, the global one included.
+
+**How a login gets locked and unlocked**
+
+| Way | What it does |
+| --- | --- |
+| Manual lock | Right-click the login's tab, Lock; or `orchestrator org lock <who>` (M.ORCH-T2114, T2118). Reason `manual` |
+| Weekly cutoff | When the login's week reaches its weekly cutoff (90% by default, or its `org limit --weekly`), the daemon locks it on the next tick, `LoginLocks.AutoLock` from `AccountRebalancer.CheckCutoffs` (M.ORCH-T2126). Reason `weekly-cutoff`. It fires whatever an `org allow` says: reaching 100% of the week stays impossible, and a lock wins over an allow |
+| Unlock | Right-click, Unlock; or `orchestrator org unlock <who>`. Only the owner unlocks. A weekly-cutoff lock asks first in the dashboard, showing the week's current use, and `org unlock` prints it |
+
+An owner Unlock holds for the rest of that weekly window, whatever the lock's reason: the unlock records the login's
+current weekly reset (`LoginLockBook.UnlockedInWeek`), and the same window's cutoff does not lock it again. The next
+weekly window's cutoff does. Two readings of one reset within an hour count as the same window.
+
+**What a lock blocks**
+
+- *Picks:* `AccountDirs.SignedIn` leaves a locked login out, so the Auto pick for a new tab, `LoginPicker` and the
+  rebalancer never choose it.
+- *Dispatch:* a ticket assigned to the locked login's person is held, not started, with "is locked (<reason> since
+  <time>): orchestrator org unlock <who>" (`Dispatcher`, M.ORCH-T2124).
+- *Moves:* `AccountMove` refuses to move a CLI onto a locked login (dashboard Move to, `orchestrator move`, rebalance),
+  naming the lock.
+- *Explicit opens:* `orchestrator start --account`, `org start`, `machine start --login` and the dashboard's Start on that
+  login's tab refuse with the same text ("Not started: <email> is locked."). A CLI already running can still be
+  reattached to.
+
+**What happens to CLIs already running on it.** They are not killed. The login's pace becomes a stop with no subagent
+allowance (`AccountPacer.LockedPace`): each CLI finishes its current step, every further tool call is refused and typed
+prompts are answered unsent, the same as at a 5-hour cutoff. The note reads "<email>'s login is locked (its weekly
+cutoff): nothing runs on it until it's unlocked (orchestrator org unlock <email>)." Unlocking lets them go on.
+
+**What you see**
+
+- A red lock badge on the login's tab and tree node, and the activity word "Locked (by you)" or "Locked at its weekly
+  cutoff" (M.ORCH-T2119). The right-click menu shows Unlock while it is locked.
+- `orchestrator org locks` lists every locked login with why and since; `org usage` and `org limit` mark a locked
+  login. Each lock and unlock is logged (the last 200 kept) in the `login-locks` state row of `data/orchestrator.db`,
+  and the lock book syncs to other dashboards.
+- The weekly crossing alert, once per window, an urgent alert plus a Psst text: "<name> reached its weekly cutoff
+  (<n>% of the week, cutoff <c>%) and is now locked: right-click Unlock, or orchestrator org unlock <who>; to change
+  the cutoff: orchestrator org limit <who> --weekly <pct>." For a login with an active `org allow` it adds "(a lock
+  wins over its org allow)" before the colon.
 
 ## What guarantees cleanup: Job Objects
 
@@ -345,42 +390,37 @@ The request goes to the host, never into the CLI, on a pipe of its own beside th
   the claims staying with the old owner, whose CLI is told to start them again if it's still running.
 
   **Rebalance (M.ORCH-T608):** the daemon sends the same request on its own when a CLI's login runs low (Claude's meter
-  puts its 5-hour window at the pace target or its week at the weekly reserve's stop line, or its pace is at a limit) and a
+  puts its 5-hour window at that login's 5-hour cutoff or its week at its weekly cutoff, or its pace is at a limit) and a
   signed-in per-CLI login has no CLI and at least 10 points more headroom. The CLI isn't moved again for 30 minutes, its
-  target stays taken until it arrives, and a login that's low itself is never a target. Setting `RebalanceLogins` (on by
-  default; `orchestrator settings --rebalance false`) turns it off.
+  target stays taken until it arrives, and a login that's low itself is never a target. A locked or disabled login is
+  never a target either (`AccountDirs.SignedIn` leaves it out). Setting `RebalanceLogins` (on by default;
+  `orchestrator settings --rebalance false`) turns it off.
 
-  **Emergency failover to the API key (M.ORCH-T664, M.LNCH-T67):** when a CLI's login is low (as above, or a limit error ended its
-  turn: a "You've hit your limit" in its transcript) and no signed-in login has room for it, the daemon moves that one
-  CLI onto the Vault's API key instead, with `"reason":"failover"`, the `billing` it is to bill and the login it keeps:
+  **Automatic failover to the API key is retired (M.ORCH-T664, M.ORCH-T681, hard-coded off by M.ORCH-T706):**
+  `FailoverToApiKey` is always false and `orchestrator settings --failover` is refused ("--failover is locked off").
+  The daemon never moves a CLI onto the Vault's API key by itself; only the owner switches API billing on
+  (`orchestrator billing api`). What happens at a login's line now:
+
+  - *5-hour cutoff* (`PaceTargetPercent`, 98%, or the login's `org limit --5h`): the pace says stop. Every tool call of
+    that login's CLIs is refused and typed prompts are answered unsent until the window resets. The CLI is not moved
+    to another person's login (each person's remainder stays theirs) and not onto the key. The owner gets one alert
+    and one Psst text per crossing (`CutoffAlerts`, M.ORCH-T742).
+  - *Weekly cutoff:* the login is locked as described under "Login lock".
+  - *Low login with room elsewhere:* the rebalance above moves the CLI to a signed-in login of the same org with
+    more headroom.
+  - *A CLI already on the key from an earlier failover* (the `api-failovers` state row): with failover off, the daemon
+    sends the move-back at once, the same `"reason":"failover"` request with `"billing":"team"` and `now: false`, so it
+    returns to its login and stops billing the key. Only that request is still sent; the message shape is the one
+    below.
 
   ```json
-  {"type":"restart-resume","reason":"failover","billing":"api","configDir":"","now":true,"session":"<claude session id>","cliPid":4242,"cwd":"D:\Projects\Prose","requestedAt":"2026-10-23T16:00:00Z"}
+  {"type":"restart-resume","reason":"failover","billing":"team","configDir":"","now":false,"session":"<claude session id>","cliPid":4242,"cwd":"D:\Projects\Prose","requestedAt":"2026-10-23T16:00:00Z"}
   ```
 
   `billing` is for this CLI alone: `billing.json`'s mode is left as it is, so the Launcher must not drop a failover
-  request whose `billing` differs from it (step 3), and keeps that billing for the CLI's later restarts until another
-  request says otherwise. `configDir` is the login it's on (kept). `now: true` (the turn already ended at a limit error)
-  restarts it at once rather than at the next idle point. Before sending, the daemon approves the key in that login's
-  Claude Code config (`<configDir>/.claude.json`, or `~/.claude.json` for the global login, which the billing switch then
-  doesn't put back to rejected while the CLI is on it). Each failover is kept in `data/orchestrator.db`'s `api-failovers`
-  state row; the billing switch never asks such a CLI back onto the mode. Once its login resets (the window that ran out
-  is past, and the login isn't low), the daemon sends the same request with `"billing":"team"` and `now: false`, the key
-  is rejected again in a per-CLI login's config, and the CLI goes back to its login, so the key (no rate ceiling, only
-  cost) bills only the gap. A login with room is always preferred to the key. Each failover and move back is logged and
-  toasted ("U.SPC CLI moved to API key: Ryan's week is at 98% (stops at 95%)..."). Setting `FailoverToApiKey` (on by
-  default; `orchestrator settings --failover false`) turns it off.
-
-  **Past a login's line, straight to the key (M.ORCH-T681):** a CLI on someone's own per-CLI login that reaches the
-  5-hour pace target (`PaceTargetPercent`, 96%) or the weekly target (`WeeklyStopPercent`: 100 minus the weekly reserve),
-  or whose pace stops or limit is hit, is never moved to another person's login (each person's remainder stays theirs):
-  it fails over to the API key with `now: true`, so the tab restarts it at once instead of the pace gate refusing its
-  calls, keeping its session and login, and moves back when that login's window resets. Only while the fallback is the API
-  key (billing mode `api`); otherwise the daemon says so once ("the fallback isn't the API key") and nothing moves. A
-  failover, and a move back, counts only once the CLI's session state shows it billing what was asked: a tab that took the
-  request but restarted the CLI on the old billing, or never restarted it (2 minutes for `now`, 30 at an idle point), is
-  toasted as Needs you ("close and reopen this tab": one opened before M.LNCH-T67 drops it) and asked again 5 minutes later.
-  Toasted when seen: "Unity.SpaceGod moved to the API key: Honey's week at 90%".
+  request whose `billing` differs from it (step 3). `configDir` is the login it's on. A move-back is counted only once the
+  CLI's session state shows it billing the login; a tab that took the request but did not restart the CLI is toasted as
+  Needs you ("close and reopen this tab") and asked again 5 minutes later.
 
   **No outside-use detection (retired):** an earlier version lowered a login's 5-hour pace ceiling by guessing at the
   member's own use of Claude elsewhere, from the meter's rise the CLIs here couldn't explain. Removed (owner's rule): it
