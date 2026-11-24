@@ -232,35 +232,204 @@ The same core drives a CLI, deployed as `orchestrator.exe` in `C:\Apps\MindAttic
 | Command | |
 | --- | --- |
 | `status [--all] [--json]` | every repo's state, sessions, open tickets, tokens today, budget line, who's billed and each open CLI's own billing |
-| `billing [team\|api]` | who every CLI bills: `Claude Team: <email> (<org>)` or `API KEY: sk-ant-...<last4>` (masked), and each open CLI's own billing; `team` or `api` switches every CLI (see [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md#billing)) |
+| `billing [team\|api]`, `billing credit <USD>` | who every CLI bills: `Claude Team: <email> (<org>)` or `API KEY: sk-ant-...<last4>` (masked), and each open CLI's own billing; `team` or `api` switches every CLI (see [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md#billing)); `credit <USD>` records the API key person's starting credit (`0` clears it), without an amount prints its spend (M.ORCH-T906) |
 | `login [<email-or-short-name>] [--sso] [--api-key]` | bare: the account roster, the signed-in one marked and the most headroom suggested; with an account, runs `claude auth login --email <address>` (`--sso` for SSO orgs), which opens its login in the browser; `--api-key` bills every CLI to the Vault's API key (emergencies) |
-| `login --account <email> [--sso] [--new-token]` | signs in a per-CLI login once: that account's own folder (`%USERPROFILE%\.claude-accounts\<email>`), leaving the global login every other CLI uses as it is, and mints its year-long token into the Vault (`--new-token` mints a new one even though one is kept; see [Per-CLI logins](#per-cli-logins)) |
-| `start <Repo> [--provider] [--prompt] [--account <email>]` | open a Launcher tab for a repo; `--account` runs its Claude CLI on that per-CLI login's token pool; without it a Claude CLI goes on the Auto login (a free per-CLI login, else the global one) |
+| `login --account <email> [--sso] [--new-token]`, `login --all [--new-token]` | signs in a per-CLI login once: that account's own folder (`%USERPROFILE%\.claude-accounts\<email>`), leaving the global login every other CLI uses as it is, and mints its year-long token into the Vault (`--new-token` mints a new one even though one is kept; see [Per-CLI logins](#per-cli-logins)); `--all` signs in every roster account that has no login of its own yet, one after another |
+| `start <Repo> [--provider Claude] [--prompt <text>] [--account <email>] [--resume <session>] [--new] [--ignore-memory]` | open a Launcher tab for a repo; `--account` runs its Claude CLI on that per-CLI login's token pool; without it a Claude CLI goes on the Auto login (a signed-in per-CLI login no CLI runs on yet; none with room: the API key while API billing is on, else it isn't started); `--resume` reopens a Claude conversation (one cut off by a crash); `--new` opens one even at the CLIs-per-login limit; `--ignore-memory` starts it while RAM is low |
+| `dock [<session>]`, `undock [<session>]` | `dock` gives a hosted CLI (its id, else this CLI's own) its dashboard tab back now, never restarting it; `undock` drops the tab and the CLI keeps running headless until `dock` (M.ORCH-T1448) |
+| `launcher [--login <email>]` | bring up the next of this login's Launcher tabs in the dashboard (cycling), or open one when it has none (M.ORCH-T1487) |
+| `quickload-all [--wait <seconds>]` | ask the running dashboard to run Quick Load All (every CLI resumes its repo's latest quicksave) and print what it resumed; waits 600 seconds by default (M.ORCH-T2070, `/quickload all`) |
+| `accounts [--json]` | every Claude account signed in here: weekly % used and left, its reset, the 5-hour % and reset, and when each was last read |
 | `accounts alias <email> ["<name>"] [--reset]` | names a Claude login (M.ORCH-T614); without a name, prints its name. Kept as `alias` (with the `email` it's for) in `mindattic-account.json` in the login's own folder, so the Launcher and its status line read it without the Orchestrator |
 | `accounts pick [--json]` | the Auto login a new Claude CLI should start on: one line, its `CLAUDE_CONFIG_DIR`, or empty for the global login (exit 0) |
-| `members [--json]`, `members add <email> --role <role> --tier <tier> [--name "<name>"] [--status <status>]`, `members set <email> [--name] [--role] [--tier] [--status]`, `members remove <email>` | the organization's members (M.ORCH-T670), the `members` table of `data/orchestrator.db`: name, email, role (`primary-owner`, `owner`, `admin`, `member`), tier (`premium`, `standard`) and status (`active`, `pending`), each with whether it has signed in on this machine (the `accounts` table, by email). Each change is written to the database and the dump. The dashboard has a tab for every member, titled by its name (else its login's alias, else the email's part before the @) |
+| `members [--json]`, `members add <email> --role <role> --tier <tier> [--name "<name>"] [--status <status>]`, `members set <email> [--name] [--role] [--tier] [--status]`, `members remove <email>` | the organization's members (M.ORCH-T670), the `members` table of `data/orchestrator.db`: name, email, role (`primary-owner`, `owner`, `admin`, `member`), tier (`premium`, `standard`) and status (`active`, `pending`, `disabled`), each with whether it has signed in on this machine (the `accounts` table, by email). Each change is written to the database and the dump. The dashboard has a tab for every member, titled by its name (else its login's alias, else the email's part before the @) |
+| `org`, `org help` | the organization commands below, each on the org chosen in the dashboard's switcher or `--org <id\|name>` (M.ORCH-T755); `<who>` is a member's email, the part before the @, name, first name, login alias or initials; bare lists the subcommands |
+| `org usage`, `org members`, `org login <who> [--sso]`, `org open <who>`, `org start <repo> <who> [--prompt <text>]` | `usage` is the usage report (as `report`); `members` is the members branch (`add`, `set`, `remove` as above); `login` signs a member's own login in and opens the browser; `open` opens claude.ai in that member's own browser profile, already signed in (M.ORCH-T1835); `start` starts a CLI in a repo on a member's login. The ones that act on a member take `--org <id\|name>` |
+| `org allow <who> [--until reset\|<time>]`, `org disallow <who>` | let a member's login take work past its weekly target (until its weekly reset by default, M.ORCH-T694); `disallow` takes that back |
+| `org limit [<who> --weekly <pct> --5h <pct> \| --reset]` | per-user usage cutoffs (M.ORCH-T707): alone lists them; `--weekly` (50 to 100) and `--5h` (1 to 100) set them; `--reset` puts back the defaults, 90 (week) and 98 (5-hour) |
+| `org lock <who>`, `org unlock <who>`, `org locks` | lock a member's login by hand: it can't open a CLI, take work or keep running CLIs until `unlock` (M.ORCH-T2114); `unlock` also clears a login's own weekly-cutoff lock and prints its weekly use; `locks` lists every locked login with why and since |
+| `orgs`, `orgs add "<name>" [--id <id>]`, `orgs rename <id> "<name>"`, `orgs remove <id>` | the organizations the dashboard switches between above the person tabs (M.ORCH-T655); with none added, one org (MindAttic, id `default`) holds every login; `remove` sends its logins back to the default org |
+| `orgs member <org> "<person>" <email\|global> [--provider Claude]`, `orgs unmember <email\|global> [--provider Claude]`, `orgs repo [<repo> <org> \| <repo> --default]` | put a login in an org as a person's (moving it from any other), take it out again, or say which org a repo's tickets belong to (dispatched only to its members' logins); `orgs repo` alone lists them |
+| `move <repo\|pid\|session> --account <email>`, `move <repo\|pid\|session> --global` | move a running Claude CLI to another signed-in login: its Launcher tab restarts it with `claude --resume` on that login at its next idle point, keeping its session |
+| `clis [--json]` | every open Claude CLI and whether `/allocate` is on in it (the roster the daemon keeps in `orchestrator.db`) |
+| `memory [--json]` | what each hosted CLI's whole process tree holds (private and working-set MB, by exe), beside the dashboard, the daemon, the hubs and the other MindAttic processes (M.ORCH-T1733) |
+| `busy [--json] [--wait] [--poll 30] [--timeout <min>] [--self <pid>] [--all] [--running-only] [--skip-goal]` | whether any Claude CLI on this machine (any login) is still working: exits 1 when any is working or can't be read, 0 when all are idle; the calling CLI is left out; `--wait` polls (`--poll` seconds apart, default 30) until all are idle or `--timeout` minutes pass; `--all` also judges CLIs hosted in a TermHost; `--running-only` counts only work actually running; `--skip-goal` leaves out CLIs on a `/goal`. `run.ps1` runs it before a redeploy (M.ORCH-T873) |
+| `inbox [--json]` | everything waiting on the owner now: tickets to approve, tickets parked as waiting-on-owner, stale and orphaned tickets, logins to sign in again, consent requests, each with the command that answers it (M.ORCH-T1689) |
+| `claim <ID>` | claim one named ticket this CLI starts by hand at the user's request: `/allocate` and other CLIs skip it until it closes or is released; refused when another live CLI holds it (M.ORCH-T1696) |
 | `send <Repo> "text" [--no-submit]` | type text + Enter (or just the text) into that repo's Launcher tab(s) |
-| `budget [--block 20M] [--weekly 150M] [--weekly-reset "Mon 9:00"] [--warn 80] [--pace true] [--target 98] [--hits] [--week]` | current 5-hour block, week and pace, and Codex/Gemini usage; set limits (`0` clears back to learned, `none` drops the reset); `--hits` lists the limit hits the learned limits come from; `--week` charts the week day by day and projects it against the weekly limit |
+| `budget [--block 20M] [--weekly 150M] [--weekly-reset "Mon 9:00"] [--warn 80] [--pace true] [--target 98] [--hits] [--week]` | current 5-hour block, week and pace, and Codex/Gemini usage; set limits (`0` clears back to learned, `none` drops the reset); `--pace` turns pacing on or off; `--target` is how much of each limit pacing aims to use by the reset (1 to 100; the setting's default is 98); `--hits` lists the limit hits the learned limits come from; `--week` charts the week day by day and projects it against the weekly limit |
 | `queue [--top 25] [--groom]` | the cross-repo ticket queue, what's proposed next, and why (estimate, stale, too big, blocked, reserved); `--groom` lists old untouched tickets. Reprioritize in Tickets (`tickets ticket priority`) |
 | `dispatch <ID> [--provider]` | start a session on a ticket, in its repo's own checkout on main |
-| `release <ID> [--remove-worktree]` | put a ticket back in the queue; remove its old (clean) worktree, one made before tickets were worked on main |
-| `daemon [--interval 15]` | keep the budget file, pace and hooks fresh without the dashboard open |
-| `settings [--max-sessions n] [--allocate false] [--max-subagents 16] [--provider Claude] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--allocate-skip A,B] [--hand-minutes 15] [--keep-going false] [--resume-after-reset false] [--exempt "/deploy,/run"] [--groom-days 30] [--notify URL] [--github-intake true] [--model Repo=opus] [--model ID=sonnet] [--review-lines 300] [--risky-files "*AgentGate*.cs,..."]` | scheduler settings (`--provider` takes Claude, Codex, Gemini or Kimi; `--model` overrides the model `/allocate` gives a repo's or one ticket's subagents, the ticket's winning, `=auto` clears; `--review-lines` and `--risky-files` say when a Sonnet diff gets its Opus review) |
-| `audit [--latest] [--top n]` | convention drift and cross-repo duplication |
-| `dryrun` / `next [--repos "A,B"] [--count n] [--claim]` | which CLIs have `/allocate` on and what each would hand its subagents next; `next --claim` claims them (assignment and prompt; worked in the repo's own checkout on main) and prints each one's `model:`, which `/allocate` starts that subagent on: Sonnet 5.5 for fixes, failed tests and tightly specified chores and docs; Opus 5.5 for features, design work, changes across many files and anything that must be right the first time (migrations, security). A `settings --model` override for the ticket, else its repo, wins |
-| `review <ID> [--dry-run] [--force]` | run from a Sonnet ticket's repo checkout after its commit, before it lands (its prompt says to): when its diff (its commits past `origin/main` that name the ticket) changes more than `--review-lines` lines or touches a `--risky-files` file (the gates, pacing, git landing), one headless Opus 5.5 run with no tools reviews the diff alone, never the repo, and is recorded on the claim so it isn't run twice. Its cost is charged to the ticket |
+| `release <ID> [--remove-worktree] [--waiting-on-owner]` | put a ticket back in the queue; remove its old (clean) worktree, one made before tickets were worked on main; `--waiting-on-owner` also parks it with the `waiting-on-owner` label, which `allocate`, `next` and the Stop hook skip |
+| `daemon [--interval 15] [--here]` | keep the budget file, pace and hooks fresh without the dashboard open; `--here` runs it in this console instead of handing off to the installed `MindAttic.Orchestrator.Daemon.exe` |
+| `settings [<option> ...]` | show or change scheduler settings; every option is listed under [Settings reference](#settings-reference) |
+| `disk-cleanup [--dry-run] [--quiet] [--ledger] [--ledger-run]` | delete agent-made temp (ended sessions' folders, stale scratch builds) oldest first when the temp drive is under `--disk-cleanup-gb`; `--dry-run` lists it; `--quiet` prints only when something was freed; `--ledger` shows the resource-ledger sweep's plan and deletes nothing; `--ledger-run` runs that sweep for real whatever `--ledger-sweep-dry-run` says |
+| `audit [--latest] [--top 15]` | convention drift and cross-repo duplication; `--latest` shows the last saved report |
+| `dryrun` / `next [--repos "A,B"] [--count n] [--claim]` | which CLIs have `/allocate` on and what each would hand its subagents next; `--repos` (also `--repo`) takes comma-separated names or wildcards (`GTFO.*`, `*`), by default the current folder's repo; `next --claim` claims them (assignment and prompt; worked in the repo's own checkout on main) and prints each one's `model:`, which `/allocate` starts that subagent on: Sonnet 5.5 for fixes, failed tests and tightly specified chores and docs; Opus 5.5 for features, design work, changes across many files and anything that must be right the first time (migrations, security). A `settings --model` override for the ticket, else its repo, wins |
+| `review <ID> [--dry-run] [--force]` | run from a Sonnet ticket's repo checkout after its commit, before it lands (its prompt says to): when its diff (its commits past `origin/main` that name the ticket) changes more than `--review-lines` lines or touches a `--risky-files` file (the gates, pacing, git landing), one headless Opus 5.5 run with no tools reviews the diff alone, never the repo, and is recorded on the claim so it isn't run twice. Its cost is charged to the ticket; `--dry-run` only says whether it gets one; `--force` reviews it whatever its size |
 | `show <ID>` | the sessions dispatched on a ticket; the ticket itself (row, links, history, commits) is `tickets ticket show <ID>` |
 | `mockup [dashboard\|queue\|settings]` | a Braille-dot wireframe of one of the orchestrator's own screens, drawn with MindAttic.Helpers.Ascii.AsciiMockup; no screen, or one it doesn't know, lists the names |
-| `ledger [--days 7] [--csv FILE]` | the pace ledger: every 5-hour window graded ok/under/blind/over, the running one, and the record ("26 windows since Sep 16: 23 over, ...; last over: 9h ago"); windows before the usage samples began are known only from their limit hits. Exits 1 if a window went over in `--days` |
+| `ledger [--days 7] [--csv FILE]` | the pace ledger: every 5-hour window graded ok/under/blind/over, the running one, and the record ("26 windows since Sep 16: 23 over, ..."); windows before the usage samples began are known only from their limit hits. Exits 1 if a window went over in `--days` |
+| `pace-watch [--interval 1]` | live: the pace gate's calculated delay right now, and every hold or refusal as it happens, so pacing's effect on tool calls is visible outside the chat; `--interval` seconds, Ctrl+C to stop |
 | `report [--detail] [--since <date>] [--csv] [--json] [--md <file>] [--html <file>] [--org <id>]` | the usage report (M.ORCH-T685): one row per member with the 5-hour and weekly percent used, resets, points left to the weekly target and how old and accurate each reading is; `--detail` adds each reading's source and the CLIs' and API key's spend; `--md`/`--html` write it to share |
 | `tokens [--weeks 4] [--csv FILE]` | uncached tokens by week and repo, by provider, by ticket type, and per completed ticket by model (Sonnet against Opus; a ticket counts as the model that spent the most on it, so an Opus review leaves a Sonnet ticket Sonnet's) |
 | `remind "<text>" --at <time> [--to <contact>]` / `remind --list` / `remind --cancel <id>` | save a reminder the daemon texts through Psst when it's due (see [Watching](#watching)); `--at` takes `9am`, `tomorrow`, `tomorrow 8am`, `fri 5pm`, `tonight`, `in 2h`, `30m` or `2026-10-20 09:00`, local time; `--to` a Psst contact or a US number, by default you (Psst's own number). A CLI agent asked to "remind me tomorrow" runs it too |
 | `remind add --text "<text>" --every <gap> [--until-ticket <ID>] [--backoff N] [--max-every <gap>]` / `remind list [--all] [--json]` / `remind dismiss <id>` | a reminder that nags (M.ORCH-T1933): first due one `--every` (`30m`, `2h`, `1d`) from now, then again on a backoff (each gap `--backoff` times the last, default 2, up to `--max-every`, default 7d) until it's dismissed or `--until-ticket`'s ticket is closed or won't-do; kept in `data/orchestrator.db`'s `reminders` table. `list` shows the active ones (`--all`: ended ones too) |
+| `gateway [on\|off] [--bind <address>] [--port <port>] [--cert-path <pfx>] [--cert-thumbprint <hex>] [--dev-cert-names <names>] [--owner <identity>] [--token-minutes <n>]` | the team gateway (M.ORCH-T933), off by default: `on`/`off`, where it listens (default `127.0.0.1:7443`), its certificate (`none` clears; with neither, a pinned self-signed dev certificate), its owner identity and how long its tokens last (default 15); bare shows whether it runs and its certificate pin |
+| `gateway grant <who> watch\|interact [--session <id>] [--for <2h>]`, `gateway revoke <who> [--session <id>]`, `gateway grants [--all]` | who may watch or interact (`interact` defaults to 1h, `watch` never expires unless `--for`); `revoke` closes a stream they allowed within seconds; `grants` lists them (`--all`: expired ones too); same-org members may watch by default |
+| `gateway audit [--since <2h\|date>] [--limit <n>]`, `gateway token <who> [--scope watch\|interact] [--minutes <n>]` | who attached, detached and typed (counts, never content); a bearer token for a member, to hand them (M.ORCH-T934) |
+| `gateway remote add <name> <url> --pin <sha256> [--person <who>] [--token <token>]`, `gateway remote remove <name>`, `gateway remote list [--check]` | the teammates' gateways the dashboard's Team Wall watches (M.ORCH-T936); a token left out is asked for and kept DPAPI-sealed; `list` shows name, person, URL, pin and token expiry, `--check` also asks each for its sessions |
+| `broadcast [share\|unshare\|pause\|resume <session\|all>] [mask\|unmask <session>]` | what the team gateway shows remote viewers (M.ORCH-T935), nothing by default; without an action, every hosted session's choices and who is watching |
+| `db`, `db migrate [--server localhost] [--database <name>] [--connection <string>] [--replace]`, `db back` | where the orchestrator's data is kept: bare shows SQL Server or `data/orchestrator.db` (SQLite) with each table's rows; `migrate` copies the data into SQL Server (the database is created), checks every table's row count, then uses it on this machine, `--replace` copies over a database that already holds data; `back` copies it back and stops using SQL Server |
+| `probe machine`, `probe links`, `probe azure` (alias `azure-sql`), each `[--once] [--json] [--interval <seconds>]` | health probes (M.ORCH-T1935, [docs/HEALTH.md](docs/HEALTH.md)): each takes its readings, grades them against the health lines, publishes a health report on the app bus and prints it; `--once` exits with the Nagios code (0 ok, 1 warn, 2 critical, 3 couldn't run); `--json` prints health+json; `machine` is free RAM, commit charge, handles and drive space (M.ORCH-T2022), `links` the latencies the daemon depends on and its tick (M.ORCH-T2032), `azure` every Azure SQL database's state, load and storage (M.ORCH-T2029) |
 | `workspace export` | write `docs\workspace-repos.json` in the workspace root repo from the repos on disk (commit and push it so new machines get them) |
+| `workspace export-context-gate [--check]` | write the generated `context-gate.py` (default settings) over MindAttic.Agency's shared/hooks copy and the `mindattic-agent-standard` mirror, to commit there; `--check` only compares and exits 1 when a copy differs (M.ORCH-T1605) |
 | `workspace build <folder> [--root URL] [--install-apps]` / `workspace install-apps` | clone the workspace root, then every repo it lists, into a folder; on a partial workspace, only what's missing; `install-apps` runs every other app's `run.ps1` |
-| `machine` / `machine handoff [--kit <folder>]` / `machine connect <host> --pin <sha256> --owner-key <key>` / `machine host [--bind <address>]` / `machine pull` / `machine kit <folder>` / `machine standalone` | run the Orchestrator on another machine (M.ORCH-T1473, [docs/REMOTE_HOST.md](docs/REMOTE_HOST.md)): this machine's role; hand off from the PC; connect the PC's dashboard to the host; make this machine the host (`setup-host.ps1` runs it); pull every repo; write the host kit; everything on this machine again |
+| `machine` / `machine handoff [--kit <folder>] [--no-push]` / `machine connect <host> --pin <sha256> [--owner-key <key>] [--member <email> --member-key <key>]` / `machine host [--bind <address>] [--port <port>]` / `machine pull` / `machine kit <folder>` / `machine standalone` | run the Orchestrator on another machine (M.ORCH-T1473, [docs/REMOTE_HOST.md](docs/REMOTE_HOST.md)): this machine's role; hand off from the PC (`--no-push` skips pushing the data first); connect the PC's dashboard to the host (an org member's PC uses `--member` and `--member-key`); make this machine the host (`setup-host.ps1` runs it; `--bind` defaults to `0.0.0.0`); pull every repo; write the host kit; everything on this machine again |
+| `machine invite <who>`, `machine members`, `machine revoke <who>`, `machine isolate <who> <windows-account> [--clear] [--password]` | on the host (hub phases 1 and 2, M.ORCH-T1640, M.ORCH-T1641): invite an active org member to connect their own PC (mints their member key, never the owner key); list the invited members, their keys and who is connected; revoke a member's key (their tokens are refused within a second, open streams close within 10 seconds); record which Windows account an admin made for their CLIs (`--clear` forgets it, `--password` also keeps its password in this user's Credential Manager) |
+| `machine start <repo> [--login <email>]`, `machine stop <session>`, `machine consents`, `machine consent <id> allow\|deny`, `machine tickets -- <args>` | on a member's PC (hub phase 2): start or stop one of your own CLIs on the host; see who is asking to type into one of your CLIs; answer one (no answer in time leaves them watching); on a client, run a `tickets` command on the host |
+| `milestone [list] [--json]`, `milestone forecast [<ID>] [--json]`, `milestone check [<ID>] [--json]` | milestones and their acceptance checks (M.ORCH-T1684): the active and accepting ones with tickets done and checks passed; each one's forecast (M.ORCH-T1688): projected date, tokens left, at-risk mark; run the build and exists checks and record each result (exit 1 when one ran and failed) |
+| `milestone accept <ID> --by <who> [--json]` | runs every check and marks the milestone reached only when all pass; never forces |
+| `milestone pending [<ID>] [--json]`, `milestone approve <ID> <ITEM> --by <who>`, `milestone decline <ID> <ITEM> --by <who> [--reason <text>]` | the tickets and epics waiting to join an active or accepting milestone, whose scope is locked (M.ORCH-T1685); the owner approves one (it becomes a member) or declines it |
+| `milestone steward [<ID>] [--dry-run] [--json]` | files one ticket for each failed build or exists check no open ticket covers, and lists closed tickets that came back or cite no evidence (M.ORCH-T1686); `--dry-run` prints the plan and changes nothing |
+| `branches [--ready] [--returned] [--json]` | on the remote host: each `origin/work/*` branch, its isolated build (M.ORCH-T1501, off unless the Vault's `RemoteBranchBuilds`) and its local test run (M.ORCH-T1637); `--ready` the ones built clean and waiting for a local test run, `--returned` the ones whose run failed |
+| `branches test [<branch>...] [--repo <name>] [--list] [--timeout <minutes>] [--json]`, `branches fetch [--show] [--json]`, `branches report <repo> <branch> <head> --pass\|--fail [--note "<text>"] [--json]` | on the PC: run the full suite of queued branches at the head the host built, in a detached worktree (M.ORCH-T1635); pull the host's ready-to-test queue without running a test (M.ORCH-T1634); record a local test run, a fail sending the branch back to its work unit |
+| `branches pushed <repo> <branch> <head> [--json]`, `branches ff [<repo>...]` | on the host, the agent's last step: mark the branch's ticket as awaiting its test (M.ORCH-T1661); on the PC, fast-forward main in the named repos' checkouts (every workspace repo when none) after the host merged a signed-off branch (M.ORCH-T1636) |
+| `agents [list] [--all] [--role <role>] [--owner <email>] [--json]` | agents by a stable id (M.ORCH-T1744): each plays a role, runs on a login under a runtime, and is idle, running, paused or terminated; `--all` adds the retired |
+| `agents new <role> [--owner <email>] [--runtime claude] [--unit <ID>] [--id <agt-...>] [--force] [--json]`, `agents pause <id>`, `agents resume <id>`, `agents retire <id>` | write an idle agent's row (the role is checked against the roles table and `mindattic-agent-standard\shared\roles`; `--force` skips it); pause an idle or running agent; send a paused one back to idle; terminate one (its row is kept so the id still names it) |
+| `mail [list [<agent>]] [--all] [--everyone] [--limit 50] [--json]`, `mail send <agent> "<body>" [--unit <ID>] [--from <who>] [--force] [--json]` | the agent mailbox (M.ORCH-T1745): durable handoffs between agents by their ids; the daemon hands an agent's unread mail to its CLI on its next prompt; `list` shows the unread (`--all`: the read too; `--everyone`: every agent's); `send` leaves a message (`--force` sends to an id the agents table lacks) |
 
 Starting sessions needs the deployed Launcher at `C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe`.
+
+### Settings reference
+
+`orchestrator settings` with no option shows the current values; each option below sets one. A `<true|false>` option takes the word as its value (`--allocate false`). Defaults are those of `OrchestratorSettings`; the dashboard's Settings page and MindAttic.Vault.Desktop's Orchestrator tab change the same values.
+
+Sessions, `/allocate` and queue:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `--max-sessions <N>` | 4 | most sessions at once (at least 1) |
+| `--max-subagents <N>` | 16 | most subagents running at once across every CLI; `0` holds every new one |
+| `--allocate <true\|false>` | true | `false` pauses every CLI where `/allocate` is on; `true` lets them go again |
+| `--provider <name>` | Claude | default provider (Claude, Codex, Gemini or Kimi) |
+| `--repo-cap <Repo=pct>` | none | most of the 5-hour limit one repo may spend per block (`0` clears); repeatable |
+| `--repo-sessions <Repo=N>` | 2 for a repo with none set | sessions one repo may run at once (`0` clears); repeatable |
+| `--allocate-skip <A,B>` | none | repos `/allocate` never starts agents in (`none` clears) |
+| `--quiet <windows>` | none | local times `/allocate` pauses, like `"22:00-07:00,12:00-13:00"` (`none` clears) |
+| `--keep-going <true\|false>` | true | a CLI that typed `/allocate` and ends its turn while its repos have workable tickets is told to carry on |
+| `--resume-after-reset <true\|false>` | true | once the window a CLI stopped for resets, a resume nudge is left for its hook; `false` only alerts you |
+| `--stale-hours <N>` | 12 | hours without activity before a dispatched ticket goes back in the queue (`0` never) |
+| `--groom-days <N>` | 30 | days old and untouched before `queue --groom` lists a ticket (at least 1) |
+| `--orphan-redispatches <N>` | 3 | times an orphaned ticket is redispatched before it is left for you (`0` only shows it) |
+| `--orphan-quiet <minutes>` | 10 | minutes a dispatch's CLI or tab must be gone before the ticket counts as orphaned |
+| `--unit-token-budget <N>` | 80000 | size of one task in uncached tokens (20000 to 400000) |
+| `--heavy-processes <N>` | 1 | heavy processes (a game player, a Unity/Unreal/s&box build, a soak) allowed at once on the machine; `0` turns the lease off |
+| `--hand-minutes <N>` | 15 | kept for older setups; no effect now |
+| `--exempt <commands>` | `/pacing,/deploy,/run,/allocate,/commit,/quicksave,/quickload` | slash commands whose turns skip every pace gate (`none` clears, `default` restores) |
+| `--model <Repo=model>` | none | model `/allocate` starts a repo's or one ticket's subagents on (`Prose=opus`, `M.ORCH-T12=sonnet`, `=auto` clears); a ticket's wins; repeatable |
+| `--review-lines <N>` | 300 | lines changed past which a Sonnet ticket's diff gets one Opus review (`0` every one, `-1` none for size) |
+| `--risky-files <globs>` | the gates, pacing and git landing | files whose change by a Sonnet ticket always gets that review (`none` clears, `default` restores) |
+| `--github-intake <true\|false>` | false | hourly, file GitHub issues labelled `orchestrator` and CI failures on main as tickets |
+| `--notify <URL>` | none | where alerts go off the desktop (an ntfy.sh topic or any webhook; `none` stops them) |
+| `--alert-to <contact>` | `global` (follows Vault Global, else ryan) | who an urgent owner alert is texted to through Psst (a contact or US number; `none` stops it) |
+
+Pacing and logins:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `--throttle-agents <true\|false>` | true | while the burn won't last until the reset, running Claude agents wait before each tool call |
+| `--max-delay <seconds>` | 300 | the longest such wait |
+| `--pace-start-percent <pct>` | 90 | a login's 5-hour or weekly use under which no pace guard is considered |
+| `--pace-target-percent <pct>` | 98 | how much of the 5-hour or weekly limit pacing aims to use by the reset, for a login with no cutoff of its own (`org limit` overrides it per member) |
+| `--agent-abort <true\|false>` | true | abort just enough of a login's ticket subagents to bend its trend back under the pace line, releasing their claims |
+| `--agent-abort-after <minutes>` | 3 | how long the new-start cool-off gets first (0 to 60) |
+| `--auto-login <true\|false>` | true | a Claude tab started without a login goes on a signed-in per-CLI login no CLI runs on yet |
+| `--rebalance <true\|false>` | true | the daemon moves a CLI whose login crosses its target to a login with more headroom at its next idle point |
+
+Refused: `--pace-profile`, `--pace-curve-k`, `--weekly-aware`, `--failover`, `--weekly-target`, `--weekly-reserve`, `--weekly-line` and `--weekly-wind-down` still parse, but `settings` refuses them with a message (M.ORCH-T706, M.ORCH-T707). Cutoffs are hard and per member: set them with `org limit <who> --weekly <pct> --5h <pct>`.
+
+Dashboard:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `--tab-blink-tokens <N>` | 1000 | a busy login's play arrow blinks once per N uncached tokens (1 to 10000000) |
+| `--park-idle-cli-minutes <minutes>` | 60 | idle minutes before the dashboard parks a CLI as a stub tab (`0` never; 0 to 10080) |
+| `--first-load-wait <seconds>` | 20 | how long the first load waits on the ticket database before showing anyway (1 to 600) |
+| `--symbol-tab-labels <true\|false>` | true | tab trailing text as symbols (`Σ: 15% \| λ: 29%`) rather than words |
+| `--tree-menu-layout <true\|false>` | true | the login sidebar as a collapsible tree rather than the flat person-tab strip |
+| `--exclude-launcher-team-wall <true\|false>` | false | leave the Launcher's own menu pane out of the Team Wall |
+
+Disk:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `--disk-warn-gb <GB>` | 20 | free GB under which the daemon alerts (`0` off) |
+| `--disk-critical-gb <GB>` | 5 | free GB under which that alert is urgent |
+| `--disk-cleanup-gb <GB>` | 30 | free GB on the temp drive under which agent-made temp is deleted, oldest first (`0` off) |
+| `--disk-hold-gb <GB>` | 5 | free GB under which no new work starts, once a self-cleanup has run (`0` off) |
+| `--disk-hold-resume-margin-gb <GB>` | 2 | GB a held drive must clear `--disk-hold-gb` by before new work starts again |
+| `--temp-retention-hours <H>` | 48 | hours a `%TEMP%\claude` session folder is kept whatever the free space (`0` off) |
+| `--scratch-lease-hours <H>` | 48 | hours a claimed ticket's scratch dir is leased in the resource ledger (`0` no expiry) |
+
+Ledger sweep:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `--ledger-sweep-dry-run <true\|false>` | true | `true`: the sweep deletes nothing and only logs what it would; `false` lets the daemon delete |
+| `--ledger-sweep-quiet-minutes <M>` | 30 | minutes nothing may have been written in an entry's folder before it is deleted |
+| `--ledger-sweep-leftover-hours <H>` | 24 | hours a crash leftover in `%TEMP%` no ledger row covers must be old and quiet (`0` off) |
+| `--ledger-sweep-build-output-hours <H>` | 72 | hours a daemon worktree's `bin` and `obj` must have gone unwritten (`0` off) |
+| `--ledger-sweep-history-days <D>` | 30 | days a released row whose folder is gone is kept as history (`0` keeps them) |
+
+Memory guard:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `--memory-guard <true\|false>` | true | when RAM runs low, hold new subagents, CLIs and test runs; lower still, shed the newest subagent, then refuse tool calls |
+| `--memory-start-percent <pct>` | 98 | physical RAM in use under which the guard does nothing |
+| `--memory-tight-gb <GB>` | 4 | free RAM under which nothing new starts |
+| `--memory-critical-gb <GB>` | 2 | free RAM under which the newest `/allocate` subagent is shed each minute |
+| `--memory-emergency-gb <GB>` | 1 | free RAM under which every tool call is refused |
+| `--memory-per-subagent-gb <GB>` | 1 | RAM one more subagent is assumed to take |
+| `--memory-tight-commit-percent <pct>` | 80 | commit charge at or past which nothing new starts |
+| `--memory-critical-commit-percent <pct>` | 88 | commit charge at or past which the newest subagent is shed |
+| `--memory-emergency-commit-percent <pct>` | 94 | commit charge at or past which every tool call is refused |
+| `--memory-resume-margin-gb <GB>` | 2 | how far clear of a level's free-GB line a reading must be to step back down |
+| `--memory-resume-margin-commit <points>` | 5 | the same for a level's commit-percent line |
+
+Health lines (graded by the probes, [docs/HEALTH.md](docs/HEALTH.md)):
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `--health-ram-degraded-gb <GB>` / `--health-ram-unhealthy-gb <GB>` | 4 / 2 | free RAM under which RAM grades degraded / unhealthy |
+| `--health-commit-degraded-percent <pct>` / `--health-commit-unhealthy-percent <pct>` | 80 / 90 | commit charge at or past which it grades degraded / unhealthy |
+| `--health-disk-degraded-gb <GB>` / `--health-disk-unhealthy-gb <GB>` | 20 / 5 | free space on a drive under which it grades degraded / unhealthy |
+| `--health-dtu-degraded-percent <pct>` / `--health-dtu-unhealthy-percent <pct>` | 80 / 95 | an Azure SQL database's DTU (or vCore CPU) percent |
+| `--health-storage-degraded-percent <pct>` / `--health-storage-unhealthy-percent <pct>` | 80 / 95 | an Azure SQL database's storage percent |
+| `--health-link-degraded-ms <MS>` / `--health-link-unhealthy-ms <MS>` | 1000 / 5000 | round-trip milliseconds of a link |
+| `--health-tick-degraded-seconds <S>` / `--health-tick-unhealthy-seconds <S>` | 60 / 180 | a daemon tick this long |
+| `--health-learn <true\|false>` | true | learn the lines from the probes' history, each within its bound |
+| `--health-learn-min-samples <N>` | 60 | fewest readings of a check its lines are learned from |
+| `--health-learn-margin-percent <pct>` | 5 | how far past the normal reading a learned degraded line goes |
+| `--health-learn-percentile <pct>` | 90 | which reading of the history counts as normal (50 to 100) |
+| `--health-learn-changes-kept <N>` | 200 | learned-line moves kept to read back |
+| `--health-ram-learn-floor-gb <GB>` | 1 | lowest free RAM a learned line may go |
+| `--health-commit-learn-ceiling-percent <pct>` | 97 | highest commit percent a learned line may go |
+| `--health-disk-learn-floor-gb <GB>` | 2 | lowest free GB a learned disk line may go |
+| `--health-dtu-learn-ceiling-percent <pct>` | 99 | highest DTU percent a learned line may go |
+| `--health-storage-learn-ceiling-percent <pct>` | 98 | highest storage percent a learned line may go |
+| `--health-link-learn-ceiling-ms <MS>` | 15000 | highest round-trip milliseconds a learned link line may go |
+| `--health-probe-machine-seconds <S>` / `--health-probe-links-seconds <S>` / `--health-probe-azure-seconds <S>` | 30 / 30 / 300 | seconds between the daemon's runs of each probe (`0` never) |
+| `--health-alerts <true\|false>` | true | text the alert recipient through Psst when a check turns unhealthy and when it recovers |
+| `--health-failure-threshold <N>` | 2 | unhealthy results in a row before a check alerts (1 to 100) |
+| `--health-success-threshold <N>` | 1 | results in a row back out of unhealthy before the recovery alert (1 to 100) |
+
+Backup:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `--backup-keep <N>` | 30 | local backup folders kept after each Backup & Restore backup (0 to 10000; `0` keeps every one) |
 
 ## Configuration
 
