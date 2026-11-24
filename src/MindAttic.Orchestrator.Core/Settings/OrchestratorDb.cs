@@ -109,38 +109,66 @@ public sealed class OrchestratorDb(string path)
     /// needs writing (whether it changed anything the dump holds).</summary>
     public void WriteDataIf(Func<DbConnection, DbTransaction, bool> change, params string[] mirror)
     {
-        string? text = null;
         var server = Server;
         if (server is null)
         {
             using var local = Open();
-            using var localTx = local.BeginTransaction(deferred: false);
-            // Waited on the file's lock while orchestrator db migrate held it: the data is SQL Server's now, written there below.
-            server = Server;
-            if (server is null)
+            var dump = false;
+            using (var localTx = local.BeginTransaction(deferred: false))
             {
-                text = change(local, localTx) ? Dump(local, localTx) : null;
-                // Written while the write lock is still held, so writers' dumps land in commit order and a stale one can't
-                // overwrite a newer one (M.ORCH-T1969).
-                TryWriteDump(text);
-                localTx.Commit();
+                // Waited on the file's lock while orchestrator db migrate held it: the data is SQL Server's now, written there below.
+                server = Server;
+                if (server is null)
+                {
+                    dump = change(local, localTx);
+                    localTx.Commit();
+                }
             }
+            if (dump) WriteCommittedDump(local, () => local.BeginTransaction(deferred: false));
         }
         if (server is not null)
             WithBusyRetry(() =>
             {
                 using var connection = server.Open();
-                using var tx = connection.BeginTransaction();
-                OrchestratorServer.Lock(connection, tx);
-                var written = change(connection, tx) ? Dump(connection, tx) : null;
-                TryWriteDump(written); // under the server lock, as above (M.ORCH-T1969)
-                tx.Commit();
+                bool dump;
+                using (var tx = connection.BeginTransaction())
+                {
+                    OrchestratorServer.Lock(connection, tx);
+                    dump = change(connection, tx);
+                    tx.Commit();
+                }
+                if (dump) WriteCommittedDump(connection, () => LockedTransaction(connection));
                 // Committed: a copy that can't be made now (the file held past its timeout) is made by the daemon's SyncMirror.
                 if (mirror.Length > 0)
                     try { Mirror(connection, mirror); }
                     catch (Exception ex) when (ex is DbException or IOException or UnauthorizedAccessException) { }
-                return written;
+                return dump;
             });
+    }
+
+    /// <summary>A transaction on <paramref name="connection"/> (SQL Server) holding the orchestrator's write lock.</summary>
+    private static DbTransaction LockedTransaction(DbConnection connection)
+    {
+        var tx = connection.BeginTransaction();
+        try { OrchestratorServer.Lock(connection, tx); }
+        catch { tx.Dispose(); throw; }
+        return tx;
+    }
+
+    /// <summary>
+    /// Rewrites the dump from what's committed, under a write lock <paramref name="begin"/> takes afresh once the change has
+    /// committed: writers' dumps land in commit order, so a stale one can't overwrite a newer one (M.ORCH-T1969), and a commit
+    /// that failed never reaches the dump (M.ORCH-T2145). One that can't be written now is left for the next change.
+    /// </summary>
+    private void WriteCommittedDump(DbConnection connection, Func<DbTransaction> begin)
+    {
+        try
+        {
+            using var tx = begin();
+            TryWriteDump(Dump(connection, tx));
+            tx.Rollback();
+        }
+        catch (Exception ex) when (ex is DbException or IOException) { }
     }
 
     /// <summary><see cref="WriteDump"/> when there's a dump; one that can't be written now (the file held) is left for the next change.</summary>
@@ -753,13 +781,14 @@ public sealed class OrchestratorDb(string path)
     public void Write(Action<SqliteConnection, SqliteTransaction> change, bool dump = true)
     {
         using var connection = Open();
-        using var tx = connection.BeginTransaction(deferred: false);
-        change(connection, tx);
+        using (var tx = connection.BeginTransaction(deferred: false))
+        {
+            change(connection, tx);
+            tx.Commit();
+        }
         // A change only to rows the dump leaves out (Volatile) can't change it: not worth reading every table for. With SQL
         // Server the store of record, this file holds only what this machine shares, and the dump is written from the server.
-        var text = dump && Server is null ? Dump(connection, tx) : null;
-        TryWriteDump(text); // before the commit, holding the write lock (M.ORCH-T1969)
-        tx.Commit();
+        if (dump && Server is null) WriteCommittedDump(connection, () => connection.BeginTransaction(deferred: false));
     }
 
     /// <summary>Runs <paramref name="action"/> holding the database's write lock (BEGIN IMMEDIATE), so no other process's write is

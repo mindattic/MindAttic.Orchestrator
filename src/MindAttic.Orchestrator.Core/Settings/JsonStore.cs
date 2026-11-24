@@ -257,7 +257,7 @@ public sealed class JsonStore
     public List<Budget.LimitObservation> LoadLimits() => Load<List<Budget.LimitObservation>>(LimitsName);
 
     // For a load, merge and save: false when they're there but couldn't be read, so the merge isn't saved over them.
-    /// <summary>Tries to the load limits.</summary>
+    /// <summary>Tries to load the limits.</summary>
     public bool TryLoadLimits(out List<Budget.LimitObservation> o) => TryLoad(LimitsName, out o);
     /// <summary>Saves the limits.</summary>
     public void SaveLimits(List<Budget.LimitObservation> o) => Save(LimitsName, o);
