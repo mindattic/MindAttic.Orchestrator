@@ -91,6 +91,8 @@ public partial class MainWindow : Window
         // too, like the org strip: the same held-work notices and the same C: free space and RAM reading, regardless of which
         // login's tab is shown (M.ORCH-T1880: without it they bound the shown tab's and showed no fill or percent).
         HostStatus.DataContext = model;
+        // Its drive and RAM bars, the sidebar's This PC panel since M.ORCH-T2177, likewise: this machine's, not the shown login's.
+        HostStatsBars.DataContext = model;
         PhoneStatus.DataContext = model;
         Root.SizeChanged += (_, _) => SizeTerminalRow();
         TerminalFrame.IsVisibleChanged += (_, _) => SizeTerminalRow();

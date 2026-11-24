@@ -34,7 +34,7 @@ public sealed class SidebarTicketsTests
         Assert.That(top.Attribute("VerticalAlignment"), Is.Null, "it fills the sidebar so the last panel can take the rest");
         var keys = top.Elements().Where(e => e.Name.LocalName == "MaPanel")
             .Select(p => p.Attributes().SingleOrDefault(a => a.Name.LocalName == "MaPanelGroup.PanelKey")?.Value).ToList();
-        Assert.That(keys, Is.EqualTo(new[] { "orgs", "users", "tickets" }));
+        Assert.That(keys, Is.EqualTo(new[] { "orgs", "users", "host", "tickets" }));
         Assert.That((string?)Named(doc, "LoginTabScroller").Attribute("MaxHeight"), Does.Contain("Converters.Share").And.Contain("ElementName=TopRow"),
             "the logins are capped, so they never push the cards off");
         var area = Named(doc, "SidebarTicketArea");

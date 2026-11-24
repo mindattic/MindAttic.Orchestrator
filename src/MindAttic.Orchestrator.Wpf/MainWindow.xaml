@@ -249,8 +249,8 @@
              (row 2, TerminalsPanel) are the other fixed rows (M.ORCH-T1302): you always see who's selected and which CLI is
              shown. Everything else - the chosen terminal, the 5-hour chart right after it, the stats, the 5-hour chart and
              Tickets - lives in AgentsBody (row 3), one scrolling panel, so scrolling down past the terminal reaches the rest.
-             The status bar (row 5) stays its own fixed footer, as it always was, with this host's C: and RAM bars at its
-             right end. Row 4 is empty since the icon strip that sat there (M.ORCH-T1872) went (M.ORCH-T2101). -->
+             The status bar (row 5) stays its own fixed footer, as it always was, with this host's held-work notices at its
+             right end (its drive and RAM bars are the sidebar's This PC panel, M.ORCH-T2177). Row 4 is empty since the icon strip that sat there (M.ORCH-T1872) went (M.ORCH-T2101). -->
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -305,7 +305,8 @@
         <Border x:Name="Sidebar" Style="{StaticResource MaSidePane}" Grid.Row="1" Grid.RowSpan="4" Grid.Column="0" MinWidth="170"
                 BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,1,0" Padding="12,8,12,8"
                 AutomationProperties.Name="People and window tools">
-        <!-- The sidebar's sections are titled MaPanels in an MaPanelGroup (M.ORCH-T2176): Organizations, Users, then Tickets,
+        <!-- The sidebar's sections are titled MaPanels in an MaPanelGroup (M.ORCH-T2176): Organizations, Users, This PC
+             (M.ORCH-T2177), then Tickets,
              each collapsible and drag-reorderable by its header's grip, each with a stable PanelKey for the saved order and
              collapse state. Users takes its desired height; Tickets fills whatever height is left and scrolls on its own
              (M.ORCH-T1439). The window tools' own row (M.ORCH-T1431) moved up into the window's menu bar (M.ORCH-T1499). -->
@@ -936,6 +937,59 @@
         </ItemsControl>
         </ScrollViewer>
         </Grid>
+        </mc:MaPanel>
+        <!-- This PC (M.ORCH-T2177, out of the status bar where M.ORCH-T1499/M.ORCH-T1875/M.ORCH-T2101 had them): one row per
+             fixed drive (M.ORCH-T2169), then RAM, each a label, a bar stretching to the panel's width, then the free space or
+             the memory guard's level. The labels share one column and the texts another (HostStatsBars is their shared size
+             scope), so every bar starts and ends at the same x. The global login's tab's in code-behind
+             (HostStatsBars.DataContext = model), so it is this machine's reading whichever login is shown. -->
+        <mc:MaPanel Title="This PC" IsCollapsible="True" mc:MaPanelGroup.PanelKey="host" mc:MaPanelGroup.IsDraggable="True">
+        <StackPanel x:Name="HostStatsBars" Grid.IsSharedSizeScope="True" AutomationProperties.Name="This machine's disk and RAM use">
+            <ItemsControl ItemsSource="{Binding Drives}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:DriveStatusViewModel}">
+                        <Grid Margin="0,1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="HostLabel" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="HostText" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding Label}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" />
+                            <ProgressBar Grid.Column="1" Style="{StaticResource MaProgressBar}" Height="5" VerticalAlignment="Center"
+                                         Margin="{StaticResource SpaceLS}" Value="{Binding UsedPercent, Mode=OneWay}"
+                                         Foreground="{Binding UsedBrush}" mc:MaCallout.ToolTip="{Binding ToolTip}" />
+                            <TextBlock Grid.Column="2" Text="{Binding FreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}"
+                                       mc:MaCallout.ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding FreeText}"
+                                       Visibility="{Binding FreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Grid Margin="0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="HostLabel" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="HostText" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="RAM" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" />
+                <ProgressBar Grid.Column="1" Style="{StaticResource MaProgressBar}" Height="5" VerticalAlignment="Center"
+                             Margin="{StaticResource SpaceLS}" Value="{Binding RamUsedPercent, Mode=OneWay}"
+                             Foreground="{Binding RamUsedBrush}" mc:MaCallout.ToolTip="{Binding RamToolTip}" />
+                <!-- The memory guard's level (M.ORCH-T1498): muted while ok, MaWarn while it holds new work, MaBad once it sheds
+                     subagents or refuses tool calls; one of the three shows, the tooltip says what's held. -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="RamUtilizationText" Text="{Binding RamCalmText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}"
+                               mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamCalmText}"
+                               Visibility="{Binding RamCalmText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                    <TextBlock x:Name="RamWarnText" Text="{Binding RamWarnText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceLS}"
+                               mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
+                               Visibility="{Binding RamWarnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                    <TextBlock x:Name="RamBadText" Text="{Binding RamBadText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceLS}"
+                               mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
+                               Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                </StackPanel>
+            </Grid>
+        </StackPanel>
         </mc:MaPanel>
         <!-- The shown person's Active, Pending, then the 100 highest-priority open tickets, as cards (M.ORCH-T1770,
              replacing M.ORCH-T1439/M.ORCH-T1593's separately labelled Task List, live activity and ticket groups): Active
@@ -1688,11 +1742,11 @@
         <Border x:Name="StatusBar" Grid.Row="5" Grid.ColumnSpan="2" Style="{StaticResource MaStatusBar}">
             <DockPanel>
                 <!-- This host's own status at the app's lower right (M.ORCH-T2101, the owner's request; in the icon strip before it
-                     went): the held-work notices, then the C: free space and RAM bars (M.ORCH-T1499, M.ORCH-T1875). The global
-                     login's tab's in code-behind (HostStatus.DataContext = model). The phone layout hides the status bar and
-                     says the same in its touch bar's wrapped line (PhoneStatus, M.ORCH-T1570). -->
+                     went): the held-work notices; the drive and RAM bars moved to the sidebar's This PC panel (M.ORCH-T2177).
+                     The global login's tab's in code-behind (HostStatus.DataContext = model). The phone layout hides the status
+                     bar and says the same in its touch bar's wrapped line (PhoneStatus, M.ORCH-T1570). -->
                 <StackPanel x:Name="HostStatus" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
-                            AutomationProperties.Name="This machine's status, disk and RAM use">
+                            AutomationProperties.Name="This machine's held-work notices">
                     <!-- On the host, the org members connected from their own PCs with their member keys (hub phase 1, M.ORCH-T1640):
                          a people glyph and a count, the tooltip naming them; collapsed when none is, and on every other machine. -->
                     <StackPanel x:Name="ConnectedMembersChip" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceRL}"
@@ -1717,42 +1771,6 @@
                     <TextBlock x:Name="DiskHoldText" Text="{Binding DiskHoldText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceRL}"
                                mc:MaCallout.ToolTip="{Binding DiskHoldToolTip}" AutomationProperties.Name="{Binding DiskHoldToolTip}"
                                Visibility="{Binding DiskHoldText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                    <StackPanel x:Name="HostStatsBars" Orientation="Horizontal" VerticalAlignment="Center"
-                                AutomationProperties.Name="This machine's disk and RAM use">
-                        <ItemsControl ItemsSource="{Binding Drives}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:DriveStatusViewModel}">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Label}" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}" />
-                                        <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
-                                                     Margin="{StaticResource SpaceLXS}" Value="{Binding UsedPercent, Mode=OneWay}"
-                                                     Foreground="{Binding UsedBrush}" mc:MaCallout.ToolTip="{Binding ToolTip}" />
-                                        <TextBlock Text="{Binding FreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}"
-                                                   mc:MaCallout.ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding FreeText}"
-                                                   Visibility="{Binding FreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Text="RAM" Style="{StaticResource MaMutedText}" FontSize="10" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}" />
-                        <ProgressBar Style="{StaticResource MaProgressBar}" Width="28" Height="5" VerticalAlignment="Center"
-                                     Margin="{StaticResource SpaceLXS}" Value="{Binding RamUsedPercent, Mode=OneWay}"
-                                     Foreground="{Binding RamUsedBrush}" mc:MaCallout.ToolTip="{Binding RamToolTip}" />
-                        <!-- The memory guard's level (M.ORCH-T1498): muted while ok, MaWarn while it holds new work, MaBad once it sheds
-                             subagents or refuses tool calls; one of the three shows, the tooltip says what's held. -->
-                        <TextBlock x:Name="RamUtilizationText" Text="{Binding RamCalmText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}"
-                                   mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamCalmText}"
-                                   Visibility="{Binding RamCalmText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                        <TextBlock x:Name="RamWarnText" Text="{Binding RamWarnText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" Margin="{StaticResource SpaceLS}"
-                                   mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
-                                   Visibility="{Binding RamWarnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                        <TextBlock x:Name="RamBadText" Text="{Binding RamBadText}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource MaBad}" Margin="{StaticResource SpaceLS}"
-                                   mc:MaCallout.ToolTip="{Binding RamToolTip}" AutomationProperties.Name="{Binding RamToolTip}"
-                                   Visibility="{Binding RamBadText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                    </StackPanel>
                 </StackPanel>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceRL}"
                            Text="Ctrl+Tab next login" />
