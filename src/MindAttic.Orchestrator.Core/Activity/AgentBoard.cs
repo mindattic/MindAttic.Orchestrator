@@ -3,7 +3,7 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Activity;
 
-/// <summary>The agent state values.</summary>
+/// <summary>Where an agent on the board stands: working, waiting on you, or held back by the pace gate.</summary>
 public enum AgentState
 {
     /// <summary>Wrote to its transcript within the working window.</summary>
@@ -31,7 +31,7 @@ public sealed record AgentBoardRow(
 {
     /// <summary>Its latest tool call in plain words, and when.</summary>
     public string? Doing { get; init; }
-    /// <summary>The doing at utc.</summary>
+    /// <summary>When it made the call <see cref="Doing"/> describes (UTC); null when not known.</summary>
     public DateTime? DoingAtUtc { get; init; }
 
     /// <summary>What its CLI bills, in words, and whether it's being restarted for the billing mode (M.ORCH-T436); null when unknown.</summary>
@@ -84,7 +84,8 @@ public sealed record AgentBoardRow(
 /// </summary>
 public static class AgentBoard
 {
-    /// <summary>Builds.</summary>
+    /// <summary>One row per Claude session on <paramref name="repos"/> (only those in <paramref name="live"/> when given), newest
+    /// activity first, each with its subagents, claims, background jobs and pace-held state.</summary>
     public static IReadOnlyList<AgentBoardRow> Build(
         IReadOnlyList<RepoStatus> repos,
         Pace? pace,

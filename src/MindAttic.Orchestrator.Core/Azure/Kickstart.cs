@@ -28,7 +28,7 @@ public sealed record KickstartResult(IReadOnlyList<KickstartApp> Apps, string? E
     /// <summary>Whether the run worked (a wake's per-app failures are in each row; this is about the run itself).</summary>
     public bool Ok => Error is null;
 
-    /// <summary>A failed run.</summary>
+    /// <summary>A run that failed for <paramref name="error"/>, with no rows.</summary>
     public static KickstartResult Failed(string error, bool needsLogin = false) => new([], error, needsLogin);
 }
 

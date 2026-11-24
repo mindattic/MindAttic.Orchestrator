@@ -18,7 +18,7 @@ public static class SpawnVerb
     /// <summary>The verb: the CLI's first argument.</summary>
     public const string Verb = "spawn";
 
-    /// <summary>The usage.</summary>
+    /// <summary>The usage line printed when the command line is wrong.</summary>
     public const string Usage = "Usage: orchestrator spawn [--cwd <dir>] [--no-window] [--] <program> [arguments...]";
 
     /// <summary>What to start: the program, its arguments, where, and whether a console program gets no window.</summary>

@@ -11,7 +11,7 @@ namespace MindAttic.Orchestrator.Setup;
 /// </summary>
 public static partial class DashboardRequest
 {
-    /// <summary>The show arg constant.</summary>
+    /// <summary>The option naming what the dashboard should bring forward.</summary>
     public const string ShowArg = "--show";
 
     /// <summary>The target after <c>--show</c>, or null when there's none or it isn't a well-formed target.</summary>

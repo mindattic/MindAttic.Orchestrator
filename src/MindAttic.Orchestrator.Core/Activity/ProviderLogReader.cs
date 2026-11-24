@@ -13,7 +13,7 @@ namespace MindAttic.Orchestrator.Activity;
 /// </summary>
 public sealed class ProviderLogReader(string codexSessionsDir, string geminiTmpDir)
 {
-    /// <summary>Default.</summary>
+    /// <summary>A reader over this user's <c>~/.codex/sessions</c> and <c>~/.gemini/tmp</c>.</summary>
     public static ProviderLogReader Default()
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -39,7 +39,8 @@ public sealed class ProviderLogReader(string codexSessionsDir, string geminiTmpD
     /// <summary>The latest limits each provider reported (Codex: its 5-hour and weekly used percent).</summary>
     public IReadOnlyList<ProviderLimit> Limits => [.. limits.Values];
 
-    /// <summary>Polls.</summary>
+    /// <summary>Reads what the Codex and Gemini logs gained since the last poll and returns every session with a known cwd and
+    /// usage since <paramref name="sinceUtc"/>; a new <paramref name="sinceUtc"/> starts the count over.</summary>
     public IReadOnlyList<TranscriptSession> Poll(DateTime sinceUtc)
     {
         if (sinceUtc != countingSinceUtc) { files.Clear(); countingSinceUtc = sinceUtc; }

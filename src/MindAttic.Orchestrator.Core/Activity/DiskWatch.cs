@@ -21,7 +21,7 @@ public sealed record DiskEvent(HealthLevel Level, DriveFree Drive, bool Alert, b
 /// </summary>
 public sealed class DiskWatch
 {
-    /// <summary>Gets or sets the level.</summary>
+    /// <summary>The level the last <see cref="Observe"/> judged; Ok until then.</summary>
     public HealthLevel Level { get; private set; }
     private double? alertedAtGb;
     private HealthLevel alertedLevel;
@@ -137,7 +137,7 @@ public sealed class DiskWatch
         return line;
     }
 
-    /// <summary>Size.</summary>
+    /// <summary><paramref name="bytes"/> as shown in alerts: GB to one decimal from 1 GB up, whole MB below.</summary>
     public static string Size(long bytes) => bytes >= Gb ? $"{bytes / Gb:0.0} GB" : $"{bytes / (1024.0 * 1024):0} MB";
 
     private const double Gb = 1024.0 * 1024 * 1024;

@@ -6,7 +6,7 @@ namespace MindAttic.Orchestrator.Setup;
 /// </summary>
 public static class ExtractionPruner
 {
-    /// <summary>Base dir.</summary>
+    /// <summary>Where single-file exes unpack: <c>DOTNET_BUNDLE_EXTRACT_BASE_DIR</c> when set, else <c>%TEMP%\.net</c>.</summary>
     public static string BaseDir() =>
         Environment.GetEnvironmentVariable("DOTNET_BUNDLE_EXTRACT_BASE_DIR") is { Length: > 0 } dir
             ? dir

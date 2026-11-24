@@ -13,11 +13,11 @@ public sealed record ManifestRepo(string Name, string Remote);
 /// </summary>
 public sealed record WorkspaceManifest(string Root, IReadOnlyList<ManifestRepo> Repos)
 {
-    /// <summary>The relative path constant.</summary>
+    /// <summary>Where the manifest lives, relative to the workspace root.</summary>
     public const string RelativePath = @"docs\workspace-repos.json";
 }
 
-/// <summary>The failed record.</summary>
+/// <summary>What a bootstrap did: how many repos it cloned, how many were already there, and the ones that failed.</summary>
 public sealed record BootstrapResult(int Cloned, int AlreadyThere, IReadOnlyList<string> Failed);
 
 /// <summary>
@@ -27,7 +27,7 @@ public sealed record BootstrapResult(int Cloned, int AlreadyThere, IReadOnlyList
 /// </summary>
 public static class WorkspaceBootstrap
 {
-    /// <summary>The MindAttic workspace root repo.</summary>
+    /// <summary>The workspace root repo's remote, used when the root has no origin of its own.</summary>
     public const string DefaultRootRemote = "https://github.com/mindattic/codex-standard.git";
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
@@ -49,7 +49,7 @@ public static class WorkspaceBootstrap
         return new WorkspaceManifest(rootCode == 0 && rootUrl.Trim().Length > 0 ? rootUrl.Trim() : DefaultRootRemote, repos);
     }
 
-    /// <summary>Saves.</summary>
+    /// <summary>Writes <paramref name="manifest"/> to <see cref="WorkspaceManifest.RelativePath"/> under <paramref name="root"/>.</summary>
     public static void Save(WorkspaceManifest manifest, string root)
     {
         var path = Path.Combine(root, WorkspaceManifest.RelativePath);
@@ -57,7 +57,7 @@ public static class WorkspaceBootstrap
         File.WriteAllText(path, JsonSerializer.Serialize(manifest, Json) + Environment.NewLine);
     }
 
-    /// <summary>Loads.</summary>
+    /// <summary>The manifest under <paramref name="root"/>; null when there's none, it isn't valid JSON, or it has no repo list.</summary>
     public static WorkspaceManifest? Load(string root)
     {
         var path = Path.Combine(root, WorkspaceManifest.RelativePath);

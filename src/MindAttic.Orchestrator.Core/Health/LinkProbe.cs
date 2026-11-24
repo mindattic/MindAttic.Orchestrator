@@ -35,7 +35,7 @@ public sealed class LinkProbe
     /// <summary>The probe's name (its <c>probe</c>/<c>serviceId</c>).</summary>
     public const string Name = "links";
 
-    /// <summary>The latency check id.</summary>
+    /// <summary>The latency check id (unit <c>ms</c>).</summary>
     public const string LatencyCheck = "link:latency";
 
     /// <summary>The up/down check id (unit <c>state</c>).</summary>

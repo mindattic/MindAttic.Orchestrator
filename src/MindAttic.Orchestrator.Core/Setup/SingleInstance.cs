@@ -15,7 +15,7 @@ namespace MindAttic.Orchestrator.Setup;
 /// </summary>
 public sealed partial class SingleInstance : IDisposable
 {
-    /// <summary>The dashboard name constant.</summary>
+    /// <summary>The dashboard's instance name, which its mutex, show event and hand-off pipe are named from.</summary>
     public const string DashboardName = @"Local\MindAttic.Orchestrator.Dashboard";
 
     /// <summary>The most a hand-off may send: a few arguments, never a payload.</summary>
@@ -41,7 +41,7 @@ public sealed partial class SingleInstance : IDisposable
         _ = ListenAsync(PipeName(name), stop.Token);
     }
 
-    /// <summary>Shows the event.</summary>
+    /// <summary>The name of the event a later launch sets to bring the running instance <paramref name="name"/> forward.</summary>
     public static string ShowEvent(string name) => name + ".Show";
 
     /// <summary>The mutex the running instance holds for its life.</summary>
@@ -188,7 +188,8 @@ public sealed partial class SingleInstance : IDisposable
         ThreadPool.QueueUserWorkItem(_ => Guarded(to, args));
     }
 
-    /// <summary>Releases.</summary>
+    /// <summary>Stops listening for hand-offs and releases the event and the mutex (the mutex itself only from the thread that
+    /// claimed it; otherwise at process exit).</summary>
     public void Dispose()
     {
         stop.Cancel();

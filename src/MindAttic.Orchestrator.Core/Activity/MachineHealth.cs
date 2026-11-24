@@ -54,7 +54,8 @@ public static partial class MachineHealth
     /// <summary>Handle counts that are normal for the kernel itself, not a leak.</summary>
     private static readonly HashSet<int> Exempt = [0, 4];
 
-    /// <summary>Sample.</summary>
+    /// <summary>Reads the machine now: total kernel handles and the three processes holding most, commit charge percent, free
+    /// RAM (GB), the three biggest memory users and every Claude process's memory together.</summary>
     public static HealthSample Sample()
     {
         var hogs = new List<HandleHog>();

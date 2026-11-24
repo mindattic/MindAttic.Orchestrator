@@ -89,7 +89,7 @@ public static class DiskCleanup
     /// <summary>Where every deletion is written down: beside the orchestrator's database.</summary>
     public static string LogPath => Path.Combine(Path.GetDirectoryName(Settings.OrchestratorDb.LivePath) ?? ".", "disk-cleanup.log");
 
-    /// <summary>Free gb.</summary>
+    /// <summary>Free space in GB on the drive holding <paramref name="path"/>; <see cref="double.MaxValue"/> when it can't be read.</summary>
     public static double FreeGb(string path)
     {
         try { return new DriveInfo(Path.GetPathRoot(Path.GetFullPath(path))!).AvailableFreeSpace / Gb; }

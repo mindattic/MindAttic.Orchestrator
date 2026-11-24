@@ -10,7 +10,7 @@ namespace MindAttic.Orchestrator.Reminders;
 /// </summary>
 public static partial class ReminderTime
 {
-    /// <summary>The default time.</summary>
+    /// <summary>The time of day a day named without one means: 9:00 AM.</summary>
     public static readonly TimeOnly DefaultTime = new(9, 0);
     private static readonly TimeOnly Tonight = new(20, 0);
 

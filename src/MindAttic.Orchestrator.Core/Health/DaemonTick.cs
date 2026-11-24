@@ -13,7 +13,7 @@ namespace MindAttic.Orchestrator.Health;
 /// </summary>
 public sealed record DaemonTick(int Pid, DateTime StartedUtc, DateTime? EndedUtc, double? LastTookSeconds)
 {
-    /// <summary>The state row's name.</summary>
+    /// <summary>The name of the state row the tick is kept in.</summary>
     public const string StateName = "daemon-tick";
 
     /// <summary>The check id (unit <c>s</c>) and its instance.</summary>
@@ -29,7 +29,7 @@ public sealed record DaemonTick(int Pid, DateTime StartedUtc, DateTime? EndedUtc
     public double SecondsAt(DateTime nowUtc) =>
         Math.Max(Running ? Math.Max(0, (nowUtc - StartedUtc).TotalSeconds) : 0, LastTookSeconds ?? 0);
 
-    /// <summary>The row's JSON.</summary>
+    /// <summary>This tick as the JSON its state row holds.</summary>
     public string ToJson() => JsonSerializer.Serialize(this, Json);
 
     /// <summary>The tick kept in <paramref name="db"/>; null when none is kept or it can't be read.</summary>

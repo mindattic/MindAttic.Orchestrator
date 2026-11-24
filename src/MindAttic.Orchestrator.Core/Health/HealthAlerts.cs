@@ -27,7 +27,7 @@ public sealed class HealthAlertBook
 /// </summary>
 public sealed class HealthAlerts(JsonStore? store)
 {
-    /// <summary>The state name constant.</summary>
+    /// <summary>The name of the state row the alerted set is kept in.</summary>
     public const string StateName = "health-alerts";
 
     private sealed class Run
@@ -124,7 +124,7 @@ public sealed class HealthAlerts(JsonStore? store)
         return $"Health: {What(report, r)} is unhealthy ({Reading(r)}{line}; {inARow} in a row){output}.";
     }
 
-    /// <summary>The one-line recovery text.</summary>
+    /// <summary>The alert line for <paramref name="r"/> coming back from unhealthy: what it is, its grade and its reading.</summary>
     internal static string RecoveredText(HealthReport report, HealthResult r) =>
         $"Health: {What(report, r)} recovered ({HealthGrades.ToWire(r.Grade)}, {Reading(r)}).";
 

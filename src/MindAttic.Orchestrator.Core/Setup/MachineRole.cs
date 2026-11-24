@@ -25,13 +25,13 @@ public enum MachineRoleKind
 /// </summary>
 public sealed record MachineRole
 {
-    /// <summary>The env var constant.</summary>
+    /// <summary>The environment variable whose role, when set, overrides the file's.</summary>
     public const string EnvVar = "MINDATTIC_ORCHESTRATOR_ROLE";
 
     /// <summary>The name a client gives the host's gateway on its Team Wall.</summary>
     public const string HostRemoteName = "host";
 
-    /// <summary>The role.</summary>
+    /// <summary>Host, client or standalone; standalone when nothing says otherwise.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public MachineRoleKind Role { get; init; } = MachineRoleKind.Standalone;
 
@@ -48,16 +48,16 @@ public sealed record MachineRole
     /// <summary>When the role was last set (UTC).</summary>
     public DateTime? ChangedUtc { get; init; }
 
-    /// <summary>Whether client.</summary>
+    /// <summary>Whether this machine is a client, watching a host.</summary>
     public bool IsClient => Role == MachineRoleKind.Client;
-    /// <summary>Whether host.</summary>
+    /// <summary>Whether this machine is the host, running the daemon, the CLIs and the gateway.</summary>
     public bool IsHost => Role == MachineRoleKind.Host;
 
-    /// <summary>The directory.</summary>
+    /// <summary>This machine's own orchestrator folder, <c>%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator</c>, outside git.</summary>
     public static string Directory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", "MindAttic.Orchestrator");
 
-    /// <summary>The file path.</summary>
+    /// <summary>The role file, <c>machine.json</c> in <see cref="Directory"/>.</summary>
     public static string FilePath => Path.Combine(Directory, "machine.json");
 
     /// <summary>A client's own copy of the orchestrator database, off the git checkout.</summary>
@@ -99,7 +99,8 @@ public sealed record MachineRole
         return Parse(overrideRole) is { } forced ? role with { Role = forced } : role;
     }
 
-    /// <summary><c>host</c>, <c>client</c> or <c>standalone</c> (any case); null for anything else.</summary>
+    /// <summary><c>host</c> (or server, vm), <c>client</c> (or pc, remote) or <c>standalone</c> (or local, both), any case; null
+    /// for anything else.</summary>
     public static MachineRoleKind? Parse(string? text) =>
         text?.Trim().ToLowerInvariant() switch
         {
@@ -109,7 +110,7 @@ public sealed record MachineRole
             _ => null,
         };
 
-    /// <summary>Saves.</summary>
+    /// <summary>Writes this role to <see cref="FilePath"/>, stamped with the time, and drops the cached role.</summary>
     public void Save()
     {
         Save(FilePath);
@@ -126,7 +127,7 @@ public sealed record MachineRole
         File.Move(temp, path, overwrite: true);
     }
 
-    /// <summary>To string.</summary>
+    /// <summary>The role in words, with what this machine runs.</summary>
     public override string ToString() => Role switch
     {
         MachineRoleKind.Host => "host (runs the daemon, every CLI and the gateway)",

@@ -89,7 +89,7 @@ public sealed record AzureSqlListing(IReadOnlyList<AzureSqlDatabase> Databases, 
     /// others' databases are still listed.</summary>
     public bool Ok => Error is null;
 
-    /// <summary>A failed listing.</summary>
+    /// <summary>A listing that failed for <paramref name="error"/>, with no databases.</summary>
     public static AzureSqlListing Failed(string error, bool needsLogin = false) => new([], error, needsLogin);
 }
 

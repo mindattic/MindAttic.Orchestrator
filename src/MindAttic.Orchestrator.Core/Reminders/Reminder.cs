@@ -10,24 +10,24 @@ namespace MindAttic.Orchestrator.Reminders;
 /// </summary>
 public sealed record Reminder
 {
-    /// <summary>The id.</summary>
+    /// <summary>Its short id: six hex characters, unique in the book.</summary>
     public string Id { get; init; } = "";
-    /// <summary>The text.</summary>
+    /// <summary>What it says, trimmed; sent as <see cref="Message"/>.</summary>
     public string Text { get; init; } = "";
-    /// <summary>The due utc.</summary>
+    /// <summary>When it's to be texted (UTC).</summary>
     public DateTime DueUtc { get; init; }
-    /// <summary>The to.</summary>
+    /// <summary>Who it's texted to: a Psst contact or a US number; null is the owner.</summary>
     public string? To { get; init; }
-    /// <summary>The created utc.</summary>
+    /// <summary>When it was made (UTC).</summary>
     public DateTime CreatedUtc { get; init; }
-    /// <summary>The sent utc.</summary>
+    /// <summary>When it was texted (UTC); null until then.</summary>
     public DateTime? SentUtc { get; init; }
-    /// <summary>The failures.</summary>
+    /// <summary>How many sends have failed so far.</summary>
     public int Failures { get; init; }
-    /// <summary>The last error.</summary>
+    /// <summary>Why the latest send failed; cleared once it's sent.</summary>
     public string? LastError { get; init; }
 
-    /// <summary>The pending.</summary>
+    /// <summary>Whether it's still to be sent.</summary>
     public bool Pending => SentUtc is null;
 
     /// <summary>Who it goes to, as said back: the contact or number, or "you" for the owner.</summary>
@@ -44,13 +44,13 @@ public sealed record Reminder
 /// </summary>
 public static class ReminderBook
 {
-    /// <summary>The name constant.</summary>
+    /// <summary>The store name the reminders are kept under.</summary>
     public const string Name = "reminders";
 
     /// <summary>How long a sent reminder stays in the file before the daemon drops it.</summary>
     public static readonly TimeSpan KeepSent = TimeSpan.FromDays(30);
 
-    /// <summary>Path of.</summary>
+    /// <summary>Where <paramref name="store"/> keeps the reminders, for messages.</summary>
     public static string PathOf(JsonStore store) => store.Describe(Name);
 
     /// <summary>Saves a new reminder (under the store's lock, so one added while the daemon marks another sent isn't lost).</summary>
