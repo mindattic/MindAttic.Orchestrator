@@ -16,42 +16,43 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// <summary>Which kind of work the dashboard narrows its list to.</summary>
 public enum Focus
 {
-    /// <summary>Everything.</summary>
+    /// <summary>No narrowing: every non-empty group shows (Quiet still needs Show quiet or a search).</summary>
     All,
-    /// <summary>Sessions waiting on the user.</summary>
+    /// <summary>Only the Needs you group: sessions waiting on the user.</summary>
     Waiting,
-    /// <summary>Sessions actively working.</summary>
+    /// <summary>Only the Working group: sessions mid-turn.</summary>
     Working,
-    /// <summary>Open tickets.</summary>
+    /// <summary>Only repos with open tickets and no session.</summary>
     Tickets,
 }
 
-/// <summary>The tile group view model type.</summary>
+/// <summary>One section of the Repos view (Needs you, Working, Open tickets, Quiet): its heading, hint, colour and repo
+/// cards.</summary>
 public sealed class TileGroupViewModel(string title, string hint, Brush accent) : ObservableObject
 {
-    /// <summary>The title.</summary>
+    /// <summary>Whether the section shows, set by each regroup.</summary>
     private bool isVisible;
 
-    /// <summary>The title.</summary>
+    /// <summary>The section's heading ("Needs you").</summary>
     public string Title { get; } = title;
-    /// <summary>The hint.</summary>
+    /// <summary>The line under the heading saying what the section holds.</summary>
     public string Hint { get; } = hint;
-    /// <summary>The accent.</summary>
+    /// <summary>The section's colour, from <see cref="Palette"/>.</summary>
     public Brush Accent { get; } = accent;
-    /// <summary>The tiles.</summary>
+    /// <summary>The repo cards in the section, in its order.</summary>
     public ObservableCollection<RepoTileViewModel> Tiles { get; } = [];
-    /// <summary>The count.</summary>
+    /// <summary>How many repo cards the section holds.</summary>
     public int Count => Tiles.Count;
-    /// <summary>Whether visible.</summary>
+    /// <summary>The section shows: it has cards and the focus, Show quiet and the search let it.</summary>
     public bool IsVisible { get => isVisible; set => Set(ref isVisible, value); }
-    /// <summary>Touches.</summary>
+    /// <summary>Re-reads <see cref="Count"/> after a regroup changed <see cref="Tiles"/>.</summary>
     public void Touch() => Raise(nameof(Count));
 }
 
-/// <summary>The toast view model type.</summary>
+/// <summary>A toast in the window's corner: a title, a body, a colour and the repo card it opens, if any.</summary>
 public sealed class ToastViewModel(string title, string body, Brush accent, RepoTileViewModel? target)
 {
-    /// <summary>The created utc.</summary>
+    /// <summary>When it was raised, in UTC; its lifetime counts from here.</summary>
     public DateTime CreatedUtc { get; init; } = DateTime.UtcNow;
 
     /// <summary>How long it stays up; null uses the default two minutes.</summary>
@@ -63,11 +64,12 @@ public sealed class ToastViewModel(string title, string body, Brush accent, Repo
 
     /// <summary>Its title, tagged with its <see cref="Tab"/> ("Jordan · Repo needs you") when it has one.</summary>
     public string Title => Tab is null ? title : $"{Tab} · {title}";
-    /// <summary>The body.</summary>
+    /// <summary>The toast's message under its title.</summary>
     public string Body { get; } = body;
-    /// <summary>The accent.</summary>
+    /// <summary>The toast's colour, from <see cref="Palette"/>.</summary>
     public Brush Accent { get; } = accent;
-    /// <summary>The target.</summary>
+    /// <summary>The repo card clicking it opens; null for a toast with nowhere to go. It's pruned once that repo stops
+    /// waiting.</summary>
     public RepoTileViewModel? Target { get; } = target;
 
     /// <summary>The one ticket an alert with no repo to open is about (M.ORCH-T762): clicking it opens that ticket in Tickets Desktop.
@@ -113,7 +115,8 @@ public sealed partial class MainViewModel : ObservableObject
     private string prompt = "";
     private string statusMessage = "";
 
-    /// <summary>Creates the main view model.</summary>
+    /// <summary>The global login's tab with no root: the one that makes the store, lease, aggregator and session
+    /// control.</summary>
     public MainViewModel() : this(null, null) { }
 
     /// <summary>A login's tab under <paramref name="root"/> (the global login's), sharing its store, lease, refresh and
@@ -165,15 +168,15 @@ public sealed partial class MainViewModel : ObservableObject
         if (store.Load<ReposView>(ReposViewName).Sort is { } sort && RepoSorts.Contains(sort)) repoSort = sort;
     }
 
-    /// <summary>The waiting.</summary>
+    /// <summary>The Needs you section: repos whose session stopped and waits for input, longest wait first.</summary>
     public TileGroupViewModel Waiting { get; }
-    /// <summary>The working.</summary>
+    /// <summary>The Working section: repos with an agent mid-turn.</summary>
     public TileGroupViewModel Working { get; }
-    /// <summary>The tickets.</summary>
+    /// <summary>The Open tickets section: repos with open tickets and no session.</summary>
     public TileGroupViewModel Tickets { get; }
-    /// <summary>The quiet.</summary>
+    /// <summary>The Quiet section: repos with no session and no open tickets.</summary>
     public TileGroupViewModel Quiet { get; }
-    /// <summary>The groups.</summary>
+    /// <summary>The four sections in the order the view shows them.</summary>
     public IReadOnlyList<TileGroupViewModel> Groups { get; }
     /// <summary>This tab's own toasts: what it raised (a toast's tab tag and the window's notification come from here).</summary>
     public ObservableCollection<ToastViewModel> Toasts { get; } = [];
@@ -191,18 +194,20 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>The window's zoom, 80-200% (WCAG 1.4.4): the library's ZoomLevel, which MainWindow attaches to its content
     /// with Ctrl+Plus / Ctrl+Minus / Ctrl+0; the tiles and cards wrap and the views scroll, so nothing is cut off as it grows.</summary>
     public ZoomLevel Zoom { get; }
-    /// <summary>The providers.</summary>
+    /// <summary>The LLM CLIs a session can be started with (<see cref="SessionControl.Providers"/>).</summary>
     public IReadOnlyList<string> Providers => SessionControl.Providers;
 
-    /// <summary>The select command.</summary>
+    /// <summary>Selects a repo card (the parameter), or deselects it when it's the one selected.</summary>
     public ICommand SelectCommand { get; }
-    /// <summary>The refresh command.</summary>
+    /// <summary>Refreshes the snapshot now.</summary>
     public ICommand RefreshCommand { get; }
-    /// <summary>The start command.</summary>
+    /// <summary>Starts a session on the selected repo with the chosen provider, login and prompt; off without a folder or
+    /// while signing in.</summary>
     public ICommand StartCommand { get; }
-    /// <summary>The open folder command.</summary>
+    /// <summary>Opens the selected repo's folder; off when it has none.</summary>
     public ICommand OpenFolderCommand { get; }
-    /// <summary>The use ticket command.</summary>
+    /// <summary>Fills the prompt with "Work on ticket ID: summary" for the ticket row passed, unless it's held by a
+    /// move.</summary>
     public ICommand UseTicketCommand { get; }
 
     /// <summary>A ticket id anywhere in the window opens that ticket in Tickets Desktop, to view, approve, prioritize or
@@ -214,24 +219,24 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>The upper-right Tickets button (M.ORCH-T878): opens Tickets Desktop, or brings it forward if it's running.</summary>
     public ICommand OpenTicketsAppCommand { get; }
 
-    /// <summary>The sort by tickets.</summary>
+    /// <summary>Opens Tickets Desktop, or brings it forward; toasts the error when it can't.</summary>
     private void OpenTicketsApp()
     {
         if (TicketsApp.OpenOrFocus(aggregator.Options) is { } error)
             Toasts.Insert(0, new ToastViewModel("Couldn't open Tickets Desktop", error, Palette.Over, null));
     }
-    /// <summary>The dismiss toast command.</summary>
+    /// <summary>Closes the toast passed.</summary>
     public ICommand DismissToastCommand { get; }
-    /// <summary>The open toast command.</summary>
+    /// <summary>Closes the toast passed and goes where it points: the CLI's own tab, else the repo's detail.</summary>
     public ICommand OpenToastCommand { get; }
-    /// <summary>The clear search command.</summary>
+    /// <summary>Empties <see cref="Search"/>.</summary>
     public ICommand ClearSearchCommand { get; }
 
-    /// <summary>The search.</summary>
+    /// <summary>The search box's text: repo cards that don't match it are hidden, and typing it regroups.</summary>
     public string Search { get => search; set { if (Set(ref search, value)) Regroup(); } }
-    /// <summary>The show quiet.</summary>
+    /// <summary>Show the Quiet section (it shows anyway while a search is typed); changing it regroups.</summary>
     public bool ShowQuiet { get => showQuiet; set { if (Set(ref showQuiet, value)) Regroup(); } }
-    /// <summary>The focus.</summary>
+    /// <summary>Which kind of work the Repos view narrows to; the stat tiles set it.</summary>
     public Focus Focus
     {
         get => focus;
@@ -244,19 +249,19 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>Which stat tile filters the repos right now: the library's MaTile.IsSelected outlines it (M.ORCH-T667).</summary>
     public bool IsWaitingFocus => Focus == Focus.Waiting;
-    /// <summary>Whether working focus.</summary>
+    /// <summary>The Working stat tile is the focus (see <see cref="IsWaitingFocus"/>).</summary>
     public bool IsWorkingFocus => Focus == Focus.Working;
-    /// <summary>Whether tickets focus.</summary>
+    /// <summary>The Open tickets stat tile is the focus (see <see cref="IsWaitingFocus"/>).</summary>
     public bool IsTicketsFocus => Focus == Focus.Tickets;
 
     /// <summary>The constants sort by name, sort by tickets.</summary>
     public const string SortByName = "Name", SortByTickets = "Open tickets";
-    /// <summary>The repo sorts.</summary>
+    /// <summary>The orders <see cref="RepoSort"/> can take, for its pills.</summary>
     public IReadOnlyList<string> RepoSorts => RepoSortNames;
-    /// <summary>The has selection.</summary>
+    /// <summary>The orders the repo cards can be sorted by, behind <see cref="RepoSorts"/>.</summary>
     private static readonly IReadOnlyList<string> RepoSortNames = [SortByName, SortByTickets];
 
-    /// <summary>The provider constant.</summary>
+    /// <summary>The store key <see cref="RepoSort"/> is saved under.</summary>
     private const string ReposViewName = "dashboard-repos";
     private sealed class ReposView { public string? Sort { get; init; } }
 
@@ -274,7 +279,8 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>The selected.</summary>
+    /// <summary>The repo card whose detail shows; setting it clears the prompt and status message and reloads the logins to
+    /// start with.</summary>
     public RepoTileViewModel? Selected
     {
         get => selected;
@@ -292,10 +298,11 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>Whether selection.</summary>
+    /// <summary>A repo card is selected: its detail shows.</summary>
     public bool HasSelection => Selected is not null;
     // Ctrl+click on the selected pill deselects it, writing null: Start would crash the dashboard on it.
-    /// <summary>The provider.</summary>
+    /// <summary>The LLM CLI a new session starts with ("Claude" by default); a null write (deselecting its pill) is
+    /// ignored.</summary>
     public string Provider { get => provider; set { if (value is not null && Set(ref provider, value)) Raise(nameof(ShowLogins)); } }
 
     /// <summary>What <see cref="Logins"/> lists for the global login (~/.claude), its member's own seat.</summary>
@@ -320,10 +327,11 @@ public sealed partial class MainViewModel : ObservableObject
     public bool ShowLogins => Provider == "Claude" && Logins.Count > 1;
 
     // Ctrl+click on the selected pill deselects it, writing null: it stays on the one it was.
-    /// <summary>The login.</summary>
+    /// <summary>The login a new Claude session starts on; a null write (deselecting its pill) is ignored.</summary>
     public string Login { get => login; set { if (value is not null) Set(ref login, value); } }
 
-    /// <summary>Whether warnings.</summary>
+    /// <summary>Reloads the logins a session can start on (this tab's own, or every signed-in one on the global tab),
+    /// keeping the choice when it's still there.</summary>
     private void RefreshLogins()
     {
         IReadOnlyList<string> found = [];
@@ -341,30 +349,31 @@ public sealed partial class MainViewModel : ObservableObject
         Raise(nameof(Logins));
         Raise(nameof(ShowLogins));
     }
-    /// <summary>The prompt.</summary>
+    /// <summary>The text a new session starts with; empty starts it with none.</summary>
     public string Prompt { get => prompt; set => Set(ref prompt, value); }
-    /// <summary>The status message.</summary>
+    /// <summary>The result of the last session start, shown in the repo detail; cleared when the selection
+    /// changes.</summary>
     public string StatusMessage { get => statusMessage; private set => Set(ref statusMessage, value); }
 
     /// <summary>Whether this window is the one process building snapshots (no daemon got the lease first), so it has to
     /// keep refreshing even while hidden: rl-status.json and allocate depend on it.</summary>
     public bool HoldsLease => lease.IsHeld;
 
-    /// <summary>The working count.</summary>
+    /// <summary>How many sessions are mid-turn, from the latest snapshot.</summary>
     public int WorkingCount => snapshot?.Working ?? 0;
-    /// <summary>The waiting count.</summary>
+    /// <summary>How many sessions wait on the user, from the latest snapshot.</summary>
     public int WaitingCount => snapshot?.Waiting ?? 0;
-    /// <summary>The host count.</summary>
+    /// <summary>How many hosted CLIs are live, from the latest snapshot.</summary>
     public int HostCount => snapshot?.LiveHosts ?? 0;
-    /// <summary>The ticket count.</summary>
+    /// <summary>How many tickets are open across the workspace, from the latest snapshot.</summary>
     public int TicketCount => snapshot?.OpenTickets ?? 0;
-    /// <summary>The repo count.</summary>
+    /// <summary>How many repos the snapshot lists, leaving out its "(...)" pseudo-repos.</summary>
     public int RepoCount => snapshot?.Repos.Count(r => !r.Name.StartsWith('(')) ?? 0;
-    /// <summary>The workspace root.</summary>
+    /// <summary>The folder that holds every repo, from the options.</summary>
     public string WorkspaceRoot => aggregator.Options.WorkspaceRoot;
-    /// <summary>The tokens today.</summary>
+    /// <summary>Today's tokens across the workspace, formatted ("1.2M").</summary>
     public string TokensToday => Formatting.Tokens(snapshot?.UsageToday.Total ?? 0);
-    /// <summary>The tokens detail.</summary>
+    /// <summary>Today's split: "N uncached · N out".</summary>
     public string TokensDetail
     {
         get
@@ -373,9 +382,9 @@ public sealed partial class MainViewModel : ObservableObject
             return $"{Formatting.Tokens(u.Fresh)} uncached · {Formatting.Tokens(u.Output)} out";
         }
     }
-    /// <summary>The warnings.</summary>
+    /// <summary>The snapshot's warnings (billing, ticket files and the like); empty before the first one.</summary>
     public IReadOnlyList<string> Warnings => snapshot?.Warnings ?? [];
-    /// <summary>Whether warnings.</summary>
+    /// <summary>The snapshot has warnings to show.</summary>
     public bool HasWarnings => Warnings.Count > 0;
 
     /// <summary>The status bar's count of them: not only ticket files go wrong (billing, the approvals' move into the ticket
@@ -685,7 +694,7 @@ public sealed partial class MainViewModel : ObservableObject
         Raise(nameof(IsEmpty));
     }
 
-    /// <summary>Whether empty.</summary>
+    /// <summary>No section shows anything: nothing matches the search and focus.</summary>
     public bool IsEmpty => Groups.All(g => !g.IsVisible);
 
     private void Select(RepoTileViewModel? tile) => Selected = Selected == tile ? null : tile;

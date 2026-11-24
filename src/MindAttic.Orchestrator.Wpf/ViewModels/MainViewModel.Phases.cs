@@ -178,14 +178,15 @@ public sealed partial class MainViewModel
             if (!Root.loginTabs.Contains(Root)) Root.Raise(nameof(IsLoginsOpen));
         }
     }
-    /// <summary>Gets or sets the toggle logins command.</summary>
+    /// <summary>Opens or closes the logins panel (<see cref="IsLoginsOpen"/>).</summary>
     public ICommand ToggleLoginsCommand { get; private set; } = null!;
 
     // ── Budget ──────────────────────────────────────────────────────────────
 
-    /// <summary>The budget.</summary>
+    /// <summary>The tab's login's budget from the latest snapshot; null before the first one.</summary>
     public BudgetStatus? Budget => snapshot?.Budget;
-    /// <summary>The budget is peak.</summary>
+    /// <summary>The 5-hour limit is only the busiest block seen (no real limit known), so its figure is an estimate; true
+    /// with no budget yet.</summary>
     public bool BudgetIsPeak => Budget?.BlockLimitIsPeak ?? true;
 
     /// <summary>The tab's login's 5-hour window, % used (M.ORCH-T628): from its own pace, else (a login the daemon hasn't paced
@@ -205,7 +206,8 @@ public sealed partial class MainViewModel
         _ => Formatting.FiveHourPercent(b.BlockPercent),
     };
 
-    /// <summary>The budget caption.</summary>
+    /// <summary>The line under the 5-hour figure: whose count it is (Claude's, learned, a budget) or that it's a peak
+    /// estimate.</summary>
     public string BudgetCaption => LiveFiveHour is not null ? "of your 5-hour limit (Claude's count)" : Budget switch
     {
         null => OwnRow?.FiveHourUsedAt(DateTime.UtcNow) is null ? "" : "of your 5-hour limit (Claude's count)",
@@ -219,7 +221,8 @@ public sealed partial class MainViewModel
     /// <summary>The caption under a peak-only figure: says outright it's an estimate, not a limit (M.ORCH-T636).</summary>
     internal const string PeakCaption = "estimate: of your busiest 5h block (no 5-hour limit known yet)";
 
-    /// <summary>The budget detail.</summary>
+    /// <summary>The budget card's detail line: when the block resets, the uncached rate, the projected limit time and the
+    /// week left.</summary>
     public string BudgetDetail
     {
         get
@@ -233,7 +236,8 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>The budget tooltip.</summary>
+    /// <summary>The budget card's tooltip: this block, today and this week in uncached tokens, and how to set a real limit;
+    /// empty with no budget.</summary>
     public string BudgetTooltip
     {
         get
@@ -283,7 +287,7 @@ public sealed partial class MainViewModel
 
     // ── Pace ────────────────────────────────────────────────────────────────
 
-    /// <summary>The pace.</summary>
+    /// <summary>The pacer's verdict from the latest snapshot; null before the first one.</summary>
     public Pace? Pace => snapshot?.Pace;
 
     /// <summary>Replaces the budget card's detail line while pacing is holding work back; empty otherwise.</summary>
@@ -303,7 +307,8 @@ public sealed partial class MainViewModel
         { } p => $"At the {p.Governing ?? "5-hour"} limit until {(p.ResetUtc is { } r ? Formatting.ResetTime(r, DateTime.UtcNow) : "the reset")}",
     };
 
-    /// <summary>The pace brush.</summary>
+    /// <summary>The pace's colour: good when open, warning when throttled, bad when coasting or over, muted with no
+    /// pace.</summary>
     public Brush PaceBrush => Pace?.Mode switch
     {
         PaceMode.Open => Palette.Working,
@@ -315,7 +320,7 @@ public sealed partial class MainViewModel
     /// <summary>0..1 fill for the bar; peak mode can pass 100% but the bar stops full.</summary>
     public double BudgetFill => Math.Clamp((LiveFiveHour ?? (Budget?.CurrentBlock is null ? 0 : Budget.BlockPercent)) / 100, 0, 1);
 
-    /// <summary>The budget brush.</summary>
+    /// <summary>The 5-hour bar's colour for <see cref="Budget"/>.</summary>
     public Brush BudgetBrush => BlockBrush(Budget);
 
     /// <summary>The 5-hour tile's figure and bar colour. Against only the busiest block it's always the muted MaMuted, whatever
@@ -503,35 +508,38 @@ public sealed partial class MainViewModel
     // its own set (M.ORCH-T655: every unclaimed ticket, and only its own claims), all kept current by each plan, so an org switch
     // hands the window another org's rows as they are, rather than moving hundreds of rows in and out of one list.
     private readonly Dictionary<string, ObservableCollection<QueueRowViewModel>> queues = new(StringComparer.Ordinal);
-    /// <summary>The proposals.</summary>
+    /// <summary>The scheduler's proposals, shared by every tab (kept on the global login's view model).</summary>
     private readonly ObservableCollection<QueueRowViewModel> proposals = [];
-    /// <summary>The finished.</summary>
+    /// <summary>Closed tickets whose assignment is still around, shared by every tab (kept on the global login's view
+    /// model).</summary>
     private readonly ObservableCollection<FinishedViewModel> finished = [];
-    /// <summary>The queue.</summary>
+    /// <summary>The queue rows of the org shown.</summary>
     public ObservableCollection<QueueRowViewModel> Queue => Root.QueueOf(Root.selectedOrgId);
 
-    /// <summary>The slots text.</summary>
+    /// <summary>An org's queue rows, made empty the first time that org is asked for.</summary>
     private ObservableCollection<QueueRowViewModel> QueueOf(string org) =>
         queues.TryGetValue(org, out var rows) ? rows : queues[org] = [];
 
     /// <summary>Every org's queue rows (a ticket listed in several orgs has a row in each).</summary>
     private IEnumerable<QueueRowViewModel> AllQueueRows => Root.queues.Values.SelectMany(q => q);
-    /// <summary>The proposals.</summary>
+    /// <summary>The scheduler's proposals, the global login's set whichever tab is shown.</summary>
     public ObservableCollection<QueueRowViewModel> Proposals => Root.proposals;
-    /// <summary>The finished.</summary>
+    /// <summary>Closed tickets whose assignment is still around, the global login's set whichever tab is shown.</summary>
     public ObservableCollection<FinishedViewModel> Finished => Root.finished;
     private SchedulePlan? Plan => Root.plan;
-    /// <summary>The hold.</summary>
+    /// <summary>Why the scheduler holds back new work this round, empty when it doesn't.</summary>
     public string Hold => Plan?.Hold ?? "";
-    /// <summary>Whether hold.</summary>
+    /// <summary>The scheduler is holding back new work: the view shows <see cref="Hold"/>.</summary>
     public bool HasHold => !string.IsNullOrEmpty(Hold);
-    /// <summary>The slots text.</summary>
+    /// <summary>"3 sessions open · pacing allows 2 of 4", or "fills up to 4" when unpaced; empty before the first
+    /// plan.</summary>
     public string SlotsText => Plan is not { } plan ? ""
         : plan.Cap < plan.Slots ? $"{plan.Occupied} sessions open · pacing allows {plan.Cap} of {plan.Slots}"
         : $"{plan.Occupied} sessions open · fills up to {plan.Slots}";
     // /allocate is on per CLI (its marks, M.ORCH-T164), as `orchestrator settings` reports it: the dashboard's own Allocate
     // has no order to read, so it always read as off.
-    /// <summary>The allocate text.</summary>
+    /// <summary>Where /allocate is on (which CLIs, for which repos) or paused, with the dashboard's own Allocate
+    /// setting.</summary>
     public string AllocateText => AllocateLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AllocateClis(), ShownSettings.Allocate) +
         (allocate.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", allocate.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
 
@@ -545,9 +553,9 @@ public sealed partial class MainViewModel
         : $"Allocate is on in {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} for " +
           string.Join(", ", clis.Values.SelectMany(r => r).Select(r => r == Allocate.AllRepos ? "every repo" : r).Distinct(StringComparer.OrdinalIgnoreCase)) +
           ", each through its own subagents, paced to the 5-hour window.";
-    /// <summary>The queue message.</summary>
+    /// <summary>The queue's last action result ("M.ORCH-T1 is back in the queue."), shown above the rows.</summary>
     public string QueueMessage { get => queueMessage; private set => Set(ref queueMessage, value); }
-    /// <summary>The queue count.</summary>
+    /// <summary>How many queue rows of the org shown no CLI has claimed.</summary>
     public int QueueCount => Queue.Count(q => !q.IsAssigned);
 
     /// <summary>What an empty queue says: tickets waiting for approval are left out of it, so they're named, not "no open
@@ -562,7 +570,8 @@ public sealed partial class MainViewModel
     /// click in that time would open a second agent on the same ticket.</summary>
     private readonly HashSet<string> starting = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Whether starting.</summary>
+    /// <summary><paramref name="ticketId"/> is being started now, so its Start button stays off until the next
+    /// refresh.</summary>
     public bool IsStarting(string ticketId) => Root.starting.Contains(ticketId);
 
     /// <summary>Starts <paramref name="item"/> in its repo's own checkout on main (M.ORCH-T1122: never a worktree).</summary>
@@ -625,7 +634,8 @@ public sealed partial class MainViewModel
         else queueLog.Error("{Action:l} failed: {Message:l}", action, r.Message);
     }
 
-    /// <summary>Releases.</summary>
+    /// <summary>Hands a claimed ticket back to the queue (the row's Release), unless a moving CLI holds it, and
+    /// replans.</summary>
     public void Release(string ticketId) => Guarded("Release", () =>
     {
         if (Locked(ticketId)) return;
@@ -678,7 +688,8 @@ public sealed partial class MainViewModel
             },
         }.Show();
 
-    /// <summary>Finish.</summary>
+    /// <summary>The Finished card's Clear or Remove worktree: removes the closed ticket's leftover assignment (and old
+    /// worktree), unless a moving CLI holds it.</summary>
     public async void Finish(Assignment a)
     {
         if (Locked(a.TicketId)) return;

@@ -22,7 +22,7 @@ public sealed class LiveActivityRowViewModel(AgentBoardRow row, MainViewModel? o
     /// <summary>Its live session, the sync key: one card per running session, not per repo (two ticket-less sessions on the
     /// same repo each get their own).</summary>
     public string SessionId => row.SessionId;
-    /// <summary>The repo.</summary>
+    /// <summary>The repo its session runs in.</summary>
     public string Repo => row.Repo;
 
     /// <summary>What it's doing right now (its latest tool call in plain words, <see cref="AgentBoardRow.Doing"/>), falling
@@ -42,10 +42,10 @@ public sealed class LiveActivityRowViewModel(AgentBoardRow row, MainViewModel? o
     /// rollout, so a bug there would stop everyone at once - too much blast radius for a first cut at enforcement.</summary>
     public bool IsOverdue => DateTime.UtcNow - row.StartedUtc >= MainViewModel.TicketlessFlagAfter;
 
-    /// <summary>The overdue text.</summary>
+    /// <summary>The overdue flag's words: how long it has run with no ticket, and that every request needs one.</summary>
     public string OverdueText => $"No ticket after {Formatting.Span(DateTime.UtcNow - row.StartedUtc)} - every request needs one";
 
-    /// <summary>Updates.</summary>
+    /// <summary>Takes the session's latest board row and raises every property.</summary>
     public void Update(AgentBoardRow next)
     {
         row = next;

@@ -54,7 +54,7 @@ public sealed partial class MainViewModel
         _ => MaStatus.Other,
     };
 
-    /// <summary>The light in the theme's colour.</summary>
+    /// <summary><see cref="TabLight"/> as a brush in the theme in force.</summary>
     public Brush TabLightBrush => LightBrush(TabLight);
 
     internal static Brush LightBrush(TabLight light) => light switch
@@ -288,11 +288,14 @@ public sealed partial class MainViewModel
         weekUsed >= weeklyCutoff || fiveHourUsed >= fiveHourCutoff;
 
     // Every tab shows its activity icon (the API key's person too, since M.ORCH-T906), its word in the tooltip and accessible name.
-    /// <summary>Whether tab idle.</summary>
+    /// <summary>A person tab's badge shows idle: its login is usable with nothing running, and not every CLI is
+    /// stopped.</summary>
     public bool IsTabIdle => IsPersonTab && TabActivity == TabActivity.Idle && !TabAllStopped;
-    /// <summary>Whether tab busy.</summary>
+    /// <summary>A person tab's badge shows busy: a CLI is working or its login is spending, and not every CLI is
+    /// stopped.</summary>
     public bool IsTabBusy => IsPersonTab && TabActivity == TabActivity.Busy && !TabAllStopped;
-    /// <summary>Whether tab disabled.</summary>
+    /// <summary>A person tab's badge shows disabled: past a cutoff or signed out (API billing off on the API key's
+    /// tab).</summary>
     public bool IsTabDisabled => IsPersonTab && TabActivity == TabActivity.Disabled;
 
     /// <summary>This login's lock, if any (M.ORCH-T2119): read live off the lock book, gated by <see cref="LoginLocks.LiveLocked"/>

@@ -26,13 +26,13 @@ public sealed partial class MainViewModel
     private MainViewModel? selectedTab;
     private ICommand? nextTabCommand, previousTabCommand;
 
-    /// <summary>The login this tab shows.</summary>
+    /// <summary>The login this tab shows: its name, email and kind.</summary>
     public LoginTab Tab => tab;
 
     /// <summary>This tab's per-CLI login (its email); null on the global login's tab.</summary>
     public string? ScopeEmail => tab.Email;
 
-    /// <summary>Whether global tab.</summary>
+    /// <summary>This is the global login's tab (it has no root): the one that holds the workspace-wide state.</summary>
     public bool IsGlobalTab => root is null;
 
     /// <summary>What fit on no person's page (M.ORCH-T763), now shown on the global login's tab instead of its own
@@ -40,13 +40,14 @@ public sealed partial class MainViewModel
     /// workspace's problems.</summary>
     public bool ShowsWorkspaceExtras => IsGlobalTab;
 
-    /// <summary>The shows reminders.</summary>
+    /// <summary>The reminders section shows: only on the global login's tab, and only with a reminder pending.</summary>
     public bool ShowsReminders => IsGlobalTab && HasReminders;
 
-    /// <summary>The shows warnings section.</summary>
+    /// <summary>The warnings section shows: only on the global login's tab, and only with a warning.</summary>
     public bool ShowsWarningsSection => IsGlobalTab && HasWarnings;
 
-    /// <summary>The shows hold.</summary>
+    /// <summary>The pacing hold shows: only on the global login's tab, and only while the scheduler holds work
+    /// back.</summary>
     public bool ShowsHold => IsGlobalTab && HasHold;
 
     /// <summary>The login's name ("Jordan", "Ryan (fallback)").</summary>
@@ -263,7 +264,7 @@ public sealed partial class MainViewModel
 
     /// <summary>Ctrl+Tab and Ctrl+Shift+Tab: the next and the previous login's tab in the shown org.</summary>
     public ICommand NextTabCommand => nextTabCommand ??= new RelayCommand(() => Root.Step(+1));
-    /// <summary>The previous tab command.</summary>
+    /// <summary>Ctrl+Shift+Tab: the previous login's tab in the shown org (see <see cref="NextTabCommand"/>).</summary>
     public ICommand PreviousTabCommand => previousTabCommand ??= new RelayCommand(() => Root.Step(-1));
 
     private void Select(MainViewModel? next)

@@ -7,11 +7,11 @@ public sealed partial class MainViewModel
 {
     private IReadOnlyList<string> reminders = [];
 
-    /// <summary>The reminders.</summary>
+    /// <summary>The pending reminders' lines, as read from the daemon's file or pushed by the status stream.</summary>
     public IReadOnlyList<string> Reminders { get => reminders; private set => Set(ref reminders, value); }
-    /// <summary>Whether reminders.</summary>
+    /// <summary>Any reminder is pending: the reminders section shows.</summary>
     public bool HasReminders => Reminders.Count > 0;
-    /// <summary>The reminders title.</summary>
+    /// <summary>"3 reminders pending" ("1 reminder pending"): the section's heading.</summary>
     public string RemindersTitle => Reminders.Count == 1 ? "1 reminder pending" : $"{Reminders.Count} reminders pending";
 
     private void ApplyReminders(DateTime nowUtc)

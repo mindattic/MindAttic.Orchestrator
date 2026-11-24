@@ -140,7 +140,8 @@ public sealed class HealthCheckRow(string probe, string checkId, string? compone
     /// <summary>The history's grades as colours, oldest first: the heartbeat strip (docs/HEALTH.md, Uptime Kuma's bar).</summary>
     public IReadOnlyList<Brush> HistoryBrushes => [.. history.Select(r => BrushOf(r.Grade))];
 
-    /// <summary>A grade's colour.</summary>
+    /// <summary>A health grade's colour: healthy the working colour, degraded the waiting one, anything else the over
+    /// one.</summary>
     public static Brush BrushOf(HealthGrade grade) => grade switch
     {
         HealthGrade.Healthy => Palette.Working,

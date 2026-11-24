@@ -26,7 +26,7 @@ public sealed partial class MainViewModel
     /// <summary>What the last Sign in, Add login, User Settings or Move did, or is doing.</summary>
     public string AccountsMessage { get => accountsMessage; private set => Set(ref accountsMessage, value); }
 
-    /// <summary>Whether signing in.</summary>
+    /// <summary>A browser sign-in is under way (one at a time): Start and another sign-in wait for it.</summary>
     public bool IsSigningIn { get => signingIn; private set => Set(ref signingIn, value); }
 
     private ICommand? addAccountCommand;

@@ -27,7 +27,8 @@ public sealed class TaskRowViewModel : ObservableObject
     private Brush ownerBrush = Brushes.Gray;
     private string? caption;
 
-    /// <summary>Creates the task row view model.</summary>
+    /// <summary>A row keyed <paramref name="key"/> for <paramref name="cli"/>, or for one of its subagents when <paramref
+    /// name="subagent"/> is given.</summary>
     public TaskRowViewModel(string key, AgentBoardRow cli, SubagentActivity? subagent)
     {
         Key = key;
@@ -38,26 +39,26 @@ public sealed class TaskRowViewModel : ObservableObject
     /// <summary>The sync key: the CLI's session, or "session/agent" for one of its subagents.</summary>
     public string Key { get; }
 
-    /// <summary>The cli.</summary>
+    /// <summary>The CLI's board row (a subagent row's parent CLI).</summary>
     public AgentBoardRow Cli => cli;
-    /// <summary>The subagent.</summary>
+    /// <summary>The subagent this row shows; null for the CLI's own row.</summary>
     public SubagentActivity? Subagent => subagent;
     /// <summary>The CLI's session (a subagent's own parent): the Play button's target (M.ORCH-T1770), always known for a
     /// live row.</summary>
     public string SessionId => cli.SessionId;
-    /// <summary>The Play button's accessible name.</summary>
+    /// <summary>"Jump to Ryan's CLI": the Play button's accessible name.</summary>
     public string PlayName => $"Jump to {Owner}'s {Kind}";
-    /// <summary>Whether subagent.</summary>
+    /// <summary>A subagent's row rather than its CLI's.</summary>
     public bool IsSubagent => subagent is not null;
     /// <summary>A subagent row sits indented under its owner (the border margin the card binds).</summary>
     public System.Windows.Thickness Indent => IsSubagent ? new System.Windows.Thickness(12, 0, 0, 0) : new System.Windows.Thickness(0);
 
-    /// <summary>The repo.</summary>
+    /// <summary>The repo its CLI runs in.</summary>
     public string Repo => cli.Repo;
 
     /// <summary>Who it bills: their tab's name ("Ryan").</summary>
     public string Owner => owner;
-    /// <summary>The owner email.</summary>
+    /// <summary>The login email it bills; null when unknown.</summary>
     public string? OwnerEmail => ownerEmail;
 
     /// <summary>Their tab's colour (M.ORCH-T616): the row's accent stripe and owner name.</summary>
@@ -72,7 +73,7 @@ public sealed class TaskRowViewModel : ObservableObject
     /// <summary>"ID · friendly name" for its ticket, or "No ticket" while none is known.</summary>
     public string TicketText => TicketId is null ? "No ticket" : caption ?? TicketId;
 
-    /// <summary>Whether ticket.</summary>
+    /// <summary>A ticket is known for it (<see cref="TicketId"/> isn't null).</summary>
     public bool HasTicket => TicketId is not null;
 
     /// <summary>"CLI" or "Subagent (Explore)": which kind of process it is.</summary>
@@ -81,7 +82,7 @@ public sealed class TaskRowViewModel : ObservableObject
     /// <summary>What it's doing now (its latest tool call), else what it was asked, else its state's own words.</summary>
     public string Doing => subagent is { } s ? s.Doing ?? s.Task ?? "Working" : cli.Doing is { Length: > 0 } d ? d : cli.StateDetail;
 
-    /// <summary>The tokens.</summary>
+    /// <summary>Its tokens so far (the subagent's own, else the CLI's), formatted.</summary>
     public string Tokens => Formatting.Tokens((subagent?.Usage ?? cli.Tokens).Total);
 
     /// <summary>The row's accessible name and tooltip: who, what kind, which repo and ticket, what it's doing.</summary>
@@ -109,7 +110,7 @@ public sealed partial class MainViewModel
 {
     private ICommand? openTaskDetailCommand, closeTaskDetailCommand;
     private bool isTaskDetailOpen;
-    /// <summary>The has task list.</summary>
+    /// <summary>The detail modal's heading, set by <see cref="ShowTaskDetail"/>.</summary>
     private string taskDetailTitle = "";
     private string? taskDetailTicketId;
     private string taskDetailDescription = "";
@@ -118,7 +119,7 @@ public sealed partial class MainViewModel
     public ObservableCollection<TaskRowViewModel> TaskList => Root.taskList;
     private readonly ObservableCollection<TaskRowViewModel> taskList = [];
 
-    /// <summary>Whether task list.</summary>
+    /// <summary>The Task List has a row: its section shows.</summary>
     public bool HasTaskList => Root.taskList.Count > 0;
 
     /// <summary>"Task List  3", its section label's count.</summary>
@@ -150,7 +151,7 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>Whether active items.</summary>
+    /// <summary>The Active section has something to show.</summary>
     public bool HasActiveItems => ActiveItems.Count > 0;
     /// <summary>"Active  5", the section label's count.</summary>
     public string ActiveCount => ActiveItems.Count.ToString(CultureInfo.InvariantCulture);
@@ -178,7 +179,7 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>Whether top100 items.</summary>
+    /// <summary>The Top priority section has something to show.</summary>
     public bool HasTop100Items => Top100Items.Count > 0;
     /// <summary>"Top priority  100", the section label's count.</summary>
     public string Top100Count => Top100Items.Count.ToString(CultureInfo.InvariantCulture);
@@ -212,7 +213,8 @@ public sealed partial class MainViewModel
     /// activity row or ticket row it is).</summary>
     public ICommand JumpToCliCommand => Root.jumpToCliCommand ??= new RelayCommand(p => Root.JumpToCli(p));
 
-    /// <summary>Whether task detail open.</summary>
+    /// <summary>The task detail modal is open; setting it is said on every tab, since they all show the global
+    /// login's.</summary>
     public bool IsTaskDetailOpen { get => Root.isTaskDetailOpen; set { Root.isTaskDetailOpen = value; RaiseOnEveryTab(nameof(IsTaskDetailOpen)); } }
 
     /// <summary>Every tab proxies the Task List to the global login's (the window shows whichever tab is chosen), so a change
@@ -222,19 +224,19 @@ public sealed partial class MainViewModel
         foreach (var t in Root.loginTabs) t.Raise(name);
         if (!Root.loginTabs.Contains(Root)) Root.Raise(name);
     }
-    /// <summary>The task detail title.</summary>
+    /// <summary>The detail modal's heading, as its opener set it ("CLI on Repo" for a ticket-less CLI).</summary>
     public string TaskDetailTitle => Root.taskDetailTitle;
 
     /// <summary>The ticket's summary, or the CLI's own description ("Working on ...") with no ticket.</summary>
     public string TaskDetailDescription => Root.taskDetailDescription;
 
-    /// <summary>The task detail lines.</summary>
+    /// <summary>The detail modal's label/value lines (repo, session, tokens and the like).</summary>
     public ObservableCollection<TaskDetailLine> TaskDetailLines => Root.taskDetailLines;
     private readonly ObservableCollection<TaskDetailLine> taskDetailLines = [];
 
     /// <summary>The ticket the modal shows, for its "Open in Tickets"; null for a CLI with none.</summary>
     public string? TaskDetailTicketId => Root.taskDetailTicketId;
-    /// <summary>Whether task detail ticket.</summary>
+    /// <summary>The detail modal has a ticket: its "Open in Tickets" shows.</summary>
     public bool HasTaskDetailTicket => Root.taskDetailTicketId is not null;
 
     /// <summary>The paragraph/review button every card in the unified sidebar list shares (M.ORCH-T1825): a Task List row
@@ -250,7 +252,7 @@ public sealed partial class MainViewModel
             case LiveActivityRowViewModel row: Root.OpenActivityDetail(row); break;
         }
     });
-    /// <summary>The close task detail command.</summary>
+    /// <summary>Closes the task detail modal.</summary>
     public ICommand CloseTaskDetailCommand => Root.closeTaskDetailCommand ??= new RelayCommand(() => Root.IsTaskDetailOpen = false);
 
     private static readonly Regex TicketIdPattern = new(@"\b[A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*-T\d+\b", RegexOptions.CultureInvariant | RegexOptions.Compiled);

@@ -24,19 +24,20 @@ public sealed class PersonOptionViewModel(string? email) : ObservableObject
 
     /// <summary>The user's login, null for "Unassigned".</summary>
     public string? Email { get; } = email;
-    /// <summary>The name.</summary>
+    /// <summary>Their login's name as the picker shows it ("Jordan"), "Unassigned" for nobody.</summary>
     public string Name { get => name; private set => Set(ref name, value); }
-    /// <summary>The trailing.</summary>
+    /// <summary>The text after the name: "week 40% left", or the API key's money left; empty when unknown.</summary>
     public string Trailing { get => trailing; private set => Set(ref trailing, value); }
-    /// <summary>The status.</summary>
+    /// <summary>The status light: bad when not signed in here, warning when out of room, good when they have room.</summary>
     public MaStatus? Status { get => status; private set => Set(ref status, value); }
-    /// <summary>The status label.</summary>
+    /// <summary>The status light's words: "Not signed in here", "Out of room" or "Has room".</summary>
     public string? StatusLabel { get => statusLabel; private set => Set(ref statusLabel, value); }
 
     /// <summary>Why they can't take their tickets now ("week at 97%"); null while they have room.</summary>
     public string? OutOfRoom { get => outOfRoom; private set => Set(ref outOfRoom, value); }
 
-    /// <summary>Updates.</summary>
+    /// <summary>Takes the person's latest name, trailing text and room (<paramref name="why"/> null while they have room)
+    /// and sets the status light from them.</summary>
     public void Update(string nextName, string nextTrailing, string? why, bool signedIn)
     {
         Name = nextName;
@@ -53,13 +54,14 @@ public sealed class PersonOptionViewModel(string? email) : ObservableObject
 public sealed class UserTicketRowViewModel : ObservableObject
 {
     private readonly MainViewModel owner;
-    /// <summary>The user ticket row view model.</summary>
+    /// <summary>The queue item the row shows; replaced by <see cref="Update(QueueItem)"/> on each refresh.</summary>
     private QueueItem item;
     private PersonOptionViewModel assignee;
     private string? waiting;
     private DateTime? closedUtc;
 
-    /// <summary>Creates the user ticket row view model.</summary>
+    /// <summary>A row for <paramref name="item"/> on <paramref name="owner"/>'s view, with its assignee's picker choice
+    /// looked up there.</summary>
     public UserTicketRowViewModel(QueueItem item, MainViewModel owner)
     {
         this.item = item;
@@ -70,15 +72,15 @@ public sealed class UserTicketRowViewModel : ObservableObject
     /// <summary>A closed or won't-do ticket on the Queue's Closed or Won't do tab (M.ORCH-T849): when it closed, if known.</summary>
     public UserTicketRowViewModel(ClosedTicket closed, MainViewModel owner) : this(closed.AsItem(), owner) => closedUtc = closed.ClosedUtc;
 
-    /// <summary>The id.</summary>
+    /// <summary>The ticket's id ("M.ORCH-T668").</summary>
     public string Id => item.Id;
-    /// <summary>The repo.</summary>
+    /// <summary>The repo the ticket belongs to.</summary>
     public string Repo => item.Repo;
-    /// <summary>The type.</summary>
+    /// <summary>The ticket's type, as the tickets database names it.</summary>
     public string Type => item.Ticket.Type;
-    /// <summary>The summary.</summary>
+    /// <summary>The ticket's one-line title.</summary>
     public string Summary => item.Ticket.Summary;
-    /// <summary>The priority.</summary>
+    /// <summary>The queue priority with its sign ("+2", "-1"), empty at the default 0.</summary>
     public string Priority => item.Priority == 0 ? "" : item.Priority.ToString("+#;-#");
 
     /// <summary>The sidebar card's accessible name (M.ORCH-T1439): "M.ORCH-T1439, MindAttic.Orchestrator: its title. Open in Tickets".</summary>
@@ -116,7 +118,7 @@ public sealed class UserTicketRowViewModel : ObservableObject
 
     /// <summary>"Waiting for Ryan: week at 97%" while its user is out of room and it isn't being worked; null otherwise.</summary>
     public string? Waiting => waiting;
-    /// <summary>Whether waiting.</summary>
+    /// <summary>Its user is out of room and it isn't being worked: <see cref="Waiting"/> has the text.</summary>
     public bool IsWaiting => waiting is not null;
 
     /// <summary>What's happening to it: being worked (and on which login), waiting for its user, or what the queue says.</summary>
@@ -140,7 +142,8 @@ public sealed class UserTicketRowViewModel : ObservableObject
         Update(next.AsItem());
     }
 
-    /// <summary>Updates.</summary>
+    /// <summary>Takes the ticket's latest queue item: re-reads its assignee and whether it waits for them, then raises every
+    /// property.</summary>
     public void Update(QueueItem next)
     {
         item = next;
@@ -167,11 +170,11 @@ public enum QueueStatus
 /// <summary>One tab of a person's Queue (M.ORCH-T849): its tickets, and their count in its header.</summary>
 public sealed class QueueTabViewModel(QueueStatus status, string name) : ObservableObject
 {
-    /// <summary>The status.</summary>
+    /// <summary>Which of the person's tickets this tab lists.</summary>
     public QueueStatus Status { get; } = status;
-    /// <summary>The name.</summary>
+    /// <summary>The tab's header name ("Active", "Pending", "Closed", "Won't do").</summary>
     public string Name { get; } = name;
-    /// <summary>The tickets.</summary>
+    /// <summary>The tickets this tab lists, kept in step with each refresh.</summary>
     public ObservableCollection<UserTicketRowViewModel> Tickets { get; } = [];
 
     /// <summary>The count the tab's header shows after its name.</summary>
@@ -186,7 +189,7 @@ public sealed class QueueTabViewModel(QueueStatus status, string name) : Observa
     /// <summary>"No active tickets", the sidebar's one muted line for an empty group (M.ORCH-T1439).</summary>
     public string EmptyText => $"No {Name.ToLowerInvariant()} tickets";
 
-    /// <summary>Raises the count.</summary>
+    /// <summary>Raises the count, accessible name and emptiness after <see cref="Tickets"/> changed.</summary>
     public void RaiseCount()
     {
         Raise(nameof(CountText));
@@ -237,11 +240,11 @@ public sealed partial class MainViewModel
     /// <summary>Nothing is assigned to this tab's person: the view says how to assign them something.</summary>
     public bool HasNoAssigned => AssignedTickets.Count == 0;
 
-    /// <summary>The assigned header.</summary>
+    /// <summary>"ASSIGNED TO RYAN · 3": the heading over this tab's person's tickets.</summary>
     public string AssignedHeader => $"ASSIGNED TO {LoginName.ToUpperInvariant()} · {AssignedTickets.Count}";
-    /// <summary>The unassigned header.</summary>
+    /// <summary>"UNASSIGNED · 12": the heading over the unassigned queue.</summary>
     public string UnassignedHeader => $"UNASSIGNED · {UnassignedTickets.Count}";
-    /// <summary>The no assigned text.</summary>
+    /// <summary>What the view says when nothing is assigned to this tab's person: how to assign them a ticket.</summary>
     public string NoAssignedText => $"Nothing is assigned to {LoginName}. Assign a ticket to them in Tickets Desktop (Assign in Tickets below): it's then dispatched only on their login.";
 
     /// <summary>The option for <paramref name="email"/>: its person's, or one made for an assignee with no tab here (named by their
@@ -305,7 +308,7 @@ public sealed partial class MainViewModel
     /// <summary>The sidebar's ticket cards (M.ORCH-T1439): this tab's person's Active tickets, then their Pending ones, the same
     /// rows the body's Queue tabs show. On the global login's tab, that login's own; the unassigned queue stays in the body.</summary>
     public QueueTabViewModel ActiveTab => QueueTabs[0];
-    /// <summary>The pending tab.</summary>
+    /// <summary>The sidebar's Pending group (<see cref="ActiveTab"/> has the Active one).</summary>
     public QueueTabViewModel PendingTab => QueueTabs[1];
 
     /// <summary>Either group lists something, or a live session is running with no ticket attributed yet (M.ORCH-T1519);
@@ -315,10 +318,10 @@ public sealed partial class MainViewModel
     /// <summary>The tickets of the Queue tab shown.</summary>
     public ObservableCollection<UserTicketRowViewModel> QueueTickets => SelectedQueueTab.Tickets;
 
-    /// <summary>Whether no queue tickets.</summary>
+    /// <summary>The Queue tab shown lists nothing: the view shows <see cref="NoQueueTicketsText"/> instead.</summary>
     public bool HasNoQueueTickets => QueueTickets.Count == 0;
 
-    /// <summary>The no queue tickets text.</summary>
+    /// <summary>What an empty Queue tab says, worded for its status (active, pending, closed or won't do).</summary>
     public string NoQueueTicketsText => SelectedQueueTab.Status switch
     {
         QueueStatus.Active => $"Nothing assigned to {LoginName} is being worked right now.",

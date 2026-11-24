@@ -7,32 +7,33 @@ using MindAttic.Tickets.Log;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-/// <summary>The repo tile view model type.</summary>
+/// <summary>A repo's card in the Repos view: its state, open tickets, today's tokens, and the hosted tabs, sessions and
+/// tickets its detail lists.</summary>
 public sealed class RepoTileViewModel(string name) : ObservableObject
 {
     private RepoStatus? status;
     private DateTime nowUtc;
     private bool isSelected;
 
-    /// <summary>The name.</summary>
+    /// <summary>The repo's folder name, the card's sync key.</summary>
     public string Name { get; } = name;
-    /// <summary>The status.</summary>
+    /// <summary>The repo's status from the latest snapshot; null before the first one.</summary>
     public RepoStatus? Status => status;
-    /// <summary>The path.</summary>
+    /// <summary>The repo's folder, empty when it has none (or no status yet).</summary>
     public string Path => status?.Path ?? "";
-    /// <summary>Whether folder.</summary>
+    /// <summary>The repo has a folder to open and start a session in.</summary>
     public bool HasFolder => Path.Length > 0;
-    /// <summary>The state.</summary>
+    /// <summary>Working, waiting or dormant; dormant with no status yet.</summary>
     public RepoState State => status?.State ?? RepoState.Dormant;
-    /// <summary>The open ticket count.</summary>
+    /// <summary>How many of the repo's tickets are open.</summary>
     public int OpenTicketCount => status?.OpenTickets.Count ?? 0;
-    /// <summary>The tokens today.</summary>
+    /// <summary>The repo's tokens today, all kinds; 0 with no status yet.</summary>
     public long TokensToday => status?.UsageToday.Total ?? 0;
 
-    /// <summary>The accent.</summary>
+    /// <summary>The card's colour for its state, and for whether it has open tickets.</summary>
     public Brush Accent => Palette.For(State, OpenTicketCount > 0);
 
-    /// <summary>The state label.</summary>
+    /// <summary>The card's state in words: "Working", "Needs you", "Has tickets" or "Quiet".</summary>
     public string StateLabel => State switch
     {
         RepoState.Working => "Working",
@@ -55,7 +56,7 @@ public sealed class RepoTileViewModel(string name) : ObservableObject
         }
     }
 
-    /// <summary>The tokens text.</summary>
+    /// <summary>Today's tokens formatted ("1.2M"), empty at none.</summary>
     public string TokensText => TokensToday == 0 ? "" : Formatting.Tokens(TokensToday);
 
     /// <summary>The detail pane's headline: what this repo is doing and for how long.</summary>
@@ -77,35 +78,37 @@ public sealed class RepoTileViewModel(string name) : ObservableObject
         }
     }
 
-    /// <summary>Whether selected.</summary>
+    /// <summary>The card is the one selected: its detail shows.</summary>
     public bool IsSelected { get => isSelected; set => Set(ref isSelected, value); }
 
-    /// <summary>The hosts.</summary>
+    /// <summary>The repo's hosted CLI tabs, keyed by pipe name.</summary>
     public ObservableCollection<HostRowViewModel> Hosts { get; } = [];
-    /// <summary>The sessions.</summary>
+    /// <summary>The repo's eight most recent transcript sessions.</summary>
     public ObservableCollection<SessionRowViewModel> Sessions { get; } = [];
-    /// <summary>The tickets.</summary>
+    /// <summary>The repo's open tickets.</summary>
     public ObservableCollection<TicketRowViewModel> Tickets { get; } = [];
 
-    /// <summary>The usage input.</summary>
+    /// <summary>Today's uncached input tokens, formatted.</summary>
     public string UsageInput => Formatting.Tokens(status?.UsageToday.Input ?? 0);
-    /// <summary>The usage cache write.</summary>
+    /// <summary>Today's cache-write tokens, formatted.</summary>
     public string UsageCacheWrite => Formatting.Tokens(status?.UsageToday.CacheCreation ?? 0);
-    /// <summary>The usage cache read.</summary>
+    /// <summary>Today's cache-read tokens, formatted.</summary>
     public string UsageCacheRead => Formatting.Tokens(status?.UsageToday.CacheRead ?? 0);
-    /// <summary>The usage output.</summary>
+    /// <summary>Today's output tokens, formatted.</summary>
     public string UsageOutput => Formatting.Tokens(status?.UsageToday.Output ?? 0);
-    /// <summary>Whether usage.</summary>
+    /// <summary>The repo used tokens today: the usage breakdown shows.</summary>
     public bool HasUsage => TokensToday > 0;
 
-    /// <summary>Matches.</summary>
+    /// <summary><paramref name="search"/> is blank, or found (any case) in the repo's name or an open ticket's id or
+    /// summary.</summary>
     public bool Matches(string search) =>
         string.IsNullOrWhiteSpace(search) ||
         Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
         (status?.OpenTickets.Any(t => t.Id.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                                        t.Summary.Contains(search, StringComparison.OrdinalIgnoreCase)) ?? false);
 
-    /// <summary>Updates.</summary>
+    /// <summary>Takes the repo's latest status: syncs its hosts, sessions and tickets in place, then raises every
+    /// property.</summary>
     public void Update(RepoStatus next, DateTime snapshotUtc)
     {
         status = next;
@@ -121,16 +124,16 @@ public sealed class RepoTileViewModel(string name) : ObservableObject
     }
 }
 
-/// <summary>The host row view model type.</summary>
+/// <summary>One hosted CLI tab in a repo's detail: its process and login, and a box to type a line into it.</summary>
 public sealed class HostRowViewModel : ObservableObject
 {
     private HostSession host;
-    /// <summary>The draft.</summary>
+    /// <summary>The text typed into the row's box, sent by <see cref="SendCommand"/>.</summary>
     private string draft = "";
-    /// <summary>The feedback.</summary>
+    /// <summary>What the last send or "Go to tab" said under the row.</summary>
     private string feedback = "";
 
-    /// <summary>Creates the host row view model.</summary>
+    /// <summary>A row for <paramref name="host"/>, with Send wired to type its draft into the tab.</summary>
     public HostRowViewModel(HostSession host)
     {
         this.host = host;
@@ -139,34 +142,37 @@ public sealed class HostRowViewModel : ObservableObject
 
     /// <summary>Its CLI is moving to another login (M.ORCH-T637): Send and Go to tab are off until the move lands.</summary>
     public bool IsMoving => PendingMoves.ForHost(host.ProcessId) is not null;
-    /// <summary>Whether unlocked.</summary>
+    /// <summary>Not held by a move: Send and Go to tab are on.</summary>
     public bool IsUnlocked => !IsMoving;
-    /// <summary>The moving text.</summary>
+    /// <summary>What the move holding it says (M.ORCH-T637), empty when it isn't moving.</summary>
     public string MovingText => PendingMoves.ForHost(host.ProcessId)?.Text ?? "";
-    /// <summary>Raises the moving.</summary>
+    /// <summary>Re-reads <see cref="IsMoving"/>, <see cref="IsUnlocked"/> and <see cref="MovingText"/> after a move starts
+    /// or lands.</summary>
     public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(IsUnlocked)); Raise(nameof(MovingText)); }
 
-    /// <summary>The pipe name.</summary>
+    /// <summary>The tab's named pipe, the row's sync key and where Send types.</summary>
     public string PipeName => host.PipeName;
     /// <summary>The tab itself, for "Go to tab" (M.ORCH-T619).</summary>
     public HostSession Host => host;
-    /// <summary>The title.</summary>
+    /// <summary>"Claude tab": the row's heading, its provider.</summary>
     public string Title => $"{host.Provider} tab";
     /// <summary>"PID 1234 · a@b.com": the tab's process and the Claude login its CLI bills (M.ORCH-T606), when known.</summary>
     public string Detail => host.Login is { } l ? $"PID {host.ProcessId} · {l}" : $"PID {host.ProcessId}";
     /// <summary>The email behind the login's name (M.ORCH-T614); null when the login isn't known.</summary>
     public string? DetailTip => host.LoginEmail is { } e ? $"Bills the Claude login {e}" : null;
-    /// <summary>The draft.</summary>
+    /// <summary>The text typed into the row's box, sent by <see cref="SendCommand"/>; cleared once sent.</summary>
     public string Draft { get => draft; set => Set(ref draft, value); }
-    /// <summary>The feedback.</summary>
+    /// <summary>"Sent.", or why the send or "Go to tab" didn't land; empty until one is tried.</summary>
     public string Feedback { get => feedback; private set => Set(ref feedback, value); }
-    /// <summary>The send command.</summary>
+    /// <summary>Types <see cref="Draft"/> into the tab and presses Enter; off while sending, moving or with nothing
+    /// typed.</summary>
     public ICommand SendCommand { get; }
 
     /// <summary>Says under the row why "Go to tab" didn't land on the tab itself.</summary>
     internal void ShowFeedback(string note) => Feedback = note;
 
-    /// <summary>Updates.</summary>
+    /// <summary>Takes the tab's latest record and re-reads its detail and tip (the pipe name, its key, doesn't
+    /// change).</summary>
     public void Update(HostSession next)
     {
         host = next;
@@ -197,24 +203,24 @@ public sealed class HostRowViewModel : ObservableObject
     }
 }
 
-/// <summary>The session row view model type.</summary>
+/// <summary>One transcript session in a repo's detail: its id, model, last write and tokens today.</summary>
 public sealed class SessionRowViewModel(TranscriptSession session, DateTime nowUtc) : ObservableObject
 {
     private TranscriptSession session = session;
     private DateTime nowUtc = nowUtc;
 
-    /// <summary>The session id.</summary>
+    /// <summary>The session's full id.</summary>
     public string SessionId => session.SessionId;
-    /// <summary>The short id.</summary>
+    /// <summary>The session id's first eight characters, as the row shows it.</summary>
     public string ShortId => session.SessionId.Length > 8 ? session.SessionId[..8] : session.SessionId;
-    /// <summary>The model.</summary>
+    /// <summary>The model it last ran on, empty when unknown.</summary>
     public string Model => session.Model ?? "";
-    /// <summary>The last write.</summary>
+    /// <summary>How long ago its transcript was last written ("3m ago"), as of the snapshot.</summary>
     public string LastWrite => Formatting.Ago(session.LastWriteUtc, nowUtc);
-    /// <summary>The tokens.</summary>
+    /// <summary>Its tokens today formatted, empty at none.</summary>
     public string Tokens => session.UsageToday.Total == 0 ? "" : Formatting.Tokens(session.UsageToday.Total);
 
-    /// <summary>Updates.</summary>
+    /// <summary>Takes the session's latest record and the snapshot's time, and raises every property.</summary>
     public void Update(TranscriptSession next, DateTime snapshotUtc)
     {
         session = next;
@@ -223,30 +229,31 @@ public sealed class SessionRowViewModel(TranscriptSession session, DateTime nowU
     }
 }
 
-/// <summary>The ticket row view model type.</summary>
+/// <summary>One open ticket in a repo's detail, which "Use as prompt" turns into the start prompt.</summary>
 public sealed class TicketRowViewModel(Ticket ticket) : ObservableObject
 {
     private Ticket ticket = ticket;
 
-    /// <summary>The id.</summary>
+    /// <summary>The ticket's id.</summary>
     public string Id => ticket.Id;
-    /// <summary>The type.</summary>
+    /// <summary>The ticket's type, as the tickets database names it.</summary>
     public string Type => ticket.Type;
-    /// <summary>The summary.</summary>
+    /// <summary>The ticket's one-line title.</summary>
     public string Summary => ticket.Summary;
-    /// <summary>The date.</summary>
+    /// <summary>The ticket's date, as the tickets database gives it.</summary>
     public string Date => ticket.Date;
 
     /// <summary>Held by a CLI moving to another login (M.ORCH-T637): "Use as prompt" is off until the move lands.</summary>
     public bool IsMoving => PendingMoves.ForTicket(Id) is not null;
-    /// <summary>Whether unlocked.</summary>
+    /// <summary>Not held by a move: "Use as prompt" is on.</summary>
     public bool IsUnlocked => !IsMoving;
-    /// <summary>The moving text.</summary>
+    /// <summary>What the move holding it says (M.ORCH-T637), empty when it isn't moving.</summary>
     public string MovingText => PendingMoves.ForTicket(Id)?.Text ?? "";
-    /// <summary>Raises the moving.</summary>
+    /// <summary>Re-reads <see cref="IsMoving"/>, <see cref="IsUnlocked"/> and <see cref="MovingText"/> after a move starts
+    /// or lands.</summary>
     public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(IsUnlocked)); Raise(nameof(MovingText)); }
 
-    /// <summary>Updates.</summary>
+    /// <summary>Takes the ticket's latest record and raises every property.</summary>
     public void Update(Ticket next)
     {
         ticket = next;

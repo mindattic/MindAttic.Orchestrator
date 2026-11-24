@@ -9,20 +9,21 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// <summary>Keyboard commands the window handles itself (they touch focus, not data).</summary>
 public static class WindowCommands
 {
-    /// <summary>The focus search.</summary>
+    /// <summary>Moves focus to the search box (nothing binds it yet).</summary>
     public static readonly RoutedCommand FocusSearch = new(nameof(FocusSearch), typeof(WindowCommands));
-    /// <summary>The escape.</summary>
+    /// <summary>Esc: closes the topmost of the window's open panels (logins, user settings, task detail, inbox,
+    /// plans).</summary>
     public static readonly RoutedCommand Escape = new(nameof(Escape), typeof(WindowCommands));
 }
 
-/// <summary>The converters type.</summary>
+/// <summary>Value converters the XAML binds with.</summary>
 public static class Converters
 {
-    /// <summary>The empty to visible.</summary>
+    /// <summary>Visible when the value is a null or empty string, else collapsed.</summary>
     public static readonly IValueConverter EmptyToVisible = new EmptyConverter(whenEmpty: Visibility.Visible);
-    /// <summary>The empty to collapsed.</summary>
+    /// <summary>Collapsed when the value is a null or empty string, else visible.</summary>
     public static readonly IValueConverter EmptyToCollapsed = new EmptyConverter(whenEmpty: Visibility.Collapsed);
-    /// <summary>The false to visible.</summary>
+    /// <summary>Visible when the value is false, else collapsed.</summary>
     public static readonly IValueConverter FalseToVisible = new FalseToVisibleConverter();
 
     /// <summary>A length times its ConverterParameter ("0.5"): a share of another element's size, e.g. the login list's cap

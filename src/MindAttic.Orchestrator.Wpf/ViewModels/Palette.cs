@@ -16,15 +16,15 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// at once and none is left in the other theme's colour. Outside the app (tests) it is the library theme's own, frozen.</para></summary>
 public static class Palette
 {
-    /// <summary>The working.</summary>
+    /// <summary>Working: the theme's MaGood.</summary>
     public static Brush Working => Theme("MaGood");
-    /// <summary>The waiting.</summary>
+    /// <summary>Waiting on the user: the theme's MaWarn.</summary>
     public static Brush Waiting => Theme("MaWarn");
-    /// <summary>The tickets.</summary>
+    /// <summary>Open tickets with no session: the theme's MaLink.</summary>
     public static Brush Tickets => Theme("MaLink");
-    /// <summary>The quiet.</summary>
+    /// <summary>Quiet, or no state: the theme's MaMuted.</summary>
     public static Brush Quiet => Theme("MaMuted");
-    /// <summary>The over.</summary>
+    /// <summary>Over a limit or failed: the theme's MaBad.</summary>
     public static Brush Over => Theme("MaBad");
 
     /// <summary>The theme's own body-text colour (the emergency billing toggle's key glyph while it's off, M.ORCH-T775).</summary>
@@ -37,7 +37,7 @@ public static class Palette
     /// <summary>The theme's MaAccent (the chart's target line).</summary>
     public static Brush Accent => Theme("MaAccent");
 
-    /// <summary>For.</summary>
+    /// <summary>A repo's colour: working, waiting, or otherwise tickets when it has open ones, else quiet.</summary>
     public static Brush For(RepoState state, bool hasTickets) => state switch
     {
         RepoState.Working => Working,
