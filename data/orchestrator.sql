@@ -1249,6 +1249,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-24T12:30:00Z', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-24T07:30:00Z', 'Blind', 'Claude''s meter unseen for 55m while 416k were spent', 6, 6, 843196, 32, 0, NULL, NULL, 0, 0, 0, 0, 0, '[{"FromUtc":"2026-11-24T08:52:49Z","ToUtc":"2026-11-24T09:48:41Z","Fresh":415996,"Length":"00:55:52"}]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-24T13:10:00Z', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-24T08:10:00Z', 'Blind', 'Claude''s meter unseen for 2h while 5.4M were spent', 92, 92, 14361173, 79, 0, NULL, NULL, 3241, 1733.3, 4, 0, 0, '[{"FromUtc":"2026-11-24T08:57:12Z","ToUtc":"2026-11-24T11:10:10Z","Fresh":5398425,"Length":"02:12:58"}]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-24T14:30:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-24T09:30:00Z', 'Blind', 'Claude''s meter unseen for 1h while 285.2k were spent', 4, 4, 784056, 28, 0, NULL, NULL, 4, 0.8, 0, 0, 0, '[{"FromUtc":"2026-11-24T09:40:47Z","ToUtc":"2026-11-24T11:11:40Z","Fresh":285210,"Length":"01:30:53"}]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-24T18:10:00Z', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-24T13:10:00Z', 'Under', 'ended at 92%', 92, 92, 13725952, 99, 0, NULL, NULL, 3317, 1148.7, 0, 0, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -1789,7 +1790,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 250043);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4571461);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 26287066);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 10673218);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 10824128);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9884876);
 
 -- ticket_costs
@@ -31815,11 +31816,11 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 3.211,
-      "Unhealthy": 1.2109999999999999,
-      "Reason": "p10 of 301 readings is 3.38 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-24T18:03:09.2086198\u002B00:00",
-      "Basis": 301
+      "Degraded": 3.2395,
+      "Unhealthy": 1.2395,
+      "Reason": "p10 of 311 readings is 3.41 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-24T18:10:06.3888408\u002B00:00",
+      "Basis": 311
     }
   },
   "Changes": [
@@ -33505,6 +33506,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 3.211,
       "ToUnhealthy": 1.2109999999999999,
       "Reason": "p10 of 301 readings is 3.38 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T18:10:06.3888408\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.211,
+      "FromUnhealthy": 1.2109999999999999,
+      "ToDegraded": 3.2395,
+      "ToUnhealthy": 1.2395,
+      "Reason": "p10 of 311 readings is 3.41 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -33764,7 +33774,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
-    "Tested": "93317a6579e3c7e5053fde453ea217a9aa82f624",
+    "Tested": "0652dffabcbc7b79883f851d1827e1c202efa2d1",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
