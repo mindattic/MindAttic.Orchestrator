@@ -9,8 +9,6 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// <summary>Keyboard commands the window handles itself (they touch focus, not data).</summary>
 public static class WindowCommands
 {
-    /// <summary>Moves focus to the search box (nothing binds it yet).</summary>
-    public static readonly RoutedCommand FocusSearch = new(nameof(FocusSearch), typeof(WindowCommands));
     /// <summary>Esc: closes the topmost of the window's open panels (logins, user settings, task detail, inbox,
     /// plans).</summary>
     public static readonly RoutedCommand Escape = new(nameof(Escape), typeof(WindowCommands));
