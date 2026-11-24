@@ -305,19 +305,18 @@
         <Border x:Name="Sidebar" Style="{StaticResource MaSidePane}" Grid.Row="1" Grid.RowSpan="4" Grid.Column="0" MinWidth="170"
                 BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,1,0" Padding="12,8,12,8"
                 AutomationProperties.Name="People and window tools">
-        <!-- Since M.ORCH-T1439 the logins are Auto, and the ticket cards take whatever height is left, scrolling on their own.
-             The window tools' own row (M.ORCH-T1431) moved up into the window's menu bar (M.ORCH-T1499). -->
-        <Grid x:Name="TopRow">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+        <!-- The sidebar's sections are titled MaPanels in an MaPanelGroup (M.ORCH-T2176): Organizations, Users, then Tickets,
+             each collapsible and drag-reorderable by its header's grip, each with a stable PanelKey for the saved order and
+             collapse state. Users takes its desired height; Tickets fills whatever height is left and scrolls on its own
+             (M.ORCH-T1439). The window tools' own row (M.ORCH-T1431) moved up into the window's menu bar (M.ORCH-T1499). -->
+        <mc:MaPanelGroup x:Name="TopRow">
         <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
              with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
-             tab (MainWindow.xaml.cs), which holds every org, like the person strip under it. -->
-        <ListBox x:Name="OrgStrip" Grid.Row="0" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Orgs}" SelectedItem="{Binding SelectedOrg}"
-                 Padding="0" Margin="{StaticResource SpaceBS}" AutomationProperties.Name="Organizations, each with its own people"
+             tab (MainWindow.xaml.cs), which holds every org, like the person strip under it; the panel shows and hides with it. -->
+        <mc:MaPanel Title="Organizations" IsCollapsible="True" mc:MaPanelGroup.PanelKey="orgs" mc:MaPanelGroup.IsDraggable="True"
+                    Visibility="{Binding Visibility, ElementName=OrgStrip}">
+        <ListBox x:Name="OrgStrip" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Orgs}" SelectedItem="{Binding SelectedOrg}"
+                 Padding="0" AutomationProperties.Name="Organizations, each with its own people"
                  Visibility="{Binding HasOrgs, Converter={StaticResource Visible}}">
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:OrgViewModel}">
@@ -332,10 +331,14 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+        </mc:MaPanel>
         <!-- The org-wide login actions (Add login, Sign in all, Report) moved from here into Settings' Logins tab (M.ORCH-T804). -->
+        <!-- Users: the flat login strip or the login tree, whichever TreeMenuLayout shows, each capped at half the sidebar. -->
+        <mc:MaPanel Title="Users" IsCollapsible="True" mc:MaPanelGroup.PanelKey="users" mc:MaPanelGroup.IsDraggable="True">
+        <Grid>
         <!-- A vertical sidebar (M.ORCH-T1431, in place of M.ORCH-T822's horizontal scroller and its < > arrows): one row per
              login, each as wide as the column (the strip's own TabPanel stretches them, so no code-behind sizing any more). -->
-        <ScrollViewer x:Name="LoginTabScroller" Grid.Row="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
+        <ScrollViewer x:Name="LoginTabScroller" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                       MaxHeight="{Binding ActualHeight, ElementName=TopRow, Converter={x:Static vm:Converters.Share}, ConverterParameter=0.5}"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding ShowsFlatLoginStrip, Converter={StaticResource Visible}}">
@@ -472,7 +475,7 @@
              binding straight to Terminals.Panes instead of Terminals.StripItems, which still carries the pinned Usage
              marker for the flat strip below). v1 scope (not asked for, and the flat strip above keeps them): no
              drag-reorder, no rename-in-place, no per-pane close button here; switch the setting off for those. -->
-        <ScrollViewer x:Name="LoginTreeScroller" Grid.Row="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
+        <ScrollViewer x:Name="LoginTreeScroller" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                       MaxHeight="{Binding ActualHeight, ElementName=TopRow, Converter={x:Static vm:Converters.Share}, ConverterParameter=0.5}"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding ShowsLoginTree, Converter={StaticResource Visible}}">
@@ -932,6 +935,8 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
         </ScrollViewer>
+        </Grid>
+        </mc:MaPanel>
         <!-- The shown person's Active, Pending, then the 100 highest-priority open tickets, as cards (M.ORCH-T1770,
              replacing M.ORCH-T1439/M.ORCH-T1593's separately labelled Task List, live activity and ticket groups): Active
              is everything active right now, a task or a ticket side by side in the one list (ActiveItems: the global
@@ -940,42 +945,53 @@
              queued tickets, as before. Then the workspace-wide backlog: the first 100 highest-priority open tickets,
              whoever's, after whatever already showed above (Top100Items). Each row has two independent click targets, a
              Play button and a Ticket button (the three DataTemplates above, DataType-implicit so one ItemsControl can mix
-             task and ticket rows). It takes the height the logins leave and scrolls on its own (the window tools' own row
-             moved into the menu bar, M.ORCH-T1499). The Canvas wants no size of its own, so a long title never widens the
-             column: the scroller is sized to the Canvas, i.e. the column the logins set. Tab enters the list once; Up and
-             Down move between the cards; each card's own Play/Ticket buttons are reached with a further Tab. -->
-        <Canvas x:Name="SidebarTicketArea" Grid.Row="2" Margin="{StaticResource SpaceTM}" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
+             task and ticket rows). Its panel fills the height the panels above leave and scrolls on its own (the window
+             tools' own row moved into the menu bar, M.ORCH-T1499). The Canvas wants no size of its own, so a long title never
+             widens the column: the scroller is sized to the Canvas, i.e. the column the logins set. Active, Pending and Top
+             priority are nested panels, collapsible but not draggable, their titles keeping their counts (M.ORCH-T2176). Tab
+             enters the list once; Up and Down move between the cards; each card's own Play/Ticket buttons are reached with a
+             further Tab. -->
+        <mc:MaPanel Title="Tickets" IsCollapsible="True" mc:MaPanelGroup.PanelKey="tickets" mc:MaPanelGroup.IsDraggable="True"
+                    mc:MaPanelGroup.FillsRemainingSpace="True" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
+        <Canvas x:Name="SidebarTicketArea">
         <ScrollViewer x:Name="SidebarTicketScroller" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="8"
                       Width="{Binding ActualWidth, ElementName=SidebarTicketArea}" Height="{Binding ActualHeight, ElementName=SidebarTicketArea}">
         <StackPanel x:Name="SidebarTickets" KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Contained"
                     AutomationProperties.Name="Active, then pending, then the 100 highest-priority tickets. Each has its own Play and Ticket buttons">
             <TextBlock Text="Nothing active or pending" Style="{StaticResource MaMutedText}"
                        Visibility="{Binding HasActiveItems, Converter={x:Static vm:Converters.FalseToVisible}}" />
-            <StackPanel Margin="{StaticResource SpaceBS}" Visibility="{Binding HasActiveItems, Converter={StaticResource Visible}}">
-                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="Active: everything being worked right now, tasks and tickets together">
-                    <Run Text="Active" /><Run Text="  " /><Run Text="{Binding ActiveCount, Mode=OneWay}" />
-                </TextBlock>
+            <mc:MaPanel IsCollapsible="True" mc:MaPanelGroup.PanelKey="tickets.active"
+                        AutomationProperties.Name="Active: everything being worked right now, tasks and tickets together"
+                        Visibility="{Binding HasActiveItems, Converter={StaticResource Visible}}">
+                <mc:MaPanel.Title>
+                    <TextBlock><Run Text="Active" /><Run Text="  " /><Run Text="{Binding ActiveCount, Mode=OneWay}" /></TextBlock>
+                </mc:MaPanel.Title>
                 <ItemsControl x:Name="SidebarActiveItems" Style="{StaticResource MaRowList}" ItemsSource="{Binding ActiveItems}"
                               AutomationProperties.Name="Active: everything being worked right now, tasks and tickets together" />
-            </StackPanel>
-            <StackPanel Margin="{StaticResource SpaceTSBXS}" Visibility="{Binding PendingTab.HasTickets, Converter={StaticResource Visible}}">
-                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="{Binding PendingTab.AccessibleName}">
-                    <Run Text="{Binding PendingTab.Name, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding PendingTab.CountText, Mode=OneWay}" />
-                </TextBlock>
+            </mc:MaPanel>
+            <mc:MaPanel IsCollapsible="True" mc:MaPanelGroup.PanelKey="tickets.pending"
+                        AutomationProperties.Name="{Binding PendingTab.AccessibleName}"
+                        Visibility="{Binding PendingTab.HasTickets, Converter={StaticResource Visible}}">
+                <mc:MaPanel.Title>
+                    <TextBlock><Run Text="{Binding PendingTab.Name, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding PendingTab.CountText, Mode=OneWay}" /></TextBlock>
+                </mc:MaPanel.Title>
                 <ItemsControl x:Name="SidebarPendingTickets" Style="{StaticResource MaRowList}" ItemsSource="{Binding PendingTab.Tickets}"
                               AutomationProperties.Name="{Binding PendingTab.AccessibleName}" />
-            </StackPanel>
-            <StackPanel Margin="{StaticResource SpaceTSBXS}" Visibility="{Binding HasTop100Items, Converter={StaticResource Visible}}">
-                <TextBlock Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" AutomationProperties.Name="The 100 highest-priority open tickets workspace-wide">
-                    <Run Text="Top priority" /><Run Text="  " /><Run Text="{Binding Top100Count, Mode=OneWay}" />
-                </TextBlock>
+            </mc:MaPanel>
+            <mc:MaPanel IsCollapsible="True" mc:MaPanelGroup.PanelKey="tickets.top"
+                        AutomationProperties.Name="The 100 highest-priority open tickets workspace-wide"
+                        Visibility="{Binding HasTop100Items, Converter={StaticResource Visible}}">
+                <mc:MaPanel.Title>
+                    <TextBlock><Run Text="Top priority" /><Run Text="  " /><Run Text="{Binding Top100Count, Mode=OneWay}" /></TextBlock>
+                </mc:MaPanel.Title>
                 <ItemsControl x:Name="SidebarTop100Tickets" Style="{StaticResource MaRowList}" ItemsSource="{Binding Top100Items}"
                               AutomationProperties.Name="The 100 highest-priority open tickets workspace-wide" />
-            </StackPanel>
+            </mc:MaPanel>
         </StackPanel>
         </ScrollViewer>
         </Canvas>
-        </Grid>
+        </mc:MaPanel>
+        </mc:MaPanelGroup>
         </Border>
 
         <!-- A person's CLI tab bar (M.ORCH-T810), fixed under their person tab (M.ORCH-T1302, which pulled the chosen terminal

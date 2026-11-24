@@ -666,8 +666,9 @@ public partial class MainWindow : Window
     private const double SidebarMinWidth = 170;
 
     /// <summary>What <see cref="SizeSidebarToContent"/> adds to the tree's own widest row: <see cref="Sidebar"/>'s left and
-    /// right Padding (12 a side) plus its right BorderThickness (1) plus a few px of slack for measurement rounding.</summary>
-    private const double SidebarContentPadding = 36;
+    /// right Padding (12 a side) plus its right BorderThickness (1), the Users panel's content inset (MaPanelInset's 12,
+    /// M.ORCH-T2176), plus a few px of slack for measurement rounding.</summary>
+    private const double SidebarContentPadding = 48;
 
     /// <summary>Grows <see cref="Sidebar"/> to fit the tree's widest row (M.ORCH-T1768), so a status badge or a longer name
     /// never overlaps it: <see cref="LoginTreeScroller"/>'s own <c>HorizontalScrollBarVisibility="Disabled"</c> (so nothing

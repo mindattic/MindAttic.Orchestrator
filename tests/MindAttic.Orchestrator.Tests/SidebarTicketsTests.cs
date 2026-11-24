@@ -27,15 +27,20 @@ public sealed class SidebarTicketsTests
         // The window tools moved out of the sidebar to the top menu bar (M.ORCH-T1499), so the sidebar is orgs, logins, then
         // the cards (M.ORCH-T1503).
         var doc = Window();
+        // Since M.ORCH-T2176 the sidebar is an MaPanelGroup of titled panels, each with a stable PanelKey, and the Tickets
+        // panel fills what the others leave.
         var top = Named(doc, "TopRow");
-        Assert.That(top.Attribute("VerticalAlignment"), Is.Null, "it fills the sidebar so the last row can take the rest");
-        var rows = top.Elements().Single(e => e.Name.LocalName == "Grid.RowDefinitions").Elements().Select(r => (string?)r.Attribute("Height")).ToList();
-        Assert.That(rows, Is.EqualTo(new[] { "Auto", "Auto", "*" }));
+        Assert.That(top.Name.LocalName, Is.EqualTo("MaPanelGroup"));
+        Assert.That(top.Attribute("VerticalAlignment"), Is.Null, "it fills the sidebar so the last panel can take the rest");
+        var keys = top.Elements().Where(e => e.Name.LocalName == "MaPanel")
+            .Select(p => p.Attributes().SingleOrDefault(a => a.Name.LocalName == "MaPanelGroup.PanelKey")?.Value).ToList();
+        Assert.That(keys, Is.EqualTo(new[] { "orgs", "users", "tickets" }));
         Assert.That((string?)Named(doc, "LoginTabScroller").Attribute("MaxHeight"), Does.Contain("Converters.Share").And.Contain("ElementName=TopRow"),
             "the logins are capped, so they never push the cards off");
         var area = Named(doc, "SidebarTicketArea");
-        Assert.That(area.Parent, Is.EqualTo(top));
-        Assert.That((string?)area.Attribute("Grid.Row"), Is.EqualTo("2"));
+        Assert.That(area.Parent!.Name.LocalName, Is.EqualTo("MaPanel"));
+        Assert.That(area.Parent.Parent, Is.EqualTo(top));
+        Assert.That(area.Parent.Attributes().Single(a => a.Name.LocalName == "MaPanelGroup.FillsRemainingSpace").Value, Is.EqualTo("True"));
         Assert.That(area.Name.LocalName, Is.EqualTo("Canvas"), "wants no width of its own, so a title never widens the column");
 
         var list = Named(doc, "SidebarTickets");
