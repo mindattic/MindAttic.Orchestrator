@@ -99,7 +99,7 @@ handles `show-worker`. Call `AllowSetForegroundWindow(<its pid>)` before sending
 
 | Field | Meaning |
 |---|---|
-| `set` | Required. The preview set's folder, a full path (the folder of numbered media and `preview.json` that MindAttic.Capture writes). |
+| `set` | Required. The preview set's folder, a full path (the folder of numbered media and `preview.json` that MindAttic.Media.Capture writes, through MindAttic.Media.Capture.Sets). |
 | `select` | Optional. The file to show first, by its name in the set. |
 | `ticket`, `title` | Optional. The set's ticket and title, for the viewer to show. |
 | `from` | Who asks (`capture-agent`, `preview-ability`, ...). |
@@ -116,7 +116,7 @@ handles `show-preview`, it shows the set itself: it starts `C:\Apps\MindAttic.Me
 file by name, with the file's default app (Photos). It only ever opens an image, video or audio file. A `to` naming another
 app, a `set` that isn't an existing full path, or a `v` above 1 gets no fallback.
 
-How a client sends it (MindAttic.Capture's PreviewLauncher, the /preview ability):
+How a client sends it (MindAttic.Media.Capture's PreviewLauncher, the /preview ability):
 
 1. Connect to the inbox pipe `mindattic-orchestrator-status-in-<user>` (local server `.`, `<user>` as above) with a connect
    timeout of about 100 ms.
