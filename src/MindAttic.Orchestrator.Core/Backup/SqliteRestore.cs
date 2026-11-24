@@ -8,8 +8,9 @@ public sealed record SqliteRestoreResult(
 
 /// <summary>
 /// Replays a <c>.sql</c> dump made by <see cref="SqliteBackup"/> into its database through sqlite3. A dump is a full
-/// schema+data script, so the restore goes into a fresh file: the existing database is moved aside to
-/// <c>{db}.pre-restore</c> first and put back if the restore fails or is cancelled, so a bad run never leaves neither.
+/// schema+data script, so the restore goes into a fresh file: the existing database and its <c>-wal</c>, <c>-shm</c> and
+/// <c>-journal</c> sidecars are moved aside to <c>{db}.pre-restore</c> (+ suffix) first, so an old WAL is never replayed
+/// over the fresh file, and put back together if the restore fails or is cancelled, so a bad run never leaves neither.
 /// Ported from MindAttic.Launcher's SqliteRestoreService (M.ORCH-T2049); the runner is injectable so tests never need
 /// sqlite3.
 /// </summary>
@@ -37,17 +38,24 @@ public sealed class SqliteRestore
         var sw = Stopwatch.StartNew();
         var aside = dbFile + ".pre-restore";
         var movedAside = false;
+        var replayed = false;
         try
         {
             var sql = File.ReadAllText(dumpFile);
             if (File.Exists(dbFile))
             {
+                DeleteWithSidecars(aside);
                 File.Move(dbFile, aside, overwrite: true);
                 movedAside = true;
+                foreach (var s in Sidecars)
+                    if (File.Exists(dbFile + s)) File.Move(dbFile + s, aside + s, overwrite: true);
             }
+            else
+                DeleteWithSidecars(dbFile);
             var dir = Path.GetDirectoryName(dbFile);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
+            replayed = true;
             var (code, output) = run(dbFile, sql, ct);
             sw.Stop();
 
@@ -55,19 +63,19 @@ public sealed class SqliteRestore
             if (!ok)
             {
                 // A failed replay can leave a half-built file; drop it so it can't pass for a restored database.
-                try { if (File.Exists(dbFile)) File.Delete(dbFile); } catch { /* best-effort */ }
+                DeleteWithSidecars(dbFile);
                 PutBack(aside, dbFile, ref movedAside);
             }
             else if (movedAside)
             {
-                try { File.Delete(aside); } catch { /* best-effort */ }
+                DeleteWithSidecars(aside);
             }
             return new SqliteRestoreResult(project, dbFile, ok, code, sw.Elapsed, dumpFile, ok ? "" : BackupFolders.Tail(output, 2000));
         }
         catch (Exception ex)
         {
             sw.Stop();
-            try { if (movedAside && File.Exists(dbFile)) File.Delete(dbFile); } catch { /* best-effort */ }
+            if (replayed && movedAside) DeleteWithSidecars(dbFile);
             PutBack(aside, dbFile, ref movedAside);
             var message = ex is System.ComponentModel.Win32Exception { NativeErrorCode: 2 }
                 ? $"'{Executable}' not found on PATH; install the sqlite3 command-line tool."
@@ -76,10 +84,26 @@ public sealed class SqliteRestore
         }
     }
 
+    /// <summary>The files SQLite keeps beside a database; they belong to it and move, restore or go with it.</summary>
+    public static readonly string[] Sidecars = ["-wal", "-shm", "-journal"];
+
+    private static void DeleteWithSidecars(string file)
+    {
+        foreach (var path in Sidecars.Select(s => file + s).Prepend(file))
+            try { if (File.Exists(path)) File.Delete(path); } catch { /* best-effort */ }
+    }
+
     private static void PutBack(string aside, string dbFile, ref bool movedAside)
     {
         if (!movedAside) return;
-        try { File.Move(aside, dbFile, overwrite: true); movedAside = false; } catch { /* best-effort */ }
+        try
+        {
+            if (File.Exists(aside)) File.Move(aside, dbFile, overwrite: true);
+            foreach (var s in Sidecars)
+                if (File.Exists(aside + s)) File.Move(aside + s, dbFile + s, overwrite: true);
+            movedAside = false;
+        }
+        catch { /* best-effort */ }
     }
 
     private (int, string) DefaultRun(string dbFile, string sql, CancellationToken ct)

@@ -21,6 +21,31 @@ public sealed class SqliteBackup
     public const string DatabasesSubfolder = "Databases";
     public const string SqliteSubfolder = "SQLite";
 
+    /// <summary>
+    /// <c>{targetFolder}\Databases\SQLite\sources.tsv</c>: one <c>{dump path relative to the SQLite folder}\t{database
+    /// file}</c> line per dump written, so a restore puts a numbered dump (<c>app-2.sql</c>) back where it came from.
+    /// </summary>
+    public const string SourcesFileName = "sources.tsv";
+
+    public static string ResolveSourcesFilePath(string targetFolder) =>
+        Path.Combine(targetFolder, DatabasesSubfolder, SqliteSubfolder, SourcesFileName);
+
+    /// <summary>Reads <see cref="SourcesFileName"/> into dump path (full) to database file; empty when it's missing (an older backup).</summary>
+    public static IReadOnlyDictionary<string, string> ReadSources(string targetFolder)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var file = ResolveSourcesFilePath(targetFolder);
+        if (!File.Exists(file)) return map;
+        var root = Path.GetDirectoryName(file)!;
+        foreach (var line in File.ReadAllLines(file))
+        {
+            var tab = line.IndexOf('\t');
+            if (tab <= 0 || tab == line.Length - 1) continue;
+            map[Path.GetFullPath(Path.Combine(root, line[..tab]))] = line[(tab + 1)..];
+        }
+        return map;
+    }
+
     /// <summary>Runs sqlite3 with the given arguments; returns its exit code and, on success, the dump text.</summary>
     public delegate (int ExitCode, string Output) SqliteRunner(IReadOnlyList<string> args, CancellationToken ct);
 
@@ -86,7 +111,8 @@ public sealed class SqliteBackup
     /// <summary>
     /// Backs up each target in order into <paramref name="targetFolder"/>. One bad database is recorded in its
     /// result and doesn't stop the rest; cancellation stops before the next. Two databases of one project that
-    /// map to the same .sql get <c>-2</c>, <c>-3</c>... rather than overwriting each other.
+    /// map to the same .sql get <c>-2</c>, <c>-3</c>... rather than overwriting each other; <see cref="SourcesFileName"/>
+    /// records which database each dump came from.
     /// </summary>
     public IReadOnlyList<SqliteBackupResult> Backup(
         IReadOnlyList<SqliteBackupTarget> targets,
@@ -106,6 +132,14 @@ public sealed class SqliteBackup
             var r = BackupOne(t, targetFolder, ct, file);
             results.Add(r);
             onDone?.Invoke(r);
+        }
+        var written = results.Where(r => r.Ok).ToList();
+        if (written.Count > 0)
+        {
+            var sources = ResolveSourcesFilePath(targetFolder);
+            var root = Path.GetDirectoryName(sources)!;
+            try { File.WriteAllLines(sources, written.Select(r => Path.GetRelativePath(root, r.BackupFile) + "\t" + r.DatabaseFile)); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* restore falls back to matching by file name */ }
         }
         return results;
     }

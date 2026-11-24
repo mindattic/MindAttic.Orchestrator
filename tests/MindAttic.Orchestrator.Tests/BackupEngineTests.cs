@@ -154,4 +154,75 @@ public sealed class BackupEngineTests
         Assert.That(removed.Select(Path.GetFileName), Is.EquivalentTo(new[] { "2026-11-20", "2026-11-21", "2026-11-21_a" }));
         Assert.That(Directory.GetDirectories(root).Select(Path.GetFileName), Is.EquivalentTo(new[] { "2026-11-22", "keep-me" }));
     }
+
+    /// <summary>M.ORCH-T2144: a numbered dump (app-2.sql) restores to its own database, not nowhere.</summary>
+    [Test]
+    public void Same_named_databases_of_one_project_both_restore_through_the_sources_map()
+    {
+        var a = Path.Combine(temp, "src", "a", "app.db");
+        var b = Path.Combine(temp, "src", "b", "app.sqlite");
+        Directory.CreateDirectory(Path.GetDirectoryName(a)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(b)!);
+        File.WriteAllText(a, "a");
+        File.WriteAllText(b, "b");
+        var folder = Path.Combine(temp, "backup");
+        var roster = new[] { new SqliteBackupTarget("P", a), new SqliteBackupTarget("P", b) };
+        new SqliteBackup("sqlite3", (args, _) => (0, "dump of " + args[1])).Backup(roster, folder);
+
+        var pairs = BackupRestore.MatchDumps(folder, roster);
+        Assert.That(pairs.Select(p => (Path.GetFileName(p.Dump), p.DatabaseFile)),
+            Is.EqualTo(new[] { ("app-2.sql", (string?)b), ("app.sql", (string?)a) }));
+
+        File.Delete(SqliteBackup.ResolveSourcesFilePath(folder));
+        Assert.That(BackupRestore.MatchDumps(folder, roster).Single(p => Path.GetFileName(p.Dump) == "app.sql").DatabaseFile,
+            Is.EqualTo(a), "an older backup without the map still matches by stem");
+    }
+
+    /// <summary>M.ORCH-T2144: the old -wal/-shm never sit beside the fresh restore, and come back with the db on failure.</summary>
+    [Test]
+    public void Restore_moves_wal_and_shm_aside_with_the_database()
+    {
+        var db = Path.Combine(temp, "app.db");
+        var dump = Path.Combine(temp, "app.sql");
+        File.WriteAllText(dump, "CREATE TABLE t(x);");
+        void Seed()
+        {
+            File.WriteAllText(db, "old");
+            File.WriteAllText(db + "-wal", "old wal");
+            File.WriteAllText(db + "-shm", "old shm");
+        }
+
+        Seed();
+        var sawSidecars = true;
+        var ok = new SqliteRestore("sqlite3", (file, _, _) =>
+        {
+            sawSidecars = File.Exists(file + "-wal") || File.Exists(file + "-shm");
+            File.WriteAllText(file, "new");
+            return (0, "");
+        }).RestoreOne("P", db, dump);
+        Assert.Multiple(() =>
+        {
+            Assert.That(ok.Ok, Is.True);
+            Assert.That(sawSidecars, Is.False);
+            Assert.That(File.ReadAllText(db), Is.EqualTo("new"));
+            Assert.That(Directory.GetFiles(temp, "app.db*").Select(Path.GetFileName), Is.EquivalentTo(new[] { "app.db" }));
+        });
+
+        Seed();
+        var failed = new SqliteRestore("sqlite3", (file, _, _) =>
+        {
+            File.WriteAllText(file, "half");
+            File.WriteAllText(file + "-journal", "half journal");
+            return (1, "Error");
+        }).RestoreOne("P", db, dump);
+        Assert.Multiple(() =>
+        {
+            Assert.That(failed.Ok, Is.False);
+            Assert.That(File.ReadAllText(db), Is.EqualTo("old"));
+            Assert.That(File.ReadAllText(db + "-wal"), Is.EqualTo("old wal"));
+            Assert.That(File.ReadAllText(db + "-shm"), Is.EqualTo("old shm"));
+            Assert.That(File.Exists(db + "-journal"), Is.False);
+            Assert.That(Directory.GetFiles(temp, "app.db.pre-restore*"), Is.Empty);
+        });
+    }
 }

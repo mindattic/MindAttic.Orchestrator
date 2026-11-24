@@ -480,8 +480,12 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
             {
                 var kept = Path.ChangeExtension(mirror, $".local-{DateTime.Now:yyyyMMdd-HHmmss}.db");
                 File.Copy(mirror, kept, overwrite: true);
+                if (File.Exists(mirror + "-wal")) File.Copy(mirror + "-wal", kept + "-wal", overwrite: true);
                 say($"Tickets written on this machine since the last pull were kept in {kept}; the host's tickets replace them. File them on the host.");
             }
+            // The old mirror's WAL and shared-memory index would otherwise be replayed over the fresh copy and corrupt it.
+            foreach (var sidecar in Backup.SqliteRestore.Sidecars)
+                if (File.Exists(mirror + sidecar)) File.Delete(mirror + sidecar);
             File.Copy(source, mirror, overwrite: true);
             File.WriteAllText(stamp, File.GetLastWriteTimeUtc(mirror).Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }

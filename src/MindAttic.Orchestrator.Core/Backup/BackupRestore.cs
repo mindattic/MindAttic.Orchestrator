@@ -78,7 +78,9 @@ public sealed class BackupRestore
     /// <summary>
     /// Pairs each <c>{folder}\Databases\SQLite\{project}\{db}.sql</c> with the live file it restores to: the roster
     /// entry of that project whose file stem matches the dump's, or the project's only file. A project can list
-    /// several files, so matching on the project alone would replay every dump over its first. No match is null.
+    /// several files, so matching on the project alone would replay every dump over its first. A dump the backup's
+    /// <see cref="SqliteBackup.SourcesFileName"/> names goes back to that roster file, else matches by the source's stem,
+    /// so <c>app-2.sql</c> finds its own <c>app.db</c>. No match is null.
     /// </summary>
     public static IReadOnlyList<(string Project, string Dump, string? DatabaseFile)> MatchDumps(
         string folder, IReadOnlyList<SqliteBackupTarget> databases)
@@ -90,6 +92,7 @@ public sealed class BackupRestore
             .GroupBy(t => t.Project, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
+        var sources = SqliteBackup.ReadSources(folder);
         var pairs = new List<(string, string, string?)>();
         foreach (var projectDir in Directory.GetDirectories(root).OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
         {
@@ -99,8 +102,10 @@ public sealed class BackupRestore
                 string? dbFile = null;
                 if (byProject.TryGetValue(project, out var dbs))
                 {
-                    var stem = Path.GetFileNameWithoutExtension(dump);
-                    dbFile = dbs.FirstOrDefault(t => string.Equals(Path.GetFileNameWithoutExtension(t.DatabaseFile), stem, StringComparison.OrdinalIgnoreCase)).DatabaseFile
+                    sources.TryGetValue(Path.GetFullPath(dump), out var source);
+                    var stem = Path.GetFileNameWithoutExtension(source ?? dump);
+                    dbFile = dbs.FirstOrDefault(t => source is not null && string.Equals(t.DatabaseFile, source, StringComparison.OrdinalIgnoreCase)).DatabaseFile
+                        ?? dbs.FirstOrDefault(t => string.Equals(Path.GetFileNameWithoutExtension(t.DatabaseFile), stem, StringComparison.OrdinalIgnoreCase)).DatabaseFile
                         ?? (dbs.Count == 1 ? dbs[0].DatabaseFile : null);
                 }
                 pairs.Add((project, dump, dbFile));
