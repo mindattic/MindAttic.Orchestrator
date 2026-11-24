@@ -1774,11 +1774,11 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 14505878);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 804957);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1593914);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3738476);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5053999);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'Gadfly', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5416647);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4286376);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4649383);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2772513);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3627653);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6649100);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -2991,6 +2991,8 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5e352c10-e91b-475f-86a1-fdd011baed35', 'MAO-T79', 'feature', 'MindAttic.Orchestrator', 5921453, '2026-10-15T09:11:58.222Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5e6ed18f-b847-44e8-b524-b16363a21d3c', 'UQD-T24', 'fix', 'Unity.QuickDuel', 16379, '2026-10-23T10:44:09.677Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5e95c216-37bf-4ec9-abea-6ae6d3d089fd', 'MB-T3', 'chore', 'MediaButler', 169274, '2026-10-16T01:45:49.201Z', 1, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a00633bb0f0696920', 'GG-T731', 'feature', 'GridGame.Unity', 67434, '2026-11-24T03:26:13.645Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a07613cc6a43c0f11', 'GG-T733', 'feature', 'GridGame.Unity', 46548, '2026-11-24T03:23:51.216Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a0d019796e6bf8f5a', 'GG-T690', 'fix', 'GridGame.Unity', 77660, '2026-11-23T19:39:53.632Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a0fa33c71336fbfad', 'GG-T273', 'chore', 'GridGame.Unity', 75727, '2026-11-23T19:23:30.518Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a1d06e1fa48792176', 'GG-T711', 'feature', 'GridGame.Unity', 109131, '2026-11-23T20:29:01.346Z', 0, 'opus');
@@ -3000,24 +3002,33 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a380f8676a735558b', 'GG-T693', 'fix', 'GridGame.Unity', 32583, '2026-11-23T19:28:12.107Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a47ded08e376ca3c6', 'GG-T701', 'fix', 'GridGame.Unity', 41553, '2026-11-23T19:30:33.585Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a489d8f328c1af993', 'GG-T714', '', 'GridGame.Unity', 106631, '2026-11-23T20:34:35.692Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a73e11b2e2e7540de', 'GG-T732', 'fix', 'GridGame.Unity', 41515, '2026-11-24T03:25:35.834Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a7ac7ae086ed892e3', 'GG-T276', 'chore', 'GridGame.Unity', 36743, '2026-11-23T19:24:34.46Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a7e73ec239df2034d', 'GG-T654', 'fix', 'GridGame.Unity', 35033, '2026-11-23T19:25:56.46Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a818ec2d28f590005', 'GG-T738', 'feature', 'GridGame.Unity', 19313, '2026-11-24T03:26:13.945Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a86bfb5961f866d69', 'GG-T706', 'fix', 'GridGame.Unity', 101272, '2026-11-23T20:16:54.453Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a88a5f3bddc6afa68', 'GG-T734', 'feature', 'GridGame.Unity', 75557, '2026-11-24T03:25:51.466Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a8aaa9268f03208fb', 'GG-T716', 'feature', 'GridGame.Unity', 99174, '2026-11-24T03:23:54.657Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a90d6d3792b00452a', 'GG-T720', '', 'GridGame.Unity', 87608, '2026-11-23T20:43:49.053Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a940ee7248c0c145c', 'GG-T689', 'fix', 'GridGame.Unity', 36969, '2026-11-23T19:32:39.884Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a9912c3bb50f5baf4', 'GG-T722', '', 'GridGame.Unity', 97567, '2026-11-23T20:43:02.266Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a9ee6a04dc009bff6', 'GG-T724', '', 'GridGame.Unity', 134336, '2026-11-23T20:48:49.201Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-aa2ecb87b446f1f8e', 'GG-T730', 'feature', 'GridGame.Unity', 45325, '2026-11-24T03:25:53.236Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-aa4a53a33d57acd1c', 'GG-T678', 'feature', 'GridGame.Unity', 28764, '2026-11-23T19:25:20.026Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-aa5af70ad5f2d599c', 'GG-T707', 'chore', 'GridGame.Unity', 82528, '2026-11-24T03:17:07.789Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-aa6a49a3397be82f7', 'GG-T712', 'feature', 'GridGame.Unity', 88017, '2026-11-23T20:29:22.585Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ac412c5098463cf79', 'GG-T698', 'fix', 'GridGame.Unity', 86093, '2026-11-23T20:01:30.705Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ac659c5170526f0d3', 'GG-T700', 'fix', 'GridGame.Unity', 37704, '2026-11-23T19:28:54.073Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ac664aaea12f13945', 'GG-T729', 'fix', 'GridGame.Unity', 36881, '2026-11-24T03:26:13.354Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ac9a2dea4503693f6', 'GG-T721', '', 'GridGame.Unity', 65543, '2026-11-23T20:36:06.005Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ac9ad5cd1ef8829f5', 'GG-T725', '', 'GridGame.Unity', 60616, '2026-11-23T20:50:04.803Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ad0898570b1cc426e', 'GG-T707', 'chore', 'GridGame.Unity', 52038, '2026-11-23T20:20:23.412Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ad785237a70356bcb', 'GG-T710', 'chore', 'GridGame.Unity', 39630, '2026-11-24T03:24:08.271Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ade3274f0abca636c', 'GG-T715', '', 'GridGame.Unity', 115554, '2026-11-23T20:41:54.234Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ae7b4e925aba3c677', 'GG-T692', 'fix', 'GridGame.Unity', 37632, '2026-11-23T19:32:40.002Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-af00a2c99d6397986', 'GG-T726', '', 'GridGame.Unity', 38724, '2026-11-23T20:50:10.235Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-af193c94a471e36d3', 'GG-T719', '', 'GridGame.Unity', 97406, '2026-11-23T20:38:03.028Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-af5ccc91df0b5c897', 'GG-T735', 'feature', 'GridGame.Unity', 19501, '2026-11-24T03:26:13.564Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-af87c048394405fc5', 'GG-T697', 'fix', 'GridGame.Unity', 35643, '2026-11-23T19:26:42.422Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-afe2031a9b5e2b1b9', 'GG-T713', 'feature', 'GridGame.Unity', 94090, '2026-11-23T20:32:19.725Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('60a2c669-6d1e-4de2-b1d8-1660f771603e', 'TUT-T21', 'docs', 'Tutor', 18296, '2026-10-21T18:11:48.154Z', 1, 'sonnet');
@@ -4026,6 +4037,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-afbfc75750f82969e', 'RTB-T186', 'chore', 'RogueTraderBrevity', 100827, '2026-10-25T10:00:32.902Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-afd89b14f269dabad', 'RTB-T227', 'chore', 'RogueTraderBrevity', 103050, '2026-10-25T11:37:28.265Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-afe00f70b1e48b5c3', 'RTB-T173', 'chore', 'RogueTraderBrevity', 82619, '2026-10-25T09:16:18.146Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a1b4ff29cca01657c', 'US-T505', 'fix', 'SpaceGod.Unreal', 37044, '2026-11-24T03:24:27.581Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a219b5d308a2d9a67', 'US-T478', 'feature', 'SpaceGod.Unreal', 100959, '2026-11-23T20:51:36.926Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a2ce8354451974b29', 'US-T457', 'feature', 'SpaceGod.Unreal', 98679, '2026-11-23T22:24:20.988Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a34ad237dc6114e67', 'US-T482', 'feature', 'SpaceGod.Unreal', 89441, '2026-11-23T21:10:54.774Z', 0, 'opus');
@@ -4034,10 +4046,13 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a45862aa26e253812', 'US-T480', 'feature', 'SpaceGod.Unreal', 85225, '2026-11-23T20:54:26.718Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a54b1b03a55c0eefd', 'US-T471', 'feature', 'SpaceGod.Unreal', 98743, '2026-11-23T20:13:34.94Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a5df5a3d2760be37c', 'US-T455', 'feature', 'SpaceGod.Unreal', 86898, '2026-11-23T21:22:21.045Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a6311b1e3692af4d8', 'US-T502', 'fix', 'SpaceGod.Unreal', 36008, '2026-11-24T03:23:21.515Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a66d0717004beb117', 'US-T500', 'fix', 'SpaceGod.Unreal', 58350, '2026-11-24T03:24:11.402Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a67862a1552a76a0c', 'US-T494', 'fix', 'SpaceGod.Unreal', 55876, '2026-11-23T22:18:12.168Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a78bd90d222e5b962', 'US-T454', 'feature', 'SpaceGod.Unreal', 137633, '2026-11-23T21:19:42.438Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a7ac9c3856552ad50', 'US-T476', 'feature', 'SpaceGod.Unreal', 95611, '2026-11-23T21:10:41.724Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a8273650dd4d1d3fc', 'US-T496', 'feature', 'SpaceGod.Unreal', 52484, '2026-11-23T22:30:43.027Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a939849f1670f679e', 'US-T513', 'feature', 'SpaceGod.Unreal', 20351, '2026-11-24T03:26:13.211Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-aa7f0aa31eb8197bd', 'US-T497', 'feature', 'SpaceGod.Unreal', 95892, '2026-11-23T22:40:17.245Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-aaa45d6a71f89da04', 'US-T477', 'feature', 'SpaceGod.Unreal', 97122, '2026-11-23T20:48:31.831Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-aada91bb86ecba72b', 'US-T495', 'feature', 'SpaceGod.Unreal', 90715, '2026-11-23T22:35:54.503Z', 0, 'opus');
@@ -4046,9 +4061,13 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ab4955f8400f4dc88', 'US-T453', 'feature', 'SpaceGod.Unreal', 91145, '2026-11-23T20:17:29.014Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ab722b55d3e172f48', 'US-T487', 'feature', 'SpaceGod.Unreal', 76735, '2026-11-23T21:56:05.6Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-abb8682f899520edf', 'US-T489', 'feature', 'SpaceGod.Unreal', 92252, '2026-11-23T21:55:30.541Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-abd71fc165d2dea07', 'US-T503', 'fix', 'SpaceGod.Unreal', 43205, '2026-11-24T03:23:59.507Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-abe1f0dae57cfc61e', 'US-T473', 'feature', 'SpaceGod.Unreal', 90192, '2026-11-23T20:31:38.729Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ac99f3701f250bb9f', 'US-T485', 'feature', 'SpaceGod.Unreal', 179747, '2026-11-23T21:47:44.447Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ad3987d1efaca0a9f', 'US-T507', 'fix', 'SpaceGod.Unreal', 32760, '2026-11-24T03:25:42.538Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ad90803be5f8ba5a4', 'US-T509', 'feature', 'SpaceGod.Unreal', 26940, '2026-11-24T03:26:09.458Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-adc3b1148300a7704', 'US-T491', 'feature', 'SpaceGod.Unreal', 88397, '2026-11-23T22:04:32.305Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-addc3f0761cadc463', 'US-T504', 'fix', 'SpaceGod.Unreal', 37406, '2026-11-24T03:24:24.696Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-adf60e8acb8c7ca9d', 'US-T488', 'feature', 'SpaceGod.Unreal', 111122, '2026-11-23T22:02:46.109Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ae320b0e187048733', 'US-T481', 'feature', 'SpaceGod.Unreal', 95821, '2026-11-23T21:02:57.627Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ae48eee63494daed8', 'US-T490', 'feature', 'SpaceGod.Unreal', 127432, '2026-11-23T22:24:11.988Z', 0, 'opus');
@@ -5059,6 +5078,24 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (50, 'GG-T273', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-23T19:54:39.3697357Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (51, 'GG-T704', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-23T19:54:39.3697357Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (52, 'GG-T705', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-23T20:02:10.407266Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (53, 'US-T500', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-24T03:17:16.5628719Z', 1, NULL, NULL, NULL, 33420, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (54, 'GG-T716', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:18:47.8644198Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (55, 'US-T502', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-24T03:19:19.787147Z', 1, NULL, NULL, NULL, 33420, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (56, 'GG-T710', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:19:44.869987Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (57, 'US-T505', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-24T03:20:16.2492154Z', 1, NULL, NULL, NULL, 33420, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (58, 'US-T504', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-24T03:20:16.2492154Z', 1, NULL, NULL, NULL, 33420, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (59, 'GG-T732', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:21:10.0966068Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (60, 'GG-T731', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:21:10.0966068Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (61, 'GG-T733', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:22:31.4752538Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (62, 'GG-T734', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:23:31.5547442Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (63, 'US-T507', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-24T03:23:55.3828728Z', 1, NULL, NULL, NULL, 33420, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (64, 'GG-T730', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:24:01.2078056Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (65, 'GG-T729', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:24:01.2078056Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (66, 'US-T509', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-24T03:24:58.0651107Z', 1, NULL, NULL, NULL, 33420, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'opus', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (67, 'US-T513', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-24T03:24:58.0651107Z', 1, NULL, NULL, NULL, 33420, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'opus', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (68, 'GG-T735', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:25:34.2869569Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (69, 'GG-T738', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:25:34.2869569Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (70, 'GG-T728', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T03:25:34.2869569Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
 
 -- organizations
 
@@ -5086,10 +5123,10 @@ INSERT INTO roles (name, brief, model, effort, tools, takes, source, updated_utc
 -- state
 INSERT INTO state (name, value) VALUES ('api-failovers', '[]');
 INSERT INTO state (name, value) VALUES ('audit', '{
-  "RanUtc": "2026-11-23T03:17:33.5683304Z",
-  "Took": "00:03:03.5356208",
+  "RanUtc": "2026-11-24T03:26:08.1073783Z",
+  "Took": "00:08:27.2555676",
   "ReposScanned": 100,
-  "FilesScanned": 12916,
+  "FilesScanned": 12964,
   "Drift": [
     {
       "File": "AGENTS.md",
@@ -5181,8 +5218,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "Unity.GridGame",
-      "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\AGENTS.md",
+      "Repo": "GridGame.Unity",
+      "Path": "D:\\Projects\\MindAttic\\GridGame.Unity\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
       "CanonicalCount": 46,
       "Total": 97,
@@ -5500,8 +5537,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "SpaceGod",
-      "Path": "D:\\Projects\\MindAttic\\SpaceGod\\AGENTS.md",
+      "Repo": "SpaceGod.Unity.CSharp",
+      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
       "CanonicalCount": 46,
       "Total": 97,
@@ -5511,8 +5548,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "AGENTS.md",
-      "Repo": "SpaceGod.Unity.CSharp",
-      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\AGENTS.md",
+      "Repo": "SpaceGod.Unreal",
+      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Cursory\\AGENTS.md",
       "CanonicalCount": 46,
       "Total": 97,
@@ -5524,7 +5561,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": ".claude/hooks/quickload-on-do.ps1",
       "Repo": "JobHunt",
       "Path": "D:\\Projects\\MindAttic\\JobHunt\\.claude/hooks\\quickload-on-do.ps1",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\GridGame.Unity\\.claude/hooks\\quickload-on-do.ps1",
       "CanonicalCount": 5,
       "Total": 12,
       "Variants": 5,
@@ -5687,8 +5724,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "SpaceGod",
-      "Path": "D:\\Projects\\MindAttic\\SpaceGod\\CLAUDE.md",
+      "Repo": "SpaceGod.Unity.CSharp",
+      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
       "CanonicalCount": 39,
       "Total": 61,
@@ -5698,8 +5735,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "SpaceGod.Unity.CSharp",
-      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\CLAUDE.md",
+      "Repo": "SpaceGod.Unreal",
+      "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
       "CanonicalCount": 39,
       "Total": 61,
@@ -5852,8 +5889,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "Unity.Eve",
-      "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\CLAUDE.md",
+      "Repo": "GridGame.Unity",
+      "Path": "D:\\Projects\\MindAttic\\GridGame.Unity\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
       "CanonicalCount": 39,
       "Total": 61,
@@ -5863,8 +5900,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     },
     {
       "File": "CLAUDE.md",
-      "Repo": "Unity.GridGame",
-      "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\CLAUDE.md",
+      "Repo": "Unity.Eve",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\Auto.GamePlay\\CLAUDE.md",
       "CanonicalCount": 39,
       "Total": 61,
@@ -5942,7 +5979,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": ".claude/hooks/quickload-on-do.ps1",
       "Repo": "Dissertation.SyntheticExchangeTheory",
       "Path": "D:\\Projects\\MindAttic\\Dissertation.SyntheticExchangeTheory\\.claude/hooks\\quickload-on-do.ps1",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\GridGame.Unity\\.claude/hooks\\quickload-on-do.ps1",
       "CanonicalCount": 5,
       "Total": 12,
       "Variants": 5,
@@ -5953,7 +5990,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": ".claude/hooks/quickload-on-do.ps1",
       "Repo": "Auto.WebNav",
       "Path": "D:\\Projects\\MindAttic\\Auto.WebNav\\.claude/hooks\\quickload-on-do.ps1",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\GridGame.Unity\\.claude/hooks\\quickload-on-do.ps1",
       "CanonicalCount": 5,
       "Total": 12,
       "Variants": 5,
@@ -5964,7 +6001,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": ".claude/hooks/quickload-on-do.ps1",
       "Repo": "IdiotProof",
       "Path": "D:\\Projects\\MindAttic\\IdiotProof\\.claude/hooks\\quickload-on-do.ps1",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\GridGame.Unity\\.claude/hooks\\quickload-on-do.ps1",
       "CanonicalCount": 5,
       "Total": 12,
       "Variants": 5,
@@ -5975,7 +6012,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": ".claude/hooks/quickload-on-do.ps1",
       "Repo": "KdpPublish",
       "Path": "D:\\Projects\\MindAttic\\KdpPublish\\.claude/hooks\\quickload-on-do.ps1",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\GridGame.Unity\\.claude/hooks\\quickload-on-do.ps1",
       "CanonicalCount": 5,
       "Total": 12,
       "Variants": 5,
@@ -5986,7 +6023,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": ".claude/hooks/quickload-on-do.ps1",
       "Repo": "OpenCredentials",
       "Path": "D:\\Projects\\MindAttic\\OpenCredentials\\.claude/hooks\\quickload-on-do.ps1",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\GridGame.Unity\\.claude/hooks\\quickload-on-do.ps1",
       "CanonicalCount": 5,
       "Total": 12,
       "Variants": 5,
@@ -5997,7 +6034,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "File": ".claude/hooks/quickload-on-do.ps1",
       "Repo": "ProcessLogger",
       "Path": "D:\\Projects\\MindAttic\\ProcessLogger\\.claude/hooks\\quickload-on-do.ps1",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude/hooks\\quickload-on-do.ps1",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\GridGame.Unity\\.claude/hooks\\quickload-on-do.ps1",
       "CanonicalCount": 5,
       "Total": 12,
       "Variants": 5,
@@ -6980,7 +7017,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Theme.xaml",
-          "Lines": 1596
+          "Lines": 1684
         },
         {
           "Repo": "MindAttic.Components.SIDEBAR",
@@ -8686,25 +8723,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\UsageReport.cs",
-          "Lines": 348
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\UsageReport.cs",
-          "Lines": 348
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 348,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\TrajectoryTests.cs",
           "Lines": 346
@@ -8987,25 +9005,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
-          "Lines": 647
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
-          "Lines": 644
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9904761904761905,
-      "SharedLines": 629,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Combat\\PilotFlight.cs",
           "Lines": 209
@@ -9043,6 +9042,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 313,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
+          "Lines": 661
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StatusAggregatorTests.cs",
+          "Lines": 644
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9841269841269841,
+      "SharedLines": 625,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -9394,18 +9412,18 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\make-icon.ps1",
-          "Lines": 136
-        },
-        {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\make-icon.ps1",
-          "Lines": 136
-        },
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\tools\\make-icon.ps1",
+          "Lines": 136
+        },
+        {
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\tools\\make-icon.ps1",
+          "Lines": 136
+        },
+        {
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\make-icon.ps1",
           "Lines": 136
         },
         {
@@ -10448,40 +10466,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\build-core.ps1",
-          "Lines": 148
-        },
-        {
-          "Repo": "SpaceGod.Unreal.Cpp",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\tools\\build-core.ps1",
-          "Lines": 148
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\build-core.ps1",
-          "Lines": 148
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\build-core.ps1",
-          "Lines": 148
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\build-core.ps1",
-          "Lines": 148
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 148,
-      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
-      "RepoCount": 3
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\StrategicCommandTests.cs",
           "Lines": 222
@@ -10520,6 +10504,40 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 148,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\build-core.ps1",
+          "Lines": 148
+        },
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\tools\\build-core.ps1",
+          "Lines": 148
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\build-core.ps1",
+          "Lines": 148
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\build-core.ps1",
+          "Lines": 148
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\build-core.ps1",
+          "Lines": 148
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 148,
+      "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
       "RepoCount": 3
     },
     {
@@ -10625,25 +10643,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TerminalPanesTests.cs",
-          "Lines": 706
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TerminalPanesTests.cs",
-          "Lines": 512
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8557312252964426,
-      "SharedLines": 438,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Cyberspace\\home-bg.js",
           "Lines": 218
@@ -10695,6 +10694,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 218,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TerminalPanesTests.cs",
+          "Lines": 717
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\TerminalPanesTests.cs",
+          "Lines": 512
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.849802371541502,
+      "SharedLines": 435,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -10906,25 +10924,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountDirsTests.cs",
-          "Lines": 504
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountDirsTests.cs",
-          "Lines": 475
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.880085653104925,
-      "SharedLines": 416,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\CapitalFlightTests.cs",
           "Lines": 207
@@ -11063,25 +11062,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LoginPickerTests.cs",
-          "Lines": 205
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LoginPickerTests.cs",
-          "Lines": 205
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 205,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unreal.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\Imgui\\BuiltinSkin.cs",
           "Lines": 205
@@ -11119,6 +11099,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 204,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountDirsTests.cs",
+          "Lines": 530
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountDirsTests.cs",
+          "Lines": 475
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.860813704496788,
+      "SharedLines": 407,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -11182,25 +11181,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DispatcherTests.cs",
-          "Lines": 200
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DispatcherTests.cs",
-          "Lines": 200
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 200,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unreal.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\CSharp\\Script\\ManagedUnrealSpaceGodCSharp\\UnityCompat\\UnityMesh.cs",
           "Lines": 200
@@ -11225,13 +11205,37 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Source\\SpaceGodCore\\Tests\\CsParity\\DotNet\\Program.cs",
+          "Repo": "SpaceGod.Unity.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\StationSeat.cs",
           "Lines": 133
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\Cpp\\Source\\SpaceGodCore\\Tests\\CsParity\\DotNet\\Program.cs",
+          "Repo": "Unity.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\StationSeat.cs",
+          "Lines": 133
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\StationSeat.cs",
+          "Lines": 133
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 133,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Source\\SpaceGodCore\\Tests\\CsParity\\DotNet\\Program.cs",
+          "Lines": 133
+        },
+        {
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\Cpp\\Source\\SpaceGodCore\\Tests\\CsParity\\DotNet\\Program.cs",
           "Lines": 133
         },
         {
@@ -11252,30 +11256,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "Unreal.SpaceGod",
           "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\Cpp\\Source\\SpaceGodCore\\Tests\\CsParity\\DotNet\\Program.cs",
-          "Lines": 133
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 133,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 3
-    },
-    {
-      "Files": [
-        {
-          "Repo": "SpaceGod.Unity.CSharp",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Embodiment\\StationSeat.cs",
-          "Lines": 133
-        },
-        {
-          "Repo": "Unity.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\StationSeat.cs",
-          "Lines": 133
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\ext\\Unity.SpaceGod\\Assets\\UnitySpace\\Core\\Embodiment\\StationSeat.cs",
           "Lines": 133
         }
       ],
@@ -12467,25 +12447,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TerminalsViewModel.cs",
-          "Lines": 996
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TerminalsViewModel.cs",
-          "Lines": 578
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.6020942408376964,
-      "SharedLines": 350,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\PacerTests.cs",
           "Lines": 370
         },
@@ -12684,6 +12645,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 172,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TerminalsViewModel.cs",
+          "Lines": 999
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\TerminalsViewModel.cs",
+          "Lines": 578
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5898778359511344,
+      "SharedLines": 343,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -12905,25 +12885,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\Capture\\SpaceGod.Capture\\Program.cs",
-          "Lines": 168
-        },
-        {
-          "Repo": "SpaceGod.Unreal.Cpp",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\Capture\\SpaceGod.Capture\\Program.cs",
-          "Lines": 168
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 168,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\StreamingTests.cs",
           "Lines": 168
@@ -13059,6 +13020,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\Capture\\SpaceGod.Capture\\Program.cs",
+          "Lines": 168
+        },
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\Capture\\SpaceGod.Capture\\Program.cs",
+          "Lines": 168
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 168,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AgentGateRemovalTests.cs",
           "Lines": 167
@@ -13129,25 +13109,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 167,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
-          "Lines": 433
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
-          "Lines": 406
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8179551122194514,
-      "SharedLines": 333,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -13502,6 +13463,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
+          "Lines": 437
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\StatusAggregator.cs",
+          "Lines": 406
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7905236907730673,
+      "SharedLines": 322,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Core\\Systems\\FrontierSystems.cs",
           "Lines": 107
@@ -13679,13 +13659,32 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\unity_extract.py",
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\UsageReport.cs",
+          "Lines": 353
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\UsageReport.cs",
+          "Lines": 348
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9067055393586005,
+      "SharedLines": 316,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\tools\\unity_extract.py",
           "Lines": 323
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\unity_extract.py",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\unity_extract.py",
           "Lines": 323
         },
         {
@@ -13855,25 +13854,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 154,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountRebalancer.cs",
-          "Lines": 313
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountRebalancer.cs",
-          "Lines": 316
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9837662337662337,
-      "SharedLines": 308,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -14084,6 +14064,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 151,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountRebalancer.cs",
+          "Lines": 316
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountRebalancer.cs",
+          "Lines": 316
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.954983922829582,
+      "SharedLines": 302,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -14344,6 +14343,11 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "GridGame.Unity",
+          "Path": "D:\\Projects\\MindAttic\\GridGame.Unity\\.claude\\hooks\\quickload-on-do.ps1",
+          "Lines": 58
+        },
+        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude\\hooks\\quickload-on-do.ps1",
           "Lines": 58
@@ -14356,11 +14360,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "Unity.Eve",
           "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\.claude\\hooks\\quickload-on-do.ps1",
-          "Lines": 58
-        },
-        {
-          "Repo": "Unity.GridGame",
-          "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\.claude\\hooks\\quickload-on-do.ps1",
           "Lines": 58
         },
         {
@@ -14541,25 +14540,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\Program.cs",
-          "Lines": 466
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\Program.cs",
-          "Lines": 374
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.7669376693766937,
-      "SharedLines": 288,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\JsonStore.cs",
           "Lines": 322
         },
@@ -14572,25 +14552,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.9185667752442996,
       "SharedLines": 287,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountRebalancerTests.cs",
-          "Lines": 143
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountRebalancerTests.cs",
-          "Lines": 143
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 143,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -14679,6 +14640,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 94,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\Program.cs",
+          "Lines": 472
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\Program.cs",
+          "Lines": 374
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7506775067750677,
+      "SharedLines": 282,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -15911,7 +15891,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TabStatusTests.cs",
-          "Lines": 285
+          "Lines": 320
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -16334,50 +16314,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\imgdiff.py",
-          "Lines": 58
-        },
-        {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\imgdiff.py",
-          "Lines": 58
-        },
-        {
-          "Repo": "SpaceGod.Unreal.Cpp",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\tools\\imgdiff.py",
-          "Lines": 58
-        },
-        {
-          "Repo": "SpaceGod.Unreal.CSharp",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\imgdiff.py",
-          "Lines": 58
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\imgdiff.py",
-          "Lines": 58
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\imgdiff.py",
-          "Lines": 58
-        },
-        {
-          "Repo": "Unreal.SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\imgdiff.py",
-          "Lines": 58
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 58,
-      "SuggestedHome": "a shared Python package",
-      "RepoCount": 4
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\PilotLaneTests.cs",
           "Lines": 116
@@ -16426,6 +16362,50 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 58,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
+    },
+    {
+      "Files": [
+        {
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\tools\\imgdiff.py",
+          "Lines": 58
+        },
+        {
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\imgdiff.py",
+          "Lines": 58
+        },
+        {
+          "Repo": "SpaceGod.Unreal.Cpp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.Cpp\\tools\\imgdiff.py",
+          "Lines": 58
+        },
+        {
+          "Repo": "SpaceGod.Unreal.CSharp",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal.CSharp\\tools\\imgdiff.py",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\tools\\imgdiff.py",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\Snap\\tools\\imgdiff.py",
+          "Lines": 58
+        },
+        {
+          "Repo": "Unreal.SpaceGod",
+          "Path": "D:\\Projects\\MindAttic\\Unreal.SpaceGod\\Builds\\RaceSrc\\tools\\imgdiff.py",
+          "Lines": 58
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 58,
+      "SuggestedHome": "a shared Python package",
       "RepoCount": 4
     },
     {
@@ -17128,25 +17108,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\StateBus.cs",
-          "Lines": 108
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\StateBus.cs",
-          "Lines": 108
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 108,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Tests\\Core.Tests\\TravelCourseTests.cs",
           "Lines": 108
@@ -17354,7 +17315,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.cs",
-          "Lines": 409
+          "Lines": 412
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -17596,25 +17557,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\FallbackViewersTests.cs",
-          "Lines": 213
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\FallbackViewersTests.cs",
-          "Lines": 212
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9758454106280193,
-      "SharedLines": 207,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\LimitWaker.cs",
           "Lines": 103
         },
@@ -17665,6 +17607,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": false,
       "Similarity": 0.6907216494845361,
       "SharedLines": 206,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\FallbackViewersTests.cs",
+          "Lines": 213
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\FallbackViewersTests.cs",
+          "Lines": 212
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.966183574879227,
+      "SharedLines": 205,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -17799,6 +17760,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Identical": true,
       "Similarity": 1,
       "SharedLines": 101,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LoginPickerTests.cs",
+          "Lines": 214
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\LoginPickerTests.cs",
+          "Lines": 205
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.98,
+      "SharedLines": 201,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
     },
@@ -18135,6 +18115,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\DispatcherTests.cs",
+          "Lines": 214
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DispatcherTests.cs",
+          "Lines": 200
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9743589743589743,
+      "SharedLines": 195,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\prototypes\\T923-relay\\TermHostStub\\Ring.cs",
           "Lines": 97
         },
@@ -18193,7 +18192,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\AccountDirs.cs",
-          "Lines": 265
+          "Lines": 268
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -18293,25 +18292,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\DiskWatchTests.cs",
-          "Lines": 96
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 96,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ViewModelTests.cs",
-          "Lines": 96
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ViewModelTests.cs",
           "Lines": 96
         }
       ],
@@ -18510,13 +18490,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\play.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\tools\\play.ps1",
           "Lines": 260
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\play.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\play.ps1",
           "Lines": 205
         },
         {
@@ -18676,25 +18656,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9523809523809523,
-      "SharedLines": 185,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\OrgCommands.cs",
-          "Lines": 230
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\OrgCommands.cs",
-          "Lines": 214
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.861244019138756,
       "SharedLines": 185,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -19242,6 +19203,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Cli\\OrgCommands.cs",
+          "Lines": 287
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Cli\\OrgCommands.cs",
+          "Lines": 214
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8086124401913876,
+      "SharedLines": 174,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "SpaceGod.Unity.CSharp",
           "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\Assets\\UnitySpace\\Runtime\\UnitySpaceApp.Saves.cs",
           "Lines": 186
@@ -19621,7 +19601,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\LibraryOnlyXamlTests.cs",
-          "Lines": 211
+          "Lines": 207
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -21008,6 +20988,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\AccountRebalancerTests.cs",
+          "Lines": 163
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\AccountRebalancerTests.cs",
+          "Lines": 143
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9782608695652174,
+      "SharedLines": 140,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Term\\TermProtocol.cs",
           "Lines": 148
         },
@@ -21438,7 +21437,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Wpf\\ViewModels\\MainViewModel.LoginCards.cs",
-          "Lines": 262
+          "Lines": 291
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -21884,13 +21883,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\Cpp\\Content\\Python\\init_unreal.py",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\Cpp\\Content\\Python\\init_unreal.py",
           "Lines": 160
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Content\\Python\\init_unreal.py",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Content\\Python\\init_unreal.py",
           "Lines": 160
         },
         {
@@ -22202,25 +22201,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.9666666666666667,
-      "SharedLines": 121,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
-          "Lines": 175
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
-          "Lines": 154
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.7785234899328859,
       "SharedLines": 121,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -22583,6 +22563,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.7762237762237763,
+      "SharedLines": 116,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
+          "Lines": 177
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Scheduling\\Dispatcher.cs",
+          "Lines": 154
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7449664429530202,
       "SharedLines": 116,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -23320,25 +23319,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StateBusTests.cs",
-          "Lines": 130
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StateBusTests.cs",
-          "Lines": 109
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.9615384615384616,
-      "SharedLines": 105,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\unity\\com.mindattic.components.unity\\Runtime\\Menus\\MaBackRouter.cs",
           "Lines": 52
@@ -23541,25 +23521,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 103,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
       "RepoCount": 3
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountPacer.cs",
-          "Lines": 230
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountPacer.cs",
-          "Lines": 175
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.5764705882352941,
-      "SharedLines": 103,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
     },
     {
       "Files": [
@@ -23836,6 +23797,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\StateBusTests.cs",
+          "Lines": 144
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\StateBusTests.cs",
+          "Lines": 109
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.9134615384615384,
+      "SharedLines": 100,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\web\\components\\Button\\button.css",
           "Lines": 33
@@ -23953,6 +23933,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.8454545454545455,
+      "SharedLines": 98,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountPacer.cs",
+          "Lines": 243
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\AccountPacer.cs",
+          "Lines": 175
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5470588235294118,
       "SharedLines": 98,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -24319,7 +24318,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\PaceLedgerWatch.cs",
-          "Lines": 123
+          "Lines": 125
         },
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
@@ -24603,6 +24602,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\ViewModelTests.cs",
+          "Lines": 130
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\ViewModelTests.cs",
+          "Lines": 96
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.945054945054945,
+      "SharedLines": 91,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Sessions\\GatewaySupervisor.cs",
           "Lines": 97
         },
@@ -24785,6 +24803,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 0.8673469387755102,
+      "SharedLines": 90,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\StateBus.cs",
+          "Lines": 114
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\StateBus.cs",
+          "Lines": 108
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.8252427184466019,
       "SharedLines": 90,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -25282,13 +25319,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\engine.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\tools\\engine.ps1",
           "Lines": 21
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\engine.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\engine.ps1",
           "Lines": 21
         },
         {
@@ -25826,13 +25863,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Source\\SpaceGodCore\\SpaceGodCore.Build.cs",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Source\\SpaceGodCore\\SpaceGodCore.Build.cs",
           "Lines": 26
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\Cpp\\Source\\SpaceGodCore\\SpaceGodCore.Build.cs",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\Cpp\\Source\\SpaceGodCore\\SpaceGodCore.Build.cs",
           "Lines": 26
         },
         {
@@ -26883,13 +26920,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\package.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\tools\\package.ps1",
           "Lines": 97
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\package.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\package.ps1",
           "Lines": 84
         },
         {
@@ -26926,32 +26963,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\AppBusHub.cs",
-          "Lines": 230
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\AppBusHub.cs",
-          "Lines": 89
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.7142857142857143,
-      "SharedLines": 65,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\run.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\run.ps1",
           "Lines": 86
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\run.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\run.ps1",
           "Lines": 86
         },
         {
@@ -26995,25 +27013,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Components.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components.SIDEBAR\\unity\\com.mindattic.components.unity\\Runtime\\Controls\\MaSpinner.cs",
-          "Lines": 32
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 32,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\CutoffAlertsTests.cs",
-          "Lines": 32
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\CutoffAlertsTests.cs",
           "Lines": 32
         }
       ],
@@ -27155,6 +27154,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Status\\AppBusHub.cs",
+          "Lines": 230
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Status\\AppBusHub.cs",
+          "Lines": 89
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6904761904761905,
+      "SharedLines": 63,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
           "Repo": "MindAttic.Components",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Components\\dotnet\\src\\MindAttic.Components.Wpf\\Mvvm\\ZoomLevel.cs",
           "Lines": 31
@@ -27219,25 +27237,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Orchestrator.SIDEBAR",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Formatting.cs",
-          "Lines": 31
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 31,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "MindAttic.Orchestrator",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\CutoffAlerts.cs",
-          "Lines": 31
-        },
-        {
-          "Repo": "MindAttic.Orchestrator.SIDEBAR",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\CutoffAlerts.cs",
           "Lines": 31
         }
       ],
@@ -28155,13 +28154,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\race.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\tools\\race.ps1",
           "Lines": 64
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\race.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\race.ps1",
           "Lines": 64
         },
         {
@@ -29018,6 +29017,11 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 56
         },
         {
+          "Repo": "GridGame.Unity",
+          "Path": "D:\\Projects\\MindAttic\\GridGame.Unity\\.claude\\hooks\\quickload-on-do.ps1",
+          "Lines": 58
+        },
+        {
           "Repo": "MindAttic.Agency",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\shared\\hooks\\quickload-on-do.ps1",
           "Lines": 57
@@ -29046,11 +29050,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Repo": "ProcessLogger",
           "Path": "D:\\Projects\\MindAttic\\ProcessLogger\\.claude\\hooks\\quickload-on-do.ps1",
           "Lines": 57
-        },
-        {
-          "Repo": "SpaceGod.Unity.CSharp",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unity.CSharp\\.claude\\hooks\\quickload-on-do.ps1",
-          "Lines": 58
         }
       ],
       "Identical": false,
@@ -29891,13 +29890,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\build-bench-cpp.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\tools\\build-bench-cpp.ps1",
           "Lines": 73
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\build-bench-cpp.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\build-bench-cpp.ps1",
           "Lines": 73
         },
         {
@@ -30029,8 +30028,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\bench.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\bench.ps1",
           "Lines": 67
         },
         {
@@ -31034,6 +31033,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Budget\\CutoffAlerts.cs",
+          "Lines": 31
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\src\\MindAttic.Orchestrator.Core\\Budget\\CutoffAlerts.cs",
+          "Lines": 31
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.7307692307692307,
+      "SharedLines": 24,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\src\\MindAttic.Orchestrator.Core\\Settings\\ExportedState.cs",
           "Lines": 33
         },
@@ -31119,13 +31137,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\tools\\build.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\tools\\build.ps1",
           "Lines": 30
         },
         {
-          "Repo": "SpaceGod",
-          "Path": "D:\\Projects\\MindAttic\\SpaceGod\\Cpp\\Intermediate\\IsoUS-T146\\tools\\build.ps1",
+          "Repo": "SpaceGod.Unreal",
+          "Path": "D:\\Projects\\MindAttic\\SpaceGod.Unreal\\Cpp\\Intermediate\\IsoUS-T146\\tools\\build.ps1",
           "Lines": 30
         },
         {
@@ -31315,6 +31333,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Files": [
         {
           "Repo": "MindAttic.Orchestrator",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\CutoffAlertsTests.cs",
+          "Lines": 39
+        },
+        {
+          "Repo": "MindAttic.Orchestrator.SIDEBAR",
+          "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator.SIDEBAR\\tests\\MindAttic.Orchestrator.Tests\\CutoffAlertsTests.cs",
+          "Lines": 32
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.5555555555555556,
+      "SharedLines": 20,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "MindAttic.Orchestrator",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Orchestrator\\tests\\MindAttic.Orchestrator.Tests\\TempDirs.cs",
           "Lines": 24
         },
@@ -31471,14 +31508,14 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "GridGame.Unity",
+          "Path": "D:\\Projects\\MindAttic\\GridGame.Unity\\Assets\\GridGame\\App\\Services\\Fonts.cs",
+          "Lines": 54
+        },
+        {
           "Repo": "TownWalker",
           "Path": "D:\\Projects\\MindAttic\\TownWalker\\Assets\\Lab\\App\\Fonts.cs",
           "Lines": 23
-        },
-        {
-          "Repo": "Unity.GridGame",
-          "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\Assets\\Gaiden\\App\\Services\\Fonts.cs",
-          "Lines": 54
         }
       ],
       "Identical": false,
@@ -33143,8 +33180,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "171c2889451c65ca33a3229a999d8a53ce9ddcf5",
-    "Green": "171c2889451c65ca33a3229a999d8a53ce9ddcf5"
+    "Tested": "0e9b79b98e1a3201395b99079956e074c48fcc3a",
+    "Green": "0e9b79b98e1a3201395b99079956e074c48fcc3a"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
@@ -33419,8 +33456,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "171c2889451c65ca33a3229a999d8a53ce9ddcf5",
-    "Green": "171c2889451c65ca33a3229a999d8a53ce9ddcf5"
+    "Tested": "0e9b79b98e1a3201395b99079956e074c48fcc3a",
+    "Green": "0e9b79b98e1a3201395b99079956e074c48fcc3a"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
@@ -35511,7 +35548,15 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|GAD-T704": "2026-11-23T20:39:46.5024065Z",
     "approval|GAD-T705": "2026-11-23T20:42:32.2874009Z",
     "approval|GAD-T709": "2026-11-23T20:49:35.7152939Z",
-    "approval|GG-T727": "2026-11-23T20:50:41.7737869Z"
+    "approval|GG-T727": "2026-11-23T20:50:41.7737869Z",
+    "approval|GAD-T711": "2026-11-24T03:14:21.7671634Z",
+    "approval|GAD-T712": "2026-11-24T03:14:21.7671634Z",
+    "approval|GAD-T713": "2026-11-24T03:14:21.7671634Z",
+    "approval|GAD-T714": "2026-11-24T03:14:21.7671634Z",
+    "approval|GAD-T715": "2026-11-24T03:14:21.7671634Z",
+    "approval|GAD-T716": "2026-11-24T03:14:21.7671634Z",
+    "approval|GAD-T717": "2026-11-24T03:14:21.7671634Z",
+    "approval|GAD-T718": "2026-11-24T03:14:21.7671634Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
