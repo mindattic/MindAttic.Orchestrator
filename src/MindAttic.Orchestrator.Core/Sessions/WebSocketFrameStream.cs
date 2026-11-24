@@ -87,15 +87,15 @@ public sealed class WebSocketFrameStream : Stream
         && GatewayRemotes.ExpiresUtc(candidate) is { } expires && expires > nowUtc
         && (GatewayRemotes.ExpiresUtc(sent) is not { } old || expires > old);
 
-    /// <summary>Whether read.</summary>
+    /// <summary>Readable until disposed.</summary>
     public override bool CanRead => !disposed;
-    /// <summary>Whether write.</summary>
+    /// <summary>Writable until disposed or the link breaks.</summary>
     public override bool CanWrite => !disposed && !broken;
-    /// <summary>Whether seek.</summary>
+    /// <summary>Never seekable.</summary>
     public override bool CanSeek => false;
-    /// <summary>The length.</summary>
+    /// <summary>Not supported: throws.</summary>
     public override long Length => throw new NotSupportedException();
-    /// <summary>The position.</summary>
+    /// <summary>Not supported: throws.</summary>
     public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
     private async Task SendLoopAsync()
@@ -112,7 +112,8 @@ public sealed class WebSocketFrameStream : Stream
         }
     }
 
-    /// <summary>Reads the async.</summary>
+    /// <summary>Reads the next bytes of the current message, receiving the next message when it's used up; 0 once the
+    /// gateway has closed.</summary>
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
@@ -124,11 +125,11 @@ public sealed class WebSocketFrameStream : Stream
         return n;
     }
 
-    /// <summary>Reads the async.</summary>
+    /// <summary>Reads into <paramref name="buffer"/> at <paramref name="offset"/>, as the memory overload does.</summary>
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
         ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
-    /// <summary>Reads.</summary>
+    /// <summary>Reads synchronously, blocking on the async read.</summary>
     public override int Read(byte[] buffer, int offset, int count) => ReadAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
 
     /// <summary>Receives the next whole, non-empty message into the buffer; false when the gateway closed the socket.</summary>
@@ -155,10 +156,11 @@ public sealed class WebSocketFrameStream : Stream
         }
     }
 
-    /// <summary>Writes.</summary>
+    /// <summary>Queues <paramref name="count"/> bytes of <paramref name="buffer"/> as one frame, as the span overload does.</summary>
     public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
 
-    /// <summary>Writes.</summary>
+    /// <summary>Queues <paramref name="buffer"/> (one whole frame) to go as one binary message; throws an
+    /// <see cref="IOException"/> once the link is broken or the queue is full.</summary>
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
@@ -168,28 +170,28 @@ public sealed class WebSocketFrameStream : Stream
         wrote = true;
     }
 
-    /// <summary>Writes the async.</summary>
+    /// <summary>Queues the frame as <see cref="Write(ReadOnlySpan{byte})"/> does; it never waits for the send.</summary>
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         Write(buffer.AsSpan(offset, count));
         return Task.CompletedTask;
     }
 
-    /// <summary>Writes the async.</summary>
+    /// <summary>Queues the frame as <see cref="Write(ReadOnlySpan{byte})"/> does; it never waits for the send.</summary>
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
         Write(buffer.Span);
         return ValueTask.CompletedTask;
     }
 
-    /// <summary>Flush.</summary>
+    /// <summary>Does nothing: each write is already queued whole.</summary>
     public override void Flush() { }
-    /// <summary>Seek.</summary>
+    /// <summary>Not supported: throws.</summary>
     public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-    /// <summary>Sets the length.</summary>
+    /// <summary>Not supported: throws.</summary>
     public override void SetLength(long value) => throw new NotSupportedException();
 
-    /// <summary>Releases.</summary>
+    /// <summary>Stops the send loop and aborts the socket, so a pending read ends at once.</summary>
     protected override void Dispose(bool disposing)
     {
         if (disposing && !disposed)

@@ -30,11 +30,11 @@ public sealed record LimitStop(string Window, DateTime UntilUtc, DateTime Stoppe
 /// </summary>
 public sealed class ContextCycler(string? directory = null)
 {
-    /// <summary>The directory.</summary>
+    /// <summary>The context gate's session-context folder (<c>~\.claude\session-context</c> unless one is passed).</summary>
     public string Directory { get; } = directory ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "session-context");
 
-    /// <summary>Loads.</summary>
+    /// <summary>Every session the context gate has a statusline or state file for; empty when the folder doesn't exist.</summary>
     public IEnumerable<SessionContext> Load()
     {
         if (!System.IO.Directory.Exists(Directory)) return [];

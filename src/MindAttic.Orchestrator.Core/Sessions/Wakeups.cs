@@ -27,7 +27,7 @@ public sealed class Wakeups(JsonStore store)
         /// <summary>Each reason (a nudge kind: <c>mail</c>, ...) and what's said for it.</summary>
         public Dictionary<string, string> Reasons { get; set; } = new(StringComparer.Ordinal);
 
-        /// <summary>The reasons already said.</summary>
+        /// <summary>The reasons in <see cref="Reasons"/> already said for this stretch.</summary>
         public HashSet<string> Said { get; set; } = new(StringComparer.Ordinal);
     }
 

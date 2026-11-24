@@ -45,7 +45,7 @@ public sealed record ProjectCommitResult(
 /// </summary>
 public static partial class ProjectCommit
 {
-    /// <summary>The git timeout.</summary>
+    /// <summary>How long each git command may run before it's given up on.</summary>
     public static readonly TimeSpan GitTimeout = TimeSpan.FromMinutes(2);
 
     /// <summary>The ticket database's repo.</summary>

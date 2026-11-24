@@ -14,7 +14,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
 {
-    /// <summary>The process name constant.</summary>
+    /// <summary>The team gateway's process name.</summary>
     public const string ProcessName = "MindAttic.Orchestrator.Gateway";
     internal static readonly TimeSpan FirstRetry = TimeSpan.FromMinutes(1), MaxRetry = TimeSpan.FromMinutes(30), Healthy = TimeSpan.FromMinutes(10);
 
@@ -39,7 +39,8 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
     private int failures;
     private string? lastSaid;
 
-    /// <summary>Tick.</summary>
+    /// <summary>One daemon tick: stops the managed gateway when it's off, else starts or restarts it on new settings, a
+    /// newer install or an exit, backing off while it fails.</summary>
     public void Tick(GatewaySettings settings, DateTime nowUtc)
     {
         var running = TermGateway.Running(StatusDirectory);

@@ -9,7 +9,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// <summary>A login a CLI can be moved to: a per-CLI login's email, or the global login (<see cref="Email"/> null).</summary>
 public sealed record MoveTarget(string? Email, string ConfigDir)
 {
-    /// <summary>Whether global.</summary>
+    /// <summary>Whether this is the global login (no per-CLI email).</summary>
     public bool IsGlobal => Email is null;
 
     /// <summary>The menu's words for it: the email, or "Global login".</summary>
@@ -28,10 +28,10 @@ public sealed record AccountMoveResult(bool Ok, string Message);
 /// </summary>
 public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing = null)
 {
-    /// <summary>The global label constant.</summary>
+    /// <summary>The menu's words for the global login.</summary>
     public const string GlobalLabel = "Global login";
 
-    /// <summary>The dirs.</summary>
+    /// <summary>The per-CLI login folders a move can pick from; the real ones unless a test passes its own.</summary>
     public AccountDirs Dirs { get; } = dirs ?? new AccountDirs();
 
     /// <summary>The billing switch: what each CLI bills, and the Vault key a failover bills (M.ORCH-T664).</summary>

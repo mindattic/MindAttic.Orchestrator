@@ -19,10 +19,10 @@ public sealed record RosterProject(string Name, string Path, string? RepoUrl)
 /// <summary>A row of the project tree menu: a branch of dot-named projects sharing a segment, or a project.</summary>
 public abstract record ProjectNode(string Label);
 
-/// <summary>The project leaf record.</summary>
+/// <summary>A project in the tree menu, under its last name segment.</summary>
 public sealed record ProjectLeaf(string Label, RosterProject Project) : ProjectNode(Label);
 
-/// <summary>The project branch record.</summary>
+/// <summary>A segment several projects' dotted names share, with the nodes under it.</summary>
 public sealed record ProjectBranch(string Label, IReadOnlyList<ProjectNode> Children) : ProjectNode(Label);
 
 /// <summary>
@@ -33,10 +33,10 @@ public sealed record ProjectBranch(string Label, IReadOnlyList<ProjectNode> Chil
 /// </summary>
 public static class ProjectRoster
 {
-    /// <summary>The topic constant.</summary>
+    /// <summary>The GitHub topic a repo carries to be on the roster.</summary>
     public const string Topic = "wip";
 
-    /// <summary>The settings path.</summary>
+    /// <summary>The Launcher's settings.json, whose <c>projects</c> the roster is read from.</summary>
     public static string SettingsPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MindAttic", "MindAttic.Launcher", "settings.json");
 

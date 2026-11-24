@@ -34,7 +34,8 @@ public enum CliActivity
 /// CLI on a <c>/goal</c>, which keeps itself going.</summary>
 public sealed record BusyScope(bool Hosted = false, bool RunningOnly = false, bool SkipGoal = false)
 {
-    /// <summary>The redeploy gate's scope.</summary>
+    /// <summary>The redeploy gate's scope, and the default: hosted CLIs never count; a claim, a prompt or an unrecorded
+    /// state does.</summary>
     public static readonly BusyScope Deploy = new();
 }
 

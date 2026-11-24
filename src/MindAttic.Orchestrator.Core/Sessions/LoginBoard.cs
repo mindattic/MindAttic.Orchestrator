@@ -74,7 +74,7 @@ public sealed record LoginCard(
     LoginPace? Pace,
     IReadOnlyList<LoginCli> Clis)
 {
-    /// <summary>Whether global.</summary>
+    /// <summary>Whether this is the global login (no per-CLI email).</summary>
     public bool IsGlobal => Email is null;
 
     /// <summary>The login's name (M.ORCH-T614): its <see cref="LoginLook.Alias"/>, defaulting to the email's part before the @;

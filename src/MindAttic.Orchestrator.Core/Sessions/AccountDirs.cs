@@ -14,11 +14,11 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public sealed record AccountDir(string Email, string Directory)
 {
-    /// <summary>The config path.</summary>
+    /// <summary>Claude Code's <c>.claude.json</c> in this account's folder: its sign-in, projects and per-account config.</summary>
     public string ConfigPath => Path.Combine(Directory, ".claude.json");
-    /// <summary>The credentials path.</summary>
+    /// <summary>The <c>.credentials.json</c> Claude Code keeps this account's OAuth tokens in.</summary>
     public string CredentialsPath => Path.Combine(Directory, ".credentials.json");
-    /// <summary>The settings path.</summary>
+    /// <summary>This account's Claude Code <c>settings.json</c> (its hooks, statusline and permissions).</summary>
     public string SettingsPath => Path.Combine(Directory, "settings.json");
 
     /// <summary>The account's pace, as the daemon writes it for the hooks of the CLIs on this login.</summary>
@@ -38,7 +38,7 @@ public sealed record AccountDir(string Email, string Directory)
     /// 100%", even once the transcript line that reported it has scrolled out of the reader's window.</summary>
     public string LimitsPath => Path.Combine(Directory, "limits.json");
 
-    /// <summary>The statusline path.</summary>
+    /// <summary>This account's copy of the statusline script (<see cref="AccountDirs.StatuslineName"/>).</summary>
     public string StatuslinePath => Path.Combine(Directory, AccountDirs.StatuslineName);
 
     /// <summary>The script <c>claude auth login</c> opens this account's sign-in through (<c>BROWSER</c>, M.ORCH-T610).</summary>
@@ -99,7 +99,7 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
     /// <summary>What tells Claude Code where its config lives.</summary>
     public const string EnvVar = "CLAUDE_CONFIG_DIR";
 
-    /// <summary>The statusline name constant.</summary>
+    /// <summary>The file name of the statusline script each account's folder carries.</summary>
     public const string StatuslineName = "statusline.ps1";
 
     private static string UserProfile => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);

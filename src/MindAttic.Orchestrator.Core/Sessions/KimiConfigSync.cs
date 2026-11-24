@@ -12,7 +12,7 @@ public static class KimiConfigSync
     /// <summary>The provider table whose <c>api_key</c> is kept in sync with the Vault.</summary>
     public const string ProviderTable = "managed:kimi-code";
 
-    /// <summary>The user's real Kimi config.</summary>
+    /// <summary>The user's real Kimi config, <c>~\.kimi-code\config.toml</c>.</summary>
     public static string DefaultConfigPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".kimi-code", "config.toml");
 

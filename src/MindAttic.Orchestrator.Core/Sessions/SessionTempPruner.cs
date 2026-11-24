@@ -40,7 +40,7 @@ public static class SessionTempPruner
     /// <summary>How often the daemon looks for ended sessions' folders.</summary>
     public static readonly TimeSpan Every = TimeSpan.FromMinutes(10);
 
-    /// <summary>Base dir.</summary>
+    /// <summary>Claude Code's temp folder, <c>%TEMP%\claude</c>, holding each project's session folders.</summary>
     public static string BaseDir() => Path.Combine(Path.GetTempPath(), "claude");
 
     // Hidden and system files are the session's too; only links are skipped.

@@ -9,7 +9,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// <see cref="Owner"/> (every one when <see cref="Session"/> is empty) until <see cref="ExpiresUtc"/>.</summary>
 public sealed record TermGrant(string Owner, string Viewer, string Session, string Level, DateTime? ExpiresUtc, string? CreatedBy, DateTime CreatedUtc)
 {
-    /// <summary>Whether live.</summary>
+    /// <summary>Whether the grant still holds at <paramref name="nowUtc"/>: it has no expiry, or hasn't reached it.</summary>
     public bool IsLive(DateTime nowUtc) => ExpiresUtc is not { } e || e > nowUtc;
 }
 
@@ -27,7 +27,7 @@ public sealed record TermGrant(string Owner, string Viewer, string Session, stri
 /// </summary>
 public static class TermGrants
 {
-    /// <summary>The constants watch, interact.</summary>
+    /// <summary>The grant levels: watch a session, or type into it too.</summary>
     public const string Watch = TermGatewayTokens.Watch, Interact = TermGatewayTokens.Interact;
 
     /// <summary>How long an interact grant lasts when no <c>--for</c> is given.</summary>

@@ -13,17 +13,17 @@ public sealed record MoveLock
 {
     /// <summary>The moving CLI's session, and its claude.exe as it was when the move was sent.</summary>
     public string SessionId { get; init; } = "";
-    /// <summary>The pid.</summary>
+    /// <summary>The moving CLI's claude.exe process id when the move was sent.</summary>
     public int Pid { get; init; }
 
     /// <summary>The Launcher tab it runs in (its host process and input pipe): the same tab restarts it on the new login.</summary>
     public int? HostPid { get; init; }
-    /// <summary>The host pipe.</summary>
+    /// <summary>The input pipe of the Launcher tab it runs in; null when it isn't hosted.</summary>
     public string? HostPipe { get; init; }
 
-    /// <summary>The repo.</summary>
+    /// <summary>The repo the CLI works in.</summary>
     public string Repo { get; init; } = "";
-    /// <summary>The cwd.</summary>
+    /// <summary>The CLI's working directory; null when not known.</summary>
     public string? Cwd { get; init; }
 
     /// <summary>The per-CLI login it was on (its email), null for the global login.</summary>
@@ -31,10 +31,10 @@ public sealed record MoveLock
 
     /// <summary>The login it's moving to: its email (null for the global login) and its name as the dashboard shows it.</summary>
     public string? ToEmail { get; init; }
-    /// <summary>The to name.</summary>
+    /// <summary>The login it's moving to, by its name as the dashboard shows it.</summary>
     public string ToName { get; init; } = "";
 
-    /// <summary>The started utc.</summary>
+    /// <summary>When the move was sent (UTC): it times out <see cref="MoveLocks.Timeout"/> after.</summary>
     public DateTime StartedUtc { get; init; }
 
     /// <summary>The tickets it and its subagents hold: its claims (<c>orchestrator next --claim</c>), kept claimed for it.</summary>
@@ -58,7 +58,7 @@ public sealed record MoveEnd(MoveLock Lock, bool Landed, AgentBoardRow? Cli, str
 /// </summary>
 public sealed class MoveLocks(JsonStore store)
 {
-    /// <summary>The state name constant.</summary>
+    /// <summary>The store's state row the moves in progress are kept in.</summary>
     public const string StateName = "account-moves";
 
     /// <summary>A move restarts the CLI at its next idle point, which can wait out a long turn.</summary>
@@ -67,7 +67,7 @@ public sealed class MoveLocks(JsonStore store)
     /// <summary>How long a move whose CLI has ended may take to come back on the new login before it has failed.</summary>
     public static readonly TimeSpan GoneAfter = TimeSpan.FromMinutes(5);
 
-    /// <summary>The store.</summary>
+    /// <summary>The orchestrator store the moves are kept in.</summary>
     public JsonStore Store { get; } = store;
 
     /// <summary>Whether a claude.exe is still running (seam).</summary>
@@ -173,7 +173,8 @@ public sealed class MoveHandback(JsonStore store)
     /// <param name="Left">The nudge was left for the CLI's hook; false with tickets: it's said to you to do.</param>
     public sealed record Result(MoveEnd End, IReadOnlyList<string> Tickets, bool Left, string Line);
 
-    /// <summary>Deliver.</summary>
+    /// <summary>Hands an ended move's tickets back: to the CLI on its new login when it landed, else left with the old
+    /// owner; and leaves its CLI a nudge saying so.</summary>
     public Result Deliver(MoveEnd end)
     {
         var m = end.Lock;

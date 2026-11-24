@@ -41,7 +41,8 @@ public static class CliRoster
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
-    /// <summary>Builds.</summary>
+    /// <summary>One row per CLI in <paramref name="clis"/>: its billing, its /allocate repos, and its session's idle state
+    /// and last turn.</summary>
     public static IReadOnlyList<CliRow> Build(IReadOnlyList<CliBilling> clis, IReadOnlyDictionary<int, IReadOnlyList<string>> allocate,
         IEnumerable<SessionContext> sessions)
     {

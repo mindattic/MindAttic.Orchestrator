@@ -37,7 +37,7 @@ public sealed record AgentMessage
 /// </summary>
 public sealed class Mailbox(OrchestratorDb db)
 {
-    /// <summary>The table's name.</summary>
+    /// <summary>The orchestrator database table the messages are kept in.</summary>
     public const string Table = "agent_messages";
 
     /// <summary>The prefix every message id starts with.</summary>

@@ -18,25 +18,25 @@ public sealed record WallSession
     /// <summary>Whose CLI it is, as the tile says.</summary>
     public required string Person { get; init; }
 
-    /// <summary>The id.</summary>
+    /// <summary>The session's id on its gateway.</summary>
     public required string Id { get; init; }
-    /// <summary>The title.</summary>
+    /// <summary>The session's title; null when it has none.</summary>
     public string? Title { get; init; }
-    /// <summary>The login.</summary>
+    /// <summary>The email of the login its CLI runs on; null when not known.</summary>
     public string? Login { get; init; }
-    /// <summary>The repo.</summary>
+    /// <summary>The repo it works in; null when not known.</summary>
     public string? Repo { get; init; }
-    /// <summary>The state.</summary>
+    /// <summary>Its lifecycle state (running, exited, ...).</summary>
     public string State { get; init; } = TermSessionStates.Running;
-    /// <summary>The exit code.</summary>
+    /// <summary>The process exit code once it has exited; null while it runs.</summary>
     public int? ExitCode { get; init; }
-    /// <summary>The protocol.</summary>
+    /// <summary>The TermHost protocol version its host speaks.</summary>
     public int Protocol { get; init; }
-    /// <summary>The cols.</summary>
+    /// <summary>Terminal width in columns.</summary>
     public int Cols { get; init; }
-    /// <summary>The rows.</summary>
+    /// <summary>Terminal height in rows.</summary>
     public int Rows { get; init; }
-    /// <summary>The started utc.</summary>
+    /// <summary>When the session started (UTC).</summary>
     public DateTime StartedUtc { get; init; }
 
     /// <summary>Whether its pop-out may be interactive: a remote's grant allows it (<c>access: interact</c>), or it is this
@@ -50,7 +50,7 @@ public sealed record WallSession
     /// per the ExcludeLauncherFromTeamWall setting.</summary>
     public bool IsMenu { get; init; }
 
-    /// <summary>Whether local.</summary>
+    /// <summary>Whether it's one of this machine's own sessions.</summary>
     public bool IsLocal => Gateway == TeamWall.LocalGateway;
 
     /// <summary>A tile can stream it without disturbing anyone: its host serves several viewers (protocol 2, M.ORCH-T930). A
@@ -85,7 +85,7 @@ public static class TeamWall
     /// <summary>The smallest a tile is drawn, in device-independent pixels: the grid fits as many as these allow.</summary>
     public const double MinTileWidth = 420, MinTileHeight = 260;
 
-    /// <summary>Key of.</summary>
+    /// <summary>A tile's key, <c>gateway/id</c>.</summary>
     public static string KeyOf(string gateway, string id) => gateway + "/" + id;
 
     /// <summary>One of this machine's hosted sessions as a tile.</summary>
@@ -194,7 +194,7 @@ public static class TeamWall
         return (cols, (count + cols - 1) / cols);
     }
 
-    /// <summary>Page count.</summary>
+    /// <summary>How many pages <paramref name="count"/> tiles take at <paramref name="pageSize"/> a page; at least one.</summary>
     public static int PageCount(int count, int pageSize) => count <= 0 ? 1 : (count + Math.Max(1, pageSize) - 1) / Math.Max(1, pageSize);
 
     /// <summary><paramref name="page"/> (0-based) kept within the pages there are.</summary>

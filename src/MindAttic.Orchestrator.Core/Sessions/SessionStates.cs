@@ -12,7 +12,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class SessionStates
 {
-    /// <summary>The suffix constant.</summary>
+    /// <summary>The exported state file's suffix, after the session id.</summary>
     public const string Suffix = ".state.json";
 
     /// <summary>The database the states are kept in; replaceable for tests.</summary>

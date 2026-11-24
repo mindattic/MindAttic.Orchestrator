@@ -30,7 +30,7 @@ public sealed record Agent
     /// <summary>When its state last changed.</summary>
     public DateTime StateUtc { get; init; }
 
-    /// <summary>Whether it's retired.</summary>
+    /// <summary>Whether it's retired (<see cref="AgentBook.Terminated"/>): it takes no more work.</summary>
     public bool Terminated => State == AgentBook.Terminated;
 }
 
@@ -41,7 +41,7 @@ public sealed record Agent
 /// </summary>
 public sealed class AgentBook(OrchestratorDb db)
 {
-    /// <summary>The table's name.</summary>
+    /// <summary>The orchestrator database table the agents are kept in.</summary>
     public const string Table = "agents";
 
     /// <summary>The states an agent is in.</summary>

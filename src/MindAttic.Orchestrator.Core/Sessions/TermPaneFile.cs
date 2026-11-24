@@ -15,7 +15,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static partial class TermPaneFile
 {
-    /// <summary>The extension constant.</summary>
+    /// <summary>A pane file's extension.</summary>
     public const string Extension = ".pane";
 
     /// <summary>Session <paramref name="id"/>'s file.</summary>
@@ -64,7 +64,7 @@ public static partial class TermPaneFile
         return request.Undocked == undocked || Write(session.Id, request with { Undocked = undocked }, directory);
     }
 
-    /// <summary>Deletes.</summary>
+    /// <summary>Deletes session <paramref name="id"/>'s pane file; nothing when it can't.</summary>
     public static void Delete(string id, string? directory = null)
     {
         try { File.Delete(PathOf(id, directory)); }

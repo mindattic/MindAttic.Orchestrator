@@ -11,7 +11,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class OrgScope
 {
-    /// <summary>For.</summary>
+    /// <summary><paramref name="all"/> as org <paramref name="orgId"/> sees it; unchanged when there's only one org.</summary>
     public static Snapshot For(Snapshot all, OrgDirectory orgs, string orgId, TimeSpan workingWindow, TimeSpan waitingWindow)
     {
         if (!orgs.HasOrgs) return all;

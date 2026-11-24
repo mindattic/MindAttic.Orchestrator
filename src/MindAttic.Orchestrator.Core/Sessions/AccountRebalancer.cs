@@ -26,9 +26,9 @@ public sealed record Rebalanced(bool Moved, string Line)
 /// <summary>A move the daemon made, as the store keeps it for the dashboard's toast.</summary>
 public sealed class RebalanceMove
 {
-    /// <summary>The at utc.</summary>
+    /// <summary>When the daemon made the move (UTC).</summary>
     public DateTime AtUtc { get; init; }
-    /// <summary>The text.</summary>
+    /// <summary>The move in words, as the toast shows it.</summary>
     public string Text { get; init; } = "";
 }
 
@@ -575,7 +575,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 /// login's window resets (null: not known; it goes back as soon as the login isn't low).</summary>
 public sealed record ApiFailover(string SessionId, int Pid, int? HostPid, string? Cwd, string? FromEmail, string ConfigDir, string Name, string Why, DateTime SinceUtc)
 {
-    /// <summary>The until utc.</summary>
+    /// <summary>When the login it came off resets (UTC); null when not known, so it goes back once that login isn't low.</summary>
     public DateTime? UntilUtc { get; init; }
 
     /// <summary>Asked of its tab and not yet seen billing the key (M.ORCH-T681): not counted until it is.</summary>

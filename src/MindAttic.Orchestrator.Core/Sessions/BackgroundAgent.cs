@@ -11,10 +11,10 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class BackgroundAgent
 {
-    /// <summary>The fallback command constant.</summary>
+    /// <summary>The command run when the Launcher's settings name no Claude run command (or can't be read).</summary>
     public const string FallbackCommand = "claude --dangerously-skip-permissions --model claude-sonnet-5-5";
 
-    /// <summary>The log directory.</summary>
+    /// <summary>Where each background agent's output log goes (<c>%APPDATA%\MindAttic\MindAttic.Orchestrator\allocate</c>).</summary>
     public static string LogDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MindAttic", "MindAttic.Orchestrator", "allocate");
 

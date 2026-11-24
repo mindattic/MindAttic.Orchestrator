@@ -12,16 +12,16 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class CliMarks
 {
-    /// <summary>The allocate constant.</summary>
+    /// <summary>The /allocate mark: the CLI auto-allocates its repo's tickets.</summary>
     public const string Allocate = "allocate";
-    /// <summary>The no allocate constant.</summary>
+    /// <summary>The /allocate off mark: the CLI was turned off, and stays off.</summary>
     public const string NoAllocate = "noallocate";
-    /// <summary>The crossrepo constant.</summary>
+    /// <summary>The /crossrepo mark: the CLI may work other repos too.</summary>
     public const string Crossrepo = "crossrepo";
-    /// <summary>The kinds.</summary>
+    /// <summary>Every mark kind, as the <c>cli_marks</c> rows and the fallback files name them.</summary>
     public static readonly string[] Kinds = [Allocate, NoAllocate, Crossrepo];
 
-    /// <summary>The cleared suffix constant.</summary>
+    /// <summary>What a hook appends to a fallback mark file's name to record the mark's removal.</summary>
     public const string ClearedSuffix = ".cleared";
 
     /// <summary>The database the marks are kept in; replaceable for tests.</summary>

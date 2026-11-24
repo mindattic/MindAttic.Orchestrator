@@ -10,7 +10,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// <param name="Error">Why it didn't start; null when it did.</param>
 public sealed record SessionStart(string? AgentId, string? Error)
 {
-    /// <summary>It started.</summary>
+    /// <summary>Whether it started: no <see cref="Error"/>.</summary>
     public bool Started => Error is null;
 
     /// <summary>A start that failed for <paramref name="error"/>.</summary>
@@ -24,7 +24,7 @@ public sealed record SessionStart(string? AgentId, string? Error)
 /// </summary>
 public sealed class SessionControl(OrchestratorOptions options)
 {
-    /// <summary>The providers.</summary>
+    /// <summary>The agent providers a new tab can run.</summary>
     public static readonly IReadOnlyList<string> Providers = ["Claude", "Codex", "Gemini", "Kimi"];
 
     /// <summary>Opens a new tab for <paramref name="directory"/>; returns the agent id its CLI runs as (M.ORCH-T1743), or the
@@ -450,7 +450,7 @@ public sealed class SessionControl(OrchestratorOptions options)
         }
     }
 
-    /// <summary>Opens the folder.</summary>
+    /// <summary>Opens <paramref name="directory"/> in Explorer; nothing when it doesn't exist.</summary>
     public static void OpenFolder(string directory)
     {
         if (Directory.Exists(directory))

@@ -18,7 +18,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public sealed record LoginLook(string Window, string Initials, string TabColor)
 {
-    /// <summary>The file name constant.</summary>
+    /// <summary>The file in an account's folder its look (window name, initials, tab colour) is kept in.</summary>
     public const string FileName = "mindattic-account.json";
 
     /// <summary>The login's name as people read it ("Jordan", "Amy Reed"); <see cref="Window"/> is it made safe for <c>wt -w</c>.</summary>

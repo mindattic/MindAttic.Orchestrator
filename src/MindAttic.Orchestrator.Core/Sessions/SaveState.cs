@@ -14,7 +14,7 @@ public sealed class SaveStateStore(string? directory = null)
     /// <summary>The reason a Quick Save All package is written with.</summary>
     public const string SaveAllReason = "save-all";
 
-    /// <summary>The directory.</summary>
+    /// <summary>Where the saves are written (<c>save-states</c> under the live store's folder unless one is passed).</summary>
     public string Directory { get; } = directory ?? Path.Combine(Settings.JsonStore.LiveDirectory, "save-states");
 
     /// <summary>Writes <paramref name="state"/> as a new save, dropping the oldest past <see cref="Keep"/>; its path, or null.</summary>

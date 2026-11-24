@@ -143,10 +143,10 @@ public static class ProcessReaper
     /// database file travels (git, a copy), and another machine's ids mean nothing here.</summary>
     public sealed class SeenState
     {
-        /// <summary>The machine name.</summary>
+        /// <summary>The machine whose processes these are; another machine's entries are ignored.</summary>
         public string? Machine { get; set; }
 
-        /// <summary>The processes seen.</summary>
+        /// <summary>The processes seen under a live Claude CLI.</summary>
         public List<SeenProcess> Seen { get; set; } = [];
     }
 
@@ -168,7 +168,7 @@ public static class ProcessReaper
         private HashSet<(int Pid, DateTime Start)>? saved; // what the row holds; null until it has been read
         private DateTime savedUtc;
 
-        /// <summary>The store.</summary>
+        /// <summary>The orchestrator store the seen set's row is kept in.</summary>
         public Settings.JsonStore Store { get; } = store;
 
         /// <summary>Whether the row has been read: until then nothing is written, which would replace it unread.</summary>

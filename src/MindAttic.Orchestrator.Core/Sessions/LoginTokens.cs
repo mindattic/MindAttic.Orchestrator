@@ -12,7 +12,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// Windows DPAPI for this Windows user, never the token itself.</summary>
 public sealed record LoginToken(string Email, DateTime MintedUtc, DateTime ExpiresUtc, string Protected)
 {
-    /// <summary>Expired.</summary>
+    /// <summary>Whether the token has expired by <paramref name="nowUtc"/>.</summary>
     public bool Expired(DateTime nowUtc) => nowUtc >= ExpiresUtc;
 
     /// <summary>Within <see cref="LoginTokens.WarnBefore"/> of its expiry (and not past it).</summary>
@@ -35,10 +35,11 @@ public enum MintOutcome
     Failed,
 }
 
-/// <summary>The token record.</summary>
+/// <summary>What minting a login's long-lived token came to: how it went, the words for it, and the token when one was
+/// minted.</summary>
 public sealed record MintResult(MintOutcome Outcome, string Message, LoginToken? Token = null)
 {
-    /// <summary>The ok.</summary>
+    /// <summary>Whether a token was minted and stored.</summary>
     public bool Ok => Outcome == MintOutcome.Minted;
 }
 
@@ -82,7 +83,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
 
     private static bool IsToken(string joined) => joined.Length is >= MinTokenLength and <= MaxTokenLength && TokenPattern.IsMatch(joined);
 
-    /// <summary>The default.</summary>
+    /// <summary>The tokens kept in the MindAttic Vault's shared login-token store.</summary>
     public static LoginTokens Default { get; } = new();
 
     /// <summary>One store for the whole process (M.ORCH-T711): the Vault's in-process lock is per instance, so a store built per
@@ -293,13 +294,13 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         }
     }
 
+    /// <summary>How long <c>claude setup-token</c> may run before it's killed and the mint fails with a timeout.</summary>
+    internal static TimeSpan MintTimeout { get; set; } = TimeSpan.FromMinutes(10);
+
     /// <summary>The seam <see cref="MintFor"/> runs <c>claude setup-token</c> through: under the account's folder, its sign-in
     /// opening through <c>opener</c> (its private browser window, <see cref="LoginBrowser"/>) when there is one,
     /// with every variable that would pick another account removed. Returns what it printed. Tests replace it, so no test opens a
     /// browser or mints a token.</summary>
-    internal static TimeSpan MintTimeout { get; set; } = TimeSpan.FromMinutes(10);
-
-    /// <summary>Gets or sets the run.</summary>
     public static Func<AccountDir, string?, string> Run { get; set; } = (dir, opener) =>
     {
         var psi = Psi(dir, null, "setup-token");
