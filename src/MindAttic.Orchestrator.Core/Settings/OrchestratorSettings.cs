@@ -340,6 +340,15 @@ public sealed record OrchestratorSettings
     /// plus a fixed, always-shown CLI tab bar under the selected person.</summary>
     public bool TreeMenuLayout { get; init; } = true;
 
+    /// <summary>The sidebar panel group's order as the user dragged it (M.ORCH-T2174): panel keys such as "orgs", "users",
+    /// "host", "tickets", first to last. Empty (the default) is the order the sidebar declares. UI state the dashboard saves
+    /// itself, not a tunable.</summary>
+    public List<string> SidebarPanelOrder { get; init; } = [];
+
+    /// <summary>The sidebar panels the user collapsed (M.ORCH-T2174), by panel key, nested ones dotted under their parent
+    /// ("tickets.pending"). Empty (the default) is every panel expanded. UI state the dashboard saves itself, not a tunable.</summary>
+    public List<string> SidebarCollapsedPanels { get; init; } = [];
+
     /// <summary>The gap below each login's whole tree node (its header and, expanded, its open panes) in the sidebar
     /// (M.ORCH-T1824, the owner's mockup): enough that one person's section visibly ends before the next one's colour
     /// stripe begins, instead of the old 2px row gap every sibling row already had.</summary>

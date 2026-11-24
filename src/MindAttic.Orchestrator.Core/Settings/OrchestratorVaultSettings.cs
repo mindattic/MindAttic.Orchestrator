@@ -887,6 +887,16 @@ public sealed class OrchestratorVaultSettings
             "person-tab strip plus a fixed CLI tab bar under the selected person.")]
     public bool TreeMenuLayout { get; set; } = true;
 
+    /// <summary>The sidebar panel group's order by panel key; empty is the declared order. UI state the dashboard saves as
+    /// panels are dragged, so it's kept out of the manifest.</summary>
+    [SettingIgnore]
+    public List<string> SidebarPanelOrder { get; set; } = [];
+
+    /// <summary>The sidebar panel keys the user collapsed; empty is all expanded. UI state the dashboard saves as panels are
+    /// collapsed, so it's kept out of the manifest.</summary>
+    [SettingIgnore]
+    public List<string> SidebarCollapsedPanels { get; set; } = [];
+
     /// <summary>The gap below each login's whole tree node in the sidebar, so one person's section visibly ends before the
     /// next one's colour stripe begins.</summary>
     [Setting("Login tree section gutter (px)", Group = "Dashboard", Order = 30,
@@ -1376,6 +1386,8 @@ public sealed class OrchestratorVaultSettings
         Font = s.Font,
         SymbolTabLabels = s.SymbolTabLabels,
         TreeMenuLayout = s.TreeMenuLayout,
+        SidebarPanelOrder = [.. s.SidebarPanelOrder],
+        SidebarCollapsedPanels = [.. s.SidebarCollapsedPanels],
         TabBlinkTokens = s.TabBlinkTokens,
         UnitTokenBudget = s.UnitTokenBudget,
         FirstLoadWaitSeconds = s.FirstLoadWaitSeconds,
@@ -1596,6 +1608,8 @@ public sealed class OrchestratorVaultSettings
         Font = string.IsNullOrWhiteSpace(Font) ? OrchestratorSettings.DefaultFont : Font,
         SymbolTabLabels = SymbolTabLabels,
         TreeMenuLayout = TreeMenuLayout,
+        SidebarPanelOrder = [.. SidebarPanelOrder ?? []],
+        SidebarCollapsedPanels = [.. SidebarCollapsedPanels ?? []],
         TabBlinkTokens = TabBlinkTokens,
         UnitTokenBudget = UnitTokenBudget,
         FirstLoadWaitSeconds = FirstLoadWaitSeconds,
