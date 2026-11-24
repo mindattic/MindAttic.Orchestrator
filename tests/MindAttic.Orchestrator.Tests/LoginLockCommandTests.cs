@@ -165,6 +165,73 @@ public sealed class LoginLockCommandTests
         finally { Ctx.StoreDirectory = previousStore; }
     }
 
+    [Test, NonParallelizable] // Ctx.StoreDirectory and the org overrides are process-wide
+    public void Org_lock_refuses_the_api_key_instead_of_calling_it_already_locked()
+    {
+        // M.ORCH-T2142: LoginLocks.Lock never locks the API key and returns null, which read as "already locked", exit 0.
+        var previousStore = Ctx.StoreDirectory;
+        Ctx.StoreDirectory = temps.New();
+        OrgHelpCommand.PeopleOverride = () => [new(MindAttic.Orchestrator.Billing.ApiKeyPerson.Email, "API key", [], [])];
+        OrgAllowCommand.NowOverride = () => Now;
+        try
+        {
+            var said = Cli(out var exit, "org", "lock", "API", "key");
+            Assert.That(exit, Is.EqualTo(1), said);
+            Assert.That(said, Does.Contain("can't be locked").And.Not.Contain("already locked"));
+        }
+        finally
+        {
+            Ctx.StoreDirectory = previousStore;
+            OrgHelpCommand.PeopleOverride = null;
+            OrgAllowCommand.NowOverride = null;
+        }
+    }
+
+    [Test, NonParallelizable] // Ctx.StoreDirectory is process-wide
+    public void Machine_start_refuses_a_login_that_isnt_an_email_instead_of_checking_the_global_one()
+    {
+        // M.ORCH-T2142: a --login that didn't normalize fell back to the PC's global login for the lock check.
+        var previousStore = Ctx.StoreDirectory;
+        Ctx.StoreDirectory = temps.New();
+        try
+        {
+            var said = Cli(out var exit, "machine", "start", "SomeRepo", "--login", "not an email");
+            Assert.That(exit, Is.EqualTo(1), said);
+            Assert.That(said, Does.Contain("\"not an email\" isn't a login's email."));
+        }
+        finally { Ctx.StoreDirectory = previousStore; }
+    }
+
+    [Test, NonParallelizable] // Ctx.StoreDirectory and AnsiConsole.Console are process-wide
+    public void Release_waiting_on_owner_parks_a_ticket_typed_in_lower_case()
+    {
+        // M.ORCH-T2142: the ID went to the ticket database as typed, so a lower-case one released, then "isn't in the ticket database".
+        var previousStore = Ctx.StoreDirectory;
+        var storeDir = temps.New();
+        Ctx.StoreDirectory = storeDir;
+        var workspace = Path.Combine(storeDir, "workspace");
+        var repoDir = Path.Combine(workspace, "A");
+        Directory.CreateDirectory(Path.Combine(repoDir, ".git"));
+        Directory.CreateDirectory(Path.Combine(repoDir, "docs"));
+        File.WriteAllText(Path.Combine(repoDir, "docs", "USER_STORIES.md"),
+            "---\ncode: A\n---\n\n# A\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n" +
+            "| A-T1 | 2026-11-01 | fix | open | one | — |\n");
+        var store = new JsonStore(storeDir);
+        store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
+        store.SaveAssignments([new Assignment("A-T1", "A", repoDir, "Claude", Now, false)]);
+        var path = MindAttic.Tickets.Data.TicketsDb.DefaultPath(workspace);
+        using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path)) db.Import([new MindAttic.Tickets.Repo("A", repoDir)]);
+        try
+        {
+            var said = Cli(out var exit, "release", "a-t1", "--waiting-on-owner");
+            Assert.That(exit, Is.Zero, said);
+            Assert.That(said, Does.Contain("A-T1 is parked as waiting on the owner"));
+            using var check = MindAttic.Tickets.Data.TicketsDb.Open(path);
+            Assert.That(check.Labels("A-T1"), Does.Contain(MindAttic.Orchestrator.Tickets.OpenTicketSource.WaitingOnOwnerLabel));
+        }
+        finally { Ctx.StoreDirectory = previousStore; }
+    }
+
     [Test]
     public void The_usage_report_says_whos_locked_in_its_notes_not_a_column()
     {

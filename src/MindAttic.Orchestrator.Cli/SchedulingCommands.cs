@@ -215,10 +215,11 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
         // Parked only once the release went through, so a failed one leaves no hidden park behind (M.ORCH-T1425).
         if (code != 0 || !settings.WaitingOnOwner) return code;
         {
-            using var tdb = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(OrchestratorOptions.Load().WorkspaceRoot);
-            if (tdb is null || tdb.Ticket(settings.Ticket) is null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(settings.Ticket)} isn't in the ticket database, so it can't be parked.[/]"); return 1; }
-            tdb.AddLabels(settings.Ticket, [MindAttic.Orchestrator.Tickets.OpenTicketSource.WaitingOnOwnerLabel]);
-            AnsiConsole.MarkupLine($"{Markup.Escape(settings.Ticket)} is parked as waiting on the owner; nothing hands it out until that label is removed.");
+            using var tdb = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(OrchestratorOptions.Load(Ctx.Store()).WorkspaceRoot);
+            var id = Ctx.Id(settings.Ticket);
+            if (tdb is null || tdb.Ticket(id) is null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(id)} isn't in the ticket database, so it can't be parked.[/]"); return 1; }
+            tdb.AddLabels(id, [MindAttic.Orchestrator.Tickets.OpenTicketSource.WaitingOnOwnerLabel]);
+            AnsiConsole.MarkupLine($"{Markup.Escape(id)} is parked as waiting on the owner; nothing hands it out until that label is removed.");
         }
         return 0;
     }
@@ -244,7 +245,7 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
         var dispatcher = Ctx.Dispatcher(store);
         if (!settings.RemoveWorktree)
         {
-            dispatcher.Release(a.TicketId, OrchestratorOptions.Load().WorkspaceRoot);
+            dispatcher.Release(a.TicketId, OrchestratorOptions.Load(store).WorkspaceRoot);
             ForgetOrphan();
             AnsiConsole.MarkupLine($"{a.TicketId} is back in the queue.");
             return 0;
@@ -458,15 +459,15 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public bool? Failover { get; init; }
 
         [CommandOption("--weekly-reserve <PERCENT>")]
-        [Description("The share of each account's week kept back, 0 to 50 (default 5): every CLI on an account stops at 100 minus this of that account's week (95% by default), each login on its own.")]
+        [Description("The share of each account's week kept back, 0 to 50 (default 10): every CLI on an account stops at 100 minus this of that account's week (90% by default), each login on its own.")]
         public int? WeeklyReserve { get; init; }
 
         [CommandOption("--weekly-target <PERCENT>")]
-        [Description("The weekly target, 50 to 100 (default 95): 100 minus the weekly reserve, so this sets --weekly-reserve to 100 minus it. Every CLI on an account stops there, and weekly-aware pacing lands each login's week on it.")]
+        [Description("The weekly target, 50 to 100 (default 90): 100 minus the weekly reserve, so this sets --weekly-reserve to 100 minus it. Every CLI on an account stops there, and weekly-aware pacing lands each login's week on it.")]
         public int? WeeklyTarget { get; init; }
 
         [CommandOption("--weekly-aware <ON>")]
-        [Description("true: weekly-aware pacing, per login: from its take-in line (--weekly-line, 75% by default) of its week a 5-hour window is held only when the week, spent as it's being spent, would reach the weekly target (100 minus --weekly-reserve, 95% by default) before its reset, and then only as far as needed, so the week lands on the target as it resets; scarce room goes to higher-priority tickets first, a ticket its login can't fit goes to another signed-in login with room (else the fallback login), and the week stops at the target; false (default): only the 5-hour target paces.")]
+        [Description("true: weekly-aware pacing, per login: from its take-in line (--weekly-line, 75% by default) of its week a 5-hour window is held only when the week, spent as it's being spent, would reach the weekly target (100 minus --weekly-reserve, 90% by default) before its reset, and then only as far as needed, so the week lands on the target as it resets; scarce room goes to higher-priority tickets first, a ticket its login can't fit goes to another signed-in login with room (else the fallback login), and the week stops at the target; false (default): only the 5-hour target paces.")]
         public bool? WeeklyAware { get; init; }
 
         [CommandOption("--weekly-line <PERCENT>")]
@@ -748,7 +749,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         // The weekly and 5-hour cutoffs are per user, and org limit is the only way to change one (M.ORCH-T707): rejected
         // here, before anything is staged, so these can never half-apply or swallow other options given alongside them.
         : settings.WeeklyTarget is not null || settings.WeeklyReserve is not null || settings.WeeklyLine is not null || settings.WeeklyWindDown is not null
-            ? "The weekly line is each member's own cutoff now (90% of the week, 96% of the 5-hour window by default): orchestrator org limit <who> --weekly <pct> --5h <pct>."
+            ? "The weekly line is each member's own cutoff now (90% of the week, 98% of the 5-hour window by default): orchestrator org limit <who> --weekly <pct> --5h <pct>."
         : null;
 
     public override int Execute(CommandContext context, Settings settings)

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using MindAttic.Orchestrator.Billing;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
@@ -23,7 +24,7 @@ internal sealed class OrgHelpCommand : Command
         ("start <repo> <who>", "start a CLI in <repo> on that member's login"),
         ("allow <who> [--until <reset|time>]", "let that member's login take work past its weekly target, until its weekly reset (the default) or the time given"),
         ("disallow <who>", "take that back: the login stops at its weekly target again"),
-        ("limit [<who> --weekly <pct> --5h <pct> | --reset]", "each member's usage cutoffs (90% of the week and 96% of the 5-hour window by default); with <who>, set them or put the defaults back with --reset"),
+        ("limit [<who> --weekly <pct> --5h <pct> | --reset]", "each member's usage cutoffs (90% of the week and 98% of the 5-hour window by default); with <who>, set them or put the defaults back with --reset"),
         ("lock <who>", "lock that member's login by hand: it can't open a CLI, take work, or keep running CLIs until unlocked"),
         ("unlock <who>", "take back lock, or clear a login's own weekly-cutoff lock (prints its current weekly use)"),
         ("locks", "every locked login, with why and since"),
@@ -325,6 +326,11 @@ internal sealed class OrgLockCommand : Command<OrgLockCommand.Settings>
     {
         if (OrgChoice.Resolve(settings.Org) is not { } scope || OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is not { } who) return 1;
         var name = OrgDisallowCommand.NameOf(who);
+        if (ApiKeyPerson.Is(who.Email))
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(name)} is the API key, not a login: it can't be locked.[/]");
+            return 1;
+        }
         var locked = LoginLocks.Lock(Ctx.Store(), who.Email, name, LoginLocks.ReasonManual, WeeklyAllowances.ByYou, null, OrgAllowCommand.Now);
         if (locked is null)
         {
@@ -404,7 +410,7 @@ internal sealed class OrgLocksCommand : Command<OrgLocksCommand.Settings>
 /// <summary>
 /// <c>orchestrator org limit [&lt;who&gt; [--weekly &lt;pct&gt;] [--5h &lt;pct&gt;] | --reset]</c> (M.ORCH-T707): each member's usage
 /// cutoffs. Alone it lists every member's; with a member it sets the cutoffs given, or <c>--reset</c> puts back the defaults (90% of
-/// the week, 96% of the 5-hour window). The only way to change a cutoff. Below a cutoff nothing throttles; at it, access is cut off.
+/// the week, 98% of the 5-hour window). The only way to change a cutoff. Below a cutoff nothing throttles; at it, access is cut off.
 /// </summary>
 internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
 {
@@ -419,11 +425,11 @@ internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
         public int? Weekly { get; init; }
 
         [CommandOption("--five-hour <PERCENT>")] // typed --5h: see CliApp.Runner
-        [Description("The percent of the member's 5-hour window where its access is cut off (1 to 100; 96 by default).")]
+        [Description("The percent of the member's 5-hour window where its access is cut off (1 to 100; 98 by default).")]
         public int? FiveHour { get; init; }
 
         [CommandOption("--reset")]
-        [Description("Put the member's cutoffs back to the defaults, 90 (week) and 96 (5-hour).")]
+        [Description("Put the member's cutoffs back to the defaults, 90 (week) and 98 (5-hour).")]
         public bool Reset { get; init; }
     }
 
@@ -451,7 +457,7 @@ internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
                         UsageCutoffs.FiveHourFor(cutoffs, p.Email, Ctx.Settings.PaceTargetPercent))) + (custom ? " (set)" : " (default)") +
                     (locked is not null ? $" (locked: {Markup.Escape(locked.Reason)} since {Markup.Escape(WeeklyAllowances.When(locked.SinceUtc))})" : ""));
             }
-            AnsiConsole.MarkupLine("[grey]Below a cutoff nothing throttles; at it, access is cut off and you are asked. org limit <who> --weekly <pct> --5h <pct> changes one; --reset puts back 90 and 96.[/]");
+            AnsiConsole.MarkupLine("[grey]Below a cutoff nothing throttles; at it, access is cut off and you are asked. org limit <who> --weekly <pct> --5h <pct> changes one; --reset puts back 90 and 98.[/]");
             return 0;
         }
         if (settings.Reset && (settings.Weekly is not null || settings.FiveHour is not null))

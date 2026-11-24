@@ -185,7 +185,7 @@ internal static class CliApp
                 });
                 o.AddCommand<OrgStartCommand>("start").WithDescription("Start a CLI in <repo> on a member's login (orchestrator start <repo> --account <their email>).");
                 o.AddCommand<OrgAllowCommand>("allow").WithDescription("Let a member's login take work past its weekly target: allow <who> [[--until reset|<time>]], until its weekly reset by default (M.ORCH-T694).");
-                o.AddCommand<OrgLimitCommand>("limit").WithDescription("Per-user usage cutoffs (M.ORCH-T707): limit alone lists them; limit <who> --weekly <pct> --5h <pct> sets them, --reset puts back 90 and 96.");
+                o.AddCommand<OrgLimitCommand>("limit").WithDescription("Per-user usage cutoffs (M.ORCH-T707): limit alone lists them; limit <who> --weekly <pct> --5h <pct> sets them, --reset puts back 90 and 98.");
                 o.AddCommand<OrgDisallowCommand>("disallow").WithDescription("Take back org allow: disallow <who>; that login stops at its weekly target again.");
                 o.AddCommand<OrgLockCommand>("lock").WithDescription("Lock a member's login by hand: lock <who>; it can't open a CLI, take work, or keep running CLIs until org unlock (M.ORCH-T2114).");
                 o.AddCommand<OrgUnlockCommand>("unlock").WithDescription("Take back org lock, or clear a login's own weekly-cutoff lock: unlock <who>; unlocking a weekly-cutoff lock also prints its current weekly use.");
@@ -557,7 +557,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         public bool? Pace { get; init; }
 
         [CommandOption("--target <PERCENT>")]
-        [Description("How much of each limit pacing aims to use by the reset (default 96).")]
+        [Description("How much of each limit pacing aims to use by the reset (default 98).")]
         public int? Target { get; init; }
 
         [CommandOption("--week")]

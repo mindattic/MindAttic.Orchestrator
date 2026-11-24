@@ -39,6 +39,7 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
             .GroupBy(a => AccountDirs.Normalize(a.Email) ?? a.Email!, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Max(a => a.SignedInUtc), StringComparer.Ordinal);
         var own = OwnLogins();
+        var locked = LockedLogins();
         if (settings.Json)
         {
             Console.WriteLine(JsonSerializer.Serialize(members.Select(m => new
@@ -71,24 +72,29 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
                 Markup.Escape(m.Role),
                 Markup.Escape(m.Tier),
                 m.Status == "active" ? m.Status : $"[yellow]{Markup.Escape(m.Status)}[/]",
-                SignedInCell(own.Contains(m.Email), accounts.TryGetValue(m.Email, out var at), at, now));
+                SignedInCell(own.Contains(m.Email), accounts.TryGetValue(m.Email, out var at), at, now, locked.Contains(m.Email)));
         AnsiConsole.Write(table);
         return 0;
     }
 
-    /// <summary>The emails with a Claude login signed in under their own folder in ~/.claude-accounts (M.ORCH-T671).</summary>
+    /// <summary>The emails with a Claude login signed in under their own folder in ~/.claude-accounts (M.ORCH-T671), by the
+    /// folder alone: a locked login is still signed in here.</summary>
     internal static HashSet<string> OwnLogins() =>
-        (LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs()).SignedIn()
+        (LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs()).All().Where(d => d.SignedIn && d.BorrowedFrom is null)
             .Select(d => AccountDirs.Normalize(d.Email)).OfType<string>().ToHashSet(StringComparer.Ordinal);
 
-    /// <summary>The "Signed in here" cell: yes through its own login and/or the fallback (global) login, else no.</summary>
-    internal static string SignedInCell(bool ownLogin, bool fallbackLogin, DateTime? fallbackAt, DateTime now)
+    /// <summary>The locked logins' emails (M.ORCH-T2108).</summary>
+    internal static IReadOnlySet<string> LockedLogins() => (LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs()).LockedNow();
+
+    /// <summary>The "Signed in here" cell: yes through its own login and/or the fallback (global) login, else no; a locked
+    /// login says so.</summary>
+    internal static string SignedInCell(bool ownLogin, bool fallbackLogin, DateTime? fallbackAt, DateTime now, bool locked = false)
     {
-        if (!ownLogin && !fallbackLogin) return "[grey]no[/]";
+        if (!ownLogin && !fallbackLogin) return locked ? "[grey]no[/] [yellow](locked)[/]" : "[grey]no[/]";
         var via = new List<string>();
         if (ownLogin) via.Add("own login");
         if (fallbackLogin) via.Add("fallback login" + (fallbackAt is { } t ? $", last {Formatting.Ago(t, now)}" : ""));
-        return $"[green]yes[/] [grey]({Markup.Escape(string.Join("; ", via))})[/]";
+        return $"[green]yes[/] [grey]({Markup.Escape(string.Join("; ", via))})[/]" + (locked ? " [yellow](locked)[/]" : "");
     }
 
     /// <summary>Runs a change, saying an invalid value or a missing/duplicate member in one red line (exit 1).</summary>
