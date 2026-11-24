@@ -163,6 +163,10 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     /// bughunt 2026-11-02).</summary>
     public Action? StateChanged { get; init; }
 
+    /// <summary>Called with a <see cref="AppBus.ShowPreview"/> request no present <see cref="AppBus.MediaViewer"/> handles (M.ORCH-T2133),
+    /// off the hub's lock, after the request went out: the daemon starts the viewer on the set itself.</summary>
+    public Action<ShowPreviewRequest>? PreviewUnheard { get; init; }
+
     /// <summary>The presences this hub has taken (M.ORCH-T2031), for the links probe run in the daemon.</summary>
     public AppPresences Presences { get; init; } = new();
 
@@ -447,6 +451,14 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                     return;
                 case AppBus.Health:
                     TakeHealth(envelope);
+                    return;
+                case AppBus.ShowPreview:
+                    // Relayed to every subscriber like any request; when no viewer that handles it is present, the daemon, which runs
+                    // in the owner's session, shows the set itself (M.ORCH-T2133). A version past this daemon's is relayed unread.
+                    stream.Publish(envelope);
+                    if (envelope.V > AppBus.Version || envelope.PayloadAs<ShowPreviewRequest>() is not { Set.Length: > 0 } preview) return;
+                    if (preview.To is { Length: > 0 } to && !string.Equals(to, AppBus.MediaViewer, StringComparison.OrdinalIgnoreCase)) return;
+                    if (Presences.Listening(AppBus.MediaViewer, AppBus.ShowPreview) is null) PreviewUnheard?.Invoke(preview);
                     return;
                 case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Reminders or StateBus.Cutoffs or StateBus.Allowances or StateBus.Locks:
                     // The whole of its kind each time: the latest is kept, so a dashboard connecting gets it after the state.

@@ -57,6 +57,12 @@ public static class AppBus
     /// <see cref="HealthVersion"/>.</summary>
     public const string Health = "health";
 
+    /// <summary>"Show preview set X" (<see cref="ShowPreviewRequest"/>, M.ORCH-T2133): MindAttic.MediaViewer opens the set and comes
+    /// forward. Any process may write it to the inbox, even one with no desktop of its own (a scheduled one-shot, a headless CLI);
+    /// the daemon relays it, and when no <see cref="MediaViewer"/> is present that handles it, starts the viewer on the set itself
+    /// in the owner's session (or, without the viewer installed, opens the set's first media file).</summary>
+    public const string ShowPreview = "show-preview";
+
     /// <summary>The version of the <see cref="Health"/> payload.</summary>
     public const int HealthVersion = 1;
 
@@ -72,8 +78,11 @@ public static class AppBus
     /// <summary>MindAttic.Tickets.Desktop.</summary>
     public const string TicketsDesktop = "tickets-desktop";
 
+    /// <summary>MindAttic.MediaViewer, which shows preview sets (<see cref="ShowPreview"/>).</summary>
+    public const string MediaViewer = "viewer";
+
     /// <summary>Every kind of this bus.</summary>
-    public static bool IsAppKind(string? kind) => kind is Ticket or OpenTicket or ShowWorker or Presence or Activity or AgentState or Health;
+    public static bool IsAppKind(string? kind) => kind is Ticket or OpenTicket or ShowWorker or Presence or Activity or AgentState or Health or ShowPreview;
 }
 
 /// <summary>A session's state in an <see cref="AppBus.Activity"/> message: <see cref="ActivityPayload.State"/>'s values.</summary>
@@ -221,6 +230,23 @@ public sealed record ShowWorkerRequest
     /// <summary>The asking app (<see cref="AppBus.TicketsDesktop"/>).</summary>
     [JsonPropertyName("from")] public string? From { get; init; }
     /// <summary>The app meant to act on it (<see cref="AppBus.OrchestratorDesktop"/>); null for any that can.</summary>
+    [JsonPropertyName("to")] public string? To { get; init; }
+}
+
+/// <summary>The <see cref="AppBus.ShowPreview"/> payload (v1, M.ORCH-T2133).</summary>
+public sealed record ShowPreviewRequest
+{
+    /// <summary>The preview set's folder, a full path.</summary>
+    [JsonPropertyName("set")] public string Set { get; init; } = "";
+    /// <summary>The file in the set to show first, by its name in the folder; null for the viewer's choice.</summary>
+    [JsonPropertyName("select")] public string? Select { get; init; }
+    /// <summary>The ticket the set belongs to, when known.</summary>
+    [JsonPropertyName("ticket")] public string? Ticket { get; init; }
+    /// <summary>The set's title, when known.</summary>
+    [JsonPropertyName("title")] public string? Title { get; init; }
+    /// <summary>The asking app or agent (<c>capture-agent</c>, ...).</summary>
+    [JsonPropertyName("from")] public string? From { get; init; }
+    /// <summary>The app meant to act on it (<see cref="AppBus.MediaViewer"/>); null for any that can.</summary>
     [JsonPropertyName("to")] public string? To { get; init; }
 }
 

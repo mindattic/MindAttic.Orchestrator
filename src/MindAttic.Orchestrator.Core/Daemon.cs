@@ -68,6 +68,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             OwnStore = Status.StateBus.StoreOf(store.Db), StateChanged = waiter.PokeNow,
             // Change-only health alerts (M.ORCH-T2039): each probe report as it lands.
             HealthTaken = r => ReportHealth(r),
+            // A preview set from an agent with no desktop of its own and no media viewer present to take it (M.ORCH-T2133): shown
+            // from here, the owner's session, off the inbox's thread.
+            PreviewUnheard = r => Task.Run(() => Status.ShowPreviewFallback.Show(r)),
         };
         using var inbox = status is null ? null : new Status.StatusInbox { Relay = e => hub!.Take(e) }
             .On(Status.StatusInbox.Poke, _ => waiter.Poke())

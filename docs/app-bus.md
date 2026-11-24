@@ -69,6 +69,7 @@ target app is present and that its `handles` list includes the request kind. If 
 
 - The dashboard sends `{"app":"orchestrator-desktop","handles":["show-worker"]}`.
 - Tickets.Desktop should send `{"app":"tickets-desktop","handles":["open-ticket"]}`.
+- MindAttic.MediaViewer sends `{"app":"viewer","handles":["show-preview"]}`.
 
 ### `open-ticket` (v1): the Orchestrator asks Tickets.Desktop to show a ticket
 
@@ -91,6 +92,57 @@ session and shows it. Failing that, it selects the person whose login works the 
 If no one is working the ticket, its status line says so. Send this only while `orchestrator-desktop` is present and
 handles `show-worker`. Call `AllowSetForegroundWindow(<its pid>)` before sending. Fallback: start
 `MindAttic.Orchestrator.Desktop.exe`, which only brings the dashboard forward.
+
+### `show-preview` (v1): an agent asks MindAttic.MediaViewer to show a preview set (M.ORCH-T2133)
+
+`{"set":"R:\\MindAttic\\Preview\\Gadfly\\2026-11-23T14.05.11_GAD-T725_exam-caption","select":"002_phone.png","ticket":"GAD-T725","title":"Exam caption","from":"capture-agent","to":"viewer"}`
+
+| Field | Meaning |
+|---|---|
+| `set` | Required. The preview set's folder, a full path (the folder of numbered media and `preview.json` that MindAttic.Capture writes). |
+| `select` | Optional. The file to show first, by its name in the set. |
+| `ticket`, `title` | Optional. The set's ticket and title, for the viewer to show. |
+| `from` | Who asks (`capture-agent`, `preview-ability`, ...). |
+| `to` | `viewer`, or empty for any app that handles it. |
+
+Any process may send it, including an agent with no desktop of its own (a scheduled one-shot, a headless CLI): the daemon
+runs in the owner's interactive session and puts the set on the owner's desktop. MindAttic.MediaViewer sends
+`{"app":"viewer","handles":["show-preview"]}` as its presence, and on `show-preview` with `to` `viewer` or empty opens the
+set (selecting `select`) and comes forward.
+
+How the daemon handles it: it relays the line to every subscriber, as any request. Then, when no live `viewer` presence
+handles `show-preview`, it shows the set itself: it starts `C:\Apps\MindAttic.MediaViewer\MindAttic.MediaViewer.exe "<set>"
+[--select <file>]`, and when that isn't installed it opens the set's media file named by `select`, else its first media
+file by name, with the file's default app (Photos). It only ever opens an image, video or audio file. A `to` naming another
+app, a `set` that isn't an existing full path, or a `v` above 1 gets no fallback.
+
+How a client sends it (MindAttic.Capture's PreviewLauncher, the /preview ability):
+
+1. Connect to the inbox pipe `mindattic-orchestrator-status-in-<user>` (local server `.`, `<user>` as above) with a connect
+   timeout of about 100 ms.
+2. Write the envelope as one UTF-8 line ending in `\n`, then close the pipe:
+
+   ```json
+   {"kind":"show-preview","v":1,"at":"2026-11-24T12:00:00Z","pid":1234,"payload":{"set":"R:\\MindAttic\\Preview\\Gadfly\\2026-11-23T14.05.11_GAD-T725_exam-caption","select":"002_phone.png","ticket":"GAD-T725","title":"Exam caption","from":"capture-agent","to":"viewer"}}
+   ```
+
+   In .NET with the contract: `StatusInbox.TrySend(StatusEnvelope.Of(AppBus.ShowPreview, new ShowPreviewRequest { ... }, AppBus.Version))`.
+   In PowerShell:
+
+   ```powershell
+   $user = ($env:USERNAME -replace '[^A-Za-z0-9]', '-')
+   $pipe = [System.IO.Pipes.NamedPipeClientStream]::new('.', "mindattic-orchestrator-status-in-$user", 'Out')
+   $pipe.Connect(100)
+   $line = @{ kind = 'show-preview'; v = 1; at = (Get-Date).ToUniversalTime().ToString('o'); pid = $PID
+              payload = @{ set = $set; select = $select; ticket = $ticket; title = $title; from = 'preview-ability'; to = 'viewer' } } |
+           ConvertTo-Json -Compress
+   $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($line + "`n")
+   $pipe.Write($bytes, 0, $bytes.Length); $pipe.Dispose()
+   ```
+
+3. A client that is itself on the desktop and already subscribes may check the `viewer` presence first and, without it, start
+   the viewer itself. A client that can't connect (no daemon) falls back on its own: start the viewer, else open the first
+   media file, else print the set's path. Once the line is written, the daemon owns showing it; there is no reply.
 
 ### `term-session` (v1): a hosted CLI started, changed or ended (M.ORCH-T925)
 
