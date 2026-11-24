@@ -1790,9 +1790,9 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13948296);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 145818);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 250043);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5081853);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5208371);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 26445811);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12224680);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12736132);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9884876);
 
 -- ticket_costs
@@ -31818,11 +31818,11 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 3.2395,
-      "Unhealthy": 1.2395,
-      "Reason": "p10 of 351 readings is 3.41 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-24T18:42:36.5055107\u002B00:00",
-      "Basis": 351
+      "Degraded": 3.3534999999999995,
+      "Unhealthy": 1.3534999999999995,
+      "Reason": "p10 of 360 readings is 3.53 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-24T18:59:47.9668941\u002B00:00",
+      "Basis": 360
     }
   },
   "Changes": [
@@ -33553,6 +33553,42 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 3.2395,
       "ToUnhealthy": 1.2395,
       "Reason": "p10 of 351 readings is 3.41 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T18:54:20.4194152\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.2395,
+      "FromUnhealthy": 1.2395,
+      "ToDegraded": 3.2775,
+      "ToUnhealthy": 1.2774999999999999,
+      "Reason": "p10 of 360 readings is 3.45 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T18:57:38.8209995\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.2775,
+      "FromUnhealthy": 1.2774999999999999,
+      "ToDegraded": 3.306,
+      "ToUnhealthy": 1.306,
+      "Reason": "p10 of 360 readings is 3.48 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T18:58:36.2781019\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.306,
+      "FromUnhealthy": 1.306,
+      "ToDegraded": 3.3345,
+      "ToUnhealthy": 1.3344999999999998,
+      "Reason": "p10 of 360 readings is 3.51 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T18:59:47.9668941\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.3345,
+      "FromUnhealthy": 1.3344999999999998,
+      "ToDegraded": 3.3534999999999995,
+      "ToUnhealthy": 1.3534999999999995,
+      "Reason": "p10 of 360 readings is 3.53 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -33812,7 +33848,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
-    "Tested": "e1056bea9ef0b4905c8654593cb0a96f22dba203",
+    "Tested": "28f17560d29bc44a719299daf117cc38eabc5f41",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
@@ -36568,7 +36604,30 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|US-T689": "2026-11-24T18:49:21.3205666Z",
     "approval|US-T690": "2026-11-24T18:49:21.3205666Z",
     "approval|UNR-T119": "2026-11-24T18:49:21.3205666Z",
-    "approval|UNR-T120": "2026-11-24T18:49:21.3205666Z"
+    "approval|UNR-T120": "2026-11-24T18:49:21.3205666Z",
+    "approval|GG-T1005": "2026-11-24T18:54:24.589405Z",
+    "approval|GG-T1006": "2026-11-24T18:54:24.589405Z",
+    "approval|GG-T1007": "2026-11-24T18:54:24.589405Z",
+    "approval|GG-T1008": "2026-11-24T18:54:24.589405Z",
+    "approval|M.CAPT-T189": "2026-11-24T18:54:24.589405Z",
+    "approval|M.CAPT-T190": "2026-11-24T18:54:24.589405Z",
+    "approval|M.CAPT-T191": "2026-11-24T18:54:24.589405Z",
+    "approval|M.CAPT-T192": "2026-11-24T18:54:24.589405Z",
+    "approval|M.CAPT-T193": "2026-11-24T18:54:24.589405Z",
+    "approval|M.CAPT-T194": "2026-11-24T18:54:24.589405Z",
+    "approval|M.CAPT-T195": "2026-11-24T18:54:24.589405Z",
+    "approval|M.CAPT-T196": "2026-11-24T18:54:24.589405Z",
+    "approval|M.CAPT-T197": "2026-11-24T18:54:24.589405Z",
+    "approval|US-T691": "2026-11-24T18:54:24.589405Z",
+    "approval|US-T692": "2026-11-24T18:54:24.589405Z",
+    "approval|US-T693": "2026-11-24T18:54:24.589405Z",
+    "approval|US-T694": "2026-11-24T18:54:24.589405Z",
+    "approval|US-T695": "2026-11-24T18:54:24.589405Z",
+    "approval|U.SPC-T643": "2026-11-24T18:54:24.589405Z",
+    "approval|UNR-T121": "2026-11-24T18:54:24.589405Z",
+    "approval|UNR-T122": "2026-11-24T18:54:24.589405Z",
+    "approval|UNR-T123": "2026-11-24T18:54:24.589405Z",
+    "approval|UNR-T124": "2026-11-24T18:54:24.589405Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
