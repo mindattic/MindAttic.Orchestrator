@@ -1787,9 +1787,9 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13948296);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 145818);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 250043);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4540558);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 23561494);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5976998);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4571461);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 23802113);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6103567);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9884876);
 
 -- ticket_costs
@@ -5276,7 +5276,7 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (59, 'GG-T926', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T15:07:47.5821408Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (60, 'GG-T892', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T15:14:57.4043931Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (61, 'GG-T872', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T15:14:57.4043931Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (62, 'GG-T951', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T15:14:57.4043931Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (62, 'GG-T997', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-24T15:31:31.9108329Z', 1, NULL, NULL, NULL, 32860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
 
 -- organizations
 
@@ -31823,9 +31823,9 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
     "RamFreeGb": {
       "Degraded": 2.7169999999999996,
       "Unhealthy": 1,
-      "Reason": "p10 of 111 readings is 2.86 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-24T15:18:56.5958491\u002B00:00",
-      "Basis": 111
+      "Reason": "p10 of 125 readings is 2.86 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-24T15:28:48.0064361\u002B00:00",
+      "Basis": 125
     }
   },
   "Changes": [
@@ -33322,6 +33322,24 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 2.7169999999999996,
       "ToUnhealthy": 1,
       "Reason": "p10 of 111 readings is 2.86 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T15:25:50.3834847\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.7169999999999996,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.7929999999999997,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 121 readings is 2.94 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T15:28:48.0064361\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.7929999999999997,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.7169999999999996,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 125 readings is 2.86 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -33581,7 +33599,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
-    "Tested": "7bcd4dd954a3b303ccabd306dd02a1ce6fa5cd62",
+    "Tested": "54a1ccdea5f589283530cf275a676d0dbfa47c04",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
