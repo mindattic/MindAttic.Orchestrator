@@ -429,7 +429,7 @@
                                         Visibility="{Binding ShowsLockedBadge, Converter={StaticResource Visible}}" />
                             <TextBlock x:Name="TabDisabledIcon" Text="{Binding TabDisabledGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                                        Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
-                                       Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
+                                       Visibility="{Binding ShowsDisabledIcon, Converter={StaticResource Visible}}" />
                         </Grid>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="{Binding TabFaceTitle}" FontWeight="SemiBold" />
@@ -539,7 +539,7 @@
                                                Visibility="{Binding IsTabDisabled, Converter={x:Static vm:Converters.FalseToVisible}}" />
                                     <TextBlock Text="{Binding TabDisabledGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                                                Foreground="{DynamicResource MaMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
-                                               Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
+                                               Visibility="{Binding ShowsDisabledIcon, Converter={StaticResource Visible}}" />
                                     <!-- Locked (M.ORCH-T2119): the same boxed red lock as the flat strip's TabLockedBadge, over this
                                          login's own person/disabled glyph above, distinct from the small past-cutoff lock glyph
                                          (TabDisabledGlyph, M.ORCH-T1254). -->

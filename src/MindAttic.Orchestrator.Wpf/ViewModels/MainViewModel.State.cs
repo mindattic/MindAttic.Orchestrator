@@ -1,3 +1,4 @@
+using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Reminders;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Status;
@@ -42,6 +43,12 @@ public sealed partial class MainViewModel
                 ApplyReminders(now);
                 foreach (var t in LoginTabs)
                     if (!ReferenceEquals(t, this)) t.ApplyReminders(now);
+                return false;
+            case LoginLocksPayload:
+                // A lock set or cleared by a CLI, its auto-lock or another dashboard: shown now, not after the cache runs out.
+                LoginLocks.InvalidateLiveCache();
+                foreach (var t in loginTabs) t.RaiseTabStatus();
+                System.Windows.Input.CommandManager.InvalidateRequerySuggested();
                 return false;
             case SettingsPayload:
                 // Settings are edited in MindAttic.Vault.Desktop now (LAMP, M.ORCH-T1308); what reads them is applied again.

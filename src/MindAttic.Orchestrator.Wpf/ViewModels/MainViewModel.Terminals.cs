@@ -24,7 +24,7 @@ public sealed partial class MainViewModel
     {
         if (root is null)
         {
-            AllTerminals = new TerminalsViewModel();
+            AllTerminals = new TerminalsViewModel { GlobalLogin = () => workspace?.GlobalEmail };
             AllTerminals.Opened += ShowPane;
             AllTerminals.LoginsChanged += SyncTerminals;
             AllTerminals.CloseFailed += (_, why) => Toasts.Insert(0, new ToastViewModel("CLI not ended", why, Palette.Over, null));

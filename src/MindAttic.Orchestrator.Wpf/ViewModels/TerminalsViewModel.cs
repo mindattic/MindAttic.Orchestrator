@@ -1004,6 +1004,10 @@ public sealed class TerminalsViewModel : ObservableObject
     /// set. Tests replace it.</summary>
     internal Func<IReadOnlySet<string>> LockedLogins { get; init; } = LoginLocks.LiveLocked;
 
+    /// <summary>The global login's email, for <see cref="Open"/>'s lock guard on a request with no login of its own; null
+    /// while it isn't known.</summary>
+    internal Func<string?> GlobalLogin { get; set; } = () => null;
+
     /// <summary>After a failed launch, how long to look for its host having started anyway (to adopt it), and how long after
     /// falling back to keep watching for it (to end it) (M.ORCH-T971).</summary>
     internal TimeSpan OrphanWait { get; init; } = TimeSpan.FromSeconds(3);
@@ -1173,7 +1177,7 @@ public sealed class TerminalsViewModel : ObservableObject
         if (request.Problem() is { } problem) return problem;
         // Locked (M.ORCH-T2125, catch-all): a locked login can't open a new CLI, Launcher menu included -- only reattach to
         // one already running (Reattach/Resume never call this) or keep one already open.
-        if (request.Login is { Length: > 0 } login && LockedLogins().Contains(login))
+        if (AccountDirs.Normalize(request.Login is { Length: > 0 } own ? own : GlobalLogin()) is { } login && LockedLogins().Contains(login))
             return $"{login} is locked: it can't open a CLI until it's unlocked again.";
         request = request with { Order = Interlocked.Increment(ref nextOrder) };
         var hosted = false;

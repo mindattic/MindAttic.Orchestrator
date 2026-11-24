@@ -812,6 +812,25 @@ public sealed class TerminalPanesTests
         terminals.Close(pane);
     }
 
+    /// <summary>M.ORCH-T2141: the guard covers the global login (a request with no login of its own) and compares emails
+    /// normalized, whatever case the folder or the global email is spelled in.</summary>
+    [Test, Apartment(ApartmentState.STA)]
+    public void The_lock_guard_covers_the_global_login_and_ignores_case()
+    {
+        var terminals = new TerminalsViewModel
+        {
+            HostAvailable = () => false,
+            LockedLogins = () => new HashSet<string> { "amy@example.com" },
+            GlobalLogin = () => "Amy@Example.com",
+        };
+
+        Assert.That(terminals.Open(new PaneRequest("Repo [Claude]", temp.New()) { Command = ["cmd.exe"] }),
+            Does.Contain("amy@example.com").And.Contain("locked"), "the global login's own request is guarded too");
+        Assert.That(terminals.Open(new PaneRequest("AM: Repo [Claude]", temp.New())
+            { Command = ["cmd.exe"], ConfigDir = @"C:\a\.claude-accounts\AMY@example.com" }), Does.Contain("locked"), "matched case-insensitively");
+        Assert.That(terminals.Panes, Is.Empty, "never opened");
+    }
+
     [Test, Apartment(ApartmentState.STA)]
     public void A_live_session_is_reattached_once_on_its_login_s_page_and_a_bus_message_marks_it_ended()
     {

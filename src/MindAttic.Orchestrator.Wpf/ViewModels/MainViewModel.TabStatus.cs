@@ -312,6 +312,10 @@ public sealed partial class MainViewModel
     /// cutoff.</summary>
     public bool ShowsLockedBadge => IsTabLocked;
 
+    /// <summary>Whether the disabled icon (<see cref="TabDisabledGlyph"/>) shows: only while <see cref="ShowsLockedBadge"/>
+    /// doesn't, so the two never draw over each other.</summary>
+    public bool ShowsDisabledIcon => IsTabDisabled && !IsTabLocked;
+
     /// <summary>"Locked (by you)"/"Locked at its weekly cutoff" (M.ORCH-T2119), for <see cref="TabActivityWord"/>; null
     /// unlocked, so that falls through to its usual wording.</summary>
     internal static string? LockedWordOf(LoginLock? ownLock) => ownLock switch
@@ -593,7 +597,7 @@ public sealed partial class MainViewModel
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(WrongAccountLine), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabUsageLine), nameof(TabTip), nameof(TabHoverTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge),
-                                     nameof(IsTabLocked), nameof(ShowsLockedBadge), nameof(TabActivityWord),
+                                     nameof(IsTabLocked), nameof(ShowsLockedBadge), nameof(ShowsDisabledIcon), nameof(TabActivityWord),
                                      nameof(TabCliCount), nameof(TabThinkingCount), nameof(ShowsTabThinkingCount), nameof(TabThinkingCountText), nameof(TabThinkingWord),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(TabFaceTitle), nameof(ApiSpendFace), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),

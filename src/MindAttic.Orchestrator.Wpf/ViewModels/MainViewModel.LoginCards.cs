@@ -141,7 +141,8 @@ public sealed partial class MainViewModel
         await RefreshAsync();
     });
 
-    /// <summary>Defaults: puts the dialog's cutoffs back to 90% of the week and 96% of the 5-hour window, for Save to keep.</summary>
+    /// <summary>Defaults: puts the dialog's cutoffs back to <see cref="UsageCutoffs.DefaultWeeklyPercent"/> of the week and
+    /// <see cref="UsageCutoffs.DefaultFiveHourPercent"/> of the 5-hour window, for Save to keep.</summary>
     public ICommand ResetLimitCommand => resetLimitCommand ??= new RelayCommand(() =>
     {
         LimitWeekly = UsageCutoffs.DefaultWeeklyPercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -449,14 +450,17 @@ public sealed partial class MainViewModel
     /// the API key tab, or while the global login isn't known here yet.</summary>
     private string? LockEmail => ScopeEmail ?? Root.workspace?.GlobalEmail;
 
-    /// <summary>Whether <paramref name="email"/> counts as locked for the menu: never the API key, read live off
-    /// <see cref="LoginLocks"/> so a lock set or cleared elsewhere (another dashboard, a CLI's own auto-lock, M.ORCH-T2123)
-    /// shows up without waiting for a restart. What <see cref="IsLoginLocked"/> calls with this tab's own state.</summary>
-    internal static bool IsLocked(JsonStore store, string? email, bool isApiKeyTab) =>
-        !isApiKeyTab && email is { Length: > 0 } && LoginLocks.IsLocked(LoginLocks.Load(store), email);
+    /// <summary>Whether <paramref name="email"/> counts as locked for the menu: never the API key. Gated first by
+    /// <paramref name="liveLocked"/> (<see cref="LoginLocks.LiveLocked"/>'s cached set, like <c>OwnLock</c>), so the common
+    /// unlocked login never reads the lock book; only one that set names is confirmed against <paramref name="store"/>. With
+    /// no set, the store is read directly. What <see cref="IsLoginLocked"/> calls with this tab's own state.</summary>
+    internal static bool IsLocked(JsonStore store, string? email, bool isApiKeyTab, IReadOnlySet<string>? liveLocked = null) =>
+        !isApiKeyTab && AccountDirs.Normalize(email) is { } normalized
+        && (liveLocked is null || liveLocked.Contains(normalized))
+        && LoginLocks.IsLocked(LoginLocks.Load(store), normalized);
 
     /// <summary>Whether this tab's login is locked (M.ORCH-T2108): false for the API key tab.</summary>
-    internal bool IsLoginLocked => IsLocked(store, LockEmail, IsApiKeyTab);
+    internal bool IsLoginLocked => IsLocked(store, LockEmail, IsApiKeyTab, LoginLocks.LiveLocked());
 
     /// <summary>
     /// "Lock"/"Unlock" (M.ORCH-T2118), on every real login's right-click menu (never the API key's): a locked login can't
@@ -467,23 +471,25 @@ public sealed partial class MainViewModel
     public ICommand ToggleLockCommand => toggleLockCommand ??= new RelayCommand(async () =>
     {
         if (IsApiKeyTab || LockEmail is not { } email) return;
-        var existing = LoginLocks.For(LoginLocks.Load(store), email);
-        if (existing is { Reason: LoginLocks.ReasonWeeklyCutoff })
-        {
-            var percent = WeekUsed is { } used ? $"{used:0}%" : "an unknown amount";
-            if (MindAttic.Components.Wpf.Controls.MaMessageBox.Show(System.Windows.Application.Current?.MainWindow,
-                    $"Unlock {TabTitle} ({email})?\n\nIt was locked at its own weekly cutoff, and it's currently at {percent} of its week used. " +
-                    "Unlocking it now lets it take work again before its weekly reset, even past that cutoff.",
-                    "Unlock login?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning,
-                    System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes) return;
-        }
         var root = Root;
-        var locking = existing is null;
+        var locking = true;
         // async void: the DB read and anything thrown below must stay inside the try, or it crashes the app (M.ORCH-T1970).
         try
         {
+            var existing = LoginLocks.For(LoginLocks.Load(store), email);
+            if (existing is { Reason: LoginLocks.ReasonWeeklyCutoff })
+            {
+                var percent = WeekUsed is { } used ? $"{used:0}%" : "an unknown amount";
+                if (MindAttic.Components.Wpf.Controls.MaMessageBox.Show(System.Windows.Application.Current?.MainWindow,
+                        $"Unlock {TabTitle} ({email})?\n\nIt was locked at its own weekly cutoff, and it's currently at {percent} of its week used. " +
+                        "Unlocking it lets it open a CLI and take work again, but its weekly cutoff still stops its pace until its weekly reset unless it's allowed past it (org allow).",
+                        "Unlock login?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning,
+                        System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes) return;
+            }
+            locking = existing is null;
             if (locking) await Task.Run(() => LoginLocks.Lock(store, email, TabTitle, LoginLocks.ReasonManual, "you", null, DateTime.UtcNow));
             else { var reset = WeekReset; await Task.Run(() => LoginLocks.Unlock(store, email, TabTitle, "you", DateTime.UtcNow, reset)); }
+            LoginLocks.InvalidateLiveCache();
             AccountsMessage = locking
                 ? $"{email} is locked: it can't open a CLI or take dispatched or moved work until it's unlocked again."
                 : $"{email} is unlocked again.";

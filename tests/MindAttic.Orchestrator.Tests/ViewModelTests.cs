@@ -136,6 +136,25 @@ public sealed class ViewModelTests
         finally { temps.DeleteAll(); }
     }
 
+    [Test]
+    public void Is_locked_is_gated_by_the_live_locked_set_before_the_lock_book()
+    {
+        // M.ORCH-T2141: IsLoginLocked passes LoginLocks.LiveLocked's cached set, so an unlocked login never reads the book.
+        const string erin = "ohleo199@mindattic.com";
+        var temps = new TempDirs();
+        try
+        {
+            var store = new JsonStore(temps.New());
+            LoginLocks.Lock(store, erin, "Erin", LoginLocks.ReasonManual, "you", null, DateTime.UtcNow);
+            Assert.That(MainViewModel.IsLocked(store, erin, isApiKeyTab: false, new HashSet<string>()), Is.False, "the live set doesn't name it: not locked");
+            Assert.That(MainViewModel.IsLocked(store, "OHLEO199@MindAttic.com", isApiKeyTab: false, new HashSet<string> { erin }), Is.True, "named, and confirmed by the book");
+
+            LoginLocks.Unlock(store, erin, "Erin", "you", DateTime.UtcNow);
+            Assert.That(MainViewModel.IsLocked(store, erin, isApiKeyTab: false, new HashSet<string> { erin }), Is.False, "a stale set is confirmed against the book");
+        }
+        finally { temps.DeleteAll(); }
+    }
+
     /// <summary>M.ORCH-T2125: EligibleForGeneralPrompt (MainViewModel.Tabs.cs), the Launcher auto-open/respawn's "wanted"
     /// filter and RunLauncherCommand's CanExecute each add a locked check (IsLoginLocked, the same MainViewModel.IsLocked
     /// just exercised above) alongside their existing signed-in/disabled ones, so a locked login never gets a new General
