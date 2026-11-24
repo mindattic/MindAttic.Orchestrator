@@ -95,7 +95,7 @@ handles `show-worker`. Call `AllowSetForegroundWindow(<its pid>)` before sending
 
 ### `show-preview` (v1): an agent asks MindAttic.Media.Viewer to show a preview set (M.ORCH-T2133)
 
-`{"set":"R:\\MindAttic\\Preview\\Gadfly\\2026-11-23T14.05.11_GAD-T725_exam-caption","select":"002_phone.png","ticket":"GAD-T725","title":"Exam caption","from":"capture-agent","to":"viewer"}`
+`{"set":"R:\\MindAttic\\Media\\Preview\\Gadfly\\2026-11-23T14.05.11_GAD-T725_exam-caption","select":"002_phone.png","ticket":"GAD-T725","title":"Exam caption","from":"capture-agent","to":"viewer"}`
 
 | Field | Meaning |
 |---|---|
@@ -123,7 +123,7 @@ How a client sends it (MindAttic.Media.Capture's PreviewLauncher, the /preview a
 2. Write the envelope as one UTF-8 line ending in `\n`, then close the pipe:
 
    ```json
-   {"kind":"show-preview","v":1,"at":"2026-11-24T12:00:00Z","pid":1234,"payload":{"set":"R:\\MindAttic\\Preview\\Gadfly\\2026-11-23T14.05.11_GAD-T725_exam-caption","select":"002_phone.png","ticket":"GAD-T725","title":"Exam caption","from":"capture-agent","to":"viewer"}}
+   {"kind":"show-preview","v":1,"at":"2026-11-24T12:00:00Z","pid":1234,"payload":{"set":"R:\\MindAttic\\Media\\Preview\\Gadfly\\2026-11-23T14.05.11_GAD-T725_exam-caption","select":"002_phone.png","ticket":"GAD-T725","title":"Exam caption","from":"capture-agent","to":"viewer"}}
    ```
 
    In .NET with the contract: `StatusInbox.TrySend(StatusEnvelope.Of(AppBus.ShowPreview, new ShowPreviewRequest { ... }, AppBus.Version))`.
