@@ -354,7 +354,7 @@ internal sealed class MachineStartCommand : AsyncCommand<MachineStartCommand.Set
         // A locked login (M.ORCH-T2122, M.ORCH-T2124) never opens here either: checked locally, before the host is even asked,
         // naming the lock the same way --account and org start do.
         var login = settings.Login is not null ? AccountDirs.Normalize(settings.Login)
-            : AccountDirs.Normalize(MachineRole.Current.Member) ?? AccountDirs.Normalize(LoginLook.GlobalEmail(new AccountDirs()));
+            : AccountDirs.Normalize(MachineRole.Current.Member) ?? AccountDirs.Normalize(LoginLook.GlobalEmail(LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs()));
         if (settings.Login is not null && login is null)
         {
             AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(settings.Login)}\" isn't a login's email.[/]");

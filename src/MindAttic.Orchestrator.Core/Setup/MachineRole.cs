@@ -58,7 +58,10 @@ public sealed record MachineRole
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", "MindAttic.Orchestrator");
 
     /// <summary>The role file, <c>machine.json</c> in <see cref="Directory"/>.</summary>
-    public static string FilePath => Path.Combine(Directory, "machine.json");
+    public static string FilePath => FilePathOverride ?? Path.Combine(Directory, "machine.json");
+
+    /// <summary>Tests point <see cref="FilePath"/> at a temp file (call <see cref="Refresh"/> after setting it).</summary>
+    internal static string? FilePathOverride { get; set; }
 
     /// <summary>A client's own copy of the orchestrator database, off the git checkout.</summary>
     public static string ClientOrchestratorDb => Path.Combine(Directory, "client", "orchestrator.db");

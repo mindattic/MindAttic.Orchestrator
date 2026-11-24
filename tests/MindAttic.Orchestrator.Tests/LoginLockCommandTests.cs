@@ -1,5 +1,7 @@
 using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
+using MindAttic.Orchestrator.Setup;
 using NUnit.Framework;
 using Spectre.Console;
 
@@ -163,6 +165,50 @@ public sealed class LoginLockCommandTests
             Assert.That(said, Does.Contain($"{Erin} is locked (manual since").And.Contain($"orchestrator org unlock {Erin}"));
         }
         finally { Ctx.StoreDirectory = previousStore; }
+    }
+
+    /// <summary>Runs <c>machine start SomeRepo</c> with no --login against a temp store, a temp machine.json holding
+    /// <paramref name="member"/> and a temp global login signed in as <paramref name="globalEmail"/>, with <paramref name="locked"/> locked.</summary>
+    private string MachineStartWithoutLogin(out int exit, string? member, string globalEmail, string locked)
+    {
+        var previousStore = Ctx.StoreDirectory;
+        var storeDir = temps.New();
+        Ctx.StoreDirectory = storeDir;
+        var home = temps.New();
+        var homeConfig = Path.Combine(home, ".claude.json");
+        File.WriteAllText(homeConfig, System.Text.Json.JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "global", emailAddress = globalEmail } }));
+        var machineFile = Path.Combine(temps.New(), "machine.json");
+        new MachineRole { Role = MachineRoleKind.Client, Member = member }.Save(machineFile);
+        MachineRole.FilePathOverride = machineFile;
+        MachineRole.Refresh();
+        LoginCommand.DirsOverride = () => new AccountDirs(Path.Combine(home, ".claude-accounts"), Path.Combine(home, ".claude"), homeConfig);
+        LoginLocks.Lock(new JsonStore(storeDir), locked, "Locked", LoginLocks.ReasonManual, "you", null, Now);
+        try { return Cli(out exit, "machine", "start", "SomeRepo"); }
+        finally
+        {
+            Ctx.StoreDirectory = previousStore;
+            MachineRole.FilePathOverride = null;
+            MachineRole.Refresh();
+            LoginCommand.DirsOverride = null;
+        }
+    }
+
+    [Test, NonParallelizable] // Ctx.StoreDirectory, MachineRole's file and LoginCommand.DirsOverride are process-wide
+    public void Machine_start_without_login_refuses_the_members_own_locked_email_not_the_global_one()
+    {
+        // M.ORCH-T2142: with a member set on the saved connection, its email is checked, not the PC's global login.
+        var said = MachineStartWithoutLogin(out var exit, member: Erin, globalEmail: "honey@mindattic.com", locked: Erin);
+        Assert.That(exit, Is.EqualTo(1), said);
+        Assert.That(said, Does.Contain($"{Erin} is locked (manual since").And.Contain($"orchestrator org unlock {Erin}"));
+    }
+
+    [Test, NonParallelizable] // Ctx.StoreDirectory, MachineRole's file and LoginCommand.DirsOverride are process-wide
+    public void Machine_start_without_login_or_member_checks_the_global_login()
+    {
+        const string Global = "honey@mindattic.com";
+        var said = MachineStartWithoutLogin(out var exit, member: null, globalEmail: Global, locked: Global);
+        Assert.That(exit, Is.EqualTo(1), said);
+        Assert.That(said, Does.Contain($"{Global} is locked (manual since").And.Contain($"orchestrator org unlock {Global}"));
     }
 
     [Test, NonParallelizable] // Ctx.StoreDirectory and the org overrides are process-wide
