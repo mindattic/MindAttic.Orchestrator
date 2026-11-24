@@ -20,7 +20,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
 {
     /// <summary>The font EasyTerminalControl set with its theme.</summary>
     public const string FontFamilyName = "Cascadia Code";
-    /// <summary>The font size points constant.</summary>
+    /// <summary>The font size, in points, a new terminal starts at.</summary>
     public const short FontSizePoints = 12;
 
     private string? pipeName;
@@ -40,7 +40,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
     private readonly Grid grid = new();
     private System.Windows.Threading.DispatcherTimer? releaseTimer;
 
-    /// <summary>Creates the relay terminal.</summary>
+    /// <summary>A terminal in <paramref name="theme"/>, with its renderer made; it attaches once <see cref="Attach"/> is called.</summary>
     public RelayTerminal(TerminalTheme theme)
     {
         Theme = theme;
@@ -190,7 +190,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
     /// renderer whose window is gone is a native access violation (M.ORCH-T1613).</summary>
     public string? ReadSelection() => TerminalWindows.AreLive(Terminal) ? Terminal.GetSelectedText() : null;
 
-    /// <summary>The theme.</summary>
+    /// <summary>The colour scheme every renderer this terminal makes is drawn in.</summary>
     public TerminalTheme Theme { get; }
 
     /// <summary>The renderer: its selection is what copy and cut take (T866/T867). A tab hidden long enough releases it and makes

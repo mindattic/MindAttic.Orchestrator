@@ -33,25 +33,25 @@ public sealed record TermBroadcastSettings
     /// <summary>"Share my sessions": every session is shared unless it says otherwise. Off by default.</summary>
     [JsonPropertyName("shareAll")] public bool ShareAll { get; init; }
 
-    /// <summary>Every session's broadcast is paused.</summary>
+    /// <summary>"Pause all": every session's remote broadcast is paused, whatever its own entry says. Off by default.</summary>
     [JsonPropertyName("pauseAll")] public bool PauseAll { get; init; }
 
     /// <summary>When every session was last paused at once (see <see cref="TermBroadcastSession.LastPausedUtc"/>).</summary>
     [JsonPropertyName("lastPauseAllUtc")] public DateTime? LastPauseAllUtc { get; init; }
 
-    /// <summary>Per session, by id (lower case).</summary>
+    /// <summary>Each session's own choices, keyed by its id in lower case; a session with no entry follows the defaults.</summary>
     [JsonPropertyName("sessions")] public Dictionary<string, TermBroadcastSession> Sessions { get; init; } = [];
 
-    /// <summary>Of.</summary>
+    /// <summary>The entry for session <paramref name="id"/> (any case); null when it has none.</summary>
     public TermBroadcastSession? Of(string id) => Sessions.GetValueOrDefault(Key(id));
 
-    /// <summary>Whether shared.</summary>
+    /// <summary>Whether session <paramref name="id"/> goes out to remote viewers: its own choice, else <see cref="ShareAll"/>.</summary>
     public bool IsShared(string id) => Of(id)?.Shared ?? ShareAll;
 
-    /// <summary>Whether paused.</summary>
+    /// <summary>Whether session <paramref name="id"/>'s broadcast is paused, alone or by <see cref="PauseAll"/>.</summary>
     public bool IsPaused(string id) => PauseAll || Of(id)?.Paused == true;
 
-    /// <summary>Whether masked.</summary>
+    /// <summary>Whether session <paramref name="id"/>'s remote streams are masked; true for a session with no entry.</summary>
     public bool IsMasked(string id) => Of(id)?.Masked ?? true;
 
     /// <summary>Whether a remote attach to the session started at <paramref name="startedUtc"/> gets its history: not once it has
@@ -66,10 +66,10 @@ public sealed record TermBroadcastSettings
         return this with { Sessions = sessions };
     }
 
-    /// <summary>Share.</summary>
+    /// <summary>A copy with session <paramref name="id"/> shared or unshared.</summary>
     public TermBroadcastSettings Share(string id, bool shared) => WithSession(id, s => s with { Shared = shared });
 
-    /// <summary>Mask.</summary>
+    /// <summary>A copy with masking turned on or off for session <paramref name="id"/>.</summary>
     public TermBroadcastSettings Mask(string id, bool masked) => WithSession(id, s => s with { Masked = masked });
 
     /// <summary>Pause. Resuming a session that was never individually paused (<c>s.Paused</c> false - it may still be under
@@ -101,10 +101,10 @@ public sealed record TermBroadcastSettings
 /// <summary>Reads and writes <see cref="TermBroadcastSettings"/> (M.ORCH-T935). Nothing here throws on an I/O failure.</summary>
 public static class TermBroadcast
 {
-    /// <summary>The file name constant.</summary>
+    /// <summary>The settings file's name, in the gateway's folder.</summary>
     public const string FileName = "broadcast.json";
 
-    /// <summary>Path in.</summary>
+    /// <summary>The settings file's full path in <paramref name="directory"/>, or in <see cref="TermGateway.DefaultDirectory"/> when null.</summary>
     public static string PathIn(string? directory = null) => Path.Combine(directory ?? TermGateway.DefaultDirectory, FileName);
 
     private static readonly JsonSerializerOptions Json = new()

@@ -32,7 +32,7 @@ public static partial class RelayInput
         return Win32Key(vk, MapVirtualKey((uint)vk, 0), shift);
     }
 
-    /// <summary>Ctrl+V or Shift+Insert.</summary>
+    /// <summary>Whether <paramref name="key"/> with <paramref name="modifiers"/> is a paste: Ctrl+V or Shift+Insert.</summary>
     public static bool IsPasteChord(Key key, ModifierKeys modifiers) =>
         (key == Key.V && modifiers == ModifierKeys.Control) || (key == Key.Insert && modifiers == ModifierKeys.Shift);
 
@@ -81,6 +81,6 @@ public static class TerminalThemes
         ],
     };
 
-    /// <summary>"#RRGGBB" as a Win32 COLORREF.</summary>
+    /// <summary>An 0xRRGGBB colour as a Win32 COLORREF (0x00BBGGRR).</summary>
     public static uint Ref(int rgb) => (uint)(((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF));
 }

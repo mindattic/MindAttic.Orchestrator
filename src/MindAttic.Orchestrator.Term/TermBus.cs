@@ -15,7 +15,7 @@ namespace MindAttic.Orchestrator.Term;
 /// </summary>
 public static class TermBus
 {
-    /// <summary>The bus kind.</summary>
+    /// <summary>The bus message kind a session's start, change and end travel under.</summary>
     public const string Kind = "term-session";
 
     /// <summary>The payload version (<see cref="TermSessionEvent"/>).</summary>

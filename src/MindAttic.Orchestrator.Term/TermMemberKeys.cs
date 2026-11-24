@@ -30,7 +30,7 @@ public sealed record TermMemberKey
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? WindowsUser { get; init; }
 
-    /// <summary>Whether it still mints tokens.</summary>
+    /// <summary>Whether it still mints tokens: true until it is revoked.</summary>
     [JsonIgnore] public bool IsLive => RevokedUtc is null;
 }
 

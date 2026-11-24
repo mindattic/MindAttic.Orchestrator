@@ -97,7 +97,7 @@ internal sealed class SigningKeyFile
         checkedUtc = DateTime.UtcNow;
     }
 
-    /// <summary>The key now.</summary>
+    /// <summary>The signing key now: reread when the file's write time changes (checked at most every <see cref="Recheck"/>), remade when it is gone.</summary>
     public byte[] Current
     {
         get

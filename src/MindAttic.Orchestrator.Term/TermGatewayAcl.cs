@@ -72,10 +72,10 @@ public sealed record TermGatewayAuditRecord
     /// <summary>The id of the session it concerns.</summary>
     [JsonPropertyName("session")] public string Session { get; init; } = "";
 
-    /// <summary>watch, interact, or none for a refusal.</summary>
+    /// <summary>The access level: <c>watch</c>, <c>interact</c>, or <c>none</c> for a refusal.</summary>
     [JsonPropertyName("level")] public string Level { get; init; } = "";
 
-    /// <summary>The viewer's address.</summary>
+    /// <summary>The viewer's remote address; null when it isn't known.</summary>
     [JsonPropertyName("remote")] public string? Remote { get; init; }
 
     /// <summary>Input frames (an input record) or frames up (a detach).</summary>
@@ -96,7 +96,7 @@ public sealed record TermGatewayAuditRecord
 /// </summary>
 public static class TermGatewayAudit
 {
-    /// <summary>The constants attach, detach, input, refused.</summary>
+    /// <summary>Audit events: a viewer attached, detached, typed, or was refused.</summary>
     public const string Attach = "attach", Detach = "detach", Input = "input", Refused = "refused";
 
     /// <summary>A tickets command a member ran on the host through <c>POST /tickets</c> (hub phase 1, M.ORCH-T1640): its verb in
@@ -106,14 +106,14 @@ public static class TermGatewayAudit
     /// <summary>Hub phase 2 (M.ORCH-T1641): a CLI started or stopped through the gateway, and a consent asked for or answered.</summary>
     public const string Start = "start", Stop = "stop", Consent = "consent";
 
-    /// <summary>The constants acl file, spool file.</summary>
+    /// <summary>The ACL snapshot's and the audit spool's file names, in the gateway's folder.</summary>
     public const string AclFile = "acl.json", SpoolFile = "audit.jsonl";
     private const string DrainingSuffix = ".draining";
 
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
     private static readonly object AppendGate = new();
 
-    /// <summary>Acl path.</summary>
+    /// <summary>The ACL snapshot's full path in <paramref name="directory"/>, or in <see cref="TermGateway.DefaultDirectory"/> when null.</summary>
     public static string AclPath(string? directory = null) => Path.Combine(directory ?? TermGateway.DefaultDirectory, AclFile);
 
     /// <summary>Writes the snapshot atomically when its text changed; true when it wrote.</summary>

@@ -115,10 +115,10 @@ public static class TermSessionEvents
 /// <see cref="Event"/>.</summary>
 public sealed record TermSessionEvent : TermSessionRecord
 {
-    /// <summary>Creates the term session event.</summary>
+    /// <summary>An empty event, for the JSON reader to fill.</summary>
     public TermSessionEvent() { }
 
-    /// <summary>Creates the term session event.</summary>
+    /// <summary>The event <paramref name="sessionEvent"/> carrying a copy of <paramref name="session"/>'s record.</summary>
     public TermSessionEvent(TermSessionRecord session, string sessionEvent) : base(session) => Event = sessionEvent;
 
     /// <summary><see cref="TermSessionEvents.Started"/>, <see cref="TermSessionEvents.Changed"/>, <see cref="TermSessionEvents.Ended"/>,

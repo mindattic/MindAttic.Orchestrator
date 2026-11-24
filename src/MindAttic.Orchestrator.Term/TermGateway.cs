@@ -17,7 +17,7 @@ public sealed record TermGatewayStatus
     /// <summary>When the gateway process started (UTC), to tell it from a reused pid (<see cref="TermSessions.HostStartOf"/>).</summary>
     [JsonPropertyName("processStartUtc")] public DateTime ProcessStartUtc { get; init; }
 
-    /// <summary>The address and port Kestrel listens on.</summary>
+    /// <summary>The IP address Kestrel listens on (<c>--bind</c>, 127.0.0.1 by default).</summary>
     [JsonPropertyName("bind")] public string Bind { get; init; } = "";
     /// <summary>The port Kestrel listens on.</summary>
     [JsonPropertyName("port")] public int Port { get; init; }
@@ -43,7 +43,7 @@ public sealed record TermGatewayStatus
 /// <summary>The gateway's files and its status (M.ORCH-T933). Nothing here throws on an I/O failure.</summary>
 public static class TermGateway
 {
-    /// <summary>The executable's name.</summary>
+    /// <summary>The gateway executable's file name, in each install folder.</summary>
     public const string ExeName = "MindAttic.Orchestrator.Gateway.exe";
 
     /// <summary>Overrides where the daemon looks for the gateway (a dev build).</summary>
@@ -56,14 +56,14 @@ public static class TermGateway
     /// <summary>Set to 1 in the environment of a gateway the daemon starts.</summary>
     public const string ManagedVariable = "MINDATTIC_GATEWAY_MANAGED";
 
-    /// <summary>The default port.</summary>
+    /// <summary>The port the gateway listens on unless <c>--port</c> says otherwise.</summary>
     public const int DefaultPort = 7443;
 
     /// <summary><c>%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\gateway</c>: the status, the keys, the dev certificate and the log.</summary>
     public static string DefaultDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", "MindAttic.Orchestrator", "gateway");
 
-    /// <summary>Status path.</summary>
+    /// <summary>The path of <c>gateway.json</c> in <paramref name="directory"/>, or in <see cref="DefaultDirectory"/> when null.</summary>
     public static string StatusPath(string? directory = null) => Path.Combine(directory ?? DefaultDirectory, "gateway.json");
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };

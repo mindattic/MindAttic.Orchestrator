@@ -74,7 +74,7 @@ public enum TermFrameKind : byte
 [Flags]
 public enum TermHelloFlags : byte
 {
-    /// <summary>The none value.</summary>
+    /// <summary>No flags: a read-only viewer.</summary>
     None = 0,
     /// <summary>The viewer may type and own the size; without it the host drops its Input, Resize and TakeSize frames.</summary>
     Interactive = 1,
@@ -87,17 +87,17 @@ public sealed record TermHello(ushort Protocol, ushort Cols, ushort Rows, bool I
 [Flags]
 public enum TermModes : uint
 {
-    /// <summary>The none value.</summary>
+    /// <summary>No mode set.</summary>
     None = 0,
     /// <summary><c>?2004</c>: a paste should be wrapped in <c>ESC[200~</c> and <c>ESC[201~</c>.</summary>
     BracketedPaste = 1,
     /// <summary><c>?25</c> (on unless the CLI hid it).</summary>
     CursorVisible = 2,
-    /// <summary><c>?1049</c>, <c>?47</c> or <c>?1047</c>.</summary>
+    /// <summary><c>?1049</c>, <c>?47</c> or <c>?1047</c>: the alternate screen buffer.</summary>
     AltScreen = 4,
     /// <summary><c>?1</c>: application cursor keys.</summary>
     AppCursorKeys = 8,
-    /// <summary><c>?1000</c>, <c>?1002</c> or <c>?1003</c>.</summary>
+    /// <summary><c>?1000</c>, <c>?1002</c> or <c>?1003</c>: mouse tracking.</summary>
     Mouse = 16,
     /// <summary><c>?1006</c>: SGR mouse encoding.</summary>
     MouseSgr = 32,
@@ -123,7 +123,7 @@ public enum TermCompatStatus
 /// <summary>The result of <see cref="TermProtocol.Check"/>: <see cref="Message"/> is empty when compatible, else a clear status for the user.</summary>
 public sealed record TermCompatibility(TermCompatStatus Status, ushort HostProtocol, string Message)
 {
-    /// <summary>The ok.</summary>
+    /// <summary>Whether the viewer can attach: the host speaks a protocol it speaks too.</summary>
     public bool Ok => Status == TermCompatStatus.Compatible;
 }
 
@@ -216,7 +216,7 @@ public static class TermProtocol
     /// <summary>A new session id: 12 random hex characters.</summary>
     public static string NewSessionId() => Guid.NewGuid().ToString("N")[..12];
 
-    /// <summary>One frame, ready to write.</summary>
+    /// <summary>One frame, ready to write: the kind byte, the payload's length (u32, little-endian), then the payload.</summary>
     public static byte[] Frame(TermFrameKind kind, ReadOnlySpan<byte> payload)
     {
         var buffer = new byte[5 + payload.Length];
@@ -239,7 +239,7 @@ public static class TermProtocol
         return ((TermFrameKind)head[0], payload);
     }
 
-    /// <summary>Hello.</summary>
+    /// <summary>A protocol 1 Hello payload: the protocol, then the viewer's columns and rows (u16 each, little-endian).</summary>
     public static byte[] Hello(ushort protocol, ushort cols, ushort rows)
     {
         var payload = new byte[6];
@@ -278,7 +278,7 @@ public static class TermProtocol
             : (BinaryPrimitives.ReadUInt16LittleEndian(payload), BinaryPrimitives.ReadUInt16LittleEndian(payload[2..]),
                BinaryPrimitives.ReadUInt16LittleEndian(payload[4..]));
 
-    /// <summary>A Size or Resize payload.</summary>
+    /// <summary>A Size or Resize payload: columns, then rows (u16 each, little-endian), with no owner byte.</summary>
     public static byte[] Size(ushort cols, ushort rows)
     {
         var payload = new byte[4];
@@ -306,7 +306,7 @@ public static class TermProtocol
     public static (ushort Cols, ushort Rows)? ReadSize(ReadOnlySpan<byte> payload) =>
         payload.Length < 4 ? null : (BinaryPrimitives.ReadUInt16LittleEndian(payload), BinaryPrimitives.ReadUInt16LittleEndian(payload[2..]));
 
-    /// <summary>Modes.</summary>
+    /// <summary>A Modes payload: the mode bits as a u32, little-endian.</summary>
     public static byte[] Modes(TermModes modes)
     {
         var payload = new byte[4];
@@ -314,11 +314,11 @@ public static class TermProtocol
         return payload;
     }
 
-    /// <summary>Reads the modes.</summary>
+    /// <summary>The mode bits in a Modes payload; <see cref="TermModes.None"/> when it is too short to hold them.</summary>
     public static TermModes ReadModes(ReadOnlySpan<byte> payload) =>
         payload.Length < 4 ? TermModes.None : (TermModes)BinaryPrimitives.ReadUInt32LittleEndian(payload);
 
-    /// <summary>Exit.</summary>
+    /// <summary>An Exit payload: the CLI's exit code as an i32, little-endian.</summary>
     public static byte[] Exit(int code)
     {
         var payload = new byte[4];
@@ -326,16 +326,16 @@ public static class TermProtocol
         return payload;
     }
 
-    /// <summary>Reads the exit.</summary>
+    /// <summary>The exit code in an Exit payload; -1 when it is too short to hold one.</summary>
     public static int ReadExit(ReadOnlySpan<byte> payload) => payload.Length < 4 ? -1 : BinaryPrimitives.ReadInt32LittleEndian(payload);
 
-    /// <summary>Title.</summary>
+    /// <summary>A Title payload: the title as UTF-8.</summary>
     public static byte[] Title(string title) => Encoding.UTF8.GetBytes(title);
 
-    /// <summary>Reads the title.</summary>
+    /// <summary>The title in a Title payload.</summary>
     public static string ReadTitle(ReadOnlySpan<byte> payload) => Encoding.UTF8.GetString(payload);
 
-    /// <summary>Replay.</summary>
+    /// <summary>A Replay payload: columns, rows, modes, the data's length, the data (the ring), then the VT that re-asserts modes and title.</summary>
     public static byte[] Replay(ushort cols, ushort rows, TermModes modes, ReadOnlySpan<byte> data, ReadOnlySpan<byte> reassert)
     {
         var payload = new byte[12 + data.Length + reassert.Length];

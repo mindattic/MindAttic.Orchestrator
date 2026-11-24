@@ -13,14 +13,14 @@ namespace MindAttic.Orchestrator.Term;
 /// </summary>
 public static class TermGatewayTokens
 {
-    /// <summary>The prefix constant.</summary>
+    /// <summary>What every token starts with: the format's version.</summary>
     public const string Prefix = "v1.";
-    /// <summary>The constants watch, interact.</summary>
+    /// <summary>The scopes a token can carry: watch (read-only) or interact (may type).</summary>
     public const string Watch = "watch", Interact = "interact";
-    /// <summary>The constants signing key file, owner key file.</summary>
+    /// <summary>The file names, in the gateway's folder, of the token signing key and the owner key.</summary>
     public const string SigningKeyFile = "signing.key", OwnerKeyFile = "owner.key";
 
-    /// <summary>The longest a session token may live.</summary>
+    /// <summary>The longest a session token may live, in minutes.</summary>
     public const int MaxMinutes = 60;
 
     /// <summary>The longest, and default, life of a member token minted by <c>orchestrator gateway token</c> (M.ORCH-T1056): a
@@ -31,7 +31,7 @@ public static class TermGatewayTokens
     /// <summary>The payload kind of a member token.</summary>
     public const string MemberKind = "member";
 
-    /// <summary>Whether scope.</summary>
+    /// <summary>Whether <paramref name="scope"/> is a known scope (<see cref="Watch"/> or <see cref="Interact"/>, any case).</summary>
     public static bool IsScope(string? scope) => scope?.ToLowerInvariant() is Watch or Interact;
 
     /// <summary>The longest <paramref name="kind"/> of token may live.</summary>
@@ -54,7 +54,7 @@ public static class TermGatewayTokens
         return (body + "." + Base64Url(Sign(signingKey, body)), DateTimeOffset.FromUnixTimeSeconds(payload.Exp).UtcDateTime);
     }
 
-    /// <summary>Signs.</summary>
+    /// <summary>The HMAC-SHA256 of a token's <paramref name="body"/> (prefix and payload) under <paramref name="signingKey"/>.</summary>
     public static byte[] Sign(byte[] signingKey, string body) => HMACSHA256.HashData(signingKey, Encoding.ASCII.GetBytes(body));
 
     /// <summary>The key in <paramref name="file"/> under <paramref name="directory"/>: 32 random bytes, made on first use.</summary>
@@ -103,10 +103,10 @@ public static class TermGatewayTokens
         }
     }
 
-    /// <summary>Base 64 url.</summary>
+    /// <summary><paramref name="bytes"/> as unpadded base64url.</summary>
     public static string Base64Url(ReadOnlySpan<byte> bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-    /// <summary>From base 64 url.</summary>
+    /// <summary>The bytes of base64url <paramref name="text"/>, padded or not; null when it is empty or isn't base64url.</summary>
     public static byte[]? FromBase64Url(string text)
     {
         if (text.Length == 0 || text.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))) return null;
@@ -116,7 +116,7 @@ public static class TermGatewayTokens
         catch (FormatException) { return null; }
     }
 
-    /// <summary>To unix.</summary>
+    /// <summary><paramref name="utc"/> as Unix seconds, its kind taken as UTC whatever it says.</summary>
     public static long ToUnix(DateTime utc) => new DateTimeOffset(DateTime.SpecifyKind(utc, DateTimeKind.Utc)).ToUnixTimeSeconds();
 }
 

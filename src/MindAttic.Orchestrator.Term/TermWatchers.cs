@@ -10,16 +10,16 @@ public sealed record TermWatcher
     /// <summary>This attachment's id, unique in the gateway's run.</summary>
     [JsonPropertyName("connection")] public string Connection { get; init; } = "";
 
-    /// <summary>The session the viewer is attached to.</summary>
+    /// <summary>The id of the hosted session the viewer is attached to.</summary>
     [JsonPropertyName("sessionId")] public string SessionId { get; init; } = "";
 
-    /// <summary>Who: the token's subject.</summary>
+    /// <summary>Who is watching: the subject of the token they attached with.</summary>
     [JsonPropertyName("viewer")] public string Viewer { get; init; } = "";
 
     /// <summary><c>watch</c> (read-only) or <c>interact</c>.</summary>
     [JsonPropertyName("mode")] public string Mode { get; init; } = "watch";
 
-    /// <summary>The viewer's address.</summary>
+    /// <summary>The viewer's remote address; null when it isn't known.</summary>
     [JsonPropertyName("from")] public string? From { get; init; }
 
     /// <summary>When the viewer attached (UTC).</summary>
@@ -29,9 +29,9 @@ public sealed record TermWatcher
 /// <summary>What happened: <see cref="TermWatchersEvent.Event"/>'s values.</summary>
 public static class TermWatchersEvents
 {
-    /// <summary>The attached constant.</summary>
+    /// <summary>A remote viewer attached to a session.</summary>
     public const string Attached = "attached";
-    /// <summary>The detached constant.</summary>
+    /// <summary>A remote viewer detached from a session.</summary>
     public const string Detached = "detached";
 
     /// <summary>The gateway started or stopped: <see cref="TermWatchersEvent.Watchers"/> is the whole truth (empty).</summary>
@@ -65,22 +65,22 @@ public sealed record TermWatchersEvent
 /// </summary>
 public static class TermWatchersBus
 {
-    /// <summary>The kind constant.</summary>
+    /// <summary>The bus message kind these events travel under.</summary>
     public const string Kind = "term-watchers";
-    /// <summary>The version constant.</summary>
+    /// <summary>The payload version of <see cref="TermWatchersEvent"/> on the bus.</summary>
     public const int Version = 1;
-    /// <summary>The file name constant.</summary>
+    /// <summary>The watchers file's name, beside the gateway's status.</summary>
     public const string FileName = "watchers.json";
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 
-    /// <summary>Path in.</summary>
+    /// <summary>The watchers file's full path in <paramref name="directory"/>, or in <see cref="TermGateway.DefaultDirectory"/> when null.</summary>
     public static string PathIn(string? directory = null) => Path.Combine(directory ?? TermGateway.DefaultDirectory, FileName);
 
-    /// <summary>Envelope.</summary>
+    /// <summary>The bus envelope line for <paramref name="message"/>, stamped with <paramref name="atUtc"/> and the sender's <paramref name="pid"/>.</summary>
     public static string Envelope(TermWatchersEvent message, DateTime atUtc, int pid) => TermBus.Envelope(Kind, Version, message, atUtc, pid);
 
-    /// <summary>Parses.</summary>
+    /// <summary>The event in a bus envelope line; null when the line isn't a <c>term-watchers</c> v1 message.</summary>
     public static TermWatchersEvent? Parse(string line) => TermBus.ParsePayload<TermWatchersEvent>(line, Kind, Version);
 
     /// <summary>Sends <paramref name="message"/> to the daemon's inbox (50 ms at most, a miss tried again off this thread,
@@ -108,7 +108,7 @@ public static class TermWatchersBus
         }
     }
 
-    /// <summary>Deletes.</summary>
+    /// <summary>Deletes the watchers file, as the gateway stops; a failure is ignored.</summary>
     public static void Delete(string? directory = null)
     {
         try { File.Delete(PathIn(directory)); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }

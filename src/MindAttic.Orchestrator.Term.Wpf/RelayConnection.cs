@@ -70,7 +70,7 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
     private uint rows, cols;
     private SynchronizationContext? ui;
 
-    /// <summary>Raised on terminal output.</summary>
+    /// <summary>Text for the renderer to draw: the CLI's output, an attach's replay, and this connection's own control sequences and notices.</summary>
     public event EventHandler<TerminalOutputEventArgs>? TerminalOutput;
 
     /// <summary>The host's tracked modes changed (on attach, and each time the CLI changes one).</summary>
@@ -106,11 +106,11 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
     /// <summary>The host's tracked modes: <see cref="TermModes.BracketedPaste"/> decides how a paste is sent (T868).</summary>
     public TermModes Modes { get; private set; }
 
-    /// <summary>Whether closed.</summary>
+    /// <summary>Whether <see cref="Close"/> has run: the link is dropped for good.</summary>
     public bool IsClosed => closed;
 
     // Start() runs on the UI thread (the Connection setter calls it, right after resetting the renderer).
-    /// <summary>Starts.</summary>
+    /// <summary>Puts the renderer in win32-input-mode and, the first time only, starts attaching to the host and the frame writer.</summary>
     public void Start()
     {
         ui = SynchronizationContext.Current;
@@ -645,7 +645,7 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         Send(TermFrameKind.TakeSize, []);
     }
 
-    /// <summary>Resize.</summary>
+    /// <summary>Sends the renderer's new size to the host; a no-op for a zero size, an unchanged one, or while <see cref="SuppressResize"/> is set, and held until shown while paused.</summary>
     public void Resize(uint rows, uint columns)
     {
         if (rows == 0 || columns == 0 || SuppressResize) return;

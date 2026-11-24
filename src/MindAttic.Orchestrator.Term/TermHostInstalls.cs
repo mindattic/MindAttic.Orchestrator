@@ -13,17 +13,17 @@ namespace MindAttic.Orchestrator.Term;
 /// </summary>
 public static class TermHostInstalls
 {
-    /// <summary>The folder name constant.</summary>
+    /// <summary>The folder under the install dir that holds the TermHost versions.</summary>
     public const string FolderName = "TermHost";
-    /// <summary>The exe name constant.</summary>
+    /// <summary>The TermHost executable's file name, in each version folder.</summary>
     public const string ExeName = "MindAttic.Orchestrator.TermHost.exe";
-    /// <summary>The stamp format constant.</summary>
+    /// <summary>The format of the build-time stamp (UTC) in a version folder's name.</summary>
     public const string StampFormat = "yyyyMMddHHmmss";
 
-    /// <summary>One installed version folder.</summary>
+    /// <summary>One installed version folder: its name, parsed version and stamp, full path, and the exe it holds.</summary>
     public sealed record Installed(string Name, Version Version, string Stamp, string Directory, string ExeFile = ExeName)
     {
-        /// <summary>The exe.</summary>
+        /// <summary>The full path of the exe in this folder.</summary>
         public string Exe => Path.Combine(Directory, ExeFile);
     }
 
@@ -194,24 +194,24 @@ public static class TermHostInstalls
 /// </summary>
 public static class GatewayInstalls
 {
-    /// <summary>The folder name constant.</summary>
+    /// <summary>The folder under the install dir that holds the gateway versions.</summary>
     public const string FolderName = "Gateway";
-    /// <summary>The exe name constant.</summary>
+    /// <summary>The gateway executable's file name, in each version folder.</summary>
     public const string ExeName = TermGateway.ExeName;
 
-    /// <summary>Root.</summary>
+    /// <summary>The folder that holds the versions, under <paramref name="installDir"/>.</summary>
     public static string Root(string installDir) => Path.Combine(installDir, FolderName);
 
-    /// <summary>Lists.</summary>
+    /// <summary>The installed versions under <paramref name="root"/> that hold the exe, oldest first; empty when the root is missing.</summary>
     public static IReadOnlyList<TermHostInstalls.Installed> List(string root) => TermHostInstalls.List(root, ExeName);
 
-    /// <summary>Newest.</summary>
+    /// <summary>The newest installed version under <paramref name="root"/>, or null when none is installed.</summary>
     public static TermHostInstalls.Installed? Newest(string root) => TermHostInstalls.Newest(root, ExeName);
 
     /// <summary>The newest Gateway exe under the install dir, or null.</summary>
     public static string? ResolveExe(string installDir) => Newest(Root(installDir))?.Exe;
 
-    /// <summary>Cleanup.</summary>
+    /// <summary>Deletes the version folders under <paramref name="root"/> that are older than the newest and nothing runs from; returns the names deleted.</summary>
     public static IReadOnlyList<string> Cleanup(string root) => TermHostInstalls.Cleanup(root, ExeName);
 }
 
@@ -222,23 +222,23 @@ public static class GatewayInstalls
 /// </summary>
 public static class TermViewerInstalls
 {
-    /// <summary>The folder name constant.</summary>
+    /// <summary>The folder under the install dir that holds the TermViewer versions.</summary>
     public const string FolderName = "TermViewer";
-    /// <summary>The exe name constant.</summary>
+    /// <summary>The TermViewer executable's file name, in each version folder.</summary>
     public const string ExeName = "MindAttic.Orchestrator.TermViewer.exe";
 
-    /// <summary>Root.</summary>
+    /// <summary>The folder that holds the versions, under <paramref name="installDir"/>.</summary>
     public static string Root(string installDir) => Path.Combine(installDir, FolderName);
 
-    /// <summary>Lists.</summary>
+    /// <summary>The installed versions under <paramref name="root"/> that hold the exe, oldest first; empty when the root is missing.</summary>
     public static IReadOnlyList<TermHostInstalls.Installed> List(string root) => TermHostInstalls.List(root, ExeName);
 
-    /// <summary>Newest.</summary>
+    /// <summary>The newest installed version under <paramref name="root"/>, or null when none is installed.</summary>
     public static TermHostInstalls.Installed? Newest(string root) => TermHostInstalls.Newest(root, ExeName);
 
     /// <summary>The newest TermViewer exe under the install dir, or null.</summary>
     public static string? ResolveExe(string installDir) => Newest(Root(installDir))?.Exe;
 
-    /// <summary>Cleanup.</summary>
+    /// <summary>Deletes the version folders under <paramref name="root"/> that are older than the newest and nothing runs from; returns the names deleted.</summary>
     public static IReadOnlyList<string> Cleanup(string root) => TermHostInstalls.Cleanup(root, ExeName);
 }

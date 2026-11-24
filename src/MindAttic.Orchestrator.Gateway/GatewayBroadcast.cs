@@ -97,7 +97,7 @@ internal sealed class WatcherBoard
         this.publish = publish;
     }
 
-    /// <summary>The ones attached now.</summary>
+    /// <summary>A snapshot of the remote viewers attached now.</summary>
     public IReadOnlyList<TermWatcher> Current
     {
         get { lock (gate) return [.. watchers]; }

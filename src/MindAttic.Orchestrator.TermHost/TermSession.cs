@@ -561,7 +561,7 @@ internal sealed class TermSession
         }
     }
 
-    /// <summary>Called under <see cref="gate"/>.</summary>
+    /// <summary>The Size frame for viewer <paramref name="v"/>: with whether it owns the size for a protocol 2 viewer. Called under <see cref="gate"/>.</summary>
     private byte[] SizeFor(ViewerLink v) =>
         v.Protocol >= TermProtocol.MultiViewer ? TermProtocol.Size(cols, rows, policy.Owner == v.Id) : TermProtocol.Size(cols, rows);
 
@@ -577,7 +577,7 @@ internal sealed class TermSession
         catch (Exception ex) { log.Error(ex, "the emulator couldn't start; the replay uses the raw ring"); }
     }
 
-    /// <summary>Called under <see cref="gate"/>.</summary>
+    /// <summary>Feeds CLI output to the headless emulator, if it runs; a failure stops it for good. Called under <see cref="gate"/>.</summary>
     private void FeedScreen(ReadOnlySpan<byte> chunk)
     {
         if (screen is null) return;
@@ -790,7 +790,7 @@ internal sealed class TermSession
         }
     }
 
-    /// <summary>Called under <see cref="gate"/>.</summary>
+    /// <summary>Removes <paramref name="link"/> from the viewers and closes it. Called under <see cref="gate"/>.</summary>
     private void Drop(ViewerLink link)
     {
         // Its reader ends on the closed pipe, and hands the size over if it owned it (ServeAsync).
