@@ -112,8 +112,7 @@ public static class LoginLocks
     private static readonly object liveGate = new();
     private static (DateTime At, IReadOnlySet<string> Emails) liveLocked = (DateTime.MinValue, new HashSet<string>());
 
-    /// <summary>The live database's locked logins' emails, read at most every few seconds, the same pattern as
-    /// <see cref="MemberRoster.LiveDisabled"/>; none when it can't be read.</summary>
+    /// <summary>The live database's locked logins' emails, read at most every few seconds; none when it can't be read.</summary>
     public static IReadOnlySet<string> LiveLocked()
     {
         var now = DateTime.UtcNow;

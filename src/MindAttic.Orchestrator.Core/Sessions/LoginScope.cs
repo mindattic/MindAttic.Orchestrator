@@ -20,8 +20,7 @@ public sealed record LoginTab(string? Email, string Title, string ToolTip, strin
                    : "The Vault's API key, as a person: there's no Claude key in the MindAttic Vault keyring yet",
             Billing.ApiKeyPerson.Color, hasKey) { IsApiKey = true };
 
-    /// <summary>Whether the member's until date has passed (M.ORCH-T1401): still shown (only a disabled member is hidden,
-    /// M.ORCH-T1952), marked lapsed.</summary>
+    /// <summary>Whether the member's until date has passed (M.ORCH-T1401): still shown, marked lapsed.</summary>
     public bool Lapsed { get; init; }
 
     /// <summary>Whether this is the API key's person tab rather than a Claude login's.</summary>
@@ -136,7 +135,7 @@ public static class LoginScope
     /// its terminal tabs' color as its accent. The global login's own account gets no second tab: the fallback one is its.
     /// </summary>
     /// <para><paramref name="lapsed"/> (M.ORCH-T1401): logins whose <see cref="MemberUntil"/> date has passed, kept and marked
-    /// <see cref="LoginTab.Lapsed"/>; only a disabled member (M.ORCH-T1952) is left out.</para>
+    /// <see cref="LoginTab.Lapsed"/>.</para>
     /// <para>The API key's person (M.ORCH-T906) has its tab after everyone's: <paramref name="apiKey"/> says whether the
     /// Vault holds a key for it (its "signed in"); null leaves it out.</para>
     public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<Member>? members = null, bool? apiKey = null,
@@ -167,8 +166,7 @@ public static class LoginScope
                 ? new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet", globalLook.TabColor)
                 : new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet, this member's own seat", globalLook.TabColor);
         // Logged out (M.ORCH-T1821, AccountDirs.GlobalSignedOut): the global login's tab stays in the strip and the tree, grayed
-        // like any signed-out login, with a Login-only menu, until Login signs it back in. Log out keeps the node; only Disable
-        // (M.ORCH-T1952/T1958, a per-CLI login's) hides or marks a member.
+        // like any signed-out login, with a Login-only menu, until Login signs it back in. Log out keeps the node.
         if (!globalSignedIn)
             global = global with { ToolTip = "The global login (~/.claude): signed out; Login signs it back in", SignedIn = false };
         var live = snapshot.Accounts.Select(a => a.Email)
@@ -185,12 +183,9 @@ public static class LoginScope
             .Where(e => !live.Contains(e) && e != globalEmail)
             .ToHashSet(StringComparer.Ordinal);
         // Every org member's and every login folder's node is permanent (M.ORCH-T1950): signed out or with no live CLI it
-        // still has its tab, shown signed out. Hidden is the ONE place a login is left out of the tree: only a member whose
-        // status is 'disabled' (M.ORCH-T1952, set by hand), so nothing opens or respawns for it. A member whose until date has
-        // passed (M.ORCH-T1401, MemberUntil) stays, marked lapsed (LoginTab.Lapsed). The global login's is never dropped,
-        // and the API key's person keeps its own tab below.
-        bool Hidden(string email) => byEmail.TryGetValue(email, out var m) && MemberRoster.IsDisabled(m);
-        var own = live.Concat(waiting).Where(e => !Hidden(e)).Order(StringComparer.Ordinal).Select(e =>
+        // still has its tab, shown signed out. A member whose until date has passed (M.ORCH-T1401, MemberUntil) stays, marked
+        // lapsed (LoginTab.Lapsed). The global login's is never dropped, and the API key's person keeps its own tab below.
+        var own = live.Concat(waiting).Order(StringComparer.Ordinal).Select(e =>
         {
             var look = ownLook(e);
             var title = Title(e, look.Alias);

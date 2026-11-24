@@ -112,7 +112,7 @@ public sealed class LoginLockTests
     [Test]
     public void LiveLocked_reads_the_live_database_and_is_cached_for_about_ten_seconds()
     {
-        // M.ORCH-T2123: the same caching shape as MemberRoster.LiveDisabled.
+        // M.ORCH-T2123: cached a few seconds.
         LoginLocks.InvalidateLiveCache();
         var store = new JsonStore();
         Assert.That(LoginLocks.LiveLocked(), Is.Empty, "nothing locked yet");
@@ -221,5 +221,29 @@ public sealed class LoginLockTests
         var nextReset = WeekReset.AddDays(7);
         Assert.That(LoginLocks.AutoLock(store, Erin, "Erin", Week(2, nextReset), 90, WeekReset.AddMinutes(1)), Is.Null, "still locked: a no-op");
         Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), Erin), Is.True, "only an explicit Unlock clears it");
+    }
+
+    [Test]
+    public void A_member_still_marked_disabled_is_locked_instead_and_set_active()
+    {
+        // M.ORCH-T2183: Disable is gone; a row it left behind becomes a manual lock, so the login takes no work.
+        var store = new JsonStore(temps.New());
+        MemberRoster.Add(store.Db, Erin, "Erin", "member", "standard", null, Now);
+        MemberRoster.Add(store.Db, "amy@mindattic.com", "Amy", "member", "standard", null, Now);
+        using (var c = store.Db.OpenData())
+            Sql.Run(c, null, "UPDATE members SET status = 'disabled' WHERE email = @email;", ("@email", Erin));
+
+        Assert.That(MemberRoster.MigrateDisabled(store, Now.AddMinutes(1)), Is.EqualTo(new[] { Erin }));
+
+        var locked = LoginLocks.For(LoginLocks.Load(store), Erin);
+        Assert.That(locked, Is.Not.Null);
+        Assert.That(locked!.Reason, Is.EqualTo(LoginLocks.ReasonManual));
+        Assert.That(locked.By, Is.EqualTo(MemberRoster.DisabledLockBy));
+        Assert.That(MemberRoster.Find(store.Db, Erin)!.Status, Is.EqualTo("active"), "the disabled flag is dropped");
+        Assert.That(LoginLocks.IsLocked(LoginLocks.Load(store), "amy@mindattic.com"), Is.False, "an active member is left alone");
+        Assert.That(LoginLocks.LoadBook(store).Log, Has.Count.EqualTo(1), "logged once");
+
+        Assert.That(MemberRoster.MigrateDisabled(store, Now.AddMinutes(2)), Is.Empty, "a second start finds nothing to move");
+        Assert.That(LoginLocks.LoadBook(store).Log, Has.Count.EqualTo(1));
     }
 }

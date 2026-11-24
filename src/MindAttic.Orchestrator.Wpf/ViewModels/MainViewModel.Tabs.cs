@@ -473,10 +473,10 @@ public sealed partial class MainViewModel
     /// at all) - widening <see cref="SignedInAsItself"/> to a disconnected login too, so it gets a real, quiet,
     /// unauthenticated CLI on its own folder to run its own <c>/login</c> in, scoped correctly, instead of just the
     /// signed-out stand-in row. Never a login whose folder is borrowed by another account (signed in, but as somebody else -
-    /// opening a CLI there would silently run as them) or one that's <see cref="IsLoginDisabled"/> or <see cref="IsLoginLocked"/>
+    /// opening a CLI there would silently run as them) or one that's <see cref="IsLoginLocked"/>
     /// (M.ORCH-T2125): a locked login never gets a new one opened here, though one already live is left running (this only
     /// gates opening, never closes a live pane).</summary>
-    private bool EligibleForGeneralPrompt => ScopeEmail is not null && !tab.IsApiKey && !IsLoginDisabled && !IsLoginLocked && (SignedInAsItself || !tab.SignedIn);
+    private bool EligibleForGeneralPrompt => ScopeEmail is not null && !tab.IsApiKey && !IsLoginLocked && (SignedInAsItself || !tab.SignedIn);
 
     /// <summary>
     /// One General Prompt CLI per eligible login (M.ORCH-T1951/M.ORCH-T1957/M.ORCH-T1959), kept open like its Launcher: one

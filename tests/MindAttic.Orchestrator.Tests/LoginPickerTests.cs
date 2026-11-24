@@ -77,7 +77,7 @@ public sealed class LoginPickerTests
     }
 
     /// <summary>M.ORCH-T2115: a locked login (<see cref="MindAttic.Orchestrator.Budget.LoginLocks"/>, M.ORCH-T2108) is left out of <see cref="AccountDirs.SignedIn"/>
-    /// exactly as a disabled member's is, so neither <see cref="LoginPicker.Pick"/> nor <see cref="LoginPicker.ForNewTab"/> ever
+    /// so neither <see cref="LoginPicker.Pick"/> nor <see cref="LoginPicker.ForNewTab"/> ever
     /// picks it, even with the most headroom.</summary>
     [Test]
     public void A_locked_login_is_never_picked_even_with_the_most_headroom()

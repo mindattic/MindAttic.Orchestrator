@@ -48,6 +48,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         Build();
 
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
+        // Disable is gone (M.ORCH-T2183): a member still marked disabled is locked instead (the lock logs it), before anything is picked.
+        try { Budget.MemberRoster.MigrateDisabled(store, DateTime.UtcNow); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException)
+        {
+            Say(LogEventLevel.Warning, $"members: couldn't move disabled members to locks: {ex.Message}");
+        }
         // Every meter ask and what came of it is on the record (M.ORCH-T659), to trace a window that went unseen.
         ClaudeMeterProbe.Say = (level, line) => Say(level, line);
         // The status stream (M.ORCH-T854): every reading and snapshot pushed to the open dashboards the moment it lands.

@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>M.ORCH-T2117: a locked login (<see cref="LoginLocks"/>, M.ORCH-T2122) is paced to a stop by <see cref="AccountPacer"/>
-/// the same way a disabled member's is (<see cref="AccountPacer.DisabledPace"/>), until it's unlocked.</summary>
+/// to a stop (<see cref="AccountPacer.LockedPace"/>) until it's unlocked.</summary>
 public sealed class AccountPacerLockTests
 {
     private readonly TempDirs temps = new();

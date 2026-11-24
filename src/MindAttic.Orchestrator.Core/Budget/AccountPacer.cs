@@ -111,20 +111,8 @@ public sealed class AccountPacer
         AgentNote = $"This login is signed in as {other}, not {email}: every call spends {other}'s allowance. Finish the current step and stop.",
     };
 
-    /// <summary>The pace of a disabled member's login (M.ORCH-T1952): stopped, no subagents, as <see cref="Borrowed"/> is, until
-    /// it's set active again.</summary>
-    internal static Pace DisabledPace(Pace pace, string email) => pace with
-    {
-        Mode = PaceMode.Over,
-        SessionCap = 0,
-        SubagentAllowance = 0,
-        Stop = true,
-        Note = $"{email} is a disabled member: nothing runs on its login until it's set active (orchestrator members set {email} --status active).",
-        AgentNote = $"{email} is a disabled member: finish the current step and stop.",
-    };
-
     /// <summary>The pace of a locked login (M.ORCH-T2117, <see cref="LoginLocks"/>): stopped, no subagents, as
-    /// <see cref="DisabledPace"/> is, until it's unlocked by hand.</summary>
+    /// <see cref="Borrowed"/> is, until it's unlocked by hand.</summary>
     internal static Pace LockedPace(Pace pace, string email, LoginLock @lock) => pace with
     {
         Mode = PaceMode.Over,
@@ -170,9 +158,7 @@ public sealed class AccountPacer
         IReadOnlyList<UsageCutoff>? cutoffs = null;
         try { cutoffs = Cutoffs?.Invoke(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
-        // Disabled members (M.ORCH-T1952), read once a tick: paced to a stop like a borrowed login.
-        var disabled = Dirs.DisabledNow();
-        // Locked logins (M.ORCH-T2117), read once a tick: paced to a stop the same way.
+        // Locked logins (M.ORCH-T2117), read once a tick: paced to a stop like a borrowed login.
         IReadOnlyList<LoginLock>? locks = null;
         try { locks = Locks?.Invoke(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
@@ -207,13 +193,13 @@ public sealed class AccountPacer
             var mine = sessions.Where(s => ids.Contains(s.SessionId)).ToList();
             // Let past its weekly target by the user (M.ORCH-T694): its week stops at the wall until the allowance ends.
             var (own, allowedWhy) = WeeklyAllowances.Apply(allowed, dir.Email, UsageCutoffs.Apply(cutoffs, dir.Email, settings), nowUtc);
-            result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, write, allowedWhy, disabled.Contains(dir.Email), LoginLocks.For(locks, dir.Email)));
+            result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, write, allowedWhy, LoginLocks.For(locks, dir.Email)));
         }
         return result;
     }
 
     private AccountPace Pace(AccountDir dir, State state, List<TranscriptSession> sessions, OrchestratorSettings settings,
-        DateTime now, DateTime startOfTodayUtc, bool write, string? why = null, bool disabled = false, LoginLock? locked = null)
+        DateTime now, DateTime startOfTodayUtc, bool write, string? why = null, LoginLock? locked = null)
     {
         // Since the folder's last sign-in change (M.ORCH-T1976), read back from its limits file after a restart: a transcript
         // mapped to this folder may hold a previous account's spend and walls, which must never stop the one signed in now.
@@ -300,8 +286,6 @@ public sealed class AccountPacer
         if (why is not null) pace = pace with { Note = $"{pace.Note} {why}" };
         // Signed in as another member (M.ORCH-T1896): every token its CLIs spend is that member's, so it gets no room at all.
         if (state.BorrowedFrom is { } other) pace = Borrowed(pace, dir.Email, other);
-        // A disabled member (M.ORCH-T1952): nothing new on it at all.
-        if (disabled) pace = DisabledPace(pace, dir.Email);
         // A locked login (M.ORCH-T2117): nothing new on it at all, until it's unlocked.
         if (locked is not null) pace = LockedPace(pace, dir.Email, locked);
         if (write)

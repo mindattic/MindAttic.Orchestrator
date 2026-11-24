@@ -1673,11 +1673,6 @@ public partial class MainWindow : Window
             if (tab.IsTabSignedIn)
                 Add("", "Log out", "Signs this login out: its CLIs become inaccessible and its row grays out until Login (above) signs it back in",
                     tab.LogOutCommand);
-            // Disable/Enable (M.ORCH-T1958): a per-CLI login only, signed in or not; the node stays shown either way (M.ORCH-T1950).
-            if (tab.ScopeEmail is not null)
-                Add("", tab.IsLoginDisabled ? "Enable" : "Disable",
-                    tab.IsLoginDisabled ? "Lets work be picked, moved and paced to this login again" : "Stops any work being picked, moved or paced to this login; its node stays in the tree",
-                    tab.ToggleDisabledCommand);
             // Lock/Unlock (M.ORCH-T2118): every real login, the global one included, signed in or not; never the API key's.
             Add("", tab.IsLoginLocked ? "Unlock" : "Lock",
                 tab.IsLoginLocked ? "Lets this login open a CLI and take dispatched or moved work again" : "Stops this login opening a CLI or taking dispatched or moved work until it's unlocked again",

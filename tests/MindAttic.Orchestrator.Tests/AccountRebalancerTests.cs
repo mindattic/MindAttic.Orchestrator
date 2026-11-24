@@ -156,7 +156,7 @@ public sealed class AccountRebalancerTests
     }
 
     /// <summary>M.ORCH-T2115: a locked login (<see cref="MindAttic.Orchestrator.Budget.LoginLocks"/>, M.ORCH-T2108) is left out
-    /// of <see cref="AccountDirs.SignedIn"/> exactly as a disabled member's is, so it's never a move target even with the most
+    /// of <see cref="AccountDirs.SignedIn"/>, so it's never a move target even with the most
     /// headroom.</summary>
     [Test]
     public void A_locked_login_is_never_a_move_target()

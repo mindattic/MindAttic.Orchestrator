@@ -392,7 +392,7 @@ The request goes to the host, never into the CLI, on a pipe of its own beside th
   **Rebalance (M.ORCH-T608):** the daemon sends the same request on its own when a CLI's login runs low (Claude's meter
   puts its 5-hour window at that login's 5-hour cutoff or its week at its weekly cutoff, or its pace is at a limit) and a
   signed-in per-CLI login has no CLI and at least 10 points more headroom. The CLI isn't moved again for 30 minutes, its
-  target stays taken until it arrives, and a login that's low itself is never a target. A locked or disabled login is
+  target stays taken until it arrives, and a login that's low itself is never a target. A locked login is
   never a target either (`AccountDirs.SignedIn` leaves it out). Setting `RebalanceLogins` (on by default;
   `orchestrator settings --rebalance false`) turns it off.
 

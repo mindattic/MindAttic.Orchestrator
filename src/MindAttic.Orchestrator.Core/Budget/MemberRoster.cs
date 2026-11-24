@@ -16,8 +16,7 @@ public sealed record Member
     public string Role { get; init; } = MemberRoster.Roles[^1];
     /// <summary>One of <see cref="MemberRoster.Tiers"/>: the seat the member has.</summary>
     public string Tier { get; init; } = MemberRoster.Tiers[0];
-    /// <summary>One of <see cref="MemberRoster.Statuses"/>: active once joined, pending while invited, disabled when set aside by
-    /// hand (M.ORCH-T1952).</summary>
+    /// <summary>One of <see cref="MemberRoster.Statuses"/>: active once joined, pending while invited.</summary>
     public string Status { get; init; } = MemberRoster.Statuses[0];
     /// <summary>When the member was added.</summary>
     public DateTime JoinedUtc { get; init; }
@@ -40,39 +39,30 @@ public static class MemberRoster
     /// <summary>The seat tiers a member can have.</summary>
     public static readonly string[] Tiers = ["premium", "standard"];
 
-    /// <summary>Whether a member has joined (active), is still invited (pending), or was set aside by hand (disabled,
-    /// M.ORCH-T1952): the only status that hides the member's node from the dashboard's tree and keeps every pick, move and
-    /// pace off its login.</summary>
-    public static readonly string[] Statuses = ["active", "pending", Disabled];
+    /// <summary>Whether a member has joined (active) or is still invited (pending).</summary>
+    public static readonly string[] Statuses = ["active", "pending"];
 
-    /// <summary>The disabled status (M.ORCH-T1952): set only by hand (<c>orchestrator members set &lt;who&gt; --status disabled</c>),
-    /// never by a sign-in (<see cref="Sync"/> keeps it).</summary>
-    public const string Disabled = "disabled";
+    /// <summary>The status Disable (M.ORCH-T1952) used to set, gone since M.ORCH-T2183: a row still holding it is moved to a
+    /// lock by <see cref="MigrateDisabled"/>.</summary>
+    private const string LegacyDisabled = "disabled";
 
-    /// <summary>Whether <paramref name="member"/> is disabled (M.ORCH-T1952).</summary>
-    public static bool IsDisabled(Member member) => member.Status == Disabled;
+    /// <summary>Who <see cref="MigrateDisabled"/>'s locks say set them.</summary>
+    public const string DisabledLockBy = "the Disable removal (it was disabled)";
 
-    /// <summary>The emails of the disabled members (M.ORCH-T1952), normalized.</summary>
-    public static IReadOnlySet<string> DisabledEmails(OrchestratorDb db) =>
-        Load(db).Where(IsDisabled).Select(m => m.Email).ToHashSet(StringComparer.Ordinal);
-
-    private static readonly object liveGate = new();
-    private static (DateTime At, IReadOnlySet<string> Emails) liveDisabled = (DateTime.MinValue, new HashSet<string>());
-
-    /// <summary>The live database's disabled members (M.ORCH-T1952, <see cref="DisabledEmails"/>), read at most every few seconds,
-    /// as <see cref="AccountDirs.SignedIn"/> and the pacer ask on every pick and tick; none when it can't be read.</summary>
-    public static IReadOnlySet<string> LiveDisabled()
+    /// <summary>Every member still marked disabled (Disable was removed, M.ORCH-T2183) is locked instead
+    /// (<see cref="LoginLocks.Lock"/>, manual, by <see cref="DisabledLockBy"/>) and set active, so none starts taking work; each
+    /// is logged once, by the lock. The emails moved; none when there were none. Safe to call on every start.</summary>
+    public static IReadOnlyList<string> MigrateDisabled(JsonStore store, DateTime nowUtc)
     {
-        var now = DateTime.UtcNow;
-        lock (liveGate)
+        var moved = new List<string>();
+        foreach (var member in Load(store.Db).Where(m => m.Status == LegacyDisabled))
         {
-            if (now - liveDisabled.At < TimeSpan.FromSeconds(10)) return liveDisabled.Emails;
-            IReadOnlySet<string> emails;
-            try { emails = DisabledEmails(new OrchestratorDb(OrchestratorDb.LivePath)); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or DbException) { emails = liveDisabled.Emails; }
-            liveDisabled = (now, emails);
-            return emails;
+            LoginLocks.Lock(store, member.Email, member.Name ?? member.Email, LoginLocks.ReasonManual, DisabledLockBy, null, nowUtc);
+            store.Db.WriteData((connection, tx) => Upsert(connection, tx, member with { Status = Statuses[0], UpdatedUtc = nowUtc }));
+            moved.Add(member.Email);
         }
+        if (moved.Count > 0) StoreChanges.Note(store.Db, StoreChanges.Members);
+        return moved;
     }
 
     /// <summary><paramref name="value"/> as one of <paramref name="allowed"/> ("Primary owner", "primary_owner" and
@@ -165,7 +155,7 @@ public static class MemberRoster
 
     /// <summary>Writes claude.ai's <paramref name="profile"/> over its member's row (M.ORCH-T701): its name and role, when
     /// claude.ai gave them, and active, since the member has signed in. Whether anything changed; false when the login isn't a
-    /// member (members are still added by hand). A disabled member stays disabled (M.ORCH-T1952).</summary>
+    /// member (members are still added by hand). A row still marked disabled is left for <see cref="MigrateDisabled"/> to lock.</summary>
     /// <exception cref="ArgumentException">Not an email address.</exception>
     public static bool Sync(OrchestratorDb db, ClaudeProfile profile, DateTime nowUtc)
     {
@@ -178,8 +168,8 @@ public static class MemberRoster
             {
                 Name = string.IsNullOrWhiteSpace(profile.Name) ? was.Name : profile.Name.Trim(),
                 Role = Canonical(profile.Role, Roles) ?? was.Role,
-                // Signed in is joined, but never undoes a hand-set disabled (M.ORCH-T1952).
-                Status = IsDisabled(was) ? was.Status : Statuses[0],
+                // Signed in is joined, but a legacy disabled waits for MigrateDisabled to become a lock (M.ORCH-T2183).
+                Status = was.Status == LegacyDisabled ? was.Status : Statuses[0],
             };
             if (next == was) return false;
             Upsert(connection, tx, next with { UpdatedUtc = nowUtc });
