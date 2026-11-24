@@ -1677,10 +1677,6 @@ public partial class MainWindow : Window
             Add("", tab.IsLoginLocked ? "Unlock" : "Lock",
                 tab.IsLoginLocked ? "Lets this login open a CLI and take dispatched or moved work again" : "Stops this login opening a CLI or taking dispatched or moved work until it's unlocked again",
                 tab.ToggleLockCommand);
-            // Delete (M.ORCH-T1953): a per-CLI login only (never the global login's tab), signed in or not; it confirms first.
-            if (tab.ScopeEmail is not null)
-                Add("", "Delete…", "Removes this member: closes its tabs, takes it off the member roster (orchestrator members remove) and moves its login folder to .claude-accounts\\.deleted as a dated backup",
-                    tab.DeleteLoginCommand);
             if (!tab.IsTabSignedIn)
             {
                 OpenLoginMenu(menu);

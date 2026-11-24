@@ -473,7 +473,7 @@ public sealed partial class MainViewModel
         }
     }, () => !IsApiKeyTab && LockEmail is not null);
 
-    // ── Delete, from a login's right-click menu (M.ORCH-T1953) ──────
+    // ── Delete, from Settings > Users only (M.ORCH-T1953, M.ORCH-T2184) ──────
 
     private ICommand? deleteLoginCommand;
 
@@ -484,7 +484,8 @@ public sealed partial class MainViewModel
     internal bool IsBeingDeleted(string? email) => AccountDirs.Normalize(email) is { } e && Root.deletingLogins.Contains(e);
 
     /// <summary>
-    /// "Delete" (M.ORCH-T1953), on a per-CLI login's right-click menu (never the API key's or the global login's): removes the
+    /// "Delete" (M.ORCH-T1953), on a per-CLI login's row in Settings &gt; Users (<c>UsersWindow</c>, M.ORCH-T2184), never the
+    /// API key's or the global login's, and nowhere else: removes the
     /// member for good, after a confirm. Its open tabs (CLIs, Launcher, General Prompt) are closed, its
     /// <c>~/.claude-accounts\&lt;email&gt;</c> folder is moved to a dated backup (<c>.claude-accounts\.deleted\&lt;email&gt;-yyyyMMddHHmmss</c>,
     /// which no node is made from, M.ORCH-T1950 only reading folders named as emails) rather than deleted, and it is

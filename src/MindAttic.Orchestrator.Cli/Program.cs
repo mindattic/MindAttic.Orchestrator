@@ -164,7 +164,7 @@ internal static class CliApp
                 m.SetDefaultCommand<MembersCommand>();
                 m.AddCommand<MembersAddCommand>("add").WithDescription("Add a member: add <email> --name \"<name>\" --role primary-owner|owner|admin|member --tier premium|standard [[--status active|pending]].");
                 m.AddCommand<MembersSetCommand>("set").WithDescription("Change a member: set <email> with any of --name, --role, --tier, --status active|pending (--name \"\" clears the name).");
-                m.AddCommand<MembersRemoveCommand>("remove").WithDescription("Remove a member: remove <email>.");
+                m.AddCommand<MembersRemoveCommand>("remove").WithDescription("Remove a member from the roster: remove <email>. To delete a login entirely (its tabs and login folder too), use the dashboard's Settings > Users.");
             });
             // The global /org and /organization commands run these (M.ORCH-T686); each is a command above, a member named any way.
             config.AddBranch("org", o =>
@@ -181,7 +181,7 @@ internal static class CliApp
                     m.SetDefaultCommand<MembersCommand>();
                     m.AddCommand<MembersAddCommand>("add").WithDescription("Add a member: add <email> --name \"<name>\" --role primary-owner|owner|admin|member --tier premium|standard [[--status active|pending]].");
                     m.AddCommand<MembersSetCommand>("set").WithDescription("Change a member: set <email> with any of --name, --role, --tier, --status.");
-                    m.AddCommand<MembersRemoveCommand>("remove").WithDescription("Remove a member: remove <email>.");
+                    m.AddCommand<MembersRemoveCommand>("remove").WithDescription("Remove a member from the roster: remove <email>. To delete a login entirely (its tabs and login folder too), use the dashboard's Settings > Users.");
                 });
                 o.AddCommand<OrgStartCommand>("start").WithDescription("Start a CLI in <repo> on a member's login (orchestrator start <repo> --account <their email>).");
                 o.AddCommand<OrgAllowCommand>("allow").WithDescription("Let a member's login take work past its weekly target: allow <who> [[--until reset|<time>]], until its weekly reset by default (M.ORCH-T694).");

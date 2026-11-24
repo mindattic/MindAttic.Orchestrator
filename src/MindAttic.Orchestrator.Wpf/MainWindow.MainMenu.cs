@@ -42,6 +42,7 @@ public partial class MainWindow
                 break;
             case "Settings":
                 menu.Items.Add(MenuCommand("", "Settings", shown.OpenSettingsCommand));
+                menu.Items.Add(MenuAction("", "Users…", OpenUsers));
                 menu.Items.Add(MenuCommand("", "Launcher settings", shown.OpenLauncherSettingsCommand));
                 var project = MenuCommand("", "Project settings", shown.OpenProjectSettingsCommand);
                 project.IsEnabled = shown.Terminals.SelectedPane is not null;
@@ -120,6 +121,14 @@ public partial class MainWindow
                 OrchestratorLog.For("Dashboard").Warning("Settings menu: {Error}", error);
         };
         return item;
+    }
+
+    /// <summary>Settings &gt; Users (M.ORCH-T2184): every login, with Lock/Unlock and the only Delete. One window at a time.</summary>
+    private void OpenUsers()
+    {
+        if (OwnedWindows.OfType<UsersWindow>().FirstOrDefault() is { } open) { open.Activate(); return; }
+        try { new UsersWindow(model) { Owner = this }.Show(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening Users failed; contained"); }
     }
 
     private static MenuItem MenuAction(string icon, string label, Action act, bool enabled = true)
