@@ -1789,11 +1789,11 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2772513);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13948296);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 145818);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 365741);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 372640);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 250043);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5264228);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 26672281);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 15049916);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 26674088);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 15298266);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9884876);
 
 -- ticket_costs
@@ -31819,68 +31819,21 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 2.9545,
+      "Degraded": 2.7359999999999998,
       "Unhealthy": 1,
-      "Reason": "p10 of 360 readings is 3.11 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-24T20:21:53.5657768\u002B00:00",
+      "Reason": "p10 of 360 readings is 2.88 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-24T20:38:08.4332711\u002B00:00",
+      "Basis": 360
+    },
+    "CommitPercent": {
+      "Degraded": 84.63,
+      "Unhealthy": 94.63,
+      "Reason": "p90 of 360 readings is 80.6 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-24T20:38:08.4332711\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-23T02:23:07.0352971\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.755,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.4985,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 72 readings is 2.63 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-23T02:30:10.7598058\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.4985,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.755,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 81 readings is 2.9 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-23T02:31:54.7447386\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.755,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.4985,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 83 readings is 2.63 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-23T02:34:17.5919852\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.4985,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.3465000000000003,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 86 readings is 2.47 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-23T02:40:16.3433048\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.3465000000000003,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.2705,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 92 readings is 2.39 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-23T02:42:29.020249\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.2705,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.2135,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 94 readings is 2.33 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
     {
       "At": "2026-11-23T02:43:45.0221226\u002B00:00",
       "Check": "RamFreeGb",
@@ -33626,6 +33579,60 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 2.9545,
       "ToUnhealthy": 1,
       "Reason": "p10 of 360 readings is 3.11 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T20:29:12.4695565\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.9545,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.812,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.96 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T20:33:18.3136385\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.812,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.774,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.92 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T20:33:18.3136385\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 80,
+      "FromUnhealthy": 90,
+      "ToDegraded": 84.315,
+      "ToUnhealthy": 94.315,
+      "Reason": "p90 of 360 readings is 80.3 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T20:36:25.9965044\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 84.315,
+      "FromUnhealthy": 94.315,
+      "ToDegraded": 84.42000000000002,
+      "ToUnhealthy": 94.42000000000002,
+      "Reason": "p90 of 360 readings is 80.4 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T20:38:08.4332711\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.7645,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.7359999999999998,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.88 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-24T20:38:08.4332711\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 84.42000000000002,
+      "FromUnhealthy": 94.42000000000002,
+      "ToDegraded": 84.63,
+      "ToUnhealthy": 94.63,
+      "Reason": "p90 of 360 readings is 80.6 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
@@ -33633,30 +33640,30 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "58360": {
     "SessionId": "7370bb8d-9868-420d-bfc7-311507b47dc4",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T01:26:11.2741676Z",
-    "StoppedUtc": "2026-11-24T20:27:10.7752362Z",
-    "DueUtc": "2026-11-25T01:28:11.2741676Z"
+    "UntilUtc": "2026-11-25T01:38:02.9758424Z",
+    "StoppedUtc": "2026-11-24T20:38:09.4365123Z",
+    "DueUtc": "2026-11-25T01:40:02.9758424Z"
   },
   "45688": {
     "SessionId": "2c651f03-aee6-4f4d-9420-5957d23af195",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T01:26:11.2741676Z",
-    "StoppedUtc": "2026-11-24T20:27:10.7752362Z",
-    "DueUtc": "2026-11-25T01:28:11.2741676Z"
+    "UntilUtc": "2026-11-25T01:38:02.9758424Z",
+    "StoppedUtc": "2026-11-24T20:38:09.4365123Z",
+    "DueUtc": "2026-11-25T01:40:02.9758424Z"
   },
   "32860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T01:26:11.2741676Z",
-    "StoppedUtc": "2026-11-24T20:27:10.7752362Z",
-    "DueUtc": "2026-11-25T01:28:11.2741676Z"
+    "UntilUtc": "2026-11-25T01:38:02.9758424Z",
+    "StoppedUtc": "2026-11-24T20:38:09.4365123Z",
+    "DueUtc": "2026-11-25T01:40:02.9758424Z"
   },
   "12320": {
     "SessionId": "1edef0f8-e7aa-46ce-8301-2ef575ebd437",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T01:26:11.2741676Z",
-    "StoppedUtc": "2026-11-24T20:27:10.7752362Z",
-    "DueUtc": "2026-11-25T01:28:11.2741676Z"
+    "UntilUtc": "2026-11-25T01:38:02.9758424Z",
+    "StoppedUtc": "2026-11-24T20:38:09.4365123Z",
+    "DueUtc": "2026-11-25T01:40:02.9758424Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
@@ -33943,7 +33950,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
-    "Tested": "87fd34bf5438b7dbcb497ff1e166c4dfa325ece7",
+    "Tested": "607660004be78ee99fcdae181b8b75d46a5f37f0",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
@@ -34203,7 +34210,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "106a8dccff1e95bc0340918f24896896dc6c37dc"
   },
   "MindAttic.Components.SIDEBAR": {
-    "Tested": "8a84499e92d5e915b785b0fedeed6473afeb9977",
+    "Tested": "c43efd52583ab5770c5412ad33f4771199be17e0",
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
