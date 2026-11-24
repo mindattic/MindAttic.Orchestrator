@@ -180,7 +180,8 @@ public sealed class OpenTicketSource
     /// stand on: their open tickets are unknown, not empty (M.ORCH-T727).</summary>
     public IReadOnlySet<string> Unknown => unknown;
 
-    /// <summary>Opens the for.</summary>
+    /// <summary>The open tickets of <paramref name="repo"/>: from the ticket database, else its stories file (its last good read
+    /// when the file can't be read now); a problem is added to <paramref name="warnings"/>.</summary>
     public IReadOnlyList<Ticket> OpenFor(Repo repo, ICollection<string> warnings)
     {
         unknown.Remove(repo.Name);

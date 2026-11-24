@@ -5,7 +5,7 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// <summary>Local-time windows ("22:00-07:00", "12:00-13:00") when /allocate pauses; a window past midnight wraps.</summary>
 public static class QuietHours
 {
-    /// <summary>Tries to the parse.</summary>
+    /// <summary>Reads one window ("HH:mm-HH:mm"); false when it isn't two times or they are equal.</summary>
     public static bool TryParse(string text, out (TimeOnly From, TimeOnly To) window)
     {
         window = default;

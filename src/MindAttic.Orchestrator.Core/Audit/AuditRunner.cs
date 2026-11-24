@@ -3,19 +3,19 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Audit;
 
-/// <summary>Runs both audit tiers over the workspace and keeps the latest report on disk.</summary>
+/// <summary>Runs both audit tiers over the workspace and keeps the latest report in the orchestrator's store.</summary>
 public sealed class AuditRunner(OrchestratorOptions options, JsonStore store)
 {
     private const string StoreName = "audit";
 
-    /// <summary>Where the latest report is kept (<c>audit.json</c> in the store).</summary>
+    /// <summary>Where the latest report is kept (the store's <c>audit</c> row).</summary>
     public string FilePath => store.Describe(StoreName);
 
     /// <summary>When the latest report was saved (null when there is none), so a reader rereads it only once a new one is.</summary>
     public DateTime? SavedUtc => store.WrittenUtc(StoreName);
 
     /// <summary>Scans and saves; throws <see cref="IOException"/> or <see cref="UnauthorizedAccessException"/> when the
-    /// report can't be saved (held, disk full). <see cref="Scan"/> and <see cref="TrySave"/> keep the report when it can't.</summary>
+    /// report can't be saved (the database busy or unwritable). <see cref="Scan"/> and <see cref="TrySave"/> keep the report when it can't.</summary>
     public AuditReport Run(CancellationToken ct = default)
     {
         var report = Scan(ct);
@@ -33,7 +33,7 @@ public sealed class AuditRunner(OrchestratorOptions options, JsonStore store)
         return new AuditReport(DateTime.UtcNow, clock.Elapsed, repos.Count, files, drift, missing, duplicates);
     }
 
-    /// <summary>Saves the report as the latest; false with the reason when <c>audit.json</c> can't be written (M.ORCH-T467).</summary>
+    /// <summary>Saves the report as the latest; false with the reason when the store can't be written (M.ORCH-T467).</summary>
     public bool TrySave(AuditReport report, out string? error)
     {
         error = null;
@@ -52,7 +52,7 @@ public sealed class AuditRunner(OrchestratorOptions options, JsonStore store)
         return report;
     }
 
-    /// <summary>Like <see cref="Latest"/>, but false when the file exists and couldn't be read.</summary>
+    /// <summary>Like <see cref="Latest"/>, but false when the store couldn't be read now.</summary>
     public bool TryLatest(out AuditReport? report)
     {
         var read = store.TryLoad<AuditHolder>(StoreName, out var r);
@@ -61,7 +61,7 @@ public sealed class AuditRunner(OrchestratorOptions options, JsonStore store)
         return read;
     }
 
-    // JsonStore needs a parameterless type to fall back to when the file is missing.
+    // JsonStore needs a parameterless type to fall back to when there's no report yet.
     private sealed class AuditHolder
     {
         public DateTime RanUtc { get; init; }

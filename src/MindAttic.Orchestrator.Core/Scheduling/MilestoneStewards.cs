@@ -103,7 +103,7 @@ public sealed class MilestoneStewards(JsonStore store)
             if (db is null) return lines;
             var locked = Locked(db);
             if (locked.Count == 0 && !mayHaveRecords) return lines;
-            if (!store.TryLoad<Dictionary<string, Ran>>(StateName, out var loaded) && store.Has(StateName)) return lines;
+            if (!store.TryLoad<Dictionary<string, Ran>>(StateName, out var loaded)) return lines;
             var state = new Dictionary<string, Ran>(loaded, StringComparer.OrdinalIgnoreCase);
             mayHaveRecords = locked.Count > 0;
             if (locked.Count == 0 && state.Count == 0) return lines;
@@ -111,11 +111,11 @@ public sealed class MilestoneStewards(JsonStore store)
             var due = Due(locked, state, nowUtc);
             var gone = state.Keys.Where(id => !locked.Any(m => m.Id.Equals(id, StringComparison.OrdinalIgnoreCase))).ToList();
             if (due.Count == 0 && gone.Count == 0) return lines;
+            var outcomes = Apply(db, Read(db, due));
             foreach (var id in gone) state.Remove(id);
             foreach (var m in due) state[m.Id] = new Ran { State = m.State, AtUtc = nowUtc };
             store.Save(StateName, state);
 
-            var outcomes = Apply(db, Read(db, due));
             foreach (var o in outcomes.Where(o => o.Applied || o.Failed))
                 lines.Add(new MilestoneAcceptance.Line(o.Failed, $"milestone steward: {o.Text}"));
             foreach (var m in due)

@@ -90,10 +90,13 @@ public sealed class BranchMerges(JsonStore store)
         var lines = new List<Line>();
         if (running is { IsCompleted: true } done)
         {
+            Dictionary<string, Dictionary<string, MergeState>> record = [];
+            // The record unreadable now: the round's results are kept and recorded on a later tick, not dropped.
+            if (done.IsCompletedSuccessfully && done.Result.Count > 0 && !store.TryLoad(StateName, out record)) return lines;
             running = null;
             if (!done.IsCompletedSuccessfully)
                 lines.Add(new Line(true, $"branch merges: a round failed: {done.Exception?.GetBaseException().Message ?? "it was cancelled"}"));
-            else if (done.Result.Count > 0 && store.TryLoad<Dictionary<string, Dictionary<string, MergeState>>>(StateName, out var record))
+            else if (done.Result.Count > 0)
             {
                 foreach (var o in done.Result)
                 {

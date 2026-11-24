@@ -129,7 +129,7 @@ public sealed partial class BranchBuilds
             return new Report(ReportOutcome.Stale, $"{repo}'s {branch} is at {Short(st.Head)} now, not {Short(head)}: that result is dropped, and its new head gets a local run of its own once it's built", ticket, st.Head);
 
         Dictionary<string, Dictionary<string, TestState>> tests;
-        if (!store.TryLoad(TestsName, out tests) && store.Has(TestsName))
+        if (!store.TryLoad(TestsName, out tests))
             return new Report(ReportOutcome.Unreadable, "the host's record of local test runs couldn't be read now; nothing was recorded, report it again", ticket, st.Head);
 
         if (!tests.TryGetValue(repoKey, out var branches)) branches = tests[repoKey] = new Dictionary<string, TestState>(StringComparer.Ordinal);

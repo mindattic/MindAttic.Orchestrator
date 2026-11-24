@@ -147,7 +147,7 @@ public sealed class MilestoneForecasts(JsonStore store)
             if (db is null) return lines;
             var rows = Read(db, nowUtc);
             if (rows.Count == 0 && !mayHaveRecords) return lines;
-            if (!store.TryLoad<Dictionary<string, Recorded>>(StateName, out var loaded) && store.Has(StateName)) return lines;
+            if (!store.TryLoad<Dictionary<string, Recorded>>(StateName, out var loaded)) return lines;
             var state = new Dictionary<string, Recorded>(loaded, StringComparer.OrdinalIgnoreCase);
             mayHaveRecords = rows.Count > 0;
             if (rows.Count == 0 && state.Count == 0) return lines;

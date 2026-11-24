@@ -304,4 +304,80 @@ public sealed class MilestoneStewardTests
             Assert.That(MilestoneStewards.Due([active], state, Now.AddHours(1)).Select(m => m.Id), Is.EqualTo(new[] { "MS-1" }), "a day on");
         });
     }
+
+    // ── The daemon's passes over an unreadable store or ticket database (M.ORCH-T2140) ──
+
+    /// <summary>A workspace whose ticket database has one active milestone with a failed build check; its database's path.</summary>
+    private string ActiveMilestoneWithAFailedBuild(out string dir)
+    {
+        dir = temps.New();
+        var repo = Path.Combine(dir, "A");
+        Directory.CreateDirectory(Path.Combine(repo, ".git"));
+        Directory.CreateDirectory(Path.Combine(repo, "docs"));
+        File.WriteAllText(Path.Combine(repo, "docs", "USER_STORIES.md"),
+            "---\ncode: A\n---\n\n# A\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n" +
+            "| A-T1 | 2026-10-01 | fix | open | one | — |\n");
+        var path = TicketsDb.DefaultPath(dir);
+        using var db = TicketsDb.Open(path);
+        db.Import([new MindAttic.Tickets.Repo("A", repo)]);
+        var m = db.AddMilestone("First", "a goal", ["A"]);
+        db.AddToMilestone(m.Id, ["A-T1"]);
+        db.AddMilestoneCheck(m.Id, MilestoneCheckKinds.Build, "A builds", ["A"]);
+        db.ActivateMilestone(m.Id);
+        db.SetMilestoneCheckResult(m.Id, 1, MilestoneCheckResults.Fail, "A on main at abc1234 fails to build: X.cs(1,1): error CS0103");
+        return path;
+    }
+
+    private static void Sql(string path, string sql)
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path};Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
+    }
+
+    [Test]
+    public void RunDue_APlanThatCannotBeRead_LeavesTheMilestoneDue()
+    {
+        var path = ActiveMilestoneWithAFailedBuild(out var dir);
+        var store = new MindAttic.Orchestrator.Settings.JsonStore(Path.Combine(dir, "store"));
+        var stewards = new MilestoneStewards(store);
+        TicketsDb LabelsHeld()
+        {
+            var db = TicketsDb.Open(path);
+            Sql(path, "ALTER TABLE ticket_labels RENAME TO held_labels;");
+            return db;
+        }
+
+        Assert.That(stewards.RunDue(LabelsHeld, Now), Is.Empty);
+        Assert.That(store.TryLoad<Dictionary<string, MilestoneStewards.Ran>>(MilestoneStewards.StateName, out var ran), Is.True);
+        Assert.That(ran, Is.Empty, "not marked stewarded: nothing was done");
+
+        Sql(path, "ALTER TABLE held_labels RENAME TO ticket_labels;");
+        var lines = stewards.RunDue(() => TicketsDb.Open(path), Now.AddMinutes(1));
+        Assert.That(lines.Select(l => l.Text), Has.Some.Contain("Filed"), "stewarded on the next pass");
+    }
+
+    [Test]
+    public void RunDue_AndRecordDue_LeaveAnUnreadableRecordAsItIs()
+    {
+        var path = ActiveMilestoneWithAFailedBuild(out var dir);
+        var store = new MindAttic.Orchestrator.Settings.JsonStore(Path.Combine(dir, "store"));
+        StoreFaults.Garble(store, MilestoneStewards.StateName, "{ \"MS-1\": trunc");
+        StoreFaults.Garble(store, MilestoneForecasts.StateName, "{ \"MS-1\": trunc");
+
+        Assert.That(new MilestoneStewards(store).RunDue(() => TicketsDb.Open(path), Now), Is.Empty);
+        new MilestoneForecasts(store).RecordDue(() => TicketsDb.Open(path), Now);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(store.TryLoad<Dictionary<string, MilestoneStewards.Ran>>(MilestoneStewards.StateName, out _), Is.False,
+                "the steward's record is not replaced by defaults");
+            Assert.That(store.TryLoad<Dictionary<string, MilestoneForecasts.Recorded>>(MilestoneForecasts.StateName, out _), Is.False,
+                "the forecasts' record is not replaced by defaults");
+            using var db = TicketsDb.Open(path);
+            Assert.That(db.AllLabels().Values.SelectMany(l => l), Does.Not.Contain(MilestoneSteward.Label), "nothing was filed");
+        });
+    }
 }

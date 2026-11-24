@@ -181,6 +181,52 @@ public sealed class BranchBuildsTests
     }
 
     [Test]
+    public void An_unreadable_record_of_local_runs_is_not_overwritten_by_the_next_report()
+    {
+        BuildBoth();
+        BranchBuilds.RecordTest(store, "A", "work/M.ORCH-T2", "bbbbbbb1", ok: true, null, Now);
+        StoreFaults.Garble(store, BranchBuilds.TestsName, "{ \"A\": { trunc");
+
+        var report = BranchBuilds.RecordTest(store, "A", "work/M.ORCH-T1", "aaaaaaa1", ok: false, "x", Now);
+
+        Assert.That(report.Outcome, Is.EqualTo(BranchBuilds.ReportOutcome.Unreadable));
+        Assert.That(store.TryLoad<Dictionary<string, Dictionary<string, BranchBuilds.TestState>>>(BranchBuilds.TestsName, out _), Is.False,
+            "the stored record is left as it was, not replaced by one holding only this report");
+    }
+
+    [Test]
+    public void A_finished_merge_round_is_kept_while_the_merge_record_is_unreadable_and_settled_once_it_is()
+    {
+        BuildBoth();
+        BranchBuilds.RecordTest(store, "A", "work/M.ORCH-T2", "bbbbbbb1", ok: true, null, Now);
+        var round = new TaskCompletionSource<IReadOnlyList<BranchMerges.Outcome>>();
+        var settled = new List<string>();
+        var merges = new BranchMerges(store)
+        {
+            Spawn = _ => round.Task,
+            Settle = o => { settled.Add(o.Branch); return null; },
+            CheckEvery = TimeSpan.FromMinutes(1),
+        };
+        (string, string)[] repos = [("A", Path.Combine(dir, "A"))];
+        var trees = Path.Combine(dir, "wt");
+
+        merges.Tick(repos, trees, Now);
+        Assert.That(merges.Running, Is.True);
+        round.SetResult([new BranchMerges.Outcome("A", "work/M.ORCH-T2", "bbbbbbb1", "ccccccc1", null)]);
+        StoreFaults.Garble(store, BranchMerges.StateName, "{ trunc");
+
+        Assert.That(merges.Tick(repos, trees, Now.AddSeconds(1)), Is.Empty);
+        Assert.That(settled, Is.Empty, "nothing settled while its record can't be read");
+        Assert.That(merges.Running, Is.True, "the round's results are kept for the next tick");
+
+        StoreFaults.Garble(store, BranchMerges.StateName, "{}");
+        merges.Tick(repos, trees, Now.AddSeconds(2));
+        Assert.That(settled, Is.EqualTo(new[] { "work/M.ORCH-T2" }), "the merged ticket is settled, not later handed back as gone");
+        Assert.That(merges.Running, Is.False);
+        Assert.That(BranchMerges.Load(store)["A"]["work/M.ORCH-T2"].Merged, Is.EqualTo("ccccccc1"));
+    }
+
+    [Test]
     public void A_work_branch_names_its_ticket()
     {
         Assert.That(BranchBuilds.WorkUnitOf("work/M.ORCH-T1637"), Is.EqualTo("M.ORCH-T1637"));
