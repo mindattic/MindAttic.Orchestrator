@@ -462,8 +462,8 @@
                              as the old menu's root item - so it's still there to explain why. -->
                         <Button x:Name="LoginTabAddButton" Style="{StaticResource MaToolButton}" Content="+ Add" FontFamily="Segoe UI" FontSize="12"
                                 Width="56" Margin="{StaticResource SpaceLS}" Click="AddTabButton_Click"
-                                IsEnabled="{Binding IsTabSignedIn}" ToolTipService.ShowOnDisabled="True"
-                                mc:MaCallout.ToolTip="Open a CLI: General Prompt, Run Launcher, or a project from the tree"
+                                IsEnabled="{Binding CanAddCli}" ToolTipService.ShowOnDisabled="True"
+                                mc:MaCallout.ToolTip="{Binding AddCliLockedTip, TargetNullValue='Open a CLI: General Prompt, Run Launcher, or a project from the tree'}"
                                 AutomationProperties.Name="{Binding TabTitle, StringFormat='Open a new CLI for {0}'}"
                                 Visibility="{Binding IsPersonTab, Converter={StaticResource Visible}}" />
                     </StackPanel>
@@ -908,8 +908,8 @@
                                 </Grid>
                                 <Button Grid.Column="1" Style="{StaticResource MaToolButton}" Content="+ Add" FontFamily="Segoe UI"
                                         HorizontalAlignment="Left" Height="20" FontSize="11" Margin="6,2,0,2" Padding="6,0"
-                                        Click="AddTabButton_Click" IsEnabled="{Binding IsTabSignedIn}" ToolTipService.ShowOnDisabled="True"
-                                        mc:MaCallout.ToolTip="Open a CLI: a repo from the list, or a Launcher"
+                                        Click="AddTabButton_Click" IsEnabled="{Binding CanAddCli}" ToolTipService.ShowOnDisabled="True"
+                                        mc:MaCallout.ToolTip="{Binding AddCliLockedTip, TargetNullValue='Open a CLI: a repo from the list, or a Launcher'}"
                                         AutomationProperties.Name="{Binding TabTitle, StringFormat='Open a new CLI for {0}'}" />
                             </Grid>
                         </Grid>

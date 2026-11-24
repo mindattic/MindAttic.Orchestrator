@@ -462,6 +462,17 @@ public sealed partial class MainViewModel
     /// <summary>Whether this tab's login is locked (M.ORCH-T2108): false for the API key tab.</summary>
     internal bool IsLoginLocked => IsLocked(store, LockEmail, IsApiKeyTab, LoginLocks.LiveLocked());
 
+    /// <summary>Whether this login's "+ Add" buttons are enabled (M.ORCH-T2185): signed in and not locked. Raised with the
+    /// tab status (<see cref="RaiseTabStatus"/>), so a lock pushed over the bus greys them at once.</summary>
+    public bool CanAddCli => CanAddCliOf(IsTabSignedIn, IsLoginLocked);
+
+    /// <summary>"+ Add"'s tooltip while locked (M.ORCH-T2185); null otherwise, so each button keeps its own wording.</summary>
+    public string? AddCliLockedTip => AddCliLockedTipOf(IsLoginLocked);
+
+    internal static bool CanAddCliOf(bool signedIn, bool locked) => signedIn && !locked;
+
+    internal static string? AddCliLockedTipOf(bool locked) => locked ? "Locked: right-click > Unlock to use this login" : null;
+
     /// <summary>
     /// "Lock"/"Unlock" (M.ORCH-T2118), on every real login's right-click menu (never the API key's): a locked login can't
     /// open a CLI or take dispatched or moved work until it's unlocked again (<see cref="LoginLocks"/>, M.ORCH-T2122).

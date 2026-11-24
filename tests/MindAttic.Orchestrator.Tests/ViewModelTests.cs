@@ -190,6 +190,32 @@ public sealed class ViewModelTests
         finally { temps.DeleteAll(); }
     }
 
+    /// <summary>M.ORCH-T2185: "+ Add" (CanAddCli/AddCliLockedTip, raised with the tab status) is disabled while the login is
+    /// locked, with a tooltip saying how to unlock it, and comes back once it's unlocked.</summary>
+    [Test]
+    public void Add_is_disabled_with_an_unlock_tip_while_the_login_is_locked()
+    {
+        const string erin = "ohleo199@mindattic.com";
+        var temps = new TempDirs();
+        try
+        {
+            var store = new JsonStore(temps.New());
+            bool Locked() => MainViewModel.IsLocked(store, erin, isApiKeyTab: false);
+
+            Assert.That(MainViewModel.CanAddCliOf(signedIn: true, Locked()), Is.True);
+            Assert.That(MainViewModel.AddCliLockedTipOf(Locked()), Is.Null, "unlocked: each button keeps its own tooltip");
+            Assert.That(MainViewModel.CanAddCliOf(signedIn: false, Locked()), Is.False, "signed out: still disabled as before");
+
+            LoginLocks.Lock(store, erin, "Erin", LoginLocks.ReasonManual, "you", null, DateTime.UtcNow);
+            Assert.That(MainViewModel.CanAddCliOf(signedIn: true, Locked()), Is.False, "locked: + Add is disabled");
+            Assert.That(MainViewModel.AddCliLockedTipOf(Locked()), Does.StartWith("Locked").And.Contains("Unlock"));
+
+            LoginLocks.Unlock(store, erin, "Erin", "you", DateTime.UtcNow);
+            Assert.That(MainViewModel.CanAddCliOf(signedIn: true, Locked()), Is.True, "unlocked again: + Add is back");
+        }
+        finally { temps.DeleteAll(); }
+    }
+
     private sealed class Row(string key, int value)
     {
         public string Key { get; } = key;

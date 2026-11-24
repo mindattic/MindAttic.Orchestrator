@@ -1420,7 +1420,7 @@ public partial class MainWindow : Window
     /// project from the tree, one click away instead of behind the row's "⋯" menu.</summary>
     private void AddTabButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: MainViewModel tab } || !tab.IsPersonTab) return;
+        if (sender is not FrameworkElement { DataContext: MainViewModel tab } || !tab.IsPersonTab || !tab.CanAddCli) return;
         e.Handled = true;
         ShowOpenProjectWindow(tab);
     }
