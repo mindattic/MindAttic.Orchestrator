@@ -488,10 +488,7 @@ public static partial class Scheduler
         return last;
     }
 
-    /// <summary>The opening prompt for a ticket: what to do, where (the repo's own checkout on main, M.ORCH-T1122), and how to mark it done.</summary>
-    public static string PromptFor(QueueItem item) =>
-        $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
-        $"Work in {item.Repo}'s own checkout on main, never a separate branch or worktree; other agents may share it, so touch only the files this ticket needs " +
-        "and leave every change you didn't make as it is. " +
-        $"When it's done: run /commit (it commits only what you changed), then mark it finished with: tickets ticket close {item.Id} --repo {item.Repo} --ref \"<the test or commit that proves it>\"";
+    /// <summary>The opening prompt for a ticket: what to do, where (the repo's own checkout on main, M.ORCH-T1122), and how to land
+    /// and mark it done, the same as /allocate's (M.ORCH-T2139: build only, commit only its own paths, merge, push, close).</summary>
+    public static string PromptFor(QueueItem item) => Allocate.PromptFor(item, item.RepoPath);
 }

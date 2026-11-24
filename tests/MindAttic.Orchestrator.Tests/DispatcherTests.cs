@@ -324,6 +324,27 @@ public sealed class DispatcherTests
         Assert.That((opened, store.LoadAssignments().Count), Is.EqualTo((0, 0)), "nothing opened or claimed");
     }
 
+    [Test]
+    public void An_explicitly_chosen_locked_login_is_refused_not_opened()
+    {
+        // M.ORCH-T2139: a dashboard tab's Start (or a redelegate) on a locked login opens nothing, same as a pin to it.
+        const string email = "ryan@example.com";
+        LoginLocks.Lock(store, email, "Ryan", LoginLocks.ReasonManual, "you", null, Now);
+        var opened = 0;
+        var dispatcher = new Dispatcher(new SessionControl(new OrchestratorOptions { LauncherExe = Path.Combine(dir, "no-launcher.exe") }), store)
+        {
+            OpenTab = (_, _, _, _, _) => { opened++; return (null, Task.FromResult(true)); },
+        };
+
+        var result = dispatcher.Dispatch(Item("A-T1"), "Claude", login: new Dispatcher.TabLogin(@"D:\acc\ryan", email));
+
+        Assert.That(result.Ok, Is.False);
+        Assert.That(result.Message, Does.Contain("ryan@example.com is locked (manual since").And.Contain("orchestrator org unlock ryan@example.com"));
+        Assert.That((opened, store.LoadAssignments().Count), Is.EqualTo((0, 0)), "nothing opened or claimed");
+        Assert.That(dispatcher.Dispatch(Item("A-T1"), "Claude", login: new Dispatcher.TabLogin(@"D:\acc\amy", "amy@example.com")).Ok, Is.True,
+            "an unlocked login still starts");
+    }
+
     private Dispatcher Make(Func<string, string, string, string, bool, (string?, Task<bool>?)>? open = null) =>
         new(new SessionControl(new OrchestratorOptions { LauncherExe = Path.Combine(dir, "no-launcher.exe") }), store)
         {

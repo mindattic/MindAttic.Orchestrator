@@ -7,8 +7,8 @@ using MindAttic.Tickets.Log;
 namespace MindAttic.Orchestrator.Scheduling;
 
 /// <summary>
-/// The full test suite of each repo's main line, run by the daemon with no LLM (M.ORCH-T561). A subagent builds and runs only
-/// the tests its change touches, lands and closes its ticket, and its slot goes to the next ticket; it no longer waits on the
+/// The full test suite of each repo's main line, run by the daemon with no LLM (M.ORCH-T561). A subagent only builds (it runs no
+/// tests, MAT-T121), lands and closes its ticket, and its slot goes to the next ticket; it no longer waits on the
 /// whole suite (often 20+ minutes that spend no tokens). Here, every <see cref="CheckEvery"/>, each repo with a solution at its
 /// root whose <c>origin/&lt;main line&gt;</c> moved past the last commit tested gets one run of its whole suite, in a detached
 /// worktree of its own (<see cref="WorktreeName"/>): one run per repo at a time, so landings made while one runs are covered,

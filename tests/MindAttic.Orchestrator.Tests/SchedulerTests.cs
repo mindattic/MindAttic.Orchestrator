@@ -179,7 +179,8 @@ public sealed class SchedulerTests
     public void Prompt_says_how_to_close_the_ticket()
     {
         var item = new QueueItem("Repo", @"D:\W\Repo", T("RP-T3", "fix"), 0, null, false);
-        Assert.That(Scheduler.PromptFor(item), Does.Contain("tickets ticket close RP-T3 --repo Repo"));
+        Assert.That(Scheduler.PromptFor(item), Does.Contain("tickets ticket close RP-T3 --ref")
+            .And.Contain("git commit -m \"<subject>\" -- <path>").And.Not.Contain("run /commit"));
     }
 
     [Test]
@@ -200,7 +201,7 @@ public sealed class SchedulerTests
         Assert.That(plan.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T1", "B-T1" }));
         Assert.That(Scheduler.Plan(snap with { Priorities = new Dictionary<string, long> { ["B-T1"] = 1 } }, new OrchestratorSettings(), []).Queue[0].Id, Is.EqualTo("B-T1"),
             "priority still comes first");
-        Assert.That(Scheduler.PromptFor(plan.Queue[0]), Does.Contain("/commit").And.Contains("tickets ticket close A-T1 --repo A"));
+        Assert.That(Scheduler.PromptFor(plan.Queue[0]), Does.Contain("git push origin HEAD:main").And.Contains("tickets ticket close A-T1 --ref"));
     }
 
     [Test]

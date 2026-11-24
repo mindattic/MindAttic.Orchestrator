@@ -199,7 +199,7 @@ public static class DiffReview
         var clean = said.Trim().TrimEnd('.').Equals(Clean, StringComparison.OrdinalIgnoreCase);
         return new($"Opus review of {ticketId}'s diff ({verdict.Why}):\n{said.Trim()}\n\n" + (clean
             ? "Nothing to change: land it."
-            : "Fix what's really wrong above, rerun the tests and commit, then land it. Don't run the review again."), true, verdict);
+            : "Fix what's really wrong above, rebuild and commit, then land it. Don't run the review again."), true, verdict);
     }
 
     /// <summary>The command <see cref="RunClaude"/> runs under <c>cmd /c</c>.</summary>

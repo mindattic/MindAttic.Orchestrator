@@ -48,6 +48,10 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             if (Budget.LoginLocks.Refusal(Budget.LoginLocks.Load(store), login.Email, who) is { } refusal)
                 return new Result(false, $"{item.Id} is assigned to {who}: {refusal}.", null);
         }
+        // Nor does a login chosen explicitly (a dashboard tab's Start, a redelegate), the global login included (M.ORCH-T2139).
+        else if (provider == Providers.Claude && login is not null && (login.Email ?? (login.ConfigDir is null ? GlobalEmail() : null)) is { } explicitEmail
+            && Budget.LoginLocks.Refusal(Budget.LoginLocks.Load(store), explicitEmail, explicitEmail) is { } locked)
+            return new Result(false, $"{item.Id} isn't started: {locked}.", null);
         // An org's ticket (M.ORCH-T753) starts only on its own members' logins: a login chosen in another org is refused, and the
         // Auto pick below picks only among the org's. The global login (no email) and the API key aren't judged here.
         var orgs = OrgsNow();
@@ -182,8 +186,13 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         var routing = OrgRouting.Load(store, store.LoadSettings());
         if (!routing.Active) return routing;
         // The global login's email only matters once there's more than one org.
-        try { return routing with { GlobalEmail = Budget.AccountProfile.Read(new AccountDirs().HomeConfigPath)?.Email }; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return routing; }
+        return routing with { GlobalEmail = GlobalEmail() };
+    }
+
+    private static string? GlobalEmail()
+    {
+        try { return Budget.AccountProfile.Read(new AccountDirs().HomeConfigPath)?.Email; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
     }
 
     private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit, TabLogin? login, Func<string, bool>? eligible,
