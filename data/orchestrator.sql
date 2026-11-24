@@ -33142,8 +33142,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "1e5802311586408b84e9d86f2acfc9cd72272ac5",
-    "Green": "1e5802311586408b84e9d86f2acfc9cd72272ac5"
+    "Tested": "9134bb35eadba6e1b6ea645fe5cb03453a33ea44",
+    "Green": "9134bb35eadba6e1b6ea645fe5cb03453a33ea44"
   },
   "MindAttic.Psst": {
     "Tested": "1c8061f8499168728487d2c9f4b57238b40eb22b",
@@ -33418,8 +33418,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "1e5802311586408b84e9d86f2acfc9cd72272ac5",
-    "Green": "1e5802311586408b84e9d86f2acfc9cd72272ac5"
+    "Tested": "9134bb35eadba6e1b6ea645fe5cb03453a33ea44",
+    "Green": "9134bb35eadba6e1b6ea645fe5cb03453a33ea44"
   },
   "ipt392tmp": {
     "Tested": "31e98a400cdfd58e719962652a8b3279e14ab4b1"
@@ -33604,7 +33604,7 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
 INSERT INTO state (name, value) VALUES ('milestone-steward', '{
   "MS-2": {
     "State": "active",
-    "AtUtc": "2026-11-23T00:46:01.28504Z"
+    "AtUtc": "2026-11-24T01:40:21.5566117Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
