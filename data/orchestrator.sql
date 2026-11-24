@@ -1786,9 +1786,9 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-23', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13948296);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 145818);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 250043);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2023679);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21339695);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4739130);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2028467);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22189863);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4847684);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'SpaceGod.Unreal', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9884876);
 
 -- ticket_costs
@@ -3030,9 +3030,9 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a33ff4679eccfb5c3', 'GG-T922', 'feature', 'GridGame.Unity', 34876, '2026-11-24T06:55:28.34Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a380f8676a735558b', 'GG-T693', 'fix', 'GridGame.Unity', 32583, '2026-11-23T19:28:12.107Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a3e426ac4341a6a08', 'GG-T758', 'feature', 'GridGame.Unity', 105503, '2026-11-24T04:25:52.852Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a3ef77bdae4438010', 'GG-T923', 'feature', 'GridGame.Unity', 207233, '2026-11-24T07:48:54.497Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a3ef77bdae4438010', 'GG-T923', 'feature', 'GridGame.Unity', 304234, '2026-11-24T14:14:28.303Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a420395c06a897acf', 'GG-T920', '', 'GridGame.Unity', 197046, '2026-11-24T07:24:56.26Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a424b7d3e51d5f00e', 'GG-T950', 'fix', 'GridGame.Unity', 27638, '2026-11-24T14:09:14.313Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a424b7d3e51d5f00e', 'GG-T950', 'fix', 'GridGame.Unity', 63933, '2026-11-24T14:18:51.496Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a434ba16cb2c70d45', 'GG-T916', 'feature', 'GridGame.Unity', 139984, '2026-11-24T07:43:45.029Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a47ded08e376ca3c6', 'GG-T701', 'fix', 'GridGame.Unity', 41553, '2026-11-23T19:30:33.585Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a489d8f328c1af993', 'GG-T714', '', 'GridGame.Unity', 106631, '2026-11-23T20:34:35.692Z', 0, 'opus');
@@ -3050,7 +3050,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a71c9596e2260cace', 'GG-T744', 'feature', 'GridGame.Unity', 92173, '2026-11-24T03:57:23.412Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a73e11b2e2e7540de', 'GG-T732', 'fix', 'GridGame.Unity', 83598, '2026-11-24T03:35:40.066Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a76a9d0d74f14e3a9', 'GG-T709', 'fix', 'GridGame.Unity', 38347, '2026-11-24T03:35:53.07Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a7877372d79bcaef9', 'GG-T950', 'fix', 'GridGame.Unity', 41211, '2026-11-24T13:54:46.794Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a7877372d79bcaef9', 'GG-T950', 'fix', 'GridGame.Unity', 81249, '2026-11-24T14:14:47.296Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a7ac7ae086ed892e3', 'GG-T276', 'chore', 'GridGame.Unity', 36743, '2026-11-23T19:24:34.46Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a7e73ec239df2034d', 'GG-T654', 'fix', 'GridGame.Unity', 35033, '2026-11-23T19:25:56.46Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a818ec2d28f590005', 'GG-T738', 'feature', 'GridGame.Unity', 92807, '2026-11-24T03:50:22.845Z', 0, 'opus');
@@ -33529,7 +33529,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
-    "Tested": "1512e6d1ef061271a05226fc82e84805fbdb47fe",
+    "Tested": "44a017b7473c80648b1b819d1cd677c723138b44",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
@@ -34327,6 +34327,51 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "DeadStartedUtc": "2026-11-23T07:01:55.6329282Z",
     "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
     "Cli": 63884,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "US-T549",
+    "Repo": "SpaceGod.Unreal",
+    "Directory": "D:\\Projects\\MindAttic\\SpaceGod.Unreal",
+    "FirstSeenUtc": "2026-11-24T14:13:58.1398655Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-24T04:05:48.2488005Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 33420,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "US-T673",
+    "Repo": "SpaceGod.Unreal",
+    "Directory": "D:\\Projects\\MindAttic\\SpaceGod.Unreal",
+    "FirstSeenUtc": "2026-11-24T14:13:58.1398655Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-24T09:00:36.0540232Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 33420,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "US-T664",
+    "Repo": "SpaceGod.Unreal",
+    "Directory": "D:\\Projects\\MindAttic\\SpaceGod.Unreal",
+    "FirstSeenUtc": "2026-11-24T14:13:58.1398655Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-24T07:17:30.5087968Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 33420,
     "Ahead": 0,
     "Uncommitted": [],
     "Open": true
