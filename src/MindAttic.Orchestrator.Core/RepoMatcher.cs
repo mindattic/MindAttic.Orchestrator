@@ -9,7 +9,7 @@ public sealed class RepoMatcher
 {
     private readonly (string Name, string Path)[] repos;
 
-    /// <summary>Creates the repo matcher.</summary>
+    /// <summary>A matcher over <paramref name="repos"/> (name and folder), longest folder tried first.</summary>
     public RepoMatcher(IEnumerable<(string Name, string Path)> repos)
     {
         this.repos = [.. repos
@@ -17,7 +17,7 @@ public sealed class RepoMatcher
             .OrderByDescending(r => r.Item2.Length)];
     }
 
-    /// <summary>Match.</summary>
+    /// <summary>The name of the repo whose folder is <paramref name="directory"/> or contains it; null when none does or it is blank.</summary>
     public string? Match(string? directory)
     {
         if (string.IsNullOrWhiteSpace(directory)) return null;

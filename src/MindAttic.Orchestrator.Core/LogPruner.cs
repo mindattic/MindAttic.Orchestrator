@@ -10,13 +10,13 @@ namespace MindAttic.Orchestrator;
 /// </summary>
 public sealed class LogPruner
 {
-    /// <summary>The every.</summary>
+    /// <summary>How often <see cref="RunIfDue"/> runs; calls in between do nothing.</summary>
     public static readonly TimeSpan Every = TimeSpan.FromHours(1);
 
     private DateTime? lastUtc;
     private DateTime? maintainedUtc;
 
-    /// <summary>Runs the if due.</summary>
+    /// <summary>Prunes and rotates the logs (and runs <see cref="DbMaintenance"/> when that is due) once <see cref="Every"/> has passed since the last run.</summary>
     public void RunIfDue(OrchestratorSettings s, Action<string> say) =>
         RunIfDue(s, say, DateTime.UtcNow, Term.TermSessions.DefaultDirectory, Activity.DiskCleanup.LogPath, () => new OrchestratorDb(OrchestratorDb.LivePath));
 

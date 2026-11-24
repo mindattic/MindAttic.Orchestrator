@@ -18,17 +18,17 @@ public sealed record LimitObservation(LimitKind Kind, DateTime HitUtc, DateTime 
 /// </summary>
 public sealed record LimitCalibration(IReadOnlyList<LimitObservation> Observations)
 {
-    /// <summary>The recent hits constant.</summary>
+    /// <summary>How many of the most recent hits the learned limits are the median of.</summary>
     public const int RecentHits = 5;
-    /// <summary>The keep.</summary>
+    /// <summary>How long a hit is kept; older ones are dropped.</summary>
     public static readonly TimeSpan Keep = TimeSpan.FromDays(60);
 
-    /// <summary>Window.</summary>
+    /// <summary>The window a limit of <paramref name="kind"/> covers: 5 hours for a session, 7 days for the week.</summary>
     public static TimeSpan Window(LimitKind kind) => kind == LimitKind.Session ? BudgetCalculator.BlockLength : TimeSpan.FromDays(7);
 
-    /// <summary>The learned 5 h.</summary>
+    /// <summary>The 5-hour limit in uncached tokens: the median of the recent session hits (the lower middle when even); null with none.</summary>
     public long? Learned5h => Median(LimitKind.Session);
-    /// <summary>The learned weekly.</summary>
+    /// <summary>The weekly limit in uncached tokens: the median of the recent weekly hits (the lower middle when even); null with none.</summary>
     public long? LearnedWeekly => Median(LimitKind.Weekly);
 
     /// <summary>Whether a hit at this time was the signed-in account's (null: every hit is). Another account's week resets at its

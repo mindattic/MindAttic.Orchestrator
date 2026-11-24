@@ -11,7 +11,7 @@ public static class Briefing
     /// <summary>Away for less than this isn't worth a briefing.</summary>
     public static readonly TimeSpan MinAway = TimeSpan.FromHours(1);
 
-    /// <summary>Compose.</summary>
+    /// <summary>The briefing for the time since <paramref name="sinceUtc"/>; null when away less than <see cref="MinAway"/> or nothing happened.</summary>
     public static string? Compose(Snapshot snapshot, SchedulePlan plan, DateTime sinceUtc)
     {
         var away = snapshot.TakenUtc - sinceUtc;

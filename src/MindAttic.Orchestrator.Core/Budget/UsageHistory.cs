@@ -15,13 +15,13 @@ public sealed record DayUsage(DateOnly Day, string Repo, string Provider, long F
 /// </summary>
 public static class UsageHistory
 {
-    /// <summary>The keep.</summary>
+    /// <summary>How long a day's usage is kept: a year.</summary>
     public static readonly TimeSpan Keep = TimeSpan.FromDays(366);
 
     /// <summary>What <see cref="DayUsage.Account"/> starts with for a session billed elsewhere than the subscription; never an account's key.</summary>
     public const string BilledElsewhere = "billed:";
 
-    /// <summary>Whether billed elsewhere.</summary>
+    /// <summary>Whether <paramref name="account"/> marks usage billed elsewhere than the subscription (it starts with <see cref="BilledElsewhere"/>).</summary>
     public static bool IsBilledElsewhere(string? account) => account?.StartsWith(BilledElsewhere, StringComparison.Ordinal) == true;
 
     /// <param name="accountOf">Whose each event's tokens were (see <see cref="DayUsage.Account"/>); null tags none.</param>

@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace MindAttic.Orchestrator;
 
-/// <summary>The formatting type.</summary>
+/// <summary>Short text for the numbers the CLI and dashboard show: percents, token counts, spans and reset times.</summary>
 public static class Formatting
 {
     /// <summary>When a limit resets, local time: the clock alone today, with the weekday on any other day (a weekly wall's
@@ -39,7 +39,7 @@ public static class Formatting
             : Math.Min(Math.Round(percent, MidpointRounding.AwayFromZero), 89).ToString("0", CultureInfo.InvariantCulture)) + "%";
 
     // The thresholds are where the smaller unit would round up to 1000 (999,999 is "1M", not "1000k").
-    /// <summary>Tokens.</summary>
+    /// <summary>A token count, short: "950", "1.2k", "3.4M", "1.05B".</summary>
     public static string Tokens(long n) => n switch
     {
         >= 999_950_000 => (n / 1e9).ToString("0.##", CultureInfo.InvariantCulture) + "B",
@@ -48,14 +48,14 @@ public static class Formatting
         _ => n.ToString(CultureInfo.InvariantCulture),
     };
 
-    /// <summary>"now", "4m", "3h", "2d".</summary>
+    /// <summary>A span, short and rounded down: "now" under a minute, else minutes, hours or days ("4m", "3h", "2d").</summary>
     public static string Span(TimeSpan d) =>
         d.TotalMinutes < 1 ? "now"
         : d.TotalHours < 1 ? $"{(int)d.TotalMinutes}m"
         : d.TotalDays < 1 ? $"{(int)d.TotalHours}h"
         : $"{(int)d.TotalDays}d";
 
-    /// <summary>Ago.</summary>
+    /// <summary>How long before <paramref name="nowUtc"/> <paramref name="utc"/> was: "4m ago", or "now"; empty when it is null.</summary>
     public static string Ago(DateTime? utc, DateTime nowUtc)
     {
         if (utc is null) return "";

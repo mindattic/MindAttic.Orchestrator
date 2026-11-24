@@ -12,7 +12,7 @@ namespace MindAttic.Orchestrator.Budget;
 /// </summary>
 public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Action<LogEventLevel, string> say, Action<string, string, bool> alert)
 {
-    /// <summary>The repo constant.</summary>
+    /// <summary>The repo the fix tickets for limit hits and over or blind windows are filed in.</summary>
     public const string Repo = "MindAttic.Orchestrator";
 
     /// <summary>The lease one daemon holds to keep the ledger: each daemon loads the raised walls once, so a second one beside
@@ -36,7 +36,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     /// <summary>The pace gate's old event log, read into the database's <c>gate_events</c> each tick (M.ORCH-T526): a hook that
     /// can't write the database right now still appends its event there.</summary>
     public static string DefaultEventsPath { get; } = Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", Setup.AgentGate.GateLogName);
-    /// <summary>The events path.</summary>
+    /// <summary>The pace gate's event log read each tick; <see cref="DefaultEventsPath"/> unless a test gives another.</summary>
     public string EventsPath { get; init; } = DefaultEventsPath;
 
     private List<GateEvent> Events(DateTime sinceUtc)
@@ -62,7 +62,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     /// <summary>Where the raised walls are remembered across restarts (M.ORCH-T172's fix replaced <c>pace-alarms</c>, which held hit times).</summary>
     internal const string AlarmsName = "pace-alarm-walls";
 
-    /// <summary>Tick.</summary>
+    /// <summary>At most once a minute: imports the gate's events, closes every ended 5-hour window into the ledger and raises each new hit or over or blind window.</summary>
     public void Tick(DateTime nowUtc)
     {
         if (nowUtc - checkedUtc < TimeSpan.FromMinutes(1)) return;

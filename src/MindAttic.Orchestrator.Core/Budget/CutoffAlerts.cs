@@ -9,7 +9,7 @@ public sealed record CutoffCrossing(string Email, string Name, bool Weekly, stri
 /// <summary>What the database keeps (<see cref="CutoffAlerts.StateName"/>): per login and window, the reset of the window last alerted.</summary>
 public sealed class CutoffAlertBook
 {
-    /// <summary>Gets or sets the alerted.</summary>
+    /// <summary>Per <c>email|kind</c> key, the reset of the window last alerted.</summary>
     public Dictionary<string, DateTime> Alerted { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
@@ -21,7 +21,7 @@ public sealed class CutoffAlertBook
 /// </summary>
 public sealed class CutoffAlerts(JsonStore? store)
 {
-    /// <summary>The state name constant.</summary>
+    /// <summary>The <c>state</c> row the <see cref="CutoffAlertBook"/> is kept in.</summary>
     public const string StateName = "usage-cutoff-alerts";
 
     /// <summary>A reset this much later than the one alerted is a new window (readings of one window jitter by seconds).</summary>

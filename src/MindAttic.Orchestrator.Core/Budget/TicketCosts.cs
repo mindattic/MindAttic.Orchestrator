@@ -13,14 +13,14 @@ public sealed record TicketCost(string TicketId, string? Type, string Repo, long
 /// <summary>What the completed tickets of one model cost: how many, in all, and per ticket (M.ORCH-T563).</summary>
 public sealed record ModelCost(string Model, int Tickets, long Fresh)
 {
-    /// <summary>The per ticket.</summary>
+    /// <summary>What a ticket cost on average; 0 with no tickets.</summary>
     public long PerTicket => Tickets == 0 ? 0 : Fresh / Tickets;
 }
 
 /// <summary>A guess at what a ticket will cost, and what it's based on.</summary>
 public sealed record CostEstimate(long Fresh, int Basis, string Of)
 {
-    /// <summary>To string.</summary>
+    /// <summary>The estimate as shown: "~1.2M (median of 5 fix tickets)".</summary>
     public override string ToString() => $"~{Formatting.Tokens(Fresh)} (median of {Basis} {Of})";
 }
 
@@ -32,12 +32,12 @@ public sealed record CostEstimate(long Fresh, int Basis, string Of)
 /// </summary>
 public sealed record TicketCosts(IReadOnlyList<SessionCost> Sessions)
 {
-    /// <summary>The min basis constant.</summary>
+    /// <summary>The fewest tickets a same-repo-and-type or same-type pool needs before an estimate uses it.</summary>
     public const int MinBasis = 3;
-    /// <summary>The keep.</summary>
+    /// <summary>How long a session's cost is kept after its last use.</summary>
     public static readonly TimeSpan Keep = TimeSpan.FromDays(180);
 
-    /// <summary>The tickets.</summary>
+    /// <summary>Each ticket's cost: its sessions added up.</summary>
     public IReadOnlyList<TicketCost> Tickets { get; } = [.. Sessions
         .GroupBy(s => s.TicketId, StringComparer.Ordinal)
         .Select(g => new TicketCost(g.Key, g.Select(s => s.Type).FirstOrDefault(t => t is not null), g.First().Repo,
@@ -105,7 +105,7 @@ public sealed record TicketCosts(IReadOnlyList<SessionCost> Sessions)
     public static IEnumerable<string> Unticketed(IEnumerable<TranscriptSession> sessions) =>
         sessions.Where(s => s.TicketId is null && s.SessionId.Length > 0 && s.Events.Count > 0).Select(s => s.SessionId);
 
-    /// <summary>Estimate.</summary>
+    /// <summary>The median cost of past tickets of <paramref name="type"/> in <paramref name="repo"/>, else of that type, else of all (each pool but the last needs <see cref="MinBasis"/>), leaving out <paramref name="excludeTicket"/>; null with none.</summary>
     public CostEstimate? Estimate(string repo, string type, string? excludeTicket = null)
     {
         var done = Tickets.Where(t => t.TicketId != excludeTicket).ToList();

@@ -36,7 +36,7 @@ public static class ApiKeyPerson
     /// <summary>Whether <paramref name="email"/> is the API key's.</summary>
     public static bool Is(string? email) => string.Equals(AccountDirs.Normalize(email), Email, StringComparison.Ordinal);
 
-    /// <summary>Its login folder.</summary>
+    /// <summary>Its login folder in <paramref name="dirs"/>: the one named for <see cref="Email"/>.</summary>
     public static AccountDir Dir(AccountDirs dirs) => dirs.For(Email);
 
     /// <summary>

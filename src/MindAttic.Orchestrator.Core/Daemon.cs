@@ -37,7 +37,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
     }
 
-    /// <summary>Runs.</summary>
+    /// <summary>Runs the daemon on the calling thread, ticking every <paramref name="interval"/> until <paramref name="cancel"/> is signalled.</summary>
     public void Run(TimeSpan interval, CancellationToken cancel)
     {
         var options = OrchestratorOptions.Load(store);

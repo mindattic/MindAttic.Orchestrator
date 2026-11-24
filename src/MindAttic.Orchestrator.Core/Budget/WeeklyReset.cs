@@ -36,7 +36,7 @@ public readonly record struct WeeklyReset(DayOfWeek Day, TimeOnly Time)
         return true;
     }
 
-    /// <summary>To string.</summary>
+    /// <summary>The reset as day and 24-hour time: "Tuesday 17:00".</summary>
     public override string ToString() => $"{Day} {Time.ToString("HH:mm", CultureInfo.InvariantCulture)}";
 
     /// <summary>Short display form, e.g. "Mon 9:00 AM".</summary>

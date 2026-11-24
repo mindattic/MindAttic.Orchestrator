@@ -167,9 +167,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private DateTime historySavedUtc;
     private IReadOnlyDictionary<string, IReadOnlySet<string>> links = new Dictionary<string, IReadOnlySet<string>>();
 
-    /// <summary>The options.</summary>
+    /// <summary>The options it was built with.</summary>
     public OrchestratorOptions Options => options;
-    /// <summary>The store.</summary>
+    /// <summary>The settings and state store it reads and writes; a new <see cref="JsonStore"/> when none was given.</summary>
     public JsonStore Store { get; } = store ?? new JsonStore();
 
     /// <summary>The logins the user let past their weekly target (M.ORCH-T694), those whose time or weekly reset has come ended

@@ -27,7 +27,7 @@ public sealed record OrchestratorOptions
     /// doesn't also pick up whatever's really sitting in <see cref="DefaultExtraWorkspaceRoots"/> on this machine.</summary>
     public static readonly IReadOnlyList<string> DefaultExtraWorkspaceRoots = [@"D:\Projects\GunGreenEyes"];
 
-    /// <summary>The workspace root.</summary>
+    /// <summary>The folder whose repos are watched; the tickets workspace's default root unless set.</summary>
     public string WorkspaceRoot { get; init; } = MindAttic.Tickets.Workspace.DefaultRoot;
 
     /// <summary>See <see cref="DefaultExtraWorkspaceRoots"/>. Empty unless <see cref="Load"/>/<see cref="TryLoad"/> set it.</summary>

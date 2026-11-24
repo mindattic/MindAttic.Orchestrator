@@ -12,7 +12,7 @@ namespace MindAttic.Orchestrator.Budget;
 /// </summary>
 public sealed record PlannedWindow(string Login, string Kind, DateTime EndUtc, double PlannedPercent, double ActualPercent, DateTime? ReachedUtc, bool Closed = false)
 {
-    /// <summary>The constants five hour, weekly.</summary>
+    /// <summary>The two <see cref="Kind"/>s: a 5-hour window or a week.</summary>
     public const string FiveHour = "5-hour", Weekly = "weekly";
 
     /// <summary>"planned 31%, ended at 29%" (or "at 29% so far" while it runs), and when it reached its plan.</summary>
@@ -35,7 +35,7 @@ public sealed record PlannedWindow(string Login, string Kind, DateTime EndUtc, d
 /// </summary>
 public static class PacePlan
 {
-    /// <summary>The state name constant.</summary>
+    /// <summary>The <c>state</c> row the planned windows are kept in.</summary>
     public const string StateName = "pace-plan";
 
     /// <summary>The rows kept: a few weeks of every login's windows.</summary>
@@ -99,7 +99,7 @@ public static class PacePlan
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = false };
 
-    /// <summary>Serialize.</summary>
+    /// <summary>The rows as JSON, by end time.</summary>
     public static string Serialize(IEnumerable<PlannedWindow> rows) => JsonSerializer.Serialize(rows.OrderBy(r => r.EndUtc).ToList(), Json);
 
     /// <summary>The rows <paramref name="db"/> keeps, oldest first; none when there are none or they can't be read.</summary>

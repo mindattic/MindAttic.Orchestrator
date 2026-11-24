@@ -32,7 +32,7 @@ public sealed record Utilization(DateTime StartUtc, DateTime EndUtc, DateTime No
     /// <summary>The pace line is a curve (the front-loaded profile), not a straight line.</summary>
     public bool Curved => Exponent < 1;
 
-    /// <summary>The over now.</summary>
+    /// <summary>Whether use now is above where the pace line is now.</summary>
     public bool OverNow => NowPercent > PaceAt(NowUtc);
 
     /// <summary>When the recent rate reaches 100%, if that's before the reset.</summary>
@@ -40,7 +40,7 @@ public sealed record Utilization(DateTime StartUtc, DateTime EndUtc, DateTime No
         : PercentPerHour > 0 ? Projection.Before(NowUtc, (100 - NowPercent) / PercentPerHour, EndUtc) : null;
 }
 
-/// <summary>The utilization series type.</summary>
+/// <summary>Builds the 5-hour window's utilization chart (use against the pace line) from the meter's readings.</summary>
 public static class UtilizationSeries
 {
     /// <summary>The default spacing of the line's points; readings closer together are thinned. Live from the Vault setting

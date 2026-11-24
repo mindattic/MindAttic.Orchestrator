@@ -20,7 +20,7 @@ public sealed record SignInState(string Account, IReadOnlyList<AccountSpan> Hist
     /// <summary>When the current span began: the last move to this account.</summary>
     public DateTime Since => History.Last(s => s.Account == Account).From;
 
-    /// <summary>Whether api key.</summary>
+    /// <summary>Whether the current account is an API key rather than a Claude login.</summary>
     public bool IsApiKey => Account == ClaudeAccount.ApiKey;
 
     /// <summary>Where this account's token ledger starts: the start of its earliest span kept. Only its spans' tokens are
@@ -73,7 +73,7 @@ public sealed record SignInState(string Account, IReadOnlyList<AccountSpan> Hist
 /// </summary>
 public sealed class ClaudeAccount
 {
-    /// <summary>The file name constant.</summary>
+    /// <summary>The account record's file name, shared with the hooks.</summary>
     public const string FileName = "account.json";
 
     /// <summary>How long a closed span is kept: past a week, the old account's windows have all reset.</summary>
@@ -83,7 +83,7 @@ public sealed class ClaudeAccount
     public string ConfigPath { get; init; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude.json");
 
-    /// <summary>The state path.</summary>
+    /// <summary>Where the account record is kept: <see cref="FileName"/> in <c>~/.claude/session-context</c> by default.</summary>
     public string StatePath { get; init; } = Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", FileName);
 
     /// <summary>The <c>state</c> row of the orchestrator's database the record is kept in (M.ORCH-T528), left out of the dump;

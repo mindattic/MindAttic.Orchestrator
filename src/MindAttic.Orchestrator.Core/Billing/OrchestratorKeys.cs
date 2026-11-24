@@ -12,7 +12,7 @@ namespace MindAttic.Orchestrator.Billing;
 /// </summary>
 public sealed class OrchestratorKeys
 {
-    /// <summary>The claude provider constant.</summary>
+    /// <summary>The Vault provider Claude keys are assigned to the Orchestrator under.</summary>
     public const string ClaudeProvider = "claude";
 
     private readonly NamedKeyStore keys;

@@ -19,9 +19,9 @@ public sealed record Member
     /// <summary>One of <see cref="MemberRoster.Statuses"/>: active once joined, pending while invited, disabled when set aside by
     /// hand (M.ORCH-T1952).</summary>
     public string Status { get; init; } = MemberRoster.Statuses[0];
-    /// <summary>The joined utc.</summary>
+    /// <summary>When the member was added.</summary>
     public DateTime JoinedUtc { get; init; }
-    /// <summary>The updated utc.</summary>
+    /// <summary>When the member's row last changed.</summary>
     public DateTime UpdatedUtc { get; init; }
 }
 

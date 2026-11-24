@@ -76,7 +76,7 @@ public sealed class BillingSwitch
     /// <summary>How long before a tab that couldn't be asked is asked again (it may have been updated or reopened since).</summary>
     public static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(5);
 
-    /// <summary>Creates the billing switch.</summary>
+    /// <summary>A switch over <paramref name="sessionContextDir"/> (<c>~/.claude/session-context</c> by default), with its mode file there.</summary>
     public BillingSwitch(string? sessionContextDir = null)
     {
         SessionContextDir = sessionContextDir ?? Path.Combine(Setup.AgentGate.ClaudeDir, "session-context");
@@ -86,7 +86,7 @@ public sealed class BillingSwitch
     /// <summary>Where the context gate keeps each session's state, and where the mode is written.</summary>
     public string SessionContextDir { get; }
 
-    /// <summary>The mode file.</summary>
+    /// <summary>The mode file in <see cref="SessionContextDir"/> the mode is read from and written to.</summary>
     public BillingModeFile ModeFile { get; }
 
     /// <summary>Claude Code's own config (<c>~/.claude.json</c>); replaceable for tests, which never touch the real one.</summary>

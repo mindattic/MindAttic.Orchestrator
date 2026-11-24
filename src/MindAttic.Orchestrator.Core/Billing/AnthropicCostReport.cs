@@ -18,7 +18,7 @@ namespace MindAttic.Orchestrator.Billing;
 /// </summary>
 public static class AnthropicCostReport
 {
-    /// <summary>The url constant.</summary>
+    /// <summary>The cost report endpoint of the Usage and Cost Admin API.</summary>
     public const string Url = "https://api.anthropic.com/v1/organizations/cost_report";
 
     /// <summary>The <c>anthropic-version</c> header sent.</summary>
@@ -36,13 +36,13 @@ public static class AnthropicCostReport
     /// <summary>One day of the bill, in dollars.</summary>
     public sealed record Day(DateTime StartUtc, DateTime EndUtc, double Usd);
 
-    /// <summary>One page of the report.</summary>
+    /// <summary>One page of the report: its days, whether more pages follow, and the cursor to the next one (null on the last).</summary>
     public sealed record Page(IReadOnlyList<Day> Days, bool HasMore, string? NextPage);
 
     /// <summary>A whole read: the days from the window's start to now, and when it was read.</summary>
     public sealed record Billed(DateTime ReadAtUtc, IReadOnlyList<Day> Days)
     {
-        /// <summary>The total usd.</summary>
+        /// <summary>The whole read's bill in dollars: every day summed.</summary>
         public double TotalUsd => Days.Sum(d => d.Usd);
     }
 
@@ -197,7 +197,7 @@ public static class AnthropicCostReport
 /// </summary>
 public sealed class ApiCostWatch(string directory, Action<LogEventLevel, string> say)
 {
-    /// <summary>The lease name constant.</summary>
+    /// <summary>The lease the daemon that reads the cost report holds, so a second daemon doesn't read it too.</summary>
     public const string LeaseName = "api-cost";
 
     /// <summary>The Admin API key (seam): the Vault's, read fresh at each read.</summary>
@@ -206,7 +206,7 @@ public sealed class ApiCostWatch(string directory, Action<LogEventLevel, string>
     /// <summary>How a read is sent (seam): tests answer with sample JSON; nothing in a test reaches Anthropic.</summary>
     public HttpMessageHandler? Handler { get; init; }
 
-    /// <summary>The path.</summary>
+    /// <summary>Where the last read is kept: <see cref="AnthropicCostReport.FileName"/> in the directory given.</summary>
     public string Path { get; } = System.IO.Path.Combine(directory, AnthropicCostReport.FileName);
 
     private Task? running;

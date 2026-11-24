@@ -11,7 +11,7 @@ namespace MindAttic.Orchestrator.Budget;
 /// </summary>
 public static class WeeklyUtilizationSeries
 {
-    /// <summary>The window length.</summary>
+    /// <summary>The weekly window's length: 7 days.</summary>
     public static readonly TimeSpan WindowLength = TimeSpan.FromDays(7);
 
     /// <summary>The week against its pace, from <paramref name="samples"/>' weekly readings and <paramref name="b"/>'s own

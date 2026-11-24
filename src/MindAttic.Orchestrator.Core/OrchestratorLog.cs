@@ -17,7 +17,7 @@ namespace MindAttic.Orchestrator;
 /// </summary>
 public static class OrchestratorLog
 {
-    /// <summary>The application constant.</summary>
+    /// <summary>The application name the log entries are written under and the log database is named for.</summary>
     public const string Application = "MindAttic.Orchestrator";
 
     /// <summary>Phase 1's rolled-file directory — kept only so <see cref="Start"/> can migrate any
@@ -25,11 +25,10 @@ public static class OrchestratorLog
     public static string Directory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", Application, "logs");
 
-    /// <summary>Points the static <see cref="Serilog.Log"/> at MindAttic.Log. Call once, at the entry point.</summary>
     /// <summary>The log database every orchestrator process writes (open it with MindAttic.Log.Reader).</summary>
     public static string DbPath => VaultPaths.LoggingDbPath(Application);
 
-    /// <summary>Starts.</summary>
+    /// <summary>Points the static <see cref="Serilog.Log"/> at MindAttic.Log, tagging entries with <paramref name="component"/>, after moving any Phase 1 rolled files into the database. Call once, at the entry point.</summary>
     public static void Start(string component)
     {
         var dbPath = DbPath;
@@ -84,6 +83,6 @@ public static class OrchestratorLog
         catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { return 0; }
     }
 
-    /// <summary>Stops.</summary>
+    /// <summary>Flushes and closes the log; call once, at exit.</summary>
     public static void Stop() => Serilog.Log.CloseAndFlush();
 }

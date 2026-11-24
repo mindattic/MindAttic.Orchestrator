@@ -7,9 +7,9 @@ namespace MindAttic.Orchestrator.Billing;
 /// key in the MindAttic Vault keyring, for emergencies only.</summary>
 public static class BillingModes
 {
-    /// <summary>The team constant.</summary>
+    /// <summary>Bill the Claude Team login: the everyday mode.</summary>
     public const string Team = "team";
-    /// <summary>The api constant.</summary>
+    /// <summary>Bill the Claude API key in the Vault keyring: for emergencies only.</summary>
     public const string Api = "api";
 
     /// <summary>A typed mode ("team", "api", "claude team", "api key", "key"…) as <see cref="Team"/> or <see cref="Api"/>; null when it's neither.</summary>
@@ -23,7 +23,7 @@ public static class BillingModes
     /// <summary>The mode in words: "Claude Team" or "API key".</summary>
     public static string Name(string mode) => mode == Api ? "API key" : "Claude Team";
 
-    /// <summary>The other mode.</summary>
+    /// <summary>The mode <paramref name="mode"/> isn't: <see cref="Team"/> for <see cref="Api"/>, else <see cref="Api"/>.</summary>
     public static string Other(string mode) => mode == Api ? Team : Api;
 }
 
@@ -52,14 +52,14 @@ public sealed record BillingState(string Mode, DateTime SinceUtc, string? Login,
 /// </summary>
 public sealed class BillingModeFile(string? path = null)
 {
-    /// <summary>The file name constant.</summary>
+    /// <summary>The mode file's name in <c>session-context</c>, which the Launcher and the context gate read.</summary>
     public const string FileName = "billing.json";
 
     /// <summary>The <c>state</c> row of the orchestrator's database the mode is kept in (M.ORCH-T528), left out of the dump;
     /// <see cref="FileName"/> is still written beside it for the Launcher (<see cref="Settings.ExportedState"/>).</summary>
     public const string StateName = "billing";
 
-    /// <summary>The path.</summary>
+    /// <summary>The mode file: <see cref="FileName"/> in <c>~/.claude/session-context</c> unless another path is given.</summary>
     public string Path { get; } = path ?? System.IO.Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", FileName);
 
     /// <summary>The database the mode is kept in.</summary>
@@ -86,7 +86,7 @@ public sealed class BillingModeFile(string? path = null)
         }
     }
 
-    /// <summary>Writes.</summary>
+    /// <summary>Writes <paramref name="state"/> to the database's <see cref="StateName"/> row and to the mode file beside it.</summary>
     public void Write(BillingState state)
     {
         var o = new JsonObject

@@ -133,7 +133,7 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
     /// <summary>The account the meter probe read this for (<see cref="ClaudeMeterProbe"/> tags its writes); null from a statusline.</summary>
     public string? Account { get; init; }
 
-    /// <summary>The default path.</summary>
+    /// <summary>The statusline's reading file, <c>~/.claude/claude-usage.json</c>.</summary>
     public static string DefaultPath { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "claude-usage.json");
 
