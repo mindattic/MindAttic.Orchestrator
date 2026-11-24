@@ -121,7 +121,7 @@ public sealed class OrchestratorDb(string path)
                 if (server is null)
                 {
                     dump = change(local, localTx);
-                    localTx.Commit();
+                    CommitChange(localTx);
                 }
             }
             if (dump) WriteCommittedDump(local, () => local.BeginTransaction(deferred: false));
@@ -135,7 +135,7 @@ public sealed class OrchestratorDb(string path)
                 {
                     OrchestratorServer.Lock(connection, tx);
                     dump = change(connection, tx);
-                    tx.Commit();
+                    CommitChange(tx);
                 }
                 if (dump) WriteCommittedDump(connection, () => LockedTransaction(connection));
                 // Committed: a copy that can't be made now (the file held past its timeout) is made by the daemon's SyncMirror.
@@ -164,12 +164,19 @@ public sealed class OrchestratorDb(string path)
     {
         try
         {
+            BeforeCommittedDump?.Invoke();
             using var tx = begin();
             TryWriteDump(Dump(connection, tx));
             tx.Rollback();
         }
         catch (Exception ex) when (ex is DbException or IOException) { }
     }
+
+    /// <summary>Commits a change's transaction; a test makes it throw to see that a failed commit never reaches the dump.</summary>
+    internal Action<DbTransaction> CommitChange { get; init; } = tx => tx.Commit();
+
+    /// <summary>Runs before the dump is rewritten after a commit; a test makes it throw to see that the save still stands.</summary>
+    internal Action? BeforeCommittedDump { get; init; }
 
     /// <summary><see cref="WriteDump"/> when there's a dump; one that can't be written now (the file held) is left for the next change.</summary>
     private void TryWriteDump(string? text)
@@ -784,7 +791,7 @@ public sealed class OrchestratorDb(string path)
         using (var tx = connection.BeginTransaction(deferred: false))
         {
             change(connection, tx);
-            tx.Commit();
+            CommitChange(tx);
         }
         // A change only to rows the dump leaves out (Volatile) can't change it: not worth reading every table for. With SQL
         // Server the store of record, this file holds only what this machine shares, and the dump is written from the server.
