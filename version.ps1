@@ -12,6 +12,6 @@ param([string]$Ref = 'HEAD')
 $ErrorActionPreference = 'Stop'
 $csproj = Join-Path $PSScriptRoot 'src\MindAttic.Orchestrator.Wpf\MindAttic.Orchestrator.Wpf.csproj'
 $base = ([xml](Get-Content $csproj)).Project.PropertyGroup.OrchestratorVersionBase | Where-Object { $_ } | Select-Object -First 1
-$count = (git -C $PSScriptRoot rev-list --count "$base..$Ref" -- src).Trim()
+$count = git -C $PSScriptRoot rev-list --count "$base..$Ref" -- src
 if ($LASTEXITCODE -ne 0) { throw 'git rev-list failed.' }
-"v$([int]$count + 1)"
+"v$([int]"$count".Trim() + 1)"

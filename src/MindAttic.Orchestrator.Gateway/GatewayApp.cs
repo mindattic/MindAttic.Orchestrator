@@ -211,7 +211,7 @@ internal static class GatewayApp
             try
             {
                 // The owner's own client (M.ORCH-T1479): its tickets commands run here, on the host, which owns the ticket database.
-                // Only the owner's interact token: a member's token never reaches it.
+                // Only an interact token: the owner's runs anything here, an active member's only the allowlisted verbs below.
                 if (Authenticate(http, g) is not { } who)
                 {
                     AuditRefusal(g, "", RemoteOf(http), TokenRefusal(http));

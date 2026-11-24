@@ -4,8 +4,10 @@ using System.Text;
 namespace MindAttic.Orchestrator.Gateway;
 
 /// <summary>
-/// Runs the tickets CLI on the host for the owner's client (M.ORCH-T1479): an argument array, never a command line, in the
-/// workspace folder the client typed it in (relative, so it can't leave the workspace), with a time limit.
+/// Runs the tickets CLI on the host for a client (M.ORCH-T1479): the owner's commands, or a member's allowlisted ones, as an
+/// argument array, never a command line, in the workspace folder the client typed it in (relative, so it can't leave the
+/// workspace), with a time limit. Also the orchestrator CLI's <c>branches</c> listing and report for the owner
+/// (<see cref="RunBranchesAsync"/>) and <c>start</c> for a member (<see cref="RunStartAsync"/>).
 /// </summary>
 internal static class TicketsRunner
 {
@@ -129,7 +131,7 @@ internal static class TicketsRunner
             await p.WaitForExitAsync(limit.Token).ConfigureAwait(false);
             // Once it has exited, a grandchild still holding stdout mustn't turn a finished command into a timeout
             // (M.ORCH-T1966): give the reads a moment, then answer with the real exit code and whatever was read.
-            try { await Task.WhenAll(stdout, stderr).WaitAsync(TimeSpan.FromSeconds(2), limit.Token).ConfigureAwait(false); }
+            try { await Task.WhenAll(stdout, stderr).WaitAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false); }
             catch (TimeoutException) { reads.Cancel(); }
             return (p.ExitCode, Snapshot(outText) + Snapshot(errText));
         }

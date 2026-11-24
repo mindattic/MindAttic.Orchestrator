@@ -65,6 +65,20 @@ public sealed class GatewayMemberHostsTests
     }
 
     [Test]
+    public void A_ledger_that_cant_be_read_right_now_is_never_written_over()
+    {
+        var ledger = new TermMemberHosts(root, _ => HostStart);
+        Assert.That(ledger.Add(Host("abc123", 4242)), Is.True);
+        using (new FileStream(Path.Combine(root, TermMemberHosts.FileName), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            Assert.That(ledger.Live(), Is.Empty, "a locked ledger reads as empty");
+            Assert.That(ledger.Add(Host("def456", 4343)), Is.False, "and adding to it writes nothing");
+            Assert.That(ledger.Remove("abc123"), Is.False);
+        }
+        Assert.That(ledger.Live().Select(h => h.Id), Is.EqualTo(new[] { "abc123" }), "the other host is still recorded");
+    }
+
+    [Test]
     public void Remove_forgets_a_host()
     {
         var ledger = new TermMemberHosts(root, _ => HostStart);

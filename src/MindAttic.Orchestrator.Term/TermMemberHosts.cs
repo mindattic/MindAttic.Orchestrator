@@ -42,7 +42,8 @@ public sealed record TermMemberHost
 /// by the gateway as it started that host, names its id, pid and start time (<see cref="Of"/>). The account, login, repo and pipe
 /// the gateway acts on come from here, never from the member's file.
 /// <para>Entries whose host has gone are dropped as the ledger is read; it holds at most <see cref="MaxEntries"/>. Nothing here
-/// throws on an I/O failure: an unreadable ledger is empty (so no session counts as a member's), a write that fails returns false.</para>
+/// throws on an I/O failure: an unreadable ledger reads as empty (so no session counts as a member's) and is never written over, and
+/// a write that fails returns false.</para>
 /// </summary>
 public sealed class TermMemberHosts
 {
@@ -95,7 +96,7 @@ public sealed class TermMemberHosts
     {
         lock (gate)
         {
-            var all = Load();
+            if (Load() is not { } all) return [];
             var live = all.Where(IsAlive).ToList();
             if (live.Count != all.Count) Save(live);
             return live;
@@ -115,7 +116,8 @@ public sealed class TermMemberHosts
     {
         lock (gate)
         {
-            var all = Load().Where(h => IsAlive(h) && h.Id != host.Id).ToList();
+            if (Load() is not { } loaded) return false;
+            var all = loaded.Where(h => IsAlive(h) && h.Id != host.Id).ToList();
             all.Add(host);
             while (all.Count > MaxEntries) all.RemoveAt(0);
             return Save(all);
@@ -127,7 +129,7 @@ public sealed class TermMemberHosts
     {
         lock (gate)
         {
-            var all = Load();
+            if (Load() is not { } all) return false;
             var kept = all.Where(h => h.Id != id).ToList();
             return kept.Count != all.Count && Save(kept);
         }
@@ -141,15 +143,23 @@ public sealed class TermMemberHosts
     private bool IsAlive(TermMemberHost host) =>
         host.HostPid > 0 && hostStart(host.HostPid) is { } started && (started - host.HostStartUtc).Duration() <= TermSessions.StartTolerance;
 
-    private List<TermMemberHost> Load()
+    /// <summary>The ledger's entries: empty when it's missing or isn't valid JSON, null when it couldn't be read (a lock or a
+    /// denied read), so a write never replaces entries it couldn't see.</summary>
+    private List<TermMemberHost>? Load()
     {
+        string text;
         try
         {
             if (!File.Exists(path)) return [];
-            return (JsonSerializer.Deserialize<List<TermMemberHost>>(File.ReadAllText(path), Json) ?? [])
+            text = File.ReadAllText(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+        try
+        {
+            return (JsonSerializer.Deserialize<List<TermMemberHost>>(text, Json) ?? [])
                 .Where(h => h is { Id.Length: > 0, Account.Length: > 0, HostPid: > 0 }).OrderBy(h => h.StartedUtc).ToList();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or NotSupportedException) { return []; }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException) { return []; }
     }
 
     private bool Save(List<TermMemberHost> hosts)

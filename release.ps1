@@ -112,20 +112,20 @@ Get-ChildItem $here -Recurse -File | Unblock-File
 try { New-Item -ItemType Directory -Force $Apps | Out-Null; $probe = Join-Path $Apps '.write-test'; [IO.File]::WriteAllText($probe, ''); Remove-Item $probe }
 catch { $Apps = Join-Path $env:LOCALAPPDATA 'Programs'; Write-Host "C:\Apps isn't writable: installing under $Apps (the Launcher's path then needs setting in the Orchestrator's settings)." -ForegroundColor Yellow }
 $orchestrator = Join-Path $Apps 'MindAttic.Orchestrator'
-Get-Process 'MindAttic.Orchestrator.Desktop', 'MindAttic.Orchestrator', 'MindAttic.Launcher' -ErrorAction SilentlyContinue |
+Get-Process 'MindAttic.Orchestrator.Desktop', 'MindAttic.Orchestrator', 'MindAttic.Orchestrator.Daemon', 'MindAttic.Launcher' -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -like "$Apps\*" } | Stop-Process -Force
 foreach ($name in 'MindAttic.Orchestrator', 'MindAttic.Launcher') {
     Write-Host "Installing $name into $(Join-Path $Apps $name)" -ForegroundColor Cyan
-    robocopy (Join-Path $here $name) (Join-Path $Apps $name) /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    robocopy (Join-Path $here $name) (Join-Path $Apps $name) /E /R:2 /W:2 /NFL /NDL /NJH /NJS /NP | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "Copying $name failed." }
 }
 $vaultDir = if ($DryRun) { Join-Path $Apps 'Vault.Desktop' } else { Join-Path $env:LOCALAPPDATA 'MindAttic\Vault.Desktop' }
 Get-Process 'MindAttic.Vault.Desktop.Wpf' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$vaultDir\*" } | Stop-Process -Force
 Write-Host "Installing Vault.Desktop (settings) into $vaultDir" -ForegroundColor Cyan
-robocopy (Join-Path $here 'Vault.Desktop') $vaultDir /E /NFL /NDL /NJH /NJS /NP | Out-Null
+robocopy (Join-Path $here 'Vault.Desktop') $vaultDir /E /R:2 /W:2 /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { throw 'Copying Vault.Desktop failed.' }
 $ticketsDir = Join-Path $orchestrator 'Tickets'
-robocopy (Join-Path $here 'Tickets') $ticketsDir /E /NFL /NDL /NJH /NJS /NP | Out-Null
+robocopy (Join-Path $here 'Tickets') $ticketsDir /E /R:2 /W:2 /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { throw 'Copying the tickets tool failed.' }
 $bin = Join-Path $orchestrator 'bin'
 New-Item -ItemType Directory -Force $bin | Out-Null
