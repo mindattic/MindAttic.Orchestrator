@@ -20,7 +20,7 @@ public static class FontChoice
     /// <summary>The Application resource holding the app's FontFamily.</summary>
     public const string ResourceKey = "OrchestratorFontFamily";
 
-    /// <summary>The outfit constant.</summary>
+    /// <summary>The saved choice that picks the bundled Outfit font (matched in any case); anything else is Segoe UI.</summary>
     public const string Outfit = "Outfit";
 
     private static readonly Lazy<FontFamily> SegoeFamily = new(() => new FontFamily(OrchestratorSettings.DefaultFont));

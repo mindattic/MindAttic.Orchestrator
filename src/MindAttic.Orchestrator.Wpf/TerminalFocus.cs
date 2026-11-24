@@ -15,7 +15,7 @@ public enum GoToOutcome
     NotFound,
 }
 
-/// <summary>The outcome record.</summary>
+/// <summary>What "Go to tab" did (<see cref="GoToOutcome"/>) and a line saying so, or why not.</summary>
 public sealed record GoToResult(GoToOutcome Outcome, string Note);
 
 /// <summary>
@@ -25,7 +25,8 @@ public sealed record GoToResult(GoToOutcome Outcome, string Note);
 /// </summary>
 public static partial class TerminalFocus
 {
-    /// <summary>Go to.</summary>
+    /// <summary>Brings <paramref name="host"/>'s Windows Terminal window to the front on its tab, telling it from
+    /// <paramref name="allHosts"/>' tabs; falls back to the window alone, and never throws.</summary>
     public static GoToResult GoTo(HostSession host, IEnumerable<HostSession> allHosts)
     {
         try

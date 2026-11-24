@@ -7,14 +7,15 @@ namespace MindAttic.Orchestrator.Wpf;
 /// <summary>Hands files and folders to the tools you already use.</summary>
 public static class Opener
 {
-    /// <summary>Reveal.</summary>
+    /// <summary>Shows <paramref name="path"/> in Explorer: a file selected in its folder, a folder opened; nothing when it's gone.</summary>
     public static void Reveal(string path)
     {
         if (File.Exists(path)) Start("explorer.exe", $"/select,\"{path}\"");
         else if (Directory.Exists(path)) Start("explorer.exe", $"\"{path}\"");
     }
 
-    /// <summary>Opens.</summary>
+    /// <summary>Opens a file with its default app, or in an editor when that would run it; a folder, or a file with no app, is
+    /// shown in Explorer instead (<see cref="Reveal"/>).</summary>
     public static void Open(string path)
     {
         if (!File.Exists(path)) { Reveal(path); return; }

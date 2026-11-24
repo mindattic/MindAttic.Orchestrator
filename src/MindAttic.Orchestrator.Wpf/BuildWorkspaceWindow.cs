@@ -78,7 +78,7 @@ public sealed class BuildWorkspaceWindow : Window
     /// <summary>Whether the workspace is there to use (what <see cref="Run"/> returns).</summary>
     internal bool Succeeded => succeeded;
 
-    /// <summary>Whether its question is open.</summary>
+    /// <summary>Whether its yes/no question modal is open, waiting on an answer.</summary>
     internal bool Asking => question.IsOpen;
 
     private void Say(string line)

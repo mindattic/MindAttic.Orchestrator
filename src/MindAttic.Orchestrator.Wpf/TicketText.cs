@@ -12,13 +12,13 @@ namespace MindAttic.Orchestrator.Wpf;
 /// </summary>
 public static class TicketText
 {
-    /// <summary>The text property.</summary>
+    /// <summary>The text a TextBlock shows, its ticket ids made links; set, it rebuilds the block's inlines.</summary>
     public static readonly DependencyProperty TextProperty = DependencyProperty.RegisterAttached(
         "Text", typeof(string), typeof(TicketText), new PropertyMetadata(null, OnTextChanged));
 
-    /// <summary>Gets the text.</summary>
+    /// <summary>The text set on <paramref name="o"/>, or null.</summary>
     public static string? GetText(DependencyObject o) => (string?)o.GetValue(TextProperty);
-    /// <summary>Sets the text.</summary>
+    /// <summary>Sets the text <paramref name="o"/> shows with its ticket ids linked.</summary>
     public static void SetText(DependencyObject o, string? value) => o.SetValue(TextProperty, value);
 
     private static void OnTextChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)

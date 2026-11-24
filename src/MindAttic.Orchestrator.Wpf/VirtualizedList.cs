@@ -284,18 +284,18 @@ public sealed class VirtualizedBody
     /// <summary>One row of the body's list: some of <see cref="List"/>'s items (one, or a line of tiles).</summary>
     public sealed class Row(ItemsControl list, object[] items, Thickness margin)
     {
-        /// <summary>The list.</summary>
+        /// <summary>The library list the items come from, whose item template and styling the row takes.</summary>
         public ItemsControl List { get; } = list;
-        /// <summary>The items.</summary>
+        /// <summary>The items this row shows: one, or a line of tiles.</summary>
         public object[] Items { get; } = items;
-        /// <summary>The margin.</summary>
+        /// <summary>The row's margin: the list's own top margin on its first row, its bottom margin on its last, the gap otherwise.</summary>
         public Thickness Margin { get; } = margin;
 
-        /// <summary>Equals.</summary>
+        /// <summary>Equal when it is the same list, margin and the very same items in order (compared by reference).</summary>
         public override bool Equals(object? obj) => obj is Row r && r.List == List && r.Margin == Margin
             && r.Items.Length == Items.Length && r.Items.Zip(Items).All(p => ReferenceEquals(p.First, p.Second));
 
-        /// <summary>Gets the hash code.</summary>
+        /// <summary>A hash of the list, the item count and the first item's identity, consistent with Equals.</summary>
         public override int GetHashCode() => HashCode.Combine(List, Items.Length, Items.Length > 0 ? RuntimeHelpers.GetHashCode(Items[0]) : 0);
     }
 

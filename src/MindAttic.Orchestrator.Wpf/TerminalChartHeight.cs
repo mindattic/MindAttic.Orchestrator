@@ -16,13 +16,13 @@ public static class TerminalChartHeight
     /// <summary>The chart's share of the terminal frame's height.</summary>
     public const double Share = 0.12;
 
-    /// <summary>Never shorter than this.</summary>
+    /// <summary>The floor, in pixels: never shorter than this unless that's over <see cref="MaxShare"/> of the frame.</summary>
     public const double MinHeight = 48;
 
     /// <summary>Never more than this share of the frame, even when that's under <see cref="MinHeight"/>.</summary>
     public const double MaxShare = 0.25;
 
-    /// <summary>Never taller than this.</summary>
+    /// <summary>The cap, in pixels: never taller than this however tall the frame.</summary>
     public const double MaxHeight = 220;
 
     /// <summary>The chart's height for a frame <paramref name="frameHeight"/> tall.</summary>

@@ -36,9 +36,9 @@ public static class MarqueeBox
     public static readonly DependencyProperty EnabledProperty = DependencyProperty.RegisterAttached(
         "Enabled", typeof(bool), typeof(MarqueeBox), new PropertyMetadata(false, OnEnabledChanged));
 
-    /// <summary>Sets the enabled.</summary>
+    /// <summary>Turns the scrolling on or off for <paramref name="canvas"/>.</summary>
     public static void SetEnabled(Canvas canvas, bool value) => canvas.SetValue(EnabledProperty, value);
-    /// <summary>Gets the enabled.</summary>
+    /// <summary>Whether <paramref name="canvas"/> scrolls its child when it overflows.</summary>
     public static bool GetEnabled(Canvas canvas) => (bool)canvas.GetValue(EnabledProperty);
 
     private static void OnEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

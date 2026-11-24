@@ -50,7 +50,6 @@ public partial class MainWindow : Window
     /// <summary>The login's tab on screen: the window shows its view model.</summary>
     private MainViewModel Shown => DataContext as MainViewModel ?? model;
 
-    /// <summary>Creates the main window.</summary>
     /// <summary>Whether the window's controls are exposed to UI Automation clients (the setting UiAutomation), as of start-up.</summary>
     private readonly bool uiAutomation = new MindAttic.Orchestrator.Settings.JsonStore().TryLoadSettings(out var atStart) && atStart.UiAutomation;
 
@@ -70,6 +69,7 @@ public partial class MainWindow : Window
     internal static string VersionedTitle(Version? version) =>
         version is { Major: > 0 } v ? $"MindAttic Orchestrator v{v.Major}" : "MindAttic Orchestrator";
 
+    /// <summary>Creates the main window: the global login's tab as its view model, titled with the app's version.</summary>
     public MainWindow()
     {
         InitializeComponent();
@@ -619,7 +619,8 @@ public partial class MainWindow : Window
         return onlyIfLost && focused is UIElement { IsVisible: true };
     }
 
-    /// <summary>Reads out the shown tab's status and queue lines.</summary>
+    /// <summary>Reacts to the shown tab's changes: a dialog opening or closing re-covers the terminals and hands the keyboard
+    /// back to the CLI, and a new status or queue line is read out to screen readers.</summary>
     private void OnShownChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (sender != Shown) return;
@@ -1186,7 +1187,7 @@ public partial class MainWindow : Window
 
     private void RenameTabReset_Click(object sender, RoutedEventArgs e) => CloseRenameTab(renamingTab?.DefaultName);
 
-    /// <summary>Enter saves, Esc cancels.</summary>
+    /// <summary>The rename box's keys: Enter saves the typed name, Esc cancels the rename.</summary>
     private void RenameTabBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key is Key.Enter or Key.Return) { e.Handled = true; CloseRenameTab(RenameTabBox.Text); }
