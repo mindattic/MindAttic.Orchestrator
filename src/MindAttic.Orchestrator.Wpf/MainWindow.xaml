@@ -303,13 +303,20 @@
         <!-- Top-aligned with a star middle row (M.ORCH-T1431): the tools sit right under the last login, and a list too long for
              the window scrolls on its own rather than pushing the tools off the bottom. Its top matches the CLI tab bar's. -->
         <Border x:Name="Sidebar" Style="{StaticResource MaSidePane}" Grid.Row="1" Grid.RowSpan="4" Grid.Column="0" MinWidth="170"
-                BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,1,0" Padding="12,8,12,8"
+                BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,0,1,0" Padding="12,0,12,8"
                 AutomationProperties.Name="People and window tools">
         <!-- The sidebar's sections are titled MaPanels in an MaPanelGroup (M.ORCH-T2176): Organizations, Users, This PC
              (M.ORCH-T2177), then Tickets,
              each collapsible and drag-reorderable by its header's grip, each with a stable PanelKey for the saved order and
              collapse state. Users takes its desired height; Tickets fills whatever height is left and scrolls on its own
-             (M.ORCH-T1439). The window tools' own row (M.ORCH-T1431) moved up into the window's menu bar (M.ORCH-T1499). -->
+             (M.ORCH-T1439), and only while expanded, so a collapsed Tickets shrinks to its header. The window tools' own row
+             (M.ORCH-T1431) moved up into the window's menu bar (M.ORCH-T1499). One left edge (M.ORCH-T2178): MaPanelInset is
+             re-keyed here with no left step, so every panel's header row, rule and content (org pills, login rows, This PC
+             bars, the nested ticket panels' headers and cards, which take MaPanelNestedInset's 0) start at the same x; the
+             first header's own top margin is the sidebar's top gap. -->
+        <Border.Resources>
+            <Thickness x:Key="MaPanelInset">0,6,0,10</Thickness>
+        </Border.Resources>
         <mc:MaPanelGroup x:Name="TopRow">
         <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
              with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
@@ -1006,7 +1013,7 @@
              enters the list once; Up and Down move between the cards; each card's own Play/Ticket buttons are reached with a
              further Tab. -->
         <mc:MaPanel Title="Tickets" IsCollapsible="True" mc:MaPanelGroup.PanelKey="tickets" mc:MaPanelGroup.IsDraggable="True"
-                    mc:MaPanelGroup.FillsRemainingSpace="True" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
+                    mc:MaPanelGroup.FillsRemainingSpace="{Binding IsExpanded, RelativeSource={RelativeSource Self}}" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
         <Canvas x:Name="SidebarTicketArea">
         <ScrollViewer x:Name="SidebarTicketScroller" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="8"
                       Width="{Binding ActualWidth, ElementName=SidebarTicketArea}" Height="{Binding ActualHeight, ElementName=SidebarTicketArea}">
