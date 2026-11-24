@@ -23,7 +23,7 @@ public static class DiffReview
     /// <summary>The most diff text the reviewer is sent; past it the rest is cut, and it's told so.</summary>
     public const int MaxDiffChars = 400_000;
 
-    /// <summary>How long the review may run.</summary>
+    /// <summary>How long the reviewer process may run before it's stopped (15 minutes).</summary>
     public static readonly TimeSpan Timeout = TimeSpan.FromMinutes(15);
 
     /// <summary><c>git diff --numstat</c>'s lines as file changes.</summary>

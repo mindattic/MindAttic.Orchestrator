@@ -14,7 +14,7 @@ public static partial class TicketsDesktop
     [GeneratedRegex(@"^[A-Z][A-Z0-9]*(\.[A-Z0-9]+)*-T\d+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex TicketId();
 
-    /// <summary>Whether ticket id.</summary>
+    /// <summary>Whether <paramref name="id"/> is shaped like a ticket id (any case, at most 64 characters), so it's safe to put on Tickets Desktop's command line.</summary>
     public static bool IsTicketId(string? id) => id is { Length: > 0 and <= 64 } && TicketId().IsMatch(id);
 
     /// <summary>A ticket id inside running text ("M.ORCH-T5 waits for M.TIX-T2"): upper case, as tickets are filed, whole words.</summary>

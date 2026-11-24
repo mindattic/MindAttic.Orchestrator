@@ -31,17 +31,17 @@ public sealed partial class BranchBuilds(JsonStore store)
     /// that build passed; <see cref="Building"/> the head a build is running at now.</summary>
     public sealed class BranchState
     {
-        /// <summary>Gets or sets the head.</summary>
+        /// <summary>The branch's head commit on origin as last seen.</summary>
         public string Head { get; set; } = "";
-        /// <summary>Gets or sets the built.</summary>
+        /// <summary>The head last built; null when the branch was never built.</summary>
         public string? Built { get; set; }
-        /// <summary>Gets or sets the ok.</summary>
+        /// <summary>Whether the build at <see cref="Built"/> passed.</summary>
         public bool Ok { get; set; }
-        /// <summary>Gets or sets the note.</summary>
+        /// <summary>Why the last build failed (its first errors, a timeout), or a remark on a pass; null when there's nothing to say.</summary>
         public string? Note { get; set; }
-        /// <summary>Gets or sets the built utc.</summary>
+        /// <summary>When the last build finished (UTC); null when never built.</summary>
         public DateTime? BuiltUtc { get; set; }
-        /// <summary>Gets or sets the building.</summary>
+        /// <summary>The head a build is running at now; null when none is running.</summary>
         public string? Building { get; set; }
     }
 

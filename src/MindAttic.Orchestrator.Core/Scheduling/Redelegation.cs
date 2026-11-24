@@ -13,7 +13,7 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// <param name="Open">It may start new work now (not stopped).</param>
 public sealed record LoginRoom(string? Email, string? ConfigDir, double? RoomTokens, double Headroom, bool Open)
 {
-    /// <summary>Whether fallback.</summary>
+    /// <summary>Whether this is the fallback login (no per-CLI email) rather than a signed-in per-CLI login.</summary>
     public bool IsFallback => Email is null;
 
     /// <summary>The login in words: its email, or "the API key".</summary>

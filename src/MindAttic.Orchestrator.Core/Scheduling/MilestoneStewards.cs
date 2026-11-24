@@ -21,15 +21,15 @@ public sealed class MilestoneStewards(JsonStore store)
     /// <summary>How often the daemon stewards a milestone that stays in the same state.</summary>
     public static readonly TimeSpan Every = TimeSpan.FromDays(1);
 
-    /// <summary>Why a reopen isn't carried out.</summary>
+    /// <summary>What a reopen action says instead of being carried out: the ticket store is append-only, so the owner is told.</summary>
     public const string CannotReopen = "The ticket store can't reopen a closed ticket (tickets are append-only), so it is listed for the owner instead.";
 
     /// <summary>When a milestone was last stewarded, and the state it was in then.</summary>
     public sealed class Ran
     {
-        /// <summary>Gets or sets the state.</summary>
+        /// <summary>The milestone's state when it was last stewarded; a change to it makes the milestone due again at once.</summary>
         public string State { get; set; } = "";
-        /// <summary>Gets or sets when.</summary>
+        /// <summary>When the milestone was last stewarded (UTC); due again <see cref="Every"/> after it.</summary>
         public DateTime AtUtc { get; set; }
     }
 

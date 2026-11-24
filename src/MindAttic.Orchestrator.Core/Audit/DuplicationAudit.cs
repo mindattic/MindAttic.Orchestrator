@@ -11,11 +11,11 @@ namespace MindAttic.Orchestrator.Audit;
 /// </summary>
 public static class DuplicationAudit
 {
-    /// <summary>The window constant.</summary>
+    /// <summary>Lines per fingerprint window; files shorter than two windows are skipped.</summary>
     public const int Window = 6;
-    /// <summary>The min shared windows constant.</summary>
+    /// <summary>How many windows two files in different repos must share before they're compared as a near copy.</summary>
     public const int MinSharedWindows = 8;
-    /// <summary>The min similarity constant.</summary>
+    /// <summary>The least share of the smaller file's distinct windows that must be shared for a pair to count as a near copy.</summary>
     public const double MinSimilarity = 0.5;
     private const int MaxFileBytes = 400 * 1024;
     private const int MaxFilesPerWindow = 12;
@@ -34,7 +34,7 @@ public static class DuplicationAudit
 
     private sealed record Source(int Id, string Repo, string Path, int Lines, ulong[] Windows, ulong Whole);
 
-    /// <summary>Runs.</summary>
+    /// <summary>Scans the source files of <paramref name="repos"/> and groups identical and near-identical copies that span more than one repo, with the number of files scanned.</summary>
     public static (IReadOnlyList<DuplicateGroup> Groups, int FilesScanned) Run(IReadOnlyList<(string Name, string Path)> repos, CancellationToken ct = default)
     {
         var sources = new List<Source>();

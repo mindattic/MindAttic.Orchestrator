@@ -8,7 +8,7 @@ namespace MindAttic.Orchestrator.Tickets;
 /// <summary>A closed or won't-do ticket assigned to someone (M.ORCH-T849), with when it closed (null when its history doesn't say).</summary>
 public sealed record ClosedTicket(string Repo, Ticket Ticket, string Assignee, DateTime? ClosedUtc)
 {
-    /// <summary>The id.</summary>
+    /// <summary>The ticket's ID (<see cref="Ticket"/>'s).</summary>
     public string Id => Ticket.Id;
 
     /// <summary>As a queue item, so a person's Queue lists it with the same row as an open one.</summary>

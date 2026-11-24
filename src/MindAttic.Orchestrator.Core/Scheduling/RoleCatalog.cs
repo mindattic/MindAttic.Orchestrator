@@ -30,10 +30,10 @@ public static class RoleCatalog
     /// <summary>What a <see cref="Sync"/> did: the roles added, changed and dropped, and each file skipped with why.</summary>
     public sealed record Result(IReadOnlyList<string> Added, IReadOnlyList<string> Changed, IReadOnlyList<string> Dropped, IReadOnlyList<string> Skipped)
     {
-        /// <summary>Whether it changed the table.</summary>
+        /// <summary>Whether the sync added, changed or dropped any role (skipped files don't count).</summary>
         public bool Any => Added.Count + Changed.Count + Dropped.Count > 0;
 
-        /// <summary>One line for the log.</summary>
+        /// <summary>One line for the log naming the roles added, updated, dropped and skipped; "no change" when there are none.</summary>
         public override string ToString()
         {
             var parts = new List<string>();

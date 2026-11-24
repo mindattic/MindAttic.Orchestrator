@@ -46,13 +46,13 @@ public sealed partial class MainlineTests(JsonStore store)
     /// <summary>What a repo's main line was last tested at, and last passed at.</summary>
     public sealed class RepoState
     {
-        /// <summary>Gets or sets the tested.</summary>
+        /// <summary>The main-line commit last tested, or counted as tested (first seen, given up on, or only non-code changed); null when never.</summary>
         public string? Tested { get; set; }
-        /// <summary>Gets or sets the green.</summary>
+        /// <summary>The main-line commit whose suite last completed with no failures; null when none has.</summary>
         public string? Green { get; set; }
     }
 
-    /// <summary>The test record.</summary>
+    /// <summary>One failing test and its message; a build that failed is a failure named <see cref="BuildName"/>, with its errors.</summary>
     public sealed record Failure(string Test, string Message);
 
     /// <summary>A suite's outcome. <see cref="Completed"/> is false when it couldn't run or ran past its time (<see cref="Note"/>

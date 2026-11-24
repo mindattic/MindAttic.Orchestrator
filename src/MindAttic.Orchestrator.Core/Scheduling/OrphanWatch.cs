@@ -24,7 +24,7 @@ public sealed record OrphanRecord(string TicketId, string Repo, string Directory
     /// <summary>Not redispatched again: it died once per redispatch allowed, or its work can't be carried forward by itself.</summary>
     public const string NeedsYou = "needs you";
 
-    /// <summary>The state.</summary>
+    /// <summary>Where it stands: <see cref="Orphaned"/>, <see cref="HandedBack"/>, <see cref="Reopened"/> or <see cref="NeedsYou"/>.</summary>
     public string State { get; init; } = Orphaned;
 
     /// <summary>How many of its dispatches went dark.</summary>
@@ -36,7 +36,7 @@ public sealed record OrphanRecord(string TicketId, string Repo, string Directory
     /// <summary>The dead assignment last counted (its start), so the same death isn't counted every tick.</summary>
     public DateTime? DeadStartedUtc { get; init; }
 
-    /// <summary>The redispatched utc.</summary>
+    /// <summary>When the daemon last redispatched it (handed back or reopened); null when it never has.</summary>
     public DateTime? RedispatchedUtc { get; init; }
 
     /// <summary>What it waits on, or what happened to it last.</summary>
@@ -70,7 +70,7 @@ public sealed record OrphanRecord(string TicketId, string Repo, string Directory
 /// </summary>
 public sealed class OrphanWatch(JsonStore store)
 {
-    /// <summary>The store name constant.</summary>
+    /// <summary>The store row holding the list of <see cref="OrphanRecord"/>s.</summary>
     public const string StoreName = "orphaned-tickets";
 
     /// <summary>The most uncommitted paths a record keeps and a prompt names.</summary>

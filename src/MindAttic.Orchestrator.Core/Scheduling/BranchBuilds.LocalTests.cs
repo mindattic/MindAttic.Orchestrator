@@ -44,7 +44,7 @@ public sealed partial class BranchBuilds
     /// <summary>A branch whose local run failed at its head and is back with the work unit that produced it.</summary>
     public sealed record Returned(string Repo, string Branch, string Head, string? Ticket, string? Note, int Rounds, DateTime? TestedUtc);
 
-    /// <summary>How a reported run was taken.</summary>
+    /// <summary>What became of a local test run the user reported for a work branch.</summary>
     public enum ReportOutcome
     {
         /// <summary>It passed at the branch's head: signed off, waiting for the merge.</summary>

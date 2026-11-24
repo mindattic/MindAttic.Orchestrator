@@ -287,7 +287,7 @@ public sealed class AgentAborter(JsonStore store, string globalMarksDirectory, s
         return new AbortedAgent(from.Email, pick.AgentId, pick.TicketId, 0, 0, 0);
     }
 
-    /// <summary>Tick.</summary>
+    /// <summary>One pass over every login: once a login has been in pace cool-off long enough, marks the ticket subagents chosen to stop, requeues their tickets and returns them; empty when none were stopped.</summary>
     public IReadOnlyList<AbortedAgent> Tick(Snapshot snapshot, OrchestratorSettings settings, DateTime nowUtc)
     {
         var logins = Logins(snapshot);

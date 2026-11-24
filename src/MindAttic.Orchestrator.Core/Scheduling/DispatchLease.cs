@@ -31,10 +31,10 @@ public sealed class DispatchLease(string directory, string name = "dispatch.lock
     /// <summary>Where the lock file was: a process from before the move still holding it holds the lease.</summary>
     public string Path { get; } = System.IO.Path.Combine(directory, name);
 
-    /// <summary>The db.</summary>
+    /// <summary>The orchestrator database whose <c>leases</c> table holds the row: the one passed in, else the state database in <c>directory</c>.</summary>
     public OrchestratorDb Db { get; } = db ?? new OrchestratorDb(OrchestratorDb.StatePath(directory));
 
-    /// <summary>Whether held.</summary>
+    /// <summary>Whether this object held the lease as of its last <see cref="TryAcquire"/> (false after <see cref="Dispose"/>).</summary>
     public bool IsHeld => held;
 
     /// <summary>True when this process holds the lease, taking it if it's free. Asked again while held, it checks the row is
@@ -60,7 +60,7 @@ public sealed class DispatchLease(string directory, string name = "dispatch.lock
         }
     }
 
-    /// <summary>Releases.</summary>
+    /// <summary>Gives up the lease if held, deleting its row so the next process to ask takes it; a failed delete is ignored.</summary>
     public void Dispose()
     {
         if (!held) return;

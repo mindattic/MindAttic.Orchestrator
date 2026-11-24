@@ -159,7 +159,7 @@ public sealed class OpenTicketSource
     /// <summary>Who each ticket is assigned to and what's reserved for it, as the ticket database's <c>ticket_work</c> holds them.</summary>
     public sealed record WorkState(IReadOnlyDictionary<string, string> Assignees, IReadOnlyDictionary<string, long> Reservations)
     {
-        /// <summary>The empty.</summary>
+        /// <summary>No assignees and no reservations: what's used before the ticket database has been read.</summary>
         public static readonly WorkState Empty = new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase));
 

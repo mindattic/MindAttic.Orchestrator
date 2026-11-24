@@ -41,18 +41,18 @@ public sealed class MilestoneAcceptance(JsonStore store)
     /// <summary>What a repo's main line was last built at by a build check, and how that went.</summary>
     public sealed class BuildState
     {
-        /// <summary>Gets or sets the head.</summary>
+        /// <summary>The main-line commit the build check last built.</summary>
         public string Head { get; set; } = "";
-        /// <summary>Gets or sets the ok.</summary>
+        /// <summary>Whether that build passed.</summary>
         public bool Ok { get; set; }
-        /// <summary>Gets or sets the note.</summary>
+        /// <summary>Why that build failed (its first errors, clipped); null when it passed.</summary>
         public string? Note { get; set; }
     }
 
     /// <summary>What an <c>exists</c> check's target names: a package of the local feed, or a path.</summary>
     public sealed record Target(string? PackageId, string? Version, string? Path)
     {
-        /// <summary>Whether it names a package.</summary>
+        /// <summary>Whether the target is a package of the local feed (<see cref="PackageId"/> set) rather than a path.</summary>
         public bool IsPackage => PackageId is not null;
     }
 
@@ -60,7 +60,7 @@ public sealed class MilestoneAcceptance(JsonStore store)
     /// build that didn't complete): the check is left as it was, and <see cref="Evidence"/> says why.</summary>
     public sealed record Outcome(string? Result, string Evidence)
     {
-        /// <summary>Whether it ran and failed.</summary>
+        /// <summary>Whether the check ran and its result is a fail (false when it passed or didn't run).</summary>
         public bool Failed => Result == MilestoneCheckResults.Fail;
     }
 
@@ -70,7 +70,7 @@ public sealed class MilestoneAcceptance(JsonStore store)
     /// <summary>What <c>orchestrator milestone accept</c> came to: reached only when every check passed.</summary>
     public sealed record Acceptance(Milestone Milestone, IReadOnlyList<Checked> Checks, bool Reached)
     {
-        /// <summary>The checks that haven't passed.</summary>
+        /// <summary>The checks not marked passed after this run: failed, not yet run, or couldn't run.</summary>
         public IReadOnlyList<Checked> Unmet => [.. Checks.Where(c => !c.Check.Passed)];
     }
 
@@ -107,7 +107,7 @@ public sealed class MilestoneAcceptance(JsonStore store)
 
     private readonly Dictionary<string, (string Mainline, string Head)?> heads = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>The build timeout in <paramref name="s"/>.</summary>
+    /// <summary>How long one build check may run: <paramref name="s"/>'s branch-build timeout, at least a minute.</summary>
     public static TimeSpan TimeoutOf(OrchestratorSettings s) => OrchestratorSettings.SecondsSpan(s.BranchBuildsTimeoutMinutes * 60, 60);
 
     /// <summary>Why a build may not start for the heavy-process lease (M.ORCH-T1680), or null: every lease the limit allows is held.</summary>

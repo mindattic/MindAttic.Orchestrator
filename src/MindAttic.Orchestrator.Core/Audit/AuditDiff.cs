@@ -3,10 +3,10 @@ namespace MindAttic.Orchestrator.Audit;
 /// <summary>What a new audit found that the previous one didn't: drifted copies and duplicated code.</summary>
 public sealed record AuditNews(IReadOnlyList<DriftFinding> Drift, IReadOnlyList<DuplicateGroup> Duplicates)
 {
-    /// <summary>The any.</summary>
+    /// <summary>Whether there is anything new: at least one newly drifted file or new duplicate group.</summary>
     public bool Any => Drift.Count > 0 || Duplicates.Count > 0;
 
-    /// <summary>To string.</summary>
+    /// <summary>One line naming the counts and up to three examples of each kind; empty when nothing is new.</summary>
     public override string ToString() => string.Join("; ", new[]
     {
         Drift.Count == 0 ? null : $"{Drift.Count} newly drifted agent file{(Drift.Count == 1 ? "" : "s")} ({string.Join(", ", Drift.Take(3).Select(d => $"{d.Repo}/{d.File}"))}{(Drift.Count > 3 ? ", …" : "")})",

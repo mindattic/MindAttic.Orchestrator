@@ -22,7 +22,7 @@ public sealed partial class BranchBuilds
     {
         /// <summary>Gets or sets the repo the branch is in.</summary>
         public string Repo { get; set; } = "";
-        /// <summary>Gets or sets the work branch.</summary>
+        /// <summary>Gets or sets the work branch's name (under <see cref="Prefix"/>).</summary>
         public string Branch { get; set; } = "";
         /// <summary>Gets or sets the head the agent pushed.</summary>
         public string Head { get; set; } = "";

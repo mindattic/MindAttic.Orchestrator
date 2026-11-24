@@ -67,13 +67,13 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     /// <summary>Whether <c>/allocate</c> is on (until <c>/allocate off</c>).</summary>
     public bool On { get; private set; }
 
-    /// <summary>The repos it's working.</summary>
+    /// <summary>The repos the last <see cref="Tick"/> found <c>/allocate</c> on for, less those in <see cref="LeftAlone"/>, sorted by name; empty when it's off.</summary>
     public IReadOnlyList<string> Repos { get; private set; } = [];
 
     /// <summary>Repos it would work but is leaving alone, and why (worked by hand, or set to be skipped).</summary>
     public IReadOnlyDictionary<string, string> LeftAlone { get; private set; } = new Dictionary<string, string>();
 
-    /// <summary>The background agents working now.</summary>
+    /// <summary>The stored assignments whose background agent (with a log and a pilot CLI) is still running, as of the last <see cref="Tick"/>.</summary>
     public IReadOnlyList<Assignment> Working { get; private set; } = [];
 
     /// <summary>Whether <paramref name="pid"/> (a Claude CLI) runs inside one of the background agents.</summary>

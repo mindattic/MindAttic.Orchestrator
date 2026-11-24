@@ -45,7 +45,7 @@ public sealed class AuditRunner(OrchestratorOptions options, JsonStore store)
         }
     }
 
-    /// <summary>Latest.</summary>
+    /// <summary>The last saved audit report; null when none was saved yet or the store can't be read.</summary>
     public AuditReport? Latest()
     {
         TryLatest(out var report);

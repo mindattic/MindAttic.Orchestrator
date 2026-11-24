@@ -8,14 +8,14 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// <summary>One open ticket in the cross-repo queue.</summary>
 public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int Priority, Assignment? Assignment, bool RepoBusy)
 {
-    /// <summary>The id.</summary>
+    /// <summary>The ticket's ID (<see cref="Ticket"/>'s).</summary>
     public string Id => Ticket.Id;
 
     /// <summary>Set when the ticket is assigned but nothing has happened where it was dispatched for
     /// <see cref="OrchestratorSettings.StaleAfterHours"/>: the last activity there. A stale ticket is back in the queue.</summary>
     public DateTime? StaleSinceUtc { get; init; }
 
-    /// <summary>Whether stale.</summary>
+    /// <summary>Whether it's assigned but gone quiet (<see cref="StaleSinceUtc"/> set), so it's back in the queue.</summary>
     public bool IsStale => StaleSinceUtc is not null;
 
     /// <summary>What it's likely to cost, from what similar tickets cost; null with no history.</summary>
@@ -56,7 +56,7 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// proposed, handed out, claimed or started elsewhere, until the move lands or fails. Null when it isn't moving.</summary>
     public Sessions.MoveLock? Moving { get; init; }
 
-    /// <summary>Whether assigned.</summary>
+    /// <summary>Whether someone has it: an assignment that isn't stale, or a move holding it.</summary>
     public bool IsAssigned => (Assignment is not null && !IsStale) || Moving is not null;
 
     /// <summary>The user it's assigned to (M.ORCH-T668), by their login's email (<see cref="Snapshot.Assignees"/>, the ticket database's);
@@ -100,9 +100,9 @@ public sealed record SchedulePlan(
     string? Hold,
     IReadOnlyList<Assignment> Finished)
 {
-    /// <summary>The cap.</summary>
+    /// <summary>How many sessions may run at once now: the pace's session cap within <see cref="Slots"/>, or <see cref="Slots"/> when unpaced.</summary>
     public int Cap { get; init; } = Slots;
-    /// <summary>The pace.</summary>
+    /// <summary>The pace the plan was made under; null when pacing is off.</summary>
     public Pace? Pace { get; init; }
 
     /// <summary>The window is at its target: nothing new starts. <see cref="Pace"/> is only kept when pacing is on, but the
@@ -148,7 +148,7 @@ public static partial class Scheduler
 {
     private const int Century = 36_525;
 
-    /// <summary>Plan.</summary>
+    /// <summary>Orders every repo's open tickets into one queue and decides which should start now within the slots and pace; starts nothing.</summary>
     public static SchedulePlan Plan(Snapshot snapshot, OrchestratorSettings settings, IReadOnlyList<Assignment> assignments)
     {
         var assigned = assignments.ToDictionary(a => a.TicketId, StringComparer.Ordinal);

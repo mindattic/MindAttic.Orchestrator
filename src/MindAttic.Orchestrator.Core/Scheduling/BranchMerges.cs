@@ -36,7 +36,7 @@ public sealed class BranchMerges(JsonStore store)
         /// <summary>Why it didn't land, or what was left behind (a branch that moved past its sign-off is kept).</summary>
         public string? Note { get; set; }
 
-        /// <summary>When it was tried.</summary>
+        /// <summary>When this merge was last tried (UTC).</summary>
         public DateTime Utc { get; set; }
     }
 
