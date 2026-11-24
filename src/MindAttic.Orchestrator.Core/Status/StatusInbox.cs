@@ -134,6 +134,6 @@ public sealed class StatusInbox : IDisposable
         catch (Exception ex) when (ex is not OutOfMemoryException) { return false; }
     }
 
-    /// <summary>Releases.</summary>
+    /// <summary>Stops the inbox's pipe listeners.</summary>
     public void Dispose() => stop.Cancel();
 }

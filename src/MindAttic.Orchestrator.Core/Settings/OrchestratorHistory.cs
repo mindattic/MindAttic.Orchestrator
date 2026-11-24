@@ -32,7 +32,7 @@ public static class OrchestratorHistory
     public static bool TryLoadUsageSamples(this OrchestratorDb db, out List<UsageSample> samples) =>
         Try(() => db.LoadUsageSamples(), out samples);
 
-    /// <summary>Loads the usage samples.</summary>
+    /// <summary>Every meter reading kept, oldest first; throws when the database can't be read (<see cref="TryLoadUsageSamples"/> doesn't).</summary>
     public static List<UsageSample> LoadUsageSamples(this OrchestratorDb db)
     {
         using var connection = db.OpenData();
@@ -96,7 +96,7 @@ public static class OrchestratorHistory
     /// merge isn't saved over a year of it.</summary>
     public static bool TryLoadUsageHistory(this OrchestratorDb db, out List<DayUsage> days) => Try(() => db.LoadUsageHistory(), out days);
 
-    /// <summary>Loads the usage history.</summary>
+    /// <summary>The kept day-by-day usage in <see cref="UsageHistory.Order"/>; throws when the database can't be read (<see cref="TryLoadUsageHistory"/> doesn't).</summary>
     public static List<DayUsage> LoadUsageHistory(this OrchestratorDb db)
     {
         using var connection = db.OpenData();
@@ -149,7 +149,7 @@ public static class OrchestratorHistory
     /// <summary>Every session's cost, oldest first; false (and none) when the database couldn't be read now.</summary>
     public static bool TryLoadTicketCosts(this OrchestratorDb db, out List<SessionCost> costs) => Try(() => db.LoadTicketCosts(), out costs);
 
-    /// <summary>Loads the ticket costs.</summary>
+    /// <summary>Every session's cost, oldest first; throws when the database can't be read (<see cref="TryLoadTicketCosts"/> doesn't).</summary>
     public static List<SessionCost> LoadTicketCosts(this OrchestratorDb db)
     {
         using var connection = db.OpenData();

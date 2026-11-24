@@ -10,7 +10,7 @@ namespace MindAttic.Orchestrator.Settings;
 /// </summary>
 public static class OrchestratorMigration
 {
-    /// <summary>The table record.</summary>
+    /// <summary>One table a migration copied, and how many rows it held.</summary>
     public sealed record Copied(string Table, long Rows);
 
     /// <summary>

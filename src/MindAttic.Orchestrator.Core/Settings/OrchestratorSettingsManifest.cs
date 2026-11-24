@@ -11,7 +11,7 @@ namespace MindAttic.Orchestrator.Settings;
 /// </summary>
 public static class OrchestratorSettingsManifest
 {
-    /// <summary>The switch constant.</summary>
+    /// <summary>The command-line switch (<c>--write-settings-manifest</c>, Vault's own) that runs <see cref="TryRun"/>.</summary>
     public const string Switch = SettingsManifestCommand.Switch;
 
     /// <summary>When <paramref name="args"/> holds <see cref="Switch"/>: imports, writes the manifest, prints where, and returns

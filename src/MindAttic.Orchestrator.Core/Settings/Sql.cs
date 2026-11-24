@@ -12,10 +12,10 @@ namespace MindAttic.Orchestrator.Settings;
 /// </summary>
 public static class Sql
 {
-    /// <summary>Whether server.</summary>
+    /// <summary>Whether <paramref name="connection"/> is SQL Server rather than SQLite.</summary>
     public static bool IsServer(DbConnection connection) => connection is SqlConnection;
 
-    /// <summary>Command.</summary>
+    /// <summary>A command running <paramref name="sql"/> on <paramref name="connection"/> in <paramref name="tx"/>, each parameter added by name, a null sent as <c>DBNull</c>.</summary>
     public static DbCommand Command(DbConnection connection, DbTransaction? tx, string sql, params (string Name, object? Value)[] parameters)
     {
         var command = connection.CreateCommand();
@@ -31,21 +31,21 @@ public static class Sql
         return command;
     }
 
-    /// <summary>Runs.</summary>
+    /// <summary>Runs <paramref name="sql"/> and returns the number of rows it affected.</summary>
     public static int Run(DbConnection connection, DbTransaction? tx, string sql, params (string Name, object? Value)[] parameters)
     {
         using var command = Command(connection, tx, sql, parameters);
         return command.ExecuteNonQuery();
     }
 
-    /// <summary>Scalar.</summary>
+    /// <summary>Runs <paramref name="sql"/> and returns its first row's first column; null when there's no row or it's NULL.</summary>
     public static object? Scalar(DbConnection connection, DbTransaction? tx, string sql, params (string Name, object? Value)[] parameters)
     {
         using var command = Command(connection, tx, sql, parameters);
         return command.ExecuteScalar() is { } v and not DBNull ? v : null;
     }
 
-    /// <summary>The read.</summary>
+    /// <summary>Runs <paramref name="sql"/> and returns every row it reads, in order, each made by <paramref name="row"/>.</summary>
     public static List<T> Read<T>(DbConnection connection, DbTransaction? tx, string sql, Func<DbDataReader, T> row, params (string Name, object? Value)[] parameters)
     {
         using var command = Command(connection, tx, sql, parameters);
@@ -92,14 +92,14 @@ public static class Sql
 
     // ---- reading a column, whichever store it came from ----
 
-    /// <summary>Long.</summary>
+    /// <summary>Column <paramref name="i"/> as a long, whichever numeric type the store handed back.</summary>
     public static long Long(DbDataReader r, int i) => Convert.ToInt64(r.GetValue(i), System.Globalization.CultureInfo.InvariantCulture);
-    /// <summary>Int.</summary>
+    /// <summary>Column <paramref name="i"/> as an int, whichever numeric type the store handed back.</summary>
     public static int Int(DbDataReader r, int i) => Convert.ToInt32(r.GetValue(i), System.Globalization.CultureInfo.InvariantCulture);
-    /// <summary>Real.</summary>
+    /// <summary>Column <paramref name="i"/> as a double, whichever numeric type the store handed back.</summary>
     public static double Real(DbDataReader r, int i) => Convert.ToDouble(r.GetValue(i), System.Globalization.CultureInfo.InvariantCulture);
-    /// <summary>Optional real.</summary>
+    /// <summary>Column <paramref name="i"/> as a double; null when it is NULL.</summary>
     public static double? OptionalReal(DbDataReader r, int i) => r.IsDBNull(i) ? null : Real(r, i);
-    /// <summary>Optional text.</summary>
+    /// <summary>Column <paramref name="i"/> as a string; null when it is NULL.</summary>
     public static string? OptionalText(DbDataReader r, int i) => r.IsDBNull(i) ? null : r.GetString(i);
 }

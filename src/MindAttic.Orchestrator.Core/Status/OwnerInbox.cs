@@ -93,7 +93,7 @@ public static class OwnerInbox
     /// <summary>An active or accepting milestone that has grown since it was activated: told, not asked.</summary>
     public const string MilestoneGrowth = "milestone-growth";
 
-    /// <summary>A source of items.</summary>
+    /// <summary>One source of owner-inbox items: what it raises from <paramref name="inputs"/>.</summary>
     public delegate IEnumerable<OwnerInboxItem> Provider(OwnerInboxInputs inputs);
 
     /// <summary>Every source, most pressing first: a ticket two of them name is listed once, by the first.</summary>

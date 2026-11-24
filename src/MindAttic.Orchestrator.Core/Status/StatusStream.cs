@@ -19,13 +19,13 @@ public sealed record MeterReading
     /// <summary>The account the reading was tagged with (the meter probe tags its own); null from a statusline.</summary>
     public string? Account { get; init; }
 
-    /// <summary>The five hour percent.</summary>
+    /// <summary>The percent of the 5-hour window used; null when the reading didn't carry it.</summary>
     public double? FiveHourPercent { get; init; }
-    /// <summary>The five hour reset utc.</summary>
+    /// <summary>When the 5-hour window resets (UTC); null when unknown.</summary>
     public DateTime? FiveHourResetUtc { get; init; }
-    /// <summary>The week percent.</summary>
+    /// <summary>The percent of the week used; null when the reading didn't carry it.</summary>
     public double? WeekPercent { get; init; }
-    /// <summary>The week reset utc.</summary>
+    /// <summary>When the week resets (UTC); null when unknown.</summary>
     public DateTime? WeekResetUtc { get; init; }
 
     /// <summary>When Claude's meter said it.</summary>
@@ -41,7 +41,7 @@ public sealed record MeterReading
     [JsonIgnore]
     public string Key => KeyOf(Email);
 
-    /// <summary>Key of.</summary>
+    /// <summary>The key <paramref name="email"/>'s readings are kept under: trimmed and lower-cased; "" for null (the global login).</summary>
     public static string KeyOf(string? email) => email?.Trim().ToLowerInvariant() ?? "";
 
     /// <summary><paramref name="usage"/> as a reading of <paramref name="email"/>'s login; null when it carries neither window.</summary>
@@ -113,7 +113,7 @@ public sealed record StatusMessage
     /// <summary>Nothing new; says the writer is alive, so a hung one is noticed.</summary>
     public const string Heartbeat = "heartbeat";
 
-    /// <summary>The version constant.</summary>
+    /// <summary>This message's payload version.</summary>
     public const int Version = 1;
 
     /// <summary>The envelope kind it travelled as; set when read back, never serialized in the payload.</summary>
@@ -121,10 +121,10 @@ public sealed record StatusMessage
     /// <summary>When the writer sent it (UTC), from the envelope; never serialized in the payload.</summary>
     [JsonIgnore] public DateTime AtUtc { get; init; }
 
-    /// <summary>The writing process.</summary>
+    /// <summary>The writing process's id, from the envelope; never serialized in the payload.</summary>
     [JsonIgnore] public int Pid { get; init; }
 
-    /// <summary>The readings.</summary>
+    /// <summary>The usage meter readings the message carries.</summary>
     public IReadOnlyList<MeterReading> Readings { get; init; } = [];
 
     /// <summary>When the newest snapshot the writer built was taken; null while it has built none (another process holds the lease).</summary>
@@ -185,10 +185,10 @@ public static class StatusStream
 
     private static readonly JsonSerializerOptions EnvelopeJson = new() { PropertyNameCaseInsensitive = true };
 
-    /// <summary>Serialize.</summary>
+    /// <summary><paramref name="envelope"/> as one line of JSON, as the stream sends it.</summary>
     public static string Serialize(StatusEnvelope envelope) => JsonSerializer.Serialize(envelope, EnvelopeJson);
 
-    /// <summary>Serialize.</summary>
+    /// <summary><paramref name="message"/> in its envelope, as one line of JSON.</summary>
     public static string Serialize(StatusMessage message) => Serialize(message.ToEnvelope());
 
     /// <summary>One line read back; null when it isn't an envelope. Throws <see cref="JsonException"/> on one that isn't JSON.</summary>
@@ -535,7 +535,7 @@ public sealed class StatusStreamServer : IDisposable
         }
     }
 
-    /// <summary>Releases.</summary>
+    /// <summary>Stops serving, watching and heartbeats, and ends every connected dashboard's stream.</summary>
     public void Dispose()
     {
         stop.Cancel();

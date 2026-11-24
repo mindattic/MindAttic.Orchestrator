@@ -31,7 +31,7 @@ public sealed class JsonStore
     /// <summary>A setting's value as its row keeps it: one line.</summary>
     private static readonly JsonSerializerOptions Compact = new();
 
-    /// <summary>The constants settings name, assignments name, limits name.</summary>
+    /// <summary>The names the settings, the assignments and the limit observations are stored under.</summary>
     public const string SettingsName = "settings", AssignmentsName = "assignments", LimitsName = "limits";
 
     /// <summary>The store's own folder under <c>%APPDATA%</c>, where the JSON files were: logs, prompts and leases stay there.</summary>
@@ -107,7 +107,7 @@ public sealed class JsonStore
     /// <summary>The folder the old JSON files are read in from (and the logs, prompts and leases kept beside them).</summary>
     public string Directory { get; }
 
-    /// <summary>The db.</summary>
+    /// <summary>The database this store's values are kept in.</summary>
     public OrchestratorDb Db { get; }
 
     /// <summary>Where <paramref name="name"/> is kept, for messages: the database and its table.</summary>
@@ -227,7 +227,7 @@ public sealed class JsonStore
         StoreChanges.Note(this, name);
     }
 
-    /// <summary>Loads the settings.</summary>
+    /// <summary>The orchestrator's settings; the defaults when none are saved or they can't be read now (<see cref="TryLoadSettings"/> says which).</summary>
     public OrchestratorSettings LoadSettings() => Load<OrchestratorSettings>(SettingsName);
 
     /// <summary>The settings, and whether they were read: false (with defaults) when they're there but couldn't be (a bad
@@ -240,26 +240,26 @@ public sealed class JsonStore
     /// every budget, block and reservation in it.</summary>
     public OrchestratorSettings LoadSettingsToChange() => TryLoad<OrchestratorSettings>(SettingsName, out var s) ? s
         : throw new InvalidDataException($"The settings in {Describe(SettingsName)} couldn't be read; left as they are rather than saved over with defaults. Fix or remove {Path.Combine(Directory, "settings.json")} if it's still there, and try again.");
-    /// <summary>Saves the settings.</summary>
+    /// <summary>Saves <paramref name="s"/> as the settings, replacing them.</summary>
     public void SaveSettings(OrchestratorSettings s) => Save(SettingsName, s);
-    /// <summary>Loads the assignments.</summary>
+    /// <summary>The tickets handed to sessions; none when none are saved or they can't be read now.</summary>
     public List<Assignment> LoadAssignments() => Load<List<Assignment>>(AssignmentsName);
-    /// <summary>Saves the assignments.</summary>
+    /// <summary>Saves <paramref name="a"/> as the assignments, replacing them; <see cref="UpdateAssignments"/> keeps another process's additions.</summary>
     public void SaveAssignments(List<Assignment> a) => Save(AssignmentsName, a);
 
     /// <summary>Loads, changes and saves the assignments in one transaction every process takes (the daemon's allocate, a
     /// dashboard's Dispatch, the CLI), so one's save never drops what another added in between.</summary>
     public void UpdateAssignments(Action<List<Assignment>> change) => Update(AssignmentsName, change);
 
-    /// <summary>Whether limits.</summary>
+    /// <summary>Whether limit observations are saved; false also when the store can't be read now.</summary>
     public bool HasLimits => Has(LimitsName);
-    /// <summary>Loads the limits.</summary>
+    /// <summary>The limit observations learned from the times a login hit its wall; none when none are saved or they can't be read now.</summary>
     public List<Budget.LimitObservation> LoadLimits() => Load<List<Budget.LimitObservation>>(LimitsName);
 
     // For a load, merge and save: false when they're there but couldn't be read, so the merge isn't saved over them.
-    /// <summary>Tries to load the limits.</summary>
+    /// <summary>The limit observations, and whether they were read: false (with none) when they're there but couldn't be.</summary>
     public bool TryLoadLimits(out List<Budget.LimitObservation> o) => TryLoad(LimitsName, out o);
-    /// <summary>Saves the limits.</summary>
+    /// <summary>Saves <paramref name="o"/> as the limit observations, replacing them.</summary>
     public void SaveLimits(List<Budget.LimitObservation> o) => Save(LimitsName, o);
 
     private static bool IsVolatile(string name) => OrchestratorDb.Volatile.Contains(name);

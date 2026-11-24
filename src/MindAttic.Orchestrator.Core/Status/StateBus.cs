@@ -46,10 +46,10 @@ public static class StateBus
     /// <summary>The version of each of these kinds' payloads.</summary>
     public const int Version = 1;
 
-    /// <summary>Every kind of these.</summary>
+    /// <summary>Every state kind this bus carries.</summary>
     public static IReadOnlyList<string> Kinds { get; } = [Members, Orgs, Settings, Reminders, Cutoffs, Allowances, Locks];
 
-    /// <summary>Whether state kind.</summary>
+    /// <summary>Whether <paramref name="kind"/> is one of <see cref="Kinds"/>.</summary>
     public static bool IsStateKind(string? kind) => kind is Members or Orgs or Settings or Reminders or Cutoffs or Allowances or Locks;
 
     /// <summary>The store <paramref name="db"/> is, as payloads name it: its full path.</summary>

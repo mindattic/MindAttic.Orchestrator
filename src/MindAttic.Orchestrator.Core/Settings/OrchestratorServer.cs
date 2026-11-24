@@ -17,7 +17,7 @@ namespace MindAttic.Orchestrator.Settings;
 /// </summary>
 public sealed class OrchestratorServer(string connectionString)
 {
-    /// <summary>The default database constant.</summary>
+    /// <summary>The SQL Server database the orchestrator's store goes in unless <c>orchestrator db migrate</c> names another.</summary>
     public const string DefaultDatabase = "MindAttic.Orchestrator";
 
     /// <summary>A connection string to use instead of <see cref="ConfigFile"/>'s; "off" keeps everything in SQLite.</summary>
@@ -41,7 +41,7 @@ public sealed class OrchestratorServer(string connectionString)
         ApplicationName = "MindAttic.Orchestrator",
     }.ConnectionString;
 
-    /// <summary>The connection string.</summary>
+    /// <summary>The SQL Server connection string this store connects with.</summary>
     public string ConnectionString { get; } = connectionString;
 
     /// <summary>The server and database, for a message or a log line: never the connection string itself, which may hold a

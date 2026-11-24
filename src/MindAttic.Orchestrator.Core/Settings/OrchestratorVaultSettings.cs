@@ -35,7 +35,7 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 1e15)]
     public long? BlockBudget { get; set; }
 
-    /// <summary>Uncached tokens per week.</summary>
+    /// <summary>Uncached tokens per week; null means no weekly line.</summary>
     [Setting("Tokens per week", Group = "Budget", Order = 2, Help = "Uncached tokens per week. Empty means no weekly line.")]
     [SettingRange(1, 1e15)]
     public long? WeeklyBudget { get; set; }
@@ -160,7 +160,7 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 1000)]
     public int MaxSubagents { get; set; } = 16;
 
-    /// <summary>Provider for dispatched tickets.</summary>
+    /// <summary>The provider dispatched tickets run on: Claude (the default), Codex, Gemini or Kimi.</summary>
     [Setting("Provider for dispatched tickets", Group = "Scheduler", Order = 5)]
     [SettingChoices("Claude", "Codex", "Gemini", "Kimi")]
     public string DefaultProvider { get; set; } = "Claude";
@@ -775,7 +775,7 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 10080)]
     public double LogPruneMinutes { get; set; } = 60;
 
-    /// <summary>Local dated backup folders kept.</summary>
+    /// <summary>How many dated backup folders are kept under the backup base after each backup; 0 keeps every one.</summary>
     [Setting("Keep local backups (folders)", Group = "Alerts", Order = 68, Help = "How many dated backup folders to keep under the backup base: after each Backup & Restore backup, older ones are deleted. 0 keeps every one.")]
     [SettingRange(0, 10000)]
     public int BackupKeepLocal { get; set; } = 30;
@@ -816,7 +816,7 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 1048576)]
     public int DiskCleanupLogMaxKb { get; set; } = 1024;
 
-    /// <summary>Rotated copies of disk-cleanup.log kept.</summary>
+    /// <summary>How many rotated copies of disk-cleanup.log are kept (.1 the newest); older ones are deleted.</summary>
     [Setting("Rotated disk-cleanup.logs kept", Group = "Alerts", Order = 63, Help = "Rotated copies of disk-cleanup.log kept (.1 is the newest); older ones are deleted.")]
     [SettingRange(1, 100)]
     public int DiskCleanupLogKeep { get; set; } = 3;
@@ -1695,10 +1695,10 @@ public sealed class OrchestratorVaultSettings
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    /// <summary>To json.</summary>
+    /// <summary>These settings as JSON shaped by <see cref="JsonOptions"/>.</summary>
     public JsonObject ToJson() => (JsonObject)JsonSerializer.SerializeToNode(this, JsonOptions)!;
 
-    /// <summary>From json.</summary>
+    /// <summary>The settings <paramref name="node"/> holds; the defaults when it holds null.</summary>
     public static OrchestratorVaultSettings FromJson(JsonNode node) => node.Deserialize<OrchestratorVaultSettings>(JsonOptions) ?? new();
 
     /// <summary>True when both hold the same values.</summary>
@@ -1740,7 +1740,7 @@ public sealed class OrchestratorVaultSettings
 /// <summary>The team gateway's settings (M.ORCH-T933) in the Vault: everything but its teammates' list, which holds sealed tokens.</summary>
 public sealed class OrchestratorGatewayVaultSettings
 {
-    /// <summary>Off by default.</summary>
+    /// <summary>Whether the daemon starts the team gateway and keeps it running; off by default.</summary>
     [Setting("Enabled", Group = "Gateway", Order = 1, Help = "Off by default. On, the daemon starts the gateway and keeps it running.")]
     public bool Enabled { get; set; }
 
@@ -1749,7 +1749,7 @@ public sealed class OrchestratorGatewayVaultSettings
         Help = "127.0.0.1 exposes nothing; a Tailscale or VPN address (or 0.0.0.0) lets teammates in.")]
     public string Bind { get; set; } = "127.0.0.1";
 
-    /// <summary>Port.</summary>
+    /// <summary>The TCP port the gateway listens on.</summary>
     [Setting("Port", Group = "Gateway", Order = 3)]
     [SettingRange(1, 65535)]
     public int Port { get; set; } = Term.TermGateway.DefaultPort;
@@ -1778,7 +1778,7 @@ public sealed class OrchestratorGatewayVaultSettings
     [SettingRange(1, 60)]
     public int TokenMinutes { get; set; } = 15;
 
-    /// <summary>From.</summary>
+    /// <summary>The Vault copy of <paramref name="g"/>'s fields.</summary>
     public static OrchestratorGatewayVaultSettings From(GatewaySettings g) => new()
     {
         Enabled = g.Enabled,
@@ -1791,7 +1791,7 @@ public sealed class OrchestratorGatewayVaultSettings
         TokenMinutes = g.TokenMinutes,
     };
 
-    /// <summary>Applies the to.</summary>
+    /// <summary><paramref name="g"/> with these values laid over it: a blank bind keeps its own, a blank certificate path, thumbprint or owner clears it.</summary>
     public GatewaySettings ApplyTo(GatewaySettings g) => g with
     {
         Enabled = Enabled,

@@ -81,7 +81,7 @@ public static class AppBus
     /// <summary>MindAttic.MediaViewer, which shows preview sets (<see cref="ShowPreview"/>).</summary>
     public const string MediaViewer = "viewer";
 
-    /// <summary>Every kind of this bus.</summary>
+    /// <summary>Whether <paramref name="kind"/> is one of this bus's message kinds.</summary>
     public static bool IsAppKind(string? kind) => kind is Ticket or OpenTicket or ShowWorker or Presence or Activity or AgentState or Health or ShowPreview;
 }
 
@@ -144,29 +144,29 @@ public sealed record ActivityPayload
 /// <summary>What happened to a ticket: <see cref="TicketBusEvent.Event"/>'s values.</summary>
 public static class TicketEvents
 {
-    /// <summary>The filed constant.</summary>
+    /// <summary>It was filed.</summary>
     public const string Filed = "filed";
-    /// <summary>The approved constant.</summary>
+    /// <summary>It was approved for work.</summary>
     public const string Approved = "approved";
     /// <summary>Its approval was taken back (proposed again).</summary>
     public const string Unapproved = "unapproved";
-    /// <summary>The rejected constant.</summary>
+    /// <summary>It was rejected.</summary>
     public const string Rejected = "rejected";
     /// <summary>Someone started working it: <see cref="TicketBusEvent.Login"/> and/or <see cref="TicketBusEvent.Session"/> say who.</summary>
     public const string Claimed = "claimed";
     /// <summary>Nobody works it any more (landed, released, given back).</summary>
     public const string Released = "released";
-    /// <summary>The closed constant.</summary>
+    /// <summary>It was closed as done.</summary>
     public const string Closed = "closed";
-    /// <summary>The wont do constant.</summary>
+    /// <summary>It was closed as won't do.</summary>
     public const string WontDo = "wont-do";
-    /// <summary>The reopened constant.</summary>
+    /// <summary>It was opened again after closing.</summary>
     public const string Reopened = "reopened";
     /// <summary>Its summary changed: <see cref="TicketBusEvent.New"/> is the new one.</summary>
     public const string Reworded = "reworded";
     /// <summary>Assigned to someone (<see cref="TicketBusEvent.New"/>, a login email) or unassigned (null).</summary>
     public const string Assigned = "assigned";
-    /// <summary>The prioritized constant.</summary>
+    /// <summary>Its priority changed: <see cref="TicketBusEvent.New"/> is the new one.</summary>
     public const string Prioritized = "prioritized";
     /// <summary>Its links changed.</summary>
     public const string Linked = "linked";

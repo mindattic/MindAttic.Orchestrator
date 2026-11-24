@@ -79,7 +79,7 @@ public sealed record OrchestratorSettings
     /// <see cref="MaxWeeklyReservePercent"/>; applies to each login on its own.</summary>
     public int WeeklyReservePercent { get; init; } = DefaultWeeklyReservePercent;
 
-    /// <summary>The constants default weekly reserve percent, max weekly reserve percent.</summary>
+    /// <summary>The default <see cref="WeeklyReservePercent"/>, and the most it may be set to.</summary>
     public const int DefaultWeeklyReservePercent = 10, MaxWeeklyReservePercent = 50;
 
     /// <summary>The percent of an account's week at which its CLIs stop: 100 minus <see cref="WeeklyReservePercent"/>
@@ -88,7 +88,7 @@ public sealed record OrchestratorSettings
     [JsonIgnore]
     public int WeeklyStopPercent => WeeklyStopFor(WeeklyReservePercent);
 
-    /// <summary>Weekly stop for.</summary>
+    /// <summary>The weekly stop percent for <paramref name="reservePercent"/>: 100 minus it, the reserve kept to 0–<see cref="MaxWeeklyReservePercent"/>.</summary>
     public static int WeeklyStopFor(int reservePercent) => 100 - Math.Clamp(reservePercent, 0, MaxWeeklyReservePercent);
 
     /// <summary>Weekly-aware pacing (M.ORCH-T666), per login: each 5-hour window still aims at <see cref="PaceTargetPercent"/>, and
@@ -106,7 +106,7 @@ public sealed record OrchestratorSettings
     /// <summary>The week's percent from which weekly-aware pacing takes the week in (M.ORCH-T680); below the weekly target.</summary>
     public int WeeklyAwareLinePercent { get; init; } = DefaultWeeklyAwareLinePercent;
 
-    /// <summary>The default weekly aware line percent constant.</summary>
+    /// <summary>The default <see cref="WeeklyAwareLinePercent"/>.</summary>
     public const int DefaultWeeklyAwareLinePercent = 75;
 
     /// <summary>Weekly-aware pacing's numbers, the one place they're read from (M.ORCH-T669), each from the settings
@@ -133,10 +133,10 @@ public sealed record OrchestratorSettings
     /// <summary>The front-loaded curve's exponent: under 1 bends it up early (0.55 by default); 1 is a straight line.</summary>
     public double PaceCurveK { get; init; } = 0.55;
 
-    /// <summary>The constants linear profile, front loaded profile.</summary>
+    /// <summary>The two <see cref="PaceProfile"/> names, as saved and typed.</summary>
     public const string LinearProfile = "linear", FrontLoadedProfile = "front-loaded";
 
-    /// <summary>The pace profiles.</summary>
+    /// <summary>Every <see cref="PaceProfile"/> name, linear first.</summary>
     public static IReadOnlyList<string> PaceProfiles { get; } = [LinearProfile, FrontLoadedProfile];
 
     /// <summary>A typed profile ("Front-Loaded", "frontloaded", "front") as saved, or null when it's neither.</summary>
@@ -175,7 +175,7 @@ public sealed record OrchestratorSettings
     public List<string> ExemptCommands { get => exemptCommands; init => exemptCommands = RenameRetired(value); }
     private readonly List<string> exemptCommands = [.. DefaultExemptCommands];
 
-    /// <summary>The default exempt commands.</summary>
+    /// <summary>The <see cref="ExemptCommands"/> a fresh install starts with.</summary>
     public static IReadOnlyList<string> DefaultExemptCommands { get; } = ["/pacing", "/deploy", "/run", "/allocate", "/commit", "/quicksave", "/quickload"];
 
     private static List<string> RenameRetired(List<string>? commands) =>
@@ -208,14 +208,14 @@ public sealed record OrchestratorSettings
     /// "Off" records nothing.</summary>
     public string EditClaims { get; init; } = DefaultEditClaims;
 
-    /// <summary>The default edit claims constant.</summary>
+    /// <summary>The default <see cref="EditClaims"/>.</summary>
     public const string DefaultEditClaims = "Warn";
 
     /// <summary>Minutes a file's edit claim stands after its agent's last edit of it (M.ORCH-T1193), so a crashed agent's claim lapses;
     /// a commit naming the file, the subagent's stop or its CLI's exit releases it sooner.</summary>
     public double EditClaimMinutes { get; init; } = DefaultEditClaimMinutes;
 
-    /// <summary>The default edit claim minutes constant.</summary>
+    /// <summary>The default <see cref="EditClaimMinutes"/>.</summary>
     public const double DefaultEditClaimMinutes = 30;
 
     /// <summary>Context fill at which a session is wrapped up and cycled; high enough to use most of the
@@ -233,7 +233,7 @@ public sealed record OrchestratorSettings
     /// goes back in the queue as stale. 0 keeps assignments until the ticket closes or is released.</summary>
     public int StaleAfterHours { get; init; } = 12;
 
-    /// <summary>The default provider.</summary>
+    /// <summary>The provider dispatched tickets run on when a dispatch names none: "Claude" (the default), "Codex", "Gemini" or "Kimi".</summary>
     public string DefaultProvider { get; init; } = "Claude";
 
     /// <summary>Where the tools' own clean worktrees of origin/main live (MainlineTests' main-tests, deploy, /test's verify-main),
@@ -276,7 +276,7 @@ public sealed record OrchestratorSettings
     /// is never limited.</summary>
     public int MaxClisPerLogin { get; init; }
 
-    /// <summary>The repo max sessions.</summary>
+    /// <summary>Sessions a named repo may run at once, in place of <see cref="MaxSessionsPerRepo"/>; repo names match ignoring case (<see cref="ForRepo"/>).</summary>
     public Dictionary<string, int> RepoMaxSessions { get; init; } = [];
 
     /// <summary><paramref name="repo"/>'s entry in a per-repo map, its name matched ignoring case as everywhere else repos are
@@ -306,7 +306,7 @@ public sealed record OrchestratorSettings
     /// it spends (uncached), so busy tabs blink at their own rate. <see cref="MinTabBlinkTokens"/> to <see cref="MaxTabBlinkTokens"/>.</summary>
     public int TabBlinkTokens { get; init; } = DefaultTabBlinkTokens;
 
-    /// <summary>The constants default tab blink tokens, min tab blink tokens, max tab blink tokens.</summary>
+    /// <summary>The default <see cref="TabBlinkTokens"/> and its bounds.</summary>
     public const int DefaultTabBlinkTokens = 1000, MinTabBlinkTokens = 1, MaxTabBlinkTokens = 10_000_000;
 
     /// <summary>The size of one task, one unit of work, in uncached tokens (M.ORCH-T1905): a dispatched agent aims to finish
@@ -314,7 +314,7 @@ public sealed record OrchestratorSettings
     /// <see cref="Scheduling.WorkUnits.Budget"/>.</summary>
     public int UnitTokenBudget { get; init; } = DefaultUnitTokenBudget;
 
-    /// <summary>The constants default, min and max unit token budget.</summary>
+    /// <summary>The default <see cref="UnitTokenBudget"/> and its bounds.</summary>
     public const int DefaultUnitTokenBudget = 80_000, MinUnitTokenBudget = 20_000, MaxUnitTokenBudget = 400_000;
 
     /// <summary>How long the dashboard's first load waits on the ticket database before it lifts its loader anyway (M.ORCH-T1936):
@@ -323,7 +323,7 @@ public sealed record OrchestratorSettings
     /// read it clamped through <see cref="FirstLoadWait"/>.</summary>
     public int FirstLoadWaitSeconds { get; init; } = DefaultFirstLoadWaitSeconds;
 
-    /// <summary>The constants default, min and max first load wait seconds.</summary>
+    /// <summary>The default <see cref="FirstLoadWaitSeconds"/> and its bounds.</summary>
     public const int DefaultFirstLoadWaitSeconds = 20, MinFirstLoadWaitSeconds = 1, MaxFirstLoadWaitSeconds = 600;
 
     /// <summary>The first load's wait (M.ORCH-T1936), clamped to its bounds; the default when no settings were read.</summary>
@@ -345,7 +345,7 @@ public sealed record OrchestratorSettings
     /// stripe begins, instead of the old 2px row gap every sibling row already had.</summary>
     public double LoginTreeGutterPx { get; init; } = DefaultLoginTreeGutterPx;
 
-    /// <summary>The default login tree gutter constant.</summary>
+    /// <summary>The default <see cref="LoginTreeGutterPx"/>.</summary>
     public const double DefaultLoginTreeGutterPx = 10;
 
     /// <summary>Whether the Team Wall (M.ORCH-T936) leaves out the Launcher's own menu pane (M.ORCH-T1256): off by default
@@ -397,7 +397,7 @@ public sealed record OrchestratorSettings
     /// the dashboard and pushed to <see cref="NotifyUrl"/>.</summary>
     public bool NagAlerts { get; init; } = true;
 
-    /// <summary>The default psst alert to constant.</summary>
+    /// <summary>The default <see cref="PsstAlertTo"/>.</summary>
     public const string DefaultPsstAlertTo = "ryan";
 
     /// <summary>The API key person's starting credit in US dollars (M.ORCH-T906): what its burndown starts from, entered by you with
@@ -414,7 +414,7 @@ public sealed record OrchestratorSettings
     /// <see cref="ApiCreditUsd"/> is then Anthropic's own figures up to the last read and the list-price estimate since.</summary>
     public double ApiCostReadMinutes { get; init; } = DefaultApiCostReadMinutes;
 
-    /// <summary>The default api cost read minutes constant.</summary>
+    /// <summary>The default <see cref="ApiCostReadMinutes"/>.</summary>
     public const double DefaultApiCostReadMinutes = 15;
 
     /// <summary>The dashboard's theme (M.ORCH-T678): "Light" or "Dark", as its sun/moon switch saved it. Null (never switched),
@@ -425,7 +425,7 @@ public sealed record OrchestratorSettings
     /// the dashboard (Fonts/). Every window, menu and tooltip follows it, live; the terminal panes keep their monospace font.</summary>
     public string Font { get; init; } = DefaultFont;
 
-    /// <summary>The default font constant.</summary>
+    /// <summary>The default <see cref="Font"/>.</summary>
     public const string DefaultFont = "Segoe UI";
 
     /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so allocate
@@ -515,7 +515,7 @@ public sealed record OrchestratorSettings
     /// that quiet go. 0 turns it off.</summary>
     public double TempRetentionHours { get; init; } = DefaultTempRetentionHours;
 
-    /// <summary>The default temp retention hours constant.</summary>
+    /// <summary>The default <see cref="TempRetentionHours"/>.</summary>
     public const double DefaultTempRetentionHours = 48;
 
     /// <summary>Hours a claimed ticket's own scratch dir (<see cref="Activity.TicketScratch"/>, its agent's <c>ORCH_SCRATCH</c>) is
@@ -523,7 +523,7 @@ public sealed record OrchestratorSettings
     /// even if its ticket's claim never ended. 0 means no expiry: it's kept until released.</summary>
     public double ScratchLeaseHours { get; init; } = DefaultScratchLeaseHours;
 
-    /// <summary>The default scratch lease hours constant.</summary>
+    /// <summary>The default <see cref="ScratchLeaseHours"/>.</summary>
     public const double DefaultScratchLeaseHours = 48;
 
     /// <summary>Whether the ledger sweep (M.ORCH-T1677, <see cref="Activity.LedgerSweeper"/>) deletes nothing and only writes
@@ -906,7 +906,7 @@ public sealed record OrchestratorSettings
     /// 24 hours, M.ORCH-T1177): each holds its native renderer (~50 MB) until then.</summary>
     public double EndedTabMinutes { get; init; } = DefaultEndedTabMinutes;
 
-    /// <summary>The default ended tab minutes constant.</summary>
+    /// <summary>The default <see cref="EndedTabMinutes"/>.</summary>
     public const double DefaultEndedTabMinutes = 60;
 
     /// <summary>Minutes a CLI tab may stay hidden before its native terminal renderer (~50 MB) is released (M.ORCH-T1737): its
@@ -914,7 +914,7 @@ public sealed record OrchestratorSettings
     /// again. 0 never releases one.</summary>
     public double HiddenRendererMinutes { get; init; } = DefaultHiddenRendererMinutes;
 
-    /// <summary>The default hidden renderer minutes constant.</summary>
+    /// <summary>The default <see cref="HiddenRendererMinutes"/>.</summary>
     public const double DefaultHiddenRendererMinutes = 10;
 
     /// <summary>Minutes a CLI's turn must have been idle before the dashboard parks it (M.ORCH-T2074, part of M.ORCH-T1739): closes
@@ -923,7 +923,7 @@ public sealed record OrchestratorSettings
     /// nothing running, not on a /goal) and whose tab isn't the one on screen is parked. 0 never parks one.</summary>
     public int ParkIdleCliMinutes { get; init; } = DefaultParkIdleCliMinutes;
 
-    /// <summary>The default park idle CLI minutes constant.</summary>
+    /// <summary>The default <see cref="ParkIdleCliMinutes"/>.</summary>
     public const int DefaultParkIdleCliMinutes = 60;
 
     /// <summary>The longest <see cref="ParkIdleCliMinutes"/> (a week).</summary>
@@ -934,20 +934,20 @@ public sealed record OrchestratorSettings
     /// renamed by hand is reconsidered at every one. 0 never renames a tab.</summary>
     public double AutoTabNameMinutes { get; init; } = DefaultAutoTabNameMinutes;
 
-    /// <summary>The default auto tab name minutes constant.</summary>
+    /// <summary>The default <see cref="AutoTabNameMinutes"/>.</summary>
     public const double DefaultAutoTabNameMinutes = 5;
 
     /// <summary>The most characters an auto-given tab name has (M.ORCH-T1817).</summary>
     public double AutoTabNameMaxChars { get; init; } = DefaultAutoTabNameMaxChars;
 
-    /// <summary>The default auto tab name length constant.</summary>
+    /// <summary>The default <see cref="AutoTabNameMaxChars"/>.</summary>
     public const double DefaultAutoTabNameMaxChars = 32;
 
     /// <summary>Milliseconds before the CLI row's hover tooltip (its usage chart, M.ORCH-T1814) opens (<c>ToolTipService.InitialShowDelay</c>
     /// on the owning tab/row, M.ORCH-T1823): 0 opens it the instant the pointer lands, with no hover-delay wait.</summary>
     public double CliTooltipDelayMs { get; init; } = DefaultCliTooltipDelayMs;
 
-    /// <summary>The default CLI tooltip delay constant: 20% below its old hardcoded 0ms (M.ORCH-T1823) - still 0, now live-dialable.</summary>
+    /// <summary>The default <see cref="CliTooltipDelayMs"/>: 0, opening at once as the old hardcoded delay did (M.ORCH-T1823).</summary>
     public const double DefaultCliTooltipDelayMs = 0;
 
     /// <summary>The folder, under the workspace root and under each repo, whose markdown files are the saved plans the
@@ -955,29 +955,29 @@ public sealed record OrchestratorSettings
     /// ready for an implementation ticket yet.</summary>
     public string PlansFolder { get; init; } = DefaultPlansFolder;
 
-    /// <summary>The default plans folder constant.</summary>
+    /// <summary>The default <see cref="PlansFolder"/>.</summary>
     public const string DefaultPlansFolder = @"docs\plans";
 
     /// <summary>The most characters of a plan's summary (and of its status) the Plans list shows (M.ORCH-T1826); a longer one
     /// is cut at a word and ended with an ellipsis.</summary>
     public int PlanSummaryMaxChars { get; init; } = DefaultPlanSummaryMaxChars;
 
-    /// <summary>The default plan summary length constant.</summary>
+    /// <summary>The default <see cref="PlanSummaryMaxChars"/>.</summary>
     public const int DefaultPlanSummaryMaxChars = 200;
-    /// <summary>The shortest plan summary length.</summary>
+    /// <summary>The least <see cref="PlanSummaryMaxChars"/>.</summary>
     public const int MinPlanSummaryMaxChars = 20;
-    /// <summary>The longest plan summary length.</summary>
+    /// <summary>The most <see cref="PlanSummaryMaxChars"/>.</summary>
     public const int MaxPlanSummaryMaxChars = 2000;
 
     /// <summary>KB read from the start of each plan file to find its title, status and summary (M.ORCH-T1826): the rest of a
     /// very large file is never read.</summary>
     public int PlanHeadKb { get; init; } = DefaultPlanHeadKb;
 
-    /// <summary>The default plan head size constant.</summary>
+    /// <summary>The default <see cref="PlanHeadKb"/>.</summary>
     public const int DefaultPlanHeadKb = 8;
-    /// <summary>The smallest plan head size.</summary>
+    /// <summary>The least <see cref="PlanHeadKb"/>.</summary>
     public const int MinPlanHeadKb = 1;
-    /// <summary>The largest plan head size.</summary>
+    /// <summary>The most <see cref="PlanHeadKb"/>.</summary>
     public const int MaxPlanHeadKb = 1024;
 
     /// <summary>Minutes a TermHost running in an orch-test-* temp folder may live before the daemon ends it (M.ORCH-T1623): a test that
@@ -985,96 +985,96 @@ public sealed record OrchestratorSettings
     /// at once; a host in any other folder is never touched.</summary>
     public double TestTermHostMaxMinutes { get; init; } = DefaultTestTermHostMaxMinutes;
 
-    /// <summary>The default test term host max minutes constant.</summary>
+    /// <summary>The default <see cref="TestTermHostMaxMinutes"/>.</summary>
     public const double DefaultTestTermHostMaxMinutes = 60;
 
     /// <summary>Seconds after an Enter typed in a CLI tab that a status read still saying idle ends its presumed busy (M.ORCH-T1413):
     /// the context gate marks a submitted prompt busy within a hook's first moments, so a read this much later that says idle is real.</summary>
     public double PresumeBusyConfirmSeconds { get; init; } = DefaultPresumeBusyConfirmSeconds;
 
-    /// <summary>The default presume busy confirm seconds constant.</summary>
+    /// <summary>The default <see cref="PresumeBusyConfirmSeconds"/>.</summary>
     public const double DefaultPresumeBusyConfirmSeconds = 8;
 
     /// <summary>The grace period (M.ORCH-T1413): the longest, in seconds, an Enter typed in a CLI tab keeps it and its person's tab
     /// presumed busy with no status read at all.</summary>
     public double PresumeBusyMaxSeconds { get; init; } = DefaultPresumeBusyMaxSeconds;
 
-    /// <summary>The default presume busy max seconds constant.</summary>
+    /// <summary>The default <see cref="PresumeBusyMaxSeconds"/>.</summary>
     public const double DefaultPresumeBusyMaxSeconds = 60;
 
     /// <summary>Minutes an idle CLI may go unseen before its Team Wall activity line ages to stale and is drawn dimmed (M.ORCH-T965);
     /// 0 never ages one. A CLI waiting on you never ages.</summary>
     public double ActivityStaleMinutes { get; init; } = DefaultActivityStaleMinutes;
 
-    /// <summary>The default activity stale minutes constant.</summary>
+    /// <summary>The default <see cref="ActivityStaleMinutes"/>.</summary>
     public const double DefaultActivityStaleMinutes = 20;
 
     /// <summary>The least seconds between two activity bus messages for one CLI session (M.ORCH-T962): a busy CLI's newer pictures
     /// inside the gap are held and the latest goes out when it passes. 0 sends each at once.</summary>
     public double ActivityCoalesceSeconds { get; init; } = DefaultActivityCoalesceSeconds;
 
-    /// <summary>The default activity coalesce seconds constant.</summary>
+    /// <summary>The default <see cref="ActivityCoalesceSeconds"/>.</summary>
     public const double DefaultActivityCoalesceSeconds = 0.5;
 
     /// <summary>Seconds between the daemon's slow rescans of the activity records folder (M.ORCH-T962): a change its file watcher
     /// missed is read then, and silent sessions are checked for an end.</summary>
     public double ActivityRescanSeconds { get; init; } = DefaultActivityRescanSeconds;
 
-    /// <summary>The default activity rescan seconds constant.</summary>
+    /// <summary>The default <see cref="ActivityRescanSeconds"/>.</summary>
     public const double DefaultActivityRescanSeconds = 30;
 
     /// <summary>Minutes a CLI session may send no activity, with its process gone, before the bus says it ended and stops keeping it
     /// (M.ORCH-T962).</summary>
     public double ActivityEndedMinutes { get; init; } = DefaultActivityEndedMinutes;
 
-    /// <summary>The default activity ended minutes constant.</summary>
+    /// <summary>The default <see cref="ActivityEndedMinutes"/>.</summary>
     public const double DefaultActivityEndedMinutes = 10;
 
     /// <summary>How many more times a main-line suite's build is tried when it fails copying a file another process held (MSB3027/MSB3021),
     /// ending that worktree's own leftover test processes first (M.ORCH-T1632; was MainlineTests.FileLockRetries).</summary>
     public double MainTestsLockRetries { get; init; } = DefaultMainTestsLockRetries;
 
-    /// <summary>The default main tests lock retries constant.</summary>
+    /// <summary>The default <see cref="MainTestsLockRetries"/>.</summary>
     public const double DefaultMainTestsLockRetries = 2;
 
     /// <summary>Seconds waited before each such retry (M.ORCH-T1632; was a fixed 30).</summary>
     public double MainTestsLockRetrySeconds { get; init; } = DefaultMainTestsLockRetrySeconds;
 
-    /// <summary>The default main tests lock retry seconds constant.</summary>
+    /// <summary>The default <see cref="MainTestsLockRetrySeconds"/>.</summary>
     public const double DefaultMainTestsLockRetrySeconds = 30;
 
     /// <summary>Minutes one suite may run before it's ended and counted as not completed: the main-line suites and
     /// <c>orchestrator branches test</c> (M.ORCH-T1662; was a fixed 90).</summary>
     public double MainTestsTimeoutMinutes { get; init; } = DefaultMainTestsTimeoutMinutes;
 
-    /// <summary>The default main tests timeout minutes constant.</summary>
+    /// <summary>The default <see cref="MainTestsTimeoutMinutes"/>.</summary>
     public const double DefaultMainTestsTimeoutMinutes = 90;
 
     /// <summary>The most suite runs a red main line's bisect makes to find the commit that broke it, after the two that check the
     /// failure reproduces at the red head and not at the last green commit (M.ORCH-T1687). 0 turns the bisect off.</summary>
     public double MainBisectMaxSteps { get; init; } = DefaultMainBisectMaxSteps;
 
-    /// <summary>The default main bisect max steps constant.</summary>
+    /// <summary>The default <see cref="MainBisectMaxSteps"/>.</summary>
     public const double DefaultMainBisectMaxSteps = 8;
 
     /// <summary>Minutes a red main line's bisect may take in all before it stops and blames no one (M.ORCH-T1687).</summary>
     public double MainBisectTimeoutMinutes { get; init; } = DefaultMainBisectTimeoutMinutes;
 
-    /// <summary>The default main bisect timeout minutes constant.</summary>
+    /// <summary>The default <see cref="MainBisectTimeoutMinutes"/>.</summary>
     public const double DefaultMainBisectTimeoutMinutes = 240;
 
     /// <summary>Minutes <c>orchestrator branches test</c> waits for the memory guard to clear before each branch's run; past it the
     /// branch is skipped, nothing reported (M.ORCH-T1662).</summary>
     public double BranchTestsMemoryWaitMinutes { get; init; } = DefaultBranchTestsMemoryWaitMinutes;
 
-    /// <summary>The default branch tests memory wait minutes constant.</summary>
+    /// <summary>The default <see cref="BranchTestsMemoryWaitMinutes"/>.</summary>
     public const double DefaultBranchTestsMemoryWaitMinutes = 30;
 
     /// <summary>Minutes <c>orchestrator branches test</c> waits for the disk floor (<see cref="DiskHoldGb"/>) to lift before each
     /// branch's run, as it does on RAM; past it the branch is skipped, nothing reported (M.ORCH-T1692).</summary>
     public double BranchTestsDiskWaitMinutes { get; init; } = DefaultBranchTestsDiskWaitMinutes;
 
-    /// <summary>The default branch tests disk wait minutes constant.</summary>
+    /// <summary>The default <see cref="BranchTestsDiskWaitMinutes"/>.</summary>
     public const double DefaultBranchTestsDiskWaitMinutes = 30;
 
     /// <summary>Off by default, since it commits setup-host.ps1 and texts the admin (M.ORCH-T1488): once a day at
@@ -1087,7 +1087,7 @@ public sealed record OrchestratorSettings
     /// its next tick that day.</summary>
     public string SqlFreshnessCheckAt { get; init; } = DefaultSqlFreshnessCheckAt;
 
-    /// <summary>The default sql freshness check at constant.</summary>
+    /// <summary>The default <see cref="SqlFreshnessCheckAt"/>.</summary>
     public const string DefaultSqlFreshnessCheckAt = "04:00";
 
     /// <summary>Off by default (M.ORCH-T1501): on the remote host, build each <c>origin/work/*</c> branch in a worktree of its own
@@ -1098,26 +1098,26 @@ public sealed record OrchestratorSettings
     /// <summary>Work-branch builds at once across every repo (M.ORCH-T1501): the host's extra RAM decides it.</summary>
     public double BranchBuildsMaxRunning { get; init; } = DefaultBranchBuildsMaxRunning;
 
-    /// <summary>The default branch builds max running constant.</summary>
+    /// <summary>The default <see cref="BranchBuildsMaxRunning"/>.</summary>
     public const double DefaultBranchBuildsMaxRunning = 2;
 
     /// <summary>Minutes one work-branch build may run before it's stopped and recorded failed (M.ORCH-T1501).</summary>
     public double BranchBuildsTimeoutMinutes { get; init; } = DefaultBranchBuildsTimeoutMinutes;
 
-    /// <summary>The default branch builds timeout minutes constant.</summary>
+    /// <summary>The default <see cref="BranchBuildsTimeoutMinutes"/>.</summary>
     public const double DefaultBranchBuildsTimeoutMinutes = 30;
 
     /// <summary>Seconds between the daemon's looks at the work branches for heads that moved (M.ORCH-T1501).</summary>
     public double BranchBuildsCheckSeconds { get; init; } = DefaultBranchBuildsCheckSeconds;
 
-    /// <summary>The default branch builds check seconds constant.</summary>
+    /// <summary>The default <see cref="BranchBuildsCheckSeconds"/>.</summary>
     public const double DefaultBranchBuildsCheckSeconds = 60;
 
     /// <summary>Minutes between the client's Scheduler job's fetches of its host's ready-to-test queue (M.ORCH-T1634,
     /// <see cref="Scheduling.BranchQueue"/>); only on a client with <see cref="RemoteBranchBuilds"/> on.</summary>
     public double BranchQueueFetchMinutes { get; init; } = DefaultBranchQueueFetchMinutes;
 
-    /// <summary>The default branch queue fetch minutes constant.</summary>
+    /// <summary>The default <see cref="BranchQueueFetchMinutes"/>.</summary>
     public const double DefaultBranchQueueFetchMinutes = 10;
 
     /// <summary>On the host (hub phase 1, M.ORCH-T1640): how many minutes after its gateway last saw an invited member (a token
@@ -1125,7 +1125,7 @@ public sealed record OrchestratorSettings
     /// and <c>orchestrator machine members</c>.</summary>
     public double MemberConnectedMinutes { get; init; } = DefaultMemberConnectedMinutes;
 
-    /// <summary>The default member connected minutes constant.</summary>
+    /// <summary>The default <see cref="MemberConnectedMinutes"/>.</summary>
     public const double DefaultMemberConnectedMinutes = 3;
 
     /// <summary>Off by default (hub phase 2, M.ORCH-T1641): on the host, org members start, stop and type into their own CLIs (the
@@ -1146,21 +1146,21 @@ public sealed record OrchestratorSettings
     /// watching.</summary>
     public double HubConsentSeconds { get; init; } = DefaultHubConsentSeconds;
 
-    /// <summary>The default hub consent seconds constant.</summary>
+    /// <summary>The default <see cref="HubConsentSeconds"/>.</summary>
     public const double DefaultHubConsentSeconds = Term.TermHubPolicy.DefaultConsentSeconds;
 
     /// <summary>Hub phase 2b (M.ORCH-T1667): how many seconds the gateway waits for a TermHost it started under a member's own
     /// Windows account to register before answering the member's start.</summary>
     public double HubMemberStartWaitSeconds { get; init; } = DefaultHubMemberStartWaitSeconds;
 
-    /// <summary>The default hub member start wait seconds constant.</summary>
+    /// <summary>The default <see cref="HubMemberStartWaitSeconds"/>.</summary>
     public const double DefaultHubMemberStartWaitSeconds = Term.TermHubPolicy.DefaultStartWaitSeconds;
 
     /// <summary>Hub phase 2: on a member's client, how often (seconds) the dashboard asks the host for consent requests on the
     /// member's own CLIs, to show each as a toast.</summary>
     public double HubConsentPollSeconds { get; init; } = DefaultHubConsentPollSeconds;
 
-    /// <summary>The default hub consent poll seconds constant.</summary>
+    /// <summary>The default <see cref="HubConsentPollSeconds"/>.</summary>
     public const double DefaultHubConsentPollSeconds = 5;
 
     /// <summary>The max server memory (MB) the daemon keeps localhost's SQL Server at (M.ORCH-T1621): 0 (the default) leaves SQL
@@ -1168,7 +1168,7 @@ public sealed record OrchestratorSettings
     /// lower, since 1024 MB crashed the instance (error 17300) and only an admin restart in minimal mode recovered it.</summary>
     public double SqlServerMaxMemoryMb { get; init; } = DefaultSqlServerMaxMemoryMb;
 
-    /// <summary>The default sql server max memory mb constant.</summary>
+    /// <summary>The default <see cref="SqlServerMaxMemoryMb"/>.</summary>
     public const double DefaultSqlServerMaxMemoryMb = 0;
 
     /// <summary>The least <see cref="SqlServerMaxMemoryMb"/> ever applied: a lower value set is raised to this.</summary>
@@ -1216,7 +1216,7 @@ public sealed record OrchestratorSettings
     /// landing. Wildcards (<c>*</c>, <c>?</c>) match against the path as git prints it, folders included.</summary>
     public List<string> RiskyFiles { get; init; } = [.. DefaultRiskyFiles];
 
-    /// <summary>The default risky files.</summary>
+    /// <summary>The <see cref="RiskyFiles"/> a fresh install starts with: the gates, pacing and git landing.</summary>
     public static IReadOnlyList<string> DefaultRiskyFiles { get; } =
     [
         // The gates: the hooks every CLI runs, and what writes them.
@@ -1240,7 +1240,7 @@ public sealed record Assignment(string TicketId, string Repo, string Directory, 
     /// <summary>When <see cref="Pilot"/>'s process started, so a later process given the same id isn't taken for it.</summary>
     public DateTime? PilotStartedUtc { get; init; }
 
-    /// <summary>Where that background agent's output goes.</summary>
+    /// <summary>The log file that background agent's output is written to; null for a tab.</summary>
     public string? Log { get; init; }
 
     /// <summary>The Claude CLI that claimed it (<c>orchestrator next --claim</c>), by process id as the pace gate resolves it
