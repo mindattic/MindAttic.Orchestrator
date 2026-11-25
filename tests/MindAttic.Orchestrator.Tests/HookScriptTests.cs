@@ -213,7 +213,7 @@ public sealed class HookScriptTests
 
         Status(new { stop = false });
         Assert.That(Gate(new { tool_name = "Read", tool_input = new { file_path = "x" } }).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "lifted: runs at once");
-        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ScriptName)), Does.Contain("refuse(note)"),
+        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ModuleName)), Does.Contain("refuse(note)"),
             "past the longest hold it's refused, not let through");
     }
 
@@ -496,7 +496,7 @@ public sealed class HookScriptTests
             Assert.That(held.WaitForExit(7_000), Is.False, "Claude at 99% holds the call (then refuses it), daemon or not");
             held.Kill();
         }
-        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ScriptName)), Does.Contain("claude_stop_note(own, running=bool(s))"), "and refuses it saying why");
+        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ModuleName)), Does.Contain("claude_stop_note(own, running=bool(s))"), "and refuses it saying why");
 
         ClaudeReports(50, resetUtc: DateTime.UtcNow.AddHours(2));
         File.Delete(Path.Combine(Marks, AgentGate.StopLatchName)); // the window it was seen in has reset

@@ -14,6 +14,24 @@ public static class AgentGate
     /// <summary>File name of the generated pace-gate hook script.</summary>
     public const string ScriptName = "pace-gate.py";
 
+    /// <summary>The pace gate's body beside its hook script, which only imports it (M.ORCH-T2212): run as __main__, ~3,000
+    /// lines were recompiled on every tool call; imported, Python keeps the compiled code in <c>__pycache__</c>.</summary>
+    public const string ModuleName = "pace_gate_impl.py";
+
+    /// <summary>The context gate's body beside its hook script; see <see cref="ModuleName"/>.</summary>
+    public const string ContextModuleName = "context_gate_impl.py";
+
+    /// <summary>A hook script that runs the gate body in <paramref name="module"/>, found beside it even when Python
+    /// leaves the script's folder off <c>sys.path</c> (PYTHONSAFEPATH).</summary>
+    internal static string Stub(string module) => $"""
+        #!/usr/bin/env python3
+        # MindAttic.Orchestrator's hook (written by the orchestrator; edits are overwritten). Its body is {module}.
+        import os, sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import {Path.GetFileNameWithoutExtension(module)}
+
+        """.Replace("\r\n", "\n");
+
     /// <summary>Claude Code's limit on the hook; above <see cref="MaxHoldSeconds"/> so a hold is never cut off as a failure.</summary>
     public const int HookTimeoutSeconds = 330;
 
@@ -4470,7 +4488,9 @@ public static class AgentGate
         Directory.CreateDirectory(Path.Combine(dir, "commands"));
         foreach (var (path, body) in new[]
         {
-            (script, Script), (contextScript, ContextScript(contextPercent, keepGoing)),
+            // Each body before its stub, so a hook starting in between never imports a missing module.
+            (Path.Combine(dir, ModuleName), Script), (script, Stub(ModuleName)),
+            (Path.Combine(dir, ContextModuleName), ContextScript(contextPercent, keepGoing)), (contextScript, Stub(ContextModuleName)),
             (Path.Combine(dir, "commands", "pacing.md"), PacingCommand),
             (Path.Combine(dir, "commands", "allocate.md"), AllocateCommand),
             (Path.Combine(dir, "commands", "crossrepo.md"), CrossRepoCommand),

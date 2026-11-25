@@ -42,7 +42,11 @@ public sealed class AgentGateTests
 
         File.WriteAllText(pace, "# someone edited this\n");
         Assert.That(AgentGate.Ensure(Claude), Is.EqualTo("wrote pace-gate.py"), "only the edited script is put back");
-        Assert.That(File.ReadAllText(pace), Is.EqualTo(AgentGate.Script));
+        Assert.That(File.ReadAllText(pace), Is.EqualTo(AgentGate.Stub(AgentGate.ModuleName)));
+        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ModuleName)), Is.EqualTo(AgentGate.Script), "the body is the imported module");
+
+        File.WriteAllText(Path.Combine(Claude, AgentGate.ModuleName), "# someone edited this\n");
+        Assert.That(AgentGate.Ensure(Claude), Is.EqualTo("wrote " + AgentGate.ModuleName), "an edited body is put back too");
 
         File.Delete(Path.Combine(Claude, "commands", "allocate.md"));
         Assert.That(AgentGate.Ensure(Claude), Is.EqualTo("wrote allocate.md"), "a missing command is written back");
@@ -147,11 +151,11 @@ public sealed class AgentGateTests
     public void The_context_percent_and_keep_going_flag_reach_the_written_script()
     {
         AgentGate.Ensure(Claude, contextPercent: 72, keepGoing: false);
-        var context = File.ReadAllText(Path.Combine(Claude, AgentGate.ContextScriptName));
+        var context = File.ReadAllText(Path.Combine(Claude, AgentGate.ContextModuleName));
         Assert.That(context, Does.Contain("\nPERCENT = 72\n").And.Contain("\nKEEP_GOING = False\n"));
 
-        Assert.That(AgentGate.Ensure(Claude, contextPercent: 72, keepGoing: true), Is.EqualTo("wrote context-gate.py"), "turning keep-going on rewrites it");
-        context = File.ReadAllText(Path.Combine(Claude, AgentGate.ContextScriptName));
+        Assert.That(AgentGate.Ensure(Claude, contextPercent: 72, keepGoing: true), Is.EqualTo("wrote " + AgentGate.ContextModuleName), "turning keep-going on rewrites it");
+        context = File.ReadAllText(Path.Combine(Claude, AgentGate.ContextModuleName));
         Assert.That(context, Does.Contain("\nPERCENT = 72\n").And.Contain("\nKEEP_GOING = True\n"));
         Assert.That(context, Does.Not.Contain("\r\n"), "written with plain newlines");
     }

@@ -15,6 +15,7 @@ namespace MindAttic.Orchestrator.Setup;
 public static class AgentGateRemoval
 {
     private static readonly string[] Scripts = [AgentGate.ScriptName, AgentGate.ContextScriptName];
+    private static readonly string[] Modules = [AgentGate.ModuleName, AgentGate.ContextModuleName];
 
     /// <summary>Returns what it removed, or null when nothing of the orchestrator's was there.</summary>
     public static string? Remove(string? claudeDir = null, string? codexDir = null, string? geminiDir = null, string? kimiConfigPath = null)
@@ -43,8 +44,14 @@ public static class AgentGateRemoval
                         "and a hook whose script is gone refuses every call; delete them once those hooks are out");
         }
         else
-            foreach (var script in Scripts)
+        {
+            foreach (var script in Scripts.Concat(Modules))
                 if (TryDelete(Path.Combine(claude, script))) did.Add("deleted " + script);
+            var cache = Path.Combine(claude, "__pycache__");
+            foreach (var module in Modules)
+                foreach (var pyc in Directory.Exists(cache) ? Directory.GetFiles(cache, Path.GetFileNameWithoutExtension(module) + ".*.pyc") : [])
+                    TryDelete(pyc);
+        }
         foreach (var (file, body) in new[]
         {
             ("pacing.md", AgentGate.PacingCommand),
