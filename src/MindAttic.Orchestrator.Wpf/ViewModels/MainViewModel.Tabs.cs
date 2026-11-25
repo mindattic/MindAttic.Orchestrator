@@ -905,25 +905,6 @@ public sealed partial class MainViewModel
     /// <paramref name="project"/> on this tab's login, as the tile grid's Start does.</summary>
     internal Task OpenProjectAsync(RosterProject project, string kind) => StartSessionAsync(project.Name, project.Path, kind, AutoLogin, null);
 
-    /// <summary>The Launcher's project "Run Command" (M.ORCH-T2043, its ProjectActionMenu/BuildRunCommandTab): runs
-    /// <paramref name="commandLine"/> through <c>cmd</c> in <paramref name="project"/>'s folder as a hosted tab on this tab's
-    /// login, badged "Run" as the Launcher's own Run Command tab is. <c>/k</c> rather than the Launcher's <c>/c</c>: a hosted
-    /// pane has no Windows Terminal profile to keep it open after the command ends, so its output would vanish with it.</summary>
-    internal void OpenRunCommand(RosterProject project, string commandLine)
-    {
-        var line = commandLine.Trim();
-        if (line.Length == 0) { StatusMessage = $"Not run: no command given for {project.Name}."; return; }
-        if (!System.IO.Directory.Exists(project.Path)) { StatusMessage = $"Not run: {project.Name}'s folder isn't there ({project.Path})."; return; }
-        var error = OpenTerminal(new PaneRequest($"{project.Name} [Run]", project.Path)
-        {
-            Command = ["cmd", "/k", line],
-            Repo = project.Name,
-            Provider = "Run",
-            Email = AccountDirs.Normalize(ScopeEmail),
-        });
-        StatusMessage = error ?? $"Running {line} in {project.Name}.";
-    }
-
     /// <summary>Opens a <paramref name="kind"/> CLI at the workspace root (the Launcher's "General Prompt"), on this tab's login.</summary>
     internal Task OpenGeneralPromptAsync(string kind) => StartSessionAsync("General", WorkspaceRoot, kind, AutoLogin, null);
 

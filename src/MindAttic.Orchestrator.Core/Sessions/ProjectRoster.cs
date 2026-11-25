@@ -7,10 +7,6 @@ namespace MindAttic.Orchestrator.Sessions;
 /// <summary>A project on the Launcher's roster: its name, folder and GitHub remote.</summary>
 public sealed record RosterProject(string Name, string Path, string? RepoUrl)
 {
-    /// <summary>The project's own "Run Command" from the Launcher's settings (its <c>runCommand</c>), what the Launcher's
-    /// project menu runs in the project's folder; null when none is set. The Open Project window starts from it (M.ORCH-T2043).</summary>
-    public string? RunCommand { get; init; }
-
     /// <summary>The project's SQLite database files from the Launcher's settings (its <c>sqliteDatabases</c>), absolute or relative
     /// to <see cref="Path"/>: where a backup's SQLite dumps go back to (M.ORCH-T2052). Empty when none are listed.</summary>
     public IReadOnlyList<string> SqliteDatabases { get; init; } = [];
@@ -54,7 +50,6 @@ public static class ProjectRoster
                     if (Property(p, "name")?.GetString() is { Length: > 0 } name && Property(p, "path")?.GetString() is { Length: > 0 } path)
                         projects.Add(new RosterProject(name, path, Property(p, "repoUrl")?.GetString())
                         {
-                            RunCommand = Property(p, "runCommand") is { ValueKind: JsonValueKind.String } run && run.GetString() is { } cmd && !string.IsNullOrWhiteSpace(cmd) ? cmd.Trim() : null,
                             SqliteDatabases = Property(p, "sqliteDatabases") is { ValueKind: JsonValueKind.Array } dbs
                                 ? [.. dbs.EnumerateArray().Where(d => d.ValueKind == JsonValueKind.String).Select(d => d.GetString()!).Where(d => !string.IsNullOrWhiteSpace(d))]
                                 : [],
