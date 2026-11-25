@@ -146,6 +146,16 @@ public sealed partial class MainViewModel : ObservableObject
         // Off for a ticket a CLI moving to another login holds (M.ORCH-T637): it's handed back to that CLI once it lands.
         UseTicketCommand = new RelayCommand(p => { if (p is TicketRowViewModel { IsMoving: false } t) Prompt = $"Work on ticket {t.Id}: {t.Summary}"; },
             p => p is not TicketRowViewModel { IsMoving: true });
+        DismissToastCommand = new RelayCommand(p => { if (p is ToastViewModel t) RemoveToast(t); });
+        OpenToastCommand = new RelayCommand(async p =>
+        {
+            if (p is not ToastViewModel t) return;
+            // From every tab's view (M.ORCH-T1574, M.ORCH-T2241): the notifications list shows all tabs' toasts, so it may be another tab's.
+            RemoveToast(t);
+            // To the CLI's own tab (M.ORCH-T619); failing that, the repo's detail, from whichever view: not Select, a
+            // toggle that only shows in the Repos view.
+            await OpenToastAsync(t);
+        });
         ClearSearchCommand = new RelayCommand(() => Search = "");
         // One command for every tab (M.ORCH-T654): every ticket link in the window binds it, so a tab of its own re-bound
         // each of them, the whole queue's, on every tab switch. It acts on the tab on screen.
@@ -170,6 +180,11 @@ public sealed partial class MainViewModel : ObservableObject
     public IReadOnlyList<TileGroupViewModel> Groups { get; }
     /// <summary>This tab's own toasts: what it raised (a toast's tab tag and the window's notification come from here).</summary>
     public ObservableCollection<ToastViewModel> Toasts { get; } = [];
+
+    /// <summary>Every tab's toasts, newest first, capped like each tab's (M.ORCH-T1574): what the toolbar's Notifications
+    /// list shows (M.ORCH-T2241), so one raised on another tab (the menu bar's tools run on the global login's) is seen
+    /// whichever tab is on screen. The same list on every tab.</summary>
+    public ObservableCollection<ToastViewModel> AllToasts => Root.allToasts;
 
     private readonly ObservableCollection<ToastViewModel> allToasts = [];
 
@@ -211,6 +226,10 @@ public sealed partial class MainViewModel : ObservableObject
         if (TicketsApp.OpenOrFocus(aggregator.Options) is { } error)
             Toasts.Insert(0, new ToastViewModel("Couldn't open Tickets Desktop", error, Palette.Over, null));
     }
+    /// <summary>Closes the toast passed.</summary>
+    public ICommand DismissToastCommand { get; }
+    /// <summary>Closes the toast passed and goes where it points: the CLI's own tab, else the repo's detail.</summary>
+    public ICommand OpenToastCommand { get; }
     /// <summary>Empties <see cref="Search"/>.</summary>
     public ICommand ClearSearchCommand { get; }
 

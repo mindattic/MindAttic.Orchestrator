@@ -1512,5 +1512,48 @@
                 </StackPanel>
             </mc:MaModal.Footer>
         </mc:MaModal>
+
+        <!-- The toolbar's Notifications button (M.ORCH-T2241): the toast dots' replacement since the per-login home page
+             that drew them was deleted entirely (M.ORCH-T2238) - a toast is still raised from ~20 call sites (sign-in
+             failures, a stuck session, reminders, quickload results, "this repo needs you"...), merged across every tab,
+             newest first (M.ORCH-T1574, AllToasts). Clicking a row goes to its CLI's tab or ticket and removes it
+             everywhere (OpenToastCommand); the X alone just dismisses it (DismissToastCommand). Esc, its close button and
+             the backdrop close the list. -->
+        <mc:MaModal x:Name="NotificationsModal" Grid.RowSpan="6" Grid.ColumnSpan="2" Title="{Binding NotificationsTitle}" AutomationProperties.Name="Notifications" DialogWidth="420"
+                    IsOpen="{Binding IsNotificationsOpen}" CloseCommand="{Binding CloseNotificationsCommand}">
+            <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,0,12,0" MaxHeight="520">
+                <StackPanel>
+                    <TextBlock x:Name="NotificationsEmpty" Text="No notifications." Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                               Visibility="{Binding HasNotifications, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                    <ItemsControl x:Name="NotificationsList" Style="{StaticResource MaRowList}" ItemsSource="{Binding AllToasts}" Focusable="False" AutomationProperties.Name="Notifications">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:ToastViewModel}">
+                                <Border Style="{StaticResource MaRowCard}" AutomationProperties.Name="{Binding Title}">
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="✕" Padding="{StaticResource SpaceHLVS}" VerticalAlignment="Top"
+                                                Command="{Binding DataContext.DismissToastCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                mc:MaCallout.ToolTip="Dismiss" AutomationProperties.Name="{Binding Title, StringFormat='Dismiss {0}'}" />
+                                        <StackPanel>
+                                            <TextBlock TextWrapping="Wrap">
+                                                <mc:MaStatusLight Width="10" Height="10" Foreground="{Binding Accent}" />
+                                                <Hyperlink Style="{StaticResource MaHyperlink}" CommandParameter="{Binding}"
+                                                           Command="{Binding DataContext.OpenToastCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           AutomationProperties.Name="{Binding Title, StringFormat='Open: {0}'}"><Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" /></Hyperlink>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Body}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+            <mc:MaModal.Footer>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource MaPrimaryButton}" Content="Close" Padding="{StaticResource SpaceHLVS}" Command="{Binding CloseNotificationsCommand}" />
+                </StackPanel>
+            </mc:MaModal.Footer>
+        </mc:MaModal>
     </Grid>
 </Window>

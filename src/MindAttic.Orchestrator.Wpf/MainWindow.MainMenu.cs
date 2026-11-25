@@ -23,6 +23,7 @@ public partial class MainWindow
             case "Dashboard":
                 menu.Items.Add(MenuAction("", "Team Wall", () => TeamWallButton_Click(button, e)));
                 menu.Items.Add(MenuCommand("", model.HasInbox ? $"Inbox ({model.InboxBadge})" : "Inbox", model.ToggleInboxCommand));
+                menu.Items.Add(MenuCommand("", model.HasNotifications ? $"Notifications ({model.NotificationsBadge})" : "Notifications", model.ToggleNotificationsCommand));
                 menu.Items.Add(MenuCommand("", "Plans", model.TogglePlansCommand));
                 menu.Items.Add(MenuCommand("", "Open Tickets", model.OpenTicketsAppCommand));
                 menu.Items.Add(MenuCommand("", "User Management", model.ToggleLoginsCommand));

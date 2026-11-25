@@ -933,11 +933,12 @@ public sealed partial class MainViewModel
         {
             for (var i = all.Count - 1; i >= 0; i--)
                 if (!Root.loginTabs.Any(tab => tab.Toasts.Contains(all[i]))) all.RemoveAt(i);
+            RaiseNotificationCounts();
             return;
         }
         if (e.OldItems is not null && e.Action != NotifyCollectionChangedAction.Move)
             foreach (var t in e.OldItems.OfType<ToastViewModel>()) all.Remove(t);
-        if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems is null) return;
+        if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems is null) { RaiseNotificationCounts(); return; }
         foreach (var t in e.NewItems.OfType<ToastViewModel>())
         {
             if (Root.loginTabs.Count > 1) t.Tab ??= TabTitle;
@@ -945,6 +946,15 @@ public sealed partial class MainViewModel
             Root.ToastRaised?.Invoke(this, t);
         }
         PruneToasts(all, DateTime.UtcNow);
+        RaiseNotificationCounts();
+    }
+
+    /// <summary>Takes <paramref name="toast"/> away everywhere: from whichever tab raised it and from <see cref="AllToasts"/>.</summary>
+    private void RemoveToast(ToastViewModel toast)
+    {
+        foreach (var tab in Root.loginTabs) tab.Toasts.Remove(toast);
+        Root.allToasts.Remove(toast);
+        RaiseNotificationCounts();
     }
 
     private static readonly Dictionary<string, Brush> brushes = new(StringComparer.OrdinalIgnoreCase);
