@@ -138,8 +138,12 @@ public sealed class FallbackViewers
     /// <summary>A dev override: the full path of the TermViewer exe to start.</summary>
     public const string ExeVariable = "MINDATTIC_TERMVIEWER";
 
-    /// <summary>How often the fallback viewers' loop checks the dashboard and the sessions.</summary>
+    /// <summary>How often the fallback viewers' loop checks the dashboard and the sessions while the dashboard is down.</summary>
     public static readonly TimeSpan Every = TimeSpan.FromSeconds(1);
+
+    /// <summary>While the dashboard is up the loop waits on its process's exit instead (M.ORCH-T2217), looking again at least
+    /// this often in case that wait misses it (another session's copy, a renamed exe).</summary>
+    public static readonly TimeSpan UpBackstop = TimeSpan.FromSeconds(5);
 
     /// <summary>How long a started viewer has to claim its slot before the session counts as unviewed again.</summary>
     public static readonly TimeSpan LaunchGrace = TimeSpan.FromSeconds(20);
@@ -217,16 +221,79 @@ public sealed class FallbackViewers
         return need;
     }
 
-    /// <summary>Runs until <paramref name="cancel"/>, one look every <see cref="Every"/>. Never throws.</summary>
+    /// <summary>Runs until <paramref name="cancel"/>: one look every <see cref="Every"/> while the dashboard is down or going,
+    /// and while it's up one when its process exits or every <see cref="UpBackstop"/>. Never throws.</summary>
     public void Run(CancellationToken cancel)
     {
-        while (!cancel.IsCancellationRequested)
+        try
         {
-            try { Tick(DateTime.UtcNow); }
-            catch (Exception ex) { log.Error(ex, "A fallback viewers pass failed; contained"); }
-            try { if (cancel.WaitHandle.WaitOne(Every)) return; }
-            catch (ObjectDisposedException) { return; }
+            while (!cancel.IsCancellationRequested)
+            {
+                try { Tick(DateTime.UtcNow); }
+                catch (Exception ex) { log.Error(ex, "A fallback viewers pass failed; contained"); }
+                try
+                {
+                    var up = watch.DownSinceUtc is null && launched.Count == 0;
+                    if (up ? WaitForDashboardExit(cancel) : cancel.WaitHandle.WaitOne(Every)) return;
+                }
+                catch (ObjectDisposedException) { return; }
+            }
         }
+        finally { ForgetDashboards(); }
+    }
+
+    private readonly List<Process> dashboards = [];
+
+    /// <summary>Waits until a dashboard process in this session exits, <paramref name="cancel"/>, or <see cref="UpBackstop"/>;
+    /// whether it was cancelled. The processes are looked up again only once one has gone.</summary>
+    private bool WaitForDashboardExit(CancellationToken cancel)
+    {
+        if (dashboards.Count == 0 || dashboards.Any(Exited)) FindDashboards();
+        var handles = new List<WaitHandle> { cancel.WaitHandle };
+        foreach (var p in dashboards.Take(63))
+        {
+            try { handles.Add(new ProcessExit(p)); }
+            catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or System.ComponentModel.Win32Exception) { }
+        }
+        try { return WaitHandle.WaitAny(handles.ToArray(), UpBackstop) == 0; }
+        finally { foreach (var h in handles.Skip(1)) h.Dispose(); }
+    }
+
+    private void FindDashboards()
+    {
+        ForgetDashboards();
+        try
+        {
+            using var me = Process.GetCurrentProcess();
+            var session = me.SessionId;
+            foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(Installer.ExeName)))
+            {
+                // The dashboard's mutex is Local\: only this session's copy is the one DashboardUp sees.
+                try { if (p.SessionId == session && !p.HasExited) { dashboards.Add(p); continue; } }
+                catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or System.ComponentModel.Win32Exception) { }
+                p.Dispose();
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or System.ComponentModel.Win32Exception) { }
+    }
+
+    private void ForgetDashboards()
+    {
+        foreach (var p in dashboards) p.Dispose();
+        dashboards.Clear();
+    }
+
+    private static bool Exited(Process p)
+    {
+        try { return p.HasExited; }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or System.ComponentModel.Win32Exception) { return true; }
+    }
+
+    /// <summary>A process's own handle as a wait handle, signalled when it exits; the process keeps owning the handle.</summary>
+    private sealed class ProcessExit : WaitHandle
+    {
+        public ProcessExit(Process p) =>
+            SafeWaitHandle = new Microsoft.Win32.SafeHandles.SafeWaitHandle(p.SafeHandle.DangerousGetHandle(), ownsHandle: false);
     }
 
     /// <summary>One look: is the dashboard down, and which sessions need a window. Returns how many viewers it started.</summary>

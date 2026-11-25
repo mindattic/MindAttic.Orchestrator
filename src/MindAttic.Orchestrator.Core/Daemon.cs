@@ -825,8 +825,30 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         private readonly object gate = new();
         private DateTime lastUtc = DateTime.MinValue;
 
+        private volatile bool ticking;
+
+        /// <summary>Set when <see cref="Ticking"/> turns on, so the thread beside the tick times its wait again (M.ORCH-T2217).</summary>
+        public AutoResetEvent Changed { get; } = new(false);
+
         /// <summary>Whether a tick is running past its own refresh.</summary>
-        public volatile bool Ticking;
+        public bool Ticking
+        {
+            get => ticking;
+            set
+            {
+                ticking = value;
+                if (value) Changed.Set();
+            }
+        }
+
+        /// <summary>How long until <see cref="Due"/>: infinite between ticks (<see cref="Changed"/> wakes it), at most <c>every</c>
+        /// (M.ORCH-T2217).</summary>
+        public TimeSpan UntilDue()
+        {
+            if (!Ticking) return Timeout.InfiniteTimeSpan;
+            var left = every - (now() - lastUtc);
+            return left < TimeSpan.Zero ? TimeSpan.Zero : left > every ? every : left;
+        }
 
         /// <summary>Runs <paramref name="refresh"/> under the lock, timing the next one beside the tick from when it ends.</summary>
         public T Run<T>(Func<T> refresh)
@@ -856,15 +878,17 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
     }
 
-    /// <summary>The thread that runs <see cref="OffTickRefresh.TryRefresh"/> each second until cancelled (M.ORCH-T1111); a refresh
-    /// that throws is logged and tried again, never ending the daemon. Null when it couldn't start.</summary>
+    /// <summary>The thread that runs <see cref="OffTickRefresh.TryRefresh"/> whenever one comes due until cancelled (M.ORCH-T1111,
+    /// asleep in between, M.ORCH-T2217); a refresh that throws is logged and tried again, never ending the daemon. Null when it
+    /// couldn't start.</summary>
     private Thread? StartOffTickRefresh(OffTickRefresh refresher, Action refresh, CancellationToken cancel)
     {
         try
         {
             var thread = new Thread(() =>
             {
-                while (!cancel.WaitHandle.WaitOne(TimeSpan.FromSeconds(1)))
+                var wake = new WaitHandle[] { cancel.WaitHandle, refresher.Changed };
+                while (WaitHandle.WaitAny(wake, refresher.UntilDue()) != 0)
                     try { refresher.TryRefresh(refresh); }
                     catch (Exception ex) { Say(LogEventLevel.Error, $"refresh beside a long tick failed: {ex.Message}", ex); }
             })
