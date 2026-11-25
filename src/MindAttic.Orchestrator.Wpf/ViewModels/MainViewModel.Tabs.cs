@@ -320,7 +320,7 @@ public sealed partial class MainViewModel
     /// settings as they stood before this refresh until some later, unrelated push or poll happened to run another pass.</summary>
     internal static IEnumerable<T> ApplyOrderOf<T>(IEnumerable<T> tabs, T root) => tabs.OrderBy(t => ReferenceEquals(t, root) ? 0 : 1);
 
-    private void ApplyTabs(Snapshot all, IReadOnlyList<LoginTab> tabs, OrgDirectory nextOrgs)
+    private void ApplyTabs(Snapshot all, IReadOnlyList<LoginTab> tabs, OrgDirectory nextOrgs, ScopedViews? views)
     {
         using var stall = Doing("");
         // What each step cost (M.ORCH-T2191): a slow pass is logged step by step, and a stall names the step it waited behind.
@@ -360,7 +360,9 @@ public sealed partial class MainViewModel
         Took("syncing login tabs");
 
         var options = aggregator.Options;
-        // One view per org, cut once and shared by its tabs.
+        // Each tab's view was cut with the read, off the UI thread (M.ORCH-T2195); one it didn't cut (a tab come since, the orgs
+        // or windows changed meanwhile) is cut here. One view per org, cut once and shared by its tabs.
+        var cut = views is not null && views.Fits(all, orgs, options.WorkingWindow, options.WaitingWindow) ? views : null;
         var byOrg = new Dictionary<string, Snapshot>(StringComparer.Ordinal);
         var now = DateTime.UtcNow;
         // The global login's tab applied first (M.ORCH-T1273): ApplyAccounts's settings read (symbolTabLabels, the pace and
@@ -372,9 +374,14 @@ public sealed partial class MainViewModel
         {
             using var tabStall = Doing($"applying tab {t.TabTitle}");
             var org = t.OrgId;
-            if (!byOrg.TryGetValue(org, out var orgAll)) byOrg[org] = orgAll = OrgScope.For(all, orgs, org, options.WorkingWindow, options.WaitingWindow);
-            // The API key's person is scoped to its own login folder's sessions, as any per-CLI login (M.ORCH-T906).
-            t.Apply(orgAll, LoginScope.For(orgAll, t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
+            if (cut?.Of(org, t.ScopeEmail) is { } ready)
+                t.Apply(ready.Org, ready.View, ready.ReposKey);
+            else
+            {
+                if (!byOrg.TryGetValue(org, out var orgAll)) byOrg[org] = orgAll = OrgScope.For(all, orgs, org, options.WorkingWindow, options.WaitingWindow);
+                // The API key's person is scoped to its own login folder's sessions, as any per-CLI login (M.ORCH-T906).
+                t.Apply(orgAll, LoginScope.For(orgAll, t.ScopeEmail, options.WorkingWindow, options.WaitingWindow), null);
+            }
             // Its token-growth signal from the count this refresh read (M.ORCH-T757): no read of its own. Feeds TabActivity's
             // "spending" input (Blinker.Grew), not just the now-removed blink animation.
             t.CountTabTokens(now);
@@ -409,6 +416,69 @@ public sealed partial class MainViewModel
     }
 
     private const string ApplyTabsWork = "applying a refresh to the tabs";
+
+    /// <summary>The views of <paramref name="all"/> the tabs in <paramref name="tabs"/> (and the global login's,
+    /// <paramref name="global"/>) show, cut off the UI thread with the read (M.ORCH-T2195).</summary>
+    private ScopedViews CutViews(Snapshot all, IReadOnlyList<LoginTab> tabs, LoginTab global, OrgDirectory nextOrgs)
+    {
+        var options = aggregator.Options;
+        return ScopedViews.Cut(all, tabs.Append(global), nextOrgs, options.WorkingWindow, options.WaitingWindow);
+    }
+
+    /// <summary>
+    /// Each login tab's view of one snapshot (M.ORCH-T2195), cut where the snapshot was read rather than on the UI thread: its
+    /// org's view (<see cref="OrgScope"/>), its own (<see cref="LoginScope"/>) and a digest of the repos in it, which lets a
+    /// tab whose repos didn't move skip rebuilding its repo cards. A tab's view is found by its org and email, so a tab
+    /// added, removed or moved to another org since the read finds none and is cut on the UI thread as before.
+    /// </summary>
+    internal sealed class ScopedViews
+    {
+        private readonly Snapshot all;
+        private readonly OrgDirectory orgs;
+        private readonly TimeSpan working, waiting;
+        private readonly Dictionary<(string Org, string? Email), (Snapshot Org, Snapshot View, string ReposKey)> views = [];
+
+        private ScopedViews(Snapshot all, OrgDirectory orgs, TimeSpan working, TimeSpan waiting) =>
+            (this.all, this.orgs, this.working, this.waiting) = (all, orgs, working, waiting);
+
+        internal static ScopedViews Cut(Snapshot all, IEnumerable<LoginTab> tabs, OrgDirectory orgs, TimeSpan working, TimeSpan waiting)
+        {
+            var cut = new ScopedViews(all, orgs, working, waiting);
+            var byOrg = new Dictionary<string, Snapshot>(StringComparer.Ordinal);
+            // A repo no login's scope narrowed is the same record in every tab's view: hashed once.
+            var hashed = new Dictionary<RepoStatus, byte[]>(ReferenceEqualityComparer.Instance);
+            foreach (var tab in tabs)
+            {
+                var org = orgs.OrgOfTab(tab);
+                if (cut.views.ContainsKey((org, tab.Email))) continue;
+                if (!byOrg.TryGetValue(org, out var orgAll)) byOrg[org] = orgAll = OrgScope.For(all, orgs, org, working, waiting);
+                var view = LoginScope.For(orgAll, tab.Email, working, waiting);
+                cut.views[(org, tab.Email)] = (orgAll, view, ReposKey(view.Repos, hashed));
+            }
+            return cut;
+        }
+
+        /// <summary>Whether these views were cut from what the tabs are being applied with now.</summary>
+        internal bool Fits(Snapshot shown, OrgDirectory orgsNow, TimeSpan workingNow, TimeSpan waitingNow) =>
+            ReferenceEquals(all, shown) && ReferenceEquals(orgs, orgsNow) && working == workingNow && waiting == waitingNow;
+
+        internal (Snapshot Org, Snapshot View, string ReposKey)? Of(string org, string? email) =>
+            views.TryGetValue((org, email), out var v) ? v : null;
+
+        /// <summary>A digest of <paramref name="repos"/> as the published file would hold them: equal when no card would change.</summary>
+        private static string ReposKey(IReadOnlyList<RepoStatus> repos, Dictionary<RepoStatus, byte[]> hashed)
+        {
+            using var digest = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
+            foreach (var repo in repos)
+            {
+                if (!hashed.TryGetValue(repo, out var hash))
+                    hashed[repo] = hash = System.Security.Cryptography.SHA256.HashData(
+                        System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(repo, MindAttic.Orchestrator.Status.StatusStream.PayloadJson));
+                digest.AppendData(hash);
+            }
+            return Convert.ToHexString(digest.GetHashAndReset());
+        }
+    }
 
     /// <summary>An <see cref="ApplyTabs"/> pass longer than this logs what each of its steps cost (M.ORCH-T2191).</summary>
     private static readonly TimeSpan SlowApplyTabsThreshold = TimeSpan.FromMilliseconds(250);

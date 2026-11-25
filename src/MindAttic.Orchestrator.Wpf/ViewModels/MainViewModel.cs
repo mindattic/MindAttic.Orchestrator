@@ -480,6 +480,8 @@ public sealed partial class MainViewModel : ObservableObject
             var dirs = OwnLoginDirs();
             IReadOnlyList<Member> readMembers = [];
             (Snapshot, SchedulePlan, IReadOnlyDictionary<string, string>)? planned = null;
+            var globalTab = tab;
+            ScopedViews? views = null;
             var (next, tabs, nextOrgs, driveReads, ramPercent, allocatePausedNow) = await BuiltAfterChanges(() => Task.Run(() =>
             {
                 var built = aggregator.Refresh();
@@ -524,10 +526,13 @@ public sealed partial class MainViewModel : ObservableObject
                 plansRead = PlansNow(built, settingsNow);
                 // Each login's agents (M.ORCH-T1747): the agents table, spread over the tabs when they're applied.
                 if (AgentsNow() is { } agents) agentsRead = agents;
-                return (built, LoginScope.Tabs(built, dirs, members, hasKey, lapsed), orgDirectory, driveReads, ramUtilizationPercent, paused);
+                var loginTabsRead = LoginScope.Tabs(built, dirs, members, hasKey, lapsed);
+                // Each tab's view, cut here rather than on the UI thread (M.ORCH-T2195).
+                views = CutViews(built, loginTabsRead, globalTab, orgDirectory);
+                return (built, loginTabsRead, orgDirectory, driveReads, ramUtilizationPercent, paused);
             }), () => localChanges);
             precomputedPlan = planned;
-            ApplyTabs(next, tabs, nextOrgs);
+            ApplyTabs(next, tabs, nextOrgs, views);
             // The memory guard's level (M.ORCH-T1498): the daemon's, stepped, as the snapshot's pace carries it; else this process's own.
             // And the disk floor's hold (M.ORCH-T1692): the daemon's, as the snapshot's pace carries it; else this process's own.
             SetHostStats(driveReads, ramPercent, next.Pace?.Memory ?? MemoryGuard.Shared.Last, allocatePausedNow, next.Pace?.Disk ?? DiskGuard.Shared.Last);
@@ -589,6 +594,9 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>A refresh was asked for while one ran.</summary>
     private bool refreshQueued;
 
+    /// <summary>The digest of the repos this tab's cards were last built from (M.ORCH-T2195); null when not known.</summary>
+    private string? appliedReposKey;
+
     /// <summary>How long a refresh may take before it's logged (M.ORCH-T1538): generous, so only a real stall is noisy.</summary>
     private static readonly TimeSpan SlowRefreshThreshold = TimeSpan.FromSeconds(5);
 
@@ -613,27 +621,36 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>This tab's view of the workspace's snapshot <paramref name="all"/>: <paramref name="next"/>, the part on its login.</summary>
-    private void Apply(Snapshot all, Snapshot next)
+    /// <summary>This tab's view of the workspace's snapshot <paramref name="all"/>: <paramref name="next"/>, the part on its login.
+    /// <paramref name="reposKey"/>, when known, digests <paramref name="next"/>'s repos (M.ORCH-T2195): the same as the last
+    /// applied, the repo cards are left as they are and only their "ago" labels move to the snapshot's time.</summary>
+    private void Apply(Snapshot all, Snapshot next, string? reposKey)
     {
         full = all;
         var first = snapshot is null;
-        foreach (var repo in next.Repos)
+        var reposSame = !first && reposKey is not null && reposKey == appliedReposKey;
+        appliedReposKey = reposKey;
+        if (reposSame)
+            foreach (var tile in tiles.Values) tile.Tick(next.TakenUtc);
+        else
         {
-            if (!tiles.TryGetValue(repo.Name, out var tile)) tiles[repo.Name] = tile = new RepoTileViewModel(repo.Name);
-            var before = first ? (RepoState?)null : tile.State;
-            tile.Update(repo, next.TakenUtc);
-            if (before == RepoState.Working && repo.State == RepoState.Waiting)
-                Toasts.Insert(0, new ToastViewModel($"{repo.Name} needs you", "The agent finished its turn and is waiting.", Palette.Waiting, tile));
-        }
-        foreach (var gone in tiles.Keys.Except(next.Repos.Select(r => r.Name), StringComparer.OrdinalIgnoreCase).ToList())
-        {
-            if (tiles[gone] == Selected) Selected = null;
-            tiles.Remove(gone);
+            foreach (var repo in next.Repos)
+            {
+                if (!tiles.TryGetValue(repo.Name, out var tile)) tiles[repo.Name] = tile = new RepoTileViewModel(repo.Name);
+                var before = first ? (RepoState?)null : tile.State;
+                tile.Update(repo, next.TakenUtc);
+                if (before == RepoState.Working && repo.State == RepoState.Waiting)
+                    Toasts.Insert(0, new ToastViewModel($"{repo.Name} needs you", "The agent finished its turn and is waiting.", Palette.Waiting, tile));
+            }
+            foreach (var gone in tiles.Keys.Except(next.Repos.Select(r => r.Name), StringComparer.OrdinalIgnoreCase).ToList())
+            {
+                if (tiles[gone] == Selected) Selected = null;
+                tiles.Remove(gone);
+            }
         }
         snapshot = next;
         SyncLiveActivity(next);
-        Regroup();
+        if (!reposSame) Regroup();
         ApplyPhases(next);
         ApplyBilling(next);
         ApplyReminders(DateTime.UtcNow);

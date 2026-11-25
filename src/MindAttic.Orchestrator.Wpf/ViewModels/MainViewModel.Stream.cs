@@ -80,19 +80,22 @@ public sealed partial class MainViewModel
             var patched = aggregator.WithLiveBilling(figures.Over(shown), DateTime.UtcNow);
             var dirs = OwnLoginDirs();
             var members = lastMembers;
+            var (globalTab, orgsShown) = (tab, lastOrgs);
             // Each login's tab and its signed-in state, off the UI thread, as a read does it.
-            var tabs = await Task.Run(() =>
+            var (tabs, views) = await Task.Run(() =>
             {
                 // What ApplyAccounts shows, read here rather than on the UI thread (M.ORCH-T1735).
                 accountsRead = ReadAccounts(patched.Account, DateTime.UtcNow);
                 AllTerminals.ParentsRead = ReadParents();
                 // Each login's agents (M.ORCH-T1747), so a pushed snapshot moves their states and heartbeats on too.
                 if (AgentsNow() is { } agents) agentsRead = agents;
-                return LoginScope.Tabs(patched, dirs, members, lastApiKey);
+                var read = LoginScope.Tabs(patched, dirs, members, lastApiKey);
+                // Each tab's view too (M.ORCH-T2195).
+                return (read, CutViews(patched, read, globalTab, orgsShown));
             });
             // A read that landed meanwhile showed something as new or newer.
             if (refreshing || workspace is not { } now || now.TakenUtc >= patched.TakenUtc) return false;
-            ApplyTabs(patched, tabs, lastOrgs);
+            ApplyTabs(patched, tabs, lastOrgs, views);
             return false;
         }
         finally

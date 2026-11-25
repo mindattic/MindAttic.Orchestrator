@@ -75,18 +75,20 @@ public sealed partial class MainViewModel
         {
             var dirs = OwnLoginDirs();
             var members = lastMembers;
-            var tabs = await Task.Run(() =>
+            var globalTab = tab;
+            var (tabs, views) = await Task.Run(() =>
             {
                 // What ApplyAccounts shows and the CLI tabs' process tree, read here rather than on the UI thread
                 // (M.ORCH-T2196, as a read does it: M.ORCH-T1735, M.ORCH-T1738).
                 accountsRead = ReadAccounts(shown.Account, DateTime.UtcNow);
                 AllTerminals.ParentsRead = ReadParents();
-                // Each login's tab and its signed-in state, off the UI thread, as a read does it.
-                return LoginScope.Tabs(shown, dirs, members, lastApiKey);
+                // Each login's tab and its signed-in state, off the UI thread, as a read does it; and each tab's view (M.ORCH-T2195).
+                var read = LoginScope.Tabs(shown, dirs, members, lastApiKey);
+                return (read, CutViews(shown, read, globalTab, orgsNow));
             });
             // A read or pushed figures that landed meanwhile applied the roster as it is now themselves.
             if (refreshing || !ReferenceEquals(workspace, shown)) return false;
-            ApplyTabs(shown, tabs, lastOrgs ?? orgsNow);
+            ApplyTabs(shown, tabs, lastOrgs ?? orgsNow, views);
             return false;
         }
         finally

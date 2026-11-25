@@ -122,6 +122,16 @@ public sealed class RepoTileViewModel(string name) : ObservableObject
         // Everything derived from the status changes together.
         Raise(string.Empty);
     }
+
+    /// <summary>The status unchanged, only the snapshot's time moved (M.ORCH-T2195): just what reads it is raised.</summary>
+    public void Tick(DateTime snapshotUtc)
+    {
+        if (nowUtc == snapshotUtc) return;
+        nowUtc = snapshotUtc;
+        foreach (var session in Sessions) session.Tick(snapshotUtc);
+        Raise(nameof(Subtitle));
+        Raise(nameof(Headline));
+    }
 }
 
 /// <summary>One hosted CLI tab in a repo's detail: its process and login, and a box to type a line into it.</summary>
@@ -226,6 +236,13 @@ public sealed class SessionRowViewModel(TranscriptSession session, DateTime nowU
         session = next;
         nowUtc = snapshotUtc;
         Raise(string.Empty);
+    }
+
+    /// <summary>Only the snapshot's time moved (M.ORCH-T2195): its "ago" is raised.</summary>
+    public void Tick(DateTime snapshotUtc)
+    {
+        nowUtc = snapshotUtc;
+        Raise(nameof(LastWrite));
     }
 }
 
