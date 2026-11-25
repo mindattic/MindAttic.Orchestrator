@@ -475,14 +475,15 @@ public sealed class TerminalPanesTests
         // virtualized rows either, holding the 5-hour/weekly chart that used to open AgentsBodyList inline.
         Assert.That(Named("UsageFrame").Ancestors().Contains(Named("AgentsBody")), Is.True, "the Usage tab's page scrolls with the body");
         Assert.That(Named("UsageFrame").Ancestors().Contains(Named("AgentsBodyList")), Is.False, "never one of AgentsBodyList's virtualized rows");
-        // In AgentsBodyList: the stats first (the chart moved into UsageFrame, M.ORCH-T1532), then the toolbar and Tickets.
+        // In AgentsBodyList: the stats first (the chart moved into UsageFrame, M.ORCH-T1532), then the toolbar and Workspace
+        // (the Tickets queue is gone, M.ORCH-T2225: a database nobody here reads).
         // The pinned limit pills are gone (they rendered as blank boxes, M.ORCH-T1318).
         var body = Named("AgentsBodyList").Elements().Select(e => (string?)e.Attribute(x + "Name")).ToList();
         Assert.That(body.IndexOf("Header"), Is.Zero, "the stats come right after the CLI terminal, the chart now in its own Usage tab page");
         Assert.That(body, Has.No.Member("PinnedLimitBars"));
         Assert.That(body, Has.No.Member("UtilizationSection"), "moved into UsageFrame, a sibling of TerminalFrame");
         Assert.That(body.IndexOf("Toolbar"), Is.EqualTo(body.IndexOf("Header") + 1));
-        Assert.That(body.IndexOf("UserTickets"), Is.EqualTo(body.IndexOf("Toolbar") + 1));
+        Assert.That(body.IndexOf("WorkspaceExtras"), Is.EqualTo(body.IndexOf("Toolbar") + 1));
         // No side margin of its own: the page body's 24px gutters place the CLI in line with the CLI tab bar (M.ORCH-T1326 keeps
         // those gutters on a person's page); a margin here would double them or push it off the page (M.ORCH-T1321).
         Assert.That((string?)Named("TerminalFrame").Attribute("Margin"), Is.EqualTo("{StaticResource SpaceTS}"));

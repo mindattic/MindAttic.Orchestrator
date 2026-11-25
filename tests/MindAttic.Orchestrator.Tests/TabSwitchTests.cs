@@ -100,21 +100,6 @@ public sealed class TabSwitchTests
             Does.Contain($"VirtualizedList.ApplyBody({body}, {body}List)"));
     }
 
-    [Test]
-    public void Each_persons_tickets_sit_below_the_agent_cards_not_in_them()
-    {
-        var doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        foreach (var (name, shows) in new[] { ("UserTickets", "ShowsUserTickets"), ("AssignedTicketList", "ShowsUserTickets"), ("UnassignedTicketList", "ShowsUnassignedTickets") })
-        {
-            var element = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
-            Assert.That(element.Ancestors().Any(a => a.Name.LocalName == "DataTemplate"), Is.False, $"{name} was inside every agent card's template");
-            Assert.That((string?)element.Attribute("Visibility"), Is.EqualTo($"{{Binding {shows}, Converter={{StaticResource Visible}}}}"), name);
-        }
-        // M.ORCH-T842: a person's page shows only their own queue; the unassigned queue is the global login's tab's alone.
-        Assert.That(File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "ViewModels", "MainViewModel.Assigned.cs")),
-            Does.Contain("ShowsUnassignedTickets => ShowsUserTickets && IsGlobalTab"));
-    }
-
     [Test, Apartment(ApartmentState.STA)]
     public void A_virtualized_body_builds_only_the_rows_and_lines_of_tiles_on_screen()
     {

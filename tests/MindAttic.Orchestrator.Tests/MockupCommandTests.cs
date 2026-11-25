@@ -31,7 +31,6 @@ public sealed class MockupCommandTests
     private int Run(params string[] args) => CliApp.Create().Run(args);
 
     [TestCase("dashboard", 80)]
-    [TestCase("queue", 70)]
     [TestCase("settings", 70)]
     [TestCase("logins", 70)]
     public void Every_named_mockup_renders_without_throwing_at_its_fixed_width(string name, int width)
@@ -54,7 +53,7 @@ public sealed class MockupCommandTests
     {
         Assert.That(Run("mockup"), Is.Zero);
         var said = output.ToString();
-        Assert.That(said, Does.Contain("dashboard").And.Contain("queue").And.Contain("settings").And.Contain("logins"));
+        Assert.That(said, Does.Contain("dashboard").And.Contain("settings").And.Contain("logins"));
     }
 
     [Test]

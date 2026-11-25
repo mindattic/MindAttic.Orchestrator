@@ -270,10 +270,7 @@ public sealed class LibraryControlsTests
         // The other is a person's Terminals panel's tabs (M.ORCH-T810), a bare strip too, inside their page's body. Settings' own
         // sections (M.ORCH-T804) went with its dialog: the settings are edited in MindAttic Vault (LAMP, M.ORCH-T1308).
         var tabControls = window.Descendants(Mc + "MaTabControl").ToList();
-        Assert.That(tabControls.Select(t => (string?)t.Attribute(X + "Name")), Is.EquivalentTo(new[] { "LoginTabStrip", "TerminalTabs", "QueueStatusTabs" }), "no page tabs");
-        // A person Queue's status strip (M.ORCH-T849) is a bare strip too, with no colour of its own.
-        Assert.That((string?)Named(window, "QueueStatusTabs").Attribute("ShowContent"), Is.EqualTo("False"));
-        Assert.That(Named(window, "QueueStatusTabs").DescendantsAndSelf().Attributes().Where(a => a.Name.LocalName is "Background" or "Foreground" or "BorderBrush"), Is.Empty);
+        Assert.That(tabControls.Select(t => (string?)t.Attribute(X + "Name")), Is.EquivalentTo(new[] { "LoginTabStrip", "TerminalTabs" }), "no page tabs");
         Assert.That((string?)Named(window, "TerminalTabs").Attribute("ShowContent"), Is.EqualTo("False"));
         // Fixed under the person tabs, not in the scrolling body (M.ORCH-T861).
         Assert.That(Named(window, "TerminalTabs").Ancestors().Contains(Named(window, "AgentsBody")), Is.False);

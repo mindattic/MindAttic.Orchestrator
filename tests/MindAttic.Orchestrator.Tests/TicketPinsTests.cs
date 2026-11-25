@@ -167,20 +167,6 @@ public sealed class TicketPinsTests
         Assert.That(TicketPins.IsOwn(wontDo, Ryan), Is.False, "and still shows the pin");
     }
 
-    [Test]
-    public void Each_persons_tickets_view_sits_below_their_open_clis_and_assigns_in_Tickets_Desktop()
-    {
-        var root = TestContext.CurrentContext.TestDirectory;
-        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
-        var window = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        Assert.That(window.IndexOf("x:Name=\"UserTickets\"", StringComparison.Ordinal),
-            Is.GreaterThan(window.IndexOf("x:Name=\"TerminalFrame\"", StringComparison.Ordinal)), "below the person's CLIs");
-        Assert.That(window, Does.Contain("Style=\"{StaticResource MaRowList}\" ItemsSource=\"{Binding QueueTickets}\"")
-            .And.Contain("ItemsSource=\"{Binding UnassignedTickets}\"").And.Contain("x:Name=\"AssignInTickets\""));
-        // M.ORCH-T762: assigning, reassigning and redelegating are Tickets Desktop's; the dashboard only links there.
-        Assert.That(window, Does.Not.Contain("AssigneePicker").And.Not.Contain("RedelegateCommand").And.Not.Contain("UpCommand"));
-    }
-
     private Snapshot Snap(string? only = null)
     {
         Ticket[] open = [T("A-T1"), T("A-T2")];

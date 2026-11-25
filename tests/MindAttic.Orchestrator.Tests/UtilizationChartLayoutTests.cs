@@ -131,29 +131,22 @@ public sealed class UtilizationChartLayoutTests
     }
 
     [Test]
-    public void The_utilization_chart_has_its_own_full_width_row_under_terminals_and_is_tall()
+    public void The_active_clis_card_has_its_own_full_width_row_under_terminals()
     {
-        // M.ORCH-T826: moved out of the pinned header (no longer under the stat tiles) to the scrolling body, under Terminals
-        // and above Tickets, so Current work and Terminals are the first things on the page.
+        // M.ORCH-T2225: the full 5-hour/weekly chart card (M.ORCH-T826) and the ticket queue that used to sit under it are
+        // gone, replaced by the login and its already-loaded active CLIs, in the same spot, under the fixed Terminals.
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation", x = "http://schemas.microsoft.com/winfx/2006/xaml";
         var doc = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        var card = doc.Descendants(p + "Border").Single(b => (string?)b.Attribute(x + "Name") == "UtilizationCard");
-        var chart = card.Descendants().Single(e => e.Name.LocalName == "MaLineChart");
+        var card = doc.Descendants(p + "Border").Single(b => (string?)b.Attribute(x + "Name") == "ActiveClisCard");
 
-        Assert.That(card.Ancestors(p + "WrapPanel"), Is.Empty, "the chart isn't one more tile beside the stats");
+        Assert.That(card.Ancestors(p + "WrapPanel"), Is.Empty, "the card isn't one more tile beside the stats");
         Assert.That(card.Ancestors().Any(e => (string?)e.Attribute(x + "Name") == "Header"), Is.False, "no longer pinned above the toolbar");
         Assert.That(card.Ancestors().Any(e => (string?)e.Attribute(x + "Name") == "AgentsBody"), Is.True, "in the scrolling body with current work, under the fixed Terminals");
         var names = doc.Descendants().Select(e => (string?)e.Attribute(x + "Name")).ToList();
-        Assert.That(names.IndexOf("UtilizationCard"), Is.GreaterThan(names.IndexOf("TerminalsPanel")), "under Terminals");
-        Assert.That(names.IndexOf("UtilizationCard"), Is.LessThan(names.IndexOf("UserTickets")), "above Tickets");
+        Assert.That(names.IndexOf("ActiveClisCard"), Is.GreaterThan(names.IndexOf("TerminalsPanel")), "under Terminals");
         Assert.That(card.Attribute("Width"), Is.Null, "no fixed width: it stretches across the window");
-        Assert.That(chart.Attribute("Width"), Is.Null);
-        Assert.That((string?)chart.Attribute("Data"), Is.EqualTo("{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"));
-        Assert.That(double.Parse((string)chart.Attribute("Height")!, System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo(64), "small by plan, not the old 130 (M.ORCH-T1670)");
-        // It collapses only on an empty caption, which is never so once a snapshot is in, idle or not (M.ORCH-T502).
-        Assert.That((string?)card.Attribute("Visibility"), Does.StartWith("{Binding UtilizationText,"));
     }
 
     // M.ORCH-T464: the hour marks stepped the local clock across a clock change.

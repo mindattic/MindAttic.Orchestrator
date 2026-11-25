@@ -40,48 +40,6 @@
         <mc:MaCalloutToolTip x:Key="TicketLinkCallout" x:Shared="False" Content="Open it in Tickets Desktop to view, approve, prioritize, assign, block or close it" />
 
 
-        <!-- A ticket on a person's Tickets view (M.ORCH-T668): who it's assigned to, with their status light; while its user is out
-             of room it says why it waits. Assigning, reassigning and "Redelegate now" are Tickets Desktop's (M.ORCH-T762): the
-             Assign in Tickets link, like the id and title, opens the ticket there. -->
-        <DataTemplate x:Key="UserTicketTemplate" DataType="{x:Type vm:UserTicketRowViewModel}">
-            <Border x:Name="UserTicketCard" Style="{StaticResource MaRowCard}">
-                <DockPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}">
-                        <mc:MaStatusLight x:Name="AssigneeLight" Status="{Binding Assignee.Status, TargetNullValue={x:Static mc:MaStatus.Other}}" Label="{Binding Assignee.StatusLabel}" Margin="{StaticResource SpaceRS}"
-                                          VerticalAlignment="Center" Visibility="{Binding IsPinned, Converter={StaticResource Visible}}" />
-                        <TextBlock x:Name="AssigneeText" Text="{Binding AssigneeText}" VerticalAlignment="Center" Margin="{StaticResource SpaceRM}"
-                                   mc:MaCallout.ToolTip="Who it's assigned to: it's dispatched only on their login, and waits for them while they're out of room" />
-                        <TextBlock VerticalAlignment="Center">
-                            <Hyperlink x:Name="AssignInTickets" Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
-                                       AutomationProperties.Name="{Binding Id, StringFormat='Assign {0} in Tickets Desktop'}"><Hyperlink.ToolTip><mc:MaCalloutToolTip Content="Assign, reassign or redelegate it in Tickets Desktop" /></Hyperlink.ToolTip><Run Text="Assign in Tickets" /></Hyperlink>
-                        </TextBlock>
-                    </StackPanel>
-                    <StackPanel>
-                        <TextBlock>
-                            <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
-                                       AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
-                            <Run Text="  " /><Run Text="{Binding Repo, Mode=OneWay}" FontWeight="SemiBold" />
-                            <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
-                            <Run Text="{Binding Priority, Mode=OneWay}" Foreground="{DynamicResource MaWarn}" FontWeight="SemiBold" />
-                        </TextBlock>
-                        <TextBlock TextTrimming="CharacterEllipsis" mc:MaCallout.ToolTip="{Binding Summary}" Margin="{StaticResource RowGutter}">
-                            <!-- The title opens it too (M.ORCH-T762: every ticket id or title the dashboard shows links there). -->
-                            <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
-                                       AutomationProperties.Name="{Binding Summary, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Summary, Mode=OneWay}" /></Hyperlink>
-                        </TextBlock>
-                        <!-- Its status, muted; while it waits for its user, in MaWarn and SemiBold (M.ORCH-T667: one line each,
-                             the other collapsed, so no style of the dashboard's own). The ids it names link into Tickets Desktop. -->
-                        <Grid x:Name="UserTicketStatus" Margin="{StaticResource RowGutter}" Visibility="{Binding Status, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
-                            <TextBlock local:TicketText.Text="{Binding Status}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
-                                       Visibility="{Binding IsWaiting, Converter={x:Static vm:Converters.FalseToVisible}}" />
-                            <TextBlock Text="{Binding Status}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap"
-                                       Visibility="{Binding IsWaiting, Converter={StaticResource Visible}}" />
-                        </Grid>
-                    </StackPanel>
-                </DockPanel>
-            </Border>
-        </DataTemplate>
-
         <!-- The login tab strip's own sigma/lambda bars (M.ORCH-T1536), the same pair as the pinned Usage tab's own header,
              but in MaTabItem.TrailingContent rather than the Header (M.COMP-T172): Trailing/TrailingContent dock to the
              strip's trailing edge in TabStripPlacement="Left" the way the header never does, so this is what actually gets
@@ -1248,37 +1206,21 @@
                             </StackPanel>
                     </StackPanel>
 
-                    <!-- The compact 5-hour preview (M.ORCH-T191, shrunk and made plan-exclusive by M.ORCH-T1670): every plan
-                         but a solo Ultra account (ShowsFiveHourSection). The 5hr/Weekly toggle boxes this used to sit under
-                         are gone (M.ORCH-T1670): their own figure and bar just repeated the tab strip's and login list's own
-                         live percentages (LoginUsageBarsTemplate above), and the chart itself is now the one and only thing
-                         to pick, by plan, never by a click. The chart's own target line and dotted projection already carry
-                         the "where it will hit its cutoff" preview; this just draws it smaller. -->
-                    <StackPanel x:Name="FiveHourSection" Visibility="{Binding ShowsFiveHourSection, Converter={StaticResource Visible}}">
-                        <Border x:Name="UtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
-                                AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
-                                Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+                    <!-- The login and its already-loaded active CLIs (M.ORCH-T2225, in place of the picked 5-hour/weekly
+                         chart, M.ORCH-T191/M.ORCH-T1403/M.ORCH-T1670, and the ticket queue that used to sit below it): the
+                         chart's own number already repeats on this tab's own button and the login list
+                         (LoginUsageBarsTemplate above), and the ticket queue read a database nobody here reads. Panes is
+                         already loaded (the same list the CLI tab strip above draws from), so this is a plain read, no
+                         database round trip. -->
+                    <StackPanel x:Name="ActiveClisSection">
+                        <Border x:Name="ActiveClisCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
+                                AutomationProperties.Name="{Binding LoginName, StringFormat='{}{0}: active CLIs'}">
                             <StackPanel>
-                                <TextBlock Text="5-hour utilization" Style="{StaticResource MaSectionLabel}" />
-                                <mc:MaLineChart x:Name="UtilizationChart" Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"
-                                                Height="64" Margin="{StaticResource SpaceH0VS}" />
-                                <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="11" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-
-                    <!-- The compact weekly preview (M.ORCH-T1403, shrunk and made Ultra-exclusive by M.ORCH-T1670): a solo
-                         Ultra account only (ShowsWeeklySection) - its own 5-hour window isn't the one worth charting, so the
-                         week takes the 5-hour card's place instead of sitting beside it behind a toggle. -->
-                    <StackPanel x:Name="WeeklySection" Visibility="{Binding ShowsWeeklySection, Converter={StaticResource Visible}}">
-                        <Border x:Name="WeeklyUtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
-                                AutomationProperties.Name="{Binding WeeklyUtilizationText, StringFormat='Weekly utilization: {0}'}"
-                                Visibility="{Binding WeeklyUtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
-                            <StackPanel>
-                                <TextBlock Text="Weekly utilization" Style="{StaticResource MaSectionLabel}" />
-                                <mc:MaLineChart x:Name="WeeklyUtilizationChart" Data="{Binding WeeklyUtilization, Converter={x:Static local:WeeklyUtilizationChartData.Converter}}"
-                                                Height="64" Margin="{StaticResource SpaceH0VS}" />
-                                <TextBlock Text="{Binding WeeklyUtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="11" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding LoginName}" Style="{StaticResource MaSectionLabel}" />
+                                <TextBlock Text="No active CLIs." Style="{StaticResource MaTileSubtitle}" FontSize="12" TextWrapping="Wrap" Margin="{StaticResource SpaceH0VS}"
+                                           Visibility="{Binding Terminals.ActiveClisText, Converter={x:Static vm:Converters.EmptyToVisible}}" />
+                                <TextBlock Text="{Binding Terminals.ActiveClisText}" Style="{StaticResource MaTileSubtitle}" FontSize="12" TextWrapping="Wrap" Margin="{StaticResource SpaceH0VS}"
+                                           Visibility="{Binding Terminals.ActiveClisText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -1402,42 +1344,6 @@
                                    mc:MaCallout.ToolTip="Ctrl+0 resets the zoom" />
                     </StackPanel>
                 </Grid>
-
-                <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, each with who
-                     it's assigned to. A person's page shows only their own queue; the unassigned queue shows on the global
-                     login's tab only (M.ORCH-T842), the dashboard's one place to see an unassigned ticket. An assigned ticket is dispatched only on its user's login. Each part sits
-                     straight in the view, the lists too, so the view's one virtualized list builds only the tickets on screen
-                     (M.ORCH-T754). -->
-                <StackPanel x:Name="UserTickets" Margin="{StaticResource SectionGap}" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
-                    <TextBlock Text="Tickets" Style="{StaticResource MaHeading}" />
-                    <TextBlock Text="A ticket assigned to a person is dispatched only on their login (next --claim, allocate and Start); while they're out of room it waits for them. Assign, reassign or redelegate it in Tickets Desktop: every ticket here opens there."
-                               Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
-                    <TextBlock Text="{Binding AssignedHeader}" Style="{StaticResource MaSectionLabel}" />
-                </StackPanel>
-                <!-- The person's Queue by status (M.ORCH-T849): Active (open and claimed or being worked), Pending (open and
-                     waiting: unapproved, on a prerequisite, or queued), Closed and Won't do (the last 7 days), each with its
-                     count; Active first. A bare strip: the one list below shows the selected tab's tickets, so the body's
-                     virtualized list still builds only the rows on screen (M.ORCH-T754). -->
-                <mc:MaTabControl x:Name="QueueStatusTabs" ShowContent="False" ItemsSource="{Binding QueueTabs}" SelectedItem="{Binding SelectedQueueTab}"
-                                 DisplayMemberPath="Name" Margin="{StaticResource SpaceBS}" AutomationProperties.Name="Queue by status"
-                                 Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
-                    <mc:MaTabControl.ItemContainerStyle>
-                        <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
-                            <Setter Property="Trailing" Value="{Binding CountText}" />
-                            <Setter Property="AutomationProperties.Name" Value="{Binding AccessibleName}" />
-                        </Style>
-                    </mc:MaTabControl.ItemContainerStyle>
-                </mc:MaTabControl>
-                <TextBlock x:Name="NoQueueTickets" Text="{Binding NoQueueTicketsText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
-                           Visibility="{Binding HasNoQueueTickets, Converter={StaticResource Visible}}" />
-                <ItemsControl x:Name="AssignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding QueueTickets}"
-                              ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding SelectedQueueTab.AccessibleName}"
-                              Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
-                <TextBlock Text="{Binding UnassignedHeader}" Style="{StaticResource MaSectionLabel}"
-                           Visibility="{Binding ShowsUnassignedTickets, Converter={StaticResource Visible}}" />
-                <ItemsControl x:Name="UnassignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding UnassignedTickets}"
-                              ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding UnassignedHeader}"
-                              Visibility="{Binding ShowsUnassignedTickets, Converter={StaticResource Visible}}" />
 
                 <!-- What fits on no person's page (M.ORCH-T763), on the global login's tab instead of its own 'Miscellaneous'
                      tab (M.ORCH-T825): allocate and the pace's slots, a pacing hold, the reminders the daemon texts through

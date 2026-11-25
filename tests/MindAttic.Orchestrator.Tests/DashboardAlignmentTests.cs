@@ -129,11 +129,11 @@ public sealed class DashboardAlignmentTests
             Assert.That(Sides((string?)Named(name).Attribute("Margin")), Is.EqualTo(new[] { 0d, 0d }), $"{name}: the body owns the gutter");
         }
 
-        // Nothing inside the header adds a side margin of its own, so the tiles and the chart share both edges.
+        // Nothing inside the header adds a side margin of its own, so the tiles and the active-CLIs card share both edges.
         var tiles = Named("StatTiles");
-        var chart = Named("UtilizationCard");
+        var chart = Named("ActiveClisCard");
         Assert.That(Sides((string?)tiles.Attribute("Margin")), Is.EqualTo(new[] { 0d, 0d }));
-        Assert.That(Sides((string?)chart.Attribute("Margin")), Is.EqualTo(new[] { 0d, 0d }), "the chart lines up with the tiles' left and right edges");
+        Assert.That(Sides((string?)chart.Attribute("Margin")), Is.EqualTo(new[] { 0d, 0d }), "the card lines up with the tiles' left and right edges");
         Assert.That(chart.Attribute("Width"), Is.Null);
         foreach (var tile in tiles.Elements(P + "Button"))
         {

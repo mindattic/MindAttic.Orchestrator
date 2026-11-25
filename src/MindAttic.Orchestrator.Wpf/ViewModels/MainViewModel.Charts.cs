@@ -29,14 +29,6 @@ public sealed partial class MainViewModel
     /// not a 5-hour window it doesn't have.</summary>
     public bool ShowsWeeklyChart => ShowsClaudeMeters && !ShowsFiveHourChart;
 
-    // ── which chart the compact utilization panel draws (M.ORCH-T1670: by plan, not a user-picked pair) ──
-
-    /// <summary>The 5-hour chart shows: every plan but a solo Ultra account.</summary>
-    public bool ShowsFiveHourSection => ShowsFiveHourChart;
-
-    /// <summary>The weekly chart shows: a solo Ultra account only.</summary>
-    public bool ShowsWeeklySection => ShowsWeeklyChart;
-
     /// <summary>The current week against its pace, for the weekly graph; null before the first snapshot or without a weekly
     /// reset known yet (<see cref="WeeklyUtilizationSeries"/>, built the same way for every login, Team seat or solo Ultra).</summary>
     public Utilization? WeeklyUtilization => snapshot?.WeeklyUtilization;

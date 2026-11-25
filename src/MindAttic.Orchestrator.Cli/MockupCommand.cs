@@ -13,35 +13,20 @@ internal static class OrchestratorMockups
 {
     /// <summary>
     /// The top-level window (MainWindow.xaml): the person/org tabs as a left sidebar (M.ORCH-T1431), then beside it the signed-in
-    /// person's scrolling body — the terminal (M.ORCH-T1302), the pinned 5-hour/weekly pills and stat tiles, the 5-hour
-    /// utilization chart, and their ticket queue — with the global login's own Workspace section (allocate, holds,
-    /// reminders, finished work, warnings) standing in for a "Miscellaneous" panel (M.ORCH-T763, M.ORCH-T825).
+    /// person's scrolling body — the terminal (M.ORCH-T1302), the pinned 5-hour/weekly pills and stat tiles, and the login
+    /// with its already-loaded active CLIs (M.ORCH-T2225, in place of the old 5-hour chart and ticket queue) — with the
+    /// global login's own Workspace section (allocate, holds, reminders, finished work, warnings) standing in for a
+    /// "Miscellaneous" panel (M.ORCH-T763, M.ORCH-T825).
     /// </summary>
     private static readonly MockupPanel[] Dashboard =
     [
         new(0, 0, 16, 23, "Users (sidebar)"),
         new(16, 0, 38, 13, "Terminal (CLI tabs)"),
         new(54, 0, 26, 6, "Stats"),
-        new(54, 6, 26, 7, "5-Hour Chart"),
-        new(16, 13, 38, 10, "Queue (this person's tickets)"),
+        new(54, 6, 26, 7, "Active CLIs"),
+        new(16, 13, 38, 10, "Workspace (continued)"),
         new(54, 13, 26, 10, "Workspace (Misc)"),
         new(0, 23, 80, 3, "Status Bar"),
-    ];
-
-    /// <summary>
-    /// A person's ticket queue (MainWindow.xaml's QueueStatusTabs): Active, Pending, Closed and Won't do, each with its
-    /// own count (M.ORCH-T849), the selected tab's assigned tickets below, and — only on the global login's tab — the
-    /// unassigned queue (M.ORCH-T842). Every ticket id opens Tickets Desktop; this view never browses tickets itself
-    /// (M.ORCH-T762).
-    /// </summary>
-    private static readonly MockupPanel[] Queue =
-    [
-        new(0, 0, 17, 3, "Active"),
-        new(17, 0, 17, 3, "Pending"),
-        new(34, 0, 17, 3, "Closed"),
-        new(51, 0, 19, 3, "Won't do"),
-        new(0, 3, 70, 10, "Assigned tickets"),
-        new(0, 13, 70, 6, "Unassigned (global tab only)"),
     ];
 
     /// <summary>
@@ -75,7 +60,6 @@ internal static class OrchestratorMockups
     public static readonly IReadOnlyList<(string Name, string Title, int Width, int Height, MockupPanel[] Panels)> All =
     [
         ("dashboard", "Orchestrator — Dashboard (MainWindow.xaml)", 80, 26, Dashboard),
-        ("queue", "Orchestrator — Queue (a person's tab)", 70, 19, Queue),
         ("settings", "Orchestrator — Settings (MindAttic Vault tab)", 70, 16, Settings),
         ("logins", "Orchestrator — Logins (button beside the cog)", 70, 10, Logins),
     ];
@@ -100,7 +84,7 @@ internal sealed class MockupCommand : Command<MockupCommand.Settings>
     public sealed class Settings : CommandSettings
     {
         [CommandArgument(0, "[SCREEN]")]
-        [Description("Which screen to draw: dashboard, queue or settings. Left out, or not one of those, lists the names.")]
+        [Description("Which screen to draw: dashboard, settings or logins. Left out, or not one of those, lists the names.")]
         public string? Screen { get; init; }
     }
 

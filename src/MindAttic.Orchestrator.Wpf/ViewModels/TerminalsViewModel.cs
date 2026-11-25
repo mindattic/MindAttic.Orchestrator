@@ -2080,6 +2080,10 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     /// <summary>How many terminals this person has open, in words.</summary>
     public string Summary => Panes.Count switch { 0 => "", 1 => "1 open", var n => $"{n} open" };
 
+    /// <summary>This person's active CLIs, one title per line (M.ORCH-T2225): already loaded in <see cref="Panes"/>, the same
+    /// list the CLI tab strip draws from, so showing it is a plain read, never a database round trip. Empty with none open.</summary>
+    public string ActiveClisText => string.Join("\n", Panes.Select(p => p.Title));
+
     /// <summary>Raised when this person's chosen terminal changes, so the window shows it.</summary>
     internal event Action? SelectionChanged;
 
@@ -2145,7 +2149,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         else if (cleared) SelectionChanged?.Invoke();
         Raise(nameof(HasPanes));
         Raise(nameof(ShowsTerminal)); Raise(nameof(ShowsBody));
-        Raise(nameof(Summary));
+        Raise(nameof(Summary)); Raise(nameof(ActiveClisText));
     }
 
     /// <summary>Applies a drag on the real CLI tab strip (M.ORCH-T1526, MainWindow.xaml.cs's
