@@ -34014,7 +34014,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "25074c479c7d83739649390244d290758f483143",
+    "Tested": "2c1dd9bdb668661d9ee33cf08f733f87fd5f0625",
     "Green": "6b561073ef56e4e8340e62c36f6cc69a919d370f"
   },
   "MindAttic.Psst": {
@@ -34022,7 +34022,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "1c8061f8499168728487d2c9f4b57238b40eb22b"
   },
   "MindAttic.Telemetry": {
-    "Tested": "263d4d489acaa9e49d490bb786694d910ed0ce04",
+    "Tested": "5320dd71ce5b9da97a2067357c7c10cbd3420e7f",
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
@@ -34057,7 +34057,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "0223132d1fd651281201d57401151b833fd53fa8"
   },
   "Unity.Cursory": {
-    "Tested": "2d99b91543284fed211fe8030cd4d1236cf0c0dd",
+    "Tested": "7a797c9f928e39197fbbfd0d145f5aa6a692f15d",
     "Green": "2d99b91543284fed211fe8030cd4d1236cf0c0dd"
   },
   "REA.Bloodlines": {
@@ -34290,7 +34290,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "6b561073ef56e4e8340e62c36f6cc69a919d370f",
+    "Tested": "2c1dd9bdb668661d9ee33cf08f733f87fd5f0625",
     "Green": "6b561073ef56e4e8340e62c36f6cc69a919d370f"
   },
   "ipt392tmp": {
@@ -34398,8 +34398,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "47f0de5f51bdbea10e0602f678b83163f6f85f8d"
   },
   "MindAttic.SpeechRecognition": {
-    "Tested": "f16b124e7dd6d5ae9edc4487f018c6cf732be752",
-    "Green": "f16b124e7dd6d5ae9edc4487f018c6cf732be752"
+    "Tested": "e3455cc283784a9fb9df8b6f2e84c5eaf971d7b7",
+    "Green": "e3455cc283784a9fb9df8b6f2e84c5eaf971d7b7"
   },
   "MindAttic.Webcam": {
     "Tested": "4eb07b3c8918a874673591cace8c9d5d31eacf71"
