@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -129,7 +130,9 @@ internal sealed partial class MemberSessionLauncher(
     Func<TimeSpan> startWait,
     Func<TimeSpan, CancellationToken, Task>? delay = null,
     Func<string, string, TermSessionRecord?>? registered = null,
-    Func<int, DateTime?>? hostStart = null)
+    Func<int, DateTime?>? hostStart = null,
+    Func<string>? tempRoot = null,
+    Func<string, string, string?>? prepareTemp = null)
 {
     /// <summary>How often the start waits look for the registry file.</summary>
     public static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(250);
@@ -137,6 +140,9 @@ internal sealed partial class MemberSessionLauncher(
     private readonly Func<TimeSpan, CancellationToken, Task> delay = delay ?? Task.Delay;
     private readonly Func<string, string, TermSessionRecord?> registered = registered ?? ((id, dir) => TermSessions.Get(id, dir));
     private readonly Func<int, DateTime?> hostStart = hostStart ?? TermSessions.HostStartOf;
+    // The daemon passes its temp-root setting down in MINDATTIC_TEMP_ROOT (M.ORCH-T2219).
+    private readonly Func<string> tempRoot = tempRoot ?? (() => TempRoot.Normalize(Environment.GetEnvironmentVariable(TempRoot.RootVariable)));
+    private readonly Func<string, string, string?> prepareTemp = prepareTemp ?? MemberTemp.Prepare;
 
     /// <summary>The ledger the gateway's session source, pipe connector and account check read.</summary>
     public TermMemberHosts Ledger => ledger;
@@ -155,8 +161,16 @@ internal sealed partial class MemberSessionLauncher(
         if (!Directory.Exists(registry))
             return new LaunchResult(false, $"{account}'s folder for its terminal hosts ({registry}) hasn't been made yet: an admin makes it once (docs/REMOTE_HOST.md).");
 
+        // M.ORCH-T2218: the account's own profile would put its temp on C:; a missing temp root (drive gone) leaves it there.
+        string? temp = null;
+        if (tempRoot() is { } top && Directory.Exists(top))
+        {
+            temp = MemberTemp.DirOf(top, account);
+            if (prepareTemp(account, temp) is { } why) return new LaunchResult(false, $"{account}'s temp folder ({temp}) couldn't be made for it: {why}");
+        }
+
         var id = TermProtocol.NewSessionId();
-        var commandLine = CommandLine(exe, id, registry, peerSid(), login, repo, repoDir);
+        var commandLine = CommandLine(exe, id, registry, peerSid(), login, repo, repoDir, temp);
         var started = runAs.Start(account, credentials, exe, commandLine, Path.GetDirectoryName(exe) ?? repoDir);
         if (!started.Ok) return new LaunchResult(false, $"Windows didn't start it as {account}: {started.Error}");
 
@@ -184,16 +198,19 @@ internal sealed partial class MemberSessionLauncher(
         }
     }
 
-    /// <summary>The TermHost's command line: its own exe, then options, each quoted for CreateProcess's argument parsing.</summary>
-    internal static string CommandLine(string exe, string id, string registry, string peerSid, string login, string repo, string repoDir)
+    /// <summary>The TermHost's command line: its own exe, then options, each quoted for CreateProcess's argument parsing. With
+    /// <paramref name="temp"/>, the CLI's TEMP, TMP and .NET unpack folder are there (M.ORCH-T2218).</summary>
+    internal static string CommandLine(string exe, string id, string registry, string peerSid, string login, string repo, string repoDir, string? temp = null)
     {
-        string[] args =
+        List<string> args =
         [
             exe, "--id", id, "--peer-sid", peerSid, "--registry", registry, "--login", login, "--repo", repo, "--cwd", repoDir, "--title", repo,
             // Expanded by the host from the member's own environment (HostOptions: a member's host expands --env values).
             "--env", $"CLAUDE_CONFIG_DIR=%USERPROFILE%\\.claude-accounts\\{login}",
-            "--", "claude",
         ];
+        if (temp is not null)
+            args.AddRange(["--env", $"TEMP={temp}", "--env", $"TMP={temp}", "--env", $"{TempRoot.BundleVariable}={Path.Combine(temp, ".net")}"]);
+        args.AddRange(["--", "claude"]);
         return string.Join(' ', args.Select(Quote));
     }
 
@@ -284,6 +301,50 @@ internal static class GatewayTermHost
         if (Environment.GetEnvironmentVariable("MINDATTIC_TERMHOST") is { Length: > 0 } set && File.Exists(set)) return Path.GetFullPath(set);
         try { return TermHostInstalls.ResolveExe(InstallDir); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException) { return null; }
+    }
+}
+
+/// <summary>
+/// A member's own temp folder under the temp root (M.ORCH-T2218): <c>&lt;root&gt;\members\&lt;user&gt;</c>, made by the gateway before
+/// it starts their host, with its inheritance cut and the ACL docs/REMOTE_HOST.md gives the member-terms folder: SYSTEM and
+/// Administrators full, the host's user and the member's account modify, nobody else.
+/// </summary>
+internal static class MemberTemp
+{
+    /// <summary>The folder of <paramref name="account"/> under <paramref name="root"/>.</summary>
+    public static string DirOf(string root, string account) =>
+        Path.Combine(root, "members", TermProtocol.Sanitize(TermMemberHosts.UserPart(account).ToLowerInvariant()));
+
+    /// <summary>The folder's DACL: protected, inherited by everything made in it.</summary>
+    public static DirectorySecurity Acl(SecurityIdentifier hostUser, SecurityIdentifier member)
+    {
+        var security = new DirectorySecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        const InheritanceFlags inherit = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
+        void Allow(SecurityIdentifier who, FileSystemRights rights) =>
+            security.AddAccessRule(new FileSystemAccessRule(who, rights, inherit, PropagationFlags.None, AccessControlType.Allow));
+        Allow(new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl);
+        Allow(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl);
+        Allow(hostUser, FileSystemRights.Modify);
+        Allow(member, FileSystemRights.Modify);
+        return security;
+    }
+
+    /// <summary>Makes <paramref name="dir"/> and sets its <see cref="Acl"/> for <paramref name="account"/>; why it couldn't, or null.</summary>
+    public static string? Prepare(string account, string dir)
+    {
+        try
+        {
+            var (domain, user) = LogonRunAs.Split(account);
+            var member = (SecurityIdentifier)new NTAccount(domain == "." ? Environment.MachineName : domain, user).Translate(typeof(SecurityIdentifier));
+            Directory.CreateDirectory(dir);
+            new DirectoryInfo(dir).SetAccessControl(Acl(TermPipeAcl.CurrentUser, member));
+            return null;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            return ex.Message;
+        }
     }
 }
 

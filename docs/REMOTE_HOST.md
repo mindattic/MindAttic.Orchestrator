@@ -285,7 +285,10 @@ environment; no service, no elevation, no UAC). The host is told the host's user
 - the host lets the host's user see that it runs and end it (one ACE on its own process), so `machine stop` works; a
   stop ends the TermHost alone, and the CLI goes with its console;
 - it writes its registry file in the member's `member-terms` folder, and the CLI's `CLAUDE_CONFIG_DIR` is
-  `%USERPROFILE%\.claude-accounts\<login>` in the member's own profile.
+  `%USERPROFILE%\.claude-accounts\<login>` in the member's own profile;
+- its `TEMP` and `TMP` are `<temp root>\members\<user>` (the `TempRoot` setting, `R:\Temp` by default), which the gateway
+  makes before the host starts, its inheritance cut and only SYSTEM, Administrators, the host's user and that account
+  allowed in; when the temp root doesn't exist the member keeps their profile's own temp.
 
 The gateway records each host it starts this way in `member-hosts.json` in its data folder (only the host's user can
 read or write it) and trusts nothing in the member's folder on its own: a session counts as running under a member's

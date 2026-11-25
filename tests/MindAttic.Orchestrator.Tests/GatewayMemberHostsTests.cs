@@ -194,11 +194,66 @@ public sealed class GatewayMemberHostsTests
         Assert.That(line, Does.Contain("--registry " + MemberSessionLauncher.Quote(TermMemberHosts.RegistryDirOf(Account, Path.Combine(root, "members")))));
         Assert.That(line, Does.Contain("--login " + Login));
         Assert.That(line, Does.Contain(@"CLAUDE_CONFIG_DIR=%USERPROFILE%\.claude-accounts\" + Login));
+        var temp = Path.Combine(root, "temp", "members", "erin-cli");
+        Assert.That(line, Does.Contain("--env " + MemberSessionLauncher.Quote("TEMP=" + temp)).And.Contain("--env " + MemberSessionLauncher.Quote("TMP=" + temp)),
+            "the member's TEMP is under the temp root, not their profile's on C: (M.ORCH-T2218)");
+        Assert.That(Directory.Exists(temp), Is.True, "and made before the host starts");
         Assert.That(line, Does.Not.Contain("hunter2"), "the password is never on a command line");
         Assert.That(result.Output, Does.Not.Contain("hunter2"));
 
         var host = ledger.Live().Single();
         Assert.That((host.Account, host.Login, host.Repo, host.HostPid, host.HostStartUtc), Is.EqualTo((Account, Login, Repo, 4242, HostStart)));
+    }
+
+    [Test]
+    public void The_command_line_sets_temp_tmp_and_the_dotnet_unpack_folder_only_when_given_a_temp_folder()
+    {
+        var with = MemberSessionLauncher.CommandLine("host.exe", "abc123", @"C:\reg", PeerSid, Login, Repo, @"D:\ws\repo", @"R:\Temp\members\erin-cli");
+        Assert.That(with, Does.Contain(@"--env TEMP=R:\Temp\members\erin-cli --env TMP=R:\Temp\members\erin-cli")
+            .And.Contain(@"--env DOTNET_BUNDLE_EXTRACT_BASE_DIR=R:\Temp\members\erin-cli\.net"));
+        Assert.That(with, Does.EndWith("-- claude"));
+        var without = MemberSessionLauncher.CommandLine("host.exe", "abc123", @"C:\reg", PeerSid, Login, Repo, @"D:\ws\repo");
+        Assert.That(without, Does.Not.Contain("TEMP=").And.EndWith("-- claude"));
+    }
+
+    [Test]
+    public async Task Without_the_temp_root_the_member_keeps_their_own_temp()
+    {
+        var credentials = new FakeCredentials();
+        credentials.Save(Account, "hunter2-not-real");
+        var (launcher, runAs, _) = Launcher(credentials, tempRoot: Path.Combine(root, "no-such-drive"));
+        Assert.That((await launcher.StartAsync(Repo, Login, Account, CancellationToken.None)).Ok, Is.True);
+        Assert.That(runAs.Calls.Single().CommandLine, Does.Not.Contain("TEMP="));
+    }
+
+    [Test]
+    public async Task A_temp_folder_that_cant_be_made_starts_nothing()
+    {
+        var credentials = new FakeCredentials();
+        credentials.Save(Account, "hunter2-not-real");
+        var (launcher, runAs, _) = Launcher(credentials, prepareTemp: (_, _) => "Access is denied.");
+        var result = await launcher.StartAsync(Repo, Login, Account, CancellationToken.None);
+        Assert.That(result.Ok, Is.False);
+        Assert.That(result.Output, Does.Contain("Access is denied."));
+        Assert.That(runAs.Calls, Is.Empty);
+    }
+
+    [Test]
+    public void A_members_temp_folder_is_cut_from_inheritance_and_names_only_system_admins_the_host_user_and_the_member()
+    {
+        var self = TermPipeAcl.CurrentUser;
+        var member = new SecurityIdentifier(PeerSid);
+        Assert.That(MemberTemp.DirOf(@"R:\Temp", @"HOSTBOX\Erin-CLI"), Is.EqualTo(@"R:\Temp\members\erin-cli"));
+        var acl = MemberTemp.Acl(self, member);
+        Assert.That(acl.AreAccessRulesProtected, Is.True);
+        var rules = acl.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>().ToList();
+        Assert.That(rules.Select(r => r.IdentityReference), Is.EquivalentTo(new IdentityReference[]
+        {
+            new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), self, member,
+        }));
+        Assert.That(rules.Single(r => r.IdentityReference.Equals(member)).FileSystemRights & FileSystemRights.Modify, Is.EqualTo(FileSystemRights.Modify));
+        Assert.That(rules.Single(r => r.IdentityReference.Equals(member)).FileSystemRights.HasFlag(FileSystemRights.ChangePermissions), Is.False);
+        Assert.That(rules.All(r => r.AccessControlType == AccessControlType.Allow && r.InheritanceFlags == (InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit)));
     }
 
     [Test]
@@ -359,8 +414,10 @@ public sealed class GatewayMemberHostsTests
     };
 
     private (MemberSessionLauncher Launcher, FakeRunAs RunAs, TermMemberHosts Ledger) Launcher(FakeCredentials credentials, bool makeRegistry = true,
-        bool registers = true, Func<int, DateTime?>? hostStart = null, Action? onDelay = null)
+        bool registers = true, Func<int, DateTime?>? hostStart = null, Action? onDelay = null, string? tempRoot = null,
+        Func<string, string, string?>? prepareTemp = null)
     {
+        tempRoot ??= Directory.CreateDirectory(Path.Combine(root, "temp")).FullName;
         var exe = Path.Combine(root, "TermHost", "MindAttic.Orchestrator.TermHost.exe");
         Directory.CreateDirectory(Path.GetDirectoryName(exe)!);
         File.WriteAllText(exe, "");
@@ -375,7 +432,7 @@ public sealed class GatewayMemberHostsTests
             () => TimeSpan.FromSeconds(5),
             delay: (_, _) => { onDelay?.Invoke(); return Task.CompletedTask; },
             registered: (id, _) => registers ? new TermSessionRecord { Id = id, HostPid = 4242, HostStartUtc = HostStart } : null,
-            hostStart: hostStart);
+            hostStart: hostStart, tempRoot: () => tempRoot, prepareTemp: prepareTemp ?? ((_, dir) => { Directory.CreateDirectory(dir); return null; }));
         return (launcher, runAs, ledger);
     }
 
