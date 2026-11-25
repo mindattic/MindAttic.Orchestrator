@@ -13,7 +13,8 @@ public sealed class DriveStatusViewModel
     public DriveStatusViewModel(string root, double freeGb, double? usedPercent)
     {
         Label = root.TrimEnd('\\', '/');
-        FreeText = $"{freeGb.ToString("0.00", CultureInfo.InvariantCulture)} GB free ({Label})";
+        var free = usedPercent is { } used ? $" ({Math.Clamp(100 - used, 0, 100).ToString("0", CultureInfo.InvariantCulture)}%)" : "";
+        FreeText = $"{freeGb.ToString("0.00", CultureInfo.InvariantCulture)} GB{free} free";
         UsedPercent = Math.Max(0, usedPercent ?? 0);
         UsedBrush = MainViewModel.BandBrush(usedPercent);
         ToolTip = $"Free space on {Label}";
@@ -22,8 +23,11 @@ public sealed class DriveStatusViewModel
 
     /// <summary>The drive's own letter, "C:".</summary>
     public string Label { get; }
-    /// <summary>Free space, two decimals: "16.45 GB free (C:)".</summary>
+    /// <summary>Free space, two decimals, and the share of the drive it is (M.ORCH-T2222): "16.45 GB (12%) free". The letter
+    /// is already in its own column beside the bar.</summary>
     public string FreeText { get; }
+    /// <summary>What a screen reader says for the row: the letter as well, since <see cref="FreeText"/> no longer carries it.</summary>
+    public string SpokenText => $"{Label} {FreeText}";
     /// <summary>This bar's own value (M.ORCH-T1875): the same MaProgressBar the login strip's Sigma/Lambda bars use. 0
     /// when it can't be read, so the bar just sits empty rather than binding to null.</summary>
     public double UsedPercent { get; }

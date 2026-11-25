@@ -837,7 +837,7 @@
                                          Margin="{StaticResource SpaceLS}" Value="{Binding UsedPercent, Mode=OneWay}"
                                          Foreground="{Binding UsedBrush}" mc:MaCallout.ToolTip="{Binding ToolTip}" />
                             <TextBlock Grid.Column="2" Text="{Binding FreeText}" VerticalAlignment="Center" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}"
-                                       mc:MaCallout.ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding FreeText}"
+                                       mc:MaCallout.ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding SpokenText}"
                                        Visibility="{Binding FreeText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                         </Grid>
                     </DataTemplate>
