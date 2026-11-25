@@ -31844,55 +31844,28 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "RamFreeGb": {
-      "Degraded": 2.698,
+      "Degraded": 2.7359999999999998,
       "Unhealthy": 1,
-      "Reason": "p10 of 360 readings is 2.84 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-25T00:10:02.4316121\u002B00:00",
+      "Reason": "p10 of 360 readings is 2.88 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-25T00:17:49.6564297\u002B00:00",
       "Basis": 360
     },
     "CommitPercent": {
       "Degraded": 88.09500000000001,
       "Unhealthy": 97,
       "Reason": "p90 of 360 readings is 83.9 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-25T00:10:02.4316121\u002B00:00",
+      "At": "2026-11-25T00:17:49.6564297\u002B00:00",
       "Basis": 360
     },
     "DiskFreeGb": {
-      "Degraded": 7.6,
+      "Degraded": 7.505,
       "Unhealthy": 2,
-      "Reason": "p10 of 1440 readings is 8 GB, past the configured degraded line 20 GB; moved 5% past it",
-      "At": "2026-11-25T00:10:02.4316121\u002B00:00",
+      "Reason": "p10 of 1440 readings is 7.9 GB, past the configured degraded line 20 GB; moved 5% past it",
+      "At": "2026-11-25T00:17:49.6564297\u002B00:00",
       "Basis": 1440
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-23T08:37:35.7176614\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.0875,
-      "FromUnhealthy": 1.0875,
-      "ToDegraded": 3.135,
-      "ToUnhealthy": 1.1349999999999998,
-      "Reason": "p10 of 231 readings is 3.3 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-23T08:55:36.2579219\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.135,
-      "FromUnhealthy": 1.1349999999999998,
-      "ToDegraded": 3.1065,
-      "ToUnhealthy": 1.1065,
-      "Reason": "p10 of 250 readings is 3.27 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-23T08:57:51.3243365\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.1065,
-      "FromUnhealthy": 1.1065,
-      "ToDegraded": 3.0875,
-      "ToUnhealthy": 1.0875,
-      "Reason": "p10 of 253 readings is 3.25 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
     {
       "At": "2026-11-23T08:58:51.4578894\u002B00:00",
       "Check": "RamFreeGb",
@@ -33665,6 +33638,33 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 7.6,
       "ToUnhealthy": 2,
       "Reason": "p10 of 1440 readings is 8 GB, past the configured degraded line 20 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-25T00:17:12.7512049\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.698,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.7169999999999996,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.86 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-25T00:17:49.6564297\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.7169999999999996,
+      "FromUnhealthy": 1,
+      "ToDegraded": 2.7359999999999998,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 360 readings is 2.88 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-25T00:17:49.6564297\u002B00:00",
+      "Check": "DiskFreeGb",
+      "FromDegraded": 7.6,
+      "FromUnhealthy": 2,
+      "ToDegraded": 7.505,
+      "ToUnhealthy": 2,
+      "Reason": "p10 of 1440 readings is 7.9 GB, past the configured degraded line 20 GB; moved 5% past it"
     }
   ]
 }');
@@ -33672,23 +33672,23 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "58360": {
     "SessionId": "7370bb8d-9868-420d-bfc7-311507b47dc4",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:16:02.3209309Z",
-    "StoppedUtc": "2026-11-25T00:16:07.6617426Z",
-    "DueUtc": "2026-11-25T05:18:02.3209309Z"
+    "UntilUtc": "2026-11-25T05:26:14.707192Z",
+    "StoppedUtc": "2026-11-25T00:26:19.8886144Z",
+    "DueUtc": "2026-11-25T05:28:14.707192Z"
   },
   "45688": {
     "SessionId": "2c651f03-aee6-4f4d-9420-5957d23af195",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:16:02.3209309Z",
-    "StoppedUtc": "2026-11-25T00:16:07.6617426Z",
-    "DueUtc": "2026-11-25T05:18:02.3209309Z"
+    "UntilUtc": "2026-11-25T05:26:14.707192Z",
+    "StoppedUtc": "2026-11-25T00:26:19.8886144Z",
+    "DueUtc": "2026-11-25T05:28:14.707192Z"
   },
   "32860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:16:02.3209309Z",
-    "StoppedUtc": "2026-11-25T00:16:07.6617426Z",
-    "DueUtc": "2026-11-25T05:18:02.3209309Z"
+    "UntilUtc": "2026-11-25T05:26:14.707192Z",
+    "StoppedUtc": "2026-11-25T00:26:19.8886144Z",
+    "DueUtc": "2026-11-25T05:28:14.707192Z"
   },
   "12320": {
     "SessionId": "1edef0f8-e7aa-46ce-8301-2ef575ebd437",
@@ -33700,16 +33700,16 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "50588": {
     "SessionId": "1425bfa2-838e-4336-82ad-0fb56ee27a01",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:16:02.3209309Z",
-    "StoppedUtc": "2026-11-25T00:16:07.6617426Z",
-    "DueUtc": "2026-11-25T05:18:02.3209309Z"
+    "UntilUtc": "2026-11-25T05:26:14.707192Z",
+    "StoppedUtc": "2026-11-25T00:26:19.8886144Z",
+    "DueUtc": "2026-11-25T05:28:14.707192Z"
   },
   "38496": {
     "SessionId": "109a2e12-4cc3-4eb7-ab09-6fe14f3e85bd",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:16:02.3209309Z",
-    "StoppedUtc": "2026-11-25T00:16:07.6617426Z",
-    "DueUtc": "2026-11-25T05:18:02.3209309Z"
+    "UntilUtc": "2026-11-25T05:26:14.707192Z",
+    "StoppedUtc": "2026-11-25T00:26:19.8886144Z",
+    "DueUtc": "2026-11-25T05:28:14.707192Z"
   },
   "27180": {
     "SessionId": "80c2dcfc-724d-4f17-b117-a1ca0ac13e12",
@@ -33721,9 +33721,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "38484": {
     "SessionId": "21b33405-aaa0-4b4a-9a6a-fe7cd24d8654",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:16:02.3209309Z",
-    "StoppedUtc": "2026-11-25T00:16:07.6617426Z",
-    "DueUtc": "2026-11-25T05:18:02.3209309Z"
+    "UntilUtc": "2026-11-25T05:26:14.707192Z",
+    "StoppedUtc": "2026-11-25T00:26:19.8886144Z",
+    "DueUtc": "2026-11-25T05:28:14.707192Z"
   },
   "35124": {
     "SessionId": "eadedf26-1c6c-4249-a2d3-6e7f6f011e68",
