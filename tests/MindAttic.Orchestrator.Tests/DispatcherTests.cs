@@ -120,7 +120,7 @@ public sealed class DispatcherTests
         Assert.That(opened[0].Directory, Is.EqualTo(repo));
         Assert.That(opened[0].Submit, Is.True);
         Assert.That(opened[0].Prompt, Is.EqualTo(Scheduler.PromptFor(Item("A-T1"))));
-        Assert.That(opened[0].Prompt, Does.Contain("own checkout on main, never a separate branch or worktree"));
+        Assert.That(opened[0].Prompt, Does.Contain($"Work in A's own checkout ({repo}) on main, never a separate branch or worktree"));
         Assert.That(Directory.Exists(wtRoot), Is.False, "no worktree is made");
         Assert.That(Dispatcher.Git(repo, "branch", "--list", "orch/*").Output.Trim(), Is.Empty, "nor an orch/ branch");
 
