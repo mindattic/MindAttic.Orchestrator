@@ -1804,7 +1804,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 147597);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'GridGame.Unity', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 220778);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 554526);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'SpaceGod.Unreal', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12441663);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'SpaceGod.Unreal', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12860310);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -33732,30 +33732,30 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "25932": {
     "SessionId": "5c87f115-96a3-43aa-8559-17d8764da8f6",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T17:01:04.8119181Z",
-    "StoppedUtc": "2026-11-25T12:01:10.1977838Z",
-    "DueUtc": "2026-11-25T17:03:04.8119181Z"
+    "UntilUtc": "2026-11-25T17:11:12.3272482Z",
+    "StoppedUtc": "2026-11-25T12:11:20.8862049Z",
+    "DueUtc": "2026-11-25T17:13:12.3272482Z"
   },
   "13840": {
     "SessionId": "ad0eac04-fc01-44a6-b73b-341ed53b10cb",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T17:01:04.8119181Z",
-    "StoppedUtc": "2026-11-25T12:01:10.1977838Z",
-    "DueUtc": "2026-11-25T17:03:04.8119181Z"
+    "UntilUtc": "2026-11-25T17:11:12.3272482Z",
+    "StoppedUtc": "2026-11-25T12:11:20.8862049Z",
+    "DueUtc": "2026-11-25T17:13:12.3272482Z"
   },
   "41908": {
     "SessionId": "f8ff71be-40a7-4867-8742-0592d8f38294",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T17:01:04.8119181Z",
-    "StoppedUtc": "2026-11-25T12:01:10.1977838Z",
-    "DueUtc": "2026-11-25T17:03:04.8119181Z"
+    "UntilUtc": "2026-11-25T17:11:12.3272482Z",
+    "StoppedUtc": "2026-11-25T12:11:20.8862049Z",
+    "DueUtc": "2026-11-25T17:13:12.3272482Z"
   },
   "23500": {
     "SessionId": "831346a9-59b9-428b-b943-300f041d1493",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T17:01:04.8119181Z",
-    "StoppedUtc": "2026-11-25T12:01:10.1977838Z",
-    "DueUtc": "2026-11-25T17:03:04.8119181Z"
+    "UntilUtc": "2026-11-25T17:11:12.3272482Z",
+    "StoppedUtc": "2026-11-25T12:11:20.8862049Z",
+    "DueUtc": "2026-11-25T17:13:12.3272482Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
@@ -34030,7 +34030,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "175b0f05d091d6540b2ec31f9ee4d88b65aa747b",
+    "Tested": "c280c94e80bc82cb02281ffbfe2857eeb84cf038",
     "Green": "6b561073ef56e4e8340e62c36f6cc69a919d370f"
   },
   "MindAttic.Psst": {
@@ -34042,7 +34042,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
-    "Tested": "71dd13fe3adf9bb5a51b9ec9ee05bba6b46df43d",
+    "Tested": "521fac3567182a4fcfb433487680f5bfe4a2ec8f",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
@@ -34306,7 +34306,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "175b0f05d091d6540b2ec31f9ee4d88b65aa747b",
+    "Tested": "c280c94e80bc82cb02281ffbfe2857eeb84cf038",
     "Green": "6b561073ef56e4e8340e62c36f6cc69a919d370f"
   },
   "ipt392tmp": {
