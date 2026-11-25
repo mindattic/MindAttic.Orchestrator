@@ -127,6 +127,23 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// text is built only when WPF reads it, which <see cref="ApplyAgentStatus"/> asks for only once a shown figure changes.</summary>
     public string TabHoverTip => TabHoverTipOf(Tooltip, statusRow, HostPid, DateTime.UtcNow, WorkingSetMb);
 
+    // The working sets a refresh sampled off the UI thread (M.ORCH-T2198), and the whole MB of each the callout last showed.
+    private IReadOnlyDictionary<int, double>? workingSets;
+    private (long? Host, long? Cli) shownMb;
+
+    /// <summary>Takes the working sets a refresh sampled (<see cref="TerminalsViewModel.ReadWorkingSets"/>), raising
+    /// <see cref="TabHoverTip"/> only when its Launcher's or claude.exe's MB, as shown, moved.</summary>
+    internal void ApplyWorkingSets(IReadOnlyDictionary<int, double> sets)
+    {
+        workingSets = sets;
+        var mb = (Whole(HostPid), Whole(statusRow?.CliPid));
+        if (mb == shownMb) return;
+        shownMb = mb;
+        Raise(nameof(TabHoverTip));
+
+        long? Whole(int? pid) => pid is { } p && WorkingSetMb(p) is { } v ? (long)Math.Round(v) : null;
+    }
+
     private AgentBoardRow? statusRow;
 
     /// <summary>The agent row its last status read matched (<see cref="ApplyAgentStatus"/>), null while unknown: what the Team
@@ -167,12 +184,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
         return text.ToString();
     }
 
-    /// <summary>A process's working set in MB, read when the tip is built (no poll); null when it can't be read (M.ORCH-T1876).</summary>
-    private static double? WorkingSetMb(int pid)
-    {
-        try { using var p = System.Diagnostics.Process.GetProcessById(pid); return p.WorkingSet64 / (1024.0 * 1024); }
-        catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return null; }
-    }
+    /// <summary>A process's working set in MB as the last refresh sampled it (M.ORCH-T1876, M.ORCH-T2198); null when it wasn't read.</summary>
+    private double? WorkingSetMb(int pid) => workingSets?.TryGetValue(pid, out var mb) == true ? mb : null;
 
     /// <summary>" (812 MB, 2.5% of RAM)" for <paramref name="pid"/>, empty when unreadable (M.ORCH-T1876).</summary>
     private static string RamText(Func<int, double?>? ramMb, int pid)
@@ -1835,12 +1848,39 @@ public sealed class TerminalsViewModel : ObservableObject
                 moved = true;
             }
         }
+        if (WorkingSetsRead is { } sets)
+        {
+            WorkingSetsRead = null;
+            foreach (var pane in Panes.Where(p => !p.Ended)) pane.ApplyWorkingSets(sets);
+        }
+        trackedPids = Panes.Where(p => !p.Ended).SelectMany(p => new[] { p.HostPid, p.StatusRow?.CliPid })
+            .OfType<int>().Distinct().ToArray();
         if (moved) LoginsChanged?.Invoke();
         if (learned) SessionsLearned?.Invoke();
     }
 
     /// <summary>The process tree, read off the UI thread for the next <see cref="Update"/>; null has it read there, when needed.</summary>
     internal volatile IReadOnlyDictionary<int, int>? ParentsRead;
+
+    /// <summary>The tabs' Launcher and claude.exe working sets in MB, sampled off the UI thread for the next <see cref="Update"/>
+    /// (M.ORCH-T2198): their callouts show them without reading a process on the UI thread.</summary>
+    internal volatile IReadOnlyDictionary<int, double>? WorkingSetsRead;
+
+    // The Launcher and claude.exe pids the tabs knew at the last Update: whose working sets the next refresh samples.
+    private volatile int[] trackedPids = [];
+
+    /// <summary>The working set in MB of each pid the tabs knew at the last <see cref="Update"/>, skipping one that can't be
+    /// read. Off the UI thread.</summary>
+    internal IReadOnlyDictionary<int, double> ReadWorkingSets()
+    {
+        var sets = new Dictionary<int, double>();
+        foreach (var pid in trackedPids)
+        {
+            try { using var p = System.Diagnostics.Process.GetProcessById(pid); sets[pid] = p.WorkingSet64 / (1024.0 * 1024); }
+            catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+        }
+        return sets;
+    }
 
     // The last process tree a refresh read off the UI thread, for an Update that came without one.
     private IReadOnlyDictionary<int, int>? lastParents;

@@ -64,10 +64,12 @@ public sealed partial class MainViewModel
         return new(account, rows, settings, limits);
     }
 
-    /// <summary>The process tree for the CLI tabs' update, when a tab is open to want it; null when it can't be read. Off the UI thread.</summary>
+    /// <summary>The process tree for the CLI tabs' update, when a tab is open to want it; null when it can't be read. Off the UI thread.
+    /// Their Launcher and claude.exe working sets are sampled with it, for the tabs' callouts (M.ORCH-T2198).</summary>
     private IReadOnlyDictionary<int, int>? ReadParents()
     {
         if (AllTerminals.Panes.Count == 0) return null;
+        AllTerminals.WorkingSetsRead = AllTerminals.ReadWorkingSets();
         try { return MindAttic.Orchestrator.Sessions.ProcessTree.ParentMap(); }
         catch (Exception ex) when (ex is not OutOfMemoryException) { return null; }
     }
