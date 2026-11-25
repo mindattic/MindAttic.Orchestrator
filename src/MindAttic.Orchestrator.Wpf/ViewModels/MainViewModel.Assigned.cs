@@ -402,8 +402,6 @@ public sealed partial class MainViewModel
         Raise(nameof(HasOpenTickets));
         Raise(nameof(HasNoQueueTickets));
         Raise(nameof(NoQueueTicketsText));
-        // The unified Active, Pending and top-priority sections include this login's own queue (M.ORCH-T1770).
-        RaiseActiveSections();
     }
 
     /// <summary>A ticket id as a sync key (M.ORCH-T1450): trimmed and upper-cased, so the same ticket read in two different

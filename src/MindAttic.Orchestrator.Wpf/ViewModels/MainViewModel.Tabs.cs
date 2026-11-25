@@ -413,6 +413,14 @@ public sealed partial class MainViewModel
     /// <summary>An <see cref="ApplyTabs"/> pass longer than this logs what each of its steps cost (M.ORCH-T2191).</summary>
     private static readonly TimeSpan SlowApplyTabsThreshold = TimeSpan.FromMilliseconds(250);
 
+    /// <summary>Every tab proxies some state to the global login's (the window shows whichever tab is chosen), so a change
+    /// is said on each of them.</summary>
+    private void RaiseOnEveryTab(string name)
+    {
+        foreach (var t in Root.loginTabs) t.Raise(name);
+        if (!Root.loginTabs.Contains(Root)) Root.Raise(name);
+    }
+
     /// <summary>The logins whose Launcher tab this dashboard has opened (or tried to): each once while it stays open: one you
     /// close or exit is reopened by the next refresh (M.ORCH-T855: the Launcher tab is always open). A fallback open in its own
     /// window, never embedded, is held, so a failing embed doesn't spawn a window every tick.</summary>

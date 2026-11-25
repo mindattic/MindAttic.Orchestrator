@@ -316,8 +316,8 @@ public sealed class TabStatusTests
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         // SidebarTools is gone (M.ORCH-T1499 moved the sidebar's window-tools row into the menu bar entirely): the next
-        // landmark after the tab strip's own markup is the ticket area below it.
-        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"SidebarTicketArea\"", StringComparison.Ordinal)];
+        // landmark after the sidebar is the terminals panel (the sidebar's ticket area is gone, M.ORCH-T2202).
+        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"TerminalsPanel\"", StringComparison.Ordinal)];
         Assert.That(strip, Does.Contain("TabStripPlacement=\"Left\"").And.Contain("x:Name=\"LoginTabItem\"").And.Not.Contain("LoginTabItem_Loaded"));
 
         var code = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));

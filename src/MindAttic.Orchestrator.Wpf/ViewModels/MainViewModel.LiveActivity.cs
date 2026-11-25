@@ -83,8 +83,6 @@ public sealed partial class MainViewModel
             a => new LiveActivityRowViewModel(a, this), (r, a) => r.Update(a));
         Raise(nameof(HasLiveActivity));
         Raise(nameof(HasOpenTickets));
-        // The unified Active section includes this login's own live activity (M.ORCH-T1770).
-        RaiseActiveSections();
 
         foreach (var row in LiveActivity.Where(r => r.IsOverdue && knownTicketless.Add(r.SessionId)))
             Toasts.Insert(0, new ToastViewModel("Working with no ticket", $"{row.Repo}'s CLI has been running {Formatting.Span(TicketlessFlagAfter)}+ with no ticket attributed.", Palette.Waiting, null));
