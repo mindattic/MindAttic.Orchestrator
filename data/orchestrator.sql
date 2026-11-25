@@ -31852,47 +31852,15 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 }');
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
-    "RamFreeGb": {
-      "Degraded": 2.907,
-      "Unhealthy": 1,
-      "Reason": "p10 of 360 readings is 3.06 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-25T00:57:31.8296474\u002B00:00",
-      "Basis": 360
-    },
-    "CommitPercent": {
-      "Degraded": 88.09500000000001,
-      "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 83.9 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-25T00:57:31.8296474\u002B00:00",
-      "Basis": 360
-    },
     "DiskFreeGb": {
       "Degraded": 7.3149999999999995,
       "Unhealthy": 2,
-      "Reason": "p10 of 60 readings is 7.7 GB, past the configured degraded line 20 GB; moved 5% past it",
-      "At": "2026-11-25T06:42:23.6439537\u002B00:00",
-      "Basis": 60
+      "Reason": "p10 of 240 readings is 7.7 GB, past the configured degraded line 20 GB; moved 5% past it",
+      "At": "2026-11-25T07:41:30.9828041\u002B00:00",
+      "Basis": 240
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-23T09:09:44.2137484\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.8689999999999998,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.8405,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 270 readings is 2.99 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-23T09:09:44.2137484\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 96.915,
-      "FromUnhealthy": 97,
-      "ToDegraded": 96.81,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 270 readings is 92.2 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-23T09:12:05.9799512\u002B00:00",
       "Check": "RamFreeGb",
@@ -33674,6 +33642,24 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 7.3149999999999995,
       "ToUnhealthy": 2,
       "Reason": "p10 of 60 readings is 7.7 GB, past the configured degraded line 20 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-25T07:41:30.9828041\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 2.907,
+      "FromUnhealthy": 1,
+      "ToDegraded": 4,
+      "ToUnhealthy": 2,
+      "Reason": "p10 of 60 readings is 9.96 GB, inside the configured degraded line 4 GB"
+    },
+    {
+      "At": "2026-11-25T07:41:30.9828041\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 88.09500000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 80,
+      "ToUnhealthy": 90,
+      "Reason": "p90 of 60 readings is 46.7 %, inside the configured degraded line 80 %"
     }
   ]
 }');
@@ -34014,7 +34000,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "2c1dd9bdb668661d9ee33cf08f733f87fd5f0625",
+    "Tested": "1783c43fe109f5408e629eaf763720bda16ce659",
     "Green": "6b561073ef56e4e8340e62c36f6cc69a919d370f"
   },
   "MindAttic.Psst": {
@@ -34026,7 +34012,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
-    "Tested": "ee205d8ad22d1abb9b9f03d344abc416b55a3982",
+    "Tested": "e81f764959a0cafe7828a31d7e06ba224e36a497",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
@@ -34290,7 +34276,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "2c1dd9bdb668661d9ee33cf08f733f87fd5f0625",
+    "Tested": "1783c43fe109f5408e629eaf763720bda16ce659",
     "Green": "6b561073ef56e4e8340e62c36f6cc69a919d370f"
   },
   "ipt392tmp": {
@@ -34877,6 +34863,66 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "Deaths": 1,
     "Redispatches": 0,
     "DeadStartedUtc": "2026-11-25T01:02:00.9835596Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 58360,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "GG-T710",
+    "Repo": "GridGame.Unity",
+    "Directory": "D:\\Projects\\MindAttic\\GridGame.Unity",
+    "FirstSeenUtc": "2026-11-25T07:45:55.0266348Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-24T03:19:44.869987Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 32860,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "GG-T704",
+    "Repo": "GridGame.Unity",
+    "Directory": "D:\\Projects\\MindAttic\\GridGame.Unity",
+    "FirstSeenUtc": "2026-11-25T07:45:55.0266348Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-23T19:54:39.3697357Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 32860,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "GG-T490",
+    "Repo": "GridGame.Unity",
+    "Directory": "D:\\Projects\\MindAttic\\GridGame.Unity",
+    "FirstSeenUtc": "2026-11-25T07:45:55.0266348Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-24T04:03:00.4119718Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 32860,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "GAD-T749",
+    "Repo": "Gadfly",
+    "Directory": "D:\\Projects\\MindAttic\\Gadfly",
+    "FirstSeenUtc": "2026-11-25T07:45:55.0266348Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-25T00:55:26.629404Z",
     "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
     "Cli": 58360,
     "Ahead": 0,
