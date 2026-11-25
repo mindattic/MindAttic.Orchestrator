@@ -9,7 +9,8 @@ namespace MindAttic.Orchestrator.Term.Wpf;
 /// and each earlier lag fix (M.ORCH-T634, T1537, T1596) removed one cause without anything left to name the next. A pool timer
 /// posts a ping at Input priority, what a keystroke waits behind; a ping answered later than the threshold is logged with the
 /// work the thread was in (<see cref="Doing"/>) while it waited. The timer runs at half the threshold, so a stall that long is
-/// always seen in progress. A threshold of zero turns it off.
+/// always seen in progress. A threshold of zero turns it off. It runs only while <see cref="Arm"/>ed (M.ORCH-T2206): a few
+/// seconds after real input, since a stall nobody is typing into keeps nobody waiting, so an idle or minimized window costs nothing.
 /// </summary>
 public sealed partial class UiStallProbe : IDisposable
 {
@@ -30,11 +31,13 @@ public sealed partial class UiStallProbe : IDisposable
         public void Dispose() => work = previous;
     }
 
-    private static readonly TimeSpan OffRecheck = TimeSpan.FromSeconds(5);
+    private static readonly long ArmedFor = 5 * Stopwatch.Frequency;
 
     private readonly Dispatcher dispatcher;
     private readonly Func<TimeSpan> threshold;
     private readonly Timer timer;
+    private long armedUntil;
+    private int ticking;
     private long sent;
     private volatile string? seen;
     // What the dispatcher is running (M.ORCH-T1738): the priority of its current operation, or -1 between operations, where a
@@ -58,15 +61,33 @@ public sealed partial class UiStallProbe : IDisposable
         dispatcher.Hooks.OperationStarted += (_, e) => running = (int)e.Operation.Priority;
         dispatcher.Hooks.OperationCompleted += (_, _) => running = -1;
         dispatcher.Hooks.OperationAborted += (_, _) => running = -1;
-        timer = new Timer(_ => Tick(), null, OffRecheck, Timeout.InfiniteTimeSpan);
+        timer = new Timer(_ => Tick(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>Watches for the next few seconds: called on real input, the only time a stall keeps anyone waiting.</summary>
+    public void Arm()
+    {
+        Interlocked.Exchange(ref armedUntil, Stopwatch.GetTimestamp() + ArmedFor);
+        Start();
+    }
+
+    /// <summary>Stops watching once any ping in flight is answered (the window hidden or minimized).</summary>
+    public void Disarm() => Interlocked.Exchange(ref armedUntil, 0);
+
+    private bool Armed => Stopwatch.GetTimestamp() < Interlocked.Read(ref armedUntil);
+
+    private void Start()
+    {
+        if (Interlocked.CompareExchange(ref ticking, 1, 0) == 0) Reschedule(TimeSpan.Zero);
     }
 
     private void Tick()
     {
         var limit = threshold();
+        var stop = limit <= TimeSpan.Zero || dispatcher.HasShutdownStarted;
         try
         {
-            if (limit <= TimeSpan.Zero || dispatcher.HasShutdownStarted) return;
+            if (stop) return;
             if (Interlocked.Read(ref sent) != 0)
             {
                 // Still unanswered: what the thread is in right now is what the ping waits behind.
@@ -84,9 +105,21 @@ public sealed partial class UiStallProbe : IDisposable
         catch (Exception ex) when (ex is InvalidOperationException or TaskCanceledException) { }
         finally
         {
-            try { timer.Change(limit <= TimeSpan.Zero ? OffRecheck : limit / 2, Timeout.InfiniteTimeSpan); }
-            catch (ObjectDisposedException) { }
+            // A ping in flight is followed to its answer, armed or not, so the stall it is in is still named. Otherwise the timer
+            // idles until the next Arm; one that lands between the check and the reset restarts it here.
+            if (!stop && (Armed || Interlocked.Read(ref sent) != 0)) Reschedule(limit / 2);
+            else
+            {
+                Volatile.Write(ref ticking, 0);
+                if (!stop && Armed) Start();
+            }
         }
+    }
+
+    private void Reschedule(TimeSpan due)
+    {
+        try { timer.Change(due, Timeout.InfiniteTimeSpan); }
+        catch (ObjectDisposedException) { }
     }
 
     private void Answered(TimeSpan limit)

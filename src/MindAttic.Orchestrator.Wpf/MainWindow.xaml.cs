@@ -216,6 +216,12 @@ public partial class MainWindow : Window
         // Names whatever keeps typing waiting on this thread, for good (M.ORCH-T1733).
         var stalls = new MindAttic.Orchestrator.Term.Wpf.UiStallProbe(Dispatcher, () => DashboardTimings.UiStallLog);
         Closed += (_, _) => stalls.Dispose();
+        // Armed by real input only (M.ORCH-T2206), handled or not, and idle while nobody can type into the window.
+        AddHandler(PreviewKeyDownEvent, new KeyEventHandler((_, _) => stalls.Arm()), handledEventsToo: true);
+        AddHandler(PreviewMouseDownEvent, new MouseButtonEventHandler((_, _) => stalls.Arm()), handledEventsToo: true);
+        AddHandler(PreviewTextInputEvent, new TextCompositionEventHandler((_, _) => stalls.Arm()), handledEventsToo: true);
+        IsVisibleChanged += (_, _) => { if (Hidden) stalls.Disarm(); };
+        StateChanged += (_, _) => { if (Hidden) stalls.Disarm(); };
 
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = PollInterval };
         timer.Tick += async (_, _) =>
