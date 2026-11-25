@@ -586,13 +586,13 @@ public sealed partial class MainViewModel
              " Prices are Anthropic's list prices applied to the transcripts' tokens, an estimate.",
     };
 
-    /// <summary>Re-raises this login's busy/subagent-sum figures (M.ORCH-T1838): the number in its busy spinner, and each open
-    /// CLI row's own share of it, so both stay current on <see cref="MainWindow"/>'s own <c>BusyCountRefreshSeconds</c> tick,
-    /// independent of the poll/push refresh that would otherwise have to fire for either to move.</summary>
+    /// <summary>Re-raises this login's busy/subagent-sum figures (M.ORCH-T1838), where their inputs change rather than on a
+    /// tick (M.ORCH-T2207): a snapshot applied and a presumption started or ended raise them with the whole tab status, so
+    /// this is for a CLI moving between logins (<see cref="SyncTerminals"/>). Each CLI row raises its own share itself
+    /// (<see cref="TerminalPaneViewModel.RaiseBadges"/>).</summary>
     internal void RaiseBusyCounts()
     {
         Raise(nameof(TabThinkingCount)); Raise(nameof(TabThinkingCountText)); Raise(nameof(ShowsTabThinkingCount)); Raise(nameof(TabThinkingWord));
-        Terminals?.RaiseWorkCounts();
     }
 
     /// <summary>Raises everything the tab strip shows for this tab.</summary>

@@ -74,6 +74,7 @@ public sealed partial class MainViewModel
         foreach (var t in loginTabs)
         {
             t.Terminals.RefreshLast(); // a pane moved between logins (M.ORCH-T1955)
+            t.RaiseBusyCounts();
             t.Raise(nameof(ShowsLauncherPlaceholder));
             t.Raise(nameof(ShowsGeneralPromptPlaceholder));
         }

@@ -33,15 +33,8 @@ public partial class MainWindow : Window
     /// <summary>How often the hosted-session registry is read again for a host whose bus announcement was lost (M.ORCH-T1001; 45s).</summary>
     private static TimeSpan TermResyncInterval => DashboardTimings.TermResync;
 
-    /// <summary>How often every login's busy/subagent-sum figures are re-raised, independent of the poll/push refresh
-    /// (M.ORCH-T1838; 5s).</summary>
-    private static TimeSpan BusyCountRefreshInterval => DashboardTimings.BusyCountRefresh;
-
     // The hosted-session resync timer (M.ORCH-T1001), on only while the status stream is down (M.ORCH-T1998); null until loaded.
     private DispatcherTimer? termResync;
-
-    // The busy/subagent-sum figures' own tick (M.ORCH-T1838), always running; null until loaded.
-    private DispatcherTimer? busyCountTimer;
 
     /// <summary>The global login's tab, which owns the refresh and every login's tab (M.ORCH-T613).</summary>
     private readonly MainViewModel model = new();
@@ -254,18 +247,6 @@ public partial class MainWindow : Window
                 resync.IsEnabled = !model.IsStreamLive;
                 Closed += (_, _) => { resync.Stop(); termResync = null; };
             }
-            // Every login's busy/subagent-sum figures, re-raised on their own tick (M.ORCH-T1838), a Vault setting live-dialed
-            // through DashboardTimings like the others here: always running, whether the stream pushes or this window polls,
-            // so those figures never wait on either for a refresh they don't otherwise need.
-            var busyCounts = new DispatcherTimer(DispatcherPriority.Background) { Interval = BusyCountRefreshInterval };
-            busyCounts.Tick += (_, _) =>
-            {
-                foreach (var t in model.LoginTabs) t.RaiseBusyCounts();
-                if (busyCounts.Interval != BusyCountRefreshInterval) busyCounts.Interval = BusyCountRefreshInterval; // dialed live in the Vault
-            };
-            busyCountTimer = busyCounts;
-            busyCounts.Start();
-            Closed += (_, _) => { busyCounts.Stop(); busyCountTimer = null; };
             // The CLIs that outlived the last run, before any is reopened: restore-all on start leaves their work alone (M.ORCH-T2069).
             var alive = model.AllTerminals.Panes.Where(p => !p.Ended).ToHashSet();
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
