@@ -1805,12 +1805,12 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 9884876);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 859477);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 765689);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 182426);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2275977);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 334822);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2298654);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'GridGame.Unity', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 55199);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12328179);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12582697);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1686300);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1887582);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1919919);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 19213212);
 
 -- ticket_costs
@@ -3042,7 +3042,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a40f4fbb7d3bfce15', 'GAD-T771', 'chore', 'Gadfly', 97668, '2026-11-25T17:50:25.481Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a497caf797669bb2a', 'GAD-T778', 'feature', 'Gadfly', 77569, '2026-11-25T18:30:48.96Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a4ef18fbdf5ebfe6b', 'GAD-T781', 'fix', 'Gadfly', 94608, '2026-11-25T18:34:51.055Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a5a67bea458721fff', 'GAD-T787', 'chore', 'Gadfly', 49935, '2026-11-25T19:49:28.152Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a5a67bea458721fff', 'GAD-T787', 'chore', 'Gadfly', 77487, '2026-11-25T20:00:28.583Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a63d01aff65c93812', 'GAD-T227', 'chore', 'Gadfly', 39109, '2026-11-25T08:18:29.229Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a7ab600c0c1fb1b06', 'GAD-T765', 'fix', 'Gadfly', 69381, '2026-11-25T16:22:51.748Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a81494d903866f964', 'GAD-T767', 'fix', 'Gadfly', 56078, '2026-11-25T15:41:36.978Z', 0, 'sonnet');
@@ -5511,7 +5511,7 @@ INSERT INTO org_members (provider, login, org_id, person, added_utc) VALUES ('Cl
 -- term_grants
 
 -- reminders
-INSERT INTO reminders (id, message, every_minutes, backoff, max_every_minutes, until_ticket, created_utc, next_utc, nags, last_nag_utc, ended_utc, ended_why) VALUES ('f5fd3d', 'Price the float/short-interest data vendors (FMP, Polygon/Massive, Finviz Elite) for IdiotProof and pick one', 1440, 2, 4320, 'IP-T647', '2026-11-22T19:53:53Z', '2026-11-25T19:54:42Z', 1, '2026-11-23T19:54:42Z', NULL, NULL);
+INSERT INTO reminders (id, message, every_minutes, backoff, max_every_minutes, until_ticket, created_utc, next_utc, nags, last_nag_utc, ended_utc, ended_why) VALUES ('f5fd3d', 'Price the float/short-interest data vendors (FMP, Polygon/Massive, Finviz Elite) for IdiotProof and pick one', 1440, 2, 4320, 'IP-T647', '2026-11-22T19:53:53Z', '2026-11-28T19:55:42Z', 2, '2026-11-25T19:55:42Z', NULL, NULL);
 
 -- roles
 INSERT INTO roles (name, brief, model, effort, tools, takes, source, updated_utc) VALUES ('analyst', 'Business analyst - turns data (databases, logs, usage, costs) and requirements into findings, numbers and a recommendation; use to size a problem, explain a trend, or write acceptance criteria.', 'sonnet', 'high', 'Read,Grep,Glob,Bash,WebFetch,WebSearch', NULL, 'mindattic-agent-standard/shared/roles/analyst.md', '2026-11-23T01:06:31Z');
@@ -33931,72 +33931,72 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "4620": {
     "SessionId": "5c87f115-96a3-43aa-8559-17d8764da8f6",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T00:41:05.7463743Z",
-    "StoppedUtc": "2026-11-25T19:41:12.6533766Z",
-    "DueUtc": "2026-11-26T00:43:05.7463743Z"
+    "UntilUtc": "2026-11-26T00:56:35.9505265Z",
+    "StoppedUtc": "2026-11-25T19:56:44.4218873Z",
+    "DueUtc": "2026-11-26T00:58:35.9505265Z"
   },
   "41304": {
     "SessionId": "f8ff71be-40a7-4867-8742-0592d8f38294",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T00:39:26.8371056Z",
-    "StoppedUtc": "2026-11-25T19:40:05.0466278Z",
-    "DueUtc": "2026-11-26T00:41:26.8371056Z"
+    "UntilUtc": "2026-11-26T00:54:34.4581681Z",
+    "StoppedUtc": "2026-11-25T19:54:41.1256034Z",
+    "DueUtc": "2026-11-26T00:56:34.4581681Z"
   },
   "20140": {
     "SessionId": "831346a9-59b9-428b-b943-300f041d1493",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T00:39:26.8371056Z",
-    "StoppedUtc": "2026-11-25T19:40:05.0466278Z",
-    "DueUtc": "2026-11-26T00:41:26.8371056Z"
+    "UntilUtc": "2026-11-26T00:54:34.4581681Z",
+    "StoppedUtc": "2026-11-25T19:54:41.1256034Z",
+    "DueUtc": "2026-11-26T00:56:34.4581681Z"
   },
   "39088": {
     "SessionId": "b773a79b-ba7e-46cb-9786-f886660e3188",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T00:39:26.8371056Z",
-    "StoppedUtc": "2026-11-25T19:40:05.0466278Z",
-    "DueUtc": "2026-11-26T00:41:26.8371056Z"
+    "UntilUtc": "2026-11-26T00:54:34.4581681Z",
+    "StoppedUtc": "2026-11-25T19:54:41.1256034Z",
+    "DueUtc": "2026-11-26T00:56:34.4581681Z"
   },
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T00:39:26.8371056Z",
-    "StoppedUtc": "2026-11-25T19:40:05.0466278Z",
-    "DueUtc": "2026-11-26T00:41:26.8371056Z"
+    "UntilUtc": "2026-11-26T00:54:34.4581681Z",
+    "StoppedUtc": "2026-11-25T19:54:41.1256034Z",
+    "DueUtc": "2026-11-26T00:56:34.4581681Z"
   },
   "24400": {
     "SessionId": "a8807a82-1dd3-4855-b80b-a04b51f0814d",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T00:42:19.1160193Z",
-    "StoppedUtc": "2026-11-25T19:42:26.4086753Z",
-    "DueUtc": "2026-11-26T00:44:19.1160193Z"
+    "UntilUtc": "2026-11-26T00:57:53.7151809Z",
+    "StoppedUtc": "2026-11-25T19:58:04.6330821Z",
+    "DueUtc": "2026-11-26T00:59:53.7151809Z"
   },
   "42076": {
     "SessionId": "5c34bf68-6599-47fd-8f65-87b3adb44f9e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T00:45:05.4372027Z",
-    "StoppedUtc": "2026-11-25T19:45:36.4115697Z",
-    "DueUtc": "2026-11-26T00:47:05.4372027Z"
+    "UntilUtc": "2026-11-26T01:00:24.7798254Z",
+    "StoppedUtc": "2026-11-25T20:00:34.7420001Z",
+    "DueUtc": "2026-11-26T01:02:24.7798254Z"
   },
   "58244": {
     "SessionId": "c6112df4-43d8-42d0-98d8-19541e2057ec",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T00:39:26.8371056Z",
-    "StoppedUtc": "2026-11-25T19:40:05.0466278Z",
-    "DueUtc": "2026-11-26T00:41:26.8371056Z"
+    "UntilUtc": "2026-11-26T00:54:34.4581681Z",
+    "StoppedUtc": "2026-11-25T19:54:41.1256034Z",
+    "DueUtc": "2026-11-26T00:56:34.4581681Z"
   },
   "39332": {
     "SessionId": "3a3ec029-07bb-40dd-a1f6-578b671ff17b",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T00:45:05.4372027Z",
-    "StoppedUtc": "2026-11-25T19:45:36.4115697Z",
-    "DueUtc": "2026-11-26T00:47:05.4372027Z"
+    "UntilUtc": "2026-11-26T01:00:24.7798254Z",
+    "StoppedUtc": "2026-11-25T20:00:34.7420001Z",
+    "DueUtc": "2026-11-26T01:02:24.7798254Z"
   },
   "57504": {
     "SessionId": "bb1c10a1-f527-4aff-b271-ba4beeb8a07c",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T00:39:26.8371056Z",
-    "StoppedUtc": "2026-11-25T19:40:05.0466278Z",
-    "DueUtc": "2026-11-26T00:41:26.8371056Z"
+    "UntilUtc": "2026-11-26T00:54:34.4581681Z",
+    "StoppedUtc": "2026-11-25T19:54:41.1256034Z",
+    "DueUtc": "2026-11-26T00:56:34.4581681Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
