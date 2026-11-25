@@ -823,7 +823,7 @@
              (HostStatsBars.DataContext = model), so it is this machine's reading whichever login is shown. -->
         <mc:MaPanel Title="This PC" IsCollapsible="True" mc:MaPanelGroup.PanelKey="host" mc:MaPanelGroup.IsDraggable="True">
         <StackPanel x:Name="HostStatsBars" Grid.IsSharedSizeScope="True" AutomationProperties.Name="This machine's disk and RAM use">
-            <ItemsControl ItemsSource="{Binding Drives}">
+            <ItemsControl Style="{StaticResource MaList}" ItemsSource="{Binding Drives}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:DriveStatusViewModel}">
                         <Grid Margin="0,1">
