@@ -6,44 +6,120 @@ namespace MindAttic.Orchestrator.Gateway;
 internal interface IBroadcastControl
 {
     TermBroadcastSettings Current { get; }
+
+    /// <summary>Raised after <see cref="Current"/> changes, so a stream acts on it at once rather than on a tick (M.ORCH-T2215).</summary>
+    event Action? Changed;
 }
 
 /// <summary>Fixed choices that a test changes by hand.</summary>
 internal sealed class FixedBroadcast(TermBroadcastSettings settings) : IBroadcastControl
 {
-    public TermBroadcastSettings Current { get; set; } = settings;
+    private TermBroadcastSettings current = settings;
+
+    public TermBroadcastSettings Current
+    {
+        get => current;
+        set
+        {
+            current = value;
+            Changed?.Invoke();
+        }
+    }
+
+    public event Action? Changed;
 }
 
 /// <summary>
-/// <c>broadcast.json</c> (<see cref="TermBroadcast"/>), reread whenever it changes: its time and size are looked at every
-/// <see cref="Interval"/>, so a share, mask or pause from the dashboard or <c>orchestrator broadcast</c> takes effect within a
-/// fraction of a second, without restarting the gateway. A file that can't be read keeps the last good settings.
+/// <c>broadcast.json</c> (<see cref="TermBroadcast"/>), reread whenever it changes: a FileSystemWatcher on its folder reads it
+/// <see cref="Debounce"/> after a write (M.ORCH-T2215), with a <see cref="Backstop"/> look for a missed event, so a share, mask
+/// or pause from the dashboard or <c>orchestrator broadcast</c> takes effect within a fraction of a second, without restarting
+/// the gateway. A file that can't be read keeps the last good settings and is read again <see cref="RetryAfter"/>.
 /// </summary>
 internal sealed class BroadcastFile : IBroadcastControl, IDisposable
 {
-    public static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(150);
+    public static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(50);
+    public static readonly TimeSpan RetryAfter = TimeSpan.FromMilliseconds(150);
+    public static readonly TimeSpan Backstop = TimeSpan.FromSeconds(10);
 
     private readonly string? directory;
     private readonly Timer timer;
-    // Timer doesn't serialize its own callbacks: a poll slower than Interval (slow disk, AV, contention with the file being
-    // rewritten) could overlap the next one, so 'seen' (read and written only here) is protected rather than left to race
-    // (bughunt 2026-10-28). 'current' stays volatile; it's only ever replaced wholesale, never read-modify-written.
+    // The watcher's events and the timer's polls come on different threads: 'seen', the watcher and each reschedule are
+    // protected so an event during a poll is never overwritten by that poll's later Backstop (bughunt 2026-10-28, M.ORCH-T2215).
+    // 'current' stays volatile; it's only ever replaced wholesale, never read-modify-written.
     private readonly object pollGate = new();
     private (DateTime Written, long Length) seen;
     private volatile TermBroadcastSettings current;
+    private FileSystemWatcher? watcher;
+    private bool disposed;
 
     public BroadcastFile(string? directory)
     {
         this.directory = directory;
         var stamp = Stamp();
         // Not readable at start: nothing shared until it is, and the poll keeps trying (M.ORCH-T986).
-        if (TermBroadcast.TryRead(directory, out var settings)) seen = stamp;
-        else seen = (DateTime.MinValue, long.MinValue);
+        var read = TermBroadcast.TryRead(directory, out var settings);
+        seen = read ? stamp : (DateTime.MinValue, long.MinValue);
         current = settings;
-        timer = new Timer(_ => Poll(), null, Interval, Interval);
+        timer = new Timer(_ => Poll(), null, Timeout.Infinite, Timeout.Infinite);
+        lock (pollGate)
+        {
+            Watch();
+            timer.Change(read ? Backstop : RetryAfter, Timeout.InfiniteTimeSpan);
+        }
     }
 
     public TermBroadcastSettings Current => current;
+
+    public event Action? Changed;
+
+    /// <summary>Starts the watcher when the folder exists; a folder made later is picked up by the backstop poll.</summary>
+    private void Watch()
+    {
+        if (watcher is not null || disposed) return;
+        try
+        {
+            var path = TermBroadcast.PathIn(directory);
+            var folder = Path.GetDirectoryName(path);
+            if (folder is null || !Directory.Exists(folder)) return;
+            var w = new FileSystemWatcher(folder, Path.GetFileName(path))
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName | NotifyFilters.CreationTime,
+            };
+            w.Changed += (_, _) => Soon();
+            w.Created += (_, _) => Soon();
+            // A writer replaces the file atomically (temp file renamed over it).
+            w.Renamed += (_, _) => Soon();
+            w.Deleted += (_, _) => Soon();
+            w.Error += (_, e) => Lost(w, e.GetException());
+            w.EnableRaisingEvents = true;
+            watcher = w;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or PlatformNotSupportedException) { }
+    }
+
+    /// <summary>An overflow only lost events; anything else (the folder gone) lost the watcher, which the backstop poll restarts.</summary>
+    private void Lost(FileSystemWatcher w, Exception error)
+    {
+        lock (pollGate)
+        {
+            if (error is not InternalBufferOverflowException && watcher == w)
+            {
+                watcher = null;
+                try { w.Dispose(); } catch (Exception) { }
+            }
+        }
+        Soon();
+    }
+
+    private void Soon()
+    {
+        try
+        {
+            lock (pollGate)
+                if (!disposed) timer.Change(Debounce, Timeout.InfiniteTimeSpan);
+        }
+        catch (ObjectDisposedException) { }
+    }
 
     private (DateTime, long) Stamp()
     {
@@ -57,23 +133,48 @@ internal sealed class BroadcastFile : IBroadcastControl, IDisposable
 
     private void Poll()
     {
+        var changed = false;
         try
         {
             lock (pollGate)
             {
-                var stamp = Stamp();
-                if (stamp == seen) return;
-                // Not readable just now (a sharing violation as a writer replaces it): the last good settings stay, and the stamp
-                // isn't taken, so the next poll reads it again rather than waiting for the file to change (M.ORCH-T986).
-                if (!TermBroadcast.TryRead(directory, out var settings)) return;
-                seen = stamp;
-                current = settings;
+                if (disposed) return;
+                var next = Backstop;
+                try
+                {
+                    Watch();
+                    var stamp = Stamp();
+                    if (stamp != seen)
+                    {
+                        // Not readable just now (a sharing violation as a writer replaces it): the last good settings stay, and the
+                        // stamp isn't taken, so it's read again shortly rather than on the next change (M.ORCH-T986).
+                        if (TermBroadcast.TryRead(directory, out var settings))
+                        {
+                            seen = stamp;
+                            current = settings;
+                            changed = true;
+                        }
+                        else next = RetryAfter;
+                    }
+                }
+                finally { timer.Change(next, Timeout.InfiniteTimeSpan); }
             }
         }
         catch (Exception) { }
+        if (changed)
+            try { Changed?.Invoke(); } catch (Exception) { }
     }
 
-    public void Dispose() => timer.Dispose();
+    public void Dispose()
+    {
+        lock (pollGate)
+        {
+            disposed = true;
+            watcher?.Dispose();
+            watcher = null;
+        }
+        timer.Dispose();
+    }
 }
 
 /// <summary>

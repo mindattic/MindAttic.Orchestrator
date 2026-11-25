@@ -34,9 +34,6 @@ internal static class TermBridge
     /// held up to <see cref="StreamMasker.MaxCandidateHold"/>, M.ORCH-T982).</summary>
     public static readonly TimeSpan FlushAfter = StreamMasker.FlushAfter;
 
-    /// <summary>How often a quiet stream looks at the owner's choices (pause, share).</summary>
-    public static readonly TimeSpan PolicyTick = TimeSpan.FromMilliseconds(100);
-
     /// <summary>What a remote viewer's screen gets on resume: cleared, scrollback too, cursor home.</summary>
     internal static readonly byte[] ResumeClear = "\e[0m\e[H\e[2J\e[3J"u8.ToArray();
 
@@ -232,6 +229,7 @@ internal static class TermBridge
         var paused = false;
         byte[]? title = null;
         Task<(TermFrameKind Kind, byte[] Payload)>? read = null;
+        using var changed = new PolicyWake(b.Control);
 
         // Everything held, now, as the frame order needs: a held strong candidate secret goes masked, never bare (M.ORCH-T982),
         // a weak one as it is (M.ORCH-T1038).
@@ -261,10 +259,12 @@ internal static class TermBridge
             }
             if (!read.IsCompleted)
             {
-                var wait = masker.DueIn is { } due && due < PolicyTick ? due : PolicyTick;
-                if (wait > TimeSpan.Zero) await Task.WhenAny(read, Task.Delay(wait, ct)).ConfigureAwait(false);
+                // A quiet stream wakes for a frame, the owner's choices changing (M.ORCH-T2215) or the masker's hold running out.
+                if (masker.DueIn is not { } due) await Task.WhenAny(read, changed.Task).ConfigureAwait(false);
+                else if (due > TimeSpan.Zero) await Task.WhenAny(read, changed.Task, Task.Delay(due, ct)).ConfigureAwait(false);
             }
 
+            changed.Renew();
             var settings = b.Control.Current;
             if (!settings.IsShared(id)) return "the owner stopped sharing this session";
             if (helloSent && settings.IsPaused(id) != paused)
@@ -359,6 +359,31 @@ internal static class TermBridge
             }
         }
         return null;
+    }
+
+    /// <summary>Completes when the owner's choices change (M.ORCH-T2215); renewed before each read of them, so a change after
+    /// that read completes the next one and is never missed.</summary>
+    private sealed class PolicyWake : IDisposable
+    {
+        private readonly IBroadcastControl control;
+        private TaskCompletionSource signal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public PolicyWake(IBroadcastControl control)
+        {
+            this.control = control;
+            control.Changed += Set;
+        }
+
+        public Task Task => Volatile.Read(ref signal).Task;
+
+        private void Set() => Volatile.Read(ref signal).TrySetResult();
+
+        public void Renew()
+        {
+            if (Volatile.Read(ref signal).Task.IsCompleted) Volatile.Write(ref signal, new(TaskCreationOptions.RunContinuationsAsynchronously));
+        }
+
+        public void Dispose() => control.Changed -= Set;
     }
 
     private static byte[] MaskTitle(byte[] title, BroadcastStream b, TermBroadcastSettings settings) =>

@@ -127,10 +127,10 @@ public sealed partial class GatewayTests
         TermBroadcast.Update(s => s.Share("s2", true), dir.Path);
         using (new FileStream(TermBroadcast.PathIn(dir.Path), FileMode.Open, FileAccess.Read, FileShare.None))
         {
-            Thread.Sleep(BroadcastFile.Interval * 4);
+            Thread.Sleep(BroadcastFile.RetryAfter * 4);
             Assert.That(file.Current.IsShared("s1"), Is.True, "the last good settings, not nothing shared");
         }
-        Thread.Sleep(BroadcastFile.Interval * 4);
+        Thread.Sleep(BroadcastFile.RetryAfter * 4);
         Assert.That(file.Current.IsShared("s2"), Is.True, "read again although the file didn't change since");
     }
 
