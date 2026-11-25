@@ -141,7 +141,7 @@ public sealed class WeeklyAllowanceTests
     }
 
     [Test]
-    public void The_rebalancer_leaves_an_allowed_logins_cli_on_it_and_never_fails_over()
+    public void The_rebalancer_never_moves_an_allowed_logins_cli_but_still_reports_its_weekly_lock()
     {
         var dir = temps.New();
         Directory.CreateDirectory(Path.Combine(dir, ".claude"));
@@ -167,7 +167,10 @@ public sealed class WeeklyAllowanceTests
         var failover = Settings;
 
         allowances = [Allowed()];
-        Assert.That(Rebalancer().Tick(null, [], [], failover, Now), Is.Empty, "allowed: its CLI keeps working on its login (and no weekly-cutoff report)");
+        // A lock wins over an org allow (epic M.ORCH-T2108, M.ORCH-T2137): the crossing is still reported, but nothing is moved.
+        var allowedTick = Rebalancer().Tick(null, [], [], failover, Now);
+        Assert.That(allowedTick.Where(m => m.Cutoff is null), Is.Empty, "allowed: its CLI is never moved or failed over");
+        Assert.That(allowedTick.Single().Line, Does.Contain("is now locked (a lock wins over its org allow)"));
         Assert.That(sent, Is.Empty);
 
         allowances = [];

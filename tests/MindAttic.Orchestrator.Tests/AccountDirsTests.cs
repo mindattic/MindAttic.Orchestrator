@@ -218,6 +218,7 @@ public sealed class AccountDirsTests
         var b = dirs.For("b@example.com");
         Directory.CreateDirectory(b.Directory);
         SignIn(b);
+        File.WriteAllText(HomeConfig, """{"hasCompletedOnboarding":true}""");
         var locked = new AccountDirs(Path.Combine(dir, ".claude-accounts"), ClaudeDir, HomeConfig) { Locked = () => new HashSet<string> { "b@example.com" } };
 
         Assert.That(locked.GlobalSignedIn, Is.False);
