@@ -188,6 +188,7 @@ public sealed partial class MainViewModel
     /// change.</summary>
     private void RaiseActiveSections()
     {
+        using var stall = MindAttic.Orchestrator.Term.Wpf.UiStallProbe.Doing("raising the Task List's active and Top priority sections");
         Raise(nameof(ActiveItems)); Raise(nameof(HasActiveItems)); Raise(nameof(ActiveCount));
         Raise(nameof(Top100Items)); Raise(nameof(HasTop100Items)); Raise(nameof(Top100Count));
     }

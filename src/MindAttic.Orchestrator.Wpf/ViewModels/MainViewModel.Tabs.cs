@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Windows.Input;
 using System.Windows.Media;
 using MindAttic.Components.Wpf.Mvvm;
@@ -321,9 +322,20 @@ public sealed partial class MainViewModel
 
     private void ApplyTabs(Snapshot all, IReadOnlyList<LoginTab> tabs, OrgDirectory nextOrgs)
     {
-        using var stall = MindAttic.Orchestrator.Term.Wpf.UiStallProbe.Doing("applying a refresh to the tabs");
+        using var stall = Doing("");
+        // What each step cost (M.ORCH-T2191): a slow pass is logged step by step, and a stall names the step it waited behind.
+        var started = Stopwatch.GetTimestamp();
+        var mark = started;
+        var steps = new List<(string Step, long Ms)>();
+        void Took(string step)
+        {
+            var at = Stopwatch.GetTimestamp();
+            steps.Add((step, (long)Stopwatch.GetElapsedTime(mark, at).TotalMilliseconds));
+            mark = at;
+        }
         workspace = all;
-        ApplyOrgs(nextOrgs);
+        using (Doing("applying the orgs")) ApplyOrgs(nextOrgs);
+        Took("orgs");
         var before = loginTabs.Count;
         var previous = loginTabs.ToList();
         // Who was signed in at the last refresh, so a login disconnected since opens its sign-in by itself (M.ORCH-T796).
@@ -332,16 +344,20 @@ public sealed partial class MainViewModel
         // The API key's person tab comes in the list itself, after every Claude login's (M.ORCH-T906). No more 'Miscellaneous'
         // tab (M.ORCH-T825): its content (allocate, a pacing hold, reminders, finished work, the workspace's problems) now shows
         // on the global login's tab.
-        loginTabs.SyncBy([.. tabs],
-            t => t.Key, v => v.tab.Key,
-            t => t.IsGlobal ? this : new MainViewModel(this, t),
-            (v, t) => v.Retitle(t));
-        // The global login's tab is always here, whatever the list said; it sits by its name among the others (M.ORCH-T752).
-        if (!loginTabs.Contains(this)) loginTabs.Insert(0, this);
-        if (selectedTab is not null && !loginTabs.Contains(selectedTab)) Select(this);
-        // A tab signed out is gone for good: it stops listening to the static move events (M.ORCH-T734).
-        foreach (var gone in previous.Where(t => !ReferenceEquals(t, this) && !loginTabs.Contains(t))) gone.Detach();
-        SyncOrgTabs();
+        using (Doing("syncing login tabs"))
+        {
+            loginTabs.SyncBy([.. tabs],
+                t => t.Key, v => v.tab.Key,
+                t => t.IsGlobal ? this : new MainViewModel(this, t),
+                (v, t) => v.Retitle(t));
+            // The global login's tab is always here, whatever the list said; it sits by its name among the others (M.ORCH-T752).
+            if (!loginTabs.Contains(this)) loginTabs.Insert(0, this);
+            if (selectedTab is not null && !loginTabs.Contains(selectedTab)) Select(this);
+            // A tab signed out is gone for good: it stops listening to the static move events (M.ORCH-T734).
+            foreach (var gone in previous.Where(t => !ReferenceEquals(t, this) && !loginTabs.Contains(t))) gone.Detach();
+            SyncOrgTabs();
+        }
+        Took("syncing login tabs");
 
         var options = aggregator.Options;
         // One view per org, cut once and shared by its tabs.
@@ -354,6 +370,7 @@ public sealed partial class MainViewModel
         // this loop is no longer tied to loginTabs' own order, which sits the tab by name since M.ORCH-T752.
         foreach (var t in ApplyOrderOf(loginTabs.ToList(), this))
         {
+            using var tabStall = Doing($"applying tab {t.TabTitle}");
             var org = t.OrgId;
             if (!byOrg.TryGetValue(org, out var orgAll)) byOrg[org] = orgAll = OrgScope.For(all, orgs, org, options.WorkingWindow, options.WaitingWindow);
             // The API key's person is scoped to its own login folder's sessions, as any per-CLI login (M.ORCH-T906).
@@ -362,19 +379,39 @@ public sealed partial class MainViewModel
             // "spending" input (Blinker.Grew), not just the now-removed blink animation.
             t.CountTabTokens(now);
             t.RaiseTabStatus();
+            Took($"tab {t.TabTitle}");
         }
-        UpdateOrgPills();
+        using (Doing("UpdateOrgPills")) UpdateOrgPills();
+        Took("UpdateOrgPills");
         // Each login's Agents panel (M.ORCH-T1747), from the agents its read found.
-        ApplyAgents();
+        using (Doing("ApplyAgents")) ApplyAgents();
+        Took("ApplyAgents");
         // A login's tab come or gone takes its terminals with it (to the global login's when gone), M.ORCH-T810.
-        SyncTerminals();
+        using (Doing("SyncTerminals")) SyncTerminals();
+        Took("SyncTerminals");
         // The CLIs already open take their login's name and Prefix as they are now (M.ORCH-T1440): a rename in User Settings
         // (said on the bus as a roster change, M.ORCH-T1438) retitles their tabs at this pass, no reopen.
-        _ = AllTerminals.RefreshLooksAsync();
-        OpenLaunchers();
-        EnsureGeneralPrompts();
-        if (NewlyDisconnected(wasSignedIn, loginTabs.Select(t => t.tab)) is { Count: > 0 } disconnected) AutoSignIn(disconnected);
+        using (Doing("RefreshLooksAsync")) _ = AllTerminals.RefreshLooksAsync();
+        Took("RefreshLooksAsync");
+        using (Doing("OpenLaunchers")) OpenLaunchers();
+        Took("OpenLaunchers");
+        using (Doing("EnsureGeneralPrompts")) EnsureGeneralPrompts();
+        Took("EnsureGeneralPrompts");
+        if (NewlyDisconnected(wasSignedIn, loginTabs.Select(t => t.tab)) is { Count: > 0 } disconnected)
+            using (Doing("AutoSignIn")) AutoSignIn(disconnected);
+        Took("AutoSignIn");
+        if (Stopwatch.GetElapsedTime(started) is var total && total > SlowApplyTabsThreshold)
+            OrchestratorLog.For("Dashboard").Information("Applying a refresh to the tabs took {Ms}ms: {Steps:l}", (long)total.TotalMilliseconds,
+                string.Join(", ", steps.Where(s => s.Ms > 0).OrderByDescending(s => s.Ms).Select(s => $"{s.Step} {s.Ms}ms")));
+
+        static MindAttic.Orchestrator.Term.Wpf.UiStallProbe.Scope Doing(string step) =>
+            MindAttic.Orchestrator.Term.Wpf.UiStallProbe.Doing(step.Length == 0 ? ApplyTabsWork : $"{ApplyTabsWork}: {step}");
     }
+
+    private const string ApplyTabsWork = "applying a refresh to the tabs";
+
+    /// <summary>An <see cref="ApplyTabs"/> pass longer than this logs what each of its steps cost (M.ORCH-T2191).</summary>
+    private static readonly TimeSpan SlowApplyTabsThreshold = TimeSpan.FromMilliseconds(250);
 
     /// <summary>The logins whose Launcher tab this dashboard has opened (or tried to): each once while it stays open: one you
     /// close or exit is reopened by the next refresh (M.ORCH-T855: the Launcher tab is always open). A fallback open in its own
