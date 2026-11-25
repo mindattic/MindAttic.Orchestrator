@@ -41,7 +41,7 @@ public partial class MainWindow
                 menu.Items.Add(MenuAction("", "Commit + push all dirty projects…", () => ToolbarCommitAllButton_Click(button, e), shown.IsTabSignedIn));
                 break;
             case "Settings":
-                menu.Items.Add(MenuCommand("", "Settings", shown.OpenSettingsCommand));
+                menu.Items.Add(MenuCommand("", "Vault", shown.OpenSettingsCommand));
                 menu.Items.Add(MenuAction("", "Users…", OpenUsers));
                 menu.Items.Add(MenuCommand("", "Launcher settings", shown.OpenLauncherSettingsCommand));
                 var project = MenuCommand("", "Project settings", shown.OpenProjectSettingsCommand);
