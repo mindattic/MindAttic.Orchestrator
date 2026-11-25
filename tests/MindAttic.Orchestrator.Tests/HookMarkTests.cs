@@ -104,12 +104,23 @@ public sealed class HookMarkTests
         Assert.That(Db.Dump(), Does.Not.Contain(AgentGate.ApiKeySetAsideStateName));
     }
 
+    /// <summary>Python giving a hook's write all the wait it needs: eight writers queue on the one write lock, and on a loaded
+    /// machine the last can outlast the hooks' short wait and keep its entry as the file, correctly, but not the database
+    /// left free that a test of one transaction each means (M.ORCH-T2231). The short wait's own fallback is tested on its own below.</summary>
+    private const string WaitsOutTheQueue = """
+        DB_BUDGET = 25.0
+        _short_tx = state_tx
+        def state_tx(timeout=2, table="state"):
+            return _short_tx(20, table)
+
+        """;
+
     [Test]
     public void Hooks_writing_at_once_each_add_their_entry_in_one_write_transaction()
     {
         Db.Open().Dispose();
         File.WriteAllText(SetAside, """{"old": 1}""");
-        var writers = Enumerable.Range(0, 8).Select(i => Start(Add(AgentGate.ApiKeySetAsideStateName, AgentGate.ApiKeySetAsideName, "k" + i))).ToList();
+        var writers = Enumerable.Range(0, 8).Select(i => Start(WaitsOutTheQueue + Add(AgentGate.ApiKeySetAsideStateName, AgentGate.ApiKeySetAsideName, "k" + i))).ToList();
         foreach (var p in writers)
         {
             Assert.That(p.WaitForExit(30_000), Is.True);
