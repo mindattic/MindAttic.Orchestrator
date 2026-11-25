@@ -120,8 +120,17 @@ public partial class MainWindow : Window
         // The tree sidebar grows with its widest row instead of clipping it (M.ORCH-T1768, SizeSidebarToContent): a badge
         // or a longer name appearing has no SizeChanged of its own to catch (LoginTreeScroller's own
         // HorizontalScrollBarVisibility="Disabled" squeezes LoginTree to whatever width it's already given rather than
-        // reporting its content's true desired width upward), so this re-measures on every layout pass instead.
-        LoginTree.LayoutUpdated += (_, _) => SizeSidebarToContent();
+        // reporting its content's true desired width upward), so this re-measures whenever what the tree shows can change:
+        // a login or pane coming or going, any of their properties (a name, a badge, a node expanding), the tree showing,
+        // the shown login, the DPI. Not on LayoutUpdated (M.ORCH-T2197): that fires for every layout pass anywhere in the
+        // window, ahead of input, and stalled the UI thread.
+        model.OrgTabs.CollectionChanged += (_, _) => WatchLoginTreeItems();
+        model.AllTerminals.Panes.CollectionChanged += (_, _) => WatchLoginTreeItems();
+        WatchLoginTreeItems();
+        model.SelectedTabChanged += (_, _) => QueueSizeSidebarToContent();
+        LoginTree.IsVisibleChanged += (_, _) => QueueSizeSidebarToContent();
+        DpiChanged += (_, _) => QueueSizeSidebarToContent();
+        Loaded += (_, _) => QueueSizeSidebarToContent();
         DataContextChanged += (_, e) =>
         {
             if (e.OldValue is MainViewModel was)
@@ -694,6 +703,44 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the sidebar to its tree failed; contained"); }
     }
+
+    /// <summary>Whether a <see cref="SizeSidebarToContent"/> is already queued, so a burst of changes measures once.</summary>
+    private bool sidebarSizeQueued;
+
+    /// <summary>The tree's logins and panes (and the global login's tab, for <see cref="MainViewModel.TabStatus.ShowsLoginTree"/>)
+    /// whose property changes <see cref="WatchLoginTreeItems"/> listens to.</summary>
+    private readonly HashSet<System.ComponentModel.INotifyPropertyChanged> loginTreeWatched = [];
+
+    /// <summary>Runs <see cref="SizeSidebarToContent"/> once, at Background priority (after layout and input), however many
+    /// changes ask for it before then (M.ORCH-T2197).</summary>
+    private void QueueSizeSidebarToContent()
+    {
+        if (sidebarSizeQueued) return;
+        sidebarSizeQueued = true;
+        Dispatcher.InvokeAsync(() =>
+        {
+            sidebarSizeQueued = false;
+            SizeSidebarToContent();
+        }, DispatcherPriority.Background);
+    }
+
+    /// <summary>Listens to every login and pane the tree shows, dropping those that left, so any change to one of them (a
+    /// longer name, a badge, a node expanding) queues <see cref="SizeSidebarToContent"/>; queues one itself too, since the
+    /// tree's rows just changed.</summary>
+    private void WatchLoginTreeItems()
+    {
+        var now = model.OrgTabs.Cast<System.ComponentModel.INotifyPropertyChanged>().Concat(model.AllTerminals.Panes).Append(model).ToHashSet();
+        foreach (var gone in loginTreeWatched.Where(item => !now.Contains(item)).ToList())
+        {
+            gone.PropertyChanged -= OnLoginTreeItemChanged;
+            loginTreeWatched.Remove(gone);
+        }
+        foreach (var item in now)
+            if (loginTreeWatched.Add(item)) item.PropertyChanged += OnLoginTreeItemChanged;
+        QueueSizeSidebarToContent();
+    }
+
+    private void OnLoginTreeItemChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => QueueSizeSidebarToContent();
 
     /// <summary>Redirects a wheel tick anywhere over the window into <see cref="AgentsBody"/>'s own scroll (M.ORCH-T1299),
     /// except one already inside it (left alone so its native scrolling runs unchanged), one inside <see cref="Sidebar"/>
