@@ -213,6 +213,13 @@ public sealed partial class MainViewModel
     /// <summary>Every ticket's friendly name (M.ORCH-T1450), read once for every tab from the global login's workspace root.</summary>
     private readonly MindAttic.Orchestrator.Tickets.TicketNameSource nameSource = new();
 
+    /// <summary>The names as a refresh last read them off the UI thread (M.ORCH-T2193): a read checks the tickets database's
+    /// file and, when it changed, opens it, so the UI thread only ever looks names up here.</summary>
+    private volatile IReadOnlyDictionary<string, string> ticketNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Reads every ticket's friendly name for the next apply; off the UI thread, one read at a time.</summary>
+    private void ReadTicketNames() => Root.ticketNames = Root.nameSource.Names(Root.WorkspaceRoot);
+
     /// <summary>"Unassigned", then every person of this tab's org (M.ORCH-T754) with a tab, by their tab's name, and anyone of the
     /// org a ticket is pinned to with no tab here. With one org, everyone. Every option is also in the global login's tab's list of
     /// all of them, which names an assignee wherever they are.</summary>
@@ -264,7 +271,7 @@ public sealed partial class MainViewModel
 
     /// <summary><paramref name="ticketId"/>'s friendly name for its sidebar card ("ID · name", M.ORCH-T1450); null with none yet
     /// (<c>tickets ticket names</c> backfills them) or no migrated database, so the card falls back to its summary.</summary>
-    internal string? FriendlyNameOf(string ticketId) => Root.nameSource.Names(Root.WorkspaceRoot).GetValueOrDefault(ticketId);
+    internal string? FriendlyNameOf(string ticketId) => Root.ticketNames.GetValueOrDefault(ticketId);
 
     // The Queue's tabs (M.ORCH-T849).
 

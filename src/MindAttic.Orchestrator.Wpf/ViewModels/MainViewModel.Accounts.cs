@@ -65,9 +65,11 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>The process tree for the CLI tabs' update, when a tab is open to want it; null when it can't be read. Off the UI thread.
-    /// Their Launcher and claude.exe working sets are sampled with it, for the tabs' callouts (M.ORCH-T2198).</summary>
+    /// Their Launcher and claude.exe working sets are sampled with it, for the tabs' callouts (M.ORCH-T2198), and the tickets'
+    /// friendly names read, for the tabs' auto-names and the Queue's captions (M.ORCH-T2193).</summary>
     private IReadOnlyDictionary<int, int>? ReadParents()
     {
+        ReadTicketNames();
         if (AllTerminals.Panes.Count == 0) return null;
         AllTerminals.WorkingSetsRead = AllTerminals.ReadWorkingSets();
         try { return MindAttic.Orchestrator.Sessions.ProcessTree.ParentMap(); }
@@ -111,7 +113,7 @@ public sealed partial class MainViewModel
                 AllTerminals.AutoNameEvery = TimeSpan.FromMinutes(Math.Max(0, settings.AutoTabNameMinutes));
                 AllTerminals.AutoNameMaxChars = (int)Math.Max(14, settings.AutoTabNameMaxChars);
                 AllTerminals.WorkspaceRoot = WorkspaceRoot;
-                AllTerminals.TicketName ??= id => nameSource.Names(WorkspaceRoot).GetValueOrDefault(id);
+                AllTerminals.TicketName ??= id => FriendlyNameOf(id);
                 // The dashboard's intervals, live from the Vault (M.ORCH-T1595): the poll and resync timers read them at their next tick.
                 DashboardTimings.Apply(settings);
                 launcherRespawn.Spacing = DashboardTimings.LauncherSpacing;
