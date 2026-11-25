@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -21,7 +22,8 @@ internal sealed class UsersWindow : Window
     private readonly MainViewModel model;
     private readonly StackPanel list = new();
     private readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap };
-    private readonly DispatcherTimer poll = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly HashSet<MainViewModel> watched = [];
+    private bool showQueued;
     private string shownState = "";
 
     internal UsersWindow(MainViewModel model)
@@ -75,16 +77,68 @@ internal sealed class UsersWindow : Window
 
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { e.Handled = true; Close(); } };
         model.LoginTabs.CollectionChanged += OnLoginsChanged;
-        poll.Tick += (_, _) => ShowRows();
-        Loaded += (_, _) => { ShowRows(); poll.Start(); };
-        Closed += (_, _) => { poll.Stop(); model.LoginTabs.CollectionChanged -= OnLoginsChanged; };
+        model.AllTerminals.Panes.CollectionChanged += OnPanesChanged;
+        foreach (var tab in model.LoginTabs) Watch(tab);
+        foreach (var pane in model.AllTerminals.Panes) pane.PropertyChanged += OnPaneChanged;
+        Loaded += (_, _) => ShowRows();
+        Closed += (_, _) =>
+        {
+            model.LoginTabs.CollectionChanged -= OnLoginsChanged;
+            model.AllTerminals.Panes.CollectionChanged -= OnPanesChanged;
+            foreach (var tab in watched) tab.PropertyChanged -= OnTabChanged;
+            watched.Clear();
+            foreach (var pane in model.AllTerminals.Panes) pane.PropertyChanged -= OnPaneChanged;
+        };
     }
 
-    private void OnLoginsChanged(object? sender, NotifyCollectionChangedEventArgs e) => ShowRows();
+    /// <summary>What a row shows (M.ORCH-T2210): the lock has no notification of its own, but <see cref="MainViewModel.CanAddCli"/>
+    /// is raised with it in every tab-status raise, so it stands in for <see cref="MainViewModel.IsLoginLocked"/>.</summary>
+    private static readonly HashSet<string> ShownProperties =
+    [
+        nameof(MainViewModel.Tab), nameof(MainViewModel.TabTitle), nameof(MainViewModel.IsTabSignedIn), nameof(MainViewModel.IsApiKeyTab),
+        nameof(MainViewModel.CanAddCli), nameof(MainViewModel.AddCliLockedTip), nameof(MainViewModel.TabTrailing), nameof(MainViewModel.TabCliCount),
+    ];
+
+    private void Watch(MainViewModel tab)
+    {
+        if (watched.Add(tab)) tab.PropertyChanged += OnTabChanged;
+    }
+
+    private void OnLoginsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        foreach (var tab in watched.Where(t => !model.LoginTabs.Contains(t)).ToList()) { tab.PropertyChanged -= OnTabChanged; watched.Remove(tab); }
+        foreach (var tab in model.LoginTabs) Watch(tab);
+        ShowRows();
+    }
+
+    private void OnTabChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is null || ShownProperties.Contains(e.PropertyName)) ShowRowsSoon();
+    }
+
+    private void OnPanesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null) foreach (TerminalPaneViewModel pane in e.OldItems) pane.PropertyChanged -= OnPaneChanged;
+        if (e.NewItems is not null) foreach (TerminalPaneViewModel pane in e.NewItems) pane.PropertyChanged += OnPaneChanged;
+        ShowRowsSoon();
+    }
+
+    private void OnPaneChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is null or nameof(TerminalPaneViewModel.Ended)) ShowRowsSoon();
+    }
+
+    /// <summary>One rebuild per burst (M.ORCH-T2210): a tab-status raise fires dozens of properties at once.</summary>
+    private void ShowRowsSoon()
+    {
+        if (showQueued) return;
+        showQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () => { showQueued = false; if (IsLoaded) ShowRows(); });
+    }
 
     private IEnumerable<MainViewModel> Logins => model.LoginTabs.Where(t => !t.IsApiKeyTab && t.UsersEmail is not null);
 
-    /// <summary>Rebuilds the rows when anything they show changed, so a poll never rebuilds a row under the pointer for nothing.</summary>
+    /// <summary>Rebuilds the rows when anything they show changed, so a property burst never rebuilds a row under the pointer for nothing.</summary>
     private void ShowRows()
     {
         var logins = Logins.ToList();
