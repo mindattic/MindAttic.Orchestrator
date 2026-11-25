@@ -44,7 +44,7 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
         {
             Console.WriteLine(JsonSerializer.Serialize(members.Select(m => new
             {
-                m.Email, m.Name, m.Role, m.Tier, m.Status, m.JoinedUtc, m.UpdatedUtc,
+                m.Email, m.Name, m.Alias, m.Role, m.Tier, m.Status, m.JoinedUtc, m.UpdatedUtc,
                 SignedInHere = accounts.ContainsKey(m.Email) || own.Contains(m.Email),
                 SignedInOwnLogin = own.Contains(m.Email),
                 SignedInFallbackLogin = accounts.ContainsKey(m.Email),
@@ -64,11 +64,12 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
         }
         var now = DateTime.UtcNow;
         if (scope.Scoped) AnsiConsole.MarkupLine($"[bold]{Markup.Escape(scope.Org.Name)}[/]");
-        var table = new Table().Border(TableBorder.Rounded).AddColumns("Name", "Email", "Role", "Tier", "Status", "Signed in here");
+        var table = new Table().Border(TableBorder.Rounded).AddColumns("Name", "Email", "Alias", "Role", "Tier", "Status", "Signed in here");
         foreach (var m in members)
             table.AddRow(
                 m.Name is { } name ? Markup.Escape(name) : "[grey]—[/]",
                 Markup.Escape(m.Email),
+                m.Alias is { } alias ? Markup.Escape(alias) : "[grey]—[/]",
                 Markup.Escape(m.Role),
                 Markup.Escape(m.Tier),
                 m.Status == "active" ? m.Status : $"[yellow]{Markup.Escape(m.Status)}[/]",
@@ -150,6 +151,10 @@ internal sealed class MembersAddCommand : Command<MembersAddCommand.Settings>
         [CommandOption("--status <STATUS>")]
         [Description("active (the default) or pending.")]
         public string? Status { get; init; }
+
+        [CommandOption("--alias <ALIAS>")]
+        [Description("A short display name for <who> lookups, when the email's part before the @ clashes with another member's.")]
+        public string? Alias { get; init; }
     }
 
     public override int Execute(CommandContext context, Settings settings)
@@ -162,7 +167,7 @@ internal sealed class MembersAddCommand : Command<MembersAddCommand.Settings>
         if (OrgChoice.Resolve(settings.Org) is not { } scope) return 1;
         return MembersCommand.Change(() =>
         {
-            var m = MemberRoster.Add(MembersCommand.Db(), settings.Email, settings.Name, settings.Role, settings.Tier, settings.Status, DateTime.UtcNow);
+            var m = MemberRoster.Add(MembersCommand.Db(), settings.Email, settings.Name, settings.Role, settings.Tier, settings.Status, DateTime.UtcNow, settings.Alias);
             var line = "Added " + MembersCommand.Describe(m) + ".";
             // M.ORCH-T755: their login goes in the org worked on (with one org it's already there: nothing written).
             if (!scope.Has(m.Email))
@@ -199,18 +204,22 @@ internal sealed class MembersSetCommand : Command<MembersSetCommand.Settings>
         [CommandOption("--status <STATUS>")]
         [Description("active or pending (to keep work off a login, lock it: orchestrator org lock).")]
         public string? Status { get; init; }
+
+        [CommandOption("--alias <ALIAS>")]
+        [Description("A short display name for <who> lookups, when the email's part before the @ clashes with another member's; \"\" clears it.")]
+        public string? Alias { get; init; }
     }
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        if (settings is { Name: null, Role: null, Tier: null, Status: null })
+        if (settings is { Name: null, Role: null, Tier: null, Status: null, Alias: null })
         {
-            AnsiConsole.MarkupLine("[red]Nothing to change: give --name, --role, --tier or --status.[/]");
+            AnsiConsole.MarkupLine("[red]Nothing to change: give --name, --role, --tier, --status or --alias.[/]");
             return 1;
         }
         if (OrgChoice.Resolve(settings.Org) is not { } scope || !MembersCommand.InScope(scope, settings.Email)) return 1;
         return MembersCommand.Change(() => MembersCommand.Describe(
-            MemberRoster.Set(MembersCommand.Db(), settings.Email, settings.Name, settings.Role, settings.Tier, settings.Status, DateTime.UtcNow, unique: true)) + ".");
+            MemberRoster.Set(MembersCommand.Db(), settings.Email, settings.Name, settings.Role, settings.Tier, settings.Status, DateTime.UtcNow, unique: true, alias: settings.Alias)) + ".");
     }
 }
 

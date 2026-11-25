@@ -635,6 +635,12 @@ public sealed class OrchestratorDb(string path)
         );
         CREATE INDEX agent_messages_to ON agent_messages (to_agent, read_utc);
         """,
+        // 23: a member's alias (M.ORCH-T2221; see MemberRoster), a short display name for <who> lookups when the email's part
+        // before the @ clashes with another member's: membership is keyed by the full email (always unique), so the alias
+        // disambiguates two members who'd otherwise answer to the same local-part. Rows already there keep NULL: none set yet.
+        """
+        ALTER TABLE members ADD COLUMN alias TEXT;
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

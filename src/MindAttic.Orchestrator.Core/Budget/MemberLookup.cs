@@ -8,7 +8,9 @@ namespace MindAttic.Orchestrator.Budget;
 /// <param name="Name">The member's name ("Ryan DeBraal"); null when they have none.</param>
 /// <param name="Aliases">Their logins' names (<see cref="LoginLook.Alias"/>).</param>
 /// <param name="Initials">Their logins' badges (<see cref="LoginLook.Initials"/>); the name's own initials are added on their own.</param>
-public sealed record OrgPerson(string Email, string? Name, IReadOnlyList<string> Aliases, IReadOnlyList<string> Initials)
+/// <param name="Alias">Their member row's own alias (<see cref="Member.Alias"/>, M.ORCH-T2221): a short display name given to
+/// tell two members apart whose emails' parts before the @ clash; null when they have none.</param>
+public sealed record OrgPerson(string Email, string? Name, IReadOnlyList<string> Aliases, IReadOnlyList<string> Initials, string? Alias = null)
 {
     /// <summary>"Ryan DeBraal (ryandebraal@mindattic.com)", or the bare email without a name.</summary>
     public string Label => Name is { } n ? $"{n} ({Email})" : Email;
@@ -17,12 +19,13 @@ public sealed record OrgPerson(string Email, string? Name, IReadOnlyList<string>
     public string? NameInitials => Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries) is { Length: > 0 } words
         ? string.Concat(words.Select(w => char.ToUpperInvariant(w[0]))) : null;
 
-    /// <summary>Every way this person can be named: the email, the part before the @, the name, its first word, each login
-    /// alias and initials.</summary>
+    /// <summary>Every way this person can be named: the email, the part before the @, the member's own alias, the name, its
+    /// first word, each login alias and initials.</summary>
     public IEnumerable<string> Keys()
     {
         yield return Email;
         if (LoginLook.DefaultAlias(Email) is { } local) yield return local;
+        if (Alias is { } alias) yield return alias;
         if (Name is { } name)
         {
             yield return name;
@@ -41,13 +44,22 @@ public sealed record OrgPerson(string Email, string? Name, IReadOnlyList<string>
 /// </summary>
 public static class MemberLookup
 {
-    /// <summary>Everyone <paramref name="who"/> names (one is a match; none or several isn't).</summary>
+    /// <summary>Everyone <paramref name="who"/> names (one is a match; none or several isn't). When several match, but exactly
+    /// one of them by its full email or its own alias (<see cref="OrgPerson.Alias"/>, M.ORCH-T2221) exactly, that one wins over
+    /// the rest, who only matched a weaker key (the email's part before the @, a name's first word, and so on): a full email or
+    /// alias is unambiguous by construction, so it's taken over a guess. Still several exact matches (shouldn't normally happen,
+    /// since emails and aliases are unique) is left as several: no guessing.</summary>
     public static IReadOnlyList<OrgPerson> Match(IReadOnlyList<OrgPerson> people, string who)
     {
         var w = string.Join(' ', who.Split(' ', StringSplitOptions.RemoveEmptyEntries));
         if (w.Length == 0) return [];
-        return [.. people.Where(p => p.Keys().Any(k => string.Equals(k.Trim(), w, StringComparison.OrdinalIgnoreCase)))
-            .DistinctBy(p => p.Email, StringComparer.OrdinalIgnoreCase)];
+        var found = (IReadOnlyList<OrgPerson>)
+            [.. people.Where(p => p.Keys().Any(k => string.Equals(k.Trim(), w, StringComparison.OrdinalIgnoreCase)))
+                .DistinctBy(p => p.Email, StringComparer.OrdinalIgnoreCase)];
+        if (found.Count <= 1) return found;
+        var exact = found.Where(p => string.Equals(p.Email, w, StringComparison.OrdinalIgnoreCase)
+            || (p.Alias is { } alias && string.Equals(alias, w, StringComparison.OrdinalIgnoreCase))).ToList();
+        return exact.Count == 1 ? exact : found;
     }
 
     /// <summary>The members table's people, plus anyone signed in on this machine who isn't in it, each with their logins'
@@ -66,13 +78,13 @@ public static class MemberLookup
 
         var people = new List<OrgPerson>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        OrgPerson Person(string email, string? name)
+        OrgPerson Person(string email, string? name, string? alias = null)
         {
             var mine = looks.GetValueOrDefault(email) ?? [];
-            return new OrgPerson(email, name, [.. mine.Select(l => l.Alias).Distinct()], [.. mine.Select(l => l.Initials).Distinct()]);
+            return new OrgPerson(email, name, [.. mine.Select(l => l.Alias).Distinct()], [.. mine.Select(l => l.Initials).Distinct()], alias);
         }
         foreach (var m in MemberRoster.Load(db))
-            if (seen.Add(m.Email)) people.Add(Person(m.Email, m.Name));
+            if (seen.Add(m.Email)) people.Add(Person(m.Email, m.Name, m.Alias));
         foreach (var a in AccountRoster.Load(db))
             if (AccountDirs.Normalize(a.Email) is { } e && seen.Add(e)) people.Add(Person(e, null));
         foreach (var e in looks.Keys)

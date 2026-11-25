@@ -36,7 +36,7 @@ internal sealed class OrgHelpCommand : Command
         AnsiConsole.MarkupLine("[bold]orchestrator org[/] [grey](/org or /organization in a Claude CLI)[/]");
         foreach (var (use, what) in Subcommands)
             AnsiConsole.MarkupLine($"  [bold]{Markup.Escape(use)}[/]  {Markup.Escape(what)}");
-        AnsiConsole.MarkupLine("[grey]<who> is a member's email, the part before the @, name, first name, login alias or initials (RD, E), any case.[/]");
+        AnsiConsole.MarkupLine("[grey]<who> is a member's email, the part before the @, its own alias (orchestrator members set --alias), name, first name, login alias or initials (RD, E), any case.[/]");
         AnsiConsole.MarkupLine("[grey]Each works on the org chosen in the dashboard's switcher; --org <id|name> picks another (orchestrator orgs lists them).[/]");
         return 0;
     }
@@ -63,7 +63,7 @@ internal sealed class OrgHelpCommand : Command
         }
         AnsiConsole.MarkupLine(found.Count > 1
             ? $"[red]\"{Markup.Escape(who.Trim())}\" could be more than one member: name one of them.[/]"
-            : $"[red]No member {(scope.Scoped ? $"of {Markup.Escape(scope.Org.Name)} " : "")}is \"{Markup.Escape(who.Trim())}\": name one by email, the part before the @, name, first name, login alias or initials.[/]");
+            : $"[red]No member {(scope.Scoped ? $"of {Markup.Escape(scope.Org.Name)} " : "")}is \"{Markup.Escape(who.Trim())}\": name one by email, the part before the @, its own alias, name, first name, login alias or initials.[/]");
         foreach (var p in found.Count > 1 ? found : people)
             AnsiConsole.MarkupLine($"  {Markup.Escape(p.Label)}");
         return null;

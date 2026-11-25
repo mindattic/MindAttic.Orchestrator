@@ -12,6 +12,10 @@ public sealed record Member
     public string Email { get; init; } = "";
     /// <summary>The name the member goes by; null until one is given (the dashboard falls back to the login's alias).</summary>
     public string? Name { get; init; }
+    /// <summary>A short, unique display name for <c>&lt;who&gt;</c> lookups (M.ORCH-T2221): set it when the email's part
+    /// before the @ clashes with another member's (two emails can share a local-part; <see cref="Clash"/> only hard-blocks on
+    /// the full <see cref="Email"/> or this). Null until one is given.</summary>
+    public string? Alias { get; init; }
     /// <summary>One of <see cref="MemberRoster.Roles"/>.</summary>
     public string Role { get; init; } = MemberRoster.Roles[^1];
     /// <summary>One of <see cref="MemberRoster.Tiers"/>: the seat the member has.</summary>
@@ -89,12 +93,13 @@ public static class MemberRoster
     }
 
     /// <summary>Adds a member, checked first (<see cref="Check"/>); fails when <paramref name="email"/> already is one, or when
-    /// its name, initials or email is one another member already answers to (<see cref="Clash"/>, M.ORCH-T1445).</summary>
+    /// its name, initials, email or <paramref name="alias"/> is one another member already answers to (<see cref="Clash"/>,
+    /// M.ORCH-T1445).</summary>
     /// <exception cref="ArgumentException">An email, role, tier or status that isn't valid.</exception>
-    /// <exception cref="InvalidOperationException">Already a member, or another member already answers to its name, initials or email.</exception>
-    public static Member Add(OrchestratorDb db, string email, string? name, string role, string tier, string? status, DateTime nowUtc)
+    /// <exception cref="InvalidOperationException">Already a member, or another member already answers to its name, initials, email or alias.</exception>
+    public static Member Add(OrchestratorDb db, string email, string? name, string role, string tier, string? status, DateTime nowUtc, string? alias = null)
     {
-        var member = Check(email, name, role, tier, status ?? Statuses[0]) with { JoinedUtc = nowUtc, UpdatedUtc = nowUtc };
+        var member = Check(email, name, role, tier, status ?? Statuses[0], alias) with { JoinedUtc = nowUtc, UpdatedUtc = nowUtc };
         db.WriteData((connection, tx) =>
         {
             var rows = Rows(connection, tx);
@@ -124,13 +129,13 @@ public static class MemberRoster
         return member;
     }
 
-    /// <summary>Changes what's given of a member (null leaves it; an empty <paramref name="name"/> clears it); fails when
-    /// <paramref name="email"/> isn't one. Written only when something changed. With <paramref name="unique"/> (<c>orchestrator
-    /// members set</c>, M.ORCH-T1445), a new name another member already answers to is refused (<see cref="Clash"/>); keeping its
-    /// own name, or changing only its role, tier or status, never is.</summary>
+    /// <summary>Changes what's given of a member (null leaves it; an empty <paramref name="name"/> or <paramref name="alias"/>
+    /// clears it); fails when <paramref name="email"/> isn't one. Written only when something changed. With <paramref
+    /// name="unique"/> (<c>orchestrator members set</c>, M.ORCH-T1445), a new name or alias another member already answers to
+    /// is refused (<see cref="Clash"/>); keeping its own name or alias, or changing only its role, tier or status, never is.</summary>
     /// <exception cref="ArgumentException">An email, role, tier or status that isn't valid.</exception>
-    /// <exception cref="InvalidOperationException">Not a member, or (with <paramref name="unique"/>) a name another member answers to.</exception>
-    public static Member Set(OrchestratorDb db, string email, string? name, string? role, string? tier, string? status, DateTime nowUtc, bool unique = false)
+    /// <exception cref="InvalidOperationException">Not a member, or (with <paramref name="unique"/>) a name or alias another member answers to.</exception>
+    public static Member Set(OrchestratorDb db, string email, string? name, string? role, string? tier, string? status, DateTime nowUtc, bool unique = false, string? alias = null)
     {
         var key = Key(email);
         Member? result = null;
@@ -140,10 +145,11 @@ public static class MemberRoster
             var rows = Rows(connection, tx);
             var was = rows.FirstOrDefault(m => m.Email == key)
                 ?? throw new InvalidOperationException($"{key} isn't a member (orchestrator members add adds one).");
-            var next = Check(key, name is null ? was.Name : name, role ?? was.Role, tier ?? was.Tier, status ?? was.Status)
+            var next = Check(key, name is null ? was.Name : name, role ?? was.Role, tier ?? was.Tier, status ?? was.Status, alias is null ? was.Alias : alias)
                 with { JoinedUtc = was.JoinedUtc, UpdatedUtc = was.UpdatedUtc };
             if (next == was) { result = was; return false; }
-            if (unique && !string.Equals(next.Name, was.Name, StringComparison.OrdinalIgnoreCase) && Clash(rows, next, nameOnly: true) is { } clash)
+            if (unique && (!string.Equals(next.Name, was.Name, StringComparison.OrdinalIgnoreCase) || !string.Equals(next.Alias, was.Alias, StringComparison.OrdinalIgnoreCase))
+                && Clash(rows, next, nameOnly: true) is { } clash)
                 throw new InvalidOperationException(clash);
             result = next with { UpdatedUtc = nowUtc };
             Upsert(connection, tx, result);
@@ -192,19 +198,20 @@ public static class MemberRoster
 
     /// <summary>A member made of what was given, each value checked and made canonical.</summary>
     /// <exception cref="ArgumentException">An email, role, tier or status that isn't valid.</exception>
-    public static Member Check(string email, string? name, string role, string tier, string status) => new()
+    public static Member Check(string email, string? name, string role, string tier, string status, string? alias = null) => new()
     {
         Email = Key(email),
         Name = string.IsNullOrWhiteSpace(name) ? null : name.Trim(),
+        Alias = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim(),
         Role = Canonical(role, Roles) ?? throw new ArgumentException($"\"{role}\" isn't a role: one of {string.Join(", ", Roles)}."),
         Tier = Canonical(tier, Tiers) ?? throw new ArgumentException($"\"{tier}\" isn't a tier: one of {string.Join(", ", Tiers)}."),
         Status = Canonical(status, Statuses) ?? throw new ArgumentException($"\"{status}\" isn't a status: one of {string.Join(", ", Statuses)}."),
     };
 
     /// <summary>What <paramref name="member"/> answers to (M.ORCH-T1445), each with what it is: the email, the part before the
-    /// @, the name, and the name's initials when it has two or more words: the ways <c>/org &lt;who&gt;</c>
-    /// (<see cref="OrgPerson.Keys"/>) and the generated <c>/&lt;member&gt;</c> commands (MindAttic.Agency's
-    /// shared/member-commands.ps1) name a member.</summary>
+    /// @, the alias (<see cref="Member.Alias"/>, M.ORCH-T2221, when set), the name, and the name's initials when it has two or
+    /// more words: the ways <c>/org &lt;who&gt;</c> (<see cref="OrgPerson.Keys"/>) and the generated <c>/&lt;member&gt;</c>
+    /// commands (MindAttic.Agency's shared/member-commands.ps1) name a member.</summary>
     public static IEnumerable<(string Value, string What)> AnswersTo(Member member, bool nameOnly = false)
     {
         if (!nameOnly)
@@ -212,17 +219,20 @@ public static class MemberRoster
             yield return (member.Email, "email");
             if (LoginLook.DefaultAlias(member.Email) is { } local) yield return (local, "email's part before the @");
         }
+        if (Collapse(member.Alias) is { Length: > 0 } alias) yield return (alias, "alias");
         if (Collapse(member.Name) is not { Length: > 0 } name) yield break;
         yield return (name, "name");
         var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (words.Length >= 2) yield return (string.Concat(words.Select(w => char.ToUpperInvariant(w[0]))), "initials");
     }
 
-    /// <summary>Why <paramref name="candidate"/> can't be added or renamed (M.ORCH-T1445): the first of its name, initials or
-    /// email (only its name and initials with <paramref name="nameOnly"/>) that another of <paramref name="members"/> already
-    /// answers to, naming that member; null when none clashes. Two values clash when they're equal ignoring case and spacing, as
-    /// <see cref="MemberLookup.Match"/> compares them, or when they make the same <c>/&lt;member&gt;</c> command (their letters and
-    /// digits, lowercased). The candidate's own row (same email) is never a clash.</summary>
+    /// <summary>Why <paramref name="candidate"/> can't be added or renamed (M.ORCH-T1445): the first of its name, initials,
+    /// alias or email (only its name, initials and alias with <paramref name="nameOnly"/>) that another of <paramref
+    /// name="members"/> already answers to, naming that member; null when none clashes. Two values clash when they're equal
+    /// ignoring case and spacing, as <see cref="MemberLookup.Match"/> compares them, or when they make the same
+    /// <c>/&lt;member&gt;</c> command (their letters and digits, lowercased). The candidate's own row (same email) is never a
+    /// clash, and two different full emails sharing only their part before the @ never is either (M.ORCH-T2221): membership is
+    /// keyed by the full email, which is always unique, so that alone doesn't clash.</summary>
     public static string? Clash(IEnumerable<Member> members, Member candidate, bool nameOnly = false)
     {
         var mine = AnswersTo(candidate, nameOnly).ToList();
@@ -231,10 +241,13 @@ public static class MemberRoster
             if (string.Equals(other.Email, candidate.Email, StringComparison.OrdinalIgnoreCase)) continue;
             foreach (var (theirs, theirWhat) in AnswersTo(other))
                 foreach (var (value, what) in mine)
+                {
+                    if (what == "email's part before the @" && theirWhat == "email's part before the @") continue;
                     if (Same(value, theirs))
                         return $"The {what} \"{value}\" clashes with {other.Name ?? other.Email} ({other.Email}), who already answers to " +
-                            $"\"{theirs}\" (their {theirWhat}): /<member> commands and /org <who> need every member's name, initials and " +
-                            $"email to be unique, so give {(what.StartsWith("email", StringComparison.Ordinal) ? "another email" : "another --name")}.";
+                            $"\"{theirs}\" (their {theirWhat}): /<member> commands and /org <who> need every member's name, initials, alias " +
+                            $"and email to be unique, so give {(what.StartsWith("email", StringComparison.Ordinal) ? "another email" : what == "alias" ? "another --alias" : "another --name")}.";
+                }
         }
         return null;
     }
@@ -256,7 +269,7 @@ public static class MemberRoster
         AccountDirs.Normalize(email) ?? throw new ArgumentException($"\"{email}\" isn't an email address.");
 
     private static List<Member> Rows(DbConnection connection, DbTransaction? tx) =>
-        Sql.Read(connection, tx, "SELECT email, name, role, tier, status, joined_at, updated_at FROM members ORDER BY email;", r => new Member
+        Sql.Read(connection, tx, "SELECT email, name, role, tier, status, joined_at, updated_at, alias FROM members ORDER BY email;", r => new Member
         {
             Email = r.GetString(0),
             Name = Sql.OptionalText(r, 1),
@@ -265,12 +278,13 @@ public static class MemberRoster
             Status = r.GetString(4),
             JoinedUtc = At(Sql.Real(r, 5)),
             UpdatedUtc = At(Sql.Real(r, 6)),
+            Alias = Sql.OptionalText(r, 7),
         });
 
     private static void Upsert(DbConnection connection, DbTransaction tx, Member m) =>
         Sql.Upsert(connection, tx, "members", ["email"],
             ("email", m.Email), ("name", m.Name), ("role", m.Role), ("tier", m.Tier), ("status", m.Status),
-            ("joined_at", Epoch(m.JoinedUtc)), ("updated_at", Epoch(m.UpdatedUtc)));
+            ("joined_at", Epoch(m.JoinedUtc)), ("updated_at", Epoch(m.UpdatedUtc)), ("alias", m.Alias));
 
     private static double Epoch(DateTime utc) => (utc - DateTime.UnixEpoch).TotalSeconds;
 

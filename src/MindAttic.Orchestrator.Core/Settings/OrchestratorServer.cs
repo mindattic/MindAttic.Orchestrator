@@ -193,7 +193,7 @@ public sealed class OrchestratorServer(string connectionString)
             """, null),
         ("members", """
             email nvarchar(450) NOT NULL PRIMARY KEY, name nvarchar(max) NULL, role nvarchar(64) NOT NULL, tier nvarchar(64) NOT NULL,
-            status nvarchar(64) NOT NULL, joined_at float NOT NULL, updated_at float NOT NULL
+            status nvarchar(64) NOT NULL, joined_at float NOT NULL, updated_at float NOT NULL, alias nvarchar(max) NULL
             """, null),
         ("usage_samples", """
             at nvarchar(64) NOT NULL PRIMARY KEY, "percent" float NOT NULL, reset nvarchar(64) NOT NULL, window_fresh bigint NOT NULL
@@ -269,8 +269,8 @@ public sealed class OrchestratorServer(string connectionString)
     /// <c>assignments.account</c> (M.ORCH-T668); 4, <c>organizations</c> and <c>org_members</c> (M.ORCH-T655); 5, <c>term_grants</c>
     /// and <c>term_audit</c> (M.ORCH-T934); 6, <c>resources</c> (M.ORCH-T1676); 7, <c>reminders</c> (M.ORCH-T1932); 8, <c>roles</c> and
     /// <c>agents</c> (M.ORCH-T1742); 9, <c>assignments.agent</c> (M.ORCH-T1743); 10, <c>assignments.role</c> (M.ORCH-T1746);
-    /// 11, <c>agent_messages</c> (M.ORCH-T1745).</summary>
-    public const int SchemaVersion = 11;
+    /// 11, <c>agent_messages</c> (M.ORCH-T1745); 12, <c>members.alias</c> (M.ORCH-T2221).</summary>
+    public const int SchemaVersion = 12;
 
     /// <summary>The changes to tables already there, one step per version past 1, as SQLite's migrations add them: a column
     /// added to a table there is one more step here (an <c>ALTER TABLE ... ADD</c>, also added to its <see cref="Tables"/> row so
@@ -287,6 +287,7 @@ public sealed class OrchestratorServer(string connectionString)
         ("assignments", "IF COL_LENGTH(N'assignments', N'agent') IS NULL ALTER TABLE assignments ADD agent nvarchar(64) NULL;"), // 9: the agent working each (M.ORCH-T1743)
         ("assignments", "IF COL_LENGTH(N'assignments', N'role') IS NULL ALTER TABLE assignments ADD role nvarchar(128) NULL;"), // 10: the role each is worked as (M.ORCH-T1746)
         ("agent_messages", ""), // 11: agent_messages, the agent mailbox, a new table (created with the rest below; M.ORCH-T1745)
+        ("members", "IF COL_LENGTH(N'members', N'alias') IS NULL ALTER TABLE members ADD alias nvarchar(max) NULL;"), // 12: a member's alias (M.ORCH-T2221)
     ];
 
     private void EnsureSchema(SqlConnection connection)
