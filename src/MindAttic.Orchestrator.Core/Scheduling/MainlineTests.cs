@@ -43,6 +43,9 @@ public sealed partial class MainlineTests(JsonStore store)
     internal const int MaxIncomplete = 3;
     internal static readonly TimeSpan SuiteTimeout = TimeSpan.FromMinutes(90);
 
+    /// <summary>Each repo's head already found to add only data, docs or markdown past its Tested, so it isn't diffed every check.</summary>
+    private readonly Dictionary<string, string> nonCodeHeads = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>What a repo's main line was last tested at, and last passed at.</summary>
     public sealed class RepoState
     {
@@ -204,13 +207,13 @@ public sealed partial class MainlineTests(JsonStore store)
                     continue;
                 }
                 if (string.Equals(st.Tested, head, StringComparison.OrdinalIgnoreCase)) continue;
-                // Only data, docs or markdown landed (the orchestrator's own database sync every 10 minutes, a ticket view):
-                // nothing a test reads changed, so it counts as tested where it was, green if that was.
+                // Only data, docs or markdown landed (the orchestrator's own database sync, a ticket view): nothing a test reads
+                // changed, so nothing runs. Tested and Green stay where they were (M.ORCH-T2200): recording the sync's own commit
+                // as tested rewrote data/orchestrator.db, which the next sync committed again, every 10 minutes for good.
+                if (string.Equals(nonCodeHeads.GetValueOrDefault(name), head, StringComparison.OrdinalIgnoreCase)) continue;
                 if (st.Tested is { } before && OnlyNonCode(path, before, head))
                 {
-                    if (string.Equals(st.Green, before, StringComparison.OrdinalIgnoreCase)) st.Green = head;
-                    st.Tested = head;
-                    changed = true;
+                    nonCodeHeads[name] = head;
                     continue;
                 }
                 // The solution comes from the commit being built, tracked files only: the repo's own folder may be behind

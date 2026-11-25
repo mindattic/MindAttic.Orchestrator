@@ -435,7 +435,7 @@ public sealed class MainlineTestsTests
     }
 
     [Test]
-    public void A_landing_of_only_data_docs_or_markdown_is_not_run_and_keeps_green()
+    public void A_landing_of_only_data_docs_or_markdown_is_not_run_and_leaves_the_state_alone()
     {
         var tests = Make();
         Tick(tests, Now);
@@ -449,7 +449,7 @@ public sealed class MainlineTestsTests
         Assert.That(Tick(tests, Now.AddMinutes(3)), Is.Empty);
         Assert.That(runs, Has.Count.EqualTo(1));
         var state = store.Load<Dictionary<string, MainlineTests.RepoState>>(MainlineTests.StateName)["A"];
-        Assert.That((state.Tested, state.Green), Is.EqualTo(("aaaaaaa3", "aaaaaaa3")));
+        Assert.That((state.Tested, state.Green), Is.EqualTo(("aaaaaaa2", "aaaaaaa2")));
     }
 
     [Test]

@@ -550,6 +550,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
         // Ended before the leases it refreshes under are let go.
         beside?.Join();
+        // A change made since the last sync isn't left for the next start (M.ORCH-T2200).
+        try
+        {
+            if (gitChoresLease.TryAcquire() && Settings.OrchestratorDb.LivePath is var lastLive && Settings.OrchestratorDb.RepoOf(lastLive) is { } lastRepo)
+                SyncOrchestratorDbIfDue(lastRepo, lastLive, DateTime.UtcNow, final: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"orchestrator db sync at shutdown: {ex.Message}"); }
         ClaudeMeterProbe.ReadingLanded -= OnReading;
         Say(LogEventLevel.Information, "daemon stopped");
     }
@@ -1347,13 +1354,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// commits <c>data/orchestrator.db</c> and the dump in the main checkout at <paramref name="repo"/> and pushes, as
     /// <c>tickets db sync</c> does for Tickets.db (M.ORCH-T490). Only those two paths go in the commit (other staged work is
     /// left as it was), and a commit that doesn't land unstages them. A database <see cref="Settings.OrchestratorDb.EnvVar"/> (<paramref name="dbPath"/>)
-    /// moves elsewhere isn't committed.
+    /// moves elsewhere isn't committed. <paramref name="final"/> (the daemon stopping) doesn't wait out the interval.
     /// </summary>
-    internal void SyncOrchestratorDbIfDue(string repo, string dbPath, DateTime nowUtc)
+    internal void SyncOrchestratorDbIfDue(string repo, string dbPath, DateTime nowUtc, bool final = false)
     {
         var db = Path.Combine(repo, Settings.OrchestratorDb.RelativePath.Replace('/', Path.DirectorySeparatorChar));
         var sql = Path.Combine(repo, Settings.OrchestratorDb.DumpRelativePath.Replace('/', Path.DirectorySeparatorChar));
-        if (nowUtc - orchestratorDbTriedUtc < OrchestratorSettings.SecondsSpan(tunables.OrchestratorDbSyncMinutes * 60) || !File.Exists(db) || !File.Exists(sql)) return;
+        if (!final && nowUtc - orchestratorDbTriedUtc < OrchestratorSettings.SecondsSpan(tunables.OrchestratorDbSyncMinutes * 60) || !File.Exists(db) || !File.Exists(sql)) return;
         if (!string.Equals(Path.GetFullPath(dbPath), Path.GetFullPath(db), StringComparison.OrdinalIgnoreCase)) return;
         string dump;
         try { dump = File.ReadAllText(sql); }

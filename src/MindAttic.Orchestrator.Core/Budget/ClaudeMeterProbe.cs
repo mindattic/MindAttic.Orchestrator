@@ -198,10 +198,13 @@ public sealed class ClaudeMeterProbe
     /// whether it started. The reading lands in <see cref="UsagePath"/> for the next refresh to pick up.</summary>
     /// <param name="force">Ask whether or not it's due (still one at a time, and not while backing off): the account
     /// just signed in to has no window confirmed yet.</param>
-    /// <remarks>Also asks an idle login every <see cref="IdleEvery"/> (<see cref="IdleDue"/>, M.ORCH-T661).</remarks>
+    /// <remarks>Also asks an idle login every <see cref="IdleEvery"/> (<see cref="IdleDue"/>, M.ORCH-T661). A force doesn't
+    /// hurry a login whose last ask found nothing to read (no 5-hour window running, or a sign-in only the person can mend)
+    /// while nothing spends on it (M.ORCH-T2200): the global login, never holding a window, was forced every tick and asked
+    /// every <see cref="Backoff"/> for days. <see cref="Reset"/> (a switch of account) lifts that.</remarks>
     public bool Tick(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc, bool force = false, IEnumerable<UsageSample>? samples = null)
     {
-        if (!force && !Due(reportedAtUtc, events, nowUtc, samples) && !IdleDue(reportedAtUtc, LastAskUtc, nowUtc))
+        if ((!force || noWindow || signInFailed) && !Due(reportedAtUtc, events, nowUtc, samples) && !IdleDue(reportedAtUtc, LastAskUtc, nowUtc))
         {
             IsDue = false;
             return false;
@@ -292,8 +295,13 @@ public sealed class ClaudeMeterProbe
         {
             nextUtc = default;
             generation++;
+            noWindow = signInFailed = false;
         }
     }
+
+    /// <summary>Whether the last reading had no 5-hour window running, and whether the last ask failed on a sign-in only the
+    /// person can mend (M.ORCH-T2200).</summary>
+    private bool noWindow, signInFailed;
 
     private async Task AskAsync(DateTime nowUtc, int asked)
     {
@@ -389,6 +397,8 @@ public sealed class ClaudeMeterProbe
         {
             LastReading = Write(UsagePath, reading, DateTime.UtcNow, account, Store);
             NeedsSignIn = false;
+            signInFailed = false;
+            noWindow = reading.FiveHour is null;
             // An idle login has no running 5-hour window: the endpoint gives only the week (M.ORCH-T687).
             LastResult = reading.FiveHour is { } shown ? $"read Claude's meter: {shown.Percent:0}% of the 5-hour window"
                 : $"read Claude's meter: no 5-hour window running, week {reading.Week?.Percent:0}%";
@@ -413,6 +423,10 @@ public sealed class ClaudeMeterProbe
 
         void Fail(string why, TimeSpan? wait = null, bool signIn = false)
         {
+            // A first refusal may be a race with a CLI rotating the token (M.ORCH-T813); the same one again is the person's to
+            // mend, and asking every Backoff only repeats it (M.ORCH-T2200: the global login's revoked sign-in, 200+ in a row).
+            if (signIn && signInFailed && (wait ?? Backoff) < IdleEvery) wait = IdleEvery;
+            signInFailed = signIn;
             // Only the folder's sign-in is dead (M.ORCH-T1836): tabs on a valid long-lived token keep working, so this is a
             // meter that can't be read, not a login that needs the person; NeedsSignIn would put "sign in again" on every tab.
             if (signIn && TabsOnToken?.Invoke() == true)
