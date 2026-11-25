@@ -68,15 +68,33 @@ public sealed partial class MainViewModel
     {
         if (root is not null) return await root.ReapplyStateAsync(hidden);
         if (hidden || workspace is not { } shown || lastOrgs is not { } orgsNow) return false;
-        if (refreshing) return true;
-        var dirs = OwnLoginDirs();
-        var members = lastMembers;
-        // Each login's tab and its signed-in state, off the UI thread, as a read does it.
-        var tabs = await Task.Run(() => LoginScope.Tabs(shown, dirs, members, lastApiKey));
-        // A read or pushed figures that landed meanwhile applied the roster as it is now themselves.
-        if (refreshing || !ReferenceEquals(workspace, shown)) return false;
-        ApplyTabs(shown, tabs, lastOrgs ?? orgsNow);
-        return false;
+        // A figures pass's background read writes the same accountsRead/ParentsRead fields this one does (M.ORCH-T1977).
+        if (refreshing || applyingFigures) return true;
+        applyingFigures = true;
+        try
+        {
+            var dirs = OwnLoginDirs();
+            var members = lastMembers;
+            var tabs = await Task.Run(() =>
+            {
+                // What ApplyAccounts shows and the CLI tabs' process tree, read here rather than on the UI thread
+                // (M.ORCH-T2196, as a read does it: M.ORCH-T1735, M.ORCH-T1738).
+                accountsRead = ReadAccounts(shown.Account, DateTime.UtcNow);
+                AllTerminals.ParentsRead = ReadParents();
+                // Each login's tab and its signed-in state, off the UI thread, as a read does it.
+                return LoginScope.Tabs(shown, dirs, members, lastApiKey);
+            });
+            // A read or pushed figures that landed meanwhile applied the roster as it is now themselves.
+            if (refreshing || !ReferenceEquals(workspace, shown)) return false;
+            ApplyTabs(shown, tabs, lastOrgs ?? orgsNow);
+            return false;
+        }
+        finally
+        {
+            applyingFigures = false;
+            // A refresh asked for meanwhile waited for this pass rather than racing its read (M.ORCH-T1977): run it now.
+            _ = RunQueuedRefreshAsync();
+        }
     }
 
     // When each kind's payload applied last was read from the store; kept across a dropped stream, since what comes again then is

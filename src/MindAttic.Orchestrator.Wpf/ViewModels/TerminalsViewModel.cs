@@ -1794,7 +1794,10 @@ public sealed class TerminalsViewModel : ObservableObject
         var learned = false;
         // The process tree a refresh read off the UI thread (M.ORCH-T1738), when it did: a Launcher menu pane never finds a
         // host, so some pane asks for it at every refresh, and reading it here cost 100-300ms under memory pressure.
-        var parents = ParentsRead;
+        // Without one, the last one read stands in, and with none at all the tree is never read here (M.ORCH-T2196): a pane it
+        // doesn't answer for learns its host at the next refresh that read one.
+        if (ParentsRead is { } fresh) lastParents = fresh;
+        var parents = lastParents;
         ParentsRead = null;
         foreach (var pane in Panes.Where(p => !p.Ended).ToList())
         {
@@ -1804,8 +1807,8 @@ public sealed class TerminalsViewModel : ObservableObject
                 continue;
             }
             if (snapshot is null || pane.RootPid is not { } root) continue;
-            pane.HostPid ??= HostOf(root, hosts, ref parents);
-            var session = SessionOf(pane, root, snapshot, ref parents);
+            pane.HostPid ??= HostOf(root, hosts, parents);
+            var session = SessionOf(pane, root, snapshot, parents);
             if (session is { Length: > 0 } && !string.Equals(session, pane.SessionId, StringComparison.Ordinal))
             {
                 // The session its CLI is in now (a /clear starts a new one): what a restore resumes it on (M.ORCH-T862).
@@ -1839,18 +1842,17 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <summary>The process tree, read off the UI thread for the next <see cref="Update"/>; null has it read there, when needed.</summary>
     internal volatile IReadOnlyDictionary<int, int>? ParentsRead;
 
-    /// <summary>The Launcher host that is the pane's own process or runs under it. The process tree is read once per refresh,
-    /// for every pane (M.ORCH-T1735): it was read once per host per pane, on the UI thread, at every refresh.</summary>
-    private static int? HostOf(int root, List<HostSession> hosts, ref IReadOnlyDictionary<int, int>? parents)
+    // The last process tree a refresh read off the UI thread, for an Update that came without one.
+    private IReadOnlyDictionary<int, int>? lastParents;
+
+    /// <summary>The Launcher host that is the pane's own process or runs under it, by the process tree read off the UI thread
+    /// (M.ORCH-T1735, M.ORCH-T2196); null with none read yet.</summary>
+    private static int? HostOf(int root, List<HostSession> hosts, IReadOnlyDictionary<int, int>? parents)
     {
         if (hosts.Count == 0) return null;
         if (hosts.FirstOrDefault(h => h.ProcessId == root) is { } own) return own.ProcessId;
-        try
-        {
-            var tree = parents ??= ProcessTree.ParentMap();
-            return hosts.FirstOrDefault(h => ProcessTree.IsAncestor(root, h.ProcessId, tree))?.ProcessId;
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException) { return null; }
+        if (parents is null) return null;
+        return hosts.FirstOrDefault(h => ProcessTree.IsAncestor(root, h.ProcessId, parents))?.ProcessId;
     }
 
     /// <summary>A pane's CLI's session was learned or changed (M.ORCH-T862): the session-restore file is rewritten.</summary>
@@ -1866,19 +1868,15 @@ public sealed class TerminalsViewModel : ObservableObject
 
     /// <summary>The Claude session <paramref name="pane"/>'s CLI is in: the agent its Launcher host runs, else the one whose
     /// claude.exe (the pid the context gate recorded in session-context) runs under the pane's own process. Null for a
-    /// Launcher menu pane, and while none is seen. The process tree is read once per refresh, and only when a host doesn't answer.</summary>
-    private static string? SessionOf(TerminalPaneViewModel pane, int root, Snapshot snapshot, ref IReadOnlyDictionary<int, int>? parents)
+    /// Launcher menu pane, and while none is seen. The process tree is the one read off the UI thread, used only when a host doesn't
+    /// answer; with none read, only a CLI that is the pane's own process is found.</summary>
+    private static string? SessionOf(TerminalPaneViewModel pane, int root, Snapshot snapshot, IReadOnlyDictionary<int, int>? parents)
     {
         if (pane.Request.IsMenu) return null;
         if (pane.HostPid is { } host && snapshot.Agents.FirstOrDefault(a => a.Host?.ProcessId == host) is { SessionId: { Length: > 0 } byHost })
             return byHost;
-        if (!snapshot.Agents.Any(a => a.CliPid is not null)) return null;
-        try
-        {
-            var tree = parents ??= ProcessTree.ParentMap();
-            return snapshot.Agents.FirstOrDefault(a => a.CliPid is { } cli && (cli == root || ProcessTree.IsAncestor(root, cli, tree)))?.SessionId;
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException) { return null; }
+        return snapshot.Agents.FirstOrDefault(a => a.CliPid is { } cli
+            && (cli == root || parents is not null && ProcessTree.IsAncestor(root, cli, parents)))?.SessionId;
     }
 }
 
