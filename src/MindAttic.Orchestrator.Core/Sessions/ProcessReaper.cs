@@ -17,7 +17,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// directory's resolved SDK, not every repo's), so without this they outlive the agent forever, same as an
 /// orphaned <c>find</c>.</para>
 /// </summary>
-public static class ProcessReaper
+public static partial class ProcessReaper
 {
     /// <summary>The default handle cap; live, <see cref="Settings.OrchestratorSettings.ReapMaxHandles"/> (M.ORCH-T1595).</summary>
     public const long MaxHandleCount = 50_000;
@@ -26,18 +26,18 @@ public static class ProcessReaper
     public static readonly TimeSpan MaxAge = TimeSpan.FromMinutes(30);
 
     /// <summary>The default scan interval; live, <see cref="Settings.OrchestratorSettings.ReapEverySeconds"/>: a leak takes
-    /// minutes to matter, and each scan is a WMI query that WmiPrvSE pays for (M.ORCH-T117: every 15s it was a steady CPU cost of its own).</summary>
+    /// minutes to matter (M.ORCH-T117: every 15s, as a WMI query, it was a steady CPU cost of its own).</summary>
     public static readonly TimeSpan Every = TimeSpan.FromSeconds(60);
 
     /// <summary>Ancestor hops to walk looking for a live Claude CLI before giving up on telling either way.</summary>
     private const int MaxAncestorHops = 20;
 
-    /// <summary>A start time WMI couldn't give: never compared, never counted as old.</summary>
+    /// <summary>A start time the scan couldn't read: never compared, never counted as old.</summary>
     public static readonly DateTime Unknown = DateTime.MinValue;
 
     private static readonly string[] TargetNames = ["find", "rg", "grep", "git", "bash", "python", "node", "dotnet"];
 
-    /// <summary>One process in a scan: its id, name, parent, handle count, start time (<see cref="Unknown"/> when WMI gave none) and command line.</summary>
+    /// <summary>One process in a scan: its id, name, parent, handle count, start time (<see cref="Unknown"/> when the scan couldn't read it) and command line.</summary>
     public sealed record ProcessInfo(int Pid, string Name, int ParentPid, long HandleCount, DateTime StartUtc, string? CommandLine);
 
     /// <summary>A process <see cref="Select"/> picked to kill, and why.</summary>
@@ -111,9 +111,9 @@ public static class ProcessReaper
     /// this daemon's and, through <see cref="SeenStore"/>, the ones before it.</summary>
     private static readonly HashSet<(int Pid, DateTime Start)> SeenUnderAgent = [];
 
-    /// <summary>Snapshots every process via WMI, kills the ones <see cref="Select"/> flags (the whole tree under
+    /// <summary>Snapshots every process, kills the ones <see cref="Select"/> flags (the whole tree under
     /// each, so an orphaned shell takes its own still-running children with it), and returns what it killed.
-    /// Best effort: a process that exits mid-kill, or WMI being unavailable, is swallowed rather than thrown.</summary>
+    /// Best effort: a process that exits mid-kill, or a snapshot that fails, is swallowed rather than thrown.</summary>
     /// <param name="store">Where the seen set is kept between runs (M.ORCH-T1678): read in before the first scan, so that scan
     /// already reaps what an earlier daemon saw under an agent that has since exited, and written back as it changes. Null
     /// keeps it in memory alone.</param>
@@ -240,7 +240,7 @@ public static class ProcessReaper
         ISet<(int Pid, DateTime Start)> underAgent, long maxHandles = MaxHandleCount, TimeSpan? maxAge = null)
     {
         var processes = snapshot();
-        if (processes.Count == 0) return []; // WMI failed: forget nothing, kill nothing
+        if (processes.Count == 0) return []; // the snapshot failed: forget nothing, kill nothing
         var reaped = Select(processes, nowUtc, underAgent, maxHandles, maxAge)
             .Select(r => r with { Process = r.Process with { CommandLine = commandLine(r.Process.Pid) } })
             .ToList();
@@ -262,30 +262,53 @@ public static class ProcessReaper
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or AggregateException) { }
     }
 
+    /// <summary>A Toolhelp32 snapshot for ids, parents and names (M.ORCH-T2214: the WMI query it replaced cost WmiPrvSE CPU
+    /// every scan), then each process opened for its handle count and start time; one that can't be opened has 0 and
+    /// <see cref="Unknown"/>.</summary>
     private static IReadOnlyList<ProcessInfo> Snapshot()
     {
         var result = new List<ProcessInfo>();
-        try
+        foreach (var (pid, (parentPid, name)) in ProcessTree.Snapshot())
         {
-            using var searcher = new ManagementObjectSearcher(
-                "SELECT ProcessId, ParentProcessId, Name, HandleCount, CreationDate FROM Win32_Process");
-            using var found = searcher.Get();
-            foreach (var o in found)
-            {
-                using (o)
-                {
-                    if (o["ProcessId"] is not uint pid || o["Name"] is not string name) continue;
-                    var parentPid = o["ParentProcessId"] is uint ppid ? (int)ppid : 0;
-                    var handles = o["HandleCount"] is uint h ? h : 0;
-                    var started = o["CreationDate"] is string cd ? SafeParse(cd) : Unknown;
-                    result.Add(new ProcessInfo((int)pid, name, parentPid, handles, started, null));
-                }
-            }
+            if (string.IsNullOrEmpty(name)) continue;
+            var (handles, started) = HandlesAndStart(pid);
+            result.Add(new ProcessInfo(pid, name, parentPid, handles, started, null));
         }
-        catch (ManagementException ex) { OrchestratorLog.For("ProcessReaper").Warning(ex, "The WMI process snapshot failed; contained"); }
-        catch (COMException ex) { OrchestratorLog.For("ProcessReaper").Warning(ex, "The WMI process snapshot failed; contained"); }
         return result;
     }
+
+    private static (long Handles, DateTime StartUtc) HandlesAndStart(int pid)
+    {
+        var h = OpenProcess(ProcessQueryLimitedInformation, false, (uint)pid);
+        if (h == IntPtr.Zero) return (0, Unknown);
+        try
+        {
+            var handles = GetProcessHandleCount(h, out var count) ? count : 0;
+            // Kept to whole microseconds, as WMI's CreationDate gave it: the seen rows earlier scans saved hold those ticks.
+            var started = GetProcessTimes(h, out var created, out _, out _, out _) && created > 0
+                ? new DateTime(DateTime.FromFileTimeUtc(created).Ticks / 10 * 10, DateTimeKind.Utc)
+                : Unknown;
+            return (handles, started);
+        }
+        finally { CloseHandle(h); }
+    }
+
+    private const uint ProcessQueryLimitedInformation = 0x1000;
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial IntPtr OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint processId);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetProcessHandleCount(IntPtr process, out uint count);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetProcessTimes(IntPtr process, out long creation, out long exit, out long kernel, out long user);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool CloseHandle(IntPtr handle);
 
     private static string? CommandLineOf(int pid)
     {
@@ -301,9 +324,4 @@ public static class ProcessReaper
         return null;
     }
 
-    private static DateTime SafeParse(string dmtf)
-    {
-        try { return ManagementDateTimeConverter.ToDateTime(dmtf).ToUniversalTime(); }
-        catch (Exception ex) when (ex is FormatException or ArgumentException) { return Unknown; }
-    }
 }
