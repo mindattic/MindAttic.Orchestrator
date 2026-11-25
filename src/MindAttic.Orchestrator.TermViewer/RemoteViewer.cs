@@ -137,6 +137,14 @@ internal sealed class RemoteViewerWindow : Window
         Closed += (_, _) => look.Stop();
         look.Tick += async (_, _) => await LookAsync();
         look.Start();
+        // Minimized, no looks (M.ORCH-T2209): nobody sees the title; restored, one look at once.
+        StateChanged += async (_, _) =>
+        {
+            if (WindowState == WindowState.Minimized) { look.Stop(); return; }
+            if (look.IsEnabled || !IsLoaded) return;
+            look.Start();
+            await LookAsync();
+        };
     }
 
     private static MenuItem Item(string header, string? gesture, Action act)
@@ -185,7 +193,7 @@ internal sealed class RemoteViewerWindow : Window
         catch (Exception ex) { log.Error(ex, "Detaching from {Id:l} failed; contained", info.Id); }
     }
 
-    /// <summary>Every ten seconds: the CLI's latest title, and whether the gateway still lists it (a dropped stream attaches
+    /// <summary>Every ten seconds while not minimized: the CLI's latest title, and whether the gateway still lists it (a dropped stream attaches
     /// again only while it does).</summary>
     private async Task LookAsync()
     {

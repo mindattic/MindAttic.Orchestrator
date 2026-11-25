@@ -532,6 +532,8 @@ public partial class MainWindow : Window
             if (payload is Status.SettingsPayload) ThemeChoice.Follow(Application.Current?.Resources, model.Store);
             // The font chosen there too (M.ORCH-T1274), swapped in live the same way.
             if (payload is Status.SettingsPayload) FontChoice.Follow(Application.Current?.Resources, model.Store);
+            // And the Team Wall's gateways and staleness (M.ORCH-T2209), so its timed look never rereads the store.
+            if (payload is Status.SettingsPayload settings) TeamWallWindow.Follow(settings);
             if (!model.ApplyPushedState(payload)) return;
             var read = await model.ReapplyStateAsync(Hidden || !IsLoaded);
             if (read && IsLoaded && !Hidden) await model.RefreshAsync();

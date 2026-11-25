@@ -52,6 +52,9 @@ internal sealed class TeamWallWindow : Window
     // Concurrent (M.ORCH-T1014): a tile's reconnect reads it from a thread-pool thread (ConnectFor) while SyncClients and
     // Shutdown change it on the UI thread. A client disposed under a reconnect fails that attach, which the relay contains.
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, GatewayClient> clients = new(StringComparer.OrdinalIgnoreCase);
+    // The settings as last read or pushed (M.ORCH-T2209): a refresh reads the store only when it has none, so a timed look costs
+    // no database read; the status bus's settings push (Follow) and the Refresh button keep it current.
+    private OrchestratorSettings? settings;
     private IReadOnlyList<WallSession> all = [];
     private IReadOnlyList<WallGateway> gateways = [];
     private volatile HashSet<string> listed = new(StringComparer.Ordinal);
@@ -79,7 +82,7 @@ internal sealed class TeamWallWindow : Window
         next = Bar("›", "Next page");
         next.Click += (_, _) => { page++; Render(); };
         var refresh = Bar("Refresh", "Look at every gateway now");
-        refresh.Click += (_, _) => _ = RefreshAsync();
+        refresh.Click += (_, _) => { settings = null; _ = RefreshAsync(); };
 
         var right = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         right.Children.Add(previous);
@@ -110,8 +113,8 @@ internal sealed class TeamWallWindow : Window
 
         tilesHost.SizeChanged += (_, _) => Render();
         SizeChanged += (_, _) => { if (MainWindow.WantsCompact(ActualWidth, ActualHeight, phone) != phone) Render(); };
-        StateChanged += (_, _) => Render();
-        IsVisibleChanged += (_, _) => Render();
+        StateChanged += (_, _) => { Render(); PauseWhileHidden(); };
+        IsVisibleChanged += (_, _) => { Render(); PauseWhileHidden(); };
         Loaded += (_, _) => _ = RefreshAsync();
         timer.Tick += (_, _) => _ = RefreshAsync();
         timer.Start();
@@ -143,6 +146,24 @@ internal sealed class TeamWallWindow : Window
             log.Error(ex, "Opening the Team Wall failed; contained");
             return null;
         }
+    }
+
+    /// <summary>The settings pushed on the status bus (M.ORCH-T2209), taken by the open wall when they're its own store's.</summary>
+    internal static void Follow(MindAttic.Orchestrator.Status.SettingsPayload pushed)
+    {
+        if (shown is { } open && MindAttic.Orchestrator.Status.StateBus.SameStore(pushed.Store, MindAttic.Orchestrator.Status.StateBus.StoreOf(open.store.Db)))
+            open.settings = pushed.Settings;
+    }
+
+    /// <summary>Minimized or hidden, no looks at all (M.ORCH-T2209); shown again, one look at once, then every
+    /// <see cref="TeamWall.RefreshEvery"/> again.</summary>
+    private void PauseWhileHidden()
+    {
+        var visible = IsVisible && WindowState != WindowState.Minimized;
+        if (closed || visible == timer.IsEnabled) return;
+        if (!visible) { timer.Stop(); return; }
+        timer.Start();
+        _ = RefreshAsync();
     }
 
     private static Button Bar(string text, string tip) =>
@@ -192,7 +213,7 @@ internal sealed class TeamWallWindow : Window
         try
         {
             var ct = lifetime.Token;
-            var settings = await Task.Run(store.LoadSettings, ct).ConfigureAwait(true);
+            var settings = this.settings ??= await Task.Run(store.LoadSettings, ct).ConfigureAwait(true);
             staleAfter = TimeSpan.FromMinutes(Math.Max(0, settings.ActivityStaleMinutes));
             var remotes = settings.Gateway.Remotes;
             SyncClients(remotes);
