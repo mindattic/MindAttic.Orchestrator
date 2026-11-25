@@ -1195,6 +1195,12 @@ public sealed class OrchestratorVaultSettings
     [PathPicker(PathKind.Folder)]
     public string WorktreeRoot { get; set; } = @"D:\Projects\MindAttic.worktrees";
 
+    /// <summary>Where every temp file goes; processes the orchestrator starts get TEMP/TMP under it.</summary>
+    [Setting("Temp root", Group = "Folders", Order = 3,
+        Help = "Where every temp file goes. The daemon, dashboard and each CLI host move TEMP and TMP here at start when they point elsewhere, so every CLI, git, dotnet and hook they start inherits it; the machine probe warns when the user, machine or SYSTEM TEMP isn't under it. A folder that doesn't exist leaves TEMP alone.")]
+    [PathPicker(PathKind.Folder)]
+    public string TempRoot { get; set; } = Term.TempRoot.Default;
+
     /// <summary>Entries email=date joined by ; (a date is yyyy-MM-dd, that day's end, or yyyy-MM-ddTHH:mm, local).</summary>
     [Setting("Member until dates", Group = "Dashboard", Order = 23,
         Help = "Entries email=date joined by ; (a date is yyyy-MM-dd, that day's end, or yyyy-MM-ddTHH:mm, local). After its date the dashboard drops that member's tab and stops auto-starting or respawning its CLI tabs; nothing of the member (login, credentials, data) is deleted. Clear the entry to bring the tab back.")]
@@ -1423,6 +1429,7 @@ public sealed class OrchestratorVaultSettings
         EndedLauncherTabMinutes = s.EndedLauncherTabMinutes,
         WorkspaceRoot = WorkspaceOverrideOf(s),
         WorktreeRoot = s.WorktreeRoot,
+        TempRoot = s.TempRoot,
         MemberUntil = s.MemberUntil,
         Gateway = OrchestratorGatewayVaultSettings.From(s.Gateway ?? new GatewaySettings()),
     };
@@ -1644,6 +1651,7 @@ public sealed class OrchestratorVaultSettings
         BranchTestsDiskWaitMinutes = BranchTestsDiskWaitMinutes,
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,
         WorktreeRoot = string.IsNullOrWhiteSpace(WorktreeRoot) ? s.WorktreeRoot : WorktreeRoot,
+        TempRoot = string.IsNullOrWhiteSpace(TempRoot) ? s.TempRoot : TempRoot,
         MemberUntil = MemberUntil ?? "",
         Gateway = (Gateway ?? new()).ApplyTo(s.Gateway ?? new GatewaySettings()),
     };

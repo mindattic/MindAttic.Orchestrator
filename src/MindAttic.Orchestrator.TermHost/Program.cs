@@ -17,6 +17,8 @@ TaskScheduler.UnobservedTaskException += (_, e) => { log.Error(e.Exception, "uno
 
 try
 {
+    // Before the --env values, so a member host's own TEMP (M.ORCH-T2218) still wins (M.ORCH-T2219).
+    if (TempRoot.Enforce() is { } tempWarning) log.Write(tempWarning);
     if (!options.EnvPrepared) PrepareEnvironment(options);
 
     // Hub phase 2b (M.ORCH-T1667): a host under a member's own account lets its peer (the host's user) see it run and end it.

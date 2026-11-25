@@ -302,6 +302,7 @@ public sealed class LampSettingsTests
         // Folders
         Case("workspaceRoot", s => s with { WorkspaceRoot = @"E:\Work" }, @"E:\Work", v => v.WorkspaceRoot = @"F:\Repos", @"F:\Repos", s => s.WorkspaceRoot),
         Case("worktreeRoot", s => s with { WorktreeRoot = @"E:\wt" }, @"E:\wt", v => v.WorktreeRoot = @"F:\wt", @"F:\wt", s => s.WorktreeRoot),
+        Case("tempRoot", s => s with { TempRoot = @"E:\Temp" }, @"E:\Temp", v => v.TempRoot = @"F:\Temp", @"F:\Temp", s => s.TempRoot),
         // Gateway
         Case("gateway:enabled", s => s with { Gateway = s.Gateway with { Enabled = true } }, true, v => v.Gateway.Enabled = false, false, s => s.Gateway.Enabled),
         Case("gateway:bind", s => s with { Gateway = s.Gateway with { Bind = "100.64.0.1" } }, "100.64.0.1", v => v.Gateway.Bind = "0.0.0.0", "0.0.0.0", s => s.Gateway.Bind),

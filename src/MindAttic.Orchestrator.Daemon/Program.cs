@@ -12,6 +12,8 @@ OrchestratorLog.Start("Daemon");
 var log = OrchestratorLog.For("Daemon");
 AppDomain.CurrentDomain.UnhandledException += (_, e) => log.Fatal(e.ExceptionObject as Exception, "Daemon crashed");
 TaskScheduler.UnobservedTaskException += (_, e) => log.Error(e.Exception, "Unobserved task exception");
+// Every CLI, git, dotnet and hook started from here inherits TEMP, so it goes under the temp root first (M.ORCH-T2219).
+TempRootStartup.Enforce("Daemon");
 
 try
 {

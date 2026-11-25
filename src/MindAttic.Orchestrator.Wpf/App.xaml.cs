@@ -97,6 +97,8 @@ public partial class App : Application
         // A last write if the process ends without a clean exit having written one (skipped after it).
         AppDomain.CurrentDomain.ProcessExit += (_, _) => SessionRestore.Crash("process-exit");
         TaskScheduler.UnobservedTaskException += (_, args) => log.Error(args.Exception, "Unobserved task exception");
+        // Every TermHost, Launcher and CLI started from here inherits TEMP, so it goes under the temp root first (M.ORCH-T2219).
+        TempRootStartup.Enforce("Dashboard");
 
         // Dark unless light was chosen (M.ORCH-T678): the saved choice, before any window (the first-run prompts and the
         // workspace builder too) opens. High contrast still wins over either.
@@ -286,6 +288,7 @@ public partial class App : Application
     private void RunDaemon()
     {
         OrchestratorLog.Start("Daemon");
+        TempRootStartup.Enforce("Daemon");
         daemonHost = DaemonHost.Start();
         if (daemonHost is null) Shutdown();
     }

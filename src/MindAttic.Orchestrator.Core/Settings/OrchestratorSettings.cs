@@ -241,6 +241,11 @@ public sealed record OrchestratorSettings
     /// M.ORCH-T1122; now every ticket is worked in its repo's own checkout on main, and the sweep only tidies those old ones.</summary>
     public string WorktreeRoot { get; init; } = @"D:\Projects\MindAttic.worktrees";
 
+    /// <summary>Where every temp file goes (M.ORCH-T2219): the daemon, dashboard and each TermHost move TEMP/TMP under it at start
+    /// when they aren't (<see cref="Term.TempRoot"/>), so every CLI, git, dotnet and hook they spawn inherits it; the machine probe
+    /// warns when the user, machine or SYSTEM TEMP isn't under it. A root that doesn't exist leaves TEMP alone.</summary>
+    public string TempRoot { get; init; } = Term.TempRoot.Default;
+
     /// <summary>Per-member "until" dates (M.ORCH-T1401): <c>email=date</c> entries joined by ";" (a date is yyyy-MM-dd, that day's end,
     /// or yyyy-MM-ddTHH:mm, local). Once a member's date has passed the dashboard drops that member's tab from the roster, so none of
     /// its CLI tabs are auto-started or respawned; the member, login folder, credentials and data stay, and clearing the entry brings

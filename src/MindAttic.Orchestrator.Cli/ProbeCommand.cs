@@ -174,7 +174,7 @@ internal sealed class MachineProbeCommand : ProbeCommand
 {
     protected override string Probe => "machine";
 
-    protected override string Description => "RAM, commit/pagefile, handles and every disk";
+    protected override string Description => "RAM, commit/pagefile, handles, every disk and the temp root";
 
     protected override Task<IReadOnlyList<HealthResult>> Check(OrchestratorSettings s, HealthThresholds t, CancellationToken ct) =>
         Task.Run(() => Results(MachineHealth.Sample(), s, t, DateTimeOffset.UtcNow), ct);
@@ -218,6 +218,7 @@ internal sealed class MachineProbeCommand : ProbeCommand
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { gb = double.NaN; output = ex.Message; }
             results.Add(HealthResult.Graded(HealthCheck.DiskFreeGb, t, double.IsNaN(gb) ? gb : Math.Round(gb, 1), now, id, output));
         }
+        results.AddRange(TempRootCheck.Results(s.TempRoot, now));
         return results;
     }
 

@@ -532,6 +532,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Hours a %TEMP%\\claude session folder is kept whatever the free space: older, and quiet as long, it goes once its session isn't running; a running session loses only scratchpad entries that old and quiet (default 48; 0 turns it off).")]
         public double? TempRetentionHours { get; init; }
 
+        [CommandOption("--temp-root <PATH>")]
+        [Description("Where every temp file goes: the daemon, dashboard and each CLI host move TEMP and TMP here at start when they point elsewhere, and the machine probe warns when the user, machine or SYSTEM TEMP isn't under it (default R:\\Temp; a folder that doesn't exist leaves TEMP alone).")]
+        public string? TempRoot { get; init; }
+
         [CommandOption("--scratch-lease-hours <H>")]
         [Description("Hours a claimed ticket's own scratch dir (ORCH_SCRATCH) is leased for in the resource ledger; claiming it again renews it, and past it the ledger sweep may reclaim it once the ticket is no longer claimed (default 48; 0 means no expiry).")]
         public double? ScratchLeaseHours { get; init; }
@@ -810,6 +814,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             if (!(rh >= 0 && rh <= 8760)) { AnsiConsole.MarkupLine("[red]--temp-retention-hours is 0 to 8760.[/]"); return 1; }
             s = s with { TempRetentionHours = rh };
         }
+        if (settings.TempRoot is { } tr)
+        {
+            if (!Path.IsPathFullyQualified(tr.Trim())) { AnsiConsole.MarkupLine("[red]--temp-root is a full path, like R:\\Temp.[/]"); return 1; }
+            s = s with { TempRoot = tr.Trim() };
+        }
         var memoryChanged = settings.MemoryGuard is not null || settings.MemoryTightGb is not null || settings.MemoryCriticalGb is not null
             || settings.MemoryEmergencyGb is not null || settings.MemoryPerSubagentGb is not null
             || settings.MemoryTightCommitPercent is not null || settings.MemoryCriticalCommitPercent is not null || settings.MemoryEmergencyCommitPercent is not null
@@ -920,7 +929,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         var changed = settings.BackupKeep is not null || settings.GroomDays is not null || settings.GitHubIntake is not null || settings.ThrottleAgents is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
             || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null || settings.DiskCleanupGb is not null
             || settings.DiskHoldGb is not null || settings.DiskHoldResumeMarginGb is not null
-            || settings.TempRetentionHours is not null || memoryChanged || healthChanged || settings.HeavyProcesses is not null;
+            || settings.TempRetentionHours is not null || settings.TempRoot is not null || memoryChanged || healthChanged || settings.HeavyProcesses is not null;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
         // The ledger sweep's settings (M.ORCH-T1677) and the lease it reads.
         if (settings.ScratchLeaseHours is not null || settings.LedgerSweepDryRun is not null || settings.LedgerSweepQuietMinutes is not null
@@ -1200,7 +1209,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.DiskWarnGb > 0 ? $"alerts under {s.DiskWarnGb:0.#} GB free disk (urgent under {Math.Min(s.DiskCriticalGb, s.DiskWarnGb):0.#} GB)" : "disk space not watched") + " · " +
             (s.DiskCleanupGb > 0 ? $"agent temp cleaned up under {s.DiskCleanupGb:0.#} GB free" : "no disk self-cleanup") + " · " +
             (s.DiskHoldGb > 0 ? $"new work held under {s.DiskHoldGb:0.#} GB free disk (resumes at {s.DiskHoldGb + s.DiskHoldResumeMarginGb:0.#} GB)" : "no disk floor") + " · " +
-            (s.TempRetentionHours > 0 ? $"session temp kept {s.TempRetentionHours:0.#}h" : "session temp kept until its session ends"));
+            (s.TempRetentionHours > 0 ? $"session temp kept {s.TempRetentionHours:0.#}h" : "session temp kept until its session ends") + " · " +
+            $"temp under {Markup.Escape(s.TempRoot)}");
         AnsiConsole.MarkupLine($"  ledger sweep {(s.LedgerSweepDryRun ? "dry run (deletes nothing; --ledger-sweep-dry-run false)" : "on")}: " +
             $"ticket scratch leased {(s.ScratchLeaseHours > 0 ? $"{s.ScratchLeaseHours:0.#}h" : "until released")}, deleted once quiet {s.LedgerSweepQuietMinutes:0.#} min · " +
             (s.LedgerSweepLeftoverHours > 0 ? $"crash leftovers after {s.LedgerSweepLeftoverHours:0.#}h" : "crash leftovers kept") + " · " +
