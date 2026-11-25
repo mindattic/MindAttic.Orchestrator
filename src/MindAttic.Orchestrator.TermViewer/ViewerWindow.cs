@@ -18,10 +18,10 @@ namespace MindAttic.Orchestrator.TermViewer;
 /// Session > End CLI kills it.
 /// <para>Folding back (docs/app-bus.md, "Fallback viewers"): the window closes itself, quietly, once the dashboard is up again. The
 /// signal is the dashboard's <c>app-present</c> on the bus, confirmed by its single-instance mutex and show event
-/// (<see cref="DashboardPresence"/>); the same check runs every two seconds for when the bus is down, and when this window's
+/// (<see cref="DashboardPresence"/>); the same check runs every thirty seconds for when the bus is down, and when this window's
 /// connection is replaced (a protocol 1 host serves one viewer, so the dashboard reattaching takes it from here). A protocol 2
 /// host (M.ORCH-T930) keeps this window attached beside the dashboard's tab, so there the fold rests on the presence signal
-/// and the two-second check, never on being replaced. This window reconnects a dropped link only while the dashboard is absent
+/// and the thirty-second check, never on being replaced. This window reconnects a dropped link only while the dashboard is absent
 /// (M.ORCH-T1040; a --stay pop-out whenever its host lives, M.ORCH-T976), so it can't take a protocol 1 session back from the
 /// dashboard, yet a passing pipe drop while the dashboard is down doesn't leave it detached.</para>
 /// </summary>
@@ -39,7 +39,11 @@ internal sealed class ViewerWindow : Window
     private readonly bool watchOnly;
     private readonly TextBlock status = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 10, 0), Foreground = Brushes.Gainsboro };
     private readonly Border host = new() { Background = Brushes.Black };
-    private readonly DispatcherTimer watch = new() { Interval = TimeSpan.FromSeconds(2) };
+    // Only a backstop (M.ORCH-T2208): presence and the CLI's title come on the bus, the login's look from a watch on its file.
+    private readonly DispatcherTimer watch = new() { Interval = TimeSpan.FromSeconds(30) };
+    private readonly DispatcherTimer lookChanged = new() { Interval = TimeSpan.FromMilliseconds(300) };
+    private FileSystemWatcher? lookFile;
+    private bool looking;
     private readonly CancellationTokenSource stop = new();
     private RelayTerminal? relay;
     private string liveTitle;
@@ -113,10 +117,12 @@ internal sealed class ViewerWindow : Window
         Closing += (_, _) => Detach();
         // Cancel() runs every registration tied to the token synchronously before it returns, so disposing right after is safe
         // even though ListenForDashboard's background task is still holding the token (bughunt 2026-10-28: never disposed before).
-        Closed += (_, _) => { stop.Cancel(); stop.Dispose(); watch.Stop(); };
+        Closed += (_, _) => { stop.Cancel(); stop.Dispose(); watch.Stop(); lookChanged.Stop(); lookFile?.Dispose(); };
         watch.Tick += (_, _) => Look();
         watch.Start();
+        lookChanged.Tick += (_, _) => { lookChanged.Stop(); RefreshLook(); };
         ListenForDashboard();
+        WatchLookFile();
     }
 
     private static MenuItem Item(string header, string? gesture, Action act)
@@ -157,13 +163,66 @@ internal sealed class ViewerWindow : Window
 
     /// <summary>The login renamed, or given a new Prefix, while this window is open (M.ORCH-T1440): its badge and title take the
     /// login's current look, read from the login's own file, so it follows the change whether the dashboard is up or not.</summary>
-    private void FollowLook()
+    private void FollowLook(LoginLook? look)
     {
-        if (pane.CurrentLook() is not { } look || pane.WithLook(look) is var now && ReferenceEquals(now, pane)) return;
+        if (look is null || pane.WithLook(look) is var now && ReferenceEquals(now, pane)) return;
         if (pane.Initials is { Length: > 0 } was) badgesSeen.Add(was);
         pane = now;
         if (badgeText is not null) badgeText.Text = pane.Initials;
         UpdateTitle();
+    }
+
+    /// <summary>The CLI's own title as its record now says it, unless the tab was renamed in the dashboard.</summary>
+    private void FollowTitle(string? title)
+    {
+        if (pane.CustomName is { Length: > 0 } || title is not { Length: > 0 } || title == liveTitle) return;
+        liveTitle = title;
+        UpdateTitle();
+    }
+
+    /// <summary>The login's look read off the UI thread, then followed.</summary>
+    private async void RefreshLook()
+    {
+        try
+        {
+            var request = pane;
+            var look = await Task.Run(() => request.CurrentLook());
+            if (!closing) FollowLook(look);
+        }
+        catch (Exception ex) { log.Error(ex, "Following the login's look failed; contained"); }
+    }
+
+    /// <summary>Watches the login's look file (the folder <see cref="PaneRequest.CurrentLook"/> reads), so a rename or a new
+    /// Prefix reaches this window as it's saved (M.ORCH-T2208); the folder is found off the UI thread.</summary>
+    private void WatchLookFile()
+    {
+        var request = pane;
+        var token = stop.Token;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var folder = request.ConfigDir is { Length: > 0 } dir ? dir
+                    : AccountDirs.Normalize(request.Email) is { } email ? new AccountDirs().For(email).Directory
+                    : Setup.AgentGate.ClaudeDir;
+                if (!Directory.Exists(folder) || token.IsCancellationRequested) return;
+                var watcher = new FileSystemWatcher(folder, LoginLook.FileName)
+                {
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.CreationTime | NotifyFilters.Size,
+                };
+                FileSystemEventHandler handler = (_, _) => Dispatcher.InvokeAsync(() => { if (closing) return; lookChanged.Stop(); lookChanged.Start(); });
+                watcher.Changed += handler;
+                watcher.Created += handler;
+                watcher.Renamed += (s, e) => handler(s, e);
+                watcher.EnableRaisingEvents = true;
+                Dispatcher.InvokeAsync(() =>
+                {
+                    if (closing || token.IsCancellationRequested) watcher.Dispose();
+                    else lookFile = watcher;
+                });
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { log.Warning(ex, "The login's look file couldn't be watched; the backstop look follows it"); }
+        }, token);
     }
 
     private void SetStatus(string text)
@@ -218,7 +277,7 @@ internal sealed class ViewerWindow : Window
         // folds the window, so it never takes a protocol 1 session back from the dashboard's tab and ping-pongs with it; while
         // the dashboard is down, a passing pipe drop no longer leaves it detached, holding the slot and dropping keys. A link
         // replaced while the dashboard's mutex or show event exists ends at once too (M.ORCH-T1050), not only after dashboardSeen
-        // (two looks, 2-4s), so a dashboard reattaching to a protocol 1 host first never ping-pongs with this window.
+        // (two looks), so a dashboard reattaching to a protocol 1 host first never ping-pongs with this window.
         Func<bool> alive = stay ? HostLives : () => !dashboardSeen && !DashboardPresence.IsPresent() && HostLives();
         r.Attach(session.Pipe, session.Protocol, alive, interactive: !watchOnly);
         r.Terminal.Focus();
@@ -291,33 +350,44 @@ internal sealed class ViewerWindow : Window
         Close();
     }
 
-    /// <summary>Every two seconds: the dashboard back (twice in a row, so one starting for a moment and failing doesn't take the
-    /// window), and the CLI's live title.</summary>
-    private void Look()
+    /// <summary>Every thirty seconds, for when the bus is down or a file change was missed (M.ORCH-T2208): the dashboard back
+    /// (twice in a row, so one starting for a moment and failing doesn't take the window), the CLI's live title and the login's
+    /// look, all read off the UI thread.</summary>
+    private async void Look()
     {
+        if (looking) return;
+        looking = true;
         try
         {
-            if (!stay && DashboardPresence.IsUp())
+            var request = pane;
+            var (up, now, look) = await Task.Run(() => (!stay && DashboardPresence.IsUp(), TermSessions.Get(session.Id), request.CurrentLook()));
+            if (closing) return;
+            if (up)
             {
                 if (++upLooks >= 2) { dashboardSeen = true; log.Information("The dashboard is back; {Id:l} folds into its tab", session.Id); Fold(); return; }
             }
             else upLooks = 0;
-            if (pane.CustomName is not { Length: > 0 } && TermSessions.Get(session.Id) is { } now && now.Title is { Length: > 0 } title && title != liveTitle)
-            {
-                liveTitle = title;
-                UpdateTitle();
-            }
-            FollowLook();
+            FollowTitle(now?.Title);
+            FollowLook(look);
         }
         catch (Exception ex) { log.Error(ex, "Looking at the dashboard and session failed; contained"); }
+        finally { looking = false; }
     }
 
-    /// <summary>The dashboard says it's present on the bus (app-present from orchestrator-desktop) as it connects: checked at once.</summary>
+    /// <summary>The dashboard says it's present on the bus (app-present from orchestrator-desktop) as it connects: checked at once.
+    /// This session's host announcing a change (term-session) brings the CLI's new title with it (M.ORCH-T2208).</summary>
     private void ListenForDashboard()
     {
         var token = stop.Token;
         _ = Task.Run(() => StatusStreamClient.RunAsync((StatusEnvelope envelope) =>
         {
+            if (envelope.Kind == TermBus.Kind)
+            {
+                if (envelope.V <= TermBus.Version && envelope.PayloadAs<TermSessionEvent>() is { Event: TermSessionEvents.Changed or TermSessionEvents.Started } changed
+                    && string.Equals(changed.Id, session.Id, StringComparison.OrdinalIgnoreCase) && changed.HostPid == session.HostPid)
+                    Dispatcher.InvokeAsync(() => { if (!closing) FollowTitle(changed.Title); });
+                return;
+            }
             if (envelope.Kind != AppBus.Presence || envelope.V > AppBus.Version) return;
             if (envelope.PayloadAs<AppPresence>() is not { App: AppBus.OrchestratorDesktop }) return;
             if (!stay && DashboardPresence.IsUp()) dashboardSeen = true;
