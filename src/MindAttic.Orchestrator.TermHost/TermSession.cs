@@ -24,6 +24,9 @@ internal sealed class TermSession
     private readonly HostLog log;
     private readonly object gate = new();
     private readonly object inputGate = new();
+    // M.ORCH-T2199: the replay state (ring, modes, emulator), and the order output goes out in. The emulator's parse of each
+    // chunk runs under it alone, so typing (which takes gate) never waits on it. Lock order: screenGate, then gate.
+    private readonly object screenGate = new();
     private readonly ManualResetEventSlim done = new();
     private readonly ManualResetEventSlim exitSeen = new();
 
@@ -69,7 +72,7 @@ internal sealed class TermSession
     private int exitCode;
     private string? title;
 
-    // M.ORCH-T927: the late-attach replay. Fed and copied only under gate.
+    // M.ORCH-T927: the late-attach replay. Fed and copied only under screenGate.
     private readonly Ring ring = new();
     private readonly ModeTracker modes = new();
     private TermModes lastModes = TermModes.CursorVisible;
@@ -78,7 +81,7 @@ internal sealed class TermSession
     private Registration? registration;
 
     // M.ORCH-T929: the headless emulator the exact replay is taken from; null when it couldn't start or has failed, and the
-    // ring above serves alone. Fed, resized and snapshotted only under gate.
+    // ring above serves alone. Fed, resized and snapshotted only under screenGate.
     private HeadlessScreen? screen;
 
     public TermSession(HostOptions options, HostLog log)
@@ -131,6 +134,7 @@ internal sealed class TermSession
 
         done.Wait();
         EndJob();
+        lock (screenGate)
         lock (gate)
         {
             foreach (var v in viewers) v.Dispose();
@@ -165,6 +169,7 @@ internal sealed class TermSession
             ptyIn = null;
             ptyOut = null;
             EndJob();
+            lock (screenGate)
             lock (gate)
             {
                 exited = true;
@@ -304,24 +309,27 @@ internal sealed class TermSession
     private void OnOutput(ReadOnlySpan<byte> chunk)
     {
         Volatile.Write(ref lastOutputTicks, Environment.TickCount64);
-        lock (gate)
+        lock (screenGate)
         {
             ring.Append(chunk);
             FeedScreen(chunk);
             modes.Feed(chunk);
-            Broadcast(TermFrameKind.Output, chunk);
-
             var flags = modes.Flags;
-            if (flags != lastModes)
+            var cliTitle = modes.Title;
+            lock (gate)
             {
-                lastModes = flags;
-                Broadcast(TermFrameKind.Modes, TermProtocol.Modes(flags));
-            }
-            if (modes.Title is { } cliTitle && cliTitle != title)
-            {
-                title = cliTitle;
-                registration?.Update(s => s with { Title = cliTitle });
-                Broadcast(TermFrameKind.Title, TermProtocol.Title(cliTitle));
+                Broadcast(TermFrameKind.Output, chunk);
+                if (flags != lastModes)
+                {
+                    lastModes = flags;
+                    Broadcast(TermFrameKind.Modes, TermProtocol.Modes(flags));
+                }
+                if (cliTitle is not null && cliTitle != title)
+                {
+                    title = cliTitle;
+                    registration?.Update(s => s with { Title = cliTitle });
+                    Broadcast(TermFrameKind.Title, TermProtocol.Title(cliTitle));
+                }
             }
         }
     }
@@ -509,11 +517,12 @@ internal sealed class TermSession
     }
 
     /// <summary>Adds <paramref name="link"/> to the viewers: sends it the session so far and subscribes it to the live stream,
-    /// under the one lock the output pump takes, so no byte is lost or doubled between them. A protocol 2 viewer is told the
+    /// under the locks the output pump takes, so no byte is lost or doubled between them. A protocol 2 viewer is told the
     /// size and whether it owns it before the replay, so it letterboxes before drawing. True when the replay came from the
     /// ring and wants the redraw nudge; the emulator's snapshot is exact at the session's size (M.ORCH-T929).</summary>
     private bool Attach(ViewerLink link)
     {
+        lock (screenGate)
         lock (gate)
         {
             if (link.IsClosed) return false;
@@ -571,13 +580,13 @@ internal sealed class TermSession
         try
         {
             var started = new HeadlessScreen(cols, rows);
-            lock (gate) screen = started;
+            lock (screenGate) screen = started;
             log.Write($"emulator started (libghostty-vt) {cols}x{rows}, scrollback {started.ScrollbackLines} lines");
         }
         catch (Exception ex) { log.Error(ex, "the emulator couldn't start; the replay uses the raw ring"); }
     }
 
-    /// <summary>Feeds CLI output to the headless emulator, if it runs; a failure stops it for good. Called under <see cref="gate"/>.</summary>
+    /// <summary>Feeds CLI output to the headless emulator, if it runs; a failure stops it for good. Called under <see cref="screenGate"/>.</summary>
     private void FeedScreen(ReadOnlySpan<byte> chunk)
     {
         if (screen is null) return;
@@ -585,7 +594,7 @@ internal sealed class TermSession
         catch (Exception ex) { StopScreen(ex, "the emulator failed on output"); }
     }
 
-    /// <summary>Called under <see cref="gate"/>. Drops the emulator for good: once it has missed output it can't be exact.</summary>
+    /// <summary>Called under <see cref="screenGate"/>. Drops the emulator for good: once it has missed output it can't be exact.</summary>
     private void StopScreen(Exception ex, string what)
     {
         log.Error(ex, what + "; the replay uses the raw ring from now on");
@@ -715,6 +724,7 @@ internal sealed class TermSession
         bool resize;
         lock (gate) resize = c > 0 && r > 0 && !exited && !ptyClosed && (c != cols || r != rows);
         if (resize) DrainOutput();
+        lock (screenGate)
         lock (gate)
         {
             resize = c > 0 && r > 0 && !exited && !ptyClosed && (c != cols || r != rows);

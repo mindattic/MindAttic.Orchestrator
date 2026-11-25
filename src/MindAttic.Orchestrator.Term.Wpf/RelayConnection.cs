@@ -114,6 +114,7 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
     public void Start()
     {
         ui = SynchronizationContext.Current;
+        dispatcher = System.Windows.Threading.Dispatcher.FromThread(Thread.CurrentThread);
         // Phase 0 lesson 4: win32-input-mode on the renderer, as EasyTerminalControl does, since the setter's reset cleared it.
         Raise(Win32InputMode);
         // Set on a renderer made again for a released tab (M.ORCH-T1737): the loops run already, and the link stays.
@@ -160,13 +161,110 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
 
     private void PostRaw(Action action)
     {
-        void Run()
+        if (ui is not { } context)
         {
-            try { action(); }
-            catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "A relay terminal event failed; contained"); }
+            Run(action);
+            return;
         }
-        if (ui is { } context) context.Post(_ => Run(), null);
-        else Run();
+        lock (uiGate)
+        {
+            uiWork.Enqueue(action);
+            if (pumping) return;
+            pumping = true;
+        }
+        context.Post(_ => Pump(), null);
+    }
+
+    private static void Run(Action action)
+    {
+        try { action(); }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "A relay terminal event failed; contained"); }
+    }
+
+    /// <summary>The most output (chars) drawn in one UI turn (M.ORCH-T2199): a bigger batch (a redraw, a replay) is drawn in
+    /// parts, the rest posted below input priority, so keys typed meanwhile get in between. The renderer's parser streams, so
+    /// a part may end mid-sequence; it never ends mid-surrogate-pair.</summary>
+    internal const int MaxDrawChars = 64 * 1024;
+
+    // Everything posted to the UI thread, in order (M.ORCH-T2199): one Pump runs it, and while a batch is being drawn in parts
+    // whatever is posted after it waits behind it. 'carry' and 'budget' are the UI thread's only.
+    private readonly object uiGate = new();
+    private readonly Queue<Action> uiWork = new();
+    private bool pumping;
+    private System.Windows.Threading.Dispatcher? dispatcher;
+    private string? carry;
+    private int carryAt, budget = int.MaxValue;
+
+    /// <summary>On the UI thread: runs what was posted, in order, until it is done or a turn's drawing is spent; then yields to
+    /// input and goes on at Background priority.</summary>
+    private void Pump()
+    {
+        budget = MaxDrawChars;
+        try
+        {
+            while (true)
+            {
+                if (carry is not null)
+                {
+                    DrawCarry();
+                    if (carry is not null || budget <= 0) break;
+                }
+                Action next;
+                lock (uiGate)
+                {
+                    if (!uiWork.TryDequeue(out next!))
+                    {
+                        pumping = false;
+                        return;
+                    }
+                }
+                Run(next);
+            }
+        }
+        finally { budget = int.MaxValue; }
+        if (dispatcher is { } d) d.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, Pump);
+        else ui!.Post(_ => Pump(), null);
+    }
+
+    /// <summary>On the UI thread: draws as much of <see cref="carry"/> as this turn's budget allows.</summary>
+    private void DrawCarry()
+    {
+        var text = carry!;
+        var n = Math.Min(text.Length - carryAt, budget);
+        if (carryAt + n < text.Length && n > 0 && char.IsHighSurrogate(text[carryAt + n - 1])) n--;
+        if (n <= 0)
+        {
+            budget = 0;
+            return;
+        }
+        var part = carryAt == 0 && n == text.Length ? text : text.Substring(carryAt, n);
+        carryAt += n;
+        budget -= n;
+        if (carryAt == text.Length) carry = null;
+        TaskCompletionSource? room = null;
+        lock (pendingGate)
+        {
+            pendingChars -= n;
+            if (pendingChars <= MaxPendingChars / 2) (room, roomForOutput) = (roomForOutput, null);
+        }
+        room?.TrySetResult();
+        if (closed)
+        {
+            if (carry is not null) DropCarry();
+            return;
+        }
+        Run(() =>
+        {
+            using var stall = UiStallProbe.Doing("drawing CLI output");
+            TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(part));
+        });
+    }
+
+    private void DropCarry()
+    {
+        var rest = carry!.Length - carryAt;
+        carry = null;
+        lock (pendingGate) pendingChars -= rest;
     }
 
     /// <summary>The most output text (chars) waiting for the UI thread before the reader stops reading the link (M.ORCH-T1015):
@@ -329,22 +427,18 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         if (r > 0 && c > 0) Send(TermFrameKind.Resize, TermProtocol.Size((ushort)Math.Min(c, ushort.MaxValue), (ushort)Math.Min(r, ushort.MaxValue)));
     }
 
-    /// <summary>On the UI thread: renders one batch, whole, and lets a waiting reader go on once there is room.</summary>
+    /// <summary>On the UI thread: renders one batch, in parts of at most <see cref="MaxDrawChars"/> a turn when pumped, and lets
+    /// a waiting reader go on once there is room.</summary>
     private void Drain(StringBuilder done)
     {
-        string text;
-        TaskCompletionSource? room = null;
         lock (pendingGate)
         {
             if (ReferenceEquals(batch, done)) batch = null;
-            text = done.ToString();
-            pendingChars -= text.Length;
-            if (pendingChars <= MaxPendingChars / 2) (room, roomForOutput) = (roomForOutput, null);
+            carry = done.ToString();
         }
-        room?.TrySetResult();
-        if (closed) return;
-        using var stall = UiStallProbe.Doing("drawing CLI output");
-        TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(text));
+        carryAt = 0;
+        if (carry.Length == 0) carry = null;
+        else DrawCarry();
     }
 
     /// <summary>Waits while too much output is waiting for the UI thread (M.ORCH-T1015); returns at once when there is room or
