@@ -46,6 +46,11 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
     /// <summary>How long past the reset a resume recorded at the wall is due (M.ORCH-T595).</summary>
     public static readonly TimeSpan ResumeDelay = TimeSpan.FromMinutes(2);
 
+    /// <summary>How far a new estimate of the reset may move from a resume already recorded for it before that resume is
+    /// rewritten: the 5-hour reset is estimated afresh each tick and slides a minute or two, and saving every slide rewrote
+    /// the store over and over while the pace held (M.ORCH-T2203). A resume kept a little early still waits for the pace.</summary>
+    internal static readonly TimeSpan ResetDrift = TimeSpan.FromMinutes(15);
+
     /// <summary>A resume recorded at the wall for a CLI that was working there (M.ORCH-T595): its session then, the window that
     /// stopped and when it resets, and when it was recorded. Due at <see cref="ResumeDelay"/> past the reset.</summary>
     public sealed record ScheduledResume(string SessionId, string Window, DateTime UntilUtc, DateTime StoppedUtc)
@@ -162,7 +167,7 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
     /// <summary>Records, at the wall, a resume due <see cref="ResumeDelay"/> past <paramref name="resetUtc"/> for each live CLI
     /// working there: its turn running (it may be frozen over the limit, its Stop hook never to come), or ended since the hold
     /// began without a <c>limit_stop</c> of its own (one that has one is woken for it). Kept in the store, so a daemon restart
-    /// before the reset doesn't lose it; one already recorded for this reset is kept as it was.</summary>
+    /// before the reset doesn't lose it; one already recorded for this reset, give or take <see cref="ResetDrift"/>, is kept as it was.</summary>
     private void Schedule(string window, DateTime resetUtc, DateTime nowUtc)
     {
         if (scheduled is null)
@@ -176,7 +181,8 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
             var working = !c.Idle || (c.LimitStop is null && holdStartUtc is { } start && c.TurnUtc >= start);
             if (!working || c.TurnUtc >= resetUtc) continue;
             var key = c.Pid!.Value.ToString(CultureInfo.InvariantCulture);
-            if (scheduled.TryGetValue(key, out var known) && known.SessionId == c.SessionId && known.UntilUtc == resetUtc) continue;
+            if (scheduled.TryGetValue(key, out var known) && known.SessionId == c.SessionId &&
+                (known.UntilUtc - resetUtc).Duration() <= ResetDrift) continue;
             if (!IsAlive(c.Pid.Value)) continue;
             scheduled[key] = new ScheduledResume(c.SessionId, window, resetUtc, nowUtc);
             changed = true;
