@@ -193,10 +193,11 @@ public sealed class TabStatusTests
     }
 
     [Test]
-    public void There_is_no_miscellaneous_tab_any_more_its_content_shows_on_the_global_tab_instead()
+    public void There_is_no_miscellaneous_tab_any_more()
     {
-        // M.ORCH-T825: the 'Miscellaneous' tab (M.ORCH-T763) is gone; what fit on no person's page now shows on the global
-        // login's tab (ShowsWorkspaceExtras, MainViewModel.Tabs.cs), and the API key tab's icon is still a key.
+        // M.ORCH-T825: the 'Miscellaneous' tab (M.ORCH-T763) is gone. What used to fit on no person's page there
+        // (ShowsWorkspaceExtras, M.ORCH-T825) was deleted outright with the rest of the home page (M.ORCH-T2238) rather than
+        // moved anywhere; the API key tab's icon is still a key.
         Assert.That(typeof(LoginTab).GetProperty("IsMisc"), Is.Null);
         Assert.That(typeof(LoginTab).GetField("MiscKey"), Is.Null);
         Assert.That(typeof(LoginTab).GetField("Misc"), Is.Null);
@@ -207,9 +208,9 @@ public sealed class TabStatusTests
         // M.ORCH-T906: the API key's person shows the activity icon like everyone; no key icon of its own.
         Assert.That(xaml, Does.Not.Contain("x:Name=\"TabKeyIcon\"")
             .And.Not.Contain("x:Name=\"TabMiscIcon\"").And.Not.Contain("x:Name=\"MiscBody\""));
-        Assert.That(xaml, Does.Contain("x:Name=\"WorkspaceExtras\"").And.Contain("{Binding ShowsWorkspaceExtras,"));
+        Assert.That(xaml, Does.Not.Contain("x:Name=\"WorkspaceExtras\"").And.Not.Contain("{Binding ShowsWorkspaceExtras,"));
         var tabs = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "ViewModels", "MainViewModel.Tabs.cs"));
-        Assert.That(tabs, Does.Not.Contain("LoginTab.Misc"));
+        Assert.That(tabs, Does.Not.Contain("LoginTab.Misc").And.Not.Contain("ShowsWorkspaceExtras"));
     }
 
     [Test]

@@ -12,20 +12,15 @@ using Spectre.Console.Cli;
 internal static class OrchestratorMockups
 {
     /// <summary>
-    /// The top-level window (MainWindow.xaml): the person/org tabs as a left sidebar (M.ORCH-T1431), then beside it the signed-in
-    /// person's scrolling body — the terminal (M.ORCH-T1302), the pinned 5-hour/weekly pills and stat tiles, and the login
-    /// with its already-loaded active CLIs (M.ORCH-T2225, in place of the old 5-hour chart and ticket queue) — with the
-    /// global login's own Workspace section (allocate, holds, reminders, finished work, warnings) standing in for a
-    /// "Miscellaneous" panel (M.ORCH-T763, M.ORCH-T825).
+    /// The top-level window (MainWindow.xaml): the login tree as a left sidebar (M.ORCH-T1431, M.ORCH-T1759) — a login's
+    /// row only expands or collapses to its own open CLI/Launcher panes on click, never selects one (M.ORCH-T2238: there's
+    /// no per-login home page to select into any more) — beside it the chosen CLI's terminal, the one thing the scrolling
+    /// body ever shows; picking a pane in the tree is the only way to put anything there.
     /// </summary>
     private static readonly MockupPanel[] Dashboard =
     [
-        new(0, 0, 16, 23, "Users (sidebar)"),
-        new(16, 0, 38, 13, "Terminal (CLI tabs)"),
-        new(54, 0, 26, 6, "Stats"),
-        new(54, 6, 26, 7, "Active CLIs"),
-        new(16, 13, 38, 10, "Workspace (continued)"),
-        new(54, 13, 26, 10, "Workspace (Misc)"),
+        new(0, 0, 16, 23, "Logins (tree sidebar)"),
+        new(16, 0, 64, 23, "Terminal (chosen CLI)"),
         new(0, 23, 80, 3, "Status Bar"),
     ];
 

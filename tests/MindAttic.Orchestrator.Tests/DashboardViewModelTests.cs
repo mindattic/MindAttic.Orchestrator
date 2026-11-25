@@ -191,25 +191,11 @@ public sealed class DashboardViewModelTests
     // ── Allocate line ──────────────────────────────────────────────────────
 
     [Test]
-    public void The_queue_says_allocate_is_on_from_the_clis_that_typed_it()
+    public void Allocation_paused_globally_shows_a_banner()
     {
-        Assert.That(MainViewModel.AllocateLine(new Dictionary<int, IReadOnlyList<string>>()), Does.StartWith("Proposals wait for you"));
-        var on = MainViewModel.AllocateLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"], [2] = ["prose", "GTFO.*"], [3] = ["*"] });
-        Assert.That(on, Is.EqualTo("Allocate is on in 3 CLIs for Prose, GTFO.*, every repo, each through its own subagents, paced to the 5-hour window."));
-        Assert.That(MainViewModel.AllocateLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"] }, on: false), Does.StartWith("Allocate is paused"),
-            "paused from Settings or the CLI, the CLIs that typed it get nothing");
-    }
-
-    [Test]
-    public void Allocation_paused_globally_shows_a_banner_and_says_so_with_or_without_clis()
-    {
-        // M.ORCH-T1491: the master switch off is never silent, in the menu bar or the queue's allocate line.
+        // M.ORCH-T1491: the master switch off is never silent, in the menu bar.
         Assert.That(MainViewModel.AllocatePausedLine(true), Is.EqualTo("Allocation paused globally - orchestrator settings --allocate true resumes"));
         Assert.That(MainViewModel.AllocatePausedLine(false), Is.Empty, "no banner while it's on");
-        Assert.That(MainViewModel.AllocateLine(new Dictionary<int, IReadOnlyList<string>>(), on: false),
-            Does.StartWith("Allocate is paused globally").And.Contain("orchestrator settings --allocate true"), "said even before any CLI typed /allocate");
-        Assert.That(MainViewModel.AllocateLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"] }, on: false),
-            Does.Contain("paused globally").And.Contain("orchestrator settings --allocate true"));
     }
 
     // ── Toast pruning ───────────────────────────────────────────────────────

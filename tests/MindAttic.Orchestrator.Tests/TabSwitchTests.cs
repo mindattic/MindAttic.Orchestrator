@@ -20,7 +20,6 @@ public sealed class TabSwitchTests
 
     [TestCase(nameof(MainViewModel.Queue))]
     [TestCase(nameof(MainViewModel.Proposals))]
-    [TestCase(nameof(MainViewModel.Finished))]
     public void The_workspaces_lists_are_not_a_tab_of_their_own(string property)
     {
         // An auto-property would give each tab its own collection: a 761-ticket queue took 2s to rebuild on every switch.
@@ -72,32 +71,6 @@ public sealed class TabSwitchTests
         // The org's lists are the global tab's, one set: an org switch hands the window the same collections.
         foreach (var property in new[] { nameof(MainViewModel.Orgs), nameof(MainViewModel.OrgTabs) })
             Assert.That(typeof(MainViewModel).GetField($"<{property}>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic), Is.Null, property);
-    }
-
-    [TestCase("AgentsBody")]
-    public void Every_body_is_one_virtualized_list(string body)
-    {
-        // M.ORCH-T754: a person's current work (with their Tickets, and on the global tab what fits on no person's page,
-        // M.ORCH-T825) builds only what's on screen, so a 9-person and a 2-person org switch equally fast: each body's lists
-        // sit straight in it, made one list in code.
-        var doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        var view = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == body);
-        // AgentsBody's own direct content is an outer, never-virtualized wrapper (M.ORCH-T1302): the chosen terminal (a
-        // native HwndHost) is a plain sibling there, never realize/derealized by the virtualizing panel just because it
-        // scrolled out of view. AgentsBodyList, nested one level in, is what's actually flattened into the list's items.
-        var content = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == $"{body}List");
-        Assert.That(content.Name.LocalName, Is.EqualTo("StackPanel"), "a vertical panel whose children become the list's items");
-        Assert.That(content.Ancestors().Contains(view), Is.True, $"{body}List scrolls inside {body}");
-        // ToastDots (M.ORCH-T1167, merged into the limit-box header row by M.ORCH-T1180) is exempt: it's capped at
-        // MainViewModel.MaxToasts, so unlike Tickets/Queue/Reminders/Finished/Warnings it never scales with org size, and it
-        // was never one of VirtualizedBody's managed rows even before T1180 moved it inside this body (it lived outside the
-        // body entirely, as its own overlay).
-        var lists = view.Descendants().Where(e => e.Name.LocalName == "ItemsControl" && !e.Ancestors().Any(a => a.Name.LocalName == "DataTemplate")
-            && (string?)e.Attribute(X + "Name") != "ToastDots").ToList();
-        Assert.That(lists, Is.Not.Empty);
-        Assert.That(lists.Select(l => l.Parent), Is.All.EqualTo(content), "a list nested in a panel of its own would build every row");
-        Assert.That(File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs")),
-            Does.Contain($"VirtualizedList.ApplyBody({body}, {body}List)"));
     }
 
     [Test, Apartment(ApartmentState.STA)]
@@ -153,9 +126,11 @@ public sealed class TabSwitchTests
     public void A_nested_virtualized_body_never_realizes_or_derealizes_what_comes_before_it()
     {
         // M.ORCH-T1302: AgentsBody wraps the chosen terminal (a native HwndHost that must never be torn down just because
-        // it scrolled out of view) ahead of AgentsBodyList. ApplyBody(body, content) must virtualize content's rows alone,
-        // leaving the plain sibling ahead of it in body's own StackPanel exactly as untouched as any ordinary WPF layout
-        // scrolled out of a ScrollViewer's viewport: still a real element, never removed from the visual tree.
+        // it scrolled out of view) ahead of any virtualized list sharing its scroll. ApplyBody(body, content) must virtualize
+        // content's rows alone, leaving the plain sibling ahead of it in body's own StackPanel exactly as untouched as any
+        // ordinary WPF layout scrolled out of a ScrollViewer's viewport: still a real element, never removed from the visual
+        // tree. (As of M.ORCH-T2238, MainWindow's own AgentsBody holds only the terminal and no virtualized list at all --
+        // this test exercises the generic ApplyBody mechanism in isolation, which other bodies may still use.)
         _ = System.IO.Packaging.PackUriHelper.UriSchemePack; // registers pack:// outside an Application
         var theme = (ResourceDictionary)Application.LoadComponent(new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
         var pinned = new TextBlock { Text = "pinned" };

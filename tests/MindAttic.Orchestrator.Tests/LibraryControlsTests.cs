@@ -159,11 +159,11 @@ public sealed class LibraryControlsTests
         Assert.That(sources["MainViewModel.cs"], Does.Contain("public ZoomLevel Zoom { get; }"));
         Assert.That(sources["MainWindow.xaml.cs"], Does.Contain("model.Zoom.Attach(Root, this)"));
 
-        // The zoom keys and scale are ZoomLevel's, not the window's own; its status text is ZoomLevel's.
+        // The zoom keys and scale are ZoomLevel's, not the window's own; its percentage readout went with the Toolbar that
+        // used to show it (M.ORCH-T2238) - Ctrl+Plus/Minus/0 still work, there's just nothing on screen reading the number.
         var window = Window();
         Assert.That(window.Descendants(P + "KeyBinding").Select(k => (string?)k.Attribute("Command")).OfType<string>().Where(c => c.Contains("Zoom")), Is.Empty);
         Assert.That(window.Descendants().Where(e => e.Name.LocalName.EndsWith(".LayoutTransform")), Is.Empty);
-        Assert.That(window.Descendants(P + "TextBlock").Count(t => (string?)t.Attribute("Text") == "{Binding Zoom.Text}"), Is.EqualTo(1));
 
         var csproj = XDocument.Load(Wpf("MindAttic.Orchestrator.Wpf.csproj"));
         var version = (string?)csproj.Descendants("PackageReference").Single(r => (string?)r.Attribute("Include") == "MindAttic.Components.Wpf").Attribute("Version");
@@ -177,7 +177,7 @@ public sealed class LibraryControlsTests
         Assert.That(File.Exists(Wpf("ThreadedSpinner.cs")), Is.False);
 
         var window = Window();
-        Assert.That(Named(window, "UtilizationChart").Name, Is.EqualTo(Mc + "MaLineChart"));
+        Assert.That(window.Descendants(Mc + "MaLineChart"), Is.Not.Empty, "the library's own chart draws the per-terminal compact usage chart");
         Assert.That(Named(window, "LoaderSpinner").Name, Is.EqualTo(Mc + "MaSpinner"));
 
         var sources = Directory.EnumerateFiles(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf"), "*.cs", SearchOption.AllDirectories)
@@ -185,29 +185,6 @@ public sealed class LibraryControlsTests
         foreach (var file in sources)
             Assert.That(Regex.IsMatch(File.ReadAllText(file), @"(?<!Ma)MessageBox\.Show\("), Is.False, $"{Path.GetFileName(file)} uses the system message box; use MaMessageBox");
         Assert.That(File.ReadAllText(Wpf("App.xaml.cs")), Does.Contain("MaMessageBox.Show("));
-    }
-
-    [Test]
-    public void Toast_dots_are_bound_to_the_view_models_toast_list_and_open_command()
-    {
-        // The full-width McToastHost row (M.ORCH-T531) was deliberately replaced by small hoverable notification dots
-        // (M.ORCH-T1167, M.ORCH-T1180): a dot's own click now does what the old row's click and its separate dismiss both
-        // did, since OpenToastCommand removes the toast from Toasts itself (MainViewModel.cs), so there is no separate
-        // DismissCommand binding to check for any more.
-        var dots = Named(Window(), "ToastDots");
-
-        // Every tab's toasts, on every tab (M.ORCH-T1574): the menu bar's tools raise theirs on the global login's tab.
-        Assert.That((string?)dots.Attribute("ItemsSource"), Is.EqualTo("{Binding AllToasts}"));
-
-        var button = dots.Descendants(P + "Button").Single();
-        Assert.That((string?)button.Attribute("Style"), Is.EqualTo("{StaticResource MaToolButton}"));
-        Assert.That(button.Descendants(Mc + "MaStatusLight").Single().Attribute("Foreground")?.Value, Is.EqualTo("{Binding Accent}"));
-        Assert.That((string?)button.Attribute("Command"),
-            Is.EqualTo("{Binding DataContext.OpenToastCommand, RelativeSource={RelativeSource AncestorType=Window}}"));
-
-        var viewModel = File.ReadAllText(Wpf(Path.Combine("ViewModels", "MainViewModel.cs")));
-        Assert.That(Regex.IsMatch(viewModel, @"OpenToastCommand\s*=\s*new RelayCommand\(async p =>\s*\{\s*if \(p is not ToastViewModel t\) return;\s*(//[^\n]*\n\s*)?RemoveToast\(t\);"),
-            Is.True, "opening a toast still removes it (from every tab's list), like the old McToastHost's dismiss did");
     }
 
     [Test]
@@ -275,9 +252,6 @@ public sealed class LibraryControlsTests
         // Fixed under the person tabs, not in the scrolling body (M.ORCH-T861).
         Assert.That(Named(window, "TerminalTabs").Ancestors().Contains(Named(window, "AgentsBody")), Is.False);
         Assert.That(Named(window, "TerminalTabs").Ancestors().Contains(Named(window, "TerminalsPanel")), Is.True);
-        // The dashboard is always on screen on a signed-in login's tab: no page decides whether its header and toolbar show.
-        foreach (var name in new[] { "Header", "Toolbar" })
-            Assert.That((string?)Named(window, name).Attribute("Visibility"), Is.EqualTo("{Binding IsTabSignedIn, Converter={StaticResource Visible}}"), name);
         Assert.That(typeof(Wpf.ViewModels.MainViewModel).GetProperty("Page"), Is.Null);
 
         // The status light and the tab underline take their colours from view-model brushes (themed in Palette), never from a literal.

@@ -233,60 +233,14 @@ public sealed class TerminalPanesTests
         Assert.That(person.SelectedPane, Is.SameAs(c), "and back the other way from the first to the last");
     }
 
-    /// <summary>M.ORCH-T1446: the pinned Usage tab is never one of <see cref="PersonTerminalsViewModel.Panes"/> (it isn't a
-    /// CLI's pane), so choosing it only swaps what the terminal area shows; the chosen CLI underneath is remembered, and
-    /// choosing any real tab again -- even the one already chosen, which raises no SelectedPane change on its own -- leaves it.</summary>
+    /// <summary>M.ORCH-T2238: the terminal area never shows while there's no real pane open.</summary>
     [Test, Apartment(ApartmentState.STA)]
-    public void Choosing_the_pinned_Usage_tab_hides_the_terminal_without_touching_the_chosen_pane_or_Panes()
-    {
-        var all = new TerminalsViewModel();
-        var person = new PersonTerminalsViewModel(all);
-        TerminalPaneViewModel Pane(string repo) =>
-            new(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe", ConfigDir = @"C:\a\.claude-accounts\amy@example.com" });
-        var (a, b) = (Pane("A"), Pane("B"));
-        var changes = 0;
-        person.SelectionChanged += () => changes++;
-
-        person.SyncTo([a, b]);
-        // Chosen here, not left to SyncTo (which chooses the newest of tabs arriving together): this is about the Usage tab.
-        person.SelectedPane = a;
-        changes = 0;
-        Assert.That(person.SelectedPane, Is.SameAs(a));
-        Assert.That(person.ShowsTerminal, Is.True);
-        Assert.That(person.IsUsageShown, Is.False);
-
-        person.ShowUsageCommand.Execute(null);
-        Assert.That(person.IsUsageShown, Is.True);
-        Assert.That(person.ShowsTerminal, Is.False, "the terminal area shows the charts instead");
-        Assert.That(person.SelectedPane, Is.SameAs(a), "the chosen CLI is remembered, not cleared");
-        Assert.That(person.Panes, Is.EqualTo(new[] { a, b }), "the pinned tab is never one of the real panes");
-        Assert.That(changes, Is.EqualTo(1));
-
-        person.ShowUsageCommand.Execute(null);
-        Assert.That(changes, Is.EqualTo(1), "showing it again while already shown is a no-op");
-
-        person.SelectedPane = a; // the real strip's own already-selected tab clicked again
-        Assert.That(person.IsUsageShown, Is.False, "choosing a real CLI tab, even the one already chosen, leaves the pinned tab");
-        Assert.That(person.ShowsTerminal, Is.True);
-        Assert.That(changes, Is.EqualTo(2));
-
-        person.ShowUsageCommand.Execute(null);
-        person.NextCommand.Execute(null); // cycling to a different real tab leaves it too
-        Assert.That(person.IsUsageShown, Is.False);
-        Assert.That(person.SelectedPane, Is.SameAs(b));
-    }
-
-    /// <summary>M.ORCH-T1446: the terminal area never shows while there's no real pane open, whether or not the pinned
-    /// Usage tab was last chosen -- there's nothing for either of them to replace.</summary>
-    [Test, Apartment(ApartmentState.STA)]
-    public void The_terminal_area_stays_hidden_with_no_panes_whichever_tab_was_last_chosen()
+    public void The_terminal_area_stays_hidden_with_no_panes()
     {
         var all = new TerminalsViewModel();
         var person = new PersonTerminalsViewModel(all);
         Assert.That(person.HasPanes, Is.False);
         Assert.That(person.ShowsTerminal, Is.False);
-        person.ShowUsageCommand.Execute(null);
-        Assert.That(person.ShowsTerminal, Is.False, "nothing to show either way");
     }
 
     // ---- drag-and-drop reordering (M.ORCH-T1526) ----------------------------------------------------
@@ -444,9 +398,9 @@ public sealed class TerminalPanesTests
         XElement Named(string name) => xaml.Descendants().Single(e => (string?)e.Attribute(x + "Name") == name);
         // M.ORCH-T1302: only the person's CLI tab bar is a fixed row right under the person tabs (Root's row 2, after the menu
         // bar's own row 0 and the login tabs' row 1, M.ORCH-T1499); the chosen terminal scrolls with everything else in
-        // AgentsBody (row 3), a plain sibling of AgentsBodyList rather than one of its virtualized rows, so a native terminal
-        // window is never torn down just because it scrolled out of view (TerminalClip.cs keeps it clipped to AgentsBody's own
-        // viewport instead).
+        // AgentsBody (row 3) -- the only thing it holds (M.ORCH-T2238: there's no per-login home page any more), so a native
+        // terminal window is never torn down just because it scrolled out of view (TerminalClip.cs keeps it clipped to
+        // AgentsBody's own viewport instead).
         var rootGrid = Named("Root");
         Assert.That(Named("TerminalsPanel").Parent, Is.SameAs(rootGrid));
         Assert.That((string?)Named("TerminalsPanel").Attribute("Grid.Row"), Is.EqualTo("2"));
@@ -470,59 +424,12 @@ public sealed class TerminalPanesTests
         foreach (var name in new[] { "TerminalsPanel", "TerminalTabs" })
             Assert.That(Named(name).Ancestors().Contains(Named("AgentsBody")), Is.False, $"{name} stays fixed");
         Assert.That(Named("TerminalFrame").Ancestors().Contains(Named("AgentsBody")), Is.True, "the chosen terminal scrolls with the body");
-        Assert.That(Named("TerminalFrame").Ancestors().Contains(Named("AgentsBodyList")), Is.False, "never one of AgentsBodyList's virtualized rows");
-        // The pinned Usage tab's own page (M.ORCH-T1532): a plain sibling of TerminalFrame, not one of AgentsBodyList's
-        // virtualized rows either, holding the 5-hour/weekly chart that used to open AgentsBodyList inline.
-        Assert.That(Named("UsageFrame").Ancestors().Contains(Named("AgentsBody")), Is.True, "the Usage tab's page scrolls with the body");
-        Assert.That(Named("UsageFrame").Ancestors().Contains(Named("AgentsBodyList")), Is.False, "never one of AgentsBodyList's virtualized rows");
-        // In AgentsBodyList: the stats first (the chart moved into UsageFrame, M.ORCH-T1532), then the toolbar and Workspace
-        // (the Tickets queue is gone, M.ORCH-T2225: a database nobody here reads).
-        // The pinned limit pills are gone (they rendered as blank boxes, M.ORCH-T1318).
-        var body = Named("AgentsBodyList").Elements().Select(e => (string?)e.Attribute(x + "Name")).ToList();
-        Assert.That(body.IndexOf("Header"), Is.Zero, "the stats come right after the CLI terminal, the chart now in its own Usage tab page");
-        Assert.That(body, Has.No.Member("PinnedLimitBars"));
-        Assert.That(body, Has.No.Member("UtilizationSection"), "moved into UsageFrame, a sibling of TerminalFrame");
-        Assert.That(body.IndexOf("Toolbar"), Is.EqualTo(body.IndexOf("Header") + 1));
-        Assert.That(body.IndexOf("WorkspaceExtras"), Is.EqualTo(body.IndexOf("Toolbar") + 1));
         // No side margin of its own: the page body's 24px gutters place the CLI in line with the CLI tab bar (M.ORCH-T1326 keeps
         // those gutters on a person's page); a margin here would double them or push it off the page (M.ORCH-T1321).
         Assert.That((string?)Named("TerminalFrame").Attribute("Margin"), Is.EqualTo("{StaticResource SpaceTS}"));
-        // M.ORCH-T1569: a plain binding to the view model's strip list (the pinned Usage tab, then Terminals.Panes); see
-        // The_pinned_Usage_tab_sits_first_inside_the_shared_tab_control for its own shape.
-        Assert.That((string?)Named("TerminalTabs").Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.StripItems}"));
+        // M.ORCH-T2238: a plain binding to the view model's own pane list -- there's no pinned Usage tab to prepend any more.
+        Assert.That((string?)Named("TerminalTabs").Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.Panes}"));
         Assert.That(Named("TerminalPanesHost").Parent, Is.SameAs(Named("TerminalFrame")));
-    }
-
-    /// <summary>M.ORCH-T1555: the pinned Usage tab, the Launcher's own tab and every CLI tab share one mc:MaTabControl
-    /// (TerminalTabs) now -- Usage used to be a separate MaTabItem bolted on beside it (M.ORCH-T1446), wired with its own
-    /// MouseLeftButtonDown/KeyDown handlers instead of the control's own selection, which is what left it inert. It's the
-    /// first item of a CompositeCollection (PersonTerminalsViewModel.UsageItems ahead of Terminals.Panes). Its own look
-    /// (locked in place, no close button) comes from one shared, unkeyed ItemContainerStyle/ItemTemplate with a
-    /// DataTrigger that switches what's set for the shared UsageTab marker, not a DataTemplateSelector/StyleSelector of
-    /// the dashboard's own, which M.ORCH-T667's library-only rule (LibraryOnlyXamlTests) doesn't allow.</summary>
-    [Test]
-    public void The_pinned_Usage_tab_sits_first_inside_the_shared_tab_control()
-    {
-        var root = TestContext.CurrentContext.TestDirectory;
-        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
-        var xaml = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        XElement Named(string name) => xaml.Descendants().Single(e => (string?)e.Attribute(x + "Name") == name);
-
-        var tabs = Named("TerminalTabs");
-        // M.ORCH-T1569: no XAML CompositeCollection (its {Binding} container could lose its panes); the view model's own list.
-        Assert.That((string?)tabs.Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.StripItems}"));
-        Assert.That(tabs.Descendants().Any(e => e.Name.LocalName == "CompositeCollection"), Is.False);
-
-        var containerStyle = tabs.Elements().Single(e => e.Name.LocalName == "MaTabControl.ItemContainerStyle").Elements().Single(e => e.Name.LocalName == "Style");
-        // Two DataTriggers lock a tab now: the Launcher's (Request.IsMenu, M.ORCH-T1848) and the Usage tab's, so pick by binding.
-        var usageTrigger = containerStyle.Descendants().Single(e => e.Name.LocalName == "DataTrigger" && ((string?)e.Attribute("Value") ?? "").Contains("UsageTab"));
-        Assert.That(usageTrigger.Elements().Any(s => (string?)s.Attribute("Property") == "IsLocked" && (string?)s.Attribute("Value") == "True"), Is.True,
-            "locked: drag-to-reorder can never move it or drop another tab before it");
-
-        var itemTemplate = tabs.Elements().Single(e => e.Name.LocalName == "MaTabControl.ItemTemplate").Elements().Single(e => e.Name.LocalName == "DataTemplate");
-        var usageHeader = itemTemplate.Descendants().Single(e => (string?)e.Attribute(x + "Name") == "UsageTabHeader");
-        Assert.That(usageHeader.Descendants().Any(e => e.Name.LocalName == "Button"), Is.False, "no close button: it can't be closed");
     }
 
     [Test, Apartment(ApartmentState.STA)]

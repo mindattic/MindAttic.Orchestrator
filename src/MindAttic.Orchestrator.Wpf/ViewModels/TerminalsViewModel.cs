@@ -1928,7 +1928,6 @@ public sealed class PersonTerminalsViewModel : ObservableObject
 {
     private readonly TerminalsViewModel all;
     private TerminalPaneViewModel? selected;
-    private bool usageShown;
 
     /// <summary>One person's panel over <paramref name="all"/>: the terminals whose CLI runs on their login.</summary>
     public PersonTerminalsViewModel(TerminalsViewModel all)
@@ -1936,7 +1935,6 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         this.all = all;
         Panes.CollectionChanged += (_, e) =>
         {
-            MirrorStrip(e);
             // A pane leaving keeps whatever IsLastOfPerson it last had (the loop below only ever touches what's still in
             // Panes): cleared explicitly here, or the one that happened to be last when it left shows a stale elbow forever,
             // even once it's the sole survivor of a run of removals that empties the list (M.ORCH-T1865).
@@ -1954,47 +1952,9 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         for (var i = 0; i < Panes.Count; i++) Panes[i].IsLastOfPerson = i == Panes.Count - 1;
     }
 
-    /// <summary>The CLI tab strip's items (M.ORCH-T1569): the pinned <see cref="UsageTab"/>, then <see cref="Panes"/>, kept in
-    /// step with them. A plain view-model list the strip binds to like any other, in place of a XAML CompositeCollection whose
-    /// <c>{Binding Terminals.Panes}</c> container had no data context of its own to inherit, so it could lose its panes (as
-    /// it did crossing into the phone layout and back), leaving only the Usage tab.</summary>
-    public ObservableCollection<object> StripItems { get; } = [UsageTab];
-
-    private void MirrorStrip(System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-    {
-        switch (e.Action)
-        {
-            case System.Collections.Specialized.NotifyCollectionChangedAction.Add when e.NewItems is { Count: 1 }:
-                StripItems.Insert(e.NewStartingIndex + 1, e.NewItems[0]!);
-                break;
-            case System.Collections.Specialized.NotifyCollectionChangedAction.Remove when e.OldItems is { Count: 1 }:
-                StripItems.RemoveAt(e.OldStartingIndex + 1);
-                break;
-            case System.Collections.Specialized.NotifyCollectionChangedAction.Move when e.NewItems is { Count: 1 }:
-                StripItems.Move(e.OldStartingIndex + 1, e.NewStartingIndex + 1);
-                break;
-            default:
-                while (StripItems.Count > 1) StripItems.RemoveAt(StripItems.Count - 1);
-                foreach (var pane in Panes) StripItems.Add(pane);
-                break;
-        }
-    }
-
-    /// <summary>The pinned Usage tab's identity in the shared strip (M.ORCH-T1555, <c>mc:MaTabControl</c>, the same
-    /// library control the Launcher and CLI tabs already use): a single shared instance, never one of <see cref="Panes"/>,
-    /// so <c>MainWindow.xaml</c>'s item template/style selectors can pick it out of the strip's items by reference.
-    /// Usage used to be a separate MaTabItem bolted on beside TerminalTabs (M.ORCH-T1446); now it's a real item of that
-    /// one control, so clicking or keying to it goes through the control's own selection instead of hand-wired
-    /// MouseLeftButtonDown/KeyDown handlers.</summary>
-    public sealed class UsageTabMarker
-    {
-        internal UsageTabMarker() { }
-    }
-
-    /// <summary>The one shared Usage tab marker; see <see cref="UsageTabMarker"/>.</summary>
-    public static readonly UsageTabMarker UsageTab = new();
-
-    /// <summary>This person's terminals, in the order they opened.</summary>
+    /// <summary>This person's terminals, in the order they opened; also the CLI tab strip's own items in both layout modes
+    /// (M.ORCH-T2238: the strip no longer pins a pseudo "Usage" item ahead of them - there's no per-login home page left to
+    /// select into, so a pane is all there ever is to choose).</summary>
     public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];
 
     /// <summary>The terminal this person's panel shows.</summary>
@@ -2007,82 +1967,23 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         {
             if (value is null && Panes.Count > 0)
             {
-                if (selected is not null && Panes.Contains(selected)) SynchronizationContext.Current?.Post(_ => { Raise(nameof(SelectedPane)); Raise(nameof(SelectedStripItem)); }, null);
+                if (selected is not null && Panes.Contains(selected)) SynchronizationContext.Current?.Post(_ => Raise(nameof(SelectedPane)), null);
                 return;
             }
             if (value is not null && !Panes.Contains(value)) return;
-            // A real CLI/Launcher tab taking the choice (M.ORCH-T1446) always leaves the pinned Usage tab, even choosing the
-            // one already chosen here before Usage was shown (M.ORCH-T1555: the shared strip's own SelectedItem really did
-            // change, from UsageTab to this pane, so SelectedStripItem's setter below still calls this with that pane even
-            // though `selected` itself doesn't move).
-            if (value is not null) ClearUsageShown();
             if (!Set(ref selected, value)) return;
-            Raise(nameof(SelectedStripItem));
             SelectionChanged?.Invoke();
-        }
-    }
-
-    /// <summary>The shared strip's current selection (M.ORCH-T1555): <see cref="UsageTab"/> once the pinned Usage tab is
-    /// chosen, else whichever real pane <see cref="SelectedPane"/> is. The strip's own <c>mc:MaTabControl.SelectedItem</c>
-    /// binds to this two-way, since that one control now owns the Usage tab as well as the CLI/Launcher ones, so a
-    /// choice made through it (click, arrow keys, Home/End) has to flow through a property typed for either kind of
-    /// item rather than <see cref="SelectedPane"/> alone.</summary>
-    public object? SelectedStripItem
-    {
-        get => usageShown ? UsageTab : SelectedPane;
-        set
-        {
-            if (ReferenceEquals(value, UsageTab)) ShowUsageCommand.Execute(null);
-            else if (value is TerminalPaneViewModel pane) SelectedPane = pane;
         }
     }
 
     /// <summary>This person has a terminal open: the panel shows its tabs.</summary>
     public bool HasPanes => Panes.Count > 0;
 
-    /// <summary>The pinned Usage tab (M.ORCH-T1446, at index 0 of the strip, never one of <see cref="Panes"/>) is chosen:
-    /// <see cref="ShowsTerminal"/> hides the terminal area so it shows this login's 5-hour/weekly charts instead, while
-    /// <see cref="SelectedPane"/> itself keeps whichever CLI was chosen, so choosing a real tab again returns to it.</summary>
-    public bool IsUsageShown => usageShown;
-
-    /// <summary>Whether the terminal area shows the chosen CLI's terminal: a real pane is open and the pinned Usage tab
-    /// isn't chosen over it.</summary>
-    public bool ShowsTerminal => HasPanes && !usageShown;
-
-    /// <summary>Whether the page under the terminal area (the stats, the toolbar, the tickets) shows (M.ORCH-T1572): on the
-    /// Usage tab, or with no CLI open at all (no tab strip, so no Usage tab to reach them by), never under a CLI's terminal,
-    /// which then fills the page with nothing to scroll to.</summary>
-    public bool ShowsBody => !ShowsTerminal;
-
-    private ICommand? showUsageCommand;
-
-    /// <summary>Choosing the pinned Usage tab (M.ORCH-T1446, now a real item of the shared strip, M.ORCH-T1555): shows
-    /// this login's 5-hour/weekly charts where the chosen terminal normally sits, instead of switching any CLI's
-    /// terminal away.</summary>
-    public ICommand ShowUsageCommand => showUsageCommand ??= new RelayCommand(() =>
-    {
-        if (usageShown) return;
-        usageShown = true;
-        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal)); Raise(nameof(ShowsBody)); Raise(nameof(SelectedStripItem));
-        SelectionChanged?.Invoke();
-    });
-
-    /// <summary>A real CLI or Launcher tab taking focus leaves the pinned Usage tab (M.ORCH-T1446); a no-op once it's
-    /// already left.</summary>
-    internal void ClearUsageShown()
-    {
-        if (!usageShown) return;
-        usageShown = false;
-        Raise(nameof(IsUsageShown)); Raise(nameof(ShowsTerminal)); Raise(nameof(ShowsBody)); Raise(nameof(SelectedStripItem));
-        SelectionChanged?.Invoke();
-    }
+    /// <summary>Whether the terminal area shows the chosen CLI's terminal: a real pane is open.</summary>
+    public bool ShowsTerminal => HasPanes;
 
     /// <summary>How many terminals this person has open, in words.</summary>
     public string Summary => Panes.Count switch { 0 => "", 1 => "1 open", var n => $"{n} open" };
-
-    /// <summary>This person's active CLIs, one title per line (M.ORCH-T2225): already loaded in <see cref="Panes"/>, the same
-    /// list the CLI tab strip draws from, so showing it is a plain read, never a database round trip. Empty with none open.</summary>
-    public string ActiveClisText => string.Join("\n", Panes.Select(p => p.Title));
 
     /// <summary>Raised when this person's chosen terminal changes, so the window shows it.</summary>
     internal event Action? SelectionChanged;
@@ -2130,7 +2031,7 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         if (cleared)
         {
             selected = null;
-            Raise(nameof(SelectedPane)); Raise(nameof(SelectedStripItem));
+            Raise(nameof(SelectedPane));
         }
         for (var i = Panes.Count - 1; i >= 0; i--)
             if (!mine.Contains(Panes[i])) Panes.RemoveAt(i);
@@ -2143,13 +2044,13 @@ public sealed class PersonTerminalsViewModel : ObservableObject
         if (selected is null && Panes.Count > 0)
         {
             selected = Panes[cleared ? Math.Clamp(at, 0, Panes.Count - 1) : Panes.Count - 1];
-            Raise(nameof(SelectedPane)); Raise(nameof(SelectedStripItem));
+            Raise(nameof(SelectedPane));
             SelectionChanged?.Invoke();
         }
         else if (cleared) SelectionChanged?.Invoke();
         Raise(nameof(HasPanes));
-        Raise(nameof(ShowsTerminal)); Raise(nameof(ShowsBody));
-        Raise(nameof(Summary)); Raise(nameof(ActiveClisText));
+        Raise(nameof(ShowsTerminal));
+        Raise(nameof(Summary));
     }
 
     /// <summary>Applies a drag on the real CLI tab strip (M.ORCH-T1526, MainWindow.xaml.cs's

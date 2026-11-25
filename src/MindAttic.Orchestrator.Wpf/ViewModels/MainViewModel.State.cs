@@ -1,21 +1,17 @@
 using MindAttic.Orchestrator.Budget;
-using MindAttic.Orchestrator.Reminders;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Status;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// The member roster, the orgs, the settings and the reminders, pushed on the status bus by whichever process
+/// The member roster, the orgs and the settings, pushed on the status bus by whichever process
 /// changed them (M.ORCH-T891, <see cref="StateBus"/>): laid over what's shown the moment they change, so the dashboard needn't
 /// reread the store for them while its stream is up. Each message is the whole of its kind; only this dashboard's own store's
-/// are taken. Kept on the global login's tab; forgotten when the stream drops (the poll reads the store again then).
+/// are taken. Kept on the global login's tab.
 /// </summary>
 public sealed partial class MainViewModel
 {
-    // The pending reminders as last pushed on this connection; null reads them from the store.
-    private IReadOnlyList<Reminder>? pushedReminders;
-
     /// <summary>
     /// Takes one pushed payload on the UI thread. The reminders go straight to every tab; the roster and the orgs
     /// are kept for the tab split, and the settings reload an open, unedited Settings panel. Returns whether the tabs should be
@@ -36,14 +32,6 @@ public sealed partial class MainViewModel
             case OrgsPayload o:
                 lastOrgs = o.ToDirectory();
                 return true;
-            case RemindersPayload r:
-                pushedReminders = r.Pending;
-                var now = DateTime.UtcNow;
-                // This tab first: every other one shows its lines.
-                ApplyReminders(now);
-                foreach (var t in LoginTabs)
-                    if (!ReferenceEquals(t, this)) t.ApplyReminders(now);
-                return false;
             case LoginLocksPayload:
                 // A lock set or cleared by a CLI, its auto-lock or another dashboard: shown now, not after the cache runs out.
                 LoginLocks.InvalidateLiveCache();
@@ -113,7 +101,4 @@ public sealed partial class MainViewModel
         appliedAt[payload.GetType()] = at;
         return true;
     }
-
-    /// <summary>The stream dropped: the reminders are read from the store again until it's back.</summary>
-    private void ForgetPushedState() => pushedReminders = null;
 }

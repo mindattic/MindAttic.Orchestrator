@@ -130,25 +130,6 @@ public sealed class UtilizationChartLayoutTests
         png.Save(file);
     }
 
-    [Test]
-    public void The_active_clis_card_has_its_own_full_width_row_under_terminals()
-    {
-        // M.ORCH-T2225: the full 5-hour/weekly chart card (M.ORCH-T826) and the ticket queue that used to sit under it are
-        // gone, replaced by the login and its already-loaded active CLIs, in the same spot, under the fixed Terminals.
-        var root = TestContext.CurrentContext.TestDirectory;
-        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
-        XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation", x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var doc = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        var card = doc.Descendants(p + "Border").Single(b => (string?)b.Attribute(x + "Name") == "ActiveClisCard");
-
-        Assert.That(card.Ancestors(p + "WrapPanel"), Is.Empty, "the card isn't one more tile beside the stats");
-        Assert.That(card.Ancestors().Any(e => (string?)e.Attribute(x + "Name") == "Header"), Is.False, "no longer pinned above the toolbar");
-        Assert.That(card.Ancestors().Any(e => (string?)e.Attribute(x + "Name") == "AgentsBody"), Is.True, "in the scrolling body with current work, under the fixed Terminals");
-        var names = doc.Descendants().Select(e => (string?)e.Attribute(x + "Name")).ToList();
-        Assert.That(names.IndexOf("ActiveClisCard"), Is.GreaterThan(names.IndexOf("TerminalsPanel")), "under Terminals");
-        Assert.That(card.Attribute("Width"), Is.Null, "no fixed width: it stretches across the window");
-    }
-
     // M.ORCH-T464: the hour marks stepped the local clock across a clock change.
     private static readonly TimeZoneInfo Central = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
 
@@ -184,6 +165,18 @@ public sealed class UtilizationChartLayoutTests
         // 2026-11-01 in Chicago: 1:00 AM CDT (06:00Z), then 1:00 AM CST again at 07:00Z.
         Assert.That(Marks(new DateTime(2026, 11, 1, 4, 30, 0, DateTimeKind.Utc), new DateTime(2026, 11, 1, 9, 30, 0, DateTimeKind.Utc), Central),
             Is.EqualTo(new[] { "00:00@05:00", "01:00@06:00", "01:00@07:00", "02:00@08:00", "03:00@09:00" }));
+    }
+
+    // M.ORCH-T1327: a span over a day wide (the API key's old credit burndown had one) only labels as many hours as fit,
+    // never one whole hour's label on top of another; the 5-hour window is short enough that every hour still gets one.
+    private const double LabelWidth = 52; // "12:00 PM" in Segoe UI 12.5
+
+    [Test]
+    public void The_five_hour_chart_still_labels_every_hour()
+    {
+        var start = new DateTime(2026, 10, 31, 22, 48, 0, DateTimeKind.Utc);
+        Assert.That(MaLineChart.LabelTicks(start, start.AddHours(5), TimeZoneInfo.Local, 1344, LabelWidth),
+            Is.EqualTo(MaLineChart.HourTicks(start, start.AddHours(5), TimeZoneInfo.Local).ToList()));
     }
 
     // M.ORCH-T194: near the reset, 'now NN%' ran into 'NN% at reset'.

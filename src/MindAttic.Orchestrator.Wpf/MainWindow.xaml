@@ -304,14 +304,11 @@
              login a node with a chevron that expands to its own open CLI/Launcher panes, so the CLI tab bar
              (TerminalsPanel) stays hidden and AgentsBody spans the whole right side (its Grid.Row/RowSpan, bound to
              TreeMenuLayout via Converters.BodyRow/BodyRowSpan, further down). Only the selected login starts expanded
-             (MainViewModel.IsExpanded, forced true by Select); the chevron alone toggles it, never selection, so another
-             login's panes can be peeked at without leaving the one shown. Clicking the login's own header row selects it
-             (M.ORCH-T1877/T1962: on release, never after a drag; shows its Usage, never expands or collapses it - only
-             the chevron does), which is why there's no separate nested Usage row among the children below any more (M.ORCH-T1768: it
-             was left over from before that header click did this, so it was redundant - removed, not merely hidden, by
-             binding straight to Terminals.Panes instead of Terminals.StripItems, which still carries the pinned Usage
-             marker for the flat strip below). v1 scope (not asked for, and the flat strip above keeps them): no
-             drag-reorder, no rename-in-place, no per-pane close button here; switch the setting off for those. -->
+             (MainViewModel.IsExpanded, forced true by Select); the header row's own click toggles it too now
+             (M.ORCH-T1877/T2238: on release, never after a drag), the exact same thing the chevron does - there's no
+             per-login home page left to select into, so a click here is never anything but expand/collapse. The children
+             bind straight to Terminals.Panes (M.ORCH-T1768). v1 scope (not asked for, and the flat strip above keeps
+             them): no drag-reorder, no rename-in-place, no per-pane close button here; switch the setting off for those. -->
         <ScrollViewer x:Name="LoginTreeScroller" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                       MaxHeight="{Binding ActualHeight, ElementName=TopRow, Converter={x:Static vm:Converters.Share}, ConverterParameter=0.5}"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
@@ -618,10 +615,9 @@
                                              tree, same CloseCommand/CommandParameter wiring and DockPanel.Dock="Right" placement as
                                              the flat strip's own TerminalCloseButton, just reached via AncestorType=ItemsControl
                                              (this row's nearest ItemsControl, LoginTreeChildren above, inherits the owning login's
-                                             MainViewModel as its DataContext). There is no nested Usage row here any more
-                                             (M.ORCH-T1768): it's gone entirely, not merely hidden, since LoginTreeChildren above
-                                             binds straight to Terminals.Panes, which never holds the pinned Usage marker to begin
-                                             with (that's Terminals.StripItems alone, still used by the flat strip below). -->
+                                             MainViewModel as its DataContext). LoginTreeChildren above binds straight to
+                                             Terminals.Panes (M.ORCH-T1768), the same collection the flat strip binds too
+                                             (M.ORCH-T2238: there's no separate pinned marker item any more in either one). -->
                                         <!-- The branch spine above needs zero vertical margin to run edge-to-edge and touch the
                                              next sibling's own spine (M.ORCH-T1822), so the row's old breathing room (dropped from
                                              LoginTreeChildRow itself) lives here instead - only the actual content (icon, name,
@@ -860,26 +856,14 @@
                 <ScrollViewer x:Name="TerminalTabScroller" Grid.Column="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                               HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
                               ScrollChanged="TerminalTabScroller_ScrollChanged">
-                    <!-- The pinned Usage tab, the Launcher's own tab, and every CLI tab now share this one mc:MaTabControl
-                         (M.ORCH-T1555): Usage used to be a separate MaTabItem bolted on beside this ScrollViewer, unclosable
-                         and titleless but otherwise not a real part of this control, wired with its own MouseLeftButtonDown/
-                         KeyDown handlers (M.ORCH-T1446) - clicking it depended on those handlers firing instead of the
-                         control's own selection, which is what left it inert. It's now the first item of
-                         Terminals.StripItems (the Usage tab, then Terminals.Panes, kept in step in the view model, M.ORCH-T1569:
-                         the XAML CompositeCollection it replaced could lose its panes, leaving Usage alone in the strip), and
-                         SelectedItem binds to SelectedStripItem (either UsageTab or a real pane) instead of SelectedPane
-                         alone. Both the item container's own look (ItemContainerStyle below) and its header
-                         (ItemTemplate below) are one shared, unkeyed Style/DataTemplate with a DataTrigger that switches
-                         what's set once the bound item is the shared UsageTab marker (ReferenceEquals via plain WPF
-                         equality, {x:Static vm:PersonTerminalsViewModel.UsageTab}) - not a DataTemplateSelector/
-                         StyleSelector of the dashboard's own, which M.ORCH-T667's library-only rule (LibraryOnlyXamlTests)
-                         doesn't allow. Drag-and-drop reordering (M.ORCH-T1526, M.COMP-T168): the Launcher's own tab is an
-                         ordinary pane here like any other CLI session, so every real tab in this strip is freely
-                         draggable, while the Usage tab is locked in place (MaTabItem.IsLocked, in the trigger below) so it
-                         can never be dragged and nothing can be dropped before it. TerminalTabs_Reordered applies and
-                         persists the move via PersonTerminalsViewModel.Reorder. -->
+                    <!-- The Launcher's own tab and every CLI tab share this one mc:MaTabControl (M.ORCH-T1555), bound straight
+                         to Terminals.Panes/SelectedPane (M.ORCH-T2238: the pinned "Usage" item that used to sit ahead of them
+                         is gone - there's no per-login home page left to select into, so the strip is nothing but panes now).
+                         Drag-and-drop reordering (M.ORCH-T1526, M.COMP-T168): the Launcher's own tab is an ordinary pane here
+                         like any other CLI session, so every real tab in this strip is freely draggable. TerminalTabs_Reordered
+                         applies and persists the move via PersonTerminalsViewModel.Reorder. -->
                     <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ContextMenuOpening="OnTerminalTabContextMenu"
-                                     ItemsSource="{Binding Terminals.StripItems}" SelectedItem="{Binding Terminals.SelectedStripItem}"
+                                     ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
                                      AllowReorder="True" Reordered="TerminalTabs_Reordered"
                                      AutomationProperties.Name="Terminals" AutomationProperties.HelpText="{Binding Terminals.Summary}">
                         <mc:MaTabControl.ItemContainerStyle>
@@ -891,10 +875,6 @@
                                 <Setter Property="mc:MaCallout.Placement" Value="Bottom" />
                                 <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
                                 <Style.Triggers>
-                                    <!-- The pinned Usage tab (M.ORCH-T1446): unclosable, titleless, locked at index 0. Its own
-                                         figures live on the shown login's MainViewModel, not on the UsageTabMarker item itself,
-                                         hence AncestorType=mc:MaTabControl to reach back to the control's own (inherited)
-                                         DataContext. -->
                                     <!-- The Launcher stays first, never dragged, nothing dropped before it (M.ORCH-T1848). -->
                                     <DataTrigger Binding="{Binding Request.IsMenu, FallbackValue=False}" Value="True">
                                         <Setter Property="IsLocked" Value="True" />
@@ -906,12 +886,6 @@
                                     <DataTrigger Binding="{Binding IsMoving, FallbackValue=False}" Value="True">
                                         <Setter Property="IsLocked" Value="True" />
                                     </DataTrigger>
-                                    <DataTrigger Binding="{Binding}" Value="{x:Static vm:PersonTerminalsViewModel.UsageTab}">
-                                        <Setter Property="IsLocked" Value="True" />
-                                        <Setter Property="Accent" Value="{Binding DataContext.TabBrush, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
-                                        <Setter Property="mc:MaCallout.ToolTip" Value="{Binding DataContext.UsageTabTip, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
-                                        <Setter Property="AutomationProperties.Name" Value="{Binding DataContext.UsageTabTip, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
-                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </mc:MaTabControl.ItemContainerStyle>
@@ -922,11 +896,7 @@
                                          above, including why this is four Path lines, not a raw Rectangle): this header Grid fills
                                          the whole tab's clickable face, so outlining it this way reads as the tab itself being
                                          outlined, same size/shape as any other tab. -->
-                                    <!-- FallbackValue=Collapsed (M.ORCH-T1883): this Grid is a sibling of UsageTabHeader/RealTabHeader,
-                                         not inside either, so it isn't covered by RealTabHeader's own Collapsed trigger for the
-                                         pinned Usage tab - without a fallback, IsMoving's failed binding there (UsageTabMarker has
-                                         no such property) would default Visibility to Visible and draw this on the Usage tab too. -->
-                                    <Grid IsHitTestVisible="False" Visibility="{Binding IsMoving, Converter={StaticResource Visible}, FallbackValue=Collapsed}">
+                                    <Grid IsHitTestVisible="False" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
                                         <Path Data="M0,0 L1,0" Stretch="Fill" Height="1" VerticalAlignment="Top"
                                               StrokeDashArray="3,2" StrokeThickness="1" Stroke="{DynamicResource MaMuted}" />
                                         <Path Data="M0,0 L1,0" Stretch="Fill" Height="1" VerticalAlignment="Bottom"
@@ -936,22 +906,6 @@
                                         <Path Data="M0,0 L0,1" Stretch="Fill" Width="1" HorizontalAlignment="Right"
                                               StrokeDashArray="3,2" StrokeThickness="1" Stroke="{DynamicResource MaMuted}" />
                                     </Grid>
-                                    <!-- The pinned Usage tab's own header; Collapsed except for the Usage item itself
-                                         (DataTemplate.Triggers below swaps which of these two is Visible). -->
-                                    <StackPanel x:Name="UsageTabHeader" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
-                                        <TextBlock Text="{Binding DataContext.UsageSigmaLabel, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                        <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
-                                                     Margin="{StaticResource SpaceLXS}" Value="{Binding DataContext.WeeklyLimitPercent, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}, Mode=OneWay}"
-                                                     Foreground="{Binding DataContext.WeeklyLimitBrush, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
-                                        <!-- The lambda pair is a solo Ultra login's own 5-hour figure, which it doesn't have
-                                             (M.ORCH-T1540, ShowsFiveHourChart). -->
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding DataContext.ShowsFiveHourChart, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}, Converter={StaticResource Visible}}">
-                                            <TextBlock Text="{Binding DataContext.UsageLambdaLabel, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="{StaticResource SpaceLS}" />
-                                            <ProgressBar Style="{StaticResource MaProgressBar}" Width="40" Height="6" VerticalAlignment="Center"
-                                                         Margin="{StaticResource SpaceLXS}" Value="{Binding DataContext.FiveHourLimitPercent, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}, Mode=OneWay}"
-                                                         Foreground="{Binding DataContext.FiveHourLimitBrush, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}" />
-                                        </StackPanel>
-                                    </StackPanel>
                                     <!-- The close X docked at the tab's right edge (M.ORCH-T1437): SizeTerminalTabs stretches this header to the tab. -->
                                     <DockPanel x:Name="RealTabHeader" Loaded="TerminalTabItem_Loaded">
                                         <!-- 10px off the tab's right edge (M.ORCH-T1271); asks before closing (M.ORCH-T1437). -->
@@ -1049,12 +1003,6 @@
                                     </StackPanel>
                                     </DockPanel>
                                 </Grid>
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding}" Value="{x:Static vm:PersonTerminalsViewModel.UsageTab}">
-                                        <Setter TargetName="UsageTabHeader" Property="Visibility" Value="Visible" />
-                                        <Setter TargetName="RealTabHeader" Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </mc:MaTabControl.ItemTemplate>
                     </mc:MaTabControl>
@@ -1097,30 +1045,21 @@
                        Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" AutomationProperties.LiveSetting="Polite" />
         </StackPanel>
 
-        <!-- The old 'API key' billing tab's own body (M.ORCH-T630) is gone (M.ORCH-T906): the API key is a person, whose page is
-             the same as everyone's below, its money in place of Claude's 5-hour and weekly meters. -->
-
-        <!-- The person's scrolling body, under their fixed login tabs and CLI tab bar (M.ORCH-T1302): the chosen terminal, the
-             5-hour chart right after it (M.ORCH-T1319), their stats, the toolbar and the tickets assigned to them
-             (the Current work agent card board is gone, M.ORCH-T837), all reached by one scroll. One virtualized list
-             (M.ORCH-T754, MainWindow.xaml.cs): only what's on screen is built; the terminal's own Grid is a plain, non-list part
-             of it (as it was before M.ORCH-T861 pinned it, with the same TerminalClip.cs clipping it to this scroll view). -->
+        <!-- The person's scrolling body, under their fixed login tabs and CLI tab bar (M.ORCH-T1302): the chosen terminal
+             alone (M.ORCH-T2238: there is no "home page" for a login with no CLI chosen - the tree sidebar's login nodes
+             only expand/collapse to their CLI children now, they never select one, so the body shows nothing until a real
+             CLI tab is picked). SizeTerminalRow (MainWindow.xaml.cs) sizes the terminal to AgentsBody's own viewport (less
+             its gutter), so it fills the page exactly and the body never scrolls under a CLI. -->
         <ScrollViewer x:Name="AgentsBody" Grid.Column="1"
                       Grid.Row="{Binding TreeMenuLayout, Converter={x:Static vm:Converters.BodyRow}}"
                       Grid.RowSpan="{Binding TreeMenuLayout, Converter={x:Static vm:Converters.BodyRowSpan}}"
                       Style="{StaticResource MaBodyScroll}"
                       Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <StackPanel>
-                <!-- The chosen terminal (M.ORCH-T810), first in the scrolling body (M.ORCH-T1302: pulled back in from its own
-                     fixed row, M.ORCH-T861, so scrolling down past it reaches the chart and Tickets): MainWindow.xaml.cs's
-                     SizeTerminalRow sizes it to AgentsBody's own viewport (less its gutter), so it fills the page exactly: the
-                     chart and tickets are on the Usage tab now (M.ORCH-T1572), and the body doesn't scroll under a CLI. A plain sibling of AgentsBodyList below, never one of its virtualized rows (VirtualizedList.
-                     ApplyBody(AgentsBody, AgentsBodyList) in MainWindow.xaml.cs flattens AgentsBodyList alone): the native
-                     terminal window must never be torn down by a realize/derealize cycle just because it scrolled out of view. -->
                 <!-- Under the terminal, a share of its height (M.ORCH-T1887, TerminalChartHeight: 12%, floored at 48px; collapsed for
                      the API key, so its terminal keeps the whole frame): the
                      login's own usage chart, drawn compact (lines plus the predicted end percent), so pacing can be
-                     watched while the CLI works without opening the Usage tab. The 5-hour window for every plan but a solo
+                     watched while the CLI works. The 5-hour window for every plan but a solo
                      Ultra login, which has none and gets its weekly chart instead; the API key's person shows neither. -->
                 <Grid x:Name="TerminalFrame" MinHeight="160" Margin="{StaticResource SpaceTS}"
                       Visibility="{Binding Terminals.ShowsTerminal, Converter={StaticResource Visible}}">
@@ -1145,318 +1084,6 @@
                          sees them (M.ORCH-T833): switched off here so they pass straight through to the terminal. -->
                     <Grid x:Name="TerminalPanesHost" Grid.Row="0" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
                 </Grid>
-
-                <!-- The pinned Usage tab's own page (M.ORCH-T1532, in place of just hiding TerminalFrame and scrolling to
-                     where the charts used to sit in the normal flow, M.ORCH-T1446): a plain sibling of TerminalFrame in the
-                     same spot, shown only while Terminals.IsUsageShown, holding the charts that used to live in
-                     AgentsBodyList's own UtilizationSection. A real CLI/Launcher tab never sees this frame; its own scroll
-                     no longer passes through the charts on the way to the toolbar and tickets below. -->
-                <Grid x:Name="UsageFrame" Margin="{StaticResource SpaceTS}"
-                      Visibility="{Binding Terminals.IsUsageShown, Converter={StaticResource Visible}}">
-                <StackPanel x:Name="UtilizationSection" Margin="{StaticResource SectionGap}">
-                <StackPanel x:Name="ClaudeMetersSection" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
-                    <StackPanel x:Name="ChartsHeader">
-                            <!-- Notifications (M.ORCH-T1167) and the 5hr/weekly cutoff readouts (M.ORCH-T1168) share one
-                                 right-aligned row above the panel's own title (M.ORCH-T1180, after two earlier layouts: a
-                                 right-edge stack, then a standalone row, neither of which was the one Waffle wanted). What
-                                 just happened (a session finished its turn, the pace changed) stacks as small dots, newest
-                                 first (Toasts.Insert(0, ...) in MainViewModel.cs's Apply/OpenTicketsApp), immediately left
-                                 of the same live percentages already on the tab strip (TabTrailing), just surfaced here too.
-                                 Hovering a dot's ToolTip shows that notification's Title and Body without navigating away or
-                                 requiring a click; clicking it does what the old toast row's click always did
-                                 (OpenToastCommand: open what it's about, which also removes it from Toasts). Each dot's
-                                 colour is the item's own Accent: MaWarn for "needs you" (most of them, hence a mock showing
-                                 them all orange), MaBad for a problem, MaLink/MaMuted for the rest - the same per-item colour
-                                 the old MaToastHost drew from AccentPath, not one hardcoded colour. The dots scroll
-                                 horizontally rather than wrapping or crowding the limit boxes out (PruneToasts already caps
-                                 the count at MainViewModel.MaxToasts, so this is a fallback, not the main defence). -->
-                            <StackPanel x:Name="UtilizationHeaderRow" Orientation="Horizontal" HorizontalAlignment="Right">
-                                <ScrollViewer x:Name="ToastRow" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0" MaxWidth="260" VerticalAlignment="Center"
-                                              HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                                    <ItemsControl x:Name="ToastDots" Style="{StaticResource MaList}" ItemsSource="{Binding AllToasts}" AutomationProperties.Name="Notifications">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type vm:ToastViewModel}">
-                                                <!-- No app-owned style or template (M.ORCH-T1183): the library's own MaToolButton
-                                                     (flat hover/focus feedback, no chrome), sized down with plain local Width/Height/
-                                                     Margin/Padding, around the library's MaStatusLight for the dot itself, whose
-                                                     Foreground is bound straight to the item's own Accent brush. -->
-                                                <Button Style="{StaticResource MaToolButton}" Width="22" Height="22" Padding="0" Margin="2,0,2,0"
-                                                        Command="{Binding DataContext.OpenToastCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}" AutomationProperties.Name="{Binding Title}">
-                                                    <mc:MaStatusLight Width="12" Height="12" Foreground="{Binding Accent}" />
-                                                    <Button.ToolTip>
-                                                        <mc:MaCalloutToolTip>
-                                                            <StackPanel MaxWidth="320">
-                                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                                                <TextBlock Text="{Binding Body}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
-                                                                           Visibility="{Binding Body, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                                            </StackPanel>
-                                                        </mc:MaCalloutToolTip>
-                                                    </Button.ToolTip>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </StackPanel>
-                    </StackPanel>
-
-                    <!-- The login and its already-loaded active CLIs (M.ORCH-T2225, in place of the picked 5-hour/weekly
-                         chart, M.ORCH-T191/M.ORCH-T1403/M.ORCH-T1670, and the ticket queue that used to sit below it): the
-                         chart's own number already repeats on this tab's own button and the login list
-                         (LoginUsageBarsTemplate above), and the ticket queue read a database nobody here reads. Panes is
-                         already loaded (the same list the CLI tab strip above draws from), so this is a plain read, no
-                         database round trip. -->
-                    <StackPanel x:Name="ActiveClisSection">
-                        <Border x:Name="ActiveClisCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
-                                AutomationProperties.Name="{Binding LoginName, StringFormat='{}{0}: active CLIs'}">
-                            <StackPanel>
-                                <TextBlock Text="{Binding LoginName}" Style="{StaticResource MaSectionLabel}" />
-                                <TextBlock Text="No active CLIs." Style="{StaticResource MaTileSubtitle}" FontSize="12" TextWrapping="Wrap" Margin="{StaticResource SpaceH0VS}"
-                                           Visibility="{Binding Terminals.ActiveClisText, Converter={x:Static vm:Converters.EmptyToVisible}}" />
-                                <TextBlock Text="{Binding Terminals.ActiveClisText}" Style="{StaticResource MaTileSubtitle}" FontSize="12" TextWrapping="Wrap" Margin="{StaticResource SpaceH0VS}"
-                                           Visibility="{Binding Terminals.ActiveClisText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </StackPanel>
-
-                <!-- The API key's person (M.ORCH-T906): its money burning down, in place of the 5-hour chart. From its starting credit
-                     (100%) down to what's left now, then, dotted, where the last 24 hours' rate takes it: to $0 where it runs out,
-                     else what's left at the chart's end. The caption says it in words. -->
-                <StackPanel x:Name="ApiBurnSection" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
-                    <Border x:Name="ApiBurnCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="{Binding ApiBurnText, StringFormat='API credit burndown: {0}'}"
-                            Visibility="{Binding ApiBurnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
-                        <StackPanel>
-                            <TextBlock Text="API credit burndown" Style="{StaticResource MaSectionLabel}" />
-                            <mc:MaLineChart x:Name="ApiBurnChart" Data="{Binding Spend, Converter={x:Static local:ApiBurnChartData.Converter}}"
-                                            Height="130" Margin="{StaticResource SpaceH0VS}" />
-                            <TextBlock Text="{Binding ApiBurnText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Border>
-                    <!-- Its starting credit, set here (M.ORCH-T954) as well as with orchestrator billing credit <usd>: both write
-                         through ApiCredit.Set, so spend counts against it from now; 0 clears it. Only the credit changes, never the
-                         key's credentials. -->
-                    <Border x:Name="ApiCreditCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch" Margin="{StaticResource SpaceTS}"
-                            AutomationProperties.Name="API starting credit">
-                        <StackPanel>
-                            <TextBlock Text="Starting credit" Style="{StaticResource MaSectionLabel}" />
-                            <StackPanel Orientation="Horizontal" Margin="{StaticResource SpaceTS}">
-                                <TextBox x:Name="ApiCreditBox" Style="{StaticResource MaTextBox}" Width="160" Height="32" VerticalAlignment="Center"
-                                         Text="{Binding ApiCreditText, UpdateSourceTrigger=PropertyChanged}"
-                                         mc:MaTextBox.Placeholder="{Binding ApiCreditPlaceholder}"
-                                         AutomationProperties.Name="Starting credit in US dollars">
-                                    <TextBox.InputBindings>
-                                        <KeyBinding Key="Enter" Command="{Binding SetApiCreditCommand}" />
-                                    </TextBox.InputBindings>
-                                </TextBox>
-                                <Button x:Name="SetApiCreditButton" Style="{StaticResource MaButton}" Content="Set" Padding="{StaticResource SpaceHMVXS}" Margin="{StaticResource SpaceLS}"
-                                        Command="{Binding SetApiCreditCommand}" VerticalAlignment="Center"
-                                        mc:MaCallout.ToolTip="Set the API key's starting credit in US dollars (as orchestrator billing credit &lt;usd&gt; does): what its CLIs spend from now on counts against it. 0 clears it." />
-                            </StackPanel>
-                            <TextBlock Text="US dollars, 0 or more: what its CLIs spend from now on counts against it; 0 clears it."
-                                       Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}" />
-                            <TextBlock Text="{Binding ApiCreditMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}"
-                                       AutomationProperties.LiveSetting="Polite"
-                                       Visibility="{Binding ApiCreditMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                            <TextBlock Text="{Binding ApiCreditError}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}"
-                                       AutomationProperties.LiveSetting="Assertive"
-                                       Visibility="{Binding ApiCreditError, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-                </StackPanel>
-                </Grid>
-
-                <!-- Only on the Usage tab (or with no CLI open), never under a CLI's terminal (M.ORCH-T1572, ShowsBody): the
-                     terminal fills the page then, with no scroll bar. VirtualizedBody carries this binding over to the list
-                     that takes this panel's place. -->
-                <StackPanel x:Name="AgentsBodyList" Visibility="{Binding Terminals.ShowsBody, Converter={StaticResource Visible}}">
-                <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom under their fixed person tab and
-                     terminal tabs (M.ORCH-T1302): the terminal and the 5-hour chart above, then their stats (the 5-hour
-                     window, the week, their cutoffs and when Claude's meter was last read), the toolbar, the 5-hour chart and
-                     Tickets, all in this one scrolling body. The body's MaBodyScroll owns the window's left/right gutter; nothing
-                     inside it adds its own, so the tiles share both edges (M.ORCH-T192). The tiles are equal cells that together
-                     span the row at any width. -->
-                <StackPanel x:Name="Header" Margin="{StaticResource SpaceTS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
-
-                <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="200" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
-                                   AutomationProperties.Name="Summary">
-                    <!-- The API key's person (M.ORCH-T906) has no 5-hour or weekly window: money instead. What's left of its
-                         starting credit, what it has spent (today and lately), and when it runs out at the recent rate. -->
-                    <Button x:Name="ApiLeftTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
-                            mc:MaCallout.ToolTip="What's left of the API key's starting credit (its Starting credit field, or orchestrator billing credit &lt;usd&gt;, sets it): an estimate from the transcripts' tokens at Anthropic's list prices."
-                            AutomationProperties.Name="{Binding ApiLeftHeadline, StringFormat='API credit left: {0}'}">
-                        <StackPanel>
-                            <TextBlock Text="Credit Left" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
-                            <TextBlock Text="{Binding ApiLeftHeadline}" Style="{StaticResource MaStatValue}" />
-                            <TextBlock Text="{Binding ApiLeftCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="ApiSpentTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
-                            mc:MaCallout.ToolTip="What the API key's CLIs have spent since its starting credit was set, today, and the rate over the last 24 hours."
-                            AutomationProperties.Name="{Binding ApiSpentHeadline, StringFormat='API spend: {0}'}">
-                        <StackPanel>
-                            <TextBlock Text="Spent" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
-                            <TextBlock Text="{Binding ApiSpentHeadline}" Style="{StaticResource MaStatValue}" />
-                            <TextBlock Text="{Binding ApiSpentCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="ApiRunsOutTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
-                            mc:MaCallout.ToolTip="When the starting credit runs out at the last 24 hours' rate."
-                            AutomationProperties.Name="{Binding ApiRunsOutHeadline, StringFormat='API credit runs out: {0}'}">
-                        <StackPanel>
-                            <TextBlock Text="Runs Out" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
-                            <TextBlock Text="{Binding ApiRunsOutHeadline}" Style="{StaticResource MaStatValue}" />
-                            <TextBlock Text="{Binding ApiRunsOutCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Button>
-                </mc:MaTileGrid>
-                <!-- No login-action buttons on a person's page any more: User Settings (M.ORCH-T1098) is the person's tab's
-                     right-click menu (M.ORCH-T797, MainWindow.xaml.cs's OnLoginTabContextMenu); the login-wide Move CLIs is gone, each
-                     CLI moving by its own agent card's Move to; and there's no Sign in (M.ORCH-T796): a login that gets disconnected
-                     opens its own sign-in by itself. What the last of those did still shows here. -->
-                <TextBlock x:Name="PersonMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTM}"
-                           AutomationProperties.LiveSetting="Polite"
-                           Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                </StackPanel>
-
-                <!-- Toolbar: what the person's last action did on the left, the zoom on the right (M.ORCH-T667, M.ORCH-T493). The
-                     clock, refresh info, Refresh and Open Launcher are gone (M.ORCH-T855), and so are the Current work heading and
-                     its agent card board (M.ORCH-T837): each CLI is its own terminal tab, fixed above. There are no view pills any
-                     more (M.ORCH-T763): the Orchestrator shows only what's running, and Tickets Desktop the Repos, the Queue and
-                     the audit. -->
-                <Grid x:Name="Toolbar" Margin="{StaticResource SpaceH0VS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource MaFocus}"
-                               Visibility="{Binding StatusMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceTS}">
-                        <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}"
-                                   mc:MaCallout.ToolTip="Ctrl+0 resets the zoom" />
-                    </StackPanel>
-                </Grid>
-
-                <!-- What fits on no person's page (M.ORCH-T763), on the global login's tab instead of its own 'Miscellaneous'
-                     tab (M.ORCH-T825): allocate and the pace's slots, a pacing hold, the reminders the daemon texts through
-                     Psst (orchestrator remind, M.ORCH-T477), the last queue line, finished work (closed tickets whose
-                     assignment or worktree is still around) and the workspace's problems. Each part sits straight in the
-                     view, the lists too, so the one virtualized list (MainWindow.xaml.cs) builds only what's on screen. -->
-                <StackPanel x:Name="WorkspaceExtras" Margin="{StaticResource SectionGap}" Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}">
-                    <TextBlock Text="Workspace" Style="{StaticResource MaHeading}" />
-                    <DockPanel Margin="{StaticResource SpaceTS}">
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding SlotsText}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}" />
-                        <TextBlock Text="{Binding AllocateText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" />
-                    </DockPanel>
-                    <!-- Its ticket ids link into Tickets Desktop (M.ORCH-T762), as everywhere else. -->
-                    <TextBlock local:TicketText.Text="{Binding QueueMessage}" Foreground="{DynamicResource MaFocus}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}"
-                               Visibility="{Binding QueueMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                    <TextBlock Text="{Binding RemindersTitle}" Style="{StaticResource MaSectionLabel}"
-                               Visibility="{Binding ShowsReminders, Converter={StaticResource Visible}}" />
-                </StackPanel>
-                <Border x:Name="HoldCard" Style="{StaticResource MaCard}" Margin="{StaticResource SpaceTM}" BorderBrush="{DynamicResource MaWarn}"
-                        Visibility="{Binding ShowsHold, Converter={StaticResource Visible}}">
-                    <TextBlock Text="{Binding Hold}" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap" />
-                </Border>
-                <ItemsControl x:Name="ReminderList" ItemsSource="{Binding Reminders}" Style="{StaticResource MaList}" AutomationProperties.Name="Reminders"
-                              Visibility="{Binding ShowsReminders, Converter={StaticResource Visible}}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <TextBlock Text="orchestrator remind --cancel &lt;id&gt; drops one." Style="{StaticResource MaMutedText}" FontSize="11" Margin="{StaticResource RowGutter}"
-                           Visibility="{Binding ShowsReminders, Converter={StaticResource Visible}}" />
-                <TextBlock Text="FINISHED WORK" Style="{StaticResource MaSectionLabel}"
-                           Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}" />
-                <TextBlock Text="Closed tickets whose assignment (or old worktree) is still around." Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceBS}"
-                           Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}" />
-                <ItemsControl x:Name="FinishedList" ItemsSource="{Binding Finished}" Style="{StaticResource MaRowList}" AutomationProperties.Name="Finished work"
-                              Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:FinishedViewModel}">
-                            <Border Style="{StaticResource MaListCard}" BorderBrush="{DynamicResource MaGood}">
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="{StaticResource SpaceHMVXS}"
-                                            Content="{Binding ActionLabel}" Command="{Binding ActionCommand}"
-                                            mc:MaCallout.ToolTip="git keeps the worktree if it has uncommitted changes; the branch is never deleted" />
-                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="{StaticResource SpaceHMVXS}" Margin="{StaticResource SpaceRS}"
-                                            Content="Details" Command="{Binding DetailsCommand}"
-                                            mc:MaCallout.ToolTip="The sessions that worked on it (its commits and history: open it in Tickets Desktop)" />
-                                    <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Margin="{StaticResource SpaceRM}">
-                                        <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
-                                                   AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding TicketId, Mode=OneWay}" /></Hyperlink><Run Text="{Binding TextAfterId, Mode=OneWay}" />
-                                    </TextBlock>
-                                </DockPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <TextBlock Text="{Binding WarningsText}" Style="{StaticResource MaSectionLabel}"
-                           Visibility="{Binding ShowsWarningsSection, Converter={StaticResource Visible}}" />
-                <ItemsControl x:Name="WarningList" ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" AutomationProperties.Name="Problems reading the workspace"
-                              Visibility="{Binding ShowsWarningsSection, Converter={StaticResource Visible}}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <!-- Health (M.ORCH-T2034, docs/HEALTH.md): every probe's check live off the bus (MainViewModel.Health.cs), each with
-                     its status, reading, the line it was graded against (learned or configured, M.ORCH-T2057), a sparkline of its
-                     readings and a strip of its recent grades; grey once its probe goes quiet. -->
-                <TextBlock Style="{StaticResource MaSectionLabel}" Visibility="{Binding ShowsHealth, Converter={StaticResource Visible}}"
-                           AutomationProperties.Name="{Binding HealthStatusText, StringFormat='Health: {0}'}">
-                    <Run Text="HEALTH " /><Run Text="{Binding HealthStatusText, Mode=OneWay}" Foreground="{Binding HealthStatusBrush, Mode=OneWay}" />
-                </TextBlock>
-                <TextBlock Text="No probe has reported since this window connected." Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
-                           Visibility="{Binding ShowsHealthEmpty, Converter={StaticResource Visible}}" />
-                <ItemsControl x:Name="HealthList" ItemsSource="{Binding HealthChecks}" Style="{StaticResource MaRowList}" AutomationProperties.Name="Health checks"
-                              Visibility="{Binding ShowsHealth, Converter={StaticResource Visible}}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:HealthCheckRow}">
-                            <Border Style="{StaticResource MaListCard}" BorderBrush="{Binding StatusBrush}"
-                                    AutomationProperties.Name="{Binding Name}">
-                                <DockPanel>
-                                    <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}">
-                                        <Path Data="{Binding SparkLine}" Stroke="{Binding StatusBrush}" StrokeThickness="1.5"
-                                              Width="120" Height="18" HorizontalAlignment="Right" />
-                                        <ItemsControl ItemsSource="{Binding HistoryBrushes}" Style="{StaticResource MaList}" HorizontalAlignment="Right" Margin="{StaticResource SpaceTS}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Path Data="M0,0 H3 V8 H0 Z" Margin="0,0,1,0" Fill="{Binding}" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock TextWrapping="Wrap">
-                                            <Run Text="{Binding StatusText, Mode=OneWay}" Foreground="{Binding StatusBrush, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="  " /><Run Text="{Binding Name, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding ValueText, Mode=OneWay}" FontWeight="SemiBold" />
-                                        </TextBlock>
-                                        <TextBlock Style="{StaticResource MaMutedText}" TextWrapping="Wrap">
-                                            <Run Text="{Binding Probe, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding TimeText, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding ThresholdText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding LineSourceText, Mode=OneWay}" FontStyle="Italic" />
-                                        </TextBlock>
-                                        <TextBlock Text="{Binding Output}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
-                                                   Visibility="{Binding Output, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                    </StackPanel>
-                                </DockPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
             </StackPanel>
         </ScrollViewer>
 

@@ -1,9 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows.Automation;
-using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Wpf;
-using MindAttic.Orchestrator.Wpf.ViewModels;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -121,19 +119,6 @@ public sealed class TerminalTabPickerTests
         };
         Assert.That(ProcessTree.Ancestors(10, processes).Select(a => a.Exe), Is.EqualTo(new[] { "WindowsTerminal.exe", "svchost.exe" }));
         Assert.That(ProcessTree.Ancestors(7, processes), Has.Count.EqualTo(16));
-    }
-
-    [Test]
-    public void A_toast_goes_to_the_tab_whose_cli_waits_on_you()
-    {
-        HostSession a = Host(1, "A [Claude]"), b = Host(2, "A [Claude]");
-        var repo = new RepoStatus("A", @"D:\A", RepoState.Waiting, [a, b], [], [], null, default);
-        AgentBoardRow Row(HostSession h, AgentState s) =>
-            new("s" + h.ProcessId, "A", null, null, DateTime.UtcNow, DateTime.UtcNow, s, "", false, default, []) { Host = h };
-
-        Assert.That(MainViewModel.HostForToast(repo, [Row(a, AgentState.Working), Row(b, AgentState.Waiting)]), Is.SameAs(b));
-        Assert.That(MainViewModel.HostForToast(repo, []), Is.SameAs(a));
-        Assert.That(MainViewModel.HostForToast(repo with { Hosts = [] }, []), Is.Null);
     }
 
     /// <summary>Live check against this machine's real Launcher tabs: selects each host's tab, then puts the selection and the

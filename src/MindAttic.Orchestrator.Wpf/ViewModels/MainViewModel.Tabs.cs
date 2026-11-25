@@ -36,21 +36,6 @@ public sealed partial class MainViewModel
     /// <summary>This is the global login's tab (it has no root): the one that holds the workspace-wide state.</summary>
     public bool IsGlobalTab => root is null;
 
-    /// <summary>What fit on no person's page (M.ORCH-T763), now shown on the global login's tab instead of its own
-    /// 'Miscellaneous' tab (M.ORCH-T825): allocate and the pace's slots, a pacing hold, reminders, finished work and the
-    /// workspace's problems.</summary>
-    public bool ShowsWorkspaceExtras => IsGlobalTab;
-
-    /// <summary>The reminders section shows: only on the global login's tab, and only with a reminder pending.</summary>
-    public bool ShowsReminders => IsGlobalTab && HasReminders;
-
-    /// <summary>The warnings section shows: only on the global login's tab, and only with a warning.</summary>
-    public bool ShowsWarningsSection => IsGlobalTab && HasWarnings;
-
-    /// <summary>The pacing hold shows: only on the global login's tab, and only while the scheduler holds work
-    /// back.</summary>
-    public bool ShowsHold => IsGlobalTab && HasHold;
-
     /// <summary>The login's name ("Jordan", "Ryan (fallback)").</summary>
     public string TabTitle => tab.Title;
 
@@ -222,9 +207,9 @@ public sealed partial class MainViewModel
     private bool stripCleared;
 
     /// <summary>Whether this login's tree node (<see cref="MainViewModel.TabStatus.ShowsLoginTree"/>) is expanded, showing its
-    /// Usage entry and open panes as children (M.ORCH-T1759). Only the selected login starts expanded (<see cref="Select"/>
-    /// forces it true); the chevron toggles this alone, never selection, so another login's panes can be peeked at without
-    /// leaving the one shown.</summary>
+    /// open panes as children (M.ORCH-T1759). The header row's own click toggles this alone now (M.ORCH-T2238: there's no
+    /// per-login home page to select into any more, so a click there is never anything but expand/collapse); the chevron
+    /// does the exact same thing, just as a smaller, unambiguous hit target.</summary>
     private bool isExpanded;
     public bool IsExpanded
     {
@@ -232,26 +217,14 @@ public sealed partial class MainViewModel
         set { if (isExpanded == value) return; isExpanded = value; Raise(nameof(IsExpanded)); }
     }
 
-    private ICommand? selectLoginCommand, selectTreeChildCommand;
+    private ICommand? selectTreeChildCommand;
 
-    /// <summary>A tree header row's click (M.ORCH-T1759): selects this login (which also expands it, via <see cref="Select"/>).
-    /// Re-clicking an already-selected, already-expanded header is a no-op, matching the flat strip's click behaviour.
-    /// Clicking a person is the whole act of seeing their usage now (M.ORCH-T1768): there's no separate Usage tab left to
-    /// activate afterward in tree mode (<see cref="ShowsFlatTerminalsPanel"/>'s strip, which held the one reachable
-    /// without first expanding the node and finding its nested Usage row, isn't even on screen there) - this alone shows
-    /// it, unless a CLI tab of theirs is already chosen, which it leaves alone.</summary>
-    public ICommand SelectLoginCommand => selectLoginCommand ??= new RelayCommand(() =>
-    {
-        StripSelection = this;
-        if (Terminals.SelectedPane is null) Terminals.ShowUsageCommand.Execute(null);
-    });
-
-    /// <summary>A tree child row's click (M.ORCH-T1759): selects this login, then shows the clicked pane or the pinned Usage
-    /// marker, exactly as choosing it from the flat CLI tab bar would.</summary>
+    /// <summary>A tree child row's click (M.ORCH-T1759): selects this login, then shows the clicked pane, exactly as
+    /// choosing it from the flat CLI tab bar would.</summary>
     public ICommand SelectTreeChildCommand => selectTreeChildCommand ??= new RelayCommand(p =>
     {
         StripSelection = this;
-        Terminals.SelectedStripItem = p;
+        if (p is TerminalPaneViewModel pane) Terminals.SelectedPane = pane;
     });
 
     /// <summary>The tab on screen, which the shared queue's rows act through (M.ORCH-T654).</summary>
@@ -950,8 +923,9 @@ public sealed partial class MainViewModel
         if (await SignInOwnAsync(email)) await RefreshAsync();
     }, () => !tab.SignedIn && !tab.IsApiKey && !IsSigningIn);
 
-    /// <summary>Tags each new toast with this tab while there's more than one (toasts tagged by tab), and tells the window. Every
-    /// tab's toasts are mirrored into <see cref="AllToasts"/> (M.ORCH-T1574), newest first, so the dots show them on every tab.</summary>
+    /// <summary>Tags each new toast with this tab while there's more than one (toasts tagged by tab), mirrors every tab's
+    /// toasts into the shared <c>allToasts</c> list (M.ORCH-T1574), and tells the window (<see cref="ToastRaised"/>, which
+    /// flashes it).</summary>
     private void OnToastsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         var all = Root.allToasts;
@@ -971,13 +945,6 @@ public sealed partial class MainViewModel
             Root.ToastRaised?.Invoke(this, t);
         }
         PruneToasts(all, DateTime.UtcNow);
-    }
-
-    /// <summary>Takes <paramref name="toast"/> away everywhere: from whichever tab raised it and from <see cref="AllToasts"/>.</summary>
-    private void RemoveToast(ToastViewModel toast)
-    {
-        foreach (var tab in Root.loginTabs) tab.Toasts.Remove(toast);
-        Root.allToasts.Remove(toast);
     }
 
     private static readonly Dictionary<string, Brush> brushes = new(StringComparer.OrdinalIgnoreCase);

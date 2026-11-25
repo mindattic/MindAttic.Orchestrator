@@ -97,33 +97,3 @@ public sealed class QueueRowViewModel : ObservableObject
     }
 }
 
-/// <summary>A ticket whose work is closed but whose assignment (and maybe an old worktree, made before M.ORCH-T1122) is still around.</summary>
-public sealed class FinishedViewModel(Assignment assignment, MainViewModel owner) : ObservableObject
-{
-    /// <summary>The closed ticket's id.</summary>
-    public string TicketId => assignment.TicketId;
-    /// <summary>The card's whole line: the id then <see cref="TextAfterId"/>.</summary>
-    public string Text => assignment.TicketId + TextAfterId;
-
-    /// <summary><see cref="Text"/> after the id, which the card shows as a link into Tickets Desktop (M.ORCH-T500).</summary>
-    public string TextAfterId => QueueRowViewModel.OldWorktree(assignment)
-        ? $" in {assignment.Repo} is closed. Its worktree is still at {assignment.Directory}."
-        : $" in {assignment.Repo} is closed.";
-    /// <summary>The card's button: "Remove worktree" when it has an old worktree, else "Clear".</summary>
-    public string ActionLabel => QueueRowViewModel.OldWorktree(assignment) ? "Remove worktree" : "Clear";
-    /// <summary>Off while a CLI moving to another login holds the ticket (M.ORCH-T637): its claim is handed back to it.</summary>
-    public ICommand ActionCommand { get; } = new RelayCommand(() => owner.Shown.Finish(assignment), () => PendingMoves.ForTicket(assignment.TicketId) is null);
-    /// <summary>Shows the assignment's details.</summary>
-    public ICommand DetailsCommand { get; } = new RelayCommand(() => owner.Shown.ShowDetails(assignment));
-
-    /// <summary>The ticket's assignment as the latest refresh has it (reopened, dispatched again elsewhere and closed): its
-    /// text, its button and what they act on follow it (M.ORCH-T341).</summary>
-    public void Update(Assignment latest)
-    {
-        if (latest == assignment) return;
-        assignment = latest;
-        Raise(nameof(Text));
-        Raise(nameof(TextAfterId));
-        Raise(nameof(ActionLabel));
-    }
-}

@@ -363,15 +363,6 @@ public sealed class ReminderTests
         Assert.That(ReminderBook.Pending(Store).Single().To, Is.EqualTo("jordan"));
     }
 
-    [Test]
-    public void The_dashboard_lists_each_pending_one_with_its_id()
-    {
-        var utc = DateTime.UtcNow;
-        var r = new Reminder { Id = "abc123", Text = "pay rent", DueUtc = utc.AddHours(1), To = "jordan" };
-        var lines = MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.ReminderLines([r], utc);
-        Assert.That(lines.Single(), Does.StartWith("abc123").And.Contain("→ jordan: pay rent"));
-    }
-
     // ---- Psst on a cutoff alert (M.ORCH-T742) ----
 
     [Test]

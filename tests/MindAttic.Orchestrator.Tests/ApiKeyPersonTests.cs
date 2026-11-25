@@ -140,6 +140,5 @@ public sealed class ApiKeyPersonTests
         Assert.That(MainViewModel.ApiStatusOf(false, spend).Light, Is.EqualTo(TabLight.Bad));
         Assert.That(MainViewModel.ApiStatusOf(true, spend).Light, Is.EqualTo(TabLight.Good));
         Assert.That(MainViewModel.ApiStatusOf(true, spend with { SpentUsd = 60 }).Light, Is.EqualTo(TabLight.Other));
-        Assert.That(MainViewModel.ApiBurnTextOf(spend, Now), Does.Contain("$37.66 left of $50.00").And.Contain("runs out"));
     }
 }

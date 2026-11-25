@@ -95,12 +95,6 @@ public partial class MainWindow : Window
         // and TerminalFrame's size is now a share of AgentsBody's viewport, not Root's (M.ORCH-T1302).
         AgentsBody.SizeChanged += (_, _) => SizeTerminalRow();
         AttachCompactLayout();
-        // A person's current work (including, on the global login's tab, what fits on no person's page, M.ORCH-T825) is one
-        // virtualized list (M.ORCH-T754): headings and notes, then the lists' items a row (or a line of cards) each, so a
-        // switch of tab or org builds only what's on screen. AgentsBodyList, not AgentsBody's own direct content, is what's
-        // flattened (M.ORCH-T1302): TerminalFrame, ahead of it in AgentsBody's content, stays a plain, always-realized sibling
-        // so a native terminal window is never torn down by the virtualizing panel's own realize/derealize cycle.
-        VirtualizedList.ApplyBody(AgentsBody, AgentsBodyList);
         // One scroll gesture works anywhere over the window (M.ORCH-T1299), not only once the cursor already sits over
         // AgentsBody's own viewport: the login tabs and CLI tabs are horizontal ScrollViewers that mark a wheel tick handled
         // on their own even with vertical scrolling disabled (swallowing it before it would ever bubble up).
@@ -388,10 +382,7 @@ public partial class MainWindow : Window
             .On<Status.AppPresence>(Status.AppBus.Presence, (_, presence) => model.Presences.Note(presence), Status.AppBus.Version)
             .On<Status.ShowWorkerRequest>(Status.AppBus.ShowWorker, (_, request) => OnShowWorker(request), Status.AppBus.Version)
             // A CLI's badge state changed (M.ORCH-T1997): its pane's badge follows at once, not at the next status read.
-            .On<Status.AgentStateNotice>(Status.AppBus.AgentState, (_, notice) => OnAgentState(notice), Status.AppBus.Version)
-            // A probe run's health report (M.ORCH-T2033): its results become the health dashboard's per-check rows and history.
-            // Read as raw JSON here, since health+json groups results under "checks"; HealthReport.FromJson reads that shape.
-            .On<System.Text.Json.Nodes.JsonObject>(Status.AppBus.Health, (e, _) => model.OnHealthEnvelope(e), Status.AppBus.HealthVersion);
+            .On<Status.AgentStateNotice>(Status.AppBus.AgentState, (_, notice) => OnAgentState(notice), Status.AppBus.Version);
         // Hosted CLIs (M.ORCH-T926): one started elsewhere (the Launcher, M.LNCH-T82) gets a tab, one that ended is marked ended.
         // /launcher (M.ORCH-T1487) rides the same message: cycle that login's Launcher tabs, or open one.
         bus.On<Term.TermSessionEvent>(Term.TermBus.Kind, (_, session) =>
@@ -642,10 +633,10 @@ public partial class MainWindow : Window
     private const double TerminalRowMinHeight = 160;
 
     /// <summary>Sizes <see cref="TerminalFrame"/>, a plain part of <see cref="AgentsBody"/>'s content (M.ORCH-T1302), to
-    /// AgentsBody's whole viewport: since the stats and tickets moved to the Usage tab (M.ORCH-T1572, ShowsBody) there's
-    /// nothing under a CLI's terminal to scroll to, so the body doesn't scroll while one shows (no scroll bar) and the
-    /// terminal fills it exactly; floored at <see cref="TerminalRowMinHeight"/> so it never pinches thin in a short window.
-    /// Hidden (the Usage tab, or no terminals open on this login), the body scrolls again, over the charts and tickets.</summary>
+    /// AgentsBody's whole viewport: there's nothing else under a CLI's terminal to scroll to any more (M.ORCH-T2238), so the
+    /// body doesn't scroll while one shows (no scroll bar) and the terminal fills it exactly; floored at
+    /// <see cref="TerminalRowMinHeight"/> so it never pinches thin in a short window. Hidden (no terminals open on this
+    /// login), the body is simply empty.</summary>
     private void SizeTerminalRow()
     {
         try
@@ -817,9 +808,10 @@ public partial class MainWindow : Window
         treeHeaderPressedAt = e.GetPosition(this);
     }
 
-    /// <summary>The tree sidebar's header row click (M.ORCH-T1877, M.ORCH-T1962): fired on release only when the press began
-    /// on this same header and the pointer hasn't moved past the system drag threshold since. Selects that login (showing its
-    /// Usage) and never expands or collapses it: only the chevron does that.</summary>
+    /// <summary>The tree sidebar's header row click (M.ORCH-T1877, M.ORCH-T2238): fired on release only when the press began
+    /// on this same header and the pointer hasn't moved past the system drag threshold since. Toggles that login's node,
+    /// the same thing the chevron does (M.ORCH-T2238: there's no per-login home page to select into any more, so a header
+    /// click is just a bigger hit target for the same expand/collapse).</summary>
     private void LoginTreeHeader_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         var pressed = treeHeaderPressed;
@@ -830,11 +822,7 @@ public partial class MainWindow : Window
         if (Math.Abs(now.X - treeHeaderPressedAt.X) >= SystemParameters.MinimumHorizontalDragDistance
             || Math.Abs(now.Y - treeHeaderPressedAt.Y) >= SystemParameters.MinimumVerticalDragDistance) return;
         e.Handled = true;
-        // Only the chevron expands or collapses (M.ORCH-T1962): the header click selects the login (showing its Usage) and
-        // leaves its node exactly as open or closed as it was, though selecting otherwise opens it.
-        var expanded = vm.IsExpanded;
-        vm.SelectLoginCommand.Execute(null);
-        vm.IsExpanded = expanded;
+        vm.IsExpanded = !vm.IsExpanded;
     }
 
     /// <summary>Whether <paramref name="source"/> sits inside a button (close X, '...' menu, ...) below
@@ -858,9 +846,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The tree sidebar's child row click (M.ORCH-T1759): selects this item's login, then shows the clicked pane,
-    /// exactly as choosing it from the flat CLI tab bar would. There's no pinned Usage marker among these children any
-    /// more (M.ORCH-T1768): the tree binds this list to <see cref="PersonTerminalsViewModel.Panes"/>, not
-    /// <see cref="PersonTerminalsViewModel.StripItems"/>, since the login's own header row now shows Usage on a click.</summary>
+    /// exactly as choosing it from the flat CLI tab bar would. The tree binds this list to
+    /// <see cref="PersonTerminalsViewModel.Panes"/> (M.ORCH-T1768) - there's no pinned marker among these children
+    /// (M.ORCH-T2238: no per-login home page is left to reach that way).</summary>
     private void LoginTreeChild_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: { } item } fe) return;
@@ -1355,28 +1343,24 @@ public partial class MainWindow : Window
         TerminalTabScrollRight.IsEnabled = TerminalTabScroller.HorizontalOffset < TerminalTabScroller.ScrollableWidth - 0.5;
     }
 
-    /// <summary>Scrolls <see cref="TerminalTabScroller"/> to the shown tab's current selection (a real pane, or the pinned
-    /// Usage tab, M.ORCH-T1555) once the strip has laid it out, the same way <see cref="BringSelectedTabIntoView"/> does for
-    /// the login tabs; choosing Usage also scrolls <see cref="AgentsBody"/> back to its top, so its charts are there without
-    /// scrolling past where the terminal normally sits (replaces the old UsageTabItem click handler's own ScrollToTop, now
-    /// that choosing Usage flows through SelectedStripItem like any other tab). Never throws.</summary>
+    /// <summary>Scrolls <see cref="TerminalTabScroller"/> to the shown tab's current selection once the strip has laid it
+    /// out, the same way <see cref="BringSelectedTabIntoView"/> does for the login tabs. Never throws.</summary>
     private void BringSelectedTerminalTabIntoView() =>
         Dispatcher.BeginInvoke(() =>
         {
             try
             {
-                if (Shown.Terminals.IsUsageShown) AgentsBody.ScrollToTop();
-                if (TerminalTabs.ItemContainerGenerator.ContainerFromItem(Shown.Terminals.SelectedStripItem) is FrameworkElement tab) tab.BringIntoView();
+                if (TerminalTabs.ItemContainerGenerator.ContainerFromItem(Shown.Terminals.SelectedPane) is FrameworkElement tab) tab.BringIntoView();
             }
             catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Scrolling to the selected CLI tab failed; contained"); }
         }, DispatcherPriority.Loaded);
 
     private void OnTerminalPanesChanged(object? sender, NotifyCollectionChangedEventArgs e) => BringSelectedTerminalTabIntoView();
 
-    /// <summary>One CLI tab's width, what the strip's arrows scroll by: the first real pane's (index 1, past the pinned
-    /// Usage tab at index 0, M.ORCH-T1555), which is narrower and would undersize the step if used instead.</summary>
+    /// <summary>One CLI tab's width, what the strip's arrows scroll by: the first pane's, which is narrower and would
+    /// undersize the step if used instead.</summary>
     private double TerminalTabScrollStep =>
-        TerminalTabs.Items.Count > 1 && TerminalTabs.ItemContainerGenerator.ContainerFromIndex(1) is FrameworkElement { ActualWidth: > 0 } first
+        TerminalTabs.Items.Count > 0 && TerminalTabs.ItemContainerGenerator.ContainerFromIndex(0) is FrameworkElement { ActualWidth: > 0 } first
             ? first.ActualWidth : 200;
 
     private void TerminalTabScrollLeft_Click(object sender, RoutedEventArgs e) =>

@@ -124,16 +124,16 @@ public sealed class AccountsViewTests
         // menu, the library's dark dropdown (no Make default since M.ORCH-T1097); Move CLIs is
         // gone (each agent card's Move to). M.ORCH-T796: no per-person Sign in; a disconnected login opens its sign-in by itself.
         // The page is the person's whole scrolling body (AgentsBody, up to the next top-level part, OrgEmptyPanel): since
-        // M.ORCH-T1319 the 5-hour chart sits above the stat tiles, so slicing StatTiles..ActiveClisCard ran backwards (M.ORCH-T1330).
+        // M.ORCH-T2238 there's no home page content left there at all but the chosen terminal (TerminalFrame), so there's
+        // nothing to prove it's the person's page beyond that one name.
         var pageStart = xaml.IndexOf("x:Name=\"AgentsBody\"", StringComparison.Ordinal);
         var pageEnd = xaml.IndexOf("x:Name=\"OrgEmptyPanel\"", StringComparison.Ordinal);
         Assert.That(pageStart, Is.GreaterThan(0));
         Assert.That(pageEnd, Is.GreaterThan(pageStart));
         var page = xaml[pageStart..pageEnd];
-        Assert.That(page, Does.Contain("x:Name=\"StatTiles\"").And.Contain("x:Name=\"ActiveClisCard\""), "the slice is the person's page");
+        Assert.That(page, Does.Contain("x:Name=\"TerminalFrame\""), "the slice is the person's page");
         Assert.That(page, Does.Not.Contain("SignInPerson").And.Not.Contain("{Binding UserSettingsCommand}")
             .And.Not.Contain("{Binding MakeDefaultCommand}").And.Not.Contain("x:Name=\"PersonActions\""));
-        Assert.That(page, Does.Contain("x:Name=\"PersonMessage\""), "what the last action did still shows on the page");
         Assert.That(xaml + code, Does.Not.Contain("OnMoveAllClick").And.Not.Contain("MoveClisButton").And.Not.Contain("MoveAllToAsync"));
         Assert.That(xaml, Does.Contain("ContextMenuOpening=\"OnLoginTabContextMenu\""));
         var menu = code[code.IndexOf("void OnLoginTabContextMenu", StringComparison.Ordinal)..];

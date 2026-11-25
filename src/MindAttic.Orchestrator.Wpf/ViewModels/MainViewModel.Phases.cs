@@ -372,10 +372,6 @@ public sealed partial class MainViewModel
     /// <summary>The pinned Usage tab's 5-hour label: "λ", or "5h" with the setting off.</summary>
     public string UsageLambdaLabel => Root.symbolTabLabels ? "λ" : "5h";
 
-    /// <summary>The pinned Usage tab's tooltip and accessible name (it's titleless): the same figures as
-    /// <see cref="TabTrailing"/>, since the tab itself shows only the two bars.</summary>
-    public string UsageTabTip => TabTrailing.Length > 0 ? $"Usage: {TabTrailing}" : "Usage: this login's 5-hour and weekly limits";
-
     /// <summary>The 5hr/weekly/graph usage band (M.ORCH-T1191, author request): green under a third, the theme's own text
     /// colour through the middle third, orange from two-thirds up -- a fixed band on the raw percentage, unlike the tab
     /// light's cutoff-relative Good/Warn/Over (<see cref="StatusOf"/>).</summary>
@@ -495,7 +491,7 @@ public sealed partial class MainViewModel
                                      nameof(WeeklyUtilization), nameof(WeeklyUtilizationText), nameof(ShowsFiveHourChart), nameof(ShowsWeeklyChart),
                                      nameof(FiveHourLimitPercent), nameof(FiveHourLimitBrush),
                                      nameof(WeeklyLimitPercent), nameof(WeeklyLimitBrush),
-                                     nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip),
+                                     nameof(UsageSigmaLabel), nameof(UsageLambdaLabel),
                                      nameof(CutoffsHeadline), nameof(CutoffsCaption), nameof(LastUpdatedHeadline), nameof(LastUpdatedCaption) })
             Raise(name);
     }
@@ -509,9 +505,6 @@ public sealed partial class MainViewModel
     private readonly Dictionary<string, ObservableCollection<QueueRowViewModel>> queues = new(StringComparer.Ordinal);
     /// <summary>The scheduler's proposals, shared by every tab (kept on the global login's view model).</summary>
     private readonly ObservableCollection<QueueRowViewModel> proposals = [];
-    /// <summary>Closed tickets whose assignment is still around, shared by every tab (kept on the global login's view
-    /// model).</summary>
-    private readonly ObservableCollection<FinishedViewModel> finished = [];
     /// <summary>The queue rows of the org shown.</summary>
     public ObservableCollection<QueueRowViewModel> Queue => Root.QueueOf(Root.selectedOrgId);
 
@@ -523,35 +516,7 @@ public sealed partial class MainViewModel
     private IEnumerable<QueueRowViewModel> AllQueueRows => Root.queues.Values.SelectMany(q => q);
     /// <summary>The scheduler's proposals, the global login's set whichever tab is shown.</summary>
     public ObservableCollection<QueueRowViewModel> Proposals => Root.proposals;
-    /// <summary>Closed tickets whose assignment is still around, the global login's set whichever tab is shown.</summary>
-    public ObservableCollection<FinishedViewModel> Finished => Root.finished;
     private SchedulePlan? Plan => Root.plan;
-    /// <summary>Why the scheduler holds back new work this round, empty when it doesn't.</summary>
-    public string Hold => Plan?.Hold ?? "";
-    /// <summary>The scheduler is holding back new work: the view shows <see cref="Hold"/>.</summary>
-    public bool HasHold => !string.IsNullOrEmpty(Hold);
-    /// <summary>"3 sessions open · pacing allows 2 of 4", or "fills up to 4" when unpaced; empty before the first
-    /// plan.</summary>
-    public string SlotsText => Plan is not { } plan ? ""
-        : plan.Cap < plan.Slots ? $"{plan.Occupied} sessions open · pacing allows {plan.Cap} of {plan.Slots}"
-        : $"{plan.Occupied} sessions open · fills up to {plan.Slots}";
-    // /allocate is on per CLI (its marks, M.ORCH-T164), as `orchestrator settings` reports it: the dashboard's own Allocate
-    // has no order to read, so it always read as off.
-    /// <summary>Where /allocate is on (which CLIs, for which repos) or paused, with the dashboard's own Allocate
-    /// setting.</summary>
-    public string AllocateText => AllocateLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AllocateClis(), ShownSettings.Allocate) +
-        (allocate.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", allocate.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
-
-    internal static string AllocateLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis, bool on = true) =>
-        // Paused globally (M.ORCH-T1491) says so even before any CLI typed /allocate: one typed now would get nothing either.
-        !on && clis.Count == 0 ? "Allocate is paused globally: a CLI that types /allocate gets no tickets until orchestrator settings --allocate true (or Settings) resumes it."
-        : clis.Count == 0
-        ? "Proposals wait for you. Type /allocate in a CLI to have its repos' tickets worked by its own subagents."
-        // Paused from Settings or the CLI: the CLIs' marks stay, but orchestrator next hands them nothing.
-        : !on ? $"Allocate is paused globally: the {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} that typed /allocate get no tickets until orchestrator settings --allocate true (or Settings) resumes it."
-        : $"Allocate is on in {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} for " +
-          string.Join(", ", clis.Values.SelectMany(r => r).Select(r => r == Allocate.AllRepos ? "every repo" : r).Distinct(StringComparer.OrdinalIgnoreCase)) +
-          ", each through its own subagents, paced to the 5-hour window.";
     /// <summary>The queue's last action result ("M.ORCH-T1 is back in the queue."), shown above the rows.</summary>
     public string QueueMessage { get => queueMessage; private set => Set(ref queueMessage, value); }
     /// <summary>How many queue rows of the org shown no CLI has claimed.</summary>
@@ -792,7 +757,6 @@ public sealed partial class MainViewModel
             }
             PruneToasts(Toasts, DateTime.UtcNow);
         }
-        foreach (var t in LoginTabs) t.Raise(nameof(AllocateText));
     }
 
     /// <summary>Once per open: if you've been away, say what happened. Then remember you're here.</summary>
@@ -847,12 +811,11 @@ public sealed partial class MainViewModel
                 (row, q) => row.Update(q, ranks[q.Id], proposals.GetValueOrDefault(q.Id), delegations.GetValueOrDefault(q.Id)));
         foreach (var gone in queues.Keys.Where(k => orgs.Find(k) is null).ToList()) queues.Remove(gone);
         Proposals.ReorderTo([.. Queue.Where(q => q.IsNext)]);
-        Finished.SyncBy(plan.Finished, a => a.TicketId, f => f.TicketId, a => new FinishedViewModel(a, this), (row, a) => row.Update(a));
         // Every person's Tickets view (M.ORCH-T668): theirs and the unassigned queue, from the same plan.
         ApplyUserTickets();
 
         foreach (var t in LoginTabs)
-            foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(ShowsHold), nameof(SlotsText), nameof(AllocateText), nameof(QueueCount), nameof(EmptyQueueText), nameof(UtilizationText) })
+            foreach (var name in new[] { nameof(QueueCount), nameof(EmptyQueueText), nameof(UtilizationText) })
                 t.Raise(name);
         // A row's Start and Release are enabled by whether it's assigned, which the refresh just changed: WPF rechecks a
         // command only on input, so the button shown would stay disabled until some unrelated click (M.ORCH-T351).

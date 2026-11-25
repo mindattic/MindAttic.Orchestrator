@@ -551,41 +551,6 @@ public sealed partial class MainViewModel
     /// <summary>The 5-hour and weekly cards, the cutoffs and the 5-hour chart: every page but the API key's, which has no window.</summary>
     public bool ShowsClaudeMeters => !tab.IsApiKey;
 
-    /// <summary>"$37.66 left", or "—" with no starting credit set.</summary>
-    public string ApiLeftHeadline => Spend?.LeftUsd is { } left ? ApiSpend.Usd(left) : "—";
-
-    /// <summary>"of $50.00 since Oct 26", or how to set a starting credit.</summary>
-    public string ApiLeftCaption => Spend is { CreditUsd: { } c } s
-        ? $"of {ApiSpend.Usd(c)}{(s.SinceUtc is { } at ? $" since {at.ToLocalTime():MMM d}" : "")}"
-        : "no starting credit: set one below";
-
-    /// <summary>"$12.34", spent since the credit started (or everything on record).</summary>
-    public string ApiSpentHeadline => Spend is { } s ? ApiSpend.Usd(s.SpentUsd) : "—";
-
-    /// <summary>"$1.20 today · $0.45/h lately".</summary>
-    public string ApiSpentCaption => Spend is { } s ? $"{ApiSpend.Usd(s.TodayUsd)} today · {ApiSpend.Usd(s.PerHourUsd)}/h lately" : "not read yet";
-
-    /// <summary>When the credit runs out at the recent rate: "Thu 3:40 PM"; "—" when it won't (nothing spent lately, no credit).</summary>
-    public string ApiRunsOutHeadline => Spend is { OutOfCredit: true } ? "Spent"
-        : Spend?.RunsOutUtc(DateTime.UtcNow) is { } at ? at.ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.CurrentCulture) : "—";
-
-    /// <summary>What the runs-out card is based on.</summary>
-    public string ApiRunsOutCaption => Spend is { OutOfCredit: true } ? "its credit is used up: set a new one to give it work"
-        : Spend?.CreditUsd is null ? "set a starting credit to see when it runs out"
-        : $"at the last {ApiSpend.RateWindow.TotalHours:0} hours' rate";
-
-    /// <summary>The burndown chart's caption, in words, so the picture is never the only cue.</summary>
-    public string ApiBurnText => ApiBurnTextOf(Spend, DateTime.UtcNow);
-
-    internal static string ApiBurnTextOf(ApiSpend? spend, DateTime nowUtc) => spend switch
-    {
-        null => "",
-        { CreditUsd: null } => $"No starting credit set, so there's nothing to burn down: {spend.Line}. Prices are Anthropic's list prices applied to the transcripts' tokens, an estimate.",
-        { OutOfCredit: true } => $"The credit is spent: {spend.Line}.",
-        _ => $"{spend.Line}." + (spend.RunsOutUtc(nowUtc) is { } at ? $" At that rate it runs out around {at.ToLocalTime():ddd MMM d h:mm tt}." : " Nothing spent lately, so it isn't running down.") +
-             " Prices are Anthropic's list prices applied to the transcripts' tokens, an estimate.",
-    };
-
     /// <summary>Re-raises this login's busy/subagent-sum figures (M.ORCH-T1838), where their inputs change rather than on a
     /// tick (M.ORCH-T2207): a snapshot applied and a presumption started or ended raise them with the whole tab status, so
     /// this is for a CLI moving between logins (<see cref="SyncTerminals"/>). Each CLI row raises its own share itself
@@ -608,10 +573,9 @@ public sealed partial class MainViewModel
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge),
                                      nameof(IsTabLocked), nameof(ShowsLockedBadge), nameof(ShowsDisabledIcon), nameof(TabActivityWord), nameof(CanAddCli), nameof(AddCliLockedTip),
                                      nameof(TabCliCount), nameof(TabThinkingCount), nameof(ShowsTabThinkingCount), nameof(TabThinkingCountText), nameof(TabThinkingWord),
-                                     nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(TabFaceTitle), nameof(ApiSpendFace), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
-                                     nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
-                                     nameof(ApiBurnText), nameof(ShowsClaudeMeters), nameof(ApiCreditPlaceholder),
-                                     nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip),
+                                     nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(TabFaceTitle), nameof(ApiSpendFace),
+                                     nameof(ShowsClaudeMeters),
+                                     nameof(UsageSigmaLabel), nameof(UsageLambdaLabel),
                                      nameof(TreeMenuLayout), nameof(ShowsLoginTree), nameof(ShowsFlatLoginStrip), nameof(ShowsFlatTerminalsPanel)];
 
     // ── Clock-driven texts (M.ORCH-T1999) ───────────────────────────────────

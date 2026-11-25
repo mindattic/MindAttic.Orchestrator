@@ -118,28 +118,15 @@ public sealed class DashboardAlignmentTests
             return parts.Length switch { 1 => [parts[0], parts[0]], 2 => [parts[0], parts[0]], _ => [parts[0], parts[2]] };
         }
 
-        // TerminalsPanel, the only row still fixed under the person tabs (M.ORCH-T1302), owns the gutter itself; the terminal,
-        // the header, toolbar and the toast row (folded into the utilization card's header row by M.ORCH-T1167/M.ORCH-T1180)
-        // all scroll in the body now, whose MaBodyScroll gutter (checked below) is the same, so they add none of their own.
+        // TerminalsPanel, the only row still fixed under the person tabs (M.ORCH-T1302), owns the gutter itself; the terminal
+        // (the one thing left in the scrolling body, M.ORCH-T2238) scrolls in the body, whose MaBodyScroll gutter (checked
+        // below) is the same, so it adds none of its own.
         foreach (var name in new[] { "TerminalsPanel" })
             Assert.That(Sides((string?)Named(name).Attribute("Margin")), Is.EqualTo(new[] { Side, Side }), name);
-        foreach (var name in new[] { "TerminalFrame", "Header", "Toolbar", "ToastRow" })
+        foreach (var name in new[] { "TerminalFrame" })
         {
             Assert.That(Named(name).Ancestors().Contains(Named("AgentsBody")), Is.True, $"{name} scrolls with the body");
             Assert.That(Sides((string?)Named(name).Attribute("Margin")), Is.EqualTo(new[] { 0d, 0d }), $"{name}: the body owns the gutter");
-        }
-
-        // Nothing inside the header adds a side margin of its own, so the tiles and the active-CLIs card share both edges.
-        var tiles = Named("StatTiles");
-        var chart = Named("ActiveClisCard");
-        Assert.That(Sides((string?)tiles.Attribute("Margin")), Is.EqualTo(new[] { 0d, 0d }));
-        Assert.That(Sides((string?)chart.Attribute("Margin")), Is.EqualTo(new[] { 0d, 0d }), "the card lines up with the tiles' left and right edges");
-        Assert.That(chart.Attribute("Width"), Is.Null);
-        foreach (var tile in tiles.Elements(P + "Button"))
-        {
-            Assert.That(tile.Attribute("Width") ?? tile.Attribute("MinWidth") ?? tile.Attribute("Margin"), Is.Null, "the grid sizes every tile");
-            Assert.That(tile.Descendants().Where(d => d.Name.LocalName == "Setter" && ((string?)d.Attribute("Property")) is "Margin" or "Width" or "MinWidth"), Is.Empty);
-            Assert.That(tile.Descendants(P + "StackPanel").Select(s => s.Attribute("Width")).Where(a => a != null), Is.Empty, "no fixed-width tile content");
         }
 
         // Every body view uses the library's one gutter style (M.ORCH-T667), which keeps the right edge beside the scroll bar too.
@@ -155,21 +142,19 @@ public sealed class DashboardAlignmentTests
     }
 
     [Test]
-    public void The_toolbar_has_no_clock_refresh_info_refresh_button_or_launcher_rocket()
+    public void No_refresh_button_launcher_rocket_or_view_pills_came_back()
     {
+        // M.ORCH-T855/M.ORCH-T763/M.ORCH-T2238: the Toolbar they used to sit on is gone along with the rest of the per-login
+        // home page, but F5 (M.ORCH-T855) must still refresh and none of the old removed controls should have crept back in
+        // anywhere else in the window.
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var doc = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        XElement Named(string name) => doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
         static string? Binding(XElement e, string attribute) => (string?)e.Attribute(attribute);
 
-        // M.ORCH-T855: only the status line and the zoom remain; refresh is automatic, F5 and the stat tile's own Refresh. The
-        // Current work heading went with its agent card board (M.ORCH-T837).
-        var toolbar = Named("Toolbar");
-        Assert.That(toolbar.Descendants(P + "ListBox").Any(l => (string?)l.Attribute("ItemsSource") == "{Binding ViewChoices}"), Is.False);
+        Assert.That(doc.Descendants(P + "ListBox").Any(l => (string?)l.Attribute("ItemsSource") == "{Binding ViewChoices}"), Is.False);
         Assert.That(doc.Descendants().Any(e => (string?)e.Attribute(X + "Name") == "WorkHeading"), Is.False, "no Current work heading");
         Assert.That(doc.Descendants().Any(e => (string?)e.Attribute("Text") == "Current work"), Is.False);
-        Assert.That(toolbar.Descendants(P + "Button").Any(), Is.False, "no buttons on the toolbar");
         Assert.That(doc.Descendants().Any(e => Binding(e, "Text") is "{Binding Clock.Text}" or "{Binding RefreshInfo}"), Is.False);
         Assert.That(doc.Descendants(P + "Button").Any(b => Binding(b, "Command") == "{Binding OpenLauncherCommand}"), Is.False);
         Assert.That(doc.Descendants(P + "KeyBinding").Any(k => (string?)k.Attribute("Key") == "F5" && Binding(k, "Command") == "{Binding RefreshCommand}"), Is.True, "F5 still refreshes");

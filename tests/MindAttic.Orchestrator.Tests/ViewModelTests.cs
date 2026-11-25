@@ -82,21 +82,6 @@ public sealed class ViewModelTests
     }
 
     [Test]
-    public void A_finished_row_follows_its_tickets_latest_assignment()
-    {
-        // M.ORCH-T341: the row kept the assignment it was built from, and its button acted on the old directory.
-        var row = new FinishedViewModel(new Assignment("A-T1", "A", @"D:\W\A", "Claude", DateTime.UtcNow, false), null!);
-        var changed = new List<string?>();
-        row.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
-
-        row.Update(new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", DateTime.UtcNow, true));
-
-        Assert.That((row.Text, row.ActionLabel), Is.EqualTo(($@"A-T1 in A is closed. Its worktree is still at D:\WT\A\A-T1.", "Remove worktree")));
-        Assert.That(changed, Is.EquivalentTo(new[] { nameof(row.Text), nameof(row.TextAfterId), nameof(row.ActionLabel) }));
-        Assert.That(row.TextAfterId, Is.EqualTo(@" in A is closed. Its worktree is still at D:\WT\A\A-T1."), "the id before it is a link into Tickets Desktop (M.ORCH-T500)");
-    }
-
-    [Test]
     public void A_quiet_repo_active_under_a_minute_ago_says_just_now_not_now_ago()
     {
         // M.ORCH-T463: the detail pane read "Quiet. Last agent activity now ago."
