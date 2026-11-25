@@ -83,4 +83,22 @@ public sealed class HostSessionScannerTests
         Assert.That(HostSessionScanner.SplitCommandLine(@"L.exe   --prompt ""say \""hi\"" now""  x"),
             Is.EqualTo(new[] { "L.exe", "--prompt", @"say ""hi"" now", "x" }));
     }
+
+    [Test]
+    public void Command_lines_are_queried_once_per_pid_and_start_time()
+    {
+        var cache = new Dictionary<int, (DateTime Started, string CommandLine)>();
+        var asked = new List<int>();
+        string? Query(int pid) { asked.Add(pid); return pid == 3 ? null : $"L.exe host {pid}"; }
+        var t0 = new DateTime(2026, 11, 25, 10, 0, 0);
+
+        HostSessionScanner.ResolveCommandLines(new Dictionary<int, DateTime> { [1] = t0, [2] = t0, [3] = t0 }, cache, Query);
+        var second = HostSessionScanner.ResolveCommandLines(new Dictionary<int, DateTime> { [1] = t0, [2] = t0.AddMinutes(1), [3] = t0 }, cache, Query);
+
+        Assert.That(asked, Is.EqualTo(new[] { 1, 2, 3, 2, 3 }), "a reused pid and a failed query are asked again, a known one is not");
+        Assert.That(second, Is.EqualTo(new Dictionary<int, string> { [1] = "L.exe host 1", [2] = "L.exe host 2" }));
+
+        HostSessionScanner.ResolveCommandLines(new Dictionary<int, DateTime> { [2] = t0.AddMinutes(1) }, cache, Query);
+        Assert.That(cache.Keys, Is.EqualTo(new[] { 2 }), "a pid no longer running leaves the cache");
+    }
 }

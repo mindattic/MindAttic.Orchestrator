@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Management;
 using System.Runtime.InteropServices;
 
@@ -85,28 +86,59 @@ public sealed partial class HostSessionScanner(OrchestratorOptions options)
         catch (UnauthorizedAccessException) { return []; }
     }
 
+    private const string LauncherProcessName = "MindAttic.Launcher";
+
+    // A process's command line never changes, so WMI is asked once per (pid, start time) rather than every refresh (M.ORCH-T2213).
+    private static readonly Dictionary<int, (DateTime Started, string CommandLine)> CommandLineCache = [];
+    private static readonly Lock CommandLineCacheLock = new();
+
     /// <summary>Every MindAttic.Launcher.exe running now, its command line by pid: its host tabs and its menus alike.</summary>
     public static IReadOnlyDictionary<int, string> LauncherCommandLines()
     {
-        var result = new Dictionary<int, string>();
-        try
+        var running = new Dictionary<int, DateTime>();
+        foreach (var p in Process.GetProcessesByName(LauncherProcessName))
         {
-            using var searcher = new ManagementObjectSearcher(
-                "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'MindAttic.Launcher.exe'");
-            using var found = searcher.Get();
-            foreach (var o in found)
+            using (p)
             {
-                using (o)
-                {
-                    if (o["CommandLine"] is string cmd && o["ProcessId"] is uint pid)
-                        result[(int)pid] = cmd;
-                }
+                try { running[p.Id] = p.StartTime; }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { running[p.Id] = DateTime.MinValue; }
             }
         }
-        catch (ManagementException ex) { OrchestratorLog.For("HostSessionScanner").Warning(ex, "The WMI Launcher command-line scan failed; contained"); }
-        catch (COMException ex) { OrchestratorLog.For("HostSessionScanner").Warning(ex, "The WMI Launcher command-line scan failed; contained"); }
-        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
+        lock (CommandLineCacheLock) return ResolveCommandLines(running, CommandLineCache, QueryCommandLine);
+    }
+
+    /// <summary>The command line of each running pid, from <paramref name="cache"/> when its start time still matches (so a reused
+    /// pid is asked again), otherwise from <paramref name="query"/>; pids no longer running leave the cache, and a failed query is
+    /// asked again next time.</summary>
+    internal static Dictionary<int, string> ResolveCommandLines(
+        IReadOnlyDictionary<int, DateTime> running, Dictionary<int, (DateTime Started, string CommandLine)> cache, Func<int, string?> query)
+    {
+        foreach (var gone in cache.Keys.Where(pid => !running.ContainsKey(pid)).ToList()) cache.Remove(gone);
+
+        var result = new Dictionary<int, string>();
+        foreach (var (pid, started) in running)
+        {
+            if (cache.TryGetValue(pid, out var entry) && entry.Started == started) result[pid] = entry.CommandLine;
+            else if (query(pid) is { } cmd) { cache[pid] = (started, cmd); result[pid] = cmd; }
+            else cache.Remove(pid);
+        }
         return result;
+    }
+
+    private static string? QueryCommandLine(int pid)
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher($"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {pid}");
+            using var found = searcher.Get();
+            foreach (var o in found)
+                using (o)
+                    if (o["CommandLine"] is string cmd) return cmd;
+        }
+        catch (ManagementException ex) { OrchestratorLog.For("HostSessionScanner").Warning(ex, "The WMI Launcher command-line query failed; contained"); }
+        catch (COMException ex) { OrchestratorLog.For("HostSessionScanner").Warning(ex, "The WMI Launcher command-line query failed; contained"); }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
+        return null;
     }
 
     /// <summary>The Launcher's project roster (name → path), when its settings file can be read.</summary>
