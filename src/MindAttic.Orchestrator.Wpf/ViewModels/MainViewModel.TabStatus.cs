@@ -598,7 +598,13 @@ public sealed partial class MainViewModel
     /// <summary>Raises everything the tab strip shows for this tab.</summary>
     private void RaiseTabStatus()
     {
-        foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(WrongAccountLine), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabUsageLine), nameof(TabTip), nameof(TabHoverTip),
+        foreach (var name in TabStatusNames)
+            Raise(name);
+        Root.RequestClockRearm();
+    }
+
+    // One array for every call (M.ORCH-T2211): raised for every login tab on each snapshot and presumption change.
+    private static readonly string[] TabStatusNames = [nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(WrongAccountLine), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabUsageLine), nameof(TabTip), nameof(TabHoverTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge),
                                      nameof(IsTabLocked), nameof(ShowsLockedBadge), nameof(ShowsDisabledIcon), nameof(TabActivityWord), nameof(CanAddCli), nameof(AddCliLockedTip),
                                      nameof(TabCliCount), nameof(TabThinkingCount), nameof(ShowsTabThinkingCount), nameof(TabThinkingCountText), nameof(TabThinkingWord),
@@ -606,10 +612,7 @@ public sealed partial class MainViewModel
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
                                      nameof(ApiBurnText), nameof(ShowsClaudeMeters), nameof(ApiCreditPlaceholder),
                                      nameof(UsageSigmaLabel), nameof(UsageLambdaLabel), nameof(UsageTabTip),
-                                     nameof(TreeMenuLayout), nameof(ShowsLoginTree), nameof(ShowsFlatLoginStrip), nameof(ShowsFlatTerminalsPanel) })
-            Raise(name);
-        Root.RequestClockRearm();
-    }
+                                     nameof(TreeMenuLayout), nameof(ShowsLoginTree), nameof(ShowsFlatLoginStrip), nameof(ShowsFlatTerminalsPanel)];
 
     // ── Clock-driven texts (M.ORCH-T1999) ───────────────────────────────────
 

@@ -193,7 +193,18 @@ public sealed partial class MainViewModel
     public ObservableCollection<HealthCheckRow> HealthChecks => Root.healthChecks;
 
     /// <summary>The worst status across the fresh rows (stale ones don't count, as they don't alert); healthy when none.</summary>
-    public HealthGrade HealthStatus => Root.healthChecks.Where(r => !r.IsStale).Select(r => r.Grade).DefaultIfEmpty(HealthGrade.Healthy).Max();
+    public HealthGrade HealthStatus => Root.healthStatus;
+
+    // Worked out once when the rows change (RaiseHealthStatus, M.ORCH-T2211), not by every binding that reads it.
+    private HealthGrade healthStatus = HealthGrade.Healthy;
+
+    private static HealthGrade WorstFresh(IReadOnlyList<HealthCheckRow> rows)
+    {
+        var worst = HealthGrade.Healthy;
+        for (var i = 0; i < rows.Count; i++)
+            if (!rows[i].IsStale && rows[i].Grade > worst) worst = rows[i].Grade;
+        return worst;
+    }
 
     /// <summary>The overall status as a word for the Health view (M.ORCH-T2034): "healthy", "degraded" or "unhealthy", or
     /// "no reports yet" before any probe has been heard.</summary>
@@ -220,10 +231,7 @@ public sealed partial class MainViewModel
         try
         {
             if (result.DegradedAt is not { } d || result.UnhealthyAt is not { } u) return null;
-            HealthCheck? check = null;
-            foreach (var c in Enum.GetValues<HealthCheck>())
-                if (HealthResult.Describe(c).CheckId == result.CheckId.Trim()) { check = c; break; }
-            if (check is not { } found) return null;
+            if (!(checksById ??= ChecksById()).TryGetValue(result.CheckId.Trim(), out var found)) return null;
             var s = shownSettings;
             if (s is null) return null;
             if (!s.HealthLearn) return false;
@@ -231,6 +239,16 @@ public sealed partial class MainViewModel
             return Math.Abs(line.Degraded - d) > 1e-9 || Math.Abs(line.Unhealthy - u) > 1e-9;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { return null; }
+    }
+
+    // Each graded check by its check id, built once on first use (M.ORCH-T2211); the first check with an id wins, as the scan did.
+    private static Dictionary<string, HealthCheck>? checksById;
+
+    private static Dictionary<string, HealthCheck> ChecksById()
+    {
+        var byId = new Dictionary<string, HealthCheck>(StringComparer.Ordinal);
+        foreach (var c in Enum.GetValues<HealthCheck>()) byId.TryAdd(HealthResult.Describe(c).CheckId, c);
+        return byId;
     }
 
     /// <summary>Reads one <see cref="AppBus.Health"/> envelope into the rows. One this build can't read is skipped. Never throws.</summary>
@@ -273,6 +291,7 @@ public sealed partial class MainViewModel
 
     private void RaiseHealthStatus()
     {
+        healthStatus = WorstFresh(healthChecks);
         Raise(nameof(HealthStatus)); Raise(nameof(HealthStatusText)); Raise(nameof(HealthStatusBrush)); Raise(nameof(ShowsHealthEmpty));
     }
 
