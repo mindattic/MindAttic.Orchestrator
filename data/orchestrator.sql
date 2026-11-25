@@ -1256,6 +1256,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-24T23:40:00Z', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-24T18:40:00Z', 'Under', 'ended at 56%', 56, 56, 8009389, 95, 0, NULL, NULL, 10, 12.1, 0, 0, 9, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-25T00:00:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-24T19:00:00Z', 'Under', 'ended at 1%', 1, 1, 0, 56, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-25T04:40:00Z', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-24T23:40:00Z', 'Under', 'ended at 19%', 19, 19, 1613129, 78, 0, NULL, NULL, 0, 0, 0, 0, 1, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-25T10:00:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-25T05:00:00Z', 'Under', 'ended at 0%', 0, 0, 0, 52, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -1803,7 +1804,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 147597);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'GridGame.Unity', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 220778);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 554526);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'SpaceGod.Unreal', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3861264);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'SpaceGod.Unreal', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4507686);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -33739,30 +33740,30 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "25932": {
     "SessionId": "5c87f115-96a3-43aa-8559-17d8764da8f6",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T14:58:01.6866845Z",
-    "StoppedUtc": "2026-11-25T09:58:12.6086723Z",
-    "DueUtc": "2026-11-25T15:00:01.6866845Z"
+    "UntilUtc": "2026-11-25T15:08:14.1886691Z",
+    "StoppedUtc": "2026-11-25T10:08:21.6061876Z",
+    "DueUtc": "2026-11-25T15:10:14.1886691Z"
   },
   "13840": {
     "SessionId": "ad0eac04-fc01-44a6-b73b-341ed53b10cb",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T14:58:01.6866845Z",
-    "StoppedUtc": "2026-11-25T09:58:12.6086723Z",
-    "DueUtc": "2026-11-25T15:00:01.6866845Z"
+    "UntilUtc": "2026-11-25T15:08:14.1886691Z",
+    "StoppedUtc": "2026-11-25T10:08:21.6061876Z",
+    "DueUtc": "2026-11-25T15:10:14.1886691Z"
   },
   "41908": {
     "SessionId": "f8ff71be-40a7-4867-8742-0592d8f38294",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T14:58:01.6866845Z",
-    "StoppedUtc": "2026-11-25T09:58:12.6086723Z",
-    "DueUtc": "2026-11-25T15:00:01.6866845Z"
+    "UntilUtc": "2026-11-25T15:08:14.1886691Z",
+    "StoppedUtc": "2026-11-25T10:08:21.6061876Z",
+    "DueUtc": "2026-11-25T15:10:14.1886691Z"
   },
   "23500": {
     "SessionId": "831346a9-59b9-428b-b943-300f041d1493",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-25T14:58:01.6866845Z",
-    "StoppedUtc": "2026-11-25T09:58:12.6086723Z",
-    "DueUtc": "2026-11-25T15:00:01.6866845Z"
+    "UntilUtc": "2026-11-25T15:08:14.1886691Z",
+    "StoppedUtc": "2026-11-25T10:08:21.6061876Z",
+    "DueUtc": "2026-11-25T15:10:14.1886691Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
@@ -34037,7 +34038,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3a029ca015439bb5a7f1892542593315b4bcc3a1"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "ca31227b831615197451c26e297bed91a319fc12",
+    "Tested": "820a57fe9d91bf8c360ad017a0fe04e653a163ef",
     "Green": "6b561073ef56e4e8340e62c36f6cc69a919d370f"
   },
   "MindAttic.Psst": {
@@ -34049,7 +34050,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "263d4d489acaa9e49d490bb786694d910ed0ce04"
   },
   "MindAttic.Tickets": {
-    "Tested": "b73cd2e31068d500815eaff39665df68c493109c",
+    "Tested": "e9fcae09102004654e490e4098aa3586a8826d84",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
@@ -34313,7 +34314,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2d87b0c995cc6e5667d715f89bb596b0c8150e66"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "ca31227b831615197451c26e297bed91a319fc12",
+    "Tested": "820a57fe9d91bf8c360ad017a0fe04e653a163ef",
     "Green": "6b561073ef56e4e8340e62c36f6cc69a919d370f"
   },
   "ipt392tmp": {
