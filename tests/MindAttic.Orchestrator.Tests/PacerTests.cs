@@ -401,7 +401,7 @@ public sealed class PacerTests
             var hooks = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(dir, "settings.json")))!["hooks"]!;
             foreach (var e in new[] { "SubagentStart", "SubagentStop" })
                 Assert.That(hooks[e]!.ToJsonString(), Does.Contain("context-gate.py"), e);
-            Assert.That(File.ReadAllText(Path.Combine(dir, "pace-gate.py")), Does.Contain("subagent_allowance"));
+            Assert.That(File.ReadAllText(Path.Combine(dir, MindAttic.Orchestrator.Setup.AgentGate.ModuleName)), Does.Contain("subagent_allowance"));
 
             var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler(Path.Combine(dir, "session-context"));
             Directory.CreateDirectory(cycler.SubagentDirectory);
@@ -437,7 +437,8 @@ public sealed class PacerTests
             Assert.That(pre[1]!["hooks"]![0]!["command"]!.GetValue<string>(), Does.Contain("pace-gate.py"));
             Assert.That(pre[2]!["matcher"]!.GetValue<string>(), Is.EqualTo("AskUserQuestion"));
             Assert.That(pre[2]!["hooks"]![0]!["command"]!.GetValue<string>(), Does.Contain("context-gate.py"));
-            Assert.That(File.ReadAllText(Path.Combine(dir, "pace-gate.py")), Does.Contain("pace_delay_seconds"));
+            Assert.That(File.ReadAllText(Path.Combine(dir, "pace-gate.py")), Is.EqualTo(MindAttic.Orchestrator.Setup.AgentGate.Stub(MindAttic.Orchestrator.Setup.AgentGate.ModuleName)), "the hook is the stub");
+            Assert.That(File.ReadAllText(Path.Combine(dir, MindAttic.Orchestrator.Setup.AgentGate.ModuleName)), Does.Contain("pace_delay_seconds"), "its body is the imported module");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

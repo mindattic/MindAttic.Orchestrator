@@ -111,7 +111,7 @@ public sealed class ContextCyclerTests
         try
         {
             Setup.AgentGate.Ensure(dir);
-            var gate = File.ReadAllText(Path.Combine(dir, "context-gate.py"));
+            var gate = File.ReadAllText(Path.Combine(dir, Setup.AgentGate.ContextModuleName));
             Assert.That(gate, Does.Not.Contain("will /quicksave").And.Not.Contain("% full. Finish the step"), "no turn is told to stop for its context");
         }
         finally { Directory.Delete(dir, recursive: true); }
