@@ -31950,27 +31950,18 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "Degraded": 89.67000000000002,
       "Unhealthy": 97,
       "Reason": "p90 of 360 readings is 85.4 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-26T14:00:44.9810355\u002B00:00",
+      "At": "2026-11-26T14:03:35.8666867\u002B00:00",
       "Basis": 360
     },
     "RamFreeGb": {
-      "Degraded": 3.5719999999999996,
-      "Unhealthy": 1.5719999999999996,
-      "Reason": "p10 of 360 readings is 3.76 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-26T14:00:44.9810355\u002B00:00",
+      "Degraded": 3.5244999999999997,
+      "Unhealthy": 1.5244999999999997,
+      "Reason": "p10 of 360 readings is 3.71 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-26T14:03:35.8666867\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-24T21:40:51.0071507\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 86.83500000000001,
-      "FromUnhealthy": 96.83500000000001,
-      "ToDegraded": 87.04500000000002,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 82.9 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-24T21:51:01.0171139\u002B00:00",
       "Check": "CommitPercent",
@@ -33761,6 +33752,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 3.5719999999999996,
       "ToUnhealthy": 1.5719999999999996,
       "Reason": "p10 of 360 readings is 3.76 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T14:03:35.8666867\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.5719999999999996,
+      "FromUnhealthy": 1.5719999999999996,
+      "ToDegraded": 3.5244999999999997,
+      "ToUnhealthy": 1.5244999999999997,
+      "Reason": "p10 of 360 readings is 3.71 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -33866,23 +33866,23 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "4620": {
     "SessionId": "5c87f115-96a3-43aa-8559-17d8764da8f6",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
-    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
-    "DueUtc": "2026-11-26T18:52:14.1482946Z"
+    "UntilUtc": "2026-11-26T19:05:29.2699583Z",
+    "StoppedUtc": "2026-11-26T14:05:32.4978596Z",
+    "DueUtc": "2026-11-26T19:07:29.2699583Z"
   },
   "41304": {
     "SessionId": "f8ff71be-40a7-4867-8742-0592d8f38294",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
-    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
-    "DueUtc": "2026-11-26T18:52:14.1482946Z"
+    "UntilUtc": "2026-11-26T19:05:29.2699583Z",
+    "StoppedUtc": "2026-11-26T14:05:32.4978596Z",
+    "DueUtc": "2026-11-26T19:07:29.2699583Z"
   },
   "20140": {
     "SessionId": "831346a9-59b9-428b-b943-300f041d1493",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
-    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
-    "DueUtc": "2026-11-26T18:52:14.1482946Z"
+    "UntilUtc": "2026-11-26T19:05:29.2699583Z",
+    "StoppedUtc": "2026-11-26T14:05:32.4978596Z",
+    "DueUtc": "2026-11-26T19:07:29.2699583Z"
   },
   "39088": {
     "SessionId": "b773a79b-ba7e-46cb-9786-f886660e3188",
@@ -33894,9 +33894,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
-    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
-    "DueUtc": "2026-11-26T18:52:14.1482946Z"
+    "UntilUtc": "2026-11-26T19:05:29.2699583Z",
+    "StoppedUtc": "2026-11-26T14:05:32.4978596Z",
+    "DueUtc": "2026-11-26T19:07:29.2699583Z"
   },
   "24400": {
     "SessionId": "a8807a82-1dd3-4855-b80b-a04b51f0814d",
@@ -33922,9 +33922,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39332": {
     "SessionId": "3a3ec029-07bb-40dd-a1f6-578b671ff17b",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
-    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
-    "DueUtc": "2026-11-26T18:52:14.1482946Z"
+    "UntilUtc": "2026-11-26T19:05:29.2699583Z",
+    "StoppedUtc": "2026-11-26T14:05:32.4978596Z",
+    "DueUtc": "2026-11-26T19:07:29.2699583Z"
   },
   "57504": {
     "SessionId": "bb1c10a1-f527-4aff-b271-ba4beeb8a07c",
@@ -33971,23 +33971,23 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "28368": {
     "SessionId": "e1bd5cdc-60d3-4e0e-8a84-21abd28f1dc5",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
-    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
-    "DueUtc": "2026-11-26T18:52:14.1482946Z"
+    "UntilUtc": "2026-11-26T19:05:29.2699583Z",
+    "StoppedUtc": "2026-11-26T14:05:32.4978596Z",
+    "DueUtc": "2026-11-26T19:07:29.2699583Z"
   },
   "61472": {
     "SessionId": "718f6c47-2f74-43f9-b8fb-ec90517f4bc4",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
-    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
-    "DueUtc": "2026-11-26T18:52:14.1482946Z"
+    "UntilUtc": "2026-11-26T19:05:29.2699583Z",
+    "StoppedUtc": "2026-11-26T14:05:32.4978596Z",
+    "DueUtc": "2026-11-26T19:07:29.2699583Z"
   },
   "60752": {
     "SessionId": "a09437da-501c-4b91-89b6-09e5a4f4ff02",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
-    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
-    "DueUtc": "2026-11-26T18:52:14.1482946Z"
+    "UntilUtc": "2026-11-26T19:05:29.2699583Z",
+    "StoppedUtc": "2026-11-26T14:05:32.4978596Z",
+    "DueUtc": "2026-11-26T19:07:29.2699583Z"
   },
   "33504": {
     "SessionId": "91b94039-25f5-4745-bff2-7955b6ecdfee",
