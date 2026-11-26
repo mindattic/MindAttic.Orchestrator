@@ -32051,34 +32051,8 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
   }
 }');
 INSERT INTO state (name, value) VALUES ('health-lines', '{
-  "Lines": {
-    "CommitPercent": {
-      "Degraded": 86.205,
-      "Unhealthy": 96.205,
-      "Reason": "p90 of 80 readings is 82.1 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-26T00:59:27.8258072\u002B00:00",
-      "Basis": 80
-    }
-  },
+  "Lines": {},
   "Changes": [
-    {
-      "At": "2026-11-23T09:21:23.051403\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.5174999999999996,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.4985,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 287 readings is 2.63 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-23T09:22:18.859683\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.4985,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.4225,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 288 readings is 2.55 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
     {
       "At": "2026-11-23T09:22:55.6264136\u002B00:00",
       "Check": "RamFreeGb",
@@ -33860,6 +33834,24 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 86.205,
       "ToUnhealthy": 96.205,
       "Reason": "p90 of 80 readings is 82.1 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T01:06:36.1968724\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 86.205,
+      "FromUnhealthy": 96.205,
+      "ToDegraded": 85.995,
+      "ToUnhealthy": 95.995,
+      "Reason": "p90 of 90 readings is 81.9 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T01:12:46.6886631\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 85.995,
+      "FromUnhealthy": 95.995,
+      "ToDegraded": 80,
+      "ToUnhealthy": 90,
+      "Reason": "p90 of 100 readings is 79.2 %, inside the configured degraded line 80 %"
     }
   ]
 }');
