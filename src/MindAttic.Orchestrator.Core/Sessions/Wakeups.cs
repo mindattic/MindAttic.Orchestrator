@@ -39,12 +39,14 @@ public sealed class Wakeups(JsonStore store)
     private Dictionary<string, Entry> Queue()
     {
         if (queue is not null) return queue;
-        queue = store.TryLoad<Dictionary<string, Entry>>(Name, out var loaded) ? loaded : [];
-        return queue;
+        // A failed read isn't an empty queue: it's neither cached nor saved over, and is read again next call (M.ORCH-T2291).
+        if (!store.TryLoad<Dictionary<string, Entry>>(Name, out var loaded) && store.Has(Name)) return loaded;
+        return queue = loaded;
     }
 
     private void Persist()
     {
+        if (queue is null) return;
         try { store.Save(Name, queue); }
         catch (IOException) { } // kept in memory; the next change tries again
     }

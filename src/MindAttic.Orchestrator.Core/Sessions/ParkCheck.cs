@@ -194,15 +194,14 @@ public static class ParkCheck
         var sessions = cycler.Load().Where(s => s.Pid is not null).GroupBy(s => s.Pid!.Value).ToDictionary(g => g.Key, g => g.ToList());
         var allocate = cycler.AllocateClis();
         // None recorded is none; a read that fails holds every CLI back, as a resume may be among them.
-        IReadOnlyDictionary<string, LimitWaker.ScheduledResume>? resumes = new Dictionary<string, LimitWaker.ScheduledResume>();
-        try { if (store.TryLoad<Dictionary<string, LimitWaker.ScheduledResume>>(LimitWaker.ScheduledName, out var r) && r is not null) resumes = r; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException or System.Data.Common.DbException) { resumes = null; }
+        IReadOnlyDictionary<string, LimitWaker.ScheduledResume>? resumes =
+            store.TryLoad<Dictionary<string, LimitWaker.ScheduledResume>>(LimitWaker.ScheduledName, out var r) || !store.Has(LimitWaker.ScheduledName) ? r : null;
         var verdicts = new List<ParkVerdict>();
         foreach (var cli in report.Clis.Where(c => c.Pid is not null))
         {
             var pid = cli.Pid!.Value;
             var mine = sessions.GetValueOrDefault(pid) ?? [];
-            var newest = mine.MaxBy(s => s.TurnUtc);
+            var newest = mine.MaxBy(cycler.Newest);
             var facts = new ParkFacts(pid, newest?.SessionId ?? cli.SessionId, cli.Activity, cli.Why, allocate.ContainsKey(pid), newest?.Goal,
                 newest?.LimitStop, resumes is null || resumes.ContainsKey(pid.ToString(CultureInfo.InvariantCulture)),
                 mine.Count == 0 ? null : PendingWakes(cycler.ProjectsDir, mine.Select(s => s.SessionId), now),

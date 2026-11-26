@@ -179,18 +179,19 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     public IReadOnlyList<ApiFailover> Failovers => Book();
 
     /// <summary>The failovers <paramref name="store"/> keeps; none when it can't be read.</summary>
-    public static IReadOnlyList<ApiFailover> LoadFailovers(JsonStore store)
-    {
-        try { return store.Load<List<ApiFailover>>(FailoversName); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return []; }
-    }
+    public static IReadOnlyList<ApiFailover> LoadFailovers(JsonStore store) => TryLoadFailovers(store, out var f) ? f : [];
 
-    private List<ApiFailover> Book() => failovers ??= Store is { } s ? [.. LoadFailovers(s)] : [];
+    private static bool TryLoadFailovers(JsonStore store, out List<ApiFailover> f) =>
+        store.TryLoad(FailoversName, out f) || !store.Has(FailoversName);
+
+    // A failed read isn't none: it's neither cached nor saved over, and is read again next time (M.ORCH-T2291).
+    private List<ApiFailover> Book() =>
+        failovers ?? (Store is not { } s ? failovers = [] : TryLoadFailovers(s, out var f) ? failovers = f : f);
 
     private void SaveBook()
     {
-        if (Store is not { } s) return;
-        try { s.Save(FailoversName, Book()); }
+        if (Store is not { } s || failovers is null) return;
+        try { s.Save(FailoversName, failovers); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
     }
 
