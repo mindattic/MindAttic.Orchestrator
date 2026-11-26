@@ -1807,7 +1807,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 16578074);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'SpaceGod.Unreal', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 160623);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 9884876);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1327563);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1375025);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 765689);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2130348);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2369255);
@@ -33985,9 +33985,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T06:03:37.5534371Z",
-    "StoppedUtc": "2026-11-26T01:03:40.2533385Z",
-    "DueUtc": "2026-11-26T06:05:37.5534371Z"
+    "UntilUtc": "2026-11-26T06:18:39.1026255Z",
+    "StoppedUtc": "2026-11-26T01:18:41.6519533Z",
+    "DueUtc": "2026-11-26T06:20:39.1026255Z"
   },
   "24400": {
     "SessionId": "a8807a82-1dd3-4855-b80b-a04b51f0814d",
@@ -34013,9 +34013,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39332": {
     "SessionId": "3a3ec029-07bb-40dd-a1f6-578b671ff17b",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T06:03:37.5534371Z",
-    "StoppedUtc": "2026-11-26T01:03:40.2533385Z",
-    "DueUtc": "2026-11-26T06:05:37.5534371Z"
+    "UntilUtc": "2026-11-26T06:18:39.1026255Z",
+    "StoppedUtc": "2026-11-26T01:18:41.6519533Z",
+    "DueUtc": "2026-11-26T06:20:39.1026255Z"
   },
   "57504": {
     "SessionId": "bb1c10a1-f527-4aff-b271-ba4beeb8a07c",
