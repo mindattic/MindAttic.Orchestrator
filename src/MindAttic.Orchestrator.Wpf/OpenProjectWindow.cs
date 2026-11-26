@@ -28,6 +28,7 @@ namespace MindAttic.Orchestrator.Wpf;
 internal sealed class OpenProjectWindow : Window
 {
     private readonly Button add = new() { Content = "_Add", IsDefault = true, IsEnabled = false };
+    private readonly Button refresh = new() { Content = "" };
     private readonly MaTree projectTree = new() { ShowCheckBoxes = true };
     private readonly TextBox projectFilter = new() { MinWidth = 140 };
     private readonly TextBlock noProjects = new() { IsEnabled = false };
@@ -60,10 +61,9 @@ internal sealed class OpenProjectWindow : Window
         projectFilter.SetResourceReference(StyleProperty, "MaTextBox");
         MaTextBox.SetPlaceholder(projectFilter, "Filter…");
         projectFilter.ToolTip = "3 or more characters narrows the list to repos whose name contains it (case-insensitive)";
-        projectFilter.HorizontalAlignment = HorizontalAlignment.Right;
-        projectFilter.SetResourceReference(MarginProperty, "SpaceBXS");
+        projectFilter.VerticalAlignment = VerticalAlignment.Center;
+        projectFilter.SetResourceReference(MarginProperty, "SpaceLS");
         projectFilter.TextChanged += (_, _) => FillProjects();
-        list.Children.Add(projectFilter);
 
         projectTree.PreviewMouseRightButtonUp += OnTreeRightClick;
         list.Children.Add(projectTree);
@@ -107,20 +107,47 @@ internal sealed class OpenProjectWindow : Window
         cancel.SetResourceReference(MarginProperty, "SpaceRS");
         cancel.Click += (_, _) => Close();
 
-        var hint = new TextBlock { Text = "Tick what to open for this login, then Add.", TextWrapping = TextWrapping.Wrap };
+        // Forces a reread of the Launcher's project folders (M.ORCH-T2244): RefreshProjectsAsync with no ifOlderThan skips
+        // the dashboard's own 10-minute staleness check elsewhere, so a repo cloned or removed since this window opened
+        // (or since the dashboard's own last background read) shows up without closing and reopening it.
+        refresh.SetResourceReference(StyleProperty, "MaToolButton");
+        refresh.SetResourceReference(MarginProperty, "SpaceRS");
+        refresh.ToolTip = "Reread the Launcher's project folders from disk";
+        refresh.Click += async (_, _) =>
+        {
+            refresh.IsEnabled = false;
+            try
+            {
+                await MainViewModel.RefreshProjectsAsync();
+                allProjects = Leaves(MainViewModel.ProjectTree ?? []).ToList();
+                FillProjects();
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Warning("Open Project: refreshing the roster failed: {Error}", ex.Message); }
+            finally { refresh.IsEnabled = true; }
+        };
+
+        var hint = new TextBlock { Text = "Tick what to open for this login, then Add.", TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
         hint.SetResourceReference(StyleProperty, "MaMutedText");
-        hint.SetResourceReference(MarginProperty, "SpaceBXS");
+
+        // The filter sits in this header, outside the scrollable tree below (M.ORCH-T2243): docked to the window's top, not
+        // the scrollable "list" StackPanel, so it stays in view (top-right) no matter how far the tree is scrolled.
+        var header = new DockPanel();
+        header.SetResourceReference(MarginProperty, "SpaceBXS");
+        DockPanel.SetDock(projectFilter, Dock.Right);
+        header.Children.Add(projectFilter);
+        header.Children.Add(hint);
 
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         footer.SetResourceReference(MarginProperty, "SpaceTS");
+        footer.Children.Add(refresh);
         footer.Children.Add(cancel);
         footer.Children.Add(add);
 
         var panel = new DockPanel();
         panel.SetResourceReference(MarginProperty, "SpaceL");
-        DockPanel.SetDock(hint, Dock.Top);
+        DockPanel.SetDock(header, Dock.Top);
         DockPanel.SetDock(footer, Dock.Bottom);
-        panel.Children.Add(hint);
+        panel.Children.Add(header);
         panel.Children.Add(footer);
         panel.Children.Add(scroll);
         Content = panel;
