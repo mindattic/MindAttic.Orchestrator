@@ -1101,6 +1101,18 @@
                          native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never
                          sees them (M.ORCH-T833): switched off here so they pass straight through to the terminal. -->
                     <Grid x:Name="TerminalPanesHost" Grid.Row="0" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
+                    <!-- Do button (M.ORCH-T2263): floats over the shown CLI's bottom-right corner, pinned however the pane scrolls
+                         since it's a sibling of TerminalPanesHost rather than inside it. One click types "Do" and Enter into the
+                         pane on screen - the same as typing /do and hitting enter - via Terminals.DoCommand (PersonTerminalsViewModel),
+                         so it works even when focus is elsewhere in the window. Only visible while a terminal is actually shown
+                         (TerminalFrame's own Visibility, above, gates this whole row). TerminalClip.cs (MainWindow.xaml.cs) notches
+                         the real terminal HwndHost's window region around this button's own screen rect each layout pass, since a
+                         native child window always paints over WPF siblings otherwise. -->
+                    <Button x:Name="DoButton" Grid.Row="0" Style="{StaticResource MaButton}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Margin="0,0,10,10" Padding="14,6" FontSize="12" MinWidth="0" MinHeight="0" Content="Do"
+                            Command="{Binding Terminals.DoCommand}"
+                            mc:MaCallout.ToolTip="Type Do and Enter into this CLI (the /do skill: continue without re-confirming)"
+                            AutomationProperties.Name="Do" />
                 </Grid>
             </StackPanel>
         </ScrollViewer>
