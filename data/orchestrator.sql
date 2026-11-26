@@ -32881,77 +32881,14 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 91.14,
+      "Degraded": 89.775,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 86.8 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-26T23:22:15.9989907\u002B00:00",
+      "Reason": "p90 of 360 readings is 85.5 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-26T23:32:11.2199432\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T04:43:47.5850764\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 92.08500000000001,
-      "FromUnhealthy": 97,
-      "ToDegraded": 92.29500000000002,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 309 readings is 87.9 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T04:45:36.3852098\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 92.29500000000002,
-      "FromUnhealthy": 97,
-      "ToDegraded": 92.82000000000001,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 311 readings is 88.4 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T04:46:42.299598\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 92.82000000000001,
-      "FromUnhealthy": 97,
-      "ToDegraded": 93.03,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 313 readings is 88.6 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T04:47:49.3849024\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 93.03,
-      "FromUnhealthy": 97,
-      "ToDegraded": 93.135,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 315 readings is 88.7 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T04:48:21.9838146\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 93.135,
-      "FromUnhealthy": 97,
-      "ToDegraded": 93.34500000000001,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 316 readings is 88.9 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T04:49:00.4105197\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 93.34500000000001,
-      "FromUnhealthy": 97,
-      "ToDegraded": 93.55499999999999,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 317 readings is 89.1 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T04:50:10.0416502\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 93.55499999999999,
-      "FromUnhealthy": 97,
-      "ToDegraded": 93.66000000000001,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 318 readings is 89.2 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-26T04:52:32.4964636\u002B00:00",
       "Check": "CommitPercent",
@@ -34688,6 +34625,69 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 4,
       "ToUnhealthy": 2,
       "Reason": "p10 of 360 readings is 4.06 GB, inside the configured degraded line 4 GB"
+    },
+    {
+      "At": "2026-11-26T23:22:55.2674372\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 91.14,
+      "FromUnhealthy": 97,
+      "ToDegraded": 90.92999999999999,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 86.6 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T23:23:41.7692003\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 90.92999999999999,
+      "FromUnhealthy": 97,
+      "ToDegraded": 90.51,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 86.2 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T23:24:21.0206393\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 90.51,
+      "FromUnhealthy": 97,
+      "ToDegraded": 90.19500000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.9 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T23:26:44.5868464\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 90.19500000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 90.09,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.8 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T23:27:16.8433612\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 90.09,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.98500000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.7 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T23:31:31.107592\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.98500000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.88,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.6 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T23:32:11.2199432\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.88,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.775,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.5 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
@@ -34793,9 +34793,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "4620": {
     "SessionId": "5c87f115-96a3-43aa-8559-17d8764da8f6",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T04:16:39.4050731Z",
-    "StoppedUtc": "2026-11-26T23:16:42.3285484Z",
-    "DueUtc": "2026-11-27T04:18:39.4050731Z"
+    "UntilUtc": "2026-11-27T04:31:54.4727432Z",
+    "StoppedUtc": "2026-11-26T23:31:57.3575426Z",
+    "DueUtc": "2026-11-27T04:33:54.4727432Z"
   },
   "41304": {
     "SessionId": "f8ff71be-40a7-4867-8742-0592d8f38294",
@@ -34814,9 +34814,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39088": {
     "SessionId": "b773a79b-ba7e-46cb-9786-f886660e3188",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T04:14:15.4852332Z",
-    "StoppedUtc": "2026-11-26T23:14:22.9012888Z",
-    "DueUtc": "2026-11-27T04:16:15.4852332Z"
+    "UntilUtc": "2026-11-27T04:29:18.6501553Z",
+    "StoppedUtc": "2026-11-26T23:29:21.357954Z",
+    "DueUtc": "2026-11-27T04:31:18.6501553Z"
   },
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
@@ -34898,9 +34898,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "28368": {
     "SessionId": "9aa417dc-00ec-48db-aaea-59ffddf8b7f3",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T04:10:35.0564902Z",
-    "StoppedUtc": "2026-11-26T23:10:37.7553693Z",
-    "DueUtc": "2026-11-27T04:12:35.0564902Z"
+    "UntilUtc": "2026-11-27T04:25:46.8010912Z",
+    "StoppedUtc": "2026-11-26T23:25:49.9090085Z",
+    "DueUtc": "2026-11-27T04:27:46.8010912Z"
   },
   "61472": {
     "SessionId": "718f6c47-2f74-43f9-b8fb-ec90517f4bc4",
@@ -34912,9 +34912,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "60752": {
     "SessionId": "a09437da-501c-4b91-89b6-09e5a4f4ff02",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T04:16:39.4050731Z",
-    "StoppedUtc": "2026-11-26T23:16:42.3285484Z",
-    "DueUtc": "2026-11-27T04:18:39.4050731Z"
+    "UntilUtc": "2026-11-27T04:31:54.4727432Z",
+    "StoppedUtc": "2026-11-26T23:31:57.3575426Z",
+    "DueUtc": "2026-11-27T04:33:54.4727432Z"
   },
   "33504": {
     "SessionId": "91b94039-25f5-4745-bff2-7955b6ecdfee",
