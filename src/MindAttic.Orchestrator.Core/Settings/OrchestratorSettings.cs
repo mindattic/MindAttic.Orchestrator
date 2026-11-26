@@ -924,6 +924,19 @@ public sealed record OrchestratorSettings
     /// layout pass, which made showing a CLI tab freeze typing for 4 to 40 seconds. Read when the dashboard starts.</summary>
     public bool UiAutomation { get; init; }
 
+    /// <summary>On by default (M.ORCH-T534, M.ORCH-T1913): the dashboard captures its own window every 15 minutes while open and
+    /// stitches each 5-hour window's frames into a GIF at its reset. Off: no frame is captured and no GIF is made.</summary>
+    public bool Timelapse { get; init; } = true;
+
+    /// <summary>The timelapse GIF's frame rate: 2 (the default) or 4 frames per second; read through <see cref="TimelapseFrameRate"/>.</summary>
+    public int TimelapseFps { get; init; } = DefaultTimelapseFps;
+
+    /// <summary>The default <see cref="TimelapseFps"/>.</summary>
+    public const int DefaultTimelapseFps = 2;
+
+    /// <summary><see cref="TimelapseFps"/> as one of the two rates offered: 4 from 4 up, else 2.</summary>
+    public int TimelapseFrameRate => TimelapseFps >= 4 ? 4 : DefaultTimelapseFps;
+
     /// <summary>Minutes an ended terminal tab stays, for its last lines, before it's closed unasked (M.ORCH-T1599; was a fixed
     /// 24 hours, M.ORCH-T1177): each holds its native renderer (~50 MB) until then.</summary>
     public double EndedTabMinutes { get; init; } = DefaultEndedTabMinutes;

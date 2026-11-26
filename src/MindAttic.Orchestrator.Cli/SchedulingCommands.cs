@@ -377,6 +377,14 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("How long the new-start cool-off gets to bend a login's trend back under before --agent-abort steps in, 0 to 60 (default 3).")]
         public int? AgentAbortAfterMinutes { get; init; }
 
+        [CommandOption("--timelapse <ON>")]
+        [Description("true (default): while the dashboard is open, minimized included, it captures its own window every 15 minutes and stitches each 5-hour window's frames into a GIF at its reset; false captures nothing.")]
+        public bool? Timelapse { get; init; }
+
+        [CommandOption("--timelapse-fps <FPS>")]
+        [Description("The timelapse GIF's frame rate: 2 (default) or 4 frames per second.")]
+        public int? TimelapseFps { get; init; }
+
         [CommandOption("--provider <PROVIDER>")]
         public string? Provider { get; init; }
 
@@ -1065,6 +1073,17 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { AgentAbortAfterMinutes = agentAbortAfter };
             changed = true;
         }
+        if (settings.Timelapse is { } timelapse)
+        {
+            s = s with { Timelapse = timelapse };
+            changed = true;
+        }
+        if (settings.TimelapseFps is { } timelapseFps)
+        {
+            if (timelapseFps is not (2 or 4)) { AnsiConsole.MarkupLine("[red]--timelapse-fps is 2 or 4.[/]"); return 1; }
+            s = s with { TimelapseFps = timelapseFps };
+            changed = true;
+        }
         if (settings.AlertTo is { } alertTo)
         {
             var off = alertTo.Trim().Equals(OrchestratorVaultSettings.NoAlerts, StringComparison.OrdinalIgnoreCase);
@@ -1185,7 +1204,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             $" · the dashboard's first load waits {OrchestratorSettings.FirstLoadWait(s).TotalSeconds:0}s on the ticket database" +
             $" · tab trailing text: {(s.SymbolTabLabels ? "symbols (Σ/λ)" : "words (wk/5h)")}" +
             $" · login sidebar: {(s.TreeMenuLayout ? "tree menu" : "flat tabs")}" +
-            $" · Team Wall: {(s.ExcludeLauncherFromTeamWall ? "excludes" : "includes")} the Launcher's menu pane");
+            $" · Team Wall: {(s.ExcludeLauncherFromTeamWall ? "excludes" : "includes")} the Launcher's menu pane" +
+            (s.Timelapse ? $" · timelapse [green]on[/]: each 5-hour window becomes a GIF at {s.TimelapseFrameRate} fps" : " · timelapse off (--timelapse true)"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%" +
             $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · no weekly-aware pacing, ever");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset, full speed until the 5-hour or weekly use reaches {s.PaceGuardStartPercent:0.#}%" :"off: the warn line holds new work")}" +

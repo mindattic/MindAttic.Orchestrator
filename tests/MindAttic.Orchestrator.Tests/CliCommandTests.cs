@@ -598,6 +598,27 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void Settings_round_trips_the_timelapse_switch_and_its_frame_rate()
+    {
+        // M.ORCH-T1913: on at 2 fps by default; both saved to the settings and read back as set.
+        var defaults = Store.LoadSettings();
+        Assert.That((defaults.Timelapse, defaults.TimelapseFps), Is.EqualTo((true, 2)));
+
+        Assert.That(Run("settings", "--timelapse", "false", "--timelapse-fps", "4"), Is.Zero);
+        var s = Store.LoadSettings();
+        Assert.That((s.Timelapse, s.TimelapseFps, s.TimelapseFrameRate), Is.EqualTo((false, 4, 4)));
+        Assert.That(output.ToString(), Does.Contain("timelapse off"));
+
+        Assert.That(Run("settings", "--timelapse", "true", "--timelapse-fps", "2"), Is.Zero);
+        s = Store.LoadSettings();
+        Assert.That((s.Timelapse, s.TimelapseFps), Is.EqualTo((true, 2)));
+        Assert.That(System.Text.RegularExpressions.Regex.Replace(output.ToString(), @"\s+", " "), Does.Contain("timelapse on"));
+
+        Assert.That(Run("settings", "--timelapse-fps", "3"), Is.Not.Zero, "only 2 or 4");
+        Assert.That(Store.LoadSettings().TimelapseFps, Is.EqualTo(2), "a refused rate saves nothing");
+    }
+
+    [Test]
     public void Settings_escapes_a_bracket_in_saved_values_when_it_prints_them()
     {
         // Unescaped, "[odd" would be read as a markup tag and the command would crash after saving.

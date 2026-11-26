@@ -1175,6 +1175,17 @@ public sealed class OrchestratorVaultSettings
         Help = "Off (the default): the dashboard window hides its controls from UI Automation clients (screen readers, UI test tools, apps that read the screen). With one listening, Windows re-walks the whole window after every layout change, which froze typing for 4 to 40 seconds each time a CLI tab was shown. Turn it on only if you use a screen reader with the dashboard. Takes effect when the dashboard next starts.")]
     public bool UiAutomation { get; set; }
 
+    /// <summary>On (the default): the dashboard captures its own window every 15 minutes and stitches each 5-hour window into a GIF.</summary>
+    [Setting("Timelapse", Group = "Dashboard", Order = 31,
+        Help = "On (the default): while the dashboard is open, minimized included, it captures its own window every 15 minutes and stitches each 5-hour window's frames into a GIF at its reset. Off captures nothing.")]
+    public bool Timelapse { get; set; } = true;
+
+    /// <summary>The timelapse GIF's frame rate: 2 or 4 frames per second.</summary>
+    [Setting("Timelapse speed (fps)", Group = "Dashboard", Order = 32,
+        Help = "The timelapse GIF's frame rate: 2 (the default) or 4 frames per second. Anything from 4 up plays at 4, anything under at 2.")]
+    [SettingRange(2, 4)]
+    public int TimelapseFps { get; set; } = OrchestratorSettings.DefaultTimelapseFps;
+
     /// <summary>Minutes between the daemon's sweeps for TermHosts left running in orch-test-* temp folders.</summary>
     [Setting("Sweep for leaked test TermHosts every (minutes)", Group = "Dashboard", Order = 91,
         Help = "Minutes between the daemon's sweeps for TermHosts left running in orch-test-* temp folders. Each sweep is a WMI query.")]
@@ -1408,6 +1419,8 @@ public sealed class OrchestratorVaultSettings
         AutoOpenGeneralPrompts = s.AutoOpenGeneralPrompts,
         ConfirmCliClose = s.ConfirmCliClose,
         UiAutomation = s.UiAutomation,
+        Timelapse = s.Timelapse,
+        TimelapseFps = s.TimelapseFps,
         EndedTabMinutes = s.EndedTabMinutes,
         HiddenRendererMinutes = s.HiddenRendererMinutes,
         ParkIdleCliMinutes = s.ParkIdleCliMinutes,
@@ -1632,6 +1645,8 @@ public sealed class OrchestratorVaultSettings
         AutoOpenGeneralPrompts = AutoOpenGeneralPrompts,
         ConfirmCliClose = ConfirmCliClose,
         UiAutomation = UiAutomation,
+        Timelapse = Timelapse,
+        TimelapseFps = TimelapseFps,
         EndedTabMinutes = EndedTabMinutes,
         HiddenRendererMinutes = HiddenRendererMinutes,
         ParkIdleCliMinutes = ParkIdleCliMinutes,

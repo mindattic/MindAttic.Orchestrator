@@ -297,6 +297,8 @@ public sealed class LampSettingsTests
         Case("autoOpenGeneralPrompts", s => s with { AutoOpenGeneralPrompts = true }, true, v => v.AutoOpenGeneralPrompts = false, false, s => s.AutoOpenGeneralPrompts),
         Case("confirmCliClose", s => s with { ConfirmCliClose = false }, false, v => v.ConfirmCliClose = true, true, s => s.ConfirmCliClose),
         Case("uiAutomation", s => s with { UiAutomation = false }, false, v => v.UiAutomation = true, true, s => s.UiAutomation),
+        Case("timelapse", s => s with { Timelapse = false }, false, v => v.Timelapse = true, true, s => s.Timelapse),
+        Case("timelapseFps", s => s with { TimelapseFps = 4 }, 4, v => v.TimelapseFps = 2, 2, s => s.TimelapseFps),
         Case("memberUntil", s => s with { MemberUntil = "old@mindattic.com=2026-12-01" }, "old@mindattic.com=2026-12-01",
             v => v.MemberUntil = "new@mindattic.com=2027-01-15T08:00;other@mindattic.com=2027-02-01", "new@mindattic.com=2027-01-15T08:00;other@mindattic.com=2027-02-01", s => s.MemberUntil),
         // Folders
