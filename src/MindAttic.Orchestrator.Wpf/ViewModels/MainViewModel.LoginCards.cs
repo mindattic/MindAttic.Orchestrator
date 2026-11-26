@@ -428,6 +428,12 @@ public sealed partial class MainViewModel
     /// <summary>"+ Add"'s tooltip while locked (M.ORCH-T2185); null otherwise, so each button keeps its own wording.</summary>
     public string? AddCliLockedTip => AddCliLockedTipOf(IsLoginLocked);
 
+    /// <summary>The tree's own "+ Add" leaf dims to this while disabled (M.ORCH-T2242): a plain bound <c>Opacity</c> rather
+    /// than a XAML style trigger, since the leaf's hit area is a layout Grid, not a library-styled button (the same reason
+    /// <see cref="TerminalsViewModel.MovingOpacity"/> is a bound property instead). Matches MaToolButton's own disabled
+    /// opacity (0.35) so the leaf still reads the same as every other disabled icon button in this window.</summary>
+    public double AddCliOpacity => CanAddCli ? 1.0 : 0.35;
+
     internal static bool CanAddCliOf(bool signedIn, bool locked) => signedIn && !locked;
 
     internal static string? AddCliLockedTipOf(bool locked) => locked ? "Locked: right-click > Unlock to use this login" : null;

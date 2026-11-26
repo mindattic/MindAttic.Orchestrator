@@ -571,7 +571,7 @@ public sealed partial class MainViewModel
     // One array for every call (M.ORCH-T2211): raised for every login tab on each snapshot and presumption change.
     private static readonly string[] TabStatusNames = [nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(WrongAccountLine), nameof(TabLightBrush), nameof(TabTrailing), nameof(ShowsTabUsageBars), nameof(TabTrailingFace), nameof(TabUsageLine), nameof(TabTip), nameof(TabHoverTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabDisabledGlyph), nameof(IsTabAllStopped), nameof(ShowsIdleBadge), nameof(ShowsBusyBadge),
-                                     nameof(IsTabLocked), nameof(ShowsLockedBadge), nameof(ShowsDisabledIcon), nameof(TabActivityWord), nameof(CanAddCli), nameof(AddCliLockedTip),
+                                     nameof(IsTabLocked), nameof(ShowsLockedBadge), nameof(ShowsDisabledIcon), nameof(TabActivityWord), nameof(CanAddCli), nameof(AddCliLockedTip), nameof(AddCliOpacity),
                                      nameof(TabCliCount), nameof(TabThinkingCount), nameof(ShowsTabThinkingCount), nameof(TabThinkingCountText), nameof(TabThinkingWord),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(TabNeedsYouTip), nameof(Spend), nameof(TabFaceTitle), nameof(ApiSpendFace),
                                      nameof(ShowsClaudeMeters),

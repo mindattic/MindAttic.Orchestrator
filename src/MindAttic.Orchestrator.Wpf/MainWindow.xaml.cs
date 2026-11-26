@@ -1445,6 +1445,16 @@ public partial class MainWindow : Window
         ShowOpenProjectWindow(tab);
     }
 
+    /// <summary>The tree sidebar's own "+ Add" leaf (M.ORCH-T2104) click (M.ORCH-T2242): the same action as
+    /// <see cref="AddTabButton_Click"/>, reached from the leaf's own click like every sibling tree row
+    /// (<see cref="LoginTreeChild_MouseLeftButtonDown"/>) rather than a small button inside it, so the whole row opens it.</summary>
+    private void LoginTreeAddLeaf_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: MainViewModel tab } || !tab.IsPersonTab || !tab.CanAddCli) return;
+        e.Handled = true;
+        ShowOpenProjectWindow(tab);
+    }
+
     /// <summary>Opens <see cref="OpenProjectWindow"/> over this dashboard for <paramref name="tab"/>'s login: General
     /// Prompt, Run Launcher or a project from the tree, each selecting <paramref name="tab"/> first
     /// (<see cref="MainViewModel.SelectedTab"/>) so the new CLI lands on the right login's own tab strip, exactly as
