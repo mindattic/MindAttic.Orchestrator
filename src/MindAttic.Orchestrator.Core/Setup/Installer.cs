@@ -76,12 +76,15 @@ public sealed class Installer
     /// <summary>
     /// A dev or test build never installs itself on a double-click: bin\Debug, bin\Release, obj, anything
     /// inside a git checkout or worktree (a repo's artifacts folder, a worktree's publish), a *.worktrees
-    /// folder, or the temp folder (an agent's scratch copy). Only <c>--install</c> installs those.
+    /// folder, or the temp folder (an agent's scratch copy). Only <c>--install</c> installs those. Nor does a
+    /// framework-dependent build (its <c>.dll</c> beside it, like the run menu's Debug deploy under
+    /// R:\MindAttic\Apps\MindAttic.Orchestrator\Debug, MAT-T298): installing copies the exe alone.
     /// </summary>
     public static bool IsDevBuild(string exePath) => IsDevBuild(exePath, Path.GetTempPath());
 
     internal static bool IsDevBuild(string exePath, string tempDir)
     {
+        if (File.Exists(Path.ChangeExtension(exePath, ".dll"))) return true;
         if (exePath.Contains(@"\bin\Debug\", StringComparison.OrdinalIgnoreCase) ||
             exePath.Contains(@"\bin\Release\", StringComparison.OrdinalIgnoreCase) ||
             exePath.Contains(@"\obj\", StringComparison.OrdinalIgnoreCase) ||
@@ -106,9 +109,14 @@ public sealed class Installer
 
     /// <summary>
     /// Why <paramref name="runningExe"/> mustn't replace the installed copy, or null when it may: an
-    /// installed exe built later than this one is never downgraded (a copy keeps its build's write time).
+    /// installed exe built later than this one is never downgraded (a copy keeps its build's write time), and the build
+    /// already installed (the run menu's Release deploy run.ps1 just installed, MAT-T298) opens the installed copy
+    /// instead of installing again.
     /// </summary>
-    public string? WhyNotReplace(string runningExe)
+    public string? WhyNotReplace(string runningExe) =>
+        IsSameBuild(runningExe) ? $"the installed {InstalledExe} is this build" : NewerInstalled(runningExe);
+
+    private string? NewerInstalled(string runningExe)
     {
         if (IsInstalled(runningExe) || !File.Exists(InstalledExe)) return null;
         var installed = File.GetLastWriteTimeUtc(InstalledExe);
@@ -116,6 +124,17 @@ public sealed class Installer
         return installed > mine
             ? $"the installed {InstalledExe} ({installed.ToLocalTime():yyyy-MM-dd HH:mm}) is newer than this build ({mine.ToLocalTime():yyyy-MM-dd HH:mm})"
             : null;
+    }
+
+    /// <summary>Whether <paramref name="runningExe"/>, run from elsewhere, is byte for byte the installed exe.</summary>
+    public bool IsSameBuild(string runningExe)
+    {
+        if (IsInstalled(runningExe) || !File.Exists(InstalledExe) || !File.Exists(runningExe)) return false;
+        if (new FileInfo(runningExe).Length != new FileInfo(InstalledExe).Length) return false;
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        using var a = File.OpenRead(runningExe);
+        using var b = new FileStream(InstalledExe, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        return sha.ComputeHash(a).AsSpan().SequenceEqual(sha.ComputeHash(b));
     }
 
     /// <summary>Whether two paths name the same file; an empty one (a shortcut with no icon set reports ",0") names none.</summary>
@@ -136,7 +155,7 @@ public sealed class Installer
     /// </summary>
     public void Install(string runningExe, bool force = false)
     {
-        if (!force && WhyNotReplace(runningExe) is { } why) throw new IOException($"Not installing: {why}. Pass --force to install it anyway.");
+        if (!force && NewerInstalled(runningExe) is { } why) throw new IOException($"Not installing: {why}. Pass --force to install it anyway.");
         Directory.CreateDirectory(InstallDir);
         StopInstalledCopies();
         // Chosen before the copy: a copy that fails partway can leave a truncated file at InstalledExe, which is no exe to restart.
@@ -419,8 +438,8 @@ public sealed class Installer
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ShortcutName),
     ];
 
-    /// <summary>What a source checkout's run.ps1 writes beside the installed exe: a menu, 1) Deploy &amp; Run (redeploys, then
-    /// opens the app) or 2) Run (just opens it) (MAT-T67).</summary>
+    /// <summary>What a source checkout's run.ps1 writes beside the installed exe: the shared run menu (deploy-lib.ps1's
+    /// Write-RunBat, MAT-T298), 1) Redeploy, 2) Run Debug, 3) Run Release, where 13 is Deploy &amp; Run.</summary>
     public const string LauncherName = "run.bat";
 
     /// <summary>What the shortcuts open: the <see cref="LauncherName"/> beside <paramref name="exe"/> when there is one, so every

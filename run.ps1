@@ -1,63 +1,53 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds MindAttic.Orchestrator from source and installs it the way a user would: the developer
-    side of a drag-and-drop app.
+    MindAttic.Orchestrator's run menu: 1) Redeploy  2) Run Debug  3) Run Release  (the MindAttic standard, MAT-T279),
+    with the Orchestrator's busy gate and redeploy guarantees kept (MAT-T298).
 
 .DESCRIPTION
-    The app installs itself. MindAttic.Orchestrator.Desktop.exe is one self-contained file: copy it anywhere
-    and double-click it, and it installs to C:\Apps\MindAttic.Orchestrator (or per-user Programs when
-    C:\Apps isn't writable), registers its logon daemon, makes Start menu and desktop shortcuts, finds
-    the workspace (asking once if it must), and opens. Every later start repairs whatever of that is
-    missing. So there is no setup script; this one only builds:
+    A wrapper over the shared deploy-lib.ps1 (Invoke-AppRun). run.bat beside it, and the shortcuts' launcher
+    C:\Apps\MindAttic.Orchestrator\run.bat, are deploy-lib's Write-RunBat and open the same menu on a double-click:
+      1) Redeploy     builds the dashboard and its headless daemon to R:\MindAttic\Apps\MindAttic.Orchestrator\{Debug,Release}
+                      Debug   framework-dependent (the dev/test copy; it runs as itself and never installs)
+                      Release self-contained single files, MindAttic.Orchestrator.Desktop.exe and MindAttic.Orchestrator.Daemon.exe
+                      (the drag-and-drop app), then installs them as a double-click would (below)
+      2) Run Debug    R:\...\Debug\MindAttic.Orchestrator.Desktop.exe; extra arguments pass through
+      3) Run Release  R:\...\Release\MindAttic.Orchestrator.Desktop.exe: the installed copy is this build, so it opens that
+    Picks combine: 13 is Deploy & Run.
 
-      artifacts\MindAttic.Orchestrator.Desktop.exe   the drag-and-drop file (self-contained single file)
-      artifacts\MindAttic.Orchestrator.Daemon.exe    the headless daemon (self-contained single file, no WPF)
-      C:\Apps\MindAttic.Orchestrator\Cli\    the orchestrator CLI, for scripting and the terminal
+    The app installs itself: MindAttic.Orchestrator.Desktop.exe is one self-contained file that installs to
+    C:\Apps\MindAttic.Orchestrator (or per-user Programs), registers its logon daemon, makes Start menu and desktop shortcuts
+    (to the run.bat launcher there) and opens. The Release PostBuild does what the old run.ps1 did after publishing:
+      - publishes the orchestrator CLI to C:\Apps\MindAttic.Orchestrator\Cli.staging and swaps it into Cli\ file by file
+        (a running orchestrator.exe is renamed aside, never fails the deploy, M.ORCH-T765);
+      - publishes TermHost, Gateway and TermViewer side by side, each into its own <part>\<version>\ folder; nothing stops a
+        TermHost, so every hosted CLI survives (M.ORCH-T932, M.ORCH-T1944);
+      - runs `MindAttic.Orchestrator.Desktop.exe --install` from the Release folder: it stops the running dashboard and daemon
+        by their exact paths and the daemon restarts from the new build;
+      - writes the MindAttic Vault settings manifest (--write-settings-manifest, M.ORCH-T1308).
 
-    then runs `artifacts\MindAttic.Orchestrator.Desktop.exe --install`: exactly what a double-click does,
-    minus the window. Installing over a running copy stops it (and its daemon) first, by their exact
-    paths; the installer copies the daemon exe beside it in, and the daemon starts again from the new
-    build. TermHosts are never stopped, so every hosted CLI survives (M.ORCH-T1944).
+    The busy gate (M.ORCH-T873, M.ORCH-T1007): installing restarts the dashboard, and every unhosted CLI its Terminals panels
+    run loses its state. So before anything is installed, `orchestrator busy` must say every other Claude CLI on this machine
+    (any login) is idle; if any is working, or its state can't be read, nothing at all is installed (not the CLI, TermHost,
+    Gateway or TermViewer either) and the deploy exits 1. The CLI running this deploy is left out. A dashboard running from a
+    Debug or Release deploy folder is gated the same way before Redeploy stops it.
 
-    Without -Force each part is rebuilt only when a source file under its project or
-    MindAttic.Orchestrator.Core (or Directory.Build.props) is newer than its output.
-
-    Installing restarts the dashboard, and every CLI its Terminals panels host loses its state. So before the install stops
-    anything it asks `orchestrator busy` whether any Claude CLI on this machine (any login) is still working: mid-turn, a
-    subagent running, an /allocate claim in flight, or holding on a prompt. If any is, or its state can't be read, the deploy
-    lists them and exits 1 without stopping anything (M.ORCH-T873). The CLI running this deploy is left out.
-
-    It always deploys the latest checked-in code: it fetches origin and builds a dedicated clean worktree at origin/main
-    (..\MindAttic.worktrees\MindAttic.Orchestrator\deploy), never the checkout it was run from (M.ORCH-T1067).
-
-    Every run (re)writes C:\Apps\MindAttic.Orchestrator\run.bat, the shortcuts' launcher, baking in the main checkout's
-    path (never a worktree's). Double-clicked, it shows a menu: 1) Deploy & Run runs this script with -Republish -Launch;
-    2) Run opens the installed dashboard without running this script; 3) Deploy UI only & Run runs it with -UiOnly
-    -Republish -Launch (M.ORCH-T1324). The menu lives only in the .bat: this script never
-    prompts, so agents and /deploy can run it unattended (MAT-T67).
+    It always deploys the latest checked-in code (M.ORCH-T1067): Redeploy fetches origin and builds a dedicated clean worktree
+    at origin/main (..\MindAttic.worktrees\MindAttic.Orchestrator\deploy), never the checkout it was run from.
 
 .PARAMETER FromHere
-    Build this folder as it is instead of origin/main (the clean worktree's own re-run passes it).
+    Build this folder as it is instead of origin/main.
 
 .PARAMETER Force
-    Clean bin/obj and rebuild everything even if nothing looks changed; also lets the install replace a newer installed exe.
-
-.PARAMETER Republish
-    Rebuild and reinstall even if nothing looks changed, without -Force's bin/obj clean or downgrade: what the launcher's
-    "1) Deploy & Run" passes, so it never just says "up to date" (MAT-T67).
+    Clean bin/obj before building, republish every side-by-side part, and let the install replace a newer installed exe.
 
 .PARAMETER UiOnly
-Deploy only the dashboard (MindAttic.Orchestrator.Desktop): the CLI, the daemon exe, TermHost, Gateway and TermViewer are
-neither built nor installed, so their installed copies stay exactly as they are (M.ORCH-T1323). The busy-CLI check still runs, since
-installing the dashboard restarts it.
+    Install only the dashboard: the CLI, the daemon exe, TermHost, Gateway and TermViewer are neither built nor installed, so
+    their installed copies stay as they are (M.ORCH-T1323). The busy gate still runs, since installing restarts the dashboard.
 
 .PARAMETER LauncherOnly
     Only (re)write the shortcuts' launcher, C:\Apps\MindAttic.Orchestrator\run.bat, and exit: nothing is fetched, built,
-    stopped or installed. The launcher is also rewritten on every other run, so this is just the safe way to refresh it.
-
-.PARAMETER Launch
-    Open the dashboard afterwards.
+    stopped or installed. Every other run rewrites it too.
 
 .PARAMETER IgnoreBusyClis
     Install even while other Claude CLIs are still working; they lose their state.
@@ -68,34 +58,60 @@ installing the dashboard restarts it.
 .PARAMETER WaitTimeoutMinutes
     With -WaitForIdle: give up (and refuse) after this many minutes; 0 waits for as long as it takes.
 
+.PARAMETER Republish
+    The old launcher's spelling of -Redeploy (C:\Apps\MindAttic.Orchestrator\run.bat from before the shared menu).
+
+.PARAMETER Launch
+    The old launcher's spelling of -RunRelease.
+
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File run.ps1
-    powershell -ExecutionPolicy Bypass -File run.ps1 -LauncherOnly
-    powershell -ExecutionPolicy Bypass -File run.ps1 -Force -Launch
-    powershell -ExecutionPolicy Bypass -File run.ps1 -WaitForIdle
+    .\run.ps1                              the menu
+    .\run.ps1 -Redeploy                    build and install, open nothing (what /deploy runs)
+    .\run.ps1 -Redeploy -RunRelease        Deploy & Run
+    .\run.ps1 -Redeploy -UiOnly -WaitForIdle
+    .\run.ps1 -Redeploy -DryRun            print what would be built and launched, do nothing
+    .\run.ps1 -LauncherOnly
 #>
 param(
+    [switch]$Redeploy,
+    [switch]$RunDebug,
+    [switch]$RunRelease,
+    [switch]$DryRun,
     [switch]$Force,
-    [switch]$Launch,
     [switch]$IgnoreBusyClis,
     [switch]$WaitForIdle,
     [int]$WaitTimeoutMinutes = 0,
     [int]$BusyPollSeconds = 30,
     [switch]$FromHere,
-    [switch]$Republish,
     [switch]$LauncherOnly,
-    [switch]$UiOnly
+    [switch]$UiOnly,
+    [switch]$Republish,
+    [switch]$Launch,
+    [Parameter(ValueFromRemainingArguments = $true)][string[]]$AppArgs = @()
 )
 
-Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$Redeploy = [switch]($Redeploy -or $Republish)
+$RunRelease = [switch]($RunRelease -or $Launch)
 
-# ── The shortcuts' launcher (MAT-T67) ───────────────────────────────────────
-# Written on every run, before anything else (and alone with -LauncherOnly), so an existing install picks up a new launcher
-# without a republish. The app points its desktop and Start menu shortcuts here (Installer.ShortcutTarget). Double-clicked it
-# asks first: 1) Deploy & Run redeploys (-Republish, so it always rebuilds) and opens the dashboard; 2) Run just opens the
-# installed dashboard. The path baked in is always the main checkout's, found from git's common dir: the -FromHere re-run
-# runs from the clean deploy worktree under MindAttic.worktrees, which must never end up in the launcher.
+function Find-DeployLib {
+    if ($env:MINDATTIC_DEPLOY_LIB -and (Test-Path -LiteralPath $env:MINDATTIC_DEPLOY_LIB)) { return $env:MINDATTIC_DEPLOY_LIB }
+    $roots = @()
+    $d = $PSScriptRoot
+    while ($d) { $roots += $d; $d = Split-Path -Parent $d }
+    $roots += 'D:\Projects\MindAttic'
+    foreach ($r in $roots) {
+        foreach ($rel in 'MindAttic.Agency\shared\deploy-lib.ps1', 'mindattic-agent-standard\shared\deploy-lib.ps1') {
+            $p = Join-Path $r $rel
+            if (Test-Path -LiteralPath $p) { return $p }
+        }
+    }
+    throw 'deploy-lib.ps1 not found: clone MindAttic.Agency beside this repo, or set MINDATTIC_DEPLOY_LIB to its path.'
+}
+
+. (Find-DeployLib)
+
+# The main checkout, from git's common dir: run from a worktree, the launcher and the deploy folders still name the real repo.
 function Get-MainCheckout {
     $common = $null
     try { $common = (& git -C $PSScriptRoot rev-parse --path-format=absolute --git-common-dir 2>$null) } catch { $common = $null }
@@ -103,62 +119,34 @@ function Get-MainCheckout {
     return $PSScriptRoot
 }
 
+$mainCheckout = Get-MainCheckout
+$appDir       = 'C:\Apps\MindAttic.Orchestrator'
+$cliOut       = Join-Path $appDir 'Cli'
+$cliExe       = Join-Path $cliOut 'orchestrator.exe'
+$cliStage     = Join-Path $appDir 'Cli.staging'
+$deployTree   = Join-Path (Split-Path -Parent (Split-Path -Parent $mainCheckout)) "MindAttic.worktrees\$(Split-Path -Leaf $mainCheckout)\deploy"
+# What Redeploy builds: a clean worktree at origin/main (M.ORCH-T1067), or with -FromHere this folder as it is.
+$repo         = if ($FromHere) { $PSScriptRoot } else { $deployTree }
+$props        = Join-Path $repo 'Directory.Build.props'
+$coreDir      = Join-Path $repo 'src\MindAttic.Orchestrator.Core'
+$wpfDir       = Join-Path $repo 'src\MindAttic.Orchestrator.Wpf'
+$cliDir       = Join-Path $repo 'src\MindAttic.Orchestrator.Cli'
+$termDir      = Join-Path $repo 'src\MindAttic.Orchestrator.Term'
+$termHostDir  = Join-Path $repo 'src\MindAttic.Orchestrator.TermHost'
+$termWpfDir   = Join-Path $repo 'src\MindAttic.Orchestrator.Term.Wpf'
+$daemonDir    = Join-Path $repo 'src\MindAttic.Orchestrator.Daemon'
+$gatewayDir   = Join-Path $repo 'src\MindAttic.Orchestrator.Gateway'
+$termViewerDir = Join-Path $repo 'src\MindAttic.Orchestrator.TermViewer'
+$sourceExts   = @('.cs', '.csproj', '.xaml', '.json', '.props', '.targets', '.resx', '.manifest', '.ico', '.png')
+$failed       = $false
+$treeReady    = $false
+
+# ── The shortcuts' launcher (MAT-T67, MAT-T298) ─────────────────────────────
+# The app points its desktop and Start menu shortcuts at C:\Apps\MindAttic.Orchestrator\run.bat when it's there
+# (Installer.ShortcutTarget): deploy-lib's standard run.bat, carrying the main checkout's run.ps1 by full path, so a
+# double-click opens this menu. Rewritten only when it differs (cmd reads a running batch file by offset).
 function Write-Launcher {
-    $mainCheckout = Get-MainCheckout
-    $appDir = 'C:\Apps\MindAttic.Orchestrator'
-    $launcher = Join-Path $appDir 'run.bat'
-    $launcherText = @"
-@echo off
-title MindAttic Orchestrator
-rem Generated by $mainCheckout\run.ps1 - edits here are overwritten.
-set "RUN_PS1=$mainCheckout\run.ps1"
-set "APP_EXE=%~dp0MindAttic.Orchestrator.Desktop.exe"
-rem Every deploy path (choice 1, and Run with nothing installed yet) is a full one; choice 3 narrows it to the UI.
-set "DEPLOY_ARGS=-Republish -Launch"
-echo.
-echo   MindAttic Orchestrator
-echo     1^) Deploy ^& Run
-echo     2^) Run
-echo     3^) Deploy UI only ^& Run   ^(the dashboard; the CLI, TermHost, Gateway and TermViewer stay as installed^)
-echo.
-choice /c 123 /n /m "  Choose 1, 2 or 3: "
-if errorlevel 3 goto deployui
-if errorlevel 2 goto run
-goto deploy
-:deployui
-set "DEPLOY_ARGS=-UiOnly -Republish -Launch"
-:deploy
-if not exist "%RUN_PS1%" (
-    echo Source repo not found at "%RUN_PS1%" - opening the installed copy without redeploying.
-    goto run
-)
-powershell -NoProfile -ExecutionPolicy Bypass -File "%RUN_PS1%" %DEPLOY_ARGS%
-if errorlevel 1 (
-    echo Redeploy failed - the installed copy was opened instead.
-    pause
-)
-exit /b 0
-:run
-if not exist "%APP_EXE%" (
-    if exist "%RUN_PS1%" (
-        echo Nothing is installed at "%APP_EXE%" yet - deploying first.
-        goto deploy
-    )
-    echo Nothing is installed at "%APP_EXE%" and the source repo isn't at "%RUN_PS1%".
-    pause
-    exit /b 1
-)
-start "" "%APP_EXE%"
-exit /b 0
-"@
-    # CRLF throughout: cmd misreads goto labels in an LF-only batch file. Rewritten only when it differs: the launcher runs
-    # this script, and cmd reads a batch file by offset, so rewriting it mid-run would corrupt the rest of that run.
-    $launcherText = ($launcherText -replace "`r?`n", "`r`n") + "`r`n"
-    New-Item -ItemType Directory -Force $appDir | Out-Null
-    if (-not (Test-Path $launcher) -or (Get-Content -Raw $launcher) -ne $launcherText) {
-        Set-Content -LiteralPath $launcher -Value $launcherText -Encoding ascii -NoNewline
-        Write-Host "Wrote $launcher" -ForegroundColor DarkGray
-    }
+    $launcher = Write-RunBat -Repo $mainCheckout -Path (Join-Path $appDir 'run.bat') -RunScript (Join-Path $mainCheckout 'run.ps1') -Title 'MindAttic Orchestrator'
     # The launcher was deploy.bat until MAT-T68: remove it, and move any shortcut still pointing at it onto run.bat (in a
     # normal window: the menu needs answering). The app's own shortcut repair (Installer.EnsureShortcuts) does the same.
     $stale = Join-Path $appDir 'deploy.bat'
@@ -185,50 +173,40 @@ exit /b 0
 Write-Launcher
 if ($LauncherOnly) { exit 0 }
 
-# Always deploy the latest checked-in code (M.ORCH-T1067): the checkout this script was run from may be stale, diverged
-# or full of someone's uncommitted work, so fetch origin and build a dedicated clean worktree at origin/main instead,
-# re-running this script there. -FromHere skips that and builds this very folder (what the re-run itself uses).
-if (-not $FromHere) {
-    $commonDir = (& git -C $PSScriptRoot rev-parse --path-format=absolute --git-common-dir).Trim()
-    if ($LASTEXITCODE -ne 0) { throw "Not a git checkout: $PSScriptRoot" }
-    $mainRepo = Split-Path -Parent $commonDir
-    $deployTree = Join-Path (Split-Path -Parent (Split-Path -Parent $mainRepo)) "MindAttic.worktrees\$(Split-Path -Leaf $mainRepo)\deploy"
-    & git -C $mainRepo fetch --quiet origin main
-    if ($LASTEXITCODE -ne 0) { throw 'git fetch origin main failed.' }
-    if (-not (Test-Path (Join-Path $deployTree '.git'))) {
-        & git -C $mainRepo worktree prune
-        & git -C $mainRepo worktree add --detach --force $deployTree origin/main | Out-Host
-        if ($LASTEXITCODE -ne 0) { throw "Couldn't make the deploy worktree at $deployTree." }
-    } else {
-        & git -C $deployTree reset --quiet --hard origin/main
-        if ($LASTEXITCODE -ne 0) { throw "Couldn't move the deploy worktree to origin/main." }
-        & git -C $deployTree clean -fdq   # keeps ignored bin/obj, so unchanged parts aren't rebuilt
+# Moves the deploy worktree to origin/main (M.ORCH-T1067), once per run: the checkout this script runs from may be stale,
+# diverged or full of someone's uncommitted work. -Force also cleans bin/obj there.
+function Initialize-BuildTree {
+    if ($script:treeReady) { return }
+    if (-not $FromHere) {
+        & git -C $mainCheckout fetch --quiet origin main
+        if ($LASTEXITCODE -ne 0) { throw 'git fetch origin main failed.' }
+        if (-not (Test-Path (Join-Path $deployTree '.git'))) {
+            & git -C $mainCheckout worktree prune
+            & git -C $mainCheckout worktree add --detach --force $deployTree origin/main | Out-Host
+            if ($LASTEXITCODE -ne 0) { throw "Couldn't make the deploy worktree at $deployTree." }
+        } else {
+            & git -C $deployTree reset --quiet --hard origin/main
+            if ($LASTEXITCODE -ne 0) { throw "Couldn't move the deploy worktree to origin/main." }
+            & git -C $deployTree clean -fdq   # keeps ignored bin/obj, so unchanged parts aren't rebuilt
+        }
+        Write-Host "Deploying origin/main: $(& git -C $deployTree log -1 --format='%h %s')"
     }
-    Write-Host "Deploying origin/main: $(& git -C $deployTree log -1 --format='%h %s')"
-    $forward = @{} + $PSBoundParameters
-    & (Join-Path $deployTree 'run.ps1') @forward -FromHere
-    exit $LASTEXITCODE
+    if ($Force) {
+        foreach ($d in @($coreDir, $wpfDir, $cliDir, $daemonDir)) {
+            foreach ($sub in 'bin', 'obj') {
+                $path = Join-Path $d $sub
+                if (Test-Path $path) {
+                    try { Remove-Item -Recurse -Force $path -ErrorAction Stop }
+                    catch { Write-Host "  (could not fully remove $path : $($_.Exception.Message))" -ForegroundColor DarkYellow }
+                }
+            }
+        }
+    }
+    $script:treeReady = $true
 }
 
-$repo       = $PSScriptRoot
-$props      = Join-Path $repo 'Directory.Build.props'
-$coreDir    = Join-Path $repo 'src\MindAttic.Orchestrator.Core'
-$wpfDir     = Join-Path $repo 'src\MindAttic.Orchestrator.Wpf'
-$cliDir     = Join-Path $repo 'src\MindAttic.Orchestrator.Cli'
-$termDir    = Join-Path $repo 'src\MindAttic.Orchestrator.Term'
-$termHostDir = Join-Path $repo 'src\MindAttic.Orchestrator.TermHost'
-$termWpfDir = Join-Path $repo 'src\MindAttic.Orchestrator.Term.Wpf'
-$daemonDir  = Join-Path $repo 'src\MindAttic.Orchestrator.Daemon'
-$artifact   = Join-Path $repo 'artifacts\MindAttic.Orchestrator.Desktop.exe'
-# Beside the dashboard exe, where --install looks for it (Installer.InstallDaemonCopy, M.ORCH-T1944).
-$daemonArtifact = Join-Path $repo 'artifacts\MindAttic.Orchestrator.Daemon.exe'
-$appDir     = 'C:\Apps\MindAttic.Orchestrator'
-$cliOut     = Join-Path $appDir 'Cli'
-$cliExe     = Join-Path $cliOut 'orchestrator.exe'
-$sourceExts = @('.cs', '.csproj', '.xaml', '.json', '.props', '.targets', '.resx', '.manifest', '.ico', '.png')
-
 function Test-Stale([string]$output, [string[]]$dirs) {
-    if ($Force -or $Republish -or -not (Test-Path $output)) { return $true }
+    if ($Force -or -not (Test-Path $output)) { return $true }
     $time = (Get-Item $output).LastWriteTimeUtc
     if ((Test-Path $props) -and (Get-Item $props).LastWriteTimeUtc -gt $time) { return $true }
     foreach ($dir in $dirs) {
@@ -344,18 +322,6 @@ function Find-Installed {
         Where-Object { Test-Path $_ } | Select-Object -First 1
 }
 
-if ($Force) {
-    foreach ($d in @($coreDir, $wpfDir, $cliDir, $daemonDir)) {
-        foreach ($sub in 'bin', 'obj') {
-            $path = Join-Path $d $sub
-            if (Test-Path $path) {
-                try { Remove-Item -Recurse -Force $path -ErrorAction Stop }
-                catch { Write-Host "  (could not fully remove $path : $($_.Exception.Message))" -ForegroundColor DarkYellow }
-            }
-        }
-    }
-}
-
 # Whether the install may go ahead (M.ORCH-T873): it restarts the dashboard, and every unhosted CLI its Terminals panels run
 # loses its state (M.ORCH-T928: a CLI inside a TermHost survives the redeploy, is listed as hosted and never blocks it). `orchestrator busy` (the CLI just published, or the installed one) lists every Claude CLI still working on any login and
 # exits 1 if any is, 0 when all are idle; the CLI running this deploy is left out (its process tree). Any other outcome (no CLI,
@@ -411,105 +377,9 @@ function Start-Outliving([string]$path) {
 }
 
 function Exit-Refused {
-    if ($Launch -and (Find-Installed)) { Start-Outliving (Find-Installed) }
+    if ($RunRelease -and (Find-Installed)) { Start-Outliving (Find-Installed) }
     exit 1
 }
-
-$failed = $false
-
-# ── The drag-and-drop exe ───────────────────────────────────────────────────
-$built = $false
-if (Test-Stale $artifact @($wpfDir, $coreDir, $termWpfDir, $termDir)) {
-    Write-Host "Publishing MindAttic.Orchestrator -> $artifact" -ForegroundColor Cyan
-    # No EnableCompressionInSingleFile (M.ORCH-T1625): a compressed bundle inflates every bundled assembly (the whole .NET and
-    # WPF framework) into private memory in both the dashboard and its daemon; uncompressed, they're mapped straight from the
-    # exe. A bigger exe for less RAM in two always-running processes.
-    dotnet publish (Join-Path $wpfDir 'MindAttic.Orchestrator.Wpf.csproj') --configuration Release --runtime win-x64 `
-        --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true `
-        /p:DebugType=None --output (Split-Path $artifact) | Out-Host
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $artifact)) { Write-Host 'Publishing the app FAILED.' -ForegroundColor Red; $failed = $true }
-    else { $built = $true; Write-Host ("Built {0} ({1:N0} MB)" -f $artifact, ((Get-Item $artifact).Length / 1MB)) -ForegroundColor Green }
-}
-
-# ── The headless daemon exe (M.ORCH-T1942, M.ORCH-T1944) ───────────────────
-# Published beside the dashboard exe; --install copies it in beside the installed one, and every --daemon launch hands off to it
-# (M.ORCH-T1943). -UiOnly leaves it: the artifact already there is the installed build, so the installer's copy changes nothing.
-$daemonBuilt = $false
-if ($UiOnly) { Write-Host '-UiOnly: the daemon exe is left as installed.' -ForegroundColor DarkGray }
-elseif (Test-Stale $daemonArtifact @($daemonDir, $coreDir)) {
-    Write-Host "Publishing the daemon -> $daemonArtifact" -ForegroundColor Cyan
-    dotnet publish (Join-Path $daemonDir 'MindAttic.Orchestrator.Daemon.csproj') --configuration Release --runtime win-x64 `
-        --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true `
-        /p:DebugType=None --output (Split-Path $daemonArtifact) | Out-Host
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $daemonArtifact)) { Write-Host 'Publishing the daemon FAILED.' -ForegroundColor Red; $failed = $true }
-    else { $daemonBuilt = $true; Write-Host ("Built {0} ({1:N0} MB)" -f $daemonArtifact, ((Get-Item $daemonArtifact).Length / 1MB)) -ForegroundColor Green }
-}
-
-# ── The CLI ─────────────────────────────────────────────────────────────────
-# Published to a staging folder here and swapped in only after the busy gate below (M.ORCH-T1007): a refused deploy installs
-# nothing, so no new CLI runs against the old daemon and dashboard. The swap goes file by file: a running CLI call (hooks,
-# /allocate, review) holds its DLLs and must neither fail the deploy nor leave Cli\ half-installed (M.ORCH-T765).
-$cliStage = Join-Path $appDir 'Cli.staging'
-$cliStaged = $false
-if ($UiOnly) { Write-Host '-UiOnly: the CLI is left as installed.' -ForegroundColor DarkGray }
-elseif (Test-Stale $cliExe @($cliDir, $coreDir, $termDir)) {
-    if (Test-Path $cliStage) { Remove-Item -Recurse -Force $cliStage }
-    Write-Host "Publishing the CLI -> $cliStage" -ForegroundColor Cyan
-    # Sibling repos (MindAttic.Helpers) resolve against the workspace, not this deploy worktree (M.ORCH-T1313).
-    $workspace = Split-Path -Parent (Get-MainCheckout)
-    dotnet publish (Join-Path $cliDir 'MindAttic.Orchestrator.Cli.csproj') --configuration Release --output $cliStage "-p:MindAtticRoot=$workspace" | Out-Host
-    if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $cliStage 'orchestrator.exe'))) { $cliStaged = $true }
-    else {
-        Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
-        Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $failed = $true
-    }
-}
-
-function Install-StagedCli {
-    if (-not $script:cliStaged) { return }
-    $swapFailed = $false
-    try { Copy-Published $cliStage $cliOut } catch { Write-Host "Swapping in the CLI failed: $($_.Exception.Message)" -ForegroundColor Red; $swapFailed = $true }
-    Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
-    $script:cliStaged = $false
-    if ($swapFailed) { Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $script:failed = $true }
-    else {
-        # The apphost keeps its old time when only Core's method bodies changed (the CLI isn't recompiled), so Core would
-        # read newer than it on every later deploy, which would republish it and stop running CLIs each time.
-        (Get-Item $cliExe).LastWriteTimeUtc = [DateTime]::UtcNow
-        Write-Host "Deployed $cliExe" -ForegroundColor Green
-    }
-}
-
-# ── The busy gate, before anything is installed (M.ORCH-T873, M.ORCH-T1007) ─
-# Installing restarts the dashboard: while another CLI is still working nothing at all is installed (not the CLI, the TermHost,
-# the Gateway or the TermViewer either), so a refused deploy leaves the old build whole. The staged CLI answers when there is one.
-$installed = Find-Installed
-$step = Get-InstallStep $artifact $installed $built ([bool]$Force)
-# A daemon-only change (Program.cs, say) still installs: the dashboard exe is copied over unchanged and the daemon exe takes the new
-# build (M.ORCH-T1944). As is an install that has no daemon exe yet, or one that isn't this build.
-if ($step -eq 'current' -and -not $UiOnly -and (Test-Path $daemonArtifact)) {
-    $installedDaemon = Join-Path (Split-Path $installed) 'MindAttic.Orchestrator.Daemon.exe'
-    if ($daemonBuilt -or -not (Test-Path $installedDaemon) -or
-        (Get-FileHash $daemonArtifact).Hash -ne (Get-FileHash $installedDaemon).Hash) { $step = 'install' }
-}
-if ($step -eq 'install') {
-    $busyExe = if ($cliStaged) { Join-Path $cliStage 'orchestrator.exe' } else { $cliExe }
-    if (-not (Test-ClisIdle $busyExe)) {
-        Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
-        Exit-Refused
-    }
-}
-Install-StagedCli
-
-# ── Side-by-side parts: TermHost (M.ORCH-T932), Gateway (M.ORCH-T967), TermViewer (M.ORCH-T960) ──
-# Each build goes into its own <part>\<version>\ folder and is never copied over another: running CLIs keep the host binary they
-# started on, new sessions start on the newest. Nothing here stops a TermHost, and nothing deletes an old folder: the installer and
-# the daemon do that once no process runs from it. A build whose code matches the newest installed one adds no folder.
-# The Gateway may be stopped and restarted by its daemon supervisor (that only drops remote viewers). The TermViewer exe
-# (M.ORCH-T960, the standalone viewer the daemon opens for each hosted CLI while the dashboard is down) is never stopped here: an
-# open viewer keeps its folder, and the daemon starts the newest.
-$gatewayDir = Join-Path $repo 'src\MindAttic.Orchestrator.Gateway'
-$termViewerDir = Join-Path $repo 'src\MindAttic.Orchestrator.TermViewer'
 
 function Get-TreeHash([string]$dir) {
     $base = (Get-Item -LiteralPath $dir).FullName.TrimEnd([char]92) + ''
@@ -518,6 +388,13 @@ function Get-TreeHash([string]$dir) {
     }) -join '|'
 }
 
+# ── Side-by-side parts: TermHost (M.ORCH-T932), Gateway (M.ORCH-T967), TermViewer (M.ORCH-T960) ──
+# Each build goes into its own <part>\<version>\ folder and is never copied over another: running CLIs keep the host binary they
+# started on, new sessions start on the newest. Nothing here stops a TermHost, and nothing deletes an old folder: the installer and
+# the daemon do that once no process runs from it. A build whose code matches the newest installed one adds no folder.
+# The Gateway may be stopped and restarted by its daemon supervisor (that only drops remote viewers). The TermViewer exe
+# (M.ORCH-T960, the standalone viewer the daemon opens for each hosted CLI while the dashboard is down) is never stopped here: an
+# open viewer keeps its folder, and the daemon starts the newest.
 function Publish-SideBySide([string]$Name, [string]$ProjectDir, [string]$ExeName, [string[]]$StaleDirs) {
     $root = Join-Path $appDir $Name
     $newest = Get-NewestInstalled $Name $ExeName
@@ -552,68 +429,162 @@ function Publish-SideBySide([string]$Name, [string]$ProjectDir, [string]$ExeName
     Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
 }
 
-if ($UiOnly) { Write-Host '-UiOnly: TermHost, Gateway and TermViewer are left as installed.' -ForegroundColor DarkGray }
-else {
-    Publish-SideBySide 'TermHost' $termHostDir 'MindAttic.Orchestrator.TermHost.exe' @($termHostDir, $termDir)
-    Publish-SideBySide 'Gateway' $gatewayDir 'MindAttic.Orchestrator.Gateway.exe' @($gatewayDir, $termDir)
-    Publish-SideBySide 'TermViewer' $termViewerDir 'MindAttic.Orchestrator.TermViewer.exe' @($termViewerDir, $termWpfDir, $termDir, $coreDir)
+function Install-StagedCli {
+    if (-not $script:cliStaged) { return }
+    $swapFailed = $false
+    try { Copy-Published $cliStage $cliOut } catch { Write-Host "Swapping in the CLI failed: $($_.Exception.Message)" -ForegroundColor Red; $swapFailed = $true }
+    Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
+    $script:cliStaged = $false
+    if ($swapFailed) { Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $script:failed = $true }
+    else {
+        # The apphost keeps its old time when only Core's method bodies changed (the CLI isn't recompiled), so Core would
+        # read newer than it on every later deploy, which would republish it and stop running CLIs each time.
+        (Get-Item $cliExe).LastWriteTimeUtc = [DateTime]::UtcNow
+        Write-Host "Deployed $cliExe" -ForegroundColor Green
+    }
 }
 
-# ── Install, as a double-click would ────────────────────────────────────────
-if ($step -eq 'newer') {
-    Write-Host ("The installed {0} ({1:yyyy-MM-dd HH:mm}) is newer than this build ({2:yyyy-MM-dd HH:mm}), so it's left as it is; -Force installs this build over it." -f
-        $installed, (Get-Item $installed).LastWriteTime, (Get-Item $artifact).LastWriteTime) -ForegroundColor DarkGray
-} elseif ($step -eq 'install') {
-    # Every other CLI was known to be done before anything was installed (the gate above, M.ORCH-T1007); the installer checks
-    # again just before it stops anything.
+# ── PreBuild, before each config's build ────────────────────────────────────
+# The build tree first. Then: Publish-AppConfig stops whatever runs from the deploy folder before swapping the new build in, so a
+# dashboard run from there (Run Debug, or a Release copy that didn't hand over) passes the busy gate first, like an install.
+# -UiOnly's Release deploy carries the installed daemon exe, so --install's daemon copy changes nothing.
+function Invoke-PreBuild([string]$Config, [string]$Out) {
+    Initialize-BuildTree
+    $target = $Out -replace '\.staging$', ''
+    $running = @(Get-Process -ErrorAction SilentlyContinue |
+        Where-Object { try { $_.Path -and $_.Path.StartsWith($target + '\', [StringComparison]::OrdinalIgnoreCase) } catch { $false } })
+    if ($running.Count -and -not (Test-ClisIdle)) { Exit-Refused }
+    $installedDaemon = Join-Path $appDir 'MindAttic.Orchestrator.Daemon.exe'
+    if ($UiOnly -and $Config -eq 'Release' -and (Test-Path $installedDaemon)) { Copy-Item -LiteralPath $installedDaemon -Destination $Out -Force }
+}
 
-    # ── Earlier layouts ─────────────────────────────────────────────────────
-    # Dashboard\ came from the two-folder layout; that daemon ran Cli\orchestrator.exe.
-    Stop-From 'MindAttic.Orchestrator' (Join-Path $appDir 'Dashboard')
-    $oldDashboard = Join-Path $appDir 'Dashboard'
-    if (Test-Path $oldDashboard) { Remove-Item -Recurse -Force $oldDashboard; Write-Host "Removed the old $oldDashboard" -ForegroundColor DarkGray }
+# ── PostBuild: the Release build is the drag-and-drop exe; install it ───────
+function Invoke-PostBuild([string]$Config, [string]$Out) {
+    # The sidecar names the commit actually built (the deploy worktree's), not the checkout's.
+    Write-PublishSidecar -Repo $repo -Target $Out -Mode $(if ($Config -eq 'Release') { 'release' } else { 'dev' }) -Config $Config -Kind 'dotnet'
+    if ($Config -ne 'Release') { return }
+    $artifact = Join-Path $Out 'MindAttic.Orchestrator.Desktop.exe'
+    $daemonArtifact = Join-Path $Out 'MindAttic.Orchestrator.Daemon.exe'
 
-    Write-Host 'Installing (stops a running copy and its daemon; the daemon restarts from the new build)...' -ForegroundColor Cyan
-    # An old-layout daemon still running from the CLI folder; only it: a CLI call in flight (an /allocate CLI's
-    # `orchestrator next --claim`) is left to finish, as a deploy that doesn't republish the CLI must.
-    Get-CimInstance Win32_Process -Filter "Name='orchestrator.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($cliOut, [System.StringComparison]::OrdinalIgnoreCase) -and $_.CommandLine -match '\sdaemon\b' } |
-        ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop } catch { } }
-    $installArgs = @('--install')
-    if ($Force) { $installArgs += '--force' }
-    if ($IgnoreBusyClis) { $installArgs += '--ignore-busy' }
-    # Without -Launch the installer starts a dashboard it stopped again (M.ORCH-T1030); with it, this script starts it below.
-    if ($Launch) { $installArgs += '--no-dashboard-restart' }
-    # The installer checks again, just before it stops anything, and exits 3 when a CLI started working since (M.ORCH-T873).
-    while ($true) {
-        $exitCode = Invoke-Installer $artifact $installArgs
-        if ($exitCode -ne 3) { break }
-        Write-Host 'The installer refused: a Claude CLI started working since the check. Nothing was stopped.' -ForegroundColor DarkYellow
-        if (-not $WaitForIdle -or -not (Test-ClisIdle)) {
-            if (-not $WaitForIdle) { $null = Test-ClisIdle }   # lists who, for the refusal
+    # ── The CLI ─────────────────────────────────────────────────────────────
+    # Published to a staging folder here and swapped in only after the busy gate below (M.ORCH-T1007): a refused deploy installs
+    # nothing, so no new CLI runs against the old daemon and dashboard. The swap goes file by file: a running CLI call (hooks,
+    # /allocate, review) holds its DLLs and must neither fail the deploy nor leave Cli\ half-installed (M.ORCH-T765).
+    $script:cliStaged = $false
+    if ($UiOnly) { Write-Host '-UiOnly: the CLI and the daemon exe are left as installed.' -ForegroundColor DarkGray }
+    elseif (Test-Stale $cliExe @($cliDir, $coreDir, $termDir)) {
+        if (Test-Path $cliStage) { Remove-Item -Recurse -Force $cliStage }
+        Write-Host "Publishing the CLI -> $cliStage" -ForegroundColor Cyan
+        # Sibling repos (MindAttic.Helpers) resolve against the workspace, not this deploy worktree (M.ORCH-T1313).
+        $workspace = Split-Path -Parent $mainCheckout
+        dotnet publish (Join-Path $cliDir 'MindAttic.Orchestrator.Cli.csproj') --configuration Release --output $cliStage "-p:MindAtticRoot=$workspace" | Out-Host
+        if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $cliStage 'orchestrator.exe'))) { $script:cliStaged = $true }
+        else {
+            Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
+            Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $script:failed = $true
+        }
+    }
+
+    # ── The busy gate, before anything is installed (M.ORCH-T873, M.ORCH-T1007) ─
+    # Installing restarts the dashboard: while another CLI is still working nothing at all is installed (not the CLI, the TermHost,
+    # the Gateway or the TermViewer either), so a refused deploy leaves the old build whole. The staged CLI answers when there is one.
+    $installed = Find-Installed
+    $step = Get-InstallStep $artifact $installed $true ([bool]$Force)
+    # A daemon-only change (Program.cs, say) still installs: the dashboard exe is copied over unchanged and the daemon exe takes the new
+    # build (M.ORCH-T1944). As is an install that has no daemon exe yet, or one that isn't this build.
+    if ($step -eq 'current' -and -not $UiOnly -and (Test-Path $daemonArtifact)) {
+        $installedDaemon = Join-Path (Split-Path $installed) 'MindAttic.Orchestrator.Daemon.exe'
+        if (-not (Test-Path $installedDaemon) -or
+            (Get-FileHash $daemonArtifact).Hash -ne (Get-FileHash $installedDaemon).Hash) { $step = 'install' }
+    }
+    if ($step -eq 'install') {
+        $busyExe = if ($script:cliStaged) { Join-Path $cliStage 'orchestrator.exe' } else { $cliExe }
+        if (-not (Test-ClisIdle $busyExe)) {
+            Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
             Exit-Refused
         }
     }
-    $installed = Find-Installed
-    if ($exitCode -eq 0 -and $installed) { Write-Host "Installed $installed" -ForegroundColor Green }
-    else { Write-Host 'Install FAILED; see its log, %APPDATA%\MindAttic\Logging\MindAttic.Orchestrator\MindAttic.Log.db (MindAttic.Log.Reader opens it).' -ForegroundColor Red; $failed = $true }
-} elseif (-not $failed) {
-    Write-Host 'MindAttic.Orchestrator is up to date.' -ForegroundColor DarkGray
-}
+    Install-StagedCli
 
-# ── MindAttic Vault settings (LAMP, M.ORCH-T1308) ─────────────────────────
-# Imports today's settings from the orchestrator's database into %LOCALAPPDATA%\MindAttic\Orchestrator\settings.json (once)
-# and writes settings.manifest.json beside it, so MindAttic.Vault.Desktop shows the Orchestrator tab. The installed CLI
-# does it (the daemon also does on its start); a CLI from before LAMP doesn't know the switch, which only says so.
-if (-not $failed -and (Test-Path $cliExe)) {
-    Write-Host 'Writing the MindAttic Vault settings manifest...' -ForegroundColor Cyan
-    & $cliExe --write-settings-manifest
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "  (--write-settings-manifest exited $LASTEXITCODE; the daemon imports the settings on its next start)" -ForegroundColor DarkYellow
+    if ($UiOnly) { Write-Host '-UiOnly: TermHost, Gateway and TermViewer are left as installed.' -ForegroundColor DarkGray }
+    else {
+        Publish-SideBySide 'TermHost' $termHostDir 'MindAttic.Orchestrator.TermHost.exe' @($termHostDir, $termDir)
+        Publish-SideBySide 'Gateway' $gatewayDir 'MindAttic.Orchestrator.Gateway.exe' @($gatewayDir, $termDir)
+        Publish-SideBySide 'TermViewer' $termViewerDir 'MindAttic.Orchestrator.TermViewer.exe' @($termViewerDir, $termWpfDir, $termDir, $coreDir)
+    }
+
+    # ── Install, as a double-click would ────────────────────────────────────
+    if ($step -eq 'newer') {
+        Write-Host ("The installed {0} ({1:yyyy-MM-dd HH:mm}) is newer than this build ({2:yyyy-MM-dd HH:mm}), so it's left as it is; -Force installs this build over it." -f
+            $installed, (Get-Item $installed).LastWriteTime, (Get-Item $artifact).LastWriteTime) -ForegroundColor DarkGray
+    } elseif ($step -eq 'install') {
+        # Every other CLI was known to be done before anything was installed (the gate above, M.ORCH-T1007); the installer checks
+        # again just before it stops anything.
+
+        # ── Earlier layouts ─────────────────────────────────────────────────
+        # Dashboard\ came from the two-folder layout; that daemon ran Cli\orchestrator.exe.
+        Stop-From 'MindAttic.Orchestrator' (Join-Path $appDir 'Dashboard')
+        $oldDashboard = Join-Path $appDir 'Dashboard'
+        if (Test-Path $oldDashboard) { Remove-Item -Recurse -Force $oldDashboard; Write-Host "Removed the old $oldDashboard" -ForegroundColor DarkGray }
+
+        Write-Host 'Installing (stops a running copy and its daemon; the daemon restarts from the new build)...' -ForegroundColor Cyan
+        # An old-layout daemon still running from the CLI folder; only it: a CLI call in flight (an /allocate CLI's
+        # `orchestrator next --claim`) is left to finish, as a deploy that doesn't republish the CLI must.
+        Get-CimInstance Win32_Process -Filter "Name='orchestrator.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($cliOut, [System.StringComparison]::OrdinalIgnoreCase) -and $_.CommandLine -match '\sdaemon\b' } |
+            ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop } catch { } }
+        $installArgs = @('--install')
+        if ($Force) { $installArgs += '--force' }
+        if ($IgnoreBusyClis) { $installArgs += '--ignore-busy' }
+        # Without Run Release the installer starts a dashboard it stopped again (M.ORCH-T1030); with it, the menu's Run Release
+        # opens it (the Release exe hands over to the installed copy, which is this build).
+        if ($RunRelease) { $installArgs += '--no-dashboard-restart' }
+        # The installer checks again, just before it stops anything, and exits 3 when a CLI started working since (M.ORCH-T873).
+        while ($true) {
+            $exitCode = Invoke-Installer $artifact $installArgs
+            if ($exitCode -ne 3) { break }
+            Write-Host 'The installer refused: a Claude CLI started working since the check. Nothing was stopped.' -ForegroundColor DarkYellow
+            if (-not $WaitForIdle -or -not (Test-ClisIdle)) {
+                if (-not $WaitForIdle) { $null = Test-ClisIdle }   # lists who, for the refusal
+                Exit-Refused
+            }
+        }
+        $installed = Find-Installed
+        if ($exitCode -eq 0 -and $installed) { Write-Host "Installed $installed" -ForegroundColor Green }
+        else { Write-Host 'Install FAILED; see its log, %APPDATA%\MindAttic\Logging\MindAttic.Orchestrator\MindAttic.Log.db (MindAttic.Log.Reader opens it).' -ForegroundColor Red; $script:failed = $true }
+    } elseif (-not $script:failed) {
+        Write-Host 'MindAttic.Orchestrator is up to date.' -ForegroundColor DarkGray
+    }
+
+    # ── MindAttic Vault settings (LAMP, M.ORCH-T1308) ─────────────────────
+    # Imports today's settings from the orchestrator's database into %LOCALAPPDATA%\MindAttic\Orchestrator\settings.json (once)
+    # and writes settings.manifest.json beside it, so MindAttic.Vault.Desktop shows the Orchestrator tab. The installed CLI
+    # does it (the daemon also does on its start); a CLI from before LAMP doesn't know the switch, which only says so.
+    if (-not $script:failed -and (Test-Path $cliExe)) {
+        Write-Host 'Writing the MindAttic Vault settings manifest...' -ForegroundColor Cyan
+        & $cliExe --write-settings-manifest
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  (--write-settings-manifest exited $LASTEXITCODE; the daemon imports the settings on its next start)" -ForegroundColor DarkYellow
+        }
+    }
+
+    if ($script:failed) {
+        # A refused or failed install leaves the installed copy as it was; Run Release still opens it, as the old -Launch did.
+        if ($RunRelease -and (Find-Installed)) { Start-Outliving (Find-Installed) }
+        throw 'Deploy FAILED.'
     }
 }
 
-if ($Launch -and $installed) { Start-Outliving $installed }
+# Debug: the dashboard and daemon framework-dependent. Release: each a self-contained single file, the daemon beside the dashboard
+# where --install looks for it (Installer.InstallDaemonCopy, M.ORCH-T1944). -UiOnly builds the dashboard alone.
+$projects = @(Join-Path $wpfDir 'MindAttic.Orchestrator.Wpf.csproj')
+if (-not $UiOnly) { $projects += Join-Path $daemonDir 'MindAttic.Orchestrator.Daemon.csproj' }
+$Override = @{
+    Exe       = 'MindAttic.Orchestrator.Desktop.exe'
+    Plan      = @{ Kind = 'dotnet'; Projects = $projects }
+    PreBuild  = { param($Config, $Out) Invoke-PreBuild $Config $Out }
+    PostBuild = { param($Config, $Out) Invoke-PostBuild $Config $Out }
+}
 
-if ($failed) { Write-Host 'Deploy FAILED.' -ForegroundColor Red; exit 1 }
-exit 0
+Invoke-AppRun -Repo $mainCheckout -RepoName 'MindAttic.Orchestrator' -Redeploy:$Redeploy -RunDebug:$RunDebug -RunRelease:$RunRelease `
+    -DryRun:$DryRun -AppArgs $AppArgs -Override $Override

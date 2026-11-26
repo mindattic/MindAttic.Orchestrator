@@ -82,10 +82,18 @@ You need Windows and Claude Code. The released exe is self-contained, so no .NET
 From source (needs the .NET 10 SDK):
 
 ```powershell
-.\run.ps1          # build artifacts\MindAttic.Orchestrator.Desktop.exe (+ the CLI in C:\Apps\MindAttic.Orchestrator\Cli), then install it as a double-click would
-.\run.ps1 -Launch  # same, then open the dashboard
+.\run.ps1                       # the shared run menu (run.bat opens it too): 1) Redeploy  2) Run Debug  3) Run Release; 13 = Deploy & Run
+.\run.ps1 -Redeploy             # build origin/main to R:\MindAttic\Apps\MindAttic.Orchestrator\{Debug,Release}, then install the Release build as a double-click would
+.\run.ps1 -Redeploy -RunRelease # same, then open the dashboard
 dotnet run --project src/MindAttic.Orchestrator.Wpf   # a dev build: never installs itself
 ```
+
+Redeploy (MAT-T298) builds Debug (framework-dependent, runs as itself) and Release (the self-contained drag-and-drop exe and its
+daemon). After the Release build it publishes the CLI to `C:\Apps\MindAttic.Orchestrator\Cli`, adds new TermHost, Gateway and
+TermViewer version folders beside the old ones, and runs `--install`. Nothing installs while another Claude CLI is still working:
+`orchestrator busy` decides, and `-WaitForIdle` or `-IgnoreBusyClis` change that. A TermHost is never stopped, so hosted CLIs
+survive. `-UiOnly` installs only the dashboard, and `-LauncherOnly` only rewrites the shortcuts' launcher,
+`C:\Apps\MindAttic.Orchestrator\run.bat`.
 
 What you should see: the dashboard's repo tiles fill in, the token budget tile shows the current 5-hour percent and pace, and `orchestrator budget` prints the same from a terminal.
 

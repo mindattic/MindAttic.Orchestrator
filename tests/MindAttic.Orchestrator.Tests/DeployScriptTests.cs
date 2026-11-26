@@ -180,6 +180,25 @@ public sealed class DeployScriptTests
         Assert.That(script, Does.Not.Contain("SkipCli"));
     }
 
+    [Test]
+    public void Deploy_runs_on_the_shared_run_menu_and_installs_only_past_the_busy_gate()
+    {
+        // MAT-T298: run.ps1 is deploy-lib.ps1's Invoke-AppRun (1 Redeploy, 2 Run Debug, 3 Run Release) with the deploy folders under
+        // R:\MindAttic\Apps\MindAttic.Orchestrator; the install, its busy gate and the side-by-side parts live in the Release PostBuild.
+        var script = File.ReadAllText(DeployScript());
+        Assert.That(script, Does.Contain("Invoke-AppRun -Repo $mainCheckout -RepoName 'MindAttic.Orchestrator'"));
+        Assert.That(script, Does.Contain("PostBuild = { param($Config, $Out) Invoke-PostBuild $Config $Out }"));
+        Assert.That(script, Does.Contain("Write-RunBat -Repo $mainCheckout -Path (Join-Path $appDir 'run.bat')"), "the shortcuts' launcher is the standard run.bat");
+        Assert.That(script, Does.Not.Contain("choice /c"), "no hand-rolled launcher menu");
+        // The gate comes before the CLI swap, the side-by-side parts and --install.
+        var gate = script.IndexOf("if (-not (Test-ClisIdle $busyExe))", StringComparison.Ordinal);
+        Assert.That(gate, Is.GreaterThan(0));
+        Assert.That(script.IndexOf("    Install-StagedCli", gate, StringComparison.Ordinal), Is.GreaterThan(gate));
+        Assert.That(script.IndexOf("Publish-SideBySide 'TermHost'", gate, StringComparison.Ordinal), Is.GreaterThan(gate));
+        Assert.That(script.IndexOf("Invoke-Installer $artifact $installArgs", gate, StringComparison.Ordinal), Is.GreaterThan(gate));
+        Assert.That(File.Exists(Path.Combine(Path.GetDirectoryName(DeployScript())!, "run.bat")), Is.True, "run.bat (Write-RunBat) sits beside run.ps1");
+    }
+
     /// <summary>Takes <paramref name="function"/> out of run.ps1 by the PowerShell parser, runs each call with it, and
     /// returns what they printed, line by line. Nothing else in the script runs.</summary>
     private static string[] RunFunction(string function, params string[] calls)
