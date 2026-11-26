@@ -13,8 +13,8 @@ public static class ShowPreviewFallback
 {
     private static readonly Serilog.ILogger log = OrchestratorLog.For("Preview");
 
-    /// <summary>Where run.ps1 deploys MindAttic.Media.Viewer.</summary>
-    public const string ViewerExe = @"C:\Apps\MindAttic.Media.Viewer\MindAttic.Media.Viewer.exe";
+    /// <summary>Where run.ps1 deploys MindAttic.Media.Viewer's Release build.</summary>
+    public const string ViewerExe = @"R:\MindAttic\Apps\MindAttic.Media.Viewer\Release\MindAttic.Media.Viewer.exe";
 
     private static readonly HashSet<string> MediaExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
