@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows.Input;
 using Microsoft.Terminal.Wpf;
+using MindAttic.Orchestrator.Term;
 
 namespace MindAttic.Orchestrator.Term.Wpf;
 
@@ -36,13 +37,11 @@ public static partial class RelayInput
     public static bool IsPasteChord(Key key, ModifierKeys modifiers) =>
         (key == Key.V && modifiers == ModifierKeys.Control) || (key == Key.Insert && modifiers == ModifierKeys.Shift);
 
-    /// <summary>What to send the CLI for pasted <paramref name="text"/>: CRLF and LF as CR, bracketed when asked.</summary>
-    public static string PastePayload(string text, bool bracketed)
-    {
-        if (text.Length == 0) return "";
-        text = text.Replace("\r\n", "\r").Replace('\n', '\r');
-        return bracketed ? "\u001b[200~" + text + "\u001b[201~" : text;
-    }
+    /// <summary>What to send the CLI for pasted <paramref name="text"/>: CRLF and LF as CR, bracketed when asked. The logic
+    /// itself now lives in the dependency-free <see cref="TermProtocol.PastePayload"/> (M.ORCH-T2262), so a non-WPF viewer can
+    /// share it too; kept here under its old name for <c>TerminalPaste.Payload</c> and <c>RemoteViewerWindow.Paste</c>, which
+    /// already call it.</summary>
+    public static string PastePayload(string text, bool bracketed) => TermProtocol.PastePayload(text, bracketed);
 
     /// <summary>Whether typed <paramref name="data"/> is a plain Enter (M.ORCH-T1413): a bare CR, or a win32-input-mode Enter
     /// key-down (Vk 13, Kd 1) with no Shift, Ctrl or Alt held. Never a paste, whose CRs are line breaks, not a submit.</summary>

@@ -193,7 +193,12 @@ internal static class CliApp
             });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
             config.AddCommand<MoveCommand>("move").WithDescription("Move a running Claude CLI (<repo|pid>) to another signed-in login (--account <email> or --global): its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session.");
-            config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
+            config.AddBranch("clis", c =>
+            {
+                c.SetDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
+                c.SetDefaultCommand<ClisCommand>();
+                c.AddCommand<SendKeysCommand>("send-keys").WithDescription("Type TEXT then Enter into an open CLI's input from outside it (TARGET: a pid or repo, orchestrator clis lists both); M.ORCH-T2262. No idle/focus gating: fires the moment it's called.");
+            });
             config.AddCommand<MemoryCommand>("memory").WithDescription("What each hosted CLI's whole process tree holds (private and working-set MB, by exe), beside the dashboard, the daemon, the hubs and the other MindAttic processes; --json for scripts (M.ORCH-T1733).");
             config.AddBranch("probe", p =>
             {

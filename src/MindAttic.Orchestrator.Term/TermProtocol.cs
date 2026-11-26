@@ -358,4 +358,15 @@ public static class TermProtocol
         return new TermReplay(BinaryPrimitives.ReadUInt16LittleEndian(payload), BinaryPrimitives.ReadUInt16LittleEndian(payload[2..]),
             (TermModes)BinaryPrimitives.ReadUInt32LittleEndian(payload[4..]), data.ToArray(), payload[(12 + (int)length)..].ToArray());
     }
+
+    /// <summary>What an Input frame carries for pasted or typed <paramref name="text"/>: CRLF and LF as CR (a CLI's input is
+    /// never CRLF), wrapped in <c>ESC[200~</c>/<c>ESC[201~</c> when <paramref name="bracketed"/> (the CLI turned
+    /// <see cref="TermModes.BracketedPaste"/> on). M.ORCH-T868, moved here from the WPF-only RelayInput (which still has the
+    /// name and delegates) so a non-WPF viewer -- <c>orchestrator clis send-keys</c> (M.ORCH-T2262) -- can reuse it too.</summary>
+    public static string PastePayload(string text, bool bracketed)
+    {
+        if (text.Length == 0) return "";
+        text = text.Replace("\r\n", "\r").Replace('\n', '\r');
+        return bracketed ? "\u001b[200~" + text + "\u001b[201~" : text;
+    }
 }

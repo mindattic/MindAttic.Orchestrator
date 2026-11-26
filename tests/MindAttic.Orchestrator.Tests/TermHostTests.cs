@@ -52,6 +52,14 @@ public sealed class TermHostTests
     }
 
     [Test]
+    public void A_paste_payload_turns_newlines_into_cr_and_brackets_only_when_asked()
+    {
+        Assert.That(TermProtocol.PastePayload("", true), Is.Empty);
+        Assert.That(TermProtocol.PastePayload("a\r\nb\nc", bracketed: false), Is.EqualTo("a\rb\rc"));
+        Assert.That(TermProtocol.PastePayload("a\r\nb\nc", bracketed: true), Is.EqualTo("\u001b[200~a\rb\rc\u001b[201~"));
+    }
+
+    [Test]
     public void A_replay_whose_length_overruns_it_is_malformed()
     {
         var payload = TermProtocol.Replay(1, 1, TermModes.None, "abc"u8, []);
