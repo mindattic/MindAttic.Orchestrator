@@ -104,13 +104,20 @@ public sealed partial class BranchBuilds
         if (merged is null && !rejected && !gone) return null; // to be tried again, or the branch moved: its new head is still awaited
         var ticket = WorkUnitOf(branch);
         if (ticket is null) return null;
-        ClearAwaiting(store, ticket);
+        // A merged ticket keeps its mark until its close lands, so a failed close never hands it out again (M.ORCH-T2299).
+        var held = merged is not null && workspaceRoot is not null;
+        if (!held) ClearAwaiting(store, ticket);
         if (workspaceRoot is null) return null;
+        string? Settled(string? unsettled)
+        {
+            if (held) ClearAwaiting(store, ticket);
+            return unsettled;
+        }
         try
         {
             using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(workspaceRoot);
-            if (db is null) return null;
-            if (db.Ticket(ticket) is not { } t) return $"there's no ticket {ticket} for {repo}'s {branch}";
+            if (db is null) return Settled(null);
+            if (db.Ticket(ticket) is not { } t) return Settled($"there's no ticket {ticket} for {repo}'s {branch}");
             if (merged is not null)
             {
                 if (t.Ticket.Status == MindAttic.Tickets.Log.TicketRules.Open) db.Close(t.Ticket.Id, MindAttic.Tickets.Log.TicketRules.Closed, merged);
@@ -127,6 +134,6 @@ public sealed partial class BranchBuilds
             return $"couldn't update {ticket} in the ticket database: {ex.Message}";
         }
         TicketWorking.Clear(workspaceRoot, ticket);
-        return null;
+        return Settled(null);
     }
 }

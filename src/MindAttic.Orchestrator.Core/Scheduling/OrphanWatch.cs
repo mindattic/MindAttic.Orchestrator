@@ -195,7 +195,22 @@ public sealed class OrphanWatch(JsonStore store)
         }
 
         if (!records.SequenceEqual(before))
-            try { store.Save(StoreName, records); }
+            // Only this tick's changes, onto the row as it is now, so a record forgotten meanwhile stays gone (M.ORCH-T2299).
+            try
+            {
+                var changed = records.Where(r => !before.Contains(r)).ToList();
+                var closed = before.Where(b => !records.Any(r => Same(r.TicketId, b.TicketId))).Select(b => b.TicketId).ToList();
+                store.Update<List<OrphanRecord>>(StoreName, all =>
+                {
+                    all.RemoveAll(r => closed.Any(c => Same(r.TicketId, c)));
+                    foreach (var rec in changed)
+                    {
+                        var j = all.FindIndex(r => Same(r.TicketId, rec.TicketId));
+                        if (j >= 0) all[j] = rec;
+                        else if (!before.Any(b => Same(b.TicketId, rec.TicketId))) all.Add(rec);
+                    }
+                });
+            }
             catch (IOException ex) { events.Add(new Event($"orphaned: couldn't save what went dark: {ex.Message}", true)); }
         return events;
     }

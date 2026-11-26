@@ -280,10 +280,10 @@ public sealed class MilestoneAcceptance(JsonStore store)
         var result = (RunBuild ?? (s => BranchBuilds.Dotnet(ProcessRunner.Contained, s, timeout)))(Path.Combine(tree, solution));
         if (!Completed(result)) return (null, $"{where}: the build didn't complete ({result.Note ?? "no reason given"})");
 
-        var key = builds.Keys.FirstOrDefault(k => Same(k, repo)) ?? repo;
-        builds[key] = new BuildState { Head = head, Ok = result.Ok, Note = result.Ok ? null : Clip(result.Note) };
-        store.Save(StateName, builds);
-        return (result.Ok, Said(where, result.Ok, builds[key].Note));
+        var state = new BuildState { Head = head, Ok = result.Ok, Note = result.Ok ? null : Clip(result.Note) };
+        // Re-read under the write: other repos' entries saved during the build stay (M.ORCH-T2299).
+        store.Update<Dictionary<string, BuildState>>(StateName, all => all[all.Keys.FirstOrDefault(k => Same(k, repo)) ?? repo] = state);
+        return (result.Ok, Said(where, result.Ok, state.Note));
     }
 
     /// <summary>Whether a build's outcome is one about the code: it passed, or the compiler or MSBuild named an error that isn't
