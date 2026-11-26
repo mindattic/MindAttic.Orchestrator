@@ -1201,6 +1201,12 @@ public sealed class OrchestratorVaultSettings
     [PathPicker(PathKind.Folder)]
     public string TempRoot { get; set; } = Term.TempRoot.Default;
 
+    /// <summary>The Launcher exe the dashboard's tabs, Launcher menus and hidden commit run (M.ORCH-T2285).</summary>
+    [Setting("Launcher exe", Group = "Folders", Order = 4,
+        Help = "The deployed MindAttic.Launcher the dashboard's tabs, Launcher menus and Commit all run. Each starts from a snapshot of its folder (a Run folder beside it), so the Launcher's own redeploy, which stops whatever runs from its deploy folder, leaves open tabs running. Empty uses the Release build under R:\\MindAttic\\Apps.")]
+    [PathPicker(PathKind.File)]
+    public string LauncherExe { get; set; } = OrchestratorSettings.DefaultLauncherExe;
+
     /// <summary>Entries email=date joined by ; (a date is yyyy-MM-dd, that day's end, or yyyy-MM-ddTHH:mm, local).</summary>
     [Setting("Member until dates", Group = "Dashboard", Order = 23,
         Help = "Entries email=date joined by ; (a date is yyyy-MM-dd, that day's end, or yyyy-MM-ddTHH:mm, local). After its date the dashboard drops that member's tab and stops auto-starting or respawning its CLI tabs; nothing of the member (login, credentials, data) is deleted. Clear the entry to bring the tab back.")]
@@ -1430,6 +1436,7 @@ public sealed class OrchestratorVaultSettings
         WorkspaceRoot = WorkspaceOverrideOf(s),
         WorktreeRoot = s.WorktreeRoot,
         TempRoot = s.TempRoot,
+        LauncherExe = s.LauncherExe,
         MemberUntil = s.MemberUntil,
         Gateway = OrchestratorGatewayVaultSettings.From(s.Gateway ?? new GatewaySettings()),
     };
@@ -1652,6 +1659,7 @@ public sealed class OrchestratorVaultSettings
         EndedLauncherTabMinutes = EndedLauncherTabMinutes,
         WorktreeRoot = string.IsNullOrWhiteSpace(WorktreeRoot) ? s.WorktreeRoot : WorktreeRoot,
         TempRoot = string.IsNullOrWhiteSpace(TempRoot) ? s.TempRoot : TempRoot,
+        LauncherExe = string.IsNullOrWhiteSpace(LauncherExe) ? OrchestratorSettings.DefaultLauncherExe : LauncherExe.Trim(),
         MemberUntil = MemberUntil ?? "",
         Gateway = (Gateway ?? new()).ApplyTo(s.Gateway ?? new GatewaySettings()),
     };

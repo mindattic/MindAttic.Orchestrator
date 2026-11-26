@@ -45,11 +45,11 @@ public sealed class TerminalPanesTests
     {
         var request = new PaneRequest("RD: Repo [Claude]", @"D:\W\Repo")
         {
-            Command = [@"C:\Apps\MindAttic.Launcher.exe", "host", "--path", @"D:\W\Repo", "--title", "RD: Repo [Claude]", "--provider", "Claude", "--prompt", "do 'it'\nnow"],
+            Command = [@"R:\MindAttic\Apps\MindAttic.Launcher\Run\1\MindAttic.Launcher.exe", "host", "--path", @"D:\W\Repo", "--title", "RD: Repo [Claude]", "--provider", "Claude", "--prompt", "do 'it'\nnow"],
         };
         Assert.That(Script(request.ProcessCommandLine("the-pipe")), Is.EqualTo(
             "Remove-Item Env:NO_COLOR -ErrorAction SilentlyContinue; $env:COLORTERM = 'truecolor'; $env:MINDATTIC_ORCHESTRATOR_TERMINALS = 'the-pipe'; " +
-            "& 'C:\\Apps\\MindAttic.Launcher.exe' 'host' '--path' 'D:\\W\\Repo' '--title' 'RD: Repo [Claude]' '--provider' 'Claude' '--prompt' 'do ''it''\nnow'; exit $LASTEXITCODE"));
+            "& 'R:\\MindAttic\\Apps\\MindAttic.Launcher\\Run\\1\\MindAttic.Launcher.exe' 'host' '--path' 'D:\\W\\Repo' '--title' 'RD: Repo [Claude]' '--provider' 'Claude' '--prompt' 'do ''it''\nnow'; exit $LASTEXITCODE"));
 
         var bare = new PaneRequest("T", @"D:\W") { CommandLine = "cmd.exe /k echo hi" };
         Assert.That(Script(bare.ProcessCommandLine("p")), Does.EndWith("& cmd.exe /d /c 'cmd.exe /k echo hi'; exit $LASTEXITCODE"));

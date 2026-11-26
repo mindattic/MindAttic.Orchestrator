@@ -3,16 +3,18 @@ using System.Diagnostics;
 namespace MindAttic.Orchestrator.Sessions;
 
 /// <summary>
-/// Redeploys MindAttic.Launcher (M.ORCH-T1511): runs its own <c>run.ps1 -Force</c>, the same rebuild its in-app Redeploy uses
-/// (MindAttic.Launcher/run.ps1's <c>-WaitPid</c>: "Redeploy means 'run fresh code'"), so a Launcher tab closed and reopened on
-/// the dashboard runs the newest build instead of whatever already sat at <see cref="MindAttic.Orchestrator.OrchestratorOptions.LauncherExe"/>.
+/// Redeploys MindAttic.Launcher (M.ORCH-T1511): runs its own <c>run.ps1 -Redeploy</c> (M.ORCH-T2285; its old <c>-Force</c> is a
+/// no-op since the deploy-lib move, M.LNCH-T145), the same rebuild its in-app Redeploy uses, so the next Launcher tab the
+/// dashboard opens runs the newest build at <see cref="MindAttic.Orchestrator.OrchestratorOptions.LauncherExe"/>.
+/// <para>The redeploy stops whatever runs from the Debug and Release folders it replaces. The dashboard's own tabs don't: they
+/// run from snapshots of that folder (<see cref="LauncherRunCopy"/>), so they keep running through it.</para>
 /// </summary>
 public static class LauncherRedeploy
 {
-    /// <summary>How long a rebuild may run before it's given up on as hung.</summary>
-    public static TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(3);
+    /// <summary>How long a rebuild may run before it's given up on as hung: Debug plus a self-contained single-file Release.</summary>
+    public static TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(10);
 
-    /// <summary>Runs <paramref name="workspaceRoot"/>'s MindAttic.Launcher\run.ps1 -Force; null on success, else why not (its
+    /// <summary>Runs <paramref name="workspaceRoot"/>'s MindAttic.Launcher\run.ps1 -Redeploy; null on success, else why not (its
     /// script missing, a non-zero exit with the tail of its output, or a timeout). Blocks the caller: run off the UI thread.
     /// Never throws.</summary>
     public static string? Run(string workspaceRoot)
@@ -27,7 +29,7 @@ public static class LauncherRedeploy
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };
-        foreach (var a in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-Force" }) psi.ArgumentList.Add(a);
+        foreach (var a in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-Redeploy" }) psi.ArgumentList.Add(a);
         try
         {
             using var process = Process.Start(psi);

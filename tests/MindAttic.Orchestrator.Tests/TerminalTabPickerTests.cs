@@ -104,7 +104,7 @@ public sealed class TerminalTabPickerTests
     [Test]
     public void The_scanner_reads_the_title_off_the_host_command_line()
     {
-        Assert.That(HostSessionScanner.TitleOf(@"C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe host --name REA.Bloodlines --title ""REA.Bloodlines [Claude]"" --provider Claude"),
+        Assert.That(HostSessionScanner.TitleOf(@"R:\MindAttic\Apps\MindAttic.Launcher\Run\1\MindAttic.Launcher.exe host --name REA.Bloodlines --title ""REA.Bloodlines [Claude]"" --provider Claude"),
             Is.EqualTo("REA.Bloodlines [Claude]"));
         Assert.That(HostSessionScanner.TitleOf(@"MindAttic.Launcher.exe host --path D:\W"), Is.Null);
     }

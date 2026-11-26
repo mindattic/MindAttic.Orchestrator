@@ -24,6 +24,11 @@ public sealed record SessionStart(string? AgentId, string? Error)
 /// </summary>
 public sealed class SessionControl(OrchestratorOptions options)
 {
+    /// <summary>The Launcher exe to start (M.ORCH-T2285): a snapshot of <see cref="OrchestratorOptions.LauncherExe"/>'s folder
+    /// (<see cref="LauncherRunCopy"/>) when <see cref="OrchestratorOptions.LauncherRunCopies"/> is on, so the Launcher's redeploy
+    /// can't stop the tabs it started; the exe itself otherwise.</summary>
+    private string LauncherPath() => options.LauncherRunCopies ? LauncherRunCopy.Resolve(options.LauncherExe) : options.LauncherExe;
+
     /// <summary>The agent providers a new tab can run.</summary>
     public static readonly IReadOnlyList<string> Providers = ["Claude", "Codex", "Gemini", "Kimi"];
 
@@ -44,8 +49,8 @@ public sealed class SessionControl(OrchestratorOptions options)
     {
         if (configDir is not null && provider != "Claude")
             return SessionStart.Failed($"--account is a Claude login: {provider} has none.");
-        if (!File.Exists(options.LauncherExe))
-            return SessionStart.Failed($"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1).");
+        if (!File.Exists(LauncherPath()))
+            return SessionStart.Failed($"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1 -Redeploy).");
         if (!Directory.Exists(directory))
             return SessionStart.Failed($"Folder not found: {directory}");
         var agent = Term.AgentIds.Normalize(agentId) ?? Term.AgentIds.New();
@@ -79,8 +84,8 @@ public sealed class SessionControl(OrchestratorOptions options)
         running = null;
         if (email is not null && AccountDirs.Normalize(email) is null)
             return $"\"{email}\" isn't an email address: the Launcher's --account takes the account's whole email.";
-        if (!File.Exists(options.LauncherExe))
-            return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1).";
+        if (!File.Exists(LauncherPath()))
+            return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1 -Redeploy).";
         if ((running = LauncherMenuOf(LauncherMenus(), email)) is not null) return null;
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
         foreach (var a in LauncherArguments(email)) psi.ArgumentList.Add(a);
@@ -109,12 +114,13 @@ public sealed class SessionControl(OrchestratorOptions options)
         var configDir = normalized is null ? null : Dirs.For(normalized).Directory;
         var look = Look(configDir);
         var title = LauncherTitle(look);
-        var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".";
+        var launcher = LauncherPath();
+        var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(launcher) ?? ".";
         string[] tab = ["-w", look.Window, "new-tab", "--title", title, "--tabColor", look.TabColor, "-d", root, "--"];
         string[] all = configDir is null
-            ? [.. tab, options.LauncherExe]
+            ? [.. tab, launcher]
             : [.. tab, "powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Convert.ToBase64String(Encoding.Unicode.GetBytes(
-                $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {AccountDirs.Ps(options.LauncherExe)} '--account' {AccountDirs.Ps(normalized!)}; exit $LASTEXITCODE"))];
+                $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {AccountDirs.Ps(launcher)} '--account' {AccountDirs.Ps(normalized!)}; exit $LASTEXITCODE"))];
         // wt splits its whole command line into subcommands on ';' unless it's escaped.
         return all.Select(a => a.Replace(";", @"\;"));
     }
@@ -139,10 +145,11 @@ public sealed class SessionControl(OrchestratorOptions options)
         var normalized = AccountDirs.Normalize(email);
         var configDir = normalized is null ? null : Dirs.For(normalized).Directory;
         var look = Look(configDir);
-        var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".";
+        var launcher = LauncherPath();
+        var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(launcher) ?? ".";
         return new PaneRequest(LauncherTitle(look), root)
         {
-            Command = normalized is null ? [options.LauncherExe] : [options.LauncherExe, "--account", normalized],
+            Command = normalized is null ? [launcher] : [launcher, "--account", normalized],
             Repo = "Launcher",
             Provider = "Launcher",
             ConfigDir = configDir,
@@ -170,7 +177,7 @@ public sealed class SessionControl(OrchestratorOptions options)
         PrepareProvider(provider);
         var look = provider == "Claude" ? Look(configDir) : null;
         var tabTitle = TabTitle(title, provider, look, RepoNames);
-        List<string> command = [options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider];
+        List<string> command = [LauncherPath(), "host", "--path", directory, "--title", tabTitle, "--provider", provider];
         // Every repo CLI opened here is an agent with a stable id (M.ORCH-T1743), carried on the pane and its TermHost.
         var agentId = Term.AgentIds.New();
         if (configDir is not null) command.AddRange(["--config-dir", configDir]);
@@ -296,7 +303,7 @@ public sealed class SessionControl(OrchestratorOptions options)
             // Its long-lived token (M.ORCH-T696), when the login has one, goes in beside the folder.
             // Its agent id (M.ORCH-T1743) beside them, which the Launcher's CLI inherits through /clear and its restarts.
             var agentEnv = Term.AgentIds.Normalize(agentId) is { } agent ? $"$env:{Term.AgentIds.EnvVar} = {AccountDirs.Ps(agent)}; " : "";
-            var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}{agentEnv}& {AccountDirs.Ps(options.LauncherExe)} host --path {AccountDirs.Ps(directory)} " +
+            var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}{agentEnv}& {AccountDirs.Ps(LauncherPath())} host --path {AccountDirs.Ps(directory)} " +
                 $"--title {AccountDirs.Ps(tabTitle)} --provider {AccountDirs.Ps(provider)}" + resumeArg +
                 (resumeArg.Length > 0 || string.IsNullOrWhiteSpace(prompt) ? "" : $" --prompt {AccountDirs.Ps(SafePrompt(prompt))}") + "; exit $LASTEXITCODE";
             string[] wrapped = [.. tab, "-d", directory, "--",
@@ -306,7 +313,7 @@ public sealed class SessionControl(OrchestratorOptions options)
         string[] head =
         [
             .. tab, "-d", directory, "--",
-            options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider,
+            LauncherPath(), "host", "--path", directory, "--title", tabTitle, "--provider", provider,
         ];
         if (resumeSession is { Length: > 0 }) head = [.. head, "--resume", resumeSession];
         // A double quote (or a line break) in the prompt survives .NET's quoting but not wt's own re-parse,
@@ -414,12 +421,13 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// </summary>
     public async Task<int> CommitAllAsync(string? message, Action<string> line, CancellationToken ct = default)
     {
-        if (!File.Exists(options.LauncherExe))
+        var launcher = LauncherPath();
+        if (!File.Exists(launcher))
         {
-            line($"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1).");
+            line($"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1 -Redeploy).");
             return -1;
         }
-        var psi = new ProcessStartInfo(options.LauncherExe)
+        var psi = new ProcessStartInfo(launcher)
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -427,7 +435,7 @@ public sealed class SessionControl(OrchestratorOptions options)
             RedirectStandardError = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
-            WorkingDirectory = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".",
+            WorkingDirectory = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(launcher) ?? ".",
         };
         foreach (var a in CommitAllArguments(message)) psi.ArgumentList.Add(a);
         // Wide enough that Spectre doesn't wrap a project's one result line at its redirected default of 80 columns.

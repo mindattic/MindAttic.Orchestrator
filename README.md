@@ -300,7 +300,12 @@ The same core drives a CLI, deployed as `orchestrator.exe` in `C:\Apps\MindAttic
 | `agents new <role> [--owner <email>] [--runtime claude] [--unit <ID>] [--id <agt-...>] [--force] [--json]`, `agents pause <id>`, `agents resume <id>`, `agents retire <id>` | write an idle agent's row (the role is checked against the roles table and `mindattic-agent-standard\shared\roles`; `--force` skips it); pause an idle or running agent; send a paused one back to idle; terminate one (its row is kept so the id still names it) |
 | `mail [list [<agent>]] [--all] [--everyone] [--limit 50] [--json]`, `mail send <agent> "<body>" [--unit <ID>] [--from <who>] [--force] [--json]` | the agent mailbox (M.ORCH-T1745): durable handoffs between agents by their ids; the daemon hands an agent's unread mail to its CLI on its next prompt; `list` shows the unread (`--all`: the read too; `--everyone`: every agent's); `send` leaves a message (`--force` sends to an id the agents table lacks) |
 
-Starting sessions needs the deployed Launcher at `C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe`.
+Starting sessions needs the deployed Launcher at `R:\MindAttic\Apps\MindAttic.Launcher\Release\MindAttic.Launcher.exe`
+(`MindAttic.Launcher\run.ps1 -Redeploy`; the Orchestrator's "Launcher exe" setting in MindAttic Vault, Folders group, points
+elsewhere). Every Launcher the dashboard starts (menus, agent tabs, Commit all) runs from a snapshot of that folder under
+`MindAttic.Launcher\Run\<build>`, one per build, so a Launcher redeploy, which stops whatever runs from the Release folder it
+replaces, leaves open tabs running; the next tab opened picks up the new build, and a snapshot is deleted once nothing runs from
+it (M.ORCH-T2285).
 
 ### Settings reference
 

@@ -3,7 +3,7 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>M.ORCH-T1511: redeploying MindAttic.Launcher (its own run.ps1 -Force) before a closed Launcher tab reopens.</summary>
+/// <summary>M.ORCH-T1511: redeploying MindAttic.Launcher (its own run.ps1 -Redeploy since M.ORCH-T2285).</summary>
 public sealed class LauncherRedeployTests
 {
     private readonly TempDirs temp = new();
@@ -31,6 +31,13 @@ public sealed class LauncherRedeployTests
     public void A_successful_run_ps1_answers_null()
     {
         var root = WorkspaceWithScript("Write-Host 'Deployed'; exit 0");
+        Assert.That(LauncherRedeploy.Run(root), Is.Null);
+    }
+
+    [Test]
+    public void It_asks_run_ps1_to_redeploy_not_the_old_no_op_force()
+    {
+        var root = WorkspaceWithScript("param([switch]$Redeploy, [switch]$Force); if ($Redeploy -and -not $Force) { exit 0 } else { exit 3 }");
         Assert.That(LauncherRedeploy.Run(root), Is.Null);
     }
 

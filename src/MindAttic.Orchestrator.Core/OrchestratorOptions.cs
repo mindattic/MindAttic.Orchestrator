@@ -4,19 +4,30 @@ namespace MindAttic.Orchestrator;
 public sealed record OrchestratorOptions
 {
     /// <summary>The defaults with your saved settings applied (the workspace picked on first run).</summary>
-    public static OrchestratorOptions Load(Settings.JsonStore? store = null) =>
-        (store ?? new Settings.JsonStore()).LoadSettings().WorkspaceRoot is { Length: > 0 } root
+    public static OrchestratorOptions Load(Settings.JsonStore? store = null)
+    {
+        var s = (store ?? new Settings.JsonStore()).LoadSettings();
+        var options = s.WorkspaceRoot is { Length: > 0 } root
             ? new OrchestratorOptions { WorkspaceRoot = root, ExtraWorkspaceRoots = DefaultExtraWorkspaceRoots }
             : new OrchestratorOptions { ExtraWorkspaceRoots = DefaultExtraWorkspaceRoots };
+        return WithLauncher(options, s);
+    }
+
+    /// <summary><paramref name="options"/> with the Launcher the settings name (blank keeps the default) and its run copies on.</summary>
+    private static OrchestratorOptions WithLauncher(OrchestratorOptions options, Settings.OrchestratorSettings? s) => options with
+    {
+        LauncherExe = s?.LauncherExe is { Length: > 0 } exe ? exe.Trim() : options.LauncherExe,
+        LauncherRunCopies = true,
+    };
 
     /// <summary>Like <see cref="Load"/>, but false when <c>settings.json</c> is there and can't be read (a typo from a hand
     /// edit, held past the retries): its defaults aren't the workspace you picked, so nothing should switch to them.</summary>
     public static bool TryLoad(Settings.JsonStore store, out OrchestratorOptions options)
     {
         var read = store.TryLoad<Settings.OrchestratorSettings>("settings", out var s);
-        options = (read && s.WorkspaceRoot is { Length: > 0 } root ? new OrchestratorOptions { WorkspaceRoot = root } : new OrchestratorOptions())
+        options = WithLauncher((read && s.WorkspaceRoot is { Length: > 0 } root ? new OrchestratorOptions { WorkspaceRoot = root } : new OrchestratorOptions())
             with
-        { ExtraWorkspaceRoots = DefaultExtraWorkspaceRoots };
+        { ExtraWorkspaceRoots = DefaultExtraWorkspaceRoots }, read ? s : null);
         return read;
     }
 
@@ -42,8 +53,16 @@ public sealed record OrchestratorOptions
     public string? TranscriptCache { get; init; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", "MindAttic.Orchestrator", "transcripts.cache.json");
 
-    /// <summary>The deployed Launcher (see MindAttic.Launcher/run.ps1).</summary>
-    public string LauncherExe { get; init; } = @"C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe";
+    /// <summary>The deployed Launcher (see MindAttic.Launcher/run.ps1): its Release build under R:\MindAttic\Apps since
+    /// M.LNCH-T145. <see cref="Load"/>/<see cref="TryLoad"/> take it from the Vault setting
+    /// (<see cref="Settings.OrchestratorSettings.LauncherExe"/>, M.ORCH-T2285), which defaults to the same path.</summary>
+    public string LauncherExe { get; init; } = Settings.OrchestratorSettings.DefaultLauncherExe;
+
+    /// <summary>Start every Launcher from a snapshot of <see cref="LauncherExe"/>'s folder (<see cref="Sessions.LauncherRunCopy"/>,
+    /// M.ORCH-T2285), so the Launcher's own redeploy, which stops whatever runs from its deploy folder, leaves open tabs alone.
+    /// On for the live app (<see cref="Load"/>/<see cref="TryLoad"/>); off on the bare record, so a test's stub exe is started
+    /// where it is.</summary>
+    public bool LauncherRunCopies { get; init; }
 
     /// <summary>The deployed Tickets Desktop (see MindAttic.Tickets/run.ps1), where a ticket id the dashboard lists opens (M.ORCH-T500).</summary>
     public string TicketsDesktopExe { get; init; } = @"C:\Apps\MindAttic.Tickets.Desktop\MindAttic.Tickets.Desktop.exe";

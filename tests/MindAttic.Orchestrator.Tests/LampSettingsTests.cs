@@ -303,6 +303,8 @@ public sealed class LampSettingsTests
         Case("workspaceRoot", s => s with { WorkspaceRoot = @"E:\Work" }, @"E:\Work", v => v.WorkspaceRoot = @"F:\Repos", @"F:\Repos", s => s.WorkspaceRoot),
         Case("worktreeRoot", s => s with { WorktreeRoot = @"E:\wt" }, @"E:\wt", v => v.WorktreeRoot = @"F:\wt", @"F:\wt", s => s.WorktreeRoot),
         Case("tempRoot", s => s with { TempRoot = @"E:\Temp" }, @"E:\Temp", v => v.TempRoot = @"F:\Temp", @"F:\Temp", s => s.TempRoot),
+        Case("launcherExe", s => s with { LauncherExe = @"E:\L\MindAttic.Launcher.exe" }, @"E:\L\MindAttic.Launcher.exe",
+            v => v.LauncherExe = @"F:\L\MindAttic.Launcher.exe", @"F:\L\MindAttic.Launcher.exe", s => s.LauncherExe),
         // Gateway
         Case("gateway:enabled", s => s with { Gateway = s.Gateway with { Enabled = true } }, true, v => v.Gateway.Enabled = false, false, s => s.Gateway.Enabled),
         Case("gateway:bind", s => s with { Gateway = s.Gateway with { Bind = "100.64.0.1" } }, "100.64.0.1", v => v.Gateway.Bind = "0.0.0.0", "0.0.0.0", s => s.Gateway.Bind),

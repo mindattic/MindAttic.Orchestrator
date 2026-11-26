@@ -11,7 +11,8 @@
       MindAttic.Orchestrator\   the dashboard (self-contained Desktop exe) with the headless
                                 MindAttic.Orchestrator.Daemon.exe beside it, Cli\, and TermHost\, Gateway\, TermViewer\ each in
                                 its <version>-<yyyyMMddHHmmss>\ folder, published from this checkout as run.ps1 publishes them
-      MindAttic.Launcher\       the deployed Launcher (C:\Apps\MindAttic.Launcher), which starts every CLI
+      MindAttic.Launcher\       the deployed Launcher's Release build (R:\MindAttic\Apps\MindAttic.Launcher\Release since
+                                M.LNCH-T145; OrchestratorOptions.LauncherExe), which starts every CLI
       Tickets\                  the installed tickets tool (dotnet tool store), run through a tickets.cmd shim
       install.ps1, Install.cmd  put each where the apps look for it and open the dashboard, whose Welcome window does the rest
 
@@ -81,8 +82,8 @@ foreach ($part in 'TermHost', 'Gateway', 'TermViewer') {
     Invoke-Publish $project (Join-Path $app "$part\$version-$stamp") @('/p:DebugType=None')
 }
 
-$launcher = 'C:\Apps\MindAttic.Launcher'
-if (-not (Test-Path (Join-Path $launcher 'MindAttic.Launcher.exe'))) { throw "No deployed Launcher at $launcher (run MindAttic.Launcher\run.ps1)." }
+$launcher = 'R:\MindAttic\Apps\MindAttic.Launcher\Release'
+if (-not (Test-Path (Join-Path $launcher 'MindAttic.Launcher.exe'))) { throw "No deployed Launcher at $launcher (run MindAttic.Launcher\run.ps1 -Redeploy)." }
 Write-Host "Copying the Launcher from $launcher" -ForegroundColor Cyan
 robocopy $launcher (Join-Path $stage 'MindAttic.Launcher') /E /NFL /NDL /NJH /NJS /NP /XF run.bat repo.path *.pdb *.stale-* | Out-Null
 if ($LASTEXITCODE -ge 8) { throw 'Copying the Launcher failed.' }
@@ -102,22 +103,30 @@ robocopy $vault (Join-Path $stage 'Vault.Desktop') /E /NFL /NDL /NJH /NJS /NP /X
 if ($LASTEXITCODE -ge 8) { throw 'Copying Vault.Desktop failed.' }
 
 # The installer a new user runs. The Orchestrator goes where its Desktop exe installs itself (Core's Installer: C:\Apps when
-# writable, else per-user Programs); the Launcher where the Orchestrator looks for it (OrchestratorOptions.LauncherExe); the
-# tickets tool beside the Orchestrator with a shim on the user's PATH. Then the dashboard opens on its Welcome window.
+# writable, else per-user Programs); the Launcher where the Orchestrator looks for it (OrchestratorOptions.LauncherExe:
+# R:\MindAttic\Apps\MindAttic.Launcher\Release, or under the Orchestrator's apps folder on a PC with no R: drive, whose path then
+# goes in the Orchestrator's "Launcher exe" Vault setting); the tickets tool beside the Orchestrator with a shim on the user's
+# PATH. Then the dashboard opens on its Welcome window.
 @'
-param([string]$Apps = 'C:\Apps', [switch]$DryRun) # -DryRun: copy only; no PATH change, no dashboard
+param([string]$Apps = 'C:\Apps', [string]$LauncherApps = 'R:\MindAttic\Apps', [switch]$DryRun) # -DryRun: copy only; no PATH change, no dashboard
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 Get-ChildItem $here -Recurse -File | Unblock-File
 try { New-Item -ItemType Directory -Force $Apps | Out-Null; $probe = Join-Path $Apps '.write-test'; [IO.File]::WriteAllText($probe, ''); Remove-Item $probe }
-catch { $Apps = Join-Path $env:LOCALAPPDATA 'Programs'; Write-Host "C:\Apps isn't writable: installing under $Apps (the Launcher's path then needs setting in the Orchestrator's settings)." -ForegroundColor Yellow }
+catch { $Apps = Join-Path $env:LOCALAPPDATA 'Programs'; Write-Host "C:\Apps isn't writable: installing under $Apps." -ForegroundColor Yellow }
+if ($DryRun) { $LauncherApps = $Apps }
+elseif (-not (Test-Path -LiteralPath (Split-Path -Qualifier $LauncherApps))) {
+    Write-Host "No $(Split-Path -Qualifier $LauncherApps) drive: the Launcher goes under $Apps; set the Orchestrator's ""Launcher exe"" setting (MindAttic Vault) to $(Join-Path $Apps 'MindAttic.Launcher\Release\MindAttic.Launcher.exe')." -ForegroundColor Yellow
+    $LauncherApps = $Apps
+}
 $orchestrator = Join-Path $Apps 'MindAttic.Orchestrator'
+$launcherDir = Join-Path $LauncherApps 'MindAttic.Launcher\Release'
 Get-Process 'MindAttic.Orchestrator.Desktop', 'MindAttic.Orchestrator', 'MindAttic.Orchestrator.Daemon', 'MindAttic.Launcher' -ErrorAction SilentlyContinue |
-    Where-Object { $_.Path -like "$Apps\*" } | Stop-Process -Force
-foreach ($name in 'MindAttic.Orchestrator', 'MindAttic.Launcher') {
-    Write-Host "Installing $name into $(Join-Path $Apps $name)" -ForegroundColor Cyan
-    robocopy (Join-Path $here $name) (Join-Path $Apps $name) /E /R:2 /W:2 /NFL /NDL /NJH /NJS /NP | Out-Null
-    if ($LASTEXITCODE -ge 8) { throw "Copying $name failed." }
+    Where-Object { $_.Path -like "$Apps\*" -or $_.Path -like "$launcherDir\*" } | Stop-Process -Force
+foreach ($pair in @(@('MindAttic.Orchestrator', $orchestrator), @('MindAttic.Launcher', $launcherDir))) {
+    Write-Host "Installing $($pair[0]) into $($pair[1])" -ForegroundColor Cyan
+    robocopy (Join-Path $here $pair[0]) $pair[1] /E /R:2 /W:2 /NFL /NDL /NJH /NJS /NP | Out-Null
+    if ($LASTEXITCODE -ge 8) { throw "Copying $($pair[0]) failed." }
 }
 $vaultDir = if ($DryRun) { Join-Path $Apps 'Vault.Desktop' } else { Join-Path $env:LOCALAPPDATA 'MindAttic\Vault.Desktop' }
 Get-Process 'MindAttic.Vault.Desktop.Wpf' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$vaultDir\*" } | Stop-Process -Force
@@ -150,7 +159,7 @@ Write-Host ("Built {0} ({1:N0} MB)" -f $zip, ((Get-Item $zip).Length / 1MB)) -Fo
 if (-not $Publish) { Write-Host "Not published. To publish: .\release.ps1 -Publish -Tag $Tag"; return }
 
 $notes = @"
-Unzip anywhere and double-click **Install.cmd**. It installs the Orchestrator and the Launcher into C:\Apps, puts ``tickets``
+Unzip anywhere and double-click **Install.cmd**. It installs the Orchestrator into C:\Apps and the Launcher into R:\MindAttic\Apps (C:\Apps when there's no R: drive), puts ``tickets``
 on your PATH, and opens the dashboard. Its Welcome window installs the tools (git, the GitHub CLI, Claude Code, Python, the .NET 10
 runtimes), signs you in to GitHub and Claude, and sets up a workspace: an empty one for your own repos, or MindAttic's.
 

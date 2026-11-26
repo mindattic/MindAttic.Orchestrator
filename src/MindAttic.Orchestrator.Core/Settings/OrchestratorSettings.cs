@@ -246,6 +246,14 @@ public sealed record OrchestratorSettings
     /// warns when the user, machine or SYSTEM TEMP isn't under it. A root that doesn't exist leaves TEMP alone.</summary>
     public string TempRoot { get; init; } = Term.TempRoot.Default;
 
+    /// <summary>The deployed Launcher's Release build (M.LNCH-T145 moved it from C:\Apps to R:\MindAttic\Apps).</summary>
+    public const string DefaultLauncherExe = @"R:\MindAttic\Apps\MindAttic.Launcher\Release\MindAttic.Launcher.exe";
+
+    /// <summary>The Launcher exe every dashboard tab, Launcher menu and hidden commit runs (M.ORCH-T2285,
+    /// <see cref="OrchestratorOptions.LauncherExe"/>); each is started from a snapshot of its folder
+    /// (<see cref="Sessions.LauncherRunCopy"/>), so a Launcher redeploy leaves open tabs running.</summary>
+    public string LauncherExe { get; init; } = DefaultLauncherExe;
+
     /// <summary>Per-member "until" dates (M.ORCH-T1401): <c>email=date</c> entries joined by ";" (a date is yyyy-MM-dd, that day's end,
     /// or yyyy-MM-ddTHH:mm, local). Once a member's date has passed the dashboard drops that member's tab from the roster, so none of
     /// its CLI tabs are auto-started or respawned; the member, login folder, credentials and data stay, and clearing the entry brings
