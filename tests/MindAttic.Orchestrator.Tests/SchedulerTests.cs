@@ -83,6 +83,25 @@ public sealed class SchedulerTests
     }
 
     [Test]
+    public void An_ancestors_requires_link_to_its_own_descendant_is_not_handed_down()
+    {
+        // M.ORCH-T2286: A-T1 was split into A-T2 and A-T3 (part-of plus requires, as tickets ticket split writes them), and A-T2
+        // into A-T4. A-T1 also requires the outside A-T9. The tasks wait for A-T9 alone, never for their own parent or sibling.
+        var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1"), T("A-T2"), T("A-T3"), T("A-T4"), T("A-T9"))) with
+        {
+            PartOf = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["A-T2"] = ["A-T1"], ["A-T3"] = ["A-T1"], ["A-T4"] = ["A-T2"] },
+            Requires = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["A-T1"] = ["A-T2", "A-T3", "A-T9"], ["A-T2"] = ["A-T4"] },
+        };
+
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings(), []);
+
+        Assert.That(plan.Queue.Single(q => q.Id == "A-T4").BlockedBy, Is.EqualTo(new[] { "A-T9" }), "not its own ancestor A-T2, nor sibling A-T3");
+        Assert.That(plan.Queue.Single(q => q.Id == "A-T3").BlockedBy, Is.EqualTo(new[] { "A-T9" }), "not its sibling A-T2");
+        Assert.That(Scheduler.IsPartOf(snap.PartOf, "A-T4", "A-T1"), Is.True);
+        Assert.That(Scheduler.IsPartOf(snap.PartOf, "A-T9", "A-T1"), Is.False);
+    }
+
+    [Test]
     public void Only_fixes_and_approved_tickets_are_work_and_the_rest_wait_for_your_yes()
     {
         var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1", "feature"), T("A-T2", "fix"), T("A-T3", "chore"), T("A-T4", "docs")));

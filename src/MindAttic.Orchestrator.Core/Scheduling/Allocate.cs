@@ -1044,14 +1044,31 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             bool IsOpen(string t) => db.Ticket(t) is { } known && known.Ticket.Status == MindAttic.Tickets.Log.TicketRules.Open;
             bool IsEpic(string t) => db.Labels(t).Contains(Tickets.OpenTicketSource.EpicLabel, StringComparer.OrdinalIgnoreCase);
             bool IsApproved(string t) => db.QueueState(t).Approval == MindAttic.Tickets.Data.TicketsDb.Approved;
+            // Ticket t's part-of parents, read on demand, for the descendant check below (M.ORCH-T2286).
+            IReadOnlyList<string> Parents(string t) =>
+                [.. db.Links(t).Where(l => l.Kind == "part-of" && l.From.Equals(t, StringComparison.OrdinalIgnoreCase)).Select(l => l.To)];
+            bool Under(string t, string ancestor)
+            {
+                var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { t };
+                var up = new Stack<string>(Parents(t));
+                while (up.TryPop(out var p))
+                {
+                    if (p.Equals(ancestor, StringComparison.OrdinalIgnoreCase)) return true;
+                    if (visited.Add(p)) foreach (var q in Parents(p)) up.Push(q);
+                }
+                return false;
+            }
             var candidates = new List<string>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { id };
             var pending = new Stack<string>([id]);
             while (pending.TryPop(out var at))
             {
+                var ancestor = !at.Equals(id, StringComparison.OrdinalIgnoreCase);
                 foreach (var link in db.Links(at).Where(l => l.From.Equals(at, StringComparison.OrdinalIgnoreCase)))
                 {
-                    if (link.Kind == "requires") candidates.Add(link.To);
+                    // An ancestor's requires link to its own part-of descendant is the split's own work, not a prerequisite
+                    // handed down: counting it deadlocked a split's tasks on their parent or on each other (M.ORCH-T2286).
+                    if (link.Kind == "requires") { if (!ancestor || !Under(link.To, at)) candidates.Add(link.To); }
                     else if (link.Kind == "part-of")
                     {
                         // Only the ticket's own part-of epic blocks it until approved; an ancestor's requires blocks it too.

@@ -160,6 +160,21 @@ public static partial class Scheduler
 {
     private const int Century = 36_525;
 
+    /// <summary>Whether <paramref name="id"/> is part of <paramref name="ancestor"/> at any depth through <paramref name="partOf"/>
+    /// (id → its part-of parents), a visited set against part-of cycles (M.ORCH-T2286).</summary>
+    internal static bool IsPartOf(IReadOnlyDictionary<string, IReadOnlyList<string>> partOf, string id, string ancestor)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { id };
+        var pending = new Stack<string>(partOf.GetValueOrDefault(id) ?? []);
+        while (pending.TryPop(out var at))
+        {
+            if (at.Equals(ancestor, StringComparison.OrdinalIgnoreCase)) return true;
+            if (!seen.Add(at)) continue;
+            foreach (var up in partOf.GetValueOrDefault(at) ?? []) pending.Push(up);
+        }
+        return false;
+    }
+
     /// <summary>Orders every repo's open tickets into one queue and decides which should start now within the slots and pace; starts nothing.</summary>
     public static SchedulePlan Plan(Snapshot snapshot, OrchestratorSettings settings, IReadOnlyList<Assignment> assignments)
     {
@@ -200,7 +215,11 @@ public static partial class Scheduler
             while (pending.TryPop(out var parent))
             {
                 if (!seen.Add(parent)) continue;
-                foreach (var req in snapshot.Requires.GetValueOrDefault(parent) ?? []) yield return req;
+                // A requires link to the ancestor's own part-of descendant is the split's own work (tickets ticket split
+                // adds one per task), not a prerequisite handed down: counting it deadlocked a split's tasks on their own
+                // parent or on each other (M.ORCH-T2286).
+                foreach (var req in snapshot.Requires.GetValueOrDefault(parent) ?? [])
+                    if (!IsPartOf(snapshot.PartOf, req, parent)) yield return req;
                 foreach (var up in snapshot.PartOf.GetValueOrDefault(parent) ?? []) pending.Push(up);
             }
         }
