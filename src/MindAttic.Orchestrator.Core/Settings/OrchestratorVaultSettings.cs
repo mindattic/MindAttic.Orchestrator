@@ -1186,6 +1186,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(2, 4)]
     public int TimelapseFps { get; set; } = OrchestratorSettings.DefaultTimelapseFps;
 
+    /// <summary>Minutes between two timelapse frames of the dashboard window.</summary>
+    [Setting("Timelapse frame every (minutes)", Group = "Dashboard", Order = 33,
+        Help = "Minutes between two timelapse frames of the dashboard window (15 by default, about 20 frames a 5-hour window). A gap while the dashboard is closed is skipped, not filled in.")]
+    [SettingRange(1, 300)]
+    public double TimelapseIntervalMinutes { get; set; } = OrchestratorSettings.DefaultTimelapseIntervalMinutes;
+
     /// <summary>Minutes between the daemon's sweeps for TermHosts left running in orch-test-* temp folders.</summary>
     [Setting("Sweep for leaked test TermHosts every (minutes)", Group = "Dashboard", Order = 91,
         Help = "Minutes between the daemon's sweeps for TermHosts left running in orch-test-* temp folders. Each sweep is a WMI query.")]
@@ -1421,6 +1427,7 @@ public sealed class OrchestratorVaultSettings
         UiAutomation = s.UiAutomation,
         Timelapse = s.Timelapse,
         TimelapseFps = s.TimelapseFps,
+        TimelapseIntervalMinutes = s.TimelapseIntervalMinutes,
         EndedTabMinutes = s.EndedTabMinutes,
         HiddenRendererMinutes = s.HiddenRendererMinutes,
         ParkIdleCliMinutes = s.ParkIdleCliMinutes,
@@ -1647,6 +1654,7 @@ public sealed class OrchestratorVaultSettings
         UiAutomation = UiAutomation,
         Timelapse = Timelapse,
         TimelapseFps = TimelapseFps,
+        TimelapseIntervalMinutes = TimelapseIntervalMinutes,
         EndedTabMinutes = EndedTabMinutes,
         HiddenRendererMinutes = HiddenRendererMinutes,
         ParkIdleCliMinutes = ParkIdleCliMinutes,

@@ -65,6 +65,12 @@ internal static class DashboardTimings
     /// <see cref="OrchestratorSettings.HiddenRendererMinutes"/>.</summary>
     public static TimeSpan HiddenRenderer { get; private set; } = TimeSpan.FromMinutes(OrchestratorSettings.DefaultHiddenRendererMinutes);
 
+    /// <summary>Whether the dashboard captures timelapse frames of itself (M.ORCH-T1940): <see cref="OrchestratorSettings.Timelapse"/>.</summary>
+    public static bool Timelapse { get; private set; } = true;
+
+    /// <summary>The time between two timelapse frames: <see cref="OrchestratorSettings.TimelapseIntervalMinutes"/>.</summary>
+    public static TimeSpan TimelapseInterval { get; private set; } = TimeSpan.FromMinutes(OrchestratorSettings.DefaultTimelapseIntervalMinutes);
+
     /// <summary>Takes the intervals from <paramref name="s"/>, each kept to at least a second so no timer spins.</summary>
     public static void Apply(OrchestratorSettings s)
     {
@@ -86,5 +92,7 @@ internal static class DashboardTimings
         PresumeLife = OrchestratorSettings.SecondsSpan(s.PresumeBusyMaxSeconds, 1);
         // Zero (or less) is off; otherwise at least a second.
         HiddenRenderer = s.HiddenRendererMinutes > 0 ? OrchestratorSettings.SecondsSpan(s.HiddenRendererMinutes * 60, 1) : TimeSpan.Zero;
+        Timelapse = s.Timelapse;
+        TimelapseInterval = OrchestratorSettings.SecondsSpan(s.TimelapseIntervalMinutes * 60, 60);
     }
 }

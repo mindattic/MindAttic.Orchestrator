@@ -937,6 +937,12 @@ public sealed record OrchestratorSettings
     /// <summary><see cref="TimelapseFps"/> as one of the two rates offered: 4 from 4 up, else 2.</summary>
     public int TimelapseFrameRate => TimelapseFps >= 4 ? 4 : DefaultTimelapseFps;
 
+    /// <summary>Minutes between two timelapse frames of the dashboard window (M.ORCH-T1940).</summary>
+    public double TimelapseIntervalMinutes { get; init; } = DefaultTimelapseIntervalMinutes;
+
+    /// <summary>The default <see cref="TimelapseIntervalMinutes"/>.</summary>
+    public const double DefaultTimelapseIntervalMinutes = 15;
+
     /// <summary>Minutes an ended terminal tab stays, for its last lines, before it's closed unasked (M.ORCH-T1599; was a fixed
     /// 24 hours, M.ORCH-T1177): each holds its native renderer (~50 MB) until then.</summary>
     public double EndedTabMinutes { get; init; } = DefaultEndedTabMinutes;

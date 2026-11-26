@@ -28,6 +28,7 @@ public partial class App : Application
     private IDisposable? highContrast;
     private Tray? tray;
     private Services.DesktopPinWatcher? desktopPin;
+    private Services.TimelapseCapture? timelapse;
 
     /// <summary>What --install exits with when it refused because a Claude CLI is still working (M.ORCH-T873); run.ps1 reads it.</summary>
     public const int BusyRefusedExit = 3;
@@ -243,6 +244,9 @@ public partial class App : Application
             desktopPin.Start();
         }
         catch (Exception ex) { log.Warning(ex, "DesktopPinWatcher didn't start; windows stay wherever they open"); }
+        // M.ORCH-T1940: the dashboard's own visual every TimelapseIntervalMinutes while it runs, minimized or in the tray included.
+        timelapse = Services.TimelapseCapture.ForDashboard(MainWindow);
+        timelapse.Start();
         instance.OnShowRequested(args => Dispatcher.BeginInvoke(() =>
         {
             if (MainWindow is not { } window) return;
@@ -280,6 +284,7 @@ public partial class App : Application
         highContrast?.Dispose();
         tray?.Dispose();
         desktopPin?.Dispose();
+        timelapse?.Dispose();
         base.OnExit(e);
     }
 
