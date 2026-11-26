@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using MindAttic.Orchestrator.Settings;
 
@@ -97,9 +99,9 @@ public sealed partial class BranchBuilds(JsonStore store)
         if (!store.TryLoad<Dictionary<string, Dictionary<string, BranchState>>>(StateName, out var state)) return lines;
         var changed = false;
 
-        foreach (var done in running.Values.Where(r => r.Task.IsCompleted).ToList())
+        var finished = running.Values.Where(r => r.Task.IsCompleted).ToList();
+        foreach (var done in finished)
         {
-            running.Remove(Key(done.Repo, done.Branch));
             var result = done.Task.IsCompletedSuccessfully ? done.Task.Result
                 : new BuildResult(false, done.Task.Exception?.GetBaseException().Message ?? "it was cancelled");
             if (!state.TryGetValue(done.Repo, out var branches) || !branches.TryGetValue(done.Branch, out var st)) continue; // deleted meanwhile
@@ -112,6 +114,13 @@ public sealed partial class BranchBuilds(JsonStore store)
             lines.Add(result.Ok
                 ? new Line(false, $"branch builds: {done.Repo}'s {done.Branch} builds at {Short(done.Head)}; ready for a local test run")
                 : new Line(true, $"branch builds: {done.Repo}'s {done.Branch} fails to build at {Short(done.Head)}: {result.Note}"));
+        }
+        if (finished.Count > 0)
+        {
+            // Saved before the finished builds are let go: a failed save keeps them for a later tick, not built again (M.ORCH-T2300).
+            if (changed) store.Save(StateName, state);
+            changed = false;
+            foreach (var done in finished) running.Remove(Key(done.Repo, done.Branch));
         }
 
         // A build a daemon that ended left marked (no task here runs it) is built again.
@@ -216,9 +225,11 @@ public sealed partial class BranchBuilds(JsonStore store)
         return heads;
     }
 
-    /// <summary>The branch's own worktree: <c>WorktreeRoot\&lt;repo&gt;\branch-&lt;name&gt;</c>, the branch made one folder name.</summary>
+    /// <summary>The branch's own worktree: <c>WorktreeRoot\&lt;repo&gt;\branch-&lt;name&gt;-&lt;hash&gt;</c>, the branch made one folder
+    /// name; the hash of the branch's own name keeps work/x/y and work/x-y (or work/X and work/x) apart (M.ORCH-T2300).</summary>
     internal static string TreeOf(string worktreeRoot, string repo, string branch) =>
-        Path.Combine(worktreeRoot, repo, WorktreeName + Unsafe().Replace(branch[(branch.StartsWith(Prefix, StringComparison.Ordinal) ? Prefix.Length : 0)..], "-"));
+        Path.Combine(worktreeRoot, repo, WorktreeName + Unsafe().Replace(branch[(branch.StartsWith(Prefix, StringComparison.Ordinal) ? Prefix.Length : 0)..], "-")
+            + "-" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(branch)))[..8]);
 
     /// <summary>Puts the branch's worktree at <paramref name="head"/>, detached, making it the first time; the error, if it couldn't.</summary>
     private string? Prepare(string repo, string tree, string head)

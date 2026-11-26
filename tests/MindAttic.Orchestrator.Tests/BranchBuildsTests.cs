@@ -117,7 +117,8 @@ public sealed class BranchBuildsTests
         heads["feature/x"] = "ccccccc1";
         var b = Make();
         Assert.That(b.Branches(dir)!.Keys, Does.Not.Contain("feature/x"));
-        Assert.That(BranchBuilds.TreeOf(@"D:\wt", "A", "work/x/y z"), Is.EqualTo(Path.Combine(@"D:\wt", "A", "branch-x-y-z")));
+        Assert.That(Path.GetFileName(BranchBuilds.TreeOf(@"D:\wt", "A", "work/x/y z")), Does.Match("^branch-x-y-z-[0-9a-f]{8}$"));
+        Assert.That(BranchBuilds.TreeOf(@"D:\wt", "A", "work/x/y"), Is.Not.EqualTo(BranchBuilds.TreeOf(@"D:\wt", "A", "work/x-y"))); // M.ORCH-T2300
     }
 
     // M.ORCH-T1637: a failing local run sends the branch back to the work unit that produced it, which keeps iterating on the

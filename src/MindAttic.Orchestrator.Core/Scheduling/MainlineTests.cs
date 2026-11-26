@@ -149,21 +149,36 @@ public sealed partial class MainlineTests(JsonStore store)
         if (!store.TryLoad<Dictionary<string, RepoState>>(StateName, out var state)) return lines;
         var changed = false;
         lines.AddRange(FinishBisects(openTickets));
-        foreach (var done in running.Values.Where(r => r.Task.IsCompleted).ToList())
+        var finished = running.Values.Where(r => r.Task.IsCompleted).Select(done => (Done: done,
+            Result: done.Task.IsCompletedSuccessfully ? done.Task.Result
+                : new SuiteResult(false, [], new HashSet<string>(), done.Task.Exception?.GetBaseException().Message ?? "it was cancelled"),
+            Green: state.GetValueOrDefault(done.Repo)?.Green)).ToList();
+        int Attempt(Run done) => incomplete.TryGetValue(done.Repo, out var prior) && prior.Head == done.Head ? prior.Count + 1 : 1;
+        foreach (var (done, result, _) in finished)
+        {
+            // A run that didn't complete (timeout, file lock, dotnet missing, Prepare error) tested nothing: the head stays
+            // untested so it's tried again after a pause, not skipped for good (M.ORCH-T731).
+            if (!result.Completed && Attempt(done) < MaxIncomplete) continue;
+            var st = state.TryGetValue(done.Repo, out var s) ? s : state[done.Repo] = new RepoState();
+            st.Tested = done.Head;
+            // Only a run that completed is green: one given up on after MaxIncomplete tries tested nothing (its Failed is empty
+            // because nothing ran), and a fake green there hid the commits that may have broken main from later tickets.
+            if (result.Completed && result.Failed.Count == 0) st.Green = done.Head;
+            changed = true;
+        }
+        // Saved before the finished runs are let go or reported: a failed save keeps them for a later tick (M.ORCH-T2300).
+        if (changed) store.Save(StateName, state);
+        changed = false;
+        foreach (var (done, result, green) in finished)
         {
             running.Remove(done.Repo);
-            var st = state.TryGetValue(done.Repo, out var s) ? s : state[done.Repo] = new RepoState();
-            var result = done.Task.IsCompletedSuccessfully ? done.Task.Result
-                : new SuiteResult(false, [], new HashSet<string>(), done.Task.Exception?.GetBaseException().Message ?? "it was cancelled");
             var filedNow = new List<(string Id, Failure Failure)>();
             lines.AddRange(Report(done, result, openTickets, filedNow));
             // New failures are bisected from the last green run to the commit that broke them (M.ORCH-T1687).
-            lines.AddRange(QueueBisect(done, st.Green, result, filedNow));
-            // A run that didn't complete (timeout, file lock, dotnet missing, Prepare error) tested nothing: the head stays
-            // untested so it's tried again after a pause, not skipped for good (M.ORCH-T731).
+            lines.AddRange(QueueBisect(done, green, result, filedNow));
             if (!result.Completed)
             {
-                var count = incomplete.TryGetValue(done.Repo, out var prior) && prior.Head == done.Head ? prior.Count + 1 : 1;
+                var count = Attempt(done);
                 if (count < MaxIncomplete)
                 {
                     incomplete[done.Repo] = (done.Head, count);
@@ -174,11 +189,6 @@ public sealed partial class MainlineTests(JsonStore store)
             }
             incomplete.Remove(done.Repo);
             retryAfter.Remove(done.Repo);
-            st.Tested = done.Head;
-            // Only a run that completed is green: one given up on after MaxIncomplete tries tested nothing (its Failed is empty
-            // because nothing ran), and a fake green there hid the commits that may have broken main from later tickets.
-            if (result.Completed && result.Failed.Count == 0) st.Green = done.Head;
-            changed = true;
         }
 
         if (mayStart && nowUtc - checkedUtc >= CheckEvery)

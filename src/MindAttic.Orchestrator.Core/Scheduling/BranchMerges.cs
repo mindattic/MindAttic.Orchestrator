@@ -93,10 +93,13 @@ public sealed class BranchMerges(JsonStore store)
             Dictionary<string, Dictionary<string, MergeState>> record = [];
             // The record unreadable now: the round's results are kept and recorded on a later tick, not dropped.
             if (done.IsCompletedSuccessfully && done.Result.Count > 0 && !store.TryLoad(StateName, out record)) return lines;
-            running = null;
             if (!done.IsCompletedSuccessfully)
+            {
+                running = null;
                 lines.Add(new Line(true, $"branch merges: a round failed: {done.Exception?.GetBaseException().Message ?? "it was cancelled"}"));
-            else if (done.Result.Count > 0)
+            }
+            else if (done.Result.Count == 0) running = null;
+            else
             {
                 foreach (var o in done.Result)
                 {
@@ -108,11 +111,14 @@ public sealed class BranchMerges(JsonStore store)
                             (o.Note is { } n ? $" ({n})" : ", and the branch deleted"))
                         : new Line(true, $"branch merges: {o.Repo}'s {o.Branch} signed off at {Short(o.Head)} but not merged" +
                             (o.Retry ? " yet" : "") + $": {o.Note}"));
-                    // M.ORCH-T1661: the branch's ticket stayed open until now; merged, it's closed with main's commit as its ref,
-                    // and a merge refused for good (or a branch gone) hands it back.
-                    if (SettleMerge(o) is { } unsettled) lines.Add(new Line(true, $"branch merges: {o.Repo}'s {o.Branch}: {unsettled}"));
                 }
+                // Saved before the round is let go or its tickets settled: a failed save keeps it for a later tick (M.ORCH-T2300).
                 store.Save(StateName, record);
+                running = null;
+                // M.ORCH-T1661: the branch's ticket stayed open until now; merged, it's closed with main's commit as its ref,
+                // and a merge refused for good (or a branch gone) hands it back.
+                foreach (var o in done.Result)
+                    if (SettleMerge(o) is { } unsettled) lines.Add(new Line(true, $"branch merges: {o.Repo}'s {o.Branch}: {unsettled}"));
             }
         }
 
@@ -164,9 +170,10 @@ public sealed class BranchMerges(JsonStore store)
             var conflicts = Git(tree, ["diff", "--name-only", "--diff-filter=U"]).Output
                 .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             Git(tree, ["merge", "--abort"]);
-            return new Outcome(repo, branch, head, null, conflicts.Length > 0
-                ? $"it conflicts with {mainline} in {string.Join(", ", conflicts.Take(5))}{(conflicts.Length > 5 ? $" and {conflicts.Length - 5} more" : "")}"
-                : $"git merge failed: {FirstLine(output)}", Rejected: true);
+            // Only a conflict is final for this head; any other failure is tried again at the next check (M.ORCH-T2300).
+            return conflicts.Length > 0
+                ? new Outcome(repo, branch, head, null, $"it conflicts with {mainline} in {string.Join(", ", conflicts.Take(5))}{(conflicts.Length > 5 ? $" and {conflicts.Length - 5} more" : "")}", Rejected: true)
+                : new Outcome(repo, branch, head, null, $"git merge failed: {FirstLine(output)}", Retry: true);
         }
         var (pushed, pushOutput) = Git(tree, ["push", "-q", "origin", "HEAD:refs/heads/" + mainline]);
         if (pushed != 0) return new Outcome(repo, branch, head, null, $"its push to {mainline} was refused ({FirstLine(pushOutput)}); merged again on the new {mainline} at the next check", Retry: true);

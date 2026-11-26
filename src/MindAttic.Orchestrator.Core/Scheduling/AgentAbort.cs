@@ -151,7 +151,8 @@ public static partial class AgentAbort
         File.Move(temp, path, overwrite: true);
     }
 
-    /// <summary>The abort marks in <paramref name="marksDirectory"/>; one that can't be read counts as just sent with no burn known.</summary>
+    /// <summary>The abort marks in <paramref name="marksDirectory"/>; one that can't be read counts as sent when its file was
+    /// written, with no burn known.</summary>
     public static IReadOnlyList<AbortMark> Marks(string marksDirectory, DateTime nowUtc)
     {
         var folder = Path.Combine(marksDirectory, DirName);
@@ -159,7 +160,8 @@ public static partial class AgentAbort
         var marks = new List<AbortMark>();
         foreach (var f in Directory.EnumerateFiles(folder).Where(f => !f.EndsWith(".tmp", StringComparison.Ordinal)))
         {
-            var at = nowUtc;
+            // Not now: an unreadable mark read as just sent each time was never old enough to prune (M.ORCH-T2300).
+            var at = WrittenUtc(f, nowUtc);
             var rate = 0.0;
             try
             {
@@ -177,13 +179,25 @@ public static partial class AgentAbort
     }
 
     /// <summary>Drops abort marks whose subagent has stopped (not in <paramref name="alive"/>) once they've settled out of the
-    /// trend, and any past <see cref="MarkLife"/>.</summary>
+    /// trend, and any past <see cref="MarkLife"/>; and a write's leftover <c>.tmp</c> once it has settled too.</summary>
     public static void Prune(string marksDirectory, IReadOnlySet<string> alive, DateTime nowUtc)
     {
         foreach (var m in Marks(marksDirectory, nowUtc))
             if (nowUtc - m.AtUtc > MarkLife || (!alive.Contains(m.AgentId) && nowUtc - m.AtUtc > Settle))
                 try { File.Delete(Path.Combine(marksDirectory, DirName, m.AgentId)); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        var folder = Path.Combine(marksDirectory, DirName);
+        if (!Directory.Exists(folder)) return;
+        foreach (var temp in Directory.EnumerateFiles(folder, "*.tmp"))
+            if (nowUtc - WrittenUtc(temp, nowUtc) > Settle)
+                try { File.Delete(temp); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    private static DateTime WrittenUtc(string path, DateTime fallbackUtc)
+    {
+        try { return File.Exists(path) ? File.GetLastWriteTimeUtc(path) : fallbackUtc; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return fallbackUtc; }
     }
 
     /// <summary>Releases <paramref name="ticketId"/>'s claim (the ticket returns to the queue; its work is never touched) and
