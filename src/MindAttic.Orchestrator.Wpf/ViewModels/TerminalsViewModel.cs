@@ -1991,17 +1991,13 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     /// <summary>The shared <see cref="TerminalsViewModel.CloseCommand"/>.</summary>
     public ICommand CloseCommand => all.CloseCommand;
 
-    private ICommand? nextCommand, previousCommand, doCommand;
+    private ICommand? nextCommand, previousCommand;
 
     /// <summary>Ctrl+Left and Ctrl+Right (M.ORCH-T824): the next and the previous CLI tab of this person's, cycling, so
     /// switching works even while a terminal holds keyboard focus (plain Left/Right there move the CLI's own cursor).</summary>
     public ICommand NextCommand => nextCommand ??= new RelayCommand(() => Step(+1));
     /// <summary>Ctrl+Left: the previous CLI tab of this person's, cycling (see <see cref="NextCommand"/>).</summary>
     public ICommand PreviousCommand => previousCommand ??= new RelayCommand(() => Step(-1));
-
-    /// <summary>The Do button overlaid on the shown CLI (M.ORCH-T2263): types "do" (lowercase) and Enter into it, the same as typing
-    /// /do and hitting enter, straight into whichever pane is on screen rather than whatever has keyboard focus.</summary>
-    public ICommand DoCommand => doCommand ??= new RelayCommand(() => SelectedPane?.WriteInput("do\r"));
 
     /// <summary>Chooses the tab of TermHost session <paramref name="termId"/> (M.ORCH-T1436, a remembered choice coming back after
     /// a restart); false, leaving the choice as it is, when none of this person's tabs is that session any more.</summary>

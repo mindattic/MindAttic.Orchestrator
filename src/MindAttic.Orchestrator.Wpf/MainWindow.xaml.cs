@@ -170,11 +170,8 @@ public partial class MainWindow : Window
         // The Rename tab modal closed by its own X or backdrop is a cancel (M.ORCH-T1509).
         RenameTabModal.Closed += (_, _) => { if (renamingTab is not null) CloseRenameTab(null); };
         // Only the shown login's selected pane is ever visible (TerminalPaneViewModel.IsSelected); clipping walks just that
-        // one each layout pass rather than every CLI ever opened across every login (M.ORCH-T1756). The Do button overlay
-        // (M.ORCH-T2263) floats over the pane's bottom-right corner, so its own screen rect is notched out of the terminal's
-        // window region each pass whenever it's actually shown.
-        TerminalClip.Attach(TerminalPanesHost, () => model.AllTerminals.SelectedPane?.Control,
-            () => DoButton.IsVisible ? new System.Windows.Rect(DoButton.PointToScreen(new Point(0, 0)), new Size(DoButton.ActualWidth, DoButton.ActualHeight)) : null);
+        // one each layout pass rather than every CLI ever opened across every login (M.ORCH-T1756).
+        TerminalClip.Attach(TerminalPanesHost, () => model.AllTerminals.SelectedPane?.Control);
         TerminalKeyboard.Attach(this, TerminalPanesHost);
         TerminalMouse.Attach(this, TerminalPanesHost);
         // Ctrl+drag a CLI/Launcher tab or a login's own header onto another login's row to switch to it (M.ORCH-T1757),
