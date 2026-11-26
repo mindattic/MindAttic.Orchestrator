@@ -168,6 +168,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         // Subscribed only once setup can no longer throw (every tick below is caught), so a Run that fails and is restarted
         // (M.ORCH-T1615) never leaves a handler on a disposed status stream behind.
         ClaudeMeterProbe.ReadingLanded += OnReading;
+        Activity.MemoryReclaim.MayClose = true;
         while (!cancel.IsCancellationRequested)
         {
             tick.Start();

@@ -123,7 +123,7 @@ public sealed class LinkProbe
 
         DaemonReach reach;
         try { reach = await ReachDaemon(ct).ConfigureAwait(false); }
-        catch (Exception ex) when (ex is not OutOfMemoryException and not OperationCanceledException) { reach = new(double.NaN, ex.Message); }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not OperationCanceledException) { reach = new(null, ex.Message); }
         var at = Clock();
         results.Add(reach.Ms switch
         {

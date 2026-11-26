@@ -16,7 +16,7 @@ namespace MindAttic.Orchestrator.Activity;
 /// (hosted CLIs, their subagents, builds), so pages they aren't touching go back to Windows;</item>
 /// <item>if that alone wasn't enough, the same working-set trim on every other process on the machine, biggest first -
 /// still non-destructive, nothing closes;</item>
-/// <item>if even that wasn't enough, one process is actually closed: first an idle, headless Orchestrator CLI of ours with
+/// <item>if even that wasn't enough, and only in the daemon (<see cref="MayClose"/>), one process is actually closed: first an idle, headless Orchestrator CLI of ours with
 /// everything it started (its ticket, if any, simply stays open - nothing it held is lost; only from a fresh roster, and
 /// only if its pid is still that CLI), and only once none of those exist, one foreign desktop app from a small vetted
 /// list, least disruptive first.</item>
@@ -35,6 +35,9 @@ public static partial class MemoryReclaim
     internal static readonly string[] ForeignKillAllowList =
         ["SnippingTool", "NVIDIA Overlay", "DisplayFusion", "Overwolf", "jellyfin", "ChatGPT", "Vortex", "chrome", "Steam"];
 
+    /// <summary>Set by the daemon when its loop starts: only that process runs step 3; a short-lived CLI only trims (M.ORCH-T2298).</summary>
+    public static bool MayClose { get; set; }
+
     /// <summary>Runs one escalating reclaim pass; returns a short line on what it did. Each step only runs if the one
     /// before it left the machine still at or past <see cref="OrchestratorSettings.MemoryGuardStartPercent"/>.</summary>
     public static string Run(OrchestratorSettings s)
@@ -42,7 +45,7 @@ public static partial class MemoryReclaim
         var before = MachineHealth.Memory()?.FreeGb;
         var notes = new List<string> { SelfTrim() };
         if (StillOver(s)) notes.Add(ForeignTrim());
-        if (StillOver(s)) notes.Add(KillLeastImportant());
+        if (MayClose && StillOver(s)) notes.Add(KillLeastImportant());
 
         var after = MachineHealth.Memory()?.FreeGb;
         var freed = before is { } b && after is { } a ? $", {(a - b).ToString("+0.0;-0.0", CultureInfo.InvariantCulture)} GB free in all" : "";
@@ -120,21 +123,24 @@ public static partial class MemoryReclaim
         try
         {
             var db = new OrchestratorDb(OrchestratorDb.LivePath);
-            var target = PickIdleHeadless(CliRoster.Read(db), DateTime.UtcNow, Identify);
+            var self = Environment.ProcessId;
+            var parents = ProcessTree.ParentMap();
+            var target = PickIdleHeadless(CliRoster.Read(db), DateTime.UtcNow, Identify, pid => pid == self || ProcessTree.IsAncestor(pid, self, parents));
             return target is { } t && Kill(t.Pid, entireProcessTree: true) ? $"closed idle headless CLI {t.Pid} ({t.Repo})" : null;
         }
-        catch (Exception e) when (e is System.Data.Common.DbException or IOException or UnauthorizedAccessException) { return null; }
+        catch (Exception e) when (e is System.Data.Common.DbException or IOException or UnauthorizedAccessException or InvalidOperationException or ExternalException) { return null; }
     }
 
     /// <summary>The CLI <see cref="KillOwnIdleHeadless"/> closes (a seam for tests): none from a roster older than
     /// <see cref="CliRoster.FreshFor"/> (no running daemon wrote it, so its pids may be gone or reused), and none whose pid
     /// isn't now a claude/node process that started before the roster was written (<paramref name="identify"/>: a pid's
-    /// process name and UTC start, null once it's gone).</summary>
-    internal static CliRow? PickIdleHeadless(CliRosterFile? roster, DateTime nowUtc, Func<int, (string Name, DateTime StartedUtc)?> identify)
+    /// process name and UTC start, null once it's gone), nor this process or one above it (<paramref name="isSelfOrAncestor"/>).</summary>
+    internal static CliRow? PickIdleHeadless(CliRosterFile? roster, DateTime nowUtc, Func<int, (string Name, DateTime StartedUtc)?> identify,
+        Func<int, bool>? isSelfOrAncestor = null)
     {
         if (roster is null || nowUtc - roster.WrittenUtc > CliRoster.FreshFor) return null;
         return roster.Clis
-            .Where(c => !c.InLauncher && c.Idle)
+            .Where(c => !c.InLauncher && c.Idle && isSelfOrAncestor?.Invoke(c.Pid) != true)
             .OrderBy(c => c.LastTurnUtc ?? DateTime.MinValue)
             .FirstOrDefault(c => identify(c.Pid) is { } p && p.StartedUtc <= roster.WrittenUtc
                 && (Providers.IsClaudeProcess(p.Name) || p.Name.Equals("node", StringComparison.OrdinalIgnoreCase)));

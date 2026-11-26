@@ -40,12 +40,18 @@ public static class DiskCleanup
         var temp = tempDir ?? Path.GetTempPath();
         var freeGb = FreeGb(temp);
         var p = prune = SessionTempPruner.Prune(Path.Combine(temp, "claude"), liveness, dryRun, logPath, retentionHours);
-        var went = p.Folders.Where(f => f.Delete && (dryRun || !p.Errors.Any(e => e.StartsWith(f.Path, StringComparison.OrdinalIgnoreCase))))
+        var went = p.Folders.Where(f => f.Delete && (dryRun || !p.Errors.Any(e => IsUnder(e, f.Path))))
             .Concat(p.Scratch)
             .Select(f => new CleanupItem(f.Path, f.Bytes, f.Why)).ToList();
         var hogs = NotOurs(temp).Concat(LiveScratch(p.Folders)).ToList();
         return new CleanupResult(freeGb, dryRun ? went.Sum(w => w.Bytes) : p.Bytes, went, p.Errors, hogs);
     }
+
+    /// <summary>Whether a pruner error ("path: message") is about <paramref name="folder"/> or something in it, not a sibling
+    /// whose name merely starts the same (M.ORCH-T2298).</summary>
+    private static bool IsUnder(string error, string folder) =>
+        error.StartsWith(folder + ":", StringComparison.OrdinalIgnoreCase)
+        || error.StartsWith(Path.TrimEndingDirectorySeparator(folder) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The big entries in the scratchpads of sessions that are kept (running, or not known to have ended).</summary>
     internal static IEnumerable<SpaceHog> LiveScratch(IEnumerable<TempFolderVerdict> folders) =>

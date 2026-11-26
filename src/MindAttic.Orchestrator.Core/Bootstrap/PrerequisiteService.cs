@@ -181,8 +181,10 @@ public sealed class PrerequisiteService
         foreach (var id in wingetIds)
         {
             var (ok, output) = InstallViaWinget(id, ct);
-            if (ok || exists(command)) return new PrerequisiteCheckResult(command, Present: true, Installed: true, null);
-            lastError = output;
+            // Present only once the command is really found, not just because winget exited 0 (M.ORCH-T2298).
+            if (exists(command)) return new PrerequisiteCheckResult(command, Present: true, Installed: true, null);
+            lastError = ok ? $"winget installed {id}, but it still isn't on PATH" : output;
+            if (ok) break;
         }
         return new PrerequisiteCheckResult(command, Present: false, Installed: false,
             lastError is null ? $"'{command}' not found and no winget id succeeded." : $"'{command}' not found: {lastError}");
@@ -237,9 +239,10 @@ public sealed class PrerequisiteService
             error = "no install source";
         }
 
-        return exists(cli.Command) || error is null
+        return exists(cli.Command)
             ? new PrerequisiteCheckResult(cli.Command, Present: true, Installed: true, null)
-            : new PrerequisiteCheckResult(cli.Command, Present: false, Installed: false, $"'{cli.Command}' not installed: {error}");
+            : new PrerequisiteCheckResult(cli.Command, Present: false, Installed: false,
+                $"'{cli.Command}' not installed: {error ?? "the install finished, but it still isn't on PATH"}");
     }
 
     private static bool DefaultCommandExists(string command)

@@ -4514,12 +4514,17 @@ public static class AgentGate
         if (root is null)
             throw new IOException($"{settingsPath} isn't a JSON object it can read, so the pace and context gate hooks aren't registered; it's left as it is"
                 + (did.Count > 0 ? $" ({string.Join(", ", did)})" : ""));
-        var changed = AddHook(root, "PreToolUse", ScriptName, Command(script), HookTimeoutSeconds);
-        foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop", "SessionStart", "Notification" })
-            changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), ContextHookTimeoutSeconds);
-        // A CLI blocked on you (M.ORCH-T790): its permission prompts (Notification, above) and its AskUserQuestion, matched to
-        // that one tool so no other tool call starts a second hook process.
-        changed |= AddHook(root, "PreToolUse", ContextScriptName, Command(contextScript), ContextHookTimeoutSeconds, AskUserQuestionTool);
+        bool changed;
+        try
+        {
+            changed = AddHook(root, "PreToolUse", ScriptName, Command(script), HookTimeoutSeconds);
+            foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop", "SessionStart", "Notification" })
+                changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), ContextHookTimeoutSeconds);
+            // A CLI blocked on you (M.ORCH-T790): its permission prompts (Notification, above) and its AskUserQuestion, matched to
+            // that one tool so no other tool call starts a second hook process.
+            changed |= AddHook(root, "PreToolUse", ContextScriptName, Command(contextScript), ContextHookTimeoutSeconds, AskUserQuestionTool);
+        }
+        catch (InvalidDataException e) { throw new IOException($"{settingsPath}: {e.Message}", e); }
         // Claude's own usage reaches the orchestrator only through a statusline redraw; an idle tab redraws on this
         // timer too, so the real percent stays fresh while any tab is open (M.ORCH-T125).
         // Claude Code deletes session transcripts (and their subagents') after cleanupPeriodDays, 30 by default: a crashed
@@ -4604,7 +4609,9 @@ public static class AgentGate
         JsonObject? root;
         try { root = text is not null ? JsonNode.Parse(text, documentOptions: CommentedStrictKeys) as JsonObject : new JsonObject(); }
         catch (JsonException) { return null; }
-        if (root is null || !AddHook(root, hookEvent, scriptName, command, timeout)) return null;
+        if (root is null) return null;
+        try { if (!AddHook(root, hookEvent, scriptName, command, timeout)) return null; }
+        catch (InvalidDataException e) { return $"{Path.GetFileName(path)}: {e.Message}"; }
         if (text is not null && CommentedHookSplice.HasComments(text))
         {
             if (CommentedHookSplice.Splice(text, root, hookEvent, scriptName, command, timeout) is not { } spliced)
@@ -4673,7 +4680,12 @@ public static class AgentGate
 
     internal static bool AddHook(JsonObject root, string hookEvent, string scriptName, string command, int timeout, string matcher = "")
     {
+        // Someone else's hooks of a shape it doesn't know are left as they are and said, never replaced (M.ORCH-T2298).
+        if (root["hooks"] is { } h && h is not JsonObject)
+            throw new InvalidDataException($"its \"hooks\" isn't a JSON object, so {scriptName} isn't registered; it's left as it is");
         var hooks = root["hooks"] as JsonObject ?? (JsonObject)(root["hooks"] = new JsonObject());
+        if (hooks[hookEvent] is { } e && e is not JsonArray)
+            throw new InvalidDataException($"its \"hooks.{hookEvent}\" isn't a JSON array, so {scriptName} isn't registered; it's left as it is");
         var entries = hooks[hookEvent] as JsonArray ?? (JsonArray)(hooks[hookEvent] = new JsonArray());
         foreach (var hook in entries.OfType<JsonObject>().SelectMany(m => (m["hooks"] as JsonArray ?? []).OfType<JsonObject>()))
         {
