@@ -231,7 +231,10 @@ public sealed class AccountPacer
         // folder re-signed to a different one (its own .claude.json changed under the same folder) starts fresh rather than
         // being held to the old account's wall, which for a weekly one could otherwise block it for days.
         var before = stored is null || (state.Account is not null && stored.Account != state.Account) ? [] : stored.Observations;
-        var observed = LimitCalibration.Observe(sessions.SelectMany(s => s.Hits).Where(h => since is null || h.AtUtc >= since), events, now - LimitCalibration.Keep);
+        // Covered only from where its events actually start, the polled history or the sign-in, whichever is later (M.ORCH-T2294).
+        var historyStartUtc = startOfTodayUtc.AddDays(-StatusAggregator.HistoryDays);
+        var coverageStartUtc = since is { } s0 && s0 > historyStartUtc ? s0 : historyStartUtc;
+        var observed = LimitCalibration.Observe(sessions.SelectMany(s => s.Hits).Where(h => since is null || h.AtUtc >= since), events, coverageStartUtc);
         var limits = LimitCalibration.Merge(before, observed, now);
         var restamp = stored is null ? since is not null : stored.Account != (state.Account ?? "") || stored.SignedInSinceUtc != since;
         if (write && (restamp || !limits.SequenceEqual(before))) SaveLimits(dir, state.Account, limits, since);

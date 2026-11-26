@@ -140,14 +140,15 @@ public static class ScreenUsage
 
     /// <summary>
     /// What to write for <paramref name="screen"/> over <paramref name="was"/> (the login's reading now, which must be
-    /// <paramref name="account"/>'s: one tagged with another account's counts as none); null when the screen says nothing new.
+    /// <paramref name="account"/>'s: one untagged or tagged with another account's counts as none); null when the screen says nothing new.
     /// The screen never replaces a newer reading: per window, a running one already there is kept unless the screen shows the
     /// same window higher (usage never falls within a window, and the screen's whole percent is coarser than the meter's); a
     /// window the screen doesn't show, or shows differently from one still running, keeps what's there.
     /// </summary>
     public static ReportedUsage? Merge(ReportedUsage? was, ReportedUsage screen, string? account, DateTime nowUtc)
     {
-        if (was?.Account is { } tag && tag != account) was = null;
+        // An untagged reading may be another account's too, as Write treats it; carried over it would be re-tagged as this one's (M.ORCH-T2294).
+        if (was is not null && was.Account != account) was = null;
         var (five, fiveNew) = Window(ReportedUsage.Usable(was?.FiveHour, nowUtc), ReportedUsage.Usable(screen.FiveHour, nowUtc));
         var (week, weekNew) = Window(ReportedUsage.Usable(was?.Week, nowUtc), ReportedUsage.Usable(screen.Week, nowUtc));
         return fiveNew || weekNew ? new ReportedUsage(five, week, nowUtc) { Account = account } : null;
