@@ -1999,9 +1999,9 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     /// <summary>Ctrl+Left: the previous CLI tab of this person's, cycling (see <see cref="NextCommand"/>).</summary>
     public ICommand PreviousCommand => previousCommand ??= new RelayCommand(() => Step(-1));
 
-    /// <summary>The Do button overlaid on the shown CLI (M.ORCH-T2263): types "Do" and Enter into it, the same as typing
+    /// <summary>The Do button overlaid on the shown CLI (M.ORCH-T2263): types "do" (lowercase) and Enter into it, the same as typing
     /// /do and hitting enter, straight into whichever pane is on screen rather than whatever has keyboard focus.</summary>
-    public ICommand DoCommand => doCommand ??= new RelayCommand(() => SelectedPane?.WriteInput("Do\r"));
+    public ICommand DoCommand => doCommand ??= new RelayCommand(() => SelectedPane?.WriteInput("do\r"));
 
     /// <summary>Chooses the tab of TermHost session <paramref name="termId"/> (M.ORCH-T1436, a remembered choice coming back after
     /// a restart); false, leaving the choice as it is, when none of this person's tabs is that session any more.</summary>
