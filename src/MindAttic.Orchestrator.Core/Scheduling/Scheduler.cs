@@ -105,6 +105,12 @@ public sealed record SchedulePlan(
     /// <summary>The pace the plan was made under; null when pacing is off.</summary>
     public Pace? Pace { get; init; }
 
+    /// <summary>The pace whose subagent allowance <c>orchestrator next</c> counts against (M.ORCH-T2246): <see cref="Pace"/>, or,
+    /// unpaced, the login's own allowance (<see cref="AccountPacer"/>, M.ORCH-T660) that <see cref="Pace"/> leaves out. Before,
+    /// an unpaced login (a solo Ultra account under its weekly line) reached Allocate with no pace at all and was handed the
+    /// session setting less every ticket being worked anywhere in the workspace, which another busy repo drove below zero.</summary>
+    public Pace? AllowancePace { get; init; }
+
     /// <summary>The window is at its target: nothing new starts. <see cref="Pace"/> is only kept when pacing is on, but the
     /// stop doesn't depend on pacing (the pace gate refuses every call either way).</summary>
     public bool Stop { get; init; }
@@ -378,7 +384,8 @@ public static partial class Scheduler
 
         return new SchedulePlan(queue, proposals, settings.MaxConcurrentSessions, occupied, hold, finished)
         {
-            Cap = cap, UnknownRepos = snapshot.UnknownRepos, Pace = pace, Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig, RoomForRest = roomForRest,
+            Cap = cap, UnknownRepos = snapshot.UnknownRepos, Pace = pace,
+            AllowancePace = pace ?? (snapshot.Pace is { SubagentAllowance: not null } own ? own : null), Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig, RoomForRest = roomForRest,
             // Waiting for approval too: an old feature nobody approved is the likeliest to close as wont-do.
             Groom = [.. queue.Concat(awaiting).Where(q => q.Old && q.Assignment is null)],
             AwaitingApproval = awaiting, Worked = worked,

@@ -721,6 +721,37 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         return delegated;
     }
 
+    /// <summary>
+    /// Why `next` has no room for another subagent (M.ORCH-T2246), in place of a bare "the pace has no room": the allowance, what
+    /// fills it (the subagents running by the CLI running each, with its /allocate repos when known, and claims with no subagent
+    /// on yet), and what set it: RAM, the week's own pace, a cool-off, a stopped or locked login, or the 5-hour pace. With no
+    /// allowance at all it says the fallback it used: the session setting less every ticket being worked in the workspace.
+    /// </summary>
+    internal static string NoRoom(Pace? sub, int unstarted, int maxSessions, int busy,
+        IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null)
+    {
+        if (sub?.SubagentAllowance is not { } allowed)
+            return $"no subagent allowance is known for this login, so the session setting ({maxSessions}) less the {busy} tickets being " +
+                "worked across the workspace was used, which leaves none; run it again in a few minutes";
+        var holders = sub.SubagentsByCli.Where(c => c.Value > 0).OrderByDescending(c => c.Value)
+            .Select(c => $"{c.Value} on CLI {c.Key}" + (pilots?.GetValueOrDefault(c.Key) is { Count: > 0 } r ? $" ({string.Join(", ", r)})" : ""))
+            .ToList();
+        var unnamed = sub.Subagents - sub.SubagentsByCli.Values.Sum();
+        if (unnamed > 0) holders.Add($"{unnamed} whose CLI isn't known");
+        if (unstarted > 0) holders.Add($"{unstarted} claimed with no subagent on yet");
+        var filled = holders.Count > 0 ? string.Join(", ", holders) : "nothing running";
+        var why = sub switch
+        {
+            { Memory: { Level: > Activity.MemoryLevel.Ok } m } => $"RAM: {m.Reading.Describe()}",
+            { Stop: true } or { Mode: PaceMode.Over } => sub.Note,
+            { WeeklyPaceLinePercent: { } line, WeeklyPaceUsedPercent: { } used } => $"the week's own pace (at {used:0}%, above its {line:0}% line)",
+            { CoolOffPercent: { } hot } => $"a cool-off ({sub.CoolOffClis} CLIs on course to end the 5-hour window near {hot:0}%)",
+            { IsPaced: false } => $"this login's own allowance while unpaced (the session setting, at most {allowed})",
+            _ => $"the 5-hour pace ({sub.Note})",
+        };
+        return $"the subagent allowance is full: {sub.Subagents + unstarted} of {allowed} ({filled}); set by {why}. Run it again in a few minutes";
+    }
+
     /// <summary>What `next` says when the named repos' queue has run dry (M.ORCH-T700): nothing open, waiting, busy or held.
     /// It offers a bug hunt and leaves it to the user: "Ask but don't do unless explicitly given permission."</summary>
     internal static string Dry(IReadOnlyList<string> repos, IReadOnlySet<string>? unknownRepos = null)
@@ -832,12 +863,14 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         // reading, with the resume margin when the daemon's pace already holds, so a stale pace can't hold a drive that has room.
         if (Activity.DiskGuard.Shared.Observe(settings, nowUtc, heldElsewhere: plan.Pace?.Disk is not null) is { } full)
             return ([], $"{full.Why}; run it again once space is freed");
-        var unstarted = cli is null && !unthrottled && plan.Pace?.SubagentAllowance is not null ? UnstartedClaims(plan, cliRunning, login) : 0;
-        var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents - unstarted
+        // An unpaced login's own allowance counts too (M.ORCH-T2246, SchedulePlan.AllowancePace), never the workspace's busy tickets.
+        var sub = plan.AllowancePace;
+        var unstarted = cli is null && !unthrottled && sub?.SubagentAllowance is not null ? UnstartedClaims(plan, cliRunning, login) : 0;
+        var more = count ?? (!unthrottled && sub?.SubagentAllowance is { } allowed ? allowed - sub.Subagents - unstarted
             : settings.MaxConcurrentSessions - plan.Queue.Count(Busy));
-        if (more <= 0) return ([], "the pace has no room for another subagent right now; run it again in a few minutes");
+        if (more <= 0) return ([], NoRoom(sub, unstarted, settings.MaxConcurrentSessions, plan.Queue.Count(Busy), pilots));
         // Its fair share, not every free place (M.ORCH-T495): another /allocate CLI with workable tickets of its own keeps its share.
-        if (count is null && !unthrottled && cli is { } me && plan.Pace?.SubagentAllowance is { } cap)
+        if (count is null && !unthrottled && cli is { } me && sub?.SubagentAllowance is { } cap)
         {
             // A CLI's claims no subagent has shown up on yet are its subagents about to run (M.ORCH-T532): they count against its
             // own share, not against whichever CLI covers their repo. A claim whose CLI isn't known counts for nobody.
@@ -846,12 +879,12 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             var myLogin = loginOf?.Invoke(me);
             bool SameLogin(int c) => loginOf is null || string.Equals(loginOf(c), myLogin, StringComparison.OrdinalIgnoreCase);
             var pending = PendingClaims(plan, c => (c == me || pilots?.ContainsKey(c) == true || cliRunning(c)) && SameLogin(c));
-            var running = plan.Pace.SubagentsByCli.Keys.Union(pending.Keys)
-                .ToDictionary(c => c, c => plan.Pace.SubagentsByCli.GetValueOrDefault(c) + pending.GetValueOrDefault(c));
+            var running = sub.SubagentsByCli.Keys.Union(pending.Keys)
+                .ToDictionary(c => c, c => sub.SubagentsByCli.GetValueOrDefault(c) + pending.GetValueOrDefault(c));
             var wanting = (pilots ?? new Dictionary<int, IReadOnlyList<string>>())
                 .Where(p => p.Key != me && SameLogin(p.Key) && plan.Queue.Any(q => Allocate.Named(p.Value, q.Repo) && Free(q)))
                 .Select(p => p.Key).ToList();
-            var total = plan.Pace.Subagents + pending.Values.Sum();
+            var total = sub.Subagents + pending.Values.Sum();
             var fair = SubagentShare.Room(cap, total, me, running, wanting);
             // Warming up (M.ORCH-T558): at most one more each minute since this CLI's /allocate turned on.
             var since = onSince is not null && onSince.TryGetValue(me, out var on) ? on : (DateTime?)null;
@@ -866,8 +899,11 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             if (fair <= 0 && cap - total <= 0 && SubagentShare.Limit(cap, me, running, wanting) > running.GetValueOrDefault(me))
             {
                 var othersClaimed = pending.Where(p => p.Key != me).Sum(p => p.Value);
+                // Which CLIs hold those claims (M.ORCH-T2246), with their /allocate repos when known, so a stale one can be found.
+                var claimants = string.Join(", ", pending.Where(p => p.Key != me && p.Value > 0).OrderByDescending(p => p.Value)
+                    .Select(p => $"{p.Value} by CLI {p.Key}" + (pilots?.GetValueOrDefault(p.Key) is { Count: > 0 } r ? $" ({string.Join(", ", r)})" : "")));
                 return ([], $"the subagent allowance is full ({total} of {cap}: {total - pending.Values.Sum()} running" +
-                    (othersClaimed > 0 ? $", {othersClaimed} claimed by other CLIs with no subagent on yet" : "") +
+                    (othersClaimed > 0 ? $", {othersClaimed} claimed by other CLIs with no subagent on yet: {claimants}" : "") +
                     $"); this CLI, with {running.GetValueOrDefault(me)}, is under its share and gets the next place that frees. Run it again in a few minutes");
             }
             if (fair <= 0)

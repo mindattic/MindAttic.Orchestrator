@@ -28,7 +28,8 @@ internal sealed class DryRunCommand : Command
             var login = (self is not null && own.TryGetValue(self, out var dir) ? dirs.Of(dir)?.Email : null) ?? snapshot.GlobalEmail;
             var (handed, why) = Allocate.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
                 self: self,
-                cli: pid, pilots: clis, onSince: since, login: login, orgs: orgs);
+                // Each CLI's login (M.ORCH-T2246): without it every login's claims counted against this one's allowance, as `next` never does.
+                cli: pid, pilots: clis, onSince: since, loginOf: cycler.LoginOfCli(), login: login, orgs: orgs);
             foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}" +
                 (h.Model is { } m ? $" on {m.Model}" : "") + $": {Markup.Escape(h.Item.Ticket.Summary)}");
             if (why is not null) AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(why)}[/]");
