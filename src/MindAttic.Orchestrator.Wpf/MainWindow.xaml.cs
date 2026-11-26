@@ -40,6 +40,9 @@ public partial class MainWindow : Window
     private readonly MainViewModel model = new();
     private readonly DispatcherTimer timer;
 
+    /// <summary>When the global login's 5-hour window resets: the windows the timelapse stitches by (M.ORCH-T1941).</summary>
+    internal DateTime? FiveHourResetUtc => model.FiveHourResetUtc;
+
     /// <summary>The login's tab on screen: the window shows its view model.</summary>
     private MainViewModel Shown => DataContext as MainViewModel ?? model;
 

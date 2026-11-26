@@ -122,7 +122,7 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>When this login's 5-hour window resets: the pushed reading's while it's the one shown, else its budget's block, else the roster's.</summary>
-    private DateTime? FiveHourResetUtc => (LiveFiveHour is not null ? Live?.FiveHourResetUtc : null)
+    internal DateTime? FiveHourResetUtc => (LiveFiveHour is not null ? Live?.FiveHourResetUtc : null)
         ?? Budget?.CurrentBlock?.EndUtc ?? OwnRow?.FiveHourResetAt(DateTime.UtcNow);
 
     /// <summary>" 5-hour resets Mon 11/2 10:00 AM (in 2d 3hr 14m); week resets ... (in ...)." (M.ORCH-T1102); a time not known,

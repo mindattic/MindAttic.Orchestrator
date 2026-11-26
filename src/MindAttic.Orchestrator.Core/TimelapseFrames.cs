@@ -51,6 +51,34 @@ public static class TimelapseFrames
         return left > TimeSpan.Zero ? left : TimeSpan.Zero;
     }
 
+    /// <summary>How long one window runs: a 5-hour window's frames make one GIF.</summary>
+    public static readonly TimeSpan WindowLength = TimeSpan.FromHours(5);
+
+    /// <summary>The file name of the GIF stitched from the window that started at <paramref name="windowStart"/> (M.ORCH-T1941).</summary>
+    public static string GifName(DateTimeOffset windowStart) => "Orchestrator_" + windowStart.UtcDateTime.ToString(Stamp, CultureInfo.InvariantCulture) + ".gif";
+
+    /// <summary>The finished windows among <paramref name="frames"/> (oldest first): every frame before <paramref name="boundary"/>,
+    /// the start of the window that's still running, grouped into windows of at most <see cref="WindowLength"/> each. A group whose
+    /// first frame falls in one of <paramref name="knownStarts"/>' windows is named by that start, else by its first frame (the
+    /// window's real start isn't known, as after a restart).</summary>
+    public static IReadOnlyList<(DateTimeOffset Start, IReadOnlyList<string> Frames)> Finished(
+        IReadOnlyList<(DateTimeOffset At, string Path)> frames, DateTimeOffset boundary, IEnumerable<DateTimeOffset> knownStarts)
+    {
+        var starts = knownStarts.ToList();
+        var windows = new List<(DateTimeOffset, IReadOnlyList<string>)>();
+        var i = 0;
+        while (i < frames.Count && frames[i].At < boundary)
+        {
+            var first = frames[i].At;
+            var start = starts.Where(s => s <= first && first < s + WindowLength).Select(s => (DateTimeOffset?)s).Max() ?? first;
+            var end = start + WindowLength < boundary ? start + WindowLength : boundary;
+            var paths = new List<string>();
+            while (i < frames.Count && frames[i].At < end) paths.Add(frames[i++].Path);
+            windows.Add((start, paths));
+        }
+        return windows;
+    }
+
     /// <summary>Writes <paramref name="png"/> as the frame for <paramref name="at"/> in <paramref name="dir"/>, through a temp file so a
     /// half-written frame is never listed, and returns its path.</summary>
     public static string Save(string dir, DateTimeOffset at, byte[] png)

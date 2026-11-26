@@ -127,6 +127,54 @@ public sealed class TimelapseCaptureTests
     }
 
     [Test]
+    public async Task At_the_reset_the_window_is_stitched_into_a_looping_gif_and_the_next_window_starts()
+    {
+        var window = RedWindow();
+        var now = T0;
+        DateTime? reset = (T0 + TimeSpan.FromHours(4)).UtcDateTime;
+        var start = T0 + TimeSpan.FromHours(4) - TimelapseFrames.WindowLength;
+        var capture = new TimelapseCapture(window, root, () => true, () => Interval, TimeSpan.FromHours(1), () => now,
+            fiveHourReset: () => reset, fps: () => 4);
+        capture.Start();
+        await capture.TickAsync();
+        now = T0 + Interval;
+        await capture.TickAsync();
+        now = T0 + 2 * Interval;
+        await capture.TickAsync();
+        Assert.That(Directory.GetFiles(root, "*.gif"), Is.Empty, "nothing stitched while the window runs");
+
+        // The reset passes before the next window is known: the finished one is stitched, named by its start.
+        now = T0 + TimeSpan.FromHours(4) + TimeSpan.FromMinutes(1);
+        reset = null;
+        Assert.That(await capture.TickAsync(), Is.Not.Null, "the next window's first frame");
+
+        var gif = Path.Combine(root, TimelapseFrames.GifName(start));
+        Assert.That(Directory.GetFiles(root, "*.gif"), Is.EqualTo(new[] { gif }));
+        var decoder = new GifBitmapDecoder(new MemoryStream(File.ReadAllBytes(gif)), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+        Assert.That(decoder.Frames, Has.Count.EqualTo(3));
+        var bytes = File.ReadAllBytes(gif);
+        Assert.That(System.Text.Encoding.ASCII.GetString(bytes).Contains("NETSCAPE2.0"), Is.True, "it loops");
+        Assert.That(BitConverter.ToUInt16(bytes, Array.IndexOf(bytes, (byte)0xF9) + 3), Is.EqualTo(25), "4 fps is 25 hundredths a frame");
+        Assert.That(TimelapseFrames.List(TimelapseFrames.FramesDir(root)).Select(f => f.At), Is.EqualTo(new[] { now }),
+            "the stitched frames are gone and the next window has begun");
+        capture.Dispose();
+        window.Close();
+    }
+
+    [Test]
+    public void Finished_windows_are_the_frames_before_the_boundary_in_windows_of_five_hours()
+    {
+        var frames = new[] { T0, T0 + TimeSpan.FromHours(1), T0 + TimeSpan.FromHours(6), T0 + TimeSpan.FromHours(9), T0 + TimeSpan.FromHours(10) }
+            .Select(at => (at, TimelapseFrames.FileName(at))).ToList();
+        var known = T0 + TimeSpan.FromHours(5);
+
+        var windows = TimelapseFrames.Finished(frames, T0 + TimeSpan.FromHours(10), [known]);
+
+        Assert.That(windows.Select(w => w.Start), Is.EqualTo(new[] { T0, known }), "a known start names its window, else the first frame");
+        Assert.That(windows.Select(w => w.Frames.Count), Is.EqualTo(new[] { 2, 2 }), "the running window's frame is left");
+    }
+
+    [Test]
     public void Listing_skips_files_that_are_not_frames()
     {
         var dir = TimelapseFrames.FramesDir(root);

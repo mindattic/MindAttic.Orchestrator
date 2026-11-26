@@ -71,6 +71,9 @@ internal static class DashboardTimings
     /// <summary>The time between two timelapse frames: <see cref="OrchestratorSettings.TimelapseIntervalMinutes"/>.</summary>
     public static TimeSpan TimelapseInterval { get; private set; } = TimeSpan.FromMinutes(OrchestratorSettings.DefaultTimelapseIntervalMinutes);
 
+    /// <summary>The timelapse GIF's frame rate (M.ORCH-T1941): <see cref="OrchestratorSettings.TimelapseFrameRate"/>.</summary>
+    public static int TimelapseFps { get; private set; } = OrchestratorSettings.DefaultTimelapseFps;
+
     /// <summary>Takes the intervals from <paramref name="s"/>, each kept to at least a second so no timer spins.</summary>
     public static void Apply(OrchestratorSettings s)
     {
@@ -94,5 +97,6 @@ internal static class DashboardTimings
         HiddenRenderer = s.HiddenRendererMinutes > 0 ? OrchestratorSettings.SecondsSpan(s.HiddenRendererMinutes * 60, 1) : TimeSpan.Zero;
         Timelapse = s.Timelapse;
         TimelapseInterval = OrchestratorSettings.SecondsSpan(s.TimelapseIntervalMinutes * 60, 60);
+        TimelapseFps = s.TimelapseFrameRate;
     }
 }

@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Wpf.ViewModels;
 using Serilog;
 
@@ -14,26 +15,40 @@ namespace MindAttic.Orchestrator.Wpf.Services;
 /// the visual tree, not the screen, so a minimized, covered or tray-hidden window still captures and nothing flashes. The frames
 /// stay on disk, so a restart keeps them, and the next one is timed from the newest there: a gap while the dashboard was closed
 /// gets one frame on its return, not a catch-up run. Hosted native terminals (HwndHost) aren't part of the visual and render blank.
+/// At each 5-hour window's reset (M.ORCH-T1941) the finished window's frames are stitched into
+/// <see cref="TimelapseFrames.GifName"/> under the root at <see cref="OrchestratorSettings.TimelapseFrameRate"/> and removed, so
+/// the frames folder only ever holds the running window.
 /// </summary>
 public sealed class TimelapseCapture : IDisposable
 {
     private static readonly ILogger Log = OrchestratorLog.For("Timelapse");
 
     private readonly Window window;
+    private readonly string root;
     private readonly string dir;
     private readonly Func<bool> enabled;
     private readonly Func<TimeSpan> interval;
     private readonly Func<DateTimeOffset> clock;
+    private readonly Func<DateTime?> fiveHourReset;
+    private readonly Func<int> fps;
     private readonly DispatcherTimer timer;
     private DateTimeOffset? last;
+    // The running window's start and end as last read, and the one before it, so a GIF is named by its window's real start.
+    private DateTimeOffset? windowStart, windowEnd, previousStart;
     private bool saving;
 
     /// <summary>Captures <paramref name="window"/> into <paramref name="root"/>'s frames folder while <paramref name="enabled"/> says
-    /// so, one frame per <paramref name="interval"/>; <paramref name="check"/> is how often it looks whether one is due.</summary>
-    public TimelapseCapture(Window window, string root, Func<bool> enabled, Func<TimeSpan> interval, TimeSpan check, Func<DateTimeOffset>? clock = null)
+    /// so, one frame per <paramref name="interval"/>; <paramref name="check"/> is how often it looks whether one is due.
+    /// <paramref name="fiveHourReset"/> is when the running 5-hour window resets (null while none is known), and each finished
+    /// window becomes a GIF at <paramref name="fps"/>.</summary>
+    public TimelapseCapture(Window window, string root, Func<bool> enabled, Func<TimeSpan> interval, TimeSpan check, Func<DateTimeOffset>? clock = null,
+        Func<DateTime?>? fiveHourReset = null, Func<int>? fps = null)
     {
         this.window = window;
+        this.root = root;
         dir = TimelapseFrames.FramesDir(root);
+        this.fiveHourReset = fiveHourReset ?? (() => null);
+        this.fps = fps ?? (() => OrchestratorSettings.DefaultTimelapseFps);
         this.enabled = enabled;
         this.interval = interval;
         this.clock = clock ?? (() => DateTimeOffset.UtcNow);
@@ -42,9 +57,11 @@ public sealed class TimelapseCapture : IDisposable
         window.Closed += (_, _) => timer.Stop();
     }
 
-    /// <summary>The dashboard's: <see cref="TimelapseFrames.DefaultRoot"/>, the live settings, checked every minute.</summary>
-    public static TimelapseCapture ForDashboard(Window window) =>
-        new(window, TimelapseFrames.DefaultRoot, () => DashboardTimings.Timelapse, () => DashboardTimings.TimelapseInterval, TimeSpan.FromMinutes(1));
+    /// <summary>The dashboard's: <see cref="TimelapseFrames.DefaultRoot"/>, the live settings, checked every minute, its windows
+    /// those of <paramref name="fiveHourReset"/>.</summary>
+    public static TimelapseCapture ForDashboard(Window window, Func<DateTime?> fiveHourReset) =>
+        new(window, TimelapseFrames.DefaultRoot, () => DashboardTimings.Timelapse, () => DashboardTimings.TimelapseInterval, TimeSpan.FromMinutes(1),
+            fiveHourReset: fiveHourReset, fps: () => DashboardTimings.TimelapseFps);
 
     /// <summary>Starts timing from the newest frame already on disk; the first check is one <c>check</c> from now.</summary>
     public void Start()
@@ -59,6 +76,10 @@ public sealed class TimelapseCapture : IDisposable
     {
         if (saving || !enabled()) return null;
         var now = clock();
+        saving = true;
+        try { await StitchFinishedAsync(now).ConfigureAwait(true); }
+        catch (Exception ex) { Log.Warning(ex, "Timelapse GIF not stitched"); }
+        finally { saving = false; }
         if (TimelapseFrames.UntilNext(last, now, interval()) > TimeSpan.Zero) return null;
         saving = true;
         try
@@ -76,6 +97,39 @@ public sealed class TimelapseCapture : IDisposable
             return null;
         }
         finally { saving = false; }
+    }
+
+    /// <summary>At a 5-hour window's reset, stitches the frames from before the running window into one GIF per finished window
+    /// and deletes them; the GIFs written. With no window known yet nothing is stitched, and the frames wait.</summary>
+    public async Task<IReadOnlyList<string>> StitchFinishedAsync(DateTimeOffset now)
+    {
+        if (fiveHourReset() is { } reset)
+        {
+            var end = new DateTimeOffset(DateTime.SpecifyKind(reset, DateTimeKind.Utc));
+            var start = end - TimelapseFrames.WindowLength;
+            if (windowStart != start)
+            {
+                previousStart = windowStart;
+                (windowStart, windowEnd) = (start, end);
+            }
+        }
+        // The running window's start, or, with none running since the last one ended, that one's end.
+        DateTimeOffset? boundary = windowEnd is { } e && e <= now ? e : windowStart;
+        if (boundary is not { } b) return [];
+        var starts = new[] { previousStart, windowStart }.OfType<DateTimeOffset>().ToList();
+        var rate = fps();
+        return await Task.Run(() =>
+        {
+            var written = new List<string>();
+            foreach (var (start, frames) in TimelapseFrames.Finished(TimelapseFrames.List(dir), b, starts))
+            {
+                var gif = Path.Combine(root, TimelapseFrames.GifName(start));
+                if (TimelapseGif.Write(frames, gif, rate)) written.Add(gif);
+                foreach (var frame in frames) File.Delete(frame);
+                Log.Information("Timelapse window {Start} stitched into {Gif:l} from {Count} frames", start, gif, frames.Count);
+            }
+            return (IReadOnlyList<string>)written;
+        }).ConfigureAwait(true);
     }
 
     /// <summary><paramref name="window"/>'s content rendered over its background at its own DPI, frozen so another thread can encode

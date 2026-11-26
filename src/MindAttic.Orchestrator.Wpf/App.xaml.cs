@@ -245,7 +245,8 @@ public partial class App : Application
         }
         catch (Exception ex) { log.Warning(ex, "DesktopPinWatcher didn't start; windows stay wherever they open"); }
         // M.ORCH-T1940: the dashboard's own visual every TimelapseIntervalMinutes while it runs, minimized or in the tray included.
-        timelapse = Services.TimelapseCapture.ForDashboard(MainWindow);
+        // M.ORCH-T1941: each finished 5-hour window's frames stitched into a GIF at its reset.
+        timelapse = Services.TimelapseCapture.ForDashboard(MainWindow, () => main.FiveHourResetUtc);
         timelapse.Start();
         instance.OnShowRequested(args => Dispatcher.BeginInvoke(() =>
         {
