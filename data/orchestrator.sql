@@ -1809,13 +1809,13 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 16578074);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'SpaceGod.Unreal', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 160623);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-24', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 9884876);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4896843);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4899971);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 765689);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1465395);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2274511);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4112999);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'GridGame.Unity', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 55199);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 16245813);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 16500775);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1945989);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1919919);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 21270913);
@@ -3106,6 +3106,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a2a13c92904b4118b', 'GG-T743', 'feature', 'GridGame.Unity', 44522, '2026-11-24T03:42:16.974Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a2c405d937cd04544', 'GG-T728', 'fix', 'GridGame.Unity', 66794, '2026-11-24T03:35:41.173Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a2c85fa164698eb7c', 'GG-T656', 'fix', 'GridGame.Unity', 125482, '2026-11-23T19:39:07.326Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a30158bad727bb0b8', 'GG-T1169', 'fix', 'GridGame.Unity', 55629, '2026-11-26T05:36:47.022Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a33ff4679eccfb5c3', 'GG-T922', 'feature', 'GridGame.Unity', 34876, '2026-11-24T06:55:28.34Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a380f8676a735558b', 'GG-T693', 'fix', 'GridGame.Unity', 32583, '2026-11-23T19:28:12.107Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a3e426ac4341a6a08', 'GG-T758', 'feature', 'GridGame.Unity', 105503, '2026-11-24T04:25:52.852Z', 0, 'opus');
@@ -3134,6 +3135,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a6c3e3bbb3e4fecf7', 'GG-T912', '', 'GridGame.Unity', 124538, '2026-11-24T06:38:57.148Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a70176cb654d042e9', 'GG-T834', 'feature', 'GridGame.Unity', 149920, '2026-11-24T06:25:56.815Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a71c9596e2260cace', 'GG-T744', 'feature', 'GridGame.Unity', 92173, '2026-11-24T03:57:23.412Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a71e2eb3533ebba26', 'GG-T1168', 'fix', 'GridGame.Unity', 85803, '2026-11-26T05:35:14.269Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a71ebbdca94b7008a', 'GG-T1158', 'fix', 'GridGame.Unity', 49335, '2026-11-26T05:17:55.859Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a73e11b2e2e7540de', 'GG-T732', 'fix', 'GridGame.Unity', 83598, '2026-11-24T03:35:40.066Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a76a9d0d74f14e3a9', 'GG-T709', 'fix', 'GridGame.Unity', 38347, '2026-11-24T03:35:53.07Z', 0, 'sonnet');
@@ -3145,6 +3147,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a88a5f3bddc6afa68', 'GG-T734', 'feature', 'GridGame.Unity', 176515, '2026-11-24T03:39:47.272Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a8a8df209dcd1ba66', 'GG-T1159', 'fix', 'GridGame.Unity', 82021, '2026-11-26T05:20:37.501Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a8aaa9268f03208fb', 'GG-T716', 'feature', 'GridGame.Unity', 99174, '2026-11-24T03:23:54.657Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a8b0252a54c91b939', 'GG-T1167', 'fix', 'GridGame.Unity', 66789, '2026-11-26T05:33:54.979Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a8cf1ad95514a03ff', 'GG-T1160', 'fix', 'GridGame.Unity', 77994, '2026-11-26T05:23:36.061Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a8e97d30ed3392e44', 'GG-T913', 'feature', 'GridGame.Unity', 107848, '2026-11-24T06:34:51.307Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-a8f4a517cd4f606af', 'GG-T477', 'feature', 'GridGame.Unity', 36649, '2026-11-24T04:19:42.073Z', 0, 'opus');
@@ -3175,7 +3178,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ac664aaea12f13945', 'GG-T729', 'fix', 'GridGame.Unity', 56090, '2026-11-24T03:35:10.844Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ac9a2dea4503693f6', 'GG-T721', '', 'GridGame.Unity', 65543, '2026-11-23T20:36:06.005Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ac9ad5cd1ef8829f5', 'GG-T725', '', 'GridGame.Unity', 60616, '2026-11-23T20:50:04.803Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-acdbd168727fbc641', 'GG-T1166', 'fix', 'GridGame.Unity', 74412, '2026-11-26T05:26:50.598Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-acdbd168727fbc641', 'GG-T1166', 'fix', 'GridGame.Unity', 85353, '2026-11-26T05:27:12.994Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ad0898570b1cc426e', 'GG-T707', 'chore', 'GridGame.Unity', 52038, '2026-11-23T20:20:23.412Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ad13e6a1831f4389d', 'GG-T490', 'feature', 'GridGame.Unity', 47585, '2026-11-24T04:07:30.785Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('6082ff94-ff59-4f19-92da-270fca91363e/agent-ad5c101328cc2b23d', 'GG-T740', 'fix', 'GridGame.Unity', 28622, '2026-11-24T03:39:53.421Z', 0, 'sonnet');
@@ -5553,7 +5556,8 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (61, 'GAD-T789', 'Gadfly', 'D:\Projects\MindAttic\Gadfly', 'Claude', '2026-11-26T02:44:53.7520658Z', 1, NULL, NULL, NULL, 4620, '5c87f115-96a3-43aa-8559-17d8764da8f6', 'sonnet', NULL, 'ohleo199@mindattic.com', NULL, 'implementer');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (62, 'GG-T1145', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-26T03:00:11.7443982Z', 1, NULL, NULL, NULL, 41304, 'f8ff71be-40a7-4867-8742-0592d8f38294', 'sonnet', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (63, 'GG-T1151', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-26T03:15:45.7672283Z', 1, NULL, NULL, NULL, 39860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (64, 'GG-T1166', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-26T05:23:48.5522417Z', 1, NULL, NULL, NULL, 39860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (64, 'GG-T1168', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-26T05:34:03.4765701Z', 1, NULL, NULL, NULL, 39860, '6082ff94-ff59-4f19-92da-270fca91363e', 'sonnet', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (65, 'GG-T1169', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-26T05:35:23.7234115Z', 1, NULL, NULL, NULL, 39860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
 
 -- organizations
 
@@ -34005,9 +34009,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "20140": {
     "SessionId": "831346a9-59b9-428b-b943-300f041d1493",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T10:13:50.1809647Z",
-    "StoppedUtc": "2026-11-26T05:13:53.3516573Z",
-    "DueUtc": "2026-11-26T10:15:50.1809647Z"
+    "UntilUtc": "2026-11-26T10:29:08.8153496Z",
+    "StoppedUtc": "2026-11-26T05:29:12.2468356Z",
+    "DueUtc": "2026-11-26T10:31:08.8153496Z"
   },
   "39088": {
     "SessionId": "b773a79b-ba7e-46cb-9786-f886660e3188",
@@ -34019,9 +34023,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T10:13:50.1809647Z",
-    "StoppedUtc": "2026-11-26T05:13:53.3516573Z",
-    "DueUtc": "2026-11-26T10:15:50.1809647Z"
+    "UntilUtc": "2026-11-26T10:29:08.8153496Z",
+    "StoppedUtc": "2026-11-26T05:29:12.2468356Z",
+    "DueUtc": "2026-11-26T10:31:08.8153496Z"
   },
   "24400": {
     "SessionId": "a8807a82-1dd3-4855-b80b-a04b51f0814d",
@@ -34047,9 +34051,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39332": {
     "SessionId": "3a3ec029-07bb-40dd-a1f6-578b671ff17b",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T10:13:50.1809647Z",
-    "StoppedUtc": "2026-11-26T05:13:53.3516573Z",
-    "DueUtc": "2026-11-26T10:15:50.1809647Z"
+    "UntilUtc": "2026-11-26T10:29:08.8153496Z",
+    "StoppedUtc": "2026-11-26T05:29:12.2468356Z",
+    "DueUtc": "2026-11-26T10:31:08.8153496Z"
   },
   "57504": {
     "SessionId": "bb1c10a1-f527-4aff-b271-ba4beeb8a07c",
@@ -34096,9 +34100,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "28368": {
     "SessionId": "e1bd5cdc-60d3-4e0e-8a84-21abd28f1dc5",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T10:13:50.1809647Z",
-    "StoppedUtc": "2026-11-26T05:13:53.3516573Z",
-    "DueUtc": "2026-11-26T10:15:50.1809647Z"
+    "UntilUtc": "2026-11-26T10:29:08.8153496Z",
+    "StoppedUtc": "2026-11-26T05:29:12.2468356Z",
+    "DueUtc": "2026-11-26T10:31:08.8153496Z"
   },
   "61472": {
     "SessionId": "718f6c47-2f74-43f9-b8fb-ec90517f4bc4",
