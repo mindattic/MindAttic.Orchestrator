@@ -104,8 +104,8 @@ if ($LASTEXITCODE -ge 8) { throw 'Copying Vault.Desktop failed.' }
 
 # The installer a new user runs. The Orchestrator goes where its Desktop exe installs itself (Core's Installer: C:\Apps when
 # writable, else per-user Programs); the Launcher where the Orchestrator looks for it (OrchestratorOptions.LauncherExe:
-# R:\MindAttic\Apps\MindAttic.Launcher\Release, or under the Orchestrator's apps folder on a PC with no R: drive, whose path then
-# goes in the Orchestrator's "Launcher exe" Vault setting); the tickets tool beside the Orchestrator with a shim on the user's
+# R:\MindAttic\Apps\MindAttic.Launcher\Release, or on a PC with no R: drive under the Orchestrator's apps folder, which the
+# Orchestrator tries next while its "Launcher exe" Vault setting is left at the default); the tickets tool beside the Orchestrator with a shim on the user's
 # PATH. Then the dashboard opens on its Welcome window.
 @'
 param([string]$Apps = 'C:\Apps', [string]$LauncherApps = 'R:\MindAttic\Apps', [switch]$DryRun) # -DryRun: copy only; no PATH change, no dashboard
@@ -116,7 +116,7 @@ try { New-Item -ItemType Directory -Force $Apps | Out-Null; $probe = Join-Path $
 catch { $Apps = Join-Path $env:LOCALAPPDATA 'Programs'; Write-Host "C:\Apps isn't writable: installing under $Apps." -ForegroundColor Yellow }
 if ($DryRun) { $LauncherApps = $Apps }
 elseif (-not (Test-Path -LiteralPath (Split-Path -Qualifier $LauncherApps))) {
-    Write-Host "No $(Split-Path -Qualifier $LauncherApps) drive: the Launcher goes under $Apps; set the Orchestrator's ""Launcher exe"" setting (MindAttic Vault) to $(Join-Path $Apps 'MindAttic.Launcher\Release\MindAttic.Launcher.exe')." -ForegroundColor Yellow
+    Write-Host "No $(Split-Path -Qualifier $LauncherApps) drive: the Launcher goes under $Apps, where the Orchestrator looks next." -ForegroundColor Yellow
     $LauncherApps = $Apps
 }
 $orchestrator = Join-Path $Apps 'MindAttic.Orchestrator'

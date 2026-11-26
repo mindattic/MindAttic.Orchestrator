@@ -35,16 +35,31 @@ public sealed class LauncherRunCopyTests
     }
 
     [Test]
-    public void A_new_build_gets_a_new_snapshot_and_the_unused_old_one_goes()
+    public void A_new_build_is_snapshotted_in_the_background_and_the_unused_old_one_goes()
     {
-        var app = temp.New();
-        var exe = Deploy(app, "v1", new DateTime(2026, 11, 26, 12, 0, 0, DateTimeKind.Utc));
-        var first = LauncherRunCopy.Resolve(exe);
-        Deploy(app, "v2!", new DateTime(2026, 11, 26, 13, 0, 0, DateTimeKind.Utc));
-        var second = LauncherRunCopy.Resolve(exe);
-        Assert.That(second, Is.Not.EqualTo(first));
-        Assert.That(File.ReadAllText(second), Is.EqualTo("v2!"));
-        Assert.That(Directory.Exists(Path.GetDirectoryName(first)), Is.False);
+        var grace = LauncherRunCopy.PickedGrace;
+        LauncherRunCopy.PickedGrace = TimeSpan.Zero;
+        try
+        {
+            var app = temp.New();
+            var exe = Deploy(app, "v1", new DateTime(2026, 11, 26, 12, 0, 0, DateTimeKind.Utc));
+            var first = LauncherRunCopy.Resolve(exe);
+            Deploy(app, "v2!", new DateTime(2026, 11, 26, 13, 0, 0, DateTimeKind.Utc));
+            // Meanwhile the old snapshot runs; the new one is answered once its background copy is done.
+            var second = first;
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            while (second == first && DateTime.UtcNow < deadline)
+            {
+                second = LauncherRunCopy.Resolve(exe);
+                if (second == first) Thread.Sleep(50);
+            }
+            Assert.That(second, Is.Not.EqualTo(first));
+            Assert.That(File.ReadAllText(second), Is.EqualTo("v2!"));
+            Thread.Sleep(20);
+            LauncherRunCopy.Resolve(exe);
+            Assert.That(Directory.Exists(Path.GetDirectoryName(first)), Is.False);
+        }
+        finally { LauncherRunCopy.PickedGrace = grace; }
     }
 
     [Test]

@@ -13,12 +13,24 @@ public sealed record OrchestratorOptions
         return WithLauncher(options, s);
     }
 
-    /// <summary><paramref name="options"/> with the Launcher the settings name (blank keeps the default) and its run copies on.</summary>
-    private static OrchestratorOptions WithLauncher(OrchestratorOptions options, Settings.OrchestratorSettings? s) => options with
+    /// <summary><paramref name="options"/> with the Launcher the settings name (blank keeps the default) and its run copies on.
+    /// Left at the default on a PC with no Launcher there (no R: drive), the release installer's fallbacks are tried next.</summary>
+    private static OrchestratorOptions WithLauncher(OrchestratorOptions options, Settings.OrchestratorSettings? s)
     {
-        LauncherExe = s?.LauncherExe is { Length: > 0 } exe ? exe.Trim() : options.LauncherExe,
-        LauncherRunCopies = true,
-    };
+        var exe = s?.LauncherExe is { Length: > 0 } set ? set.Trim() : options.LauncherExe;
+        if (string.Equals(exe, Settings.OrchestratorSettings.DefaultLauncherExe, StringComparison.OrdinalIgnoreCase) && !File.Exists(exe))
+            exe = InstalledLauncherFallbacks().FirstOrDefault(File.Exists) ?? exe;
+        return options with { LauncherExe = exe, LauncherRunCopies = true };
+    }
+
+    /// <summary>Where release.ps1's installer puts the Launcher when the default's drive is missing (M.ORCH-T2285): under C:\Apps,
+    /// else per-user Programs.</summary>
+    private static IEnumerable<string> InstalledLauncherFallbacks()
+    {
+        const string relative = @"MindAttic.Launcher\Release\MindAttic.Launcher.exe";
+        yield return Path.Combine(@"C:\Apps", relative);
+        yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", relative);
+    }
 
     /// <summary>Like <see cref="Load"/>, but false when <c>settings.json</c> is there and can't be read (a typo from a hand
     /// edit, held past the retries): its defaults aren't the workspace you picked, so nothing should switch to them.</summary>

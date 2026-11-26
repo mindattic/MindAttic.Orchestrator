@@ -49,7 +49,8 @@ public sealed class SessionControl(OrchestratorOptions options)
     {
         if (configDir is not null && provider != "Claude")
             return SessionStart.Failed($"--account is a Claude login: {provider} has none.");
-        if (!File.Exists(LauncherPath()))
+        var launcher = LauncherPath();
+        if (!File.Exists(launcher))
             return SessionStart.Failed($"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1 -Redeploy).");
         if (!Directory.Exists(directory))
             return SessionStart.Failed($"Folder not found: {directory}");
@@ -59,7 +60,7 @@ public sealed class SessionControl(OrchestratorOptions options)
         // from Windows Terminal, not this process, so Codex's and Gemini's keys are left to the Launcher's host here.
         PrepareProvider(provider);
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
-        foreach (var a in StartArguments(title, directory, provider, prompt, configDir, resumeSession, agent)) psi.ArgumentList.Add(a);
+        foreach (var a in StartArguments(title, directory, provider, prompt, configDir, resumeSession, agent, launcher)) psi.ArgumentList.Add(a);
         try
         {
             // Outside the caller's job (M.ORCH-T1691): a terminal opened by a command run in a hosted CLI outlives that CLI.
@@ -84,11 +85,12 @@ public sealed class SessionControl(OrchestratorOptions options)
         running = null;
         if (email is not null && AccountDirs.Normalize(email) is null)
             return $"\"{email}\" isn't an email address: the Launcher's --account takes the account's whole email.";
-        if (!File.Exists(LauncherPath()))
+        var launcher = LauncherPath();
+        if (!File.Exists(launcher))
             return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1 -Redeploy).";
         if ((running = LauncherMenuOf(LauncherMenus(), email)) is not null) return null;
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
-        foreach (var a in LauncherArguments(email)) psi.ArgumentList.Add(a);
+        foreach (var a in LauncherArguments(email, launcher)) psi.ArgumentList.Add(a);
         try
         {
             // Outside the caller's job (M.ORCH-T1691): a terminal opened by a command run in a hosted CLI outlives that CLI.
@@ -108,13 +110,13 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// workspace root, running the Launcher (with <c>--account</c> for a per-CLI login). A per-CLI login's Launcher is started by
     /// a PowerShell that sets its <c>CLAUDE_CONFIG_DIR</c> and long-lived token first (M.ORCH-T696), as a repo tab on it is, so
     /// every CLI started from its menu inherits both.</summary>
-    internal IEnumerable<string> LauncherArguments(string? email)
+    internal IEnumerable<string> LauncherArguments(string? email, string? launcher = null)
     {
         var normalized = AccountDirs.Normalize(email);
         var configDir = normalized is null ? null : Dirs.For(normalized).Directory;
         var look = Look(configDir);
         var title = LauncherTitle(look);
-        var launcher = LauncherPath();
+        launcher ??= LauncherPath();
         var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(launcher) ?? ".";
         string[] tab = ["-w", look.Window, "new-tab", "--title", title, "--tabColor", look.TabColor, "-d", root, "--"];
         string[] all = configDir is null
@@ -284,8 +286,9 @@ public sealed class SessionControl(OrchestratorOptions options)
         () => [.. new MindAttic.Tickets.Workspace(options.WorkspaceRoot).Repos().Select(r => r.Name)];
 
     internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt, string? configDir = null, string? resumeSession = null,
-        string? agentId = null)
+        string? agentId = null, string? launcher = null)
     {
+        launcher ??= LauncherPath();
         // A Claude tab gathers in its login's own window, badged and colored as that login; other providers have no login.
         var look = provider == "Claude" ? Look(configDir) : null;
         var tabTitle = TabTitle(title, provider, look, RepoNames);
@@ -303,7 +306,7 @@ public sealed class SessionControl(OrchestratorOptions options)
             // Its long-lived token (M.ORCH-T696), when the login has one, goes in beside the folder.
             // Its agent id (M.ORCH-T1743) beside them, which the Launcher's CLI inherits through /clear and its restarts.
             var agentEnv = Term.AgentIds.Normalize(agentId) is { } agent ? $"$env:{Term.AgentIds.EnvVar} = {AccountDirs.Ps(agent)}; " : "";
-            var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}{agentEnv}& {AccountDirs.Ps(LauncherPath())} host --path {AccountDirs.Ps(directory)} " +
+            var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}{agentEnv}& {AccountDirs.Ps(launcher)} host --path {AccountDirs.Ps(directory)} " +
                 $"--title {AccountDirs.Ps(tabTitle)} --provider {AccountDirs.Ps(provider)}" + resumeArg +
                 (resumeArg.Length > 0 || string.IsNullOrWhiteSpace(prompt) ? "" : $" --prompt {AccountDirs.Ps(SafePrompt(prompt))}") + "; exit $LASTEXITCODE";
             string[] wrapped = [.. tab, "-d", directory, "--",
@@ -313,7 +316,7 @@ public sealed class SessionControl(OrchestratorOptions options)
         string[] head =
         [
             .. tab, "-d", directory, "--",
-            LauncherPath(), "host", "--path", directory, "--title", tabTitle, "--provider", provider,
+            launcher, "host", "--path", directory, "--title", tabTitle, "--provider", provider,
         ];
         if (resumeSession is { Length: > 0 }) head = [.. head, "--resume", resumeSession];
         // A double quote (or a line break) in the prompt survives .NET's quoting but not wt's own re-parse,

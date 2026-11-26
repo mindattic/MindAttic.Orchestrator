@@ -304,8 +304,10 @@ Starting sessions needs the deployed Launcher at `R:\MindAttic\Apps\MindAttic.La
 (`MindAttic.Launcher\run.ps1 -Redeploy`; the Orchestrator's "Launcher exe" setting in MindAttic Vault, Folders group, points
 elsewhere). Every Launcher the dashboard starts (menus, agent tabs, Commit all) runs from a snapshot of that folder under
 `MindAttic.Launcher\Run\<build>`, one per build, so a Launcher redeploy, which stops whatever runs from the Release folder it
-replaces, leaves open tabs running; the next tab opened picks up the new build, and a snapshot is deleted once nothing runs from
-it (M.ORCH-T2285).
+replaces, leaves open tabs running; tabs opened after it pick up the new build once its snapshot is copied (in the background:
+the previous build runs meanwhile), and a snapshot is deleted once nothing runs from it (M.ORCH-T2285). With the setting left at
+its default and no R: drive, the Orchestrator looks for the Launcher under `C:\Apps`, then per-user Programs, where the release
+installer puts it.
 
 ### Settings reference
 
