@@ -116,7 +116,7 @@ public sealed class TabStatusTests
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
+        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"LoginTreeScroller\"", StringComparison.Ordinal)];
         Assert.That(strip, Does.Not.Contain("need you\" />"));
         Assert.That(strip, Does.Not.Contain("TabBadge"));
     }
@@ -270,7 +270,7 @@ public sealed class TabStatusTests
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
 
-        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
+        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"LoginTreeScroller\"", StringComparison.Ordinal)];
         // The library's MaTabItem draws the trailing text after the name (M.ORCH-T667); the status icon (M.ORCH-T757), boxed into
         // status badges (M.ORCH-T1173), replaced its status light: a gray "zzz" box idle (or every open CLI stopped), a green
         // box with a spinning glyph busy (M.ORCH-T1270, in place of the M.ORCH-T1261 CLI-count digit), a plain static "?" when a
@@ -517,7 +517,7 @@ public sealed class TabStatusTests
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
 
-        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
+        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"LoginTreeScroller\"", StringComparison.Ordinal)];
         Assert.That(strip, Does.Contain("x:Name=\"TabLockedBadge\"").And.Contain("Style=\"{StaticResource MaTag}\"").And.Contain("Width=\"18\" Height=\"18\"")
             .And.Contain("Content=\"&#x1F512;\"").And.Contain("Background=\"{DynamicResource MaBad}\"").And.Contain("{Binding ShowsLockedBadge,"),
             "the same boxed MaTag pattern as TabIdleBadge, its own glyph, never reusing TabDisabledGlyph's binding");
