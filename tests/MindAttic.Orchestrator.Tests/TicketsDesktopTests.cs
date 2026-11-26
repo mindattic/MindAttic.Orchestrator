@@ -75,9 +75,9 @@ public sealed class TicketsDesktopTests
             .Where(e => !e.AncestorsAndSelf(p + "TextBlock").Any(t => (string?)t.Attribute("Visibility") is { } v
                 && v.Contains("Binding IsTicket") && v.Contains("FalseToVisible")));
         Assert.That(plain, Is.Empty, "no ticket id or title left as plain text");
-        // Free text that names tickets (the dashboard's message, the queue's last line) links each id it names.
-        Assert.That(doc.Descendants(p + "TextBlock").Count(e => e.Attribute(XName.Get("{clr-namespace:MindAttic.Orchestrator.Wpf}TicketText.Text")) is not null),
-            Is.GreaterThanOrEqualTo(2));
+        // The window's free text that named tickets (the queue's message, a per-user ticket's status) went with the login's
+        // home page (M.ORCH-T2225, M.ORCH-T2238), so no TextBlock uses TicketText.Text any more; TicketsDesktop.Split itself is
+        // covered below (M.ORCH-T2282).
     }
 
     [Test]
