@@ -387,7 +387,12 @@
                                 <!-- A folder OAuth-signed in as another account says so on its own node (M.ORCH-T1954), in the
                                      theme's warning colour; collapsed while it's signed in as itself. -->
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding TabFaceTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <!-- Margin-top -1 (M.ORCH-T2264): WPF centers a TextBlock's layout box, which has more empty
+                                         space below the font's baseline than above it, against the icon's own tight bounding box
+                                         (a glyph centered in its 20x20 cell) - so without this nudge the title reads as sitting
+                                         low next to it. Only the title gets the nudge; WrongAccountLine below it keeps its own
+                                         position relative to the title unchanged. -->
+                                    <TextBlock Text="{Binding TabFaceTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,-1,0,0" />
                                     <TextBlock Text="{Binding WrongAccountLine}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap"
                                                Visibility="{Binding WrongAccountLine, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                                 </StackPanel>
@@ -702,8 +707,10 @@
                                             <!-- Name, not Title (M.ORCH-T1768): Title still carries the login's initials
                                                  ("RD: Prose"), redundant here since this row already sits nested under
                                                  that very login's own header, the same reason the flat CLI tab bar's own
-                                                 TerminalTabName already binds Name instead. -->
-                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                                 TerminalTabName already binds Name instead. Margin-top -1 (M.ORCH-T2264):
+                                                 the same optical-centering nudge as the root row's title, against this
+                                                 row's own 20x20 icon/badge cell. -->
+                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Margin="0,-1,0,0" />
                                         </DockPanel>
                                     </Grid>
                                 </DataTemplate>
