@@ -261,9 +261,10 @@ public sealed class AccountSwitchTests
         // orchestrator billing stays the command-line tool.
         Assert.That(xaml, Does.Not.Contain("x:Name=\"ApiKeyBody\"").And.Not.Contain("x:Name=\"BillingToggleButton\"")
             .And.Not.Contain("{Binding ToggleBillingCommand}"));
-        // Billing's detail stays off the person's stats; the Last updated tile went with the other limit tiles (M.ORCH-T1094),
-        // and the person's stats themselves went with the rest of the home page (M.ORCH-T2238) - neither binding is anywhere
-        // in the dashboard any more.
-        Assert.That(xaml, Does.Not.Contain("{Binding LastUpdatedCaption}").And.Not.Contain("{Binding BillingDetail}"));
+        // The Last updated tile went with the other limit tiles (M.ORCH-T1094), and the person's stats themselves went with
+        // the rest of the home page (M.ORCH-T2238) - its binding is gone. BillingDetail is bound only by the billing detail
+        // line beside the org-wide actions (asserted above), nowhere else.
+        Assert.That(xaml, Does.Not.Contain("{Binding LastUpdatedCaption}"));
+        Assert.That(xaml.Split("{Binding BillingDetail}").Length - 1, Is.EqualTo(1), "only the billing detail line binds it");
     }
 }
