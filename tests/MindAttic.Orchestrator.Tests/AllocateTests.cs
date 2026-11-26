@@ -362,7 +362,9 @@ public sealed class AllocateTests
         var (none, why) = Allocate.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["A"], null, claim: false, Now, _ => "main",
             cli: 3, pilots: pilots);
         Assert.That(none, Is.Empty);
-        Assert.That(why, Does.Contain("allowance is full (8 of 8: 7 running, 1 claimed by other CLIs with no subagent on yet)").And.Not.Contain("fair share"));
+        // M.ORCH-T2246: the message names each claimant CLI (with its /allocate repos) so a stale claim can be found.
+        Assert.That(why, Does.Contain("allowance is full (8 of 8: 7 running, 1 claimed by other CLIs with no subagent on yet: 1 by CLI 2 (B))")
+            .And.Contain("this CLI, with 0, is under its share").And.Not.Contain("fair share"));
     }
 
     /// <summary>M.ORCH-T558: the first CLI to turn /allocate on claimed every place before the CLIs opened just after it could.</summary>
