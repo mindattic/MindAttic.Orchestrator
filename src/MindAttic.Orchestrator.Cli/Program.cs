@@ -534,7 +534,7 @@ internal sealed class SendCommand : AsyncCommand<SendCommand.Settings>
             if (settings.NoSubmit ? await SessionControl.SendAsync(h.PipeName, settings.Text, submit: false)
                                   : await SessionControl.SubmitAsync(h.PipeName, settings.Text)) sent++;
         AnsiConsole.MarkupLine($"Delivered to {sent} of {repo.Hosts.Count} session(s).");
-        return sent > 0 ? 0 : 1;
+        return sent == repo.Hosts.Count ? 0 : 1;
     }
 }
 

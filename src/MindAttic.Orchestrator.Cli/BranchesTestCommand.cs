@@ -69,7 +69,8 @@ internal sealed class BranchesTestCommand : AsyncCommand<BranchesTestCommand.Set
             }
             var chosen = Choose(queue, settings.Repo, settings.Branches, out var unmatched);
             foreach (var name in unmatched)
-                AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(name)} isn't in the queue (built clean at a head not tested yet); skipped.[/]");
+                if (settings.Json) Console.Error.WriteLine($"{name} isn't in the queue (built clean at a head not tested yet); skipped.");
+                else AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(name)} isn't in the queue (built clean at a head not tested yet); skipped.[/]");
             if (chosen.Count == 0)
             {
                 if (settings.Json) Console.WriteLine("[]");

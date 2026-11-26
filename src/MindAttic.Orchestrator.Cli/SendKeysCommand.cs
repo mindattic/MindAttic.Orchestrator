@@ -53,7 +53,7 @@ internal sealed class SendKeysCommand : AsyncCommand<SendKeysCommand.Settings>
         {
             await SendKeys.SendAsync(session.Id, settings.Text).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or InvalidDataException or EndOfStreamException)
+        catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or InvalidDataException or EndOfStreamException or UnauthorizedAccessException)
         {
             AnsiConsole.MarkupLine($"[red]Couldn't send to {Markup.Escape(row.Repo)} (pid {row.Pid}): {Markup.Escape(ex.Message)}.[/]");
             return 1;
@@ -129,8 +129,9 @@ internal static class SendKeys
         using var timeout = new CancellationTokenSource(Timeout);
         await using var stream = await connect(pipeName, timeout.Token).ConfigureAwait(false);
 
+        // 0x0: never takes the session's size, and its typing can't apply one (ViewerPolicy.Join/OwnerSize, M.ORCH-T2302).
         await stream.WriteAsync(TermProtocol.Frame(TermFrameKind.Hello,
-            TermProtocol.Hello(TermProtocol.Version, 120, 30, interactive: true, ViewerId)), timeout.Token).ConfigureAwait(false);
+            TermProtocol.Hello(TermProtocol.Version, 0, 0, interactive: true, ViewerId)), timeout.Token).ConfigureAwait(false);
 
         var bracketed = false;
         var live = false;

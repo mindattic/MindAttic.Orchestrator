@@ -201,7 +201,7 @@ public static class OrgStore
     /// False when there's no such org.</summary>
     public static bool RemoveOrg(this OrchestratorDb db, string id)
     {
-        if (id == Organization.DefaultId) throw new ArgumentException("The default org can't be removed; rename it instead.", nameof(id));
+        if (id.Equals(Organization.DefaultId, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The default org can't be removed; rename it instead.", nameof(id));
         var removed = false;
         db.WriteData((connection, tx) =>
         {

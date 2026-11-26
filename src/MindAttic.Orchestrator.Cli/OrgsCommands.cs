@@ -109,7 +109,7 @@ internal sealed class OrgsRemoveCommand : Command<OrgsRemoveCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        if (settings.Id.Trim() == Organization.DefaultId)
+        if (settings.Id.Trim().Equals(Organization.DefaultId, StringComparison.OrdinalIgnoreCase))
         {
             AnsiConsole.MarkupLine("[red]The default org can't be removed; rename it instead.[/]");
             return 1;

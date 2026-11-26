@@ -132,7 +132,7 @@ internal sealed class GatewayRevokeCommand : Command<GatewayRevokeCommand.Settin
             ? $"[green]Revoked {removed} grant{(removed == 1 ? "" : "s")}[/] to {Markup.Escape(email)}. A stream it allowed closes within seconds."
             : $"[grey]{Markup.Escape(email)} had no such grant.[/]");
         AnsiConsole.MarkupLine("[grey]Members of the same org may still watch by default; take them out of the org (orchestrator orgs) or the members to stop that.[/]");
-        return 0;
+        return removed > 0 ? 0 : 1;
     }
 }
 

@@ -366,7 +366,8 @@ public static class TermProtocol
     public static string PastePayload(string text, bool bracketed)
     {
         if (text.Length == 0) return "";
-        text = text.Replace("\r\n", "\r").Replace('\n', '\r');
+        // A paste-end marker inside TEXT would end the bracket early and run the rest as keystrokes (M.ORCH-T2302).
+        text = text.Replace("\u001b[200~", "").Replace("\u001b[201~", "").Replace("\r\n", "\r").Replace('\n', '\r');
         return bracketed ? "\u001b[200~" + text + "\u001b[201~" : text;
     }
 }
