@@ -180,7 +180,7 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
                 return Parse(doc.RootElement, nowUtc);
             }
         }
-        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or JsonException or InvalidOperationException or FormatException) { }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or JsonException or InvalidOperationException or FormatException or ArgumentOutOfRangeException) { }
         return null;
     }
 
@@ -199,7 +199,8 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
             using var doc = JsonDocument.Parse(stream);
             return Parse(doc.RootElement, nowUtc, anyAge);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException)
+        // ArgumentOutOfRangeException: a resets_at in milliseconds is past FromUnixTimeSeconds' range (M.ORCH-T2295).
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException or ArgumentOutOfRangeException)
         {
             return null;
         }

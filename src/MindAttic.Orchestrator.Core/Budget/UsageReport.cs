@@ -39,7 +39,7 @@ public sealed record UsageReportRow
     public double? WeekLeft => WeekUsed is { } u ? Math.Max(0, 100 - u) : null;
     /// <summary>Points left before the weekly target (<see cref="UsageReport.WeeklyTargetPercent"/>); negative once past it.</summary>
     public double? LeftToTarget { get; init; }
-    /// <summary>This member's cutoffs (M.ORCH-T707): the percent of its week and of its 5-hour window where its access is cut off (90 and 96 unless the user set others with <c>org limit</c>).</summary>
+    /// <summary>This member's cutoffs (M.ORCH-T707): the percent of its week and of its 5-hour window where its access is cut off (90 and 98 unless the user set others with <c>org limit</c>).</summary>
     public int WeeklyCutoff { get; init; } = UsageCutoffs.DefaultWeeklyPercent;
     /// <summary>The percent of its 5-hour window where this member's access is cut off (see <see cref="WeeklyCutoff"/>).</summary>
     public int FiveHourCutoff { get; init; } = UsageCutoffs.DefaultFiveHourPercent;

@@ -259,7 +259,8 @@ public static class PaceLedger
                     r.TryGetProperty("tool", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null,
                     r.TryGetProperty("account", out var ac) && ac.ValueKind == JsonValueKind.String ? ac.GetString() : null));
             }
-            catch (JsonException) { }
+            // InvalidOperationException: an "at" or "decision" that isn't a string (M.ORCH-T2295).
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException) { }
         }
         return events;
     }
@@ -281,7 +282,7 @@ public static class PaceLedger
     private static string? AtOf(string line)
     {
         try { using var doc = JsonDocument.Parse(line); return doc.RootElement.TryGetProperty("at", out var a) ? a.GetString() : null; }
-        catch (JsonException) { return null; }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException) { return null; }
     }
 
     // Shared read: the hooks append while this reads.
