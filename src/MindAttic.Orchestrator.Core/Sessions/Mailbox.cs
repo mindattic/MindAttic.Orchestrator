@@ -115,6 +115,7 @@ public sealed class Mailbox(OrchestratorDb db)
         var marked = 0;
         db.WriteData((connection, tx) =>
         {
+            marked = 0; // a busy retry runs this again
             foreach (var id in list)
                 marked += Sql.Run(connection, tx, $"UPDATE {Table} SET read_utc = @at WHERE id = @id AND read_utc IS NULL;",
                     ("@at", Text(Utc(nowUtc))), ("@id", id));

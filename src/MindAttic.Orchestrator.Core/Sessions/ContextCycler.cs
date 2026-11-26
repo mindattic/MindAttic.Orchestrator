@@ -50,7 +50,14 @@ public sealed class ContextCycler(string? directory = null)
 
     /// <summary>The session a CLI is in now: its newest. A CLI that ran /clear keeps the state files of the sessions before,
     /// all with its process id, and the first of those by file name is any of them.</summary>
-    public string? LatestSessionOf(int pid) => Load().Where(s => s.Pid == pid).MaxBy(s => s.TurnUtc)?.SessionId;
+    public string? LatestSessionOf(int pid) => Load().Where(s => s.Pid == pid).MaxBy(Newest)?.SessionId;
+
+    /// <summary>When the context gate last wrote the session's state, its start included (1601 when it's gone since).</summary>
+    public DateTime WrittenUtc(string sessionId) => File.GetLastWriteTimeUtc(Path.Combine(Directory, sessionId + ".state.json"));
+
+    /// <summary>The sort key of a CLI's newest session: when its state was written, then its last turn. A session /clear just
+    /// started has had no turn, so the turn alone picks the one before it.</summary>
+    public (DateTime Written, DateTime Turn) Newest(SessionContext s) => (WrittenUtc(s.SessionId), s.TurnUtc);
 
     /// <summary>Each CLI's login, by process id: the config folder its newest session runs under (<see cref="OnOwnLogin"/>),
     /// null on the global login (M.ORCH-T674).</summary>
@@ -58,7 +65,7 @@ public sealed class ContextCycler(string? directory = null)
     {
         var own = OnOwnLogin();
         var newest = Load().Where(s => s.Pid is not null).GroupBy(s => s.Pid!.Value)
-            .ToDictionary(g => g.Key, g => g.MaxBy(s => s.TurnUtc)!.SessionId);
+            .ToDictionary(g => g.Key, g => g.MaxBy(Newest)!.SessionId);
         return pid => newest.TryGetValue(pid, out var session) && own.TryGetValue(session, out var dir)
             ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir)) : null;
     }
