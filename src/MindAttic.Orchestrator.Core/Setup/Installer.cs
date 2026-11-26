@@ -206,12 +206,20 @@ public sealed class Installer
     {
         try { File.Copy(runningExe, LegacyExe, overwrite: true); return; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        string? aside = null;
         try
         {
-            if (File.Exists(LegacyExe)) File.Move(LegacyExe, $"{LegacyExe}.{Environment.ProcessId}.{DateTime.UtcNow:yyyyMMddHHmmss}.old", overwrite: true);
+            if (File.Exists(LegacyExe)) File.Move(LegacyExe, aside = $"{LegacyExe}.{Environment.ProcessId}.{DateTime.UtcNow:yyyyMMddHHmmss}.old", overwrite: true);
             File.Copy(runningExe, LegacyExe, overwrite: true);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The old exe goes back rather than being swept below with the other .old files (M.ORCH-T2297).
+            try { if (aside is not null && File.Exists(aside)) File.Move(aside, LegacyExe, overwrite: true); }
+            catch (Exception restoreEx) when (restoreEx is IOException or UnauthorizedAccessException) { OrchestratorLog.For("Installer").Warning(restoreEx, "Putting the old {Exe:l} back failed", LegacyExe); }
+            OrchestratorLog.For("Installer").Warning(ex, "Copying this build over {Exe:l} failed; the old one is kept", LegacyExe);
+            return;
+        }
         foreach (var old in SafeFiles(InstallDir, LegacyExeName + ".*.old"))
             try { File.Delete(old); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }

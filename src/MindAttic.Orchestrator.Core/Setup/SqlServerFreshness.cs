@@ -145,6 +145,13 @@ public sealed partial class SqlServerFreshness(IProcessRunner runner, JsonStore 
     /// <summary>Integrates origin/main (a merge, as the database sync does: agents push to main from this checkout too) and pushes.</summary>
     private static bool Push(Func<string[], ProcessResult> git, out string why)
     {
+        // Another branch would be merged with origin/main and pushed as main (M.ORCH-T2297).
+        var branch = git(["rev-parse", "--abbrev-ref", "HEAD"]);
+        if (branch.ExitCode != 0 || branch.TimedOut || branch.Output.Trim() != "main")
+        {
+            why = $"the checkout isn't on main ({(branch.Output + branch.Error).Trim()})";
+            return false;
+        }
         var fetch = git(["fetch", "-q", "origin"]);
         if (fetch.ExitCode == 0 && !fetch.TimedOut)
         {

@@ -2,8 +2,10 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Win32;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Term;
 
@@ -17,7 +19,7 @@ namespace MindAttic.Orchestrator.Setup;
 /// and its dashboard is the host's Team Wall, reached through the host's gateway with the host's owner key (tokens are minted
 /// as needed, so the link never lapses). See docs/REMOTE_HOST.md.
 /// </summary>
-public sealed class MachineSetup(Action<string> say, string? workspaceRoot = null)
+public sealed partial class MachineSetup(Action<string> say, string? workspaceRoot = null)
 {
     /// <summary>The name of the inbound firewall rule the host opens for its gateway.</summary>
     public const string FirewallRule = "MindAttic Orchestrator Gateway";
@@ -314,22 +316,40 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
         Directory.CreateDirectory(ShimDirectory);
         File.WriteAllText(Path.Combine(ShimDirectory, "tickets.cmd"), $"@\"{exe}\" machine tickets -- %*\r\n@exit /b %ERRORLEVEL%\r\n", new UTF8Encoding(false));
         File.WriteAllText(Path.Combine(ShimDirectory, "tickets"), $"#!/bin/sh\nexec \"{exe.Replace('\\', '/')}\" machine tickets -- \"$@\"\n", new UTF8Encoding(false));
-        var path = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.User) ?? "";
-        var parts = path.Split(';', StringSplitOptions.RemoveEmptyEntries).Where(p => !p.TrimEnd('\\').Equals(ShimDirectory, StringComparison.OrdinalIgnoreCase));
-        Environment.SetEnvironmentVariable("Path", string.Join(';', new[] { ShimDirectory }.Concat(parts)), EnvironmentVariableTarget.User);
+        var parts = ReadUserPath().Split(';', StringSplitOptions.RemoveEmptyEntries).Where(p => !p.TrimEnd('\\').Equals(ShimDirectory, StringComparison.OrdinalIgnoreCase));
+        WriteUserPath(string.Join(';', new[] { ShimDirectory }.Concat(parts)));
         say($"tickets on this PC now runs on the host (shim in {ShimDirectory}, first on your PATH; new terminals pick it up).");
     }
 
     private void RemoveTicketsShim()
     {
-        var path = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.User) ?? "";
-        var parts = path.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
+        var parts = ReadUserPath().Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
         if (parts.RemoveAll(p => p.TrimEnd('\\').Equals(ShimDirectory, StringComparison.OrdinalIgnoreCase)) > 0)
-            Environment.SetEnvironmentVariable("Path", string.Join(';', parts), EnvironmentVariableTarget.User);
+            WriteUserPath(string.Join(';', parts));
         try { if (Directory.Exists(ShimDirectory)) Directory.Delete(ShimDirectory, recursive: true); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { OrchestratorLog.For("MachineSetup").Warning(ex, "Removing the tickets shim directory failed; contained"); }
         say("tickets runs on this machine again.");
     }
+
+    // The raw REG_EXPAND_SZ value: Environment's User Path is expanded and written back as REG_SZ, freezing %VARS% (M.ORCH-T2297).
+    private static string ReadUserPath()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey("Environment");
+        return key?.GetValue("Path", null, RegistryValueOptions.DoNotExpandEnvironmentNames) as string ?? "";
+    }
+
+    private static void WriteUserPath(string value)
+    {
+        using (var key = Registry.CurrentUser.CreateSubKey("Environment"))
+            key.SetValue("Path", value, RegistryValueKind.ExpandString);
+        SendMessageTimeout(HwndBroadcast, WmSettingChange, IntPtr.Zero, "Environment", SmtoAbortIfHung, 5000, out _);
+    }
+
+    private static readonly IntPtr HwndBroadcast = new(0xffff);
+    private const uint WmSettingChange = 0x001A, SmtoAbortIfHung = 0x0002;
+
+    [LibraryImport("user32.dll", EntryPoint = "SendMessageTimeoutW", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wParam, string lParam, uint flags, uint timeoutMs, out IntPtr result);
 
     /// <summary>A client of the host's gateway (hub phase 2, M.ORCH-T1641: starting, stopping and consenting from a member's PC), or
     /// null when this machine isn't a client connected to a host. The caller disposes it.</summary>
@@ -407,6 +427,13 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
                 return false;
             }
         }
+        // Another branch would be merged with origin/main and pushed as main (M.ORCH-T2297).
+        var branch = Run("git", ["-C", repo, "rev-parse", "--abbrev-ref", "HEAD"], GitTimeout);
+        if (branch.Code != 0 || branch.Output.Trim() != "main")
+        {
+            say($"{Path.GetFileName(repo)} isn't on main ({FirstLine(branch.Output)}); committed there but not pushed. Switch it to main and push.");
+            return false;
+        }
         // Agents push to main from this checkout too: take theirs in first (a merge, as the daemon's sync does).
         Run("git", ["-C", repo, "fetch", "-q", "origin"], GitTimeout);
         var merge = Run("git", ["-C", repo, "merge", "-q", "--no-edit", "origin/main"], GitTimeout);
@@ -477,7 +504,9 @@ public sealed class MachineSetup(Action<string> say, string? workspaceRoot = nul
             // either) or this machine has never successfully copied before (e.g. local writes made in Standalone mode,
             // about to be overwritten for the first time as a client) - back it up in that case too, not just a confirmed
             // change, so those writes are never silently lost.
-            if (File.Exists(mirror) && (!File.Exists(stamp) || File.GetLastWriteTimeUtc(mirror).Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture) != File.ReadAllText(stamp).Trim()))
+            // A non-empty WAL holds writes not yet checkpointed into the main file, whose mtime then hasn't moved (M.ORCH-T2297).
+            var wal = new FileInfo(mirror + "-wal");
+            if (File.Exists(mirror) && (!File.Exists(stamp) || (wal.Exists && wal.Length > 0) || File.GetLastWriteTimeUtc(mirror).Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture) != File.ReadAllText(stamp).Trim()))
             {
                 var kept = Path.ChangeExtension(mirror, $".local-{DateTime.Now:yyyyMMdd-HHmmss}.db");
                 File.Copy(mirror, kept, overwrite: true);
