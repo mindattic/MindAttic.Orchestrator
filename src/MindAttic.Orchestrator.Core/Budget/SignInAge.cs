@@ -41,16 +41,25 @@ public sealed record SignInAge(DateTime? SinceUtc, DateTime ExpiresUtc)
             || oauth["refreshTokenExpiresAt"] is not JsonValue v || !v.TryGetValue<long>(out var ms)) return null;
         var expires = DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime;
         var sidecar = Path.Combine(Path.GetDirectoryName(credentialsPath) ?? ".", SidecarName);
-        if (File.Exists(sidecar) && JsonNode.Parse(File.ReadAllText(sidecar)) is JsonObject seen
+        if (File.Exists(sidecar) && ParseOrNull(File.ReadAllText(sidecar)) is JsonObject seen
             && seen["refreshTokenExpiresAt"] is JsonValue sv && sv.TryGetValue<long>(out var seenMs) && seenMs == ms
             && seen["firstSeenUtc"] is JsonValue fv && fv.TryGetValue<DateTime>(out var first))
             return new SignInAge(first.ToUniversalTime(), expires);
         try
         {
-            File.WriteAllText(sidecar, new JsonObject { ["refreshTokenExpiresAt"] = ms, ["firstSeenUtc"] = nowUtc }.ToJsonString());
+            var temp = sidecar + ".tmp";
+            File.WriteAllText(temp, new JsonObject { ["refreshTokenExpiresAt"] = ms, ["firstSeenUtc"] = nowUtc }.ToJsonString());
+            File.Move(temp, sidecar, overwrite: true);
             return new SignInAge(nowUtc, expires);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new SignInAge(null, expires); }
+    }
+
+    // A truncated sidecar reads as missing, so it is rewritten rather than failing every call (M.ORCH-T2292).
+    private static JsonNode? ParseOrNull(string json)
+    {
+        try { return JsonNode.Parse(json); }
+        catch (JsonException) { return null; }
     }
 
     /// <summary>"Sign-in: 1.3 days in, 18.7 / 20.0 days left"; just the days left with no known start; a sign-in-again

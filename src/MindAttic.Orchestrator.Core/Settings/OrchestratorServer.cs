@@ -142,7 +142,12 @@ public sealed class OrchestratorServer(string connectionString)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(ConfigFile)!);
         if (connection is null) File.Delete(ConfigFile);
-        else File.WriteAllText(ConfigFile, JsonSerializer.Serialize(new Dictionary<string, string> { ["SqlServer"] = connection }, new JsonSerializerOptions { WriteIndented = true }));
+        else
+        {
+            var temp = ConfigFile + ".tmp";
+            File.WriteAllText(temp, JsonSerializer.Serialize(new Dictionary<string, string> { ["SqlServer"] = connection }, new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temp, ConfigFile, overwrite: true);
+        }
         Reload();
     }
 

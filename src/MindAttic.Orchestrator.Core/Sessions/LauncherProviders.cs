@@ -97,7 +97,9 @@ public static partial class LauncherProviders
             var field = entry.FirstOrDefault(p => p.Key.Equals("runCommand", StringComparison.OrdinalIgnoreCase)).Key ?? "runCommand";
             entry[field] = WithModel(Text(entry, "runCommand"), model);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            var temp = path + ".tmp";
+            File.WriteAllText(temp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temp, path, overwrite: true);
             return null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)

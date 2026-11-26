@@ -41,8 +41,19 @@ public static class KimiConfigSync
         var nextHeaderIdx = contents.IndexOf("\n[", blockStart, StringComparison.Ordinal);
         var blockEnd = nextHeaderIdx < 0 ? contents.Length : nextHeaderIdx;
 
-        var keyIdx = contents.IndexOf("api_key", blockStart, StringComparison.Ordinal);
-        if (keyIdx < 0 || keyIdx >= blockEnd) return false;
+        // The line whose key is exactly api_key, not a comment or env_api_key mentioning it (M.ORCH-T2292).
+        var keyIdx = -1;
+        for (var lineStart = contents.IndexOf('\n', blockStart) + 1; lineStart > 0 && lineStart < blockEnd;
+             lineStart = contents.IndexOf('\n', lineStart) + 1)
+        {
+            var i = lineStart;
+            while (i < blockEnd && contents[i] is ' ' or '\t') i++;
+            if (!contents.AsSpan(i, blockEnd - i).StartsWith("api_key", StringComparison.Ordinal)) continue;
+            var j = i + "api_key".Length;
+            while (j < blockEnd && contents[j] is ' ' or '\t') j++;
+            if (j < blockEnd && contents[j] == '=') { keyIdx = i; break; }
+        }
+        if (keyIdx < 0) return false;
 
         var lineEnd = contents.IndexOf('\n', keyIdx);
         if (lineEnd < 0 || lineEnd > blockEnd) lineEnd = blockEnd;
@@ -66,7 +77,9 @@ public static class KimiConfigSync
         {
             var contents = File.ReadAllText(configPath);
             if (!TrySetApiKey(contents, table, apiKey, out var updated) || updated == contents) return false;
-            File.WriteAllText(configPath, updated);
+            var temp = configPath + ".tmp";
+            File.WriteAllText(temp, updated);
+            File.Move(temp, configPath, overwrite: true);
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

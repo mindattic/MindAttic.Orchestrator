@@ -125,7 +125,9 @@ public static class ProjectDiscovery
 
             var dir = Path.GetDirectoryName(file);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-            File.WriteAllText(file, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            var temp = file + ".tmp";
+            File.WriteAllText(temp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temp, file, overwrite: true);
             return repos.Count;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return 0; }
