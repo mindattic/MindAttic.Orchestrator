@@ -45,6 +45,8 @@ public sealed class ProcessRunner : IProcessRunner
     /// long timeout (a test run's, say), and a finished pipe drains at once (bughunt 2026-10-27).</summary>
     public static readonly TimeSpan PipeGrace = TimeSpan.FromSeconds(30);
 
+    private static readonly TimeSpan MaxWait = TimeSpan.FromMilliseconds(int.MaxValue);
+
     /// <summary>Runs <paramref name="file"/> with <paramref name="args"/> in its own job, ending its tree at <paramref name="timeout"/> (see <see cref="IProcessRunner.Run"/>).</summary>
     public ProcessResult Run(string file, IReadOnlyList<string> args, TimeSpan timeout)
     {
@@ -71,6 +73,8 @@ public sealed class ProcessRunner : IProcessRunner
         var output = p.StandardOutput.ReadToEndAsync();
         var error = p.StandardError.ReadToEndAsync();
         var started = Stopwatch.StartNew();
+        // WaitForExit throws past int.MaxValue ms (~24.8 days), which a hand-set timeout can reach (M.ORCH-T2301).
+        if (timeout > MaxWait) timeout = MaxWait;
         if (!p.WaitForExit(timeout))
         {
             // The job first: every process in it, whoever its parent is or was. Then the tree by parent pid, the fallback for a

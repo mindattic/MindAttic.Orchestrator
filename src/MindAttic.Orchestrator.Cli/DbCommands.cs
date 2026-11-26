@@ -71,7 +71,14 @@ internal sealed class DbMigrateCommand : Command<DbMigrateCommand.Settings>
         try
         {
             // Held for the copy: no daemon, dashboard or CLI writes the file between its rows being read and SQL Server taking over.
-            var copied = db.HoldingWrites(() => OrchestratorMigration.ToServer(db, connection, settings.Replace));
+            var copied = db.HoldingWrites(() =>
+            {
+                var tables = OrchestratorMigration.ToServer(db, connection, settings.Replace, configure: false);
+                OrchestratorServer.Configure(connection);
+                return tables;
+            });
+            // Cleared once the hold is let go: its own write lock would otherwise wait on the hold's (M.ORCH-T2301).
+            OrchestratorMigration.ClearServerOwned(db);
             db.SyncMirror();
             foreach (var c in copied) AnsiConsole.MarkupLine($"  {c.Table,-14} {c.Rows,7} rows");
             AnsiConsole.MarkupLine($"[green]The orchestrator's data is in {Markup.Escape(new OrchestratorServer(connection).Describe())} now[/]; every process uses it within seconds. " +

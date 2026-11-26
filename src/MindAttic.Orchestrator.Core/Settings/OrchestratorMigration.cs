@@ -60,9 +60,9 @@ public static class OrchestratorMigration
 
     /// <summary>Clears <paramref name="local"/>'s own copy of every table the server now alone keeps current (everything but
     /// <see cref="OrchestratorDb.Mirrored"/>, which the hooks still read here), once this machine is actually switched to it.
-    /// Internal so a test can check it directly, without going through <see cref="OrchestratorServer.Configure"/> (which would
-    /// flip this real machine's database.json).</summary>
-    internal static void ClearServerOwned(OrchestratorDb local)
+    /// Public so <c>orchestrator db migrate</c> can run it after letting go of its write hold, and a test can check it without
+    /// going through <see cref="OrchestratorServer.Configure"/> (which would flip this real machine's database.json).</summary>
+    public static void ClearServerOwned(OrchestratorDb local)
     {
         var serverOwned = OrchestratorServer.Tables.Select(t => t.Table).Except(OrchestratorDb.Mirrored, StringComparer.Ordinal);
         local.Write((c, tx) => { foreach (var table in serverOwned) Sql.Run(c, tx, $"DELETE FROM {table};"); }, dump: false);
@@ -76,7 +76,10 @@ public static class OrchestratorMigration
         var copied = new List<Copied>();
         using (var source = server.Open())
         {
-            var tables = OrchestratorServer.Tables.Select(t => (t.Table, Rows: Rows(source, null, t.Table, t.Table == "state" ? NotVolatile : null))).ToList();
+            // The server's write lock held from the read through the switch, so no write lands there unseen (M.ORCH-T2301).
+            using var held = source.BeginTransaction();
+            OrchestratorServer.Lock(source, held);
+            var tables = OrchestratorServer.Tables.Select(t => (t.Table, Rows: Rows(source, held, t.Table, t.Table == "state" ? NotVolatile : null))).ToList();
             local.Write((target, tx) =>
             {
                 foreach (var (table, rows) in tables)
@@ -86,8 +89,9 @@ public static class OrchestratorMigration
                     copied.Add(new Copied(table, rows.Count));
                 }
             }, dump: false);
+            if (configure) OrchestratorServer.Configure(null);
+            held.Rollback();
         }
-        if (configure) OrchestratorServer.Configure(null);
         try { local.WriteDump(local.Dump()); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         return copied;
