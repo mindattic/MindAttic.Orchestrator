@@ -1827,7 +1827,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 21270913);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6458305);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1575809);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1155256);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1249621);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4400641);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'MindAttic.Agency', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 18932);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1528159);
@@ -31948,66 +31948,21 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 89.355,
+      "Degraded": 89.67000000000002,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 85.1 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-26T14:51:15.0653201\u002B00:00",
+      "Reason": "p90 of 360 readings is 85.4 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-26T15:03:24.671259\u002B00:00",
       "Basis": 360
     },
     "RamFreeGb": {
-      "Degraded": 3.515,
-      "Unhealthy": 1.5150000000000001,
-      "Reason": "p10 of 360 readings is 3.7 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-26T14:51:15.0653201\u002B00:00",
+      "Degraded": 3.4105,
+      "Unhealthy": 1.4104999999999999,
+      "Reason": "p10 of 360 readings is 3.59 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-26T15:03:24.671259\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-24T22:05:53.1691295\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 87.255,
-      "FromUnhealthy": 97,
-      "ToDegraded": 87.36000000000001,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 83.2 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T22:08:05.3593581\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 87.36000000000001,
-      "FromUnhealthy": 97,
-      "ToDegraded": 87.465,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 83.3 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T22:33:42.4551732\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 87.465,
-      "FromUnhealthy": 97,
-      "ToDegraded": 87.57000000000001,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 83.4 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T22:35:23.4844407\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 87.57000000000001,
-      "FromUnhealthy": 97,
-      "ToDegraded": 87.675,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 83.5 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T22:37:17.7790558\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 87.675,
-      "FromUnhealthy": 97,
-      "ToDegraded": 87.885,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 83.7 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-24T22:42:54.6515753\u002B00:00",
       "Check": "RamFreeGb",
@@ -33762,6 +33717,51 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 89.355,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 85.1 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T14:59:00.2678365\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.355,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.565,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.3 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T15:01:32.403472\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.5054999999999996,
+      "FromUnhealthy": 1.5054999999999996,
+      "ToDegraded": 3.4484999999999997,
+      "ToUnhealthy": 1.4484999999999997,
+      "Reason": "p10 of 360 readings is 3.63 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T15:02:52.5628062\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.4484999999999997,
+      "FromUnhealthy": 1.4484999999999997,
+      "ToDegraded": 3.4294999999999995,
+      "ToUnhealthy": 1.4294999999999995,
+      "Reason": "p10 of 360 readings is 3.61 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T15:02:52.5628062\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.565,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.67000000000002,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.4 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T15:03:24.671259\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.4294999999999995,
+      "FromUnhealthy": 1.4294999999999995,
+      "ToDegraded": 3.4105,
+      "ToUnhealthy": 1.4104999999999999,
+      "Reason": "p10 of 360 readings is 3.59 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -33888,9 +33888,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39088": {
     "SessionId": "b773a79b-ba7e-46cb-9786-f886660e3188",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T19:47:43.9749224Z",
-    "StoppedUtc": "2026-11-26T14:47:47.3174994Z",
-    "DueUtc": "2026-11-26T19:49:43.9749224Z"
+    "UntilUtc": "2026-11-26T20:02:50.1055497Z",
+    "StoppedUtc": "2026-11-26T15:02:53.5225223Z",
+    "DueUtc": "2026-11-26T20:04:50.1055497Z"
   },
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
@@ -37323,8 +37323,9 @@ INSERT INTO state (name, value) VALUES ('reminders', '[
     "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
     "DueUtc": "2026-11-26T15:00:00Z",
     "CreatedUtc": "2026-11-22T22:04:26.814467Z",
+    "SentUtc": "2026-11-26T15:00:08.8174407Z",
     "Failures": 0,
-    "Pending": true,
+    "Pending": false,
     "ToLabel": "you",
     "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
   },
