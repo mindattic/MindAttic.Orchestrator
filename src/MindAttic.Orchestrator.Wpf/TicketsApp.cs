@@ -6,7 +6,8 @@ namespace MindAttic.Orchestrator.Wpf;
 /// <summary>
 /// The dashboard's Tickets button (M.ORCH-T878): opens Tickets Desktop, or brings its window forward when it's already
 /// running. The exe is where MindAttic.Tickets/run.ps1 installs it: the configured
-/// <see cref="OrchestratorOptions.TicketsDesktopExe"/> (C:\Apps\...), else %LOCALAPPDATA%\Programs\... when there's no C:\Apps.
+/// <see cref="OrchestratorOptions.TicketsDesktopExe"/> (R:\MindAttic\Apps\MindAttic.Tickets\Release\..., MAT-T177), else an
+/// install from before the shared run menu: C:\Apps\..., or %LOCALAPPDATA%\Programs\... when there was no C:\Apps.
 /// Never throws.
 /// </summary>
 public static partial class TicketsApp
@@ -74,6 +75,7 @@ public static partial class TicketsApp
         string[] candidates =
         [
             options.TicketsDesktopExe,
+            Path.Combine(@"C:\Apps", Name, Name + ".exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", Name, Name + ".exe"),
         ];
         return candidates.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c) && File.Exists(c));

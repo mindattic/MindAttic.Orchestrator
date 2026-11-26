@@ -77,7 +77,7 @@ public sealed record OrchestratorOptions
     public bool LauncherRunCopies { get; init; }
 
     /// <summary>The deployed Tickets Desktop (see MindAttic.Tickets/run.ps1), where a ticket id the dashboard lists opens (M.ORCH-T500).</summary>
-    public string TicketsDesktopExe { get; init; } = @"C:\Apps\MindAttic.Tickets.Desktop\MindAttic.Tickets.Desktop.exe";
+    public string TicketsDesktopExe { get; init; } = @"R:\MindAttic\Apps\MindAttic.Tickets\Release\MindAttic.Tickets.Desktop.exe";
 
     /// <summary>A transcript written this recently means the agent is mid-turn.</summary>
     public TimeSpan WorkingWindow { get; init; } = TimeSpan.FromMinutes(2);
