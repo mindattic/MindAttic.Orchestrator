@@ -1823,7 +1823,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1919919);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 47830);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-25', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 21270913);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6274560);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6282333);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1575809);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1155256);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4400641);
@@ -31947,113 +31947,14 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 91.35000000000001,
+      "Degraded": 88.30499999999999,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 87 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-26T11:47:58.0864712\u002B00:00",
+      "Reason": "p90 of 360 readings is 84.1 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-26T11:57:53.1307091\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-24T18:58:36.2781019\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.306,
-      "FromUnhealthy": 1.306,
-      "ToDegraded": 3.3345,
-      "ToUnhealthy": 1.3344999999999998,
-      "Reason": "p10 of 360 readings is 3.51 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T18:59:47.9668941\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.3345,
-      "FromUnhealthy": 1.3344999999999998,
-      "ToDegraded": 3.3534999999999995,
-      "ToUnhealthy": 1.3534999999999995,
-      "Reason": "p10 of 360 readings is 3.53 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T19:06:59.7469427\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.3534999999999995,
-      "FromUnhealthy": 1.3534999999999995,
-      "ToDegraded": 3.3345,
-      "ToUnhealthy": 1.3344999999999998,
-      "Reason": "p10 of 360 readings is 3.51 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T19:07:31.3690935\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.3345,
-      "FromUnhealthy": 1.3344999999999998,
-      "ToDegraded": 3.306,
-      "ToUnhealthy": 1.306,
-      "Reason": "p10 of 360 readings is 3.48 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T19:11:03.8158583\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.306,
-      "FromUnhealthy": 1.306,
-      "ToDegraded": 3.287,
-      "ToUnhealthy": 1.287,
-      "Reason": "p10 of 360 readings is 3.46 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T19:13:07.5144291\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.287,
-      "FromUnhealthy": 1.287,
-      "ToDegraded": 3.2489999999999997,
-      "ToUnhealthy": 1.2489999999999997,
-      "Reason": "p10 of 360 readings is 3.42 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T19:13:54.5505376\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.2489999999999997,
-      "FromUnhealthy": 1.2489999999999997,
-      "ToDegraded": 3.287,
-      "ToUnhealthy": 1.287,
-      "Reason": "p10 of 360 readings is 3.46 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T19:19:08.5723675\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.287,
-      "FromUnhealthy": 1.287,
-      "ToDegraded": 3.2489999999999997,
-      "ToUnhealthy": 1.2489999999999997,
-      "Reason": "p10 of 360 readings is 3.42 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T19:22:12.0283505\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.2489999999999997,
-      "FromUnhealthy": 1.2489999999999997,
-      "ToDegraded": 3.211,
-      "ToUnhealthy": 1.2109999999999999,
-      "Reason": "p10 of 360 readings is 3.38 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T19:23:23.4236968\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.211,
-      "FromUnhealthy": 1.2109999999999999,
-      "ToDegraded": 3.1729999999999996,
-      "ToUnhealthy": 1.1729999999999996,
-      "Reason": "p10 of 360 readings is 3.34 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T19:24:14.7665188\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.1729999999999996,
-      "FromUnhealthy": 1.1729999999999996,
-      "ToDegraded": 3.135,
-      "ToUnhealthy": 1.1349999999999998,
-      "Reason": "p10 of 360 readings is 3.3 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
     {
       "At": "2026-11-24T19:26:14.1355462\u002B00:00",
       "Check": "RamFreeGb",
@@ -33754,6 +33655,105 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 91.35000000000001,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 87 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:49:30.3999479\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 91.35000000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 91.03500000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 86.7 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:50:37.8696731\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 91.03500000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 90.405,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 86.1 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:51:11.0311093\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 90.405,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.67000000000002,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.4 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:53:58.9518142\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.67000000000002,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.565,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.3 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:54:29.3217744\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.565,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.46000000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.2 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:55:00.4403121\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.46000000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.355,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.1 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:55:33.2652296\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.355,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.14500000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.9 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:56:05.1811051\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.14500000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 88.935,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.7 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:56:36.6867549\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 88.935,
+      "FromUnhealthy": 97,
+      "ToDegraded": 88.72500000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.5 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:57:07.6952298\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 88.72500000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 88.515,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.3 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T11:57:53.1307091\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 88.515,
+      "FromUnhealthy": 97,
+      "ToDegraded": 88.30499999999999,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.1 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
