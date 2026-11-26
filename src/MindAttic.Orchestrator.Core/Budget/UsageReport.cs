@@ -119,7 +119,7 @@ public sealed record UsageReport
         IReadOnlyList<WeeklyAllowance>? allowances = null, IReadOnlyList<UsageCutoff>? cutoffs = null,
         int paceTargetPercent = UsageCutoffs.DefaultFiveHourPercent, IReadOnlyList<LoginLock>? locks = null)
     {
-        var people = members.Select(m => (m.Email, m.Name, IsMember: true)).ToList();
+        var people = members.Select(m => (m.Email, Name: m.DisplayName, IsMember: true)).ToList();
         var known = people.Select(p => p.Email).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var email in logins.Select(l => l.Email).Concat(roster.Select(r => r.Email).OfType<string>()))
             if (AccountDirs.Normalize(email) is { } e && known.Add(e)) people.Add((e, null, false));

@@ -12,8 +12,9 @@ namespace MindAttic.Orchestrator.Budget;
 /// tell two members apart whose emails' parts before the @ clash; null when they have none.</param>
 public sealed record OrgPerson(string Email, string? Name, IReadOnlyList<string> Aliases, IReadOnlyList<string> Initials, string? Alias = null)
 {
-    /// <summary>"Ryan DeBraal (ryandebraal@mindattic.com)", or the bare email without a name.</summary>
-    public string Label => Name is { } n ? $"{n} ({Email})" : Email;
+    /// <summary>"Ryan DeBraal (ryandebraal@mindattic.com)", by the member's own alias when they have one (M.ORCH-T2245), or
+    /// the bare email with neither.</summary>
+    public string Label => (Alias ?? Name) is { } n ? $"{n} ({Email})" : Email;
 
     /// <summary>The first letter of each word of the name: "RD" for Ryan DeBraal, "E" for Erin; null without a name.</summary>
     public string? NameInitials => Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries) is { Length: > 0 } words

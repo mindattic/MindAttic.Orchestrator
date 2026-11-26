@@ -114,7 +114,7 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
     }
 
     internal static string Describe(Member m) =>
-        $"[bold]{Markup.Escape(m.Name ?? m.Email)}[/] [grey]{Markup.Escape(m.Email)}[/]: {Markup.Escape(m.Role)}, {Markup.Escape(m.Tier)}, {Markup.Escape(m.Status)}";
+        $"[bold]{Markup.Escape(m.DisplayName ?? m.Email)}[/] [grey]{Markup.Escape(m.Email)}[/]: {Markup.Escape(m.Role)}, {Markup.Escape(m.Tier)}, {Markup.Escape(m.Status)}";
 
     /// <summary>Refuses (in red) a change to a member whose login is another org's than the one worked on.</summary>
     internal static bool InScope(OrgChoice.Scope scope, string email)

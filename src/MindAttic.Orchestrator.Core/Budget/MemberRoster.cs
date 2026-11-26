@@ -16,6 +16,10 @@ public sealed record Member
     /// before the @ clashes with another member's (two emails can share a local-part; <see cref="Clash"/> only hard-blocks on
     /// the full <see cref="Email"/> or this). Null until one is given.</summary>
     public string? Alias { get; init; }
+    /// <summary>What the member is shown as (M.ORCH-T2245): <see cref="Alias"/> when given, else <see cref="Name"/>, which
+    /// <see cref="MemberProfileSync"/> keeps in step with claude.ai's profile and so can't hold a name the org chose; null
+    /// with neither.</summary>
+    public string? DisplayName => Alias ?? Name;
     /// <summary>One of <see cref="MemberRoster.Roles"/>.</summary>
     public string Role { get; init; } = MemberRoster.Roles[^1];
     /// <summary>One of <see cref="MemberRoster.Tiers"/>: the seat the member has.</summary>
@@ -294,5 +298,5 @@ public static class MemberRoster
     /// <summary>The name a member's tab and list row go by: its name, else <paramref name="alias"/> (its login's), else the
     /// email's part before the @.</summary>
     public static string TitleOf(Member member, string? alias) =>
-        member.Name ?? (string.IsNullOrWhiteSpace(alias) ? LoginLook.DefaultAlias(member.Email) ?? member.Email : alias);
+        member.DisplayName ?? (string.IsNullOrWhiteSpace(alias) ? LoginLook.DefaultAlias(member.Email) ?? member.Email : alias);
 }
