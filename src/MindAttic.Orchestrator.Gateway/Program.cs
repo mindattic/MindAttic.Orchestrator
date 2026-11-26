@@ -58,10 +58,11 @@ try
     var grants = new AclGrants(options.Owner, options.DataDir);
     // Hub phase 2b (M.ORCH-T1667): the hosts this gateway started under members' own Windows accounts. Empty, and so inert, unless
     // the hub policy (HubMemberSessions and HubMemberWindowsUsers, on the host) let a member start one.
-    var memberHosts = new TermMemberHosts(options.DataDir);
+    TimeSpan StartWait() => grants.Hub?.StartWait ?? TimeSpan.FromSeconds(TermHubPolicy.DefaultStartWaitSeconds);
+    var memberHosts = new TermMemberHosts(options.DataDir, startWait: StartWait);
     var members = new MemberSessionLauncher(LogonRunAs.Instance, CredentialManagerMemberCredentials.Instance, memberHosts,
         termHostExe: GatewayTermHost.Find, workspaceRoot: () => TicketsRunner.WorkspaceRoot, registryRoot: () => TermMemberHosts.DefaultRegistryRoot,
-        peerSid: () => TermPipeAcl.CurrentUser.Value, startWait: () => grants.Hub?.StartWait ?? TimeSpan.FromSeconds(TermHubPolicy.DefaultStartWaitSeconds));
+        peerSid: () => TermPipeAcl.CurrentUser.Value, startWait: StartWait);
     var services = new GatewayServices
     {
         Options = options,

@@ -80,15 +80,19 @@ public sealed class TermMemberHosts
 
     private readonly string path;
     private readonly Func<int, DateTime?> hostStart;
+    private readonly Func<TimeSpan> startWait;
+    private readonly HashSet<string> seen = new(StringComparer.Ordinal);
     private readonly System.Threading.Lock gate = new();
 
     /// <param name="directory">The gateway's data folder.</param>
     /// <param name="hostStart">When a pid's process started (UTC), or null when none has it; <see cref="TermSessions.HostStartOf"/>
     /// by default, tests pass their own.</param>
-    public TermMemberHosts(string directory, Func<int, DateTime?>? hostStart = null)
+    /// <param name="startWait">How long a just-started host may stay unseen before it counts as gone (the hub's start wait).</param>
+    public TermMemberHosts(string directory, Func<int, DateTime?>? hostStart = null, Func<TimeSpan>? startWait = null)
     {
         path = Path.Combine(directory, FileName);
         this.hostStart = hostStart ?? TermSessions.HostStartOf;
+        this.startWait = startWait ?? (() => TimeSpan.FromSeconds(TermHubPolicy.DefaultStartWaitSeconds));
     }
 
     /// <summary>The hosts still running, oldest first (the ledger is rewritten without the gone ones).</summary>
@@ -98,7 +102,10 @@ public sealed class TermMemberHosts
         {
             if (Load() is not { } all) return [];
             var live = all.Where(IsAlive).ToList();
-            if (live.Count != all.Count) Save(live);
+            seen.UnionWith(live.Select(h => h.Id));
+            var kept = all.Where(h => live.Contains(h) || Starting(h)).ToList();
+            seen.IntersectWith(kept.Select(h => h.Id));
+            if (kept.Count != all.Count) Save(kept);
             return live;
         }
     }
@@ -117,7 +124,7 @@ public sealed class TermMemberHosts
         lock (gate)
         {
             if (Load() is not { } loaded) return false;
-            var all = loaded.Where(h => IsAlive(h) && h.Id != host.Id).ToList();
+            var all = loaded.Where(h => (IsAlive(h) || Starting(h)) && h.Id != host.Id).ToList();
             all.Add(host);
             while (all.Count > MaxEntries) all.RemoveAt(0);
             return Save(all);
@@ -130,6 +137,7 @@ public sealed class TermMemberHosts
         lock (gate)
         {
             if (Load() is not { } all) return false;
+            seen.Remove(id);
             var kept = all.Where(h => h.Id != id).ToList();
             return kept.Count != all.Count && Save(kept);
         }
@@ -142,6 +150,10 @@ public sealed class TermMemberHosts
 
     private bool IsAlive(TermMemberHost host) =>
         host.HostPid > 0 && hostStart(host.HostPid) is { } started && (started - host.HostStartUtc).Duration() <= TermSessions.StartTolerance;
+
+    // A new host looks gone until it grants the gateway query rights (MemberHost.GrantPeer); dropping it then would orphan it, so an
+    // entry never seen is kept, though not listed, for the start wait (M.ORCH-T2305).
+    private bool Starting(TermMemberHost host) => !seen.Contains(host.Id) && DateTime.UtcNow - host.StartedUtc < startWait();
 
     /// <summary>The ledger's entries: empty when it's missing or isn't valid JSON, null when it couldn't be read (a lock or a
     /// denied read), so a write never replaces entries it couldn't see.</summary>
