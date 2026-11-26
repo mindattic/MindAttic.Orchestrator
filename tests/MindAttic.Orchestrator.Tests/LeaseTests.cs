@@ -102,7 +102,10 @@ public sealed class LeaseTests
     internal const string DropStep21 = DropStep22 + "ALTER TABLE assignments DROP COLUMN role; ";
 
     /// <summary>Undoes step 22 (M.ORCH-T1745's agent_messages, the agent mailbox).</summary>
-    internal const string DropStep22 = "DROP TABLE agent_messages; ";
+    internal const string DropStep22 = DropStep23 + "DROP TABLE agent_messages; ";
+
+    /// <summary>Undoes step 23 (M.ORCH-T2221's members.alias).</summary>
+    internal const string DropStep23 = "ALTER TABLE members DROP COLUMN alias; ";
 
     /// <summary>Undoes step 13 (M.ORCH-T655's organizations and org_members).</summary>
     internal const string DropStep13 = DropStep15 + "DROP TABLE org_members; DROP TABLE organizations; ";
