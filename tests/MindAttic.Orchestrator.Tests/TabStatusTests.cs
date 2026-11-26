@@ -303,10 +303,11 @@ public sealed class TabStatusTests
             .And.Contain("Property=\"AutomationProperties.Name\" Value=\"{Binding TabTip}\"")
             .And.Contain("{Binding TabFaceTitle}")); // the face title: TabTitle, plus which key on the API key's row (M.ORCH-T1816)
 
-        // M.ORCH-T906: no 'API key' billing body or switch; the API key's person page shows money in place of the meters.
-        Assert.That(xaml, Does.Not.Contain("x:Name=\"ApiKeyBody\"").And.Not.Contain("x:Name=\"BillingToggleButton\""));
-        Assert.That(xaml, Does.Contain("x:Name=\"ApiLeftTile\"").And.Contain("x:Name=\"ApiBurnChart\"")
-            .And.Contain("{Binding ShowsClaudeMeters, Converter"));
+        // M.ORCH-T906: no 'API key' billing body or switch. The API key's money tiles and burndown chart went with the login
+        // home page (M.ORCH-T2238); the terminal's usage chart still hides on the API key's tabs.
+        Assert.That(xaml, Does.Not.Contain("x:Name=\"ApiKeyBody\"").And.Not.Contain("x:Name=\"BillingToggleButton\"")
+            .And.Not.Contain("x:Name=\"ApiLeftTile\"").And.Not.Contain("x:Name=\"ApiBurnChart\""));
+        Assert.That(xaml, Does.Contain("x:Name=\"TerminalUsageChart\"").And.Contain("{Binding ShowsClaudeMeters, Converter"));
     }
 
     /// <summary>M.ORCH-T803: every person's tab is the same width. Since M.ORCH-T1431 the person tabs are a vertical sidebar
