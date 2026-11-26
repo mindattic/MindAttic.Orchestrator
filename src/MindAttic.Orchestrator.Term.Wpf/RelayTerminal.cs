@@ -180,6 +180,8 @@ public sealed class RelayTerminal : UserControl, IDisposable
     {
         try
         {
+            // One made already and still loading: shown twice before it loads would add a second and leak the first (M.ORCH-T2304).
+            if (grid.Children.Contains(Terminal)) return;
             Terminal = NewRenderer();
             grid.Children.Add(Terminal);
         }

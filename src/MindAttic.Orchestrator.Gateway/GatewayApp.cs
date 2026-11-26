@@ -384,9 +384,9 @@ internal static class GatewayApp
                 if (g.Grants.Hub is null) return Results.NotFound();
                 var from = RemoteOf(http);
                 var session = g.Sessions.Get(id);
-                // Only the machine owner, or the member who owns the CLI with an interact token; anyone else can't tell it's there.
-                var mine = session is not null && (IsOwner(g, who.Subject)
-                    || (who.Scope == GatewayScopes.Interact && g.Grants.IsActiveMember(who.Subject)
+                // Only the machine owner or the member who owns the CLI, either with an interact token (M.ORCH-T2304); anyone else can't tell it's there.
+                var mine = session is not null && who.Scope == GatewayScopes.Interact && (IsOwner(g, who.Subject)
+                    || (g.Grants.IsActiveMember(who.Subject)
                         && g.Grants.Decide(who.Subject, session, g.SessionAccounts.AccountOf(session)).SessionOwner == TermMemberKeys.Normalize(who.Subject)));
                 if (!mine)
                 {

@@ -5,6 +5,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Win32.SafeHandles;
 using MindAttic.Orchestrator.Term;
 
 namespace MindAttic.Orchestrator.Gateway;
@@ -20,6 +21,9 @@ internal sealed record RunAsResult(int Pid, DateTime StartUtc, string? Error = n
 {
     public bool Ok => Error is null && Pid > 0;
     public static RunAsResult Fail(string why) => new(0, default, why);
+
+    /// <summary>The creator's own handle on it, which can end it before it grants its peer any rights (M.ORCH-T2304); null in tests.</summary>
+    public SafeProcessHandle? Handle { get; init; }
 }
 
 /// <summary>Starts a process under another Windows account with that account's stored password (the real one,
@@ -58,16 +62,9 @@ internal sealed class LogonRunAs : IRunAs
                 if (!CreateProcessWithLogonW(user, domain, password, LOGON_WITH_PROFILE, application, line,
                         CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP | CREATE_UNICODE_ENVIRONMENT, IntPtr.Zero, workingDirectory, ref startup, out var info))
                     return RunAsResult.Fail(new Win32Exception(Marshal.GetLastWin32Error()).Message);
-                try
-                {
-                    var start = GetProcessTimes(info.hProcess, out var created, out _, out _, out _) ? DateTime.FromFileTimeUtc(created) : DateTime.UtcNow;
-                    return new RunAsResult(info.dwProcessId, start);
-                }
-                finally
-                {
-                    CloseHandle(info.hThread);
-                    CloseHandle(info.hProcess);
-                }
+                CloseHandle(info.hThread);
+                var start = GetProcessTimes(info.hProcess, out var created, out _, out _, out _) ? DateTime.FromFileTimeUtc(created) : DateTime.UtcNow;
+                return new RunAsResult(info.dwProcessId, start) { Handle = new SafeProcessHandle(info.hProcess, ownsHandle: true) };
             });
         }
         catch (KeyNotFoundException ex) { return RunAsResult.Fail(ex.Message); }
@@ -110,6 +107,13 @@ internal sealed class LogonRunAs : IRunAs
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CloseHandle(IntPtr handle);
+
+    /// <summary>Ends the process <paramref name="handle"/> is on; false when Windows refuses.</summary>
+    internal static bool Terminate(SafeProcessHandle handle) => !handle.IsInvalid && !handle.IsClosed && TerminateProcess(handle, 1);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool TerminateProcess(SafeProcessHandle process, uint exitCode);
 }
 
 /// <summary>
@@ -173,6 +177,7 @@ internal sealed partial class MemberSessionLauncher(
         var commandLine = CommandLine(exe, id, registry, peerSid(), login, repo, repoDir, temp);
         var started = runAs.Start(account, credentials, exe, commandLine, Path.GetDirectoryName(exe) ?? repoDir);
         if (!started.Ok) return new LaunchResult(false, $"Windows didn't start it as {account}: {started.Error}");
+        using var handle = started.Handle;
 
         var host = new TermMemberHost
         {
@@ -183,17 +188,29 @@ internal sealed partial class MemberSessionLauncher(
             return new LaunchResult(false, $"It started (pid {started.Pid}) but the gateway couldn't record it, so it won't be offered; stop it on the host.");
 
         var deadline = DateTime.UtcNow + startWait();
+        // Until the host grants its peer query rights (MemberHost.GrantPeer) it looks gone, so "exited" needs it seen once (M.ORCH-T2304).
+        var granted = false;
+        var log = $"the host owner can read its log in that account's %LOCALAPPDATA%\\MindAttic\\MindAttic.Orchestrator\\terms\\{id}.log";
         while (true)
         {
             if (registered(id, registry) is { } record && TermMemberHosts.Matches(host, record))
                 return new LaunchResult(true, $"Started {repo} on {login} as {account} (session {id}).");
-            if (hostStart(started.Pid) is null)
+            if (hostStart(started.Pid) is not null) granted = true;
+            else if (granted)
             {
                 ledger.Remove(id);
-                return new LaunchResult(false, $"Its terminal host exited as soon as it started as {account}; the host owner can read its log in that account's %LOCALAPPDATA%\\MindAttic\\MindAttic.Orchestrator\\terms\\{id}.log.");
+                return new LaunchResult(false, $"Its terminal host exited as soon as it started as {account}; {log}.");
             }
             if (DateTime.UtcNow >= deadline)
-                return new LaunchResult(true, $"Started {repo} on {login} as {account} (session {id}); it hasn't come up yet, and shows on your Team Wall once it does.");
+            {
+                if (granted)
+                    return new LaunchResult(true, $"Started {repo} on {login} as {account} (session {id}); it hasn't come up yet, and shows on your Team Wall once it does.");
+                var stopped = handle is not null && LogonRunAs.Terminate(handle);
+                ledger.Remove(id);
+                return new LaunchResult(false, stopped
+                    ? $"Its terminal host never let the gateway see it run as {account}, so the gateway stopped it; {log}."
+                    : $"Its terminal host never let the gateway see it run as {account} and couldn't be stopped (pid {started.Pid}); stop it on the host; {log}.");
+            }
             await delay(PollInterval, ct).ConfigureAwait(false);
         }
     }

@@ -144,6 +144,8 @@ internal static class MemberTickets
             // Spectre.Console.Cli takes --opt:value as well as --opt=value (M.ORCH-T1966).
             var name = a.Split(['=', ':'], 2)[0];
             if (RefusedOptions.Contains(name, StringComparer.OrdinalIgnoreCase)) return $"{name} isn't open to members";
+            // The ownership check's ticket show has no --repo, so a close with one could check one ticket and close another (M.ORCH-T2304).
+            if (args[1] == "close" && string.Equals(name, "--repo", StringComparison.OrdinalIgnoreCase)) return "--repo isn't open to members on close";
         }
         return null;
     }
