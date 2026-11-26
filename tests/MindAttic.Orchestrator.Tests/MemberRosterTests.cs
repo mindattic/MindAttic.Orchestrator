@@ -27,7 +27,7 @@ public sealed class MemberRosterTests
     [Test]
     public void A_new_database_has_the_members_table()
     {
-        Assert.That(Columns(Scratch()), Is.EqualTo(new[] { "email", "name", "role", "tier", "status", "joined_at", "updated_at" }));
+        Assert.That(Columns(Scratch()), Is.EqualTo(new[] { "email", "name", "role", "tier", "status", "joined_at", "updated_at", "alias" }));
     }
 
     [Test]
@@ -41,7 +41,7 @@ public sealed class MemberRosterTests
             OrchestratorDb.Execute(c, LeaseTests.DropStep11 + "PRAGMA user_version = 10;");
         }
 
-        Assert.That(Columns(new OrchestratorDb(db.Path)), Has.Count.EqualTo(7));
+        Assert.That(Columns(new OrchestratorDb(db.Path)), Has.Count.EqualTo(8));
         using var again = new OrchestratorDb(db.Path).Open();
         Assert.That(Sql.Scalar(again, null, "PRAGMA user_version;"), Is.EqualTo((long)OrchestratorDb.Version));
         Assert.That(AccountRoster.Load(db).Single().Email, Is.EqualTo("a@example.com"), "what it held is kept");
@@ -90,7 +90,7 @@ public sealed class MemberRosterTests
         Assert.That(MemberRoster.Find(read, "NEW.PERSON@example.com"), Is.EqualTo(added));
         Assert.That(MemberRoster.Find(read, "b@example.com")!.Role, Is.EqualTo("primary-owner"));
         var dump = File.ReadAllText(db.DumpPath);
-        Assert.That(dump, Does.Contain("-- members\nINSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('b@example.com', NULL, 'primary-owner', 'standard', 'pending',"));
+        Assert.That(dump, Does.Contain("-- members\nINSERT INTO members (email, name, role, tier, status, joined_at, updated_at, alias) VALUES ('b@example.com', NULL, 'primary-owner', 'standard', 'pending',"));
         Assert.That(dump.IndexOf("'b@example.com'", StringComparison.Ordinal), Is.LessThan(dump.IndexOf("'new.person@example.com'", StringComparison.Ordinal)), "in key order");
 
         Assert.Throws<InvalidOperationException>(() => MemberRoster.Add(db, "new.person@example.com", null, "member", "premium", null, Now), "already a member");
