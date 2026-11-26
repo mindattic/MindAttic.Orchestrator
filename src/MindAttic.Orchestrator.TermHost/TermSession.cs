@@ -451,11 +451,14 @@ internal sealed class TermSession
                 continue;
             }
             var connection = server;
-            _ = Task.Run(() => ServeAsync(connection));
+            // M.ORCH-T2281: the id is taken here, in the order viewers connected, not once each one's Hello is read: those reads
+            // run side by side, so a viewer that connected second could be numbered (and take the size) first.
+            var id = Interlocked.Increment(ref nextViewerId);
+            _ = Task.Run(() => ServeAsync(connection, id));
         }
     }
 
-    private async Task ServeAsync(NamedPipeServerStream pipe)
+    private async Task ServeAsync(NamedPipeServerStream pipe, long id)
     {
         ViewerLink? mine = null;
         try
@@ -469,7 +472,7 @@ internal sealed class TermSession
                 return;
             }
             var agreed = TermProtocol.Negotiate(h.Protocol);
-            mine = new ViewerLink(pipe, log) { Id = Interlocked.Increment(ref nextViewerId), Protocol = agreed ?? TermProtocol.Version };
+            mine = new ViewerLink(pipe, log) { Id = id, Protocol = agreed ?? TermProtocol.Version };
             mine.ExitDelivered += exitSeen.Set;
             if (agreed is null)
             {
@@ -485,8 +488,10 @@ internal sealed class TermSession
             lock (gate) owns = policy.Join(mine.Id, h.Interactive, h.Cols, h.Rows);
             log.Write($"viewer {mine.Id} connected: protocol {agreed}, {(h.Interactive ? "interactive" : "read-only")}" +
                       (h.ViewerId.Length > 0 ? $", id {TermProtocol.LogSafeId(h.ViewerId)}" : "") + (owns ? ", owns the size" : ""));
-            // The owner's size first, so the replay below is taken at it.
-            if (owns) ApplySize(h.Cols, h.Rows, ownerChanged: true);
+            // The owner's size first, so the replay below is taken at it. Read from the policy, not this Hello (M.ORCH-T2281): an
+            // earlier-connected viewer whose Hello was read later can have taken the size since (ViewerPolicy.Join), and a
+            // stale ApplySize here would resize the session to a viewer that no longer owns it.
+            if (owns) ApplyOwnerSize(ownerChanged: true);
             if (Attach(mine)) _ = Task.Run(() => Nudge(mine));
             await ReadViewerAsync(pipe, mine).ConfigureAwait(false);
         }

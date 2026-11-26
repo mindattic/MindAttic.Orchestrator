@@ -21,6 +21,24 @@ public sealed class TermMultiViewerTests
     }
 
     [Test]
+    public void The_first_viewer_to_connect_owns_the_size_even_when_its_Hello_is_read_second()
+    {
+        // M.ORCH-T2281: ids follow connection order, Hellos are read side by side, so viewer 2 can join before viewer 1.
+        var policy = new ViewerPolicy();
+        Assert.That(policy.Join(2, interactive: true, 20, 6), Is.True);
+        Assert.That(policy.Join(1, interactive: true, 64, 15), Is.True, "the earlier connection takes the size back");
+        Assert.That(policy.Owner, Is.EqualTo(1));
+        Assert.That(policy.OwnerSize, Is.EqualTo(((ushort)64, (ushort)15)));
+
+        // Once a viewer has used the size (typed or took it), a late-joining earlier connection no longer takes it.
+        var used = new ViewerPolicy();
+        used.Join(3, true, 20, 6);
+        used.TakeSize(3);
+        Assert.That(used.Join(1, true, 64, 15), Is.False);
+        Assert.That(used.Owner, Is.EqualTo(3));
+    }
+
+    [Test]
     public void A_zero_size_hello_never_takes_the_size_nor_inherits_it()
     {
         var policy = new ViewerPolicy();

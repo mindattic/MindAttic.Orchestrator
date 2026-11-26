@@ -7,8 +7,8 @@ namespace MindAttic.Orchestrator.TermHost;
 /// with several viewers"). Pure bookkeeping, no I/O: the session calls it under its lock and acts on what it returns.
 /// <list type="bullet">
 /// <item>Input from interactive viewers is merged (tmux semantics); from read-only viewers it is dropped.</item>
-/// <item>The size belongs to the interactive viewer that last sent input or TakeSize. The first interactive viewer to attach
-/// takes it while nobody holds it. Read-only viewers never do.</item>
+/// <item>The size belongs to the interactive viewer that last sent input or TakeSize. The first interactive viewer to connect
+/// takes it while nobody has used it (M.ORCH-T2281). Read-only viewers never do.</item>
 /// <item>Each viewer's Resize is kept as the size it would show; it applies at once only from the owner, and the rest's
 /// apply when they take the size.</item>
 /// <item>When the owner leaves, the interactive viewer that was active most recently takes over.</item>
@@ -46,14 +46,21 @@ internal sealed class ViewerPolicy
 
     public bool IsInteractive(long id) => viewers.TryGetValue(id, out var e) && e.Interactive;
 
-    /// <summary>Adds a viewer with the size its Hello asked for. True when it took the size (nobody held it). A 0x0 Hello (the
-    /// gateway's watcher, even at protocol 1) never takes it.</summary>
+    // M.ORCH-T2281: the owner got the size only by joining first, never by typing, TakeSize or a hand-over.
+    private bool ownerByJoin;
+
+    /// <summary>Adds a viewer with the size its Hello asked for. True when it took the size: nobody held it, or the owner only
+    /// joined and connected after this one (M.ORCH-T2281: ids follow the order viewers connected, while their Hellos are read
+    /// side by side, so the first to connect can join second; it still takes the size, as nobody has used it yet). A 0x0 Hello
+    /// (the gateway's watcher, even at protocol 1) never takes it.</summary>
     public bool Join(long id, bool interactive, ushort cols, ushort rows)
     {
         (cols, rows) = Clamp(cols, rows);
         viewers[id] = new Entry { Interactive = interactive, Cols = cols, Rows = rows, Active = ++clock };
-        if (Owner is not null || !interactive || cols == 0 || rows == 0) return false;
+        if (!interactive || cols == 0 || rows == 0) return false;
+        if (Owner is { } owner && !(ownerByJoin && id < owner)) return false;
         Owner = id;
+        ownerByJoin = true;
         return true;
     }
 
@@ -62,7 +69,8 @@ internal sealed class ViewerPolicy
     public bool Leave(long id)
     {
         if (!viewers.Remove(id) || Owner != id) return false;
-        Owner = viewers.Where(v => v.Value.Interactive && v.Value.Cols > 0 && v.Value.Rows > 0).OrderByDescending(v => v.Value.Active).Select(v => (long?)v.Key).FirstOrDefault();
+        ownerByJoin = false;
+        Owner =viewers.Where(v => v.Value.Interactive && v.Value.Cols > 0 && v.Value.Rows > 0).OrderByDescending(v => v.Value.Active).Select(v => (long?)v.Key).FirstOrDefault();
         return true;
     }
 
@@ -82,6 +90,7 @@ internal sealed class ViewerPolicy
         sender.Active = ++clock;
         var changed = Owner != id;
         Owner = id;
+        ownerByJoin = false;
         if (others.Count > 0) others.Insert(0, id);
         return new(true, changed, others);
     }
@@ -91,6 +100,7 @@ internal sealed class ViewerPolicy
     {
         if (!viewers.TryGetValue(id, out var e) || !e.Interactive) return false;
         e.Active = ++clock;
+        ownerByJoin = false;
         if (Owner == id) return false;
         Owner = id;
         return true;
