@@ -283,7 +283,8 @@ public sealed class TabStatusTests
             .And.Contain("Background=\"{DynamicResource MaGood}\"").And.Contain("{Binding ShowsBusyBadge")
             .And.Contain("x:Name=\"TabAskingBadge\"").And.Contain("Content=\"?\"").And.Contain("Background=\"{DynamicResource MaWarn}\"")
             .And.Contain("{Binding TabNeedsYou,").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"{Binding TabDisabledGlyph}\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")
-            .And.Contain("{Binding IsTabDisabled").And.Contain("FontFamily=\"Segoe Fluent Icons, Segoe MDL2 Assets\""));
+            // ShowsDisabledIcon is IsTabDisabled less a locked tab, whose lock badge covers it (M.ORCH-T2141).
+            .And.Contain("{Binding ShowsDisabledIcon").And.Contain("FontFamily=\"Segoe Fluent Icons, Segoe MDL2 Assets\""));
         Assert.That(strip, Does.Not.Contain("TabAskingBadgeContent"), "a plain static ? now (M.ORCH-T1270), not a flash");
         Assert.That(strip, Does.Contain("x:Name=\"TabStatusIcon\" Width=\"20\" Height=\"20\""), "20x20 (M.ORCH-T1272)");
         // M.ORCH-T1173: "every open CLI stopped" is folded into the idle badge (ShowsIdleBadge covers IsTabAllStopped too), so
