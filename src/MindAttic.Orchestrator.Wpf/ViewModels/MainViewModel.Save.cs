@@ -147,6 +147,7 @@ public sealed partial class MainViewModel
             var targets = new List<(TerminalPaneViewModel Pane, RestoreTab Tab, bool Reopened, bool Alive)>();
             TerminalPaneViewModel? shown = null;
             var reopened = 0;
+            var alreadyOpen = 0;
             for (var i = 0; i < state.Tabs.Count; i++)
             {
                 var tab = state.Tabs[i];
@@ -170,7 +171,11 @@ public sealed partial class MainViewModel
                     reopened++;
                 }
                 if (state.SelectedTab == i) shown = pane;
-                if (!tab.Request.IsMenu) targets.Add((pane, tab, isNew || auto && !alive!.Contains(pane), auto && alive!.Contains(pane)));
+                if (!tab.Request.IsMenu)
+                {
+                    targets.Add((pane, tab, isNew || auto && !alive!.Contains(pane), auto && alive!.Contains(pane)));
+                    if (!isNew) alreadyOpen++;
+                }
             }
             if (shown is not null && !auto) ShowPane(shown);
 
@@ -182,7 +187,7 @@ public sealed partial class MainViewModel
             }));
             var allocating = targets.Count(t => t.Tab.Allocate is { Count: > 0 });
             var note = $"From the {(state.Reason == SaveStateStore.SaveAllReason ? "save state" : "autosave")} of {state.SavedUtc.ToLocalTime():g}: "
-                + $"{reopened} tab(s) reopened, {targets.Count - reopened} already open"
+                + $"{reopened} tab(s) reopened, {alreadyOpen} already open"
                 + (allocating > 0 ? $", /allocate turned back on in {allocating}." : ".");
             var resumed = targets.Where((_, i) => sent[i]).Select(t =>
                 $"{t.Pane.Name} in {System.IO.Path.GetFileName(t.Tab.Request.Directory.TrimEnd('\\', '/'))}: "

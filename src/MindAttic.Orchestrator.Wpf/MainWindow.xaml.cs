@@ -1370,15 +1370,13 @@ public partial class MainWindow : Window
         TerminalTabScroller.ScrollToHorizontalOffset(TerminalTabScroller.HorizontalOffset + TerminalTabScrollStep);
 
     /// <summary>A completed drag on the shared strip (M.ORCH-T1526, TerminalTabs.AllowReorder, M.ORCH-T1555 added the
-    /// pinned Usage tab to the same control): applies and persists the move via <see cref="PersonTerminalsViewModel.Reorder"/>.
-    /// The Usage tab is locked (MaTabItem.IsLocked, see its ItemContainerStyle) so it's never the moved item and nothing can
-    /// land before it, which is why <see cref="TabReorderEventArgs.NewIndex"/> - counted over the whole strip including that
-    /// locked slot 0 - is always at least 1; subtracting 1 gives the index <see cref="PersonTerminalsViewModel.Reorder"/>
-    /// expects, relative to Panes alone. Silently ignores a moved item that isn't a real pane (shouldn't happen, but a stray
+    /// pinned Usage tab to the same control, M.ORCH-T2238 removed it again): applies and persists the move via
+    /// <see cref="PersonTerminalsViewModel.Reorder"/>. The strip is nothing but Panes now, so <see cref="TabReorderEventArgs.NewIndex"/>
+    /// is already the index Reorder expects. Silently ignores a moved item that isn't a real pane (shouldn't happen, but a stray
     /// event is a no-op here, not a crash).</summary>
     private void TerminalTabs_Reordered(object sender, TabReorderEventArgs e)
     {
-        if (e.MovedItem is TerminalPaneViewModel pane) ReorderWithPlaceholder(Shown, pane, e.NewIndex - 1);
+        if (e.MovedItem is TerminalPaneViewModel pane) ReorderWithPlaceholder(Shown, pane, e.NewIndex);
     }
 
     /// <summary>A CLI tab's right-click menu (M.ORCH-T883; Shift+F10 too): "Move to" each other signed-in login, read when it's

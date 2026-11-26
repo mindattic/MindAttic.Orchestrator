@@ -95,7 +95,9 @@ internal sealed class DiscoverProjectsWindow : Window
         if (picked.Count == 0 || busy) return;
         busy = true;
         UpdateAdd();
-        try { await addPicked(picked); Close(); }
+        var added = false;
+        try { await addPicked(picked); added = true; }
         finally { busy = false; UpdateAdd(); }
+        if (added) Close();
     }
 }
