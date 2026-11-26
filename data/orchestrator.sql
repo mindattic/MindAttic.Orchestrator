@@ -1269,6 +1269,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-26T08:40:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T03:40:00Z', 'Under', 'ended at 29%', 29, 29, 6950251, 156, 0, NULL, NULL, 29, 6.1, 0, 0, 1, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-26T09:30:00Z', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T04:30:00Z', 'Under', 'ended at 14%', 14, 14, 2776984, 68, 0, NULL, NULL, 12, 8.9, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-26T10:00:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T05:00:00Z', 'Under', 'ended at 0%', 0, 0, 0, 52, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-11-26T13:40:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T08:40:00Z', 'Under', 'ended at 2%', 2, 2, 546310, 278, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -31949,54 +31950,18 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "Degraded": 89.67000000000002,
       "Unhealthy": 97,
       "Reason": "p90 of 360 readings is 85.4 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-26T12:36:49.7579717\u002B00:00",
+      "At": "2026-11-26T13:45:23.2717147\u002B00:00",
       "Basis": 360
     },
     "RamFreeGb": {
-      "Degraded": 3.7809999999999997,
-      "Unhealthy": 1.7809999999999997,
-      "Reason": "p10 of 360 readings is 3.98 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-26T12:36:49.7579717\u002B00:00",
+      "Degraded": 3.7049999999999996,
+      "Unhealthy": 1.7049999999999996,
+      "Reason": "p10 of 360 readings is 3.9 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-26T13:45:23.2717147\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-24T21:10:11.0224538\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 85.05,
-      "FromUnhealthy": 95.05,
-      "ToDegraded": 85.155,
-      "ToUnhealthy": 95.155,
-      "Reason": "p90 of 360 readings is 81.1 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T21:10:41.4117579\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 85.155,
-      "FromUnhealthy": 95.155,
-      "ToDegraded": 85.47000000000001,
-      "ToUnhealthy": 95.47000000000001,
-      "Reason": "p90 of 360 readings is 81.4 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T21:11:18.6052897\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 85.47000000000001,
-      "FromUnhealthy": 95.47000000000001,
-      "ToDegraded": 85.67999999999999,
-      "ToUnhealthy": 95.67999999999999,
-      "Reason": "p90 of 360 readings is 81.6 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-24T21:14:59.330171\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 85.67999999999999,
-      "FromUnhealthy": 95.67999999999999,
-      "ToDegraded": 85.89,
-      "ToUnhealthy": 95.89,
-      "Reason": "p90 of 360 readings is 81.8 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-24T21:18:50.2241672\u002B00:00",
       "Check": "CommitPercent",
@@ -33760,6 +33725,42 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 89.67000000000002,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 85.4 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T13:42:32.660974\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.7809999999999997,
+      "FromUnhealthy": 1.7809999999999997,
+      "ToDegraded": 3.762,
+      "ToUnhealthy": 1.762,
+      "Reason": "p10 of 360 readings is 3.96 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T13:43:05.7237823\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.762,
+      "FromUnhealthy": 1.762,
+      "ToDegraded": 3.743,
+      "ToUnhealthy": 1.7429999999999999,
+      "Reason": "p10 of 360 readings is 3.94 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T13:43:50.2625663\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.743,
+      "FromUnhealthy": 1.7429999999999999,
+      "ToDegraded": 3.7239999999999998,
+      "ToUnhealthy": 1.7239999999999998,
+      "Reason": "p10 of 360 readings is 3.92 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-26T13:45:23.2717147\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 3.7239999999999998,
+      "FromUnhealthy": 1.7239999999999998,
+      "ToDegraded": 3.7049999999999996,
+      "ToUnhealthy": 1.7049999999999996,
+      "Reason": "p10 of 360 readings is 3.9 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -33865,37 +33866,37 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "4620": {
     "SessionId": "5c87f115-96a3-43aa-8559-17d8764da8f6",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:35:01.5294588Z",
-    "StoppedUtc": "2026-11-26T13:35:04.7529156Z",
-    "DueUtc": "2026-11-26T18:37:01.5294588Z"
+    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
+    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
+    "DueUtc": "2026-11-26T18:52:14.1482946Z"
   },
   "41304": {
     "SessionId": "f8ff71be-40a7-4867-8742-0592d8f38294",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:35:01.5294588Z",
-    "StoppedUtc": "2026-11-26T13:35:04.7529156Z",
-    "DueUtc": "2026-11-26T18:37:01.5294588Z"
+    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
+    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
+    "DueUtc": "2026-11-26T18:52:14.1482946Z"
   },
   "20140": {
     "SessionId": "831346a9-59b9-428b-b943-300f041d1493",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:35:01.5294588Z",
-    "StoppedUtc": "2026-11-26T13:35:04.7529156Z",
-    "DueUtc": "2026-11-26T18:37:01.5294588Z"
+    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
+    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
+    "DueUtc": "2026-11-26T18:52:14.1482946Z"
   },
   "39088": {
     "SessionId": "b773a79b-ba7e-46cb-9786-f886660e3188",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:31:47.7464028Z",
-    "StoppedUtc": "2026-11-26T13:31:51.0483503Z",
-    "DueUtc": "2026-11-26T18:33:47.7464028Z"
+    "UntilUtc": "2026-11-26T18:46:59.6326269Z",
+    "StoppedUtc": "2026-11-26T13:47:03.1858401Z",
+    "DueUtc": "2026-11-26T18:48:59.6326269Z"
   },
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:35:01.5294588Z",
-    "StoppedUtc": "2026-11-26T13:35:04.7529156Z",
-    "DueUtc": "2026-11-26T18:37:01.5294588Z"
+    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
+    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
+    "DueUtc": "2026-11-26T18:52:14.1482946Z"
   },
   "24400": {
     "SessionId": "a8807a82-1dd3-4855-b80b-a04b51f0814d",
@@ -33921,9 +33922,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39332": {
     "SessionId": "3a3ec029-07bb-40dd-a1f6-578b671ff17b",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:35:01.5294588Z",
-    "StoppedUtc": "2026-11-26T13:35:04.7529156Z",
-    "DueUtc": "2026-11-26T18:37:01.5294588Z"
+    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
+    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
+    "DueUtc": "2026-11-26T18:52:14.1482946Z"
   },
   "57504": {
     "SessionId": "bb1c10a1-f527-4aff-b271-ba4beeb8a07c",
@@ -33970,23 +33971,23 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "28368": {
     "SessionId": "e1bd5cdc-60d3-4e0e-8a84-21abd28f1dc5",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:35:01.5294588Z",
-    "StoppedUtc": "2026-11-26T13:35:04.7529156Z",
-    "DueUtc": "2026-11-26T18:37:01.5294588Z"
+    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
+    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
+    "DueUtc": "2026-11-26T18:52:14.1482946Z"
   },
   "61472": {
     "SessionId": "718f6c47-2f74-43f9-b8fb-ec90517f4bc4",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:35:01.5294588Z",
-    "StoppedUtc": "2026-11-26T13:35:04.7529156Z",
-    "DueUtc": "2026-11-26T18:37:01.5294588Z"
+    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
+    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
+    "DueUtc": "2026-11-26T18:52:14.1482946Z"
   },
   "60752": {
     "SessionId": "a09437da-501c-4b91-89b6-09e5a4f4ff02",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-26T18:35:01.5294588Z",
-    "StoppedUtc": "2026-11-26T13:35:04.7529156Z",
-    "DueUtc": "2026-11-26T18:37:01.5294588Z"
+    "UntilUtc": "2026-11-26T18:50:14.1482946Z",
+    "StoppedUtc": "2026-11-26T13:50:17.4361841Z",
+    "DueUtc": "2026-11-26T18:52:14.1482946Z"
   },
   "33504": {
     "SessionId": "91b94039-25f5-4745-bff2-7955b6ecdfee",
