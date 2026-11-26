@@ -714,7 +714,9 @@ public sealed class AllocateTests
 
         var (none, why) = Allocate.Next(Scheduler.Plan(snap, settings, store.LoadAssignments()), settings, store, ["A"], null, claim: true, Now, _ => "main",
             stillOpen: (_, _) => true, pilotRunning: _ => false);
-        Assert.That((none.Count, why), Is.EqualTo((0, "the pace has no room for another subagent right now; run it again in a few minutes")), "the next call: all four are taken");
+        // The refusal names the fallback it used (M.ORCH-T2246's Allocate.NoRoom), not a bare "the pace has no room" (M.ORCH-T2273).
+        Assert.That((none.Count, why), Is.EqualTo((0, "no subagent allowance is known for this login, so the session setting (4) less the 4 tickets " +
+            "being worked across the workspace was used, which leaves none; run it again in a few minutes")), "the next call: all four are taken");
         Assert.That(Allocate.Next(plan, settings, store, ["A"], 2, claim: false, Now, _ => "main", pilotRunning: _ => false).Handed, Has.Count.EqualTo(2),
             "an explicit --count is still honoured as asked");
     }
