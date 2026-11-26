@@ -138,12 +138,19 @@ public sealed class AzureBlobUpload
     public static IReadOnlyList<string> ResolveStalePrefixes(IEnumerable<string> blobNames, int keep, string justUploaded)
     {
         if (keep < 1) return [];
-        var prefixes = blobNames
+        var names = blobNames.ToList();
+        var prefixes = names
             .Select(n => n.Split('/')[0])
             .Where(p => p.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-        return BackupFolders.ResolveStale(prefixes, keep)
+        // Only nights whose upload carries the completion marker count toward keep (M.ORCH-T2296).
+        var complete = names
+            .Select(n => n.Split('/'))
+            .Where(p => p.Length == 2 && string.Equals(p[1], BackupFolders.CompleteMarkerFileName, StringComparison.OrdinalIgnoreCase))
+            .Select(p => p[0])
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return BackupFolders.ResolveStale(prefixes, keep, complete.Contains)
             .Where(p => !string.Equals(p, justUploaded, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }

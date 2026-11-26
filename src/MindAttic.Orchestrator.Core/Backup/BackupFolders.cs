@@ -34,35 +34,59 @@ public static class BackupFolders
     /// <summary>
     /// The dated folders to delete so only the newest <paramref name="keep"/> distinct dates remain; a date's
     /// <c>_a</c>..<c>_z</c> siblings go with their date, never one by one. Folders without a date prefix are
-    /// never returned. <paramref name="keep"/> &lt;= 0 makes every dated folder stale.
+    /// never returned. <paramref name="keep"/> &lt;= 0 makes every dated folder stale. With <paramref name="isComplete"/>,
+    /// only a date holding a complete backup counts toward <paramref name="keep"/>: failed nights newer than the oldest
+    /// kept good one stay, and nothing goes until <paramref name="keep"/> good nights are newer (M.ORCH-T2296).
     /// </summary>
-    public static IReadOnlyList<string> ResolveStale(IReadOnlyList<string> existingFolders, int keep) =>
-        existingFolders
-            .Select(folder => (Folder: folder, Date: ParseDatePrefix(Path.GetFileName(folder))))
-            .Where(x => x.Date.HasValue)
-            .GroupBy(x => x.Date!.Value)
-            .OrderByDescending(g => g.Key)
-            .Skip(Math.Max(keep, 0))
-            .SelectMany(g => g.Select(x => x.Folder))
-            .ToList();
+    public static IReadOnlyList<string> ResolveStale(IReadOnlyList<string> existingFolders, int keep, Func<string, bool>? isComplete = null)
+    {
+        var stale = new List<string>();
+        var kept = 0;
+        foreach (var night in existingFolders
+                     .Select(folder => (Folder: folder, Date: ParseDatePrefix(Path.GetFileName(folder))))
+                     .Where(x => x.Date.HasValue)
+                     .GroupBy(x => x.Date!.Value)
+                     .OrderByDescending(g => g.Key))
+        {
+            if (kept >= Math.Max(keep, 0)) stale.AddRange(night.Select(x => x.Folder));
+            else if (isComplete is null || night.Any(x => isComplete(x.Folder))) kept++;
+        }
+        return stale;
+    }
+
+    /// <summary>
+    /// <c>{folder}\Databases\backup-complete.txt</c>: written last by <see cref="BackupService.Run"/>, and only when every
+    /// step succeeded; it sits under <c>Databases</c> so the Azure copy carries it too (M.ORCH-T2296).
+    /// </summary>
+    public const string CompleteMarkerFileName = "backup-complete.txt";
+
+    public static string ResolveCompleteMarkerPath(string folder) =>
+        Path.Combine(folder, SqliteBackup.DatabasesSubfolder, CompleteMarkerFileName);
+
+    public static bool IsComplete(string folder) => File.Exists(ResolveCompleteMarkerPath(folder));
 
     /// <summary>
     /// The newest dated folder under <paramref name="backupBase"/>: the latest date, and of that day's folders the last
     /// (<c>_z</c> after <c>_a</c> after the bare date). Null when the base isn't reachable or holds no dated folder.
-    /// <paramref name="listFolders"/> lists a folder's subfolders; tests give a stand-in (M.ORCH-T2052).
+    /// <paramref name="listFolders"/> lists a folder's subfolders; tests give a stand-in (M.ORCH-T2052). A complete backup
+    /// wins over a newer failed one; with none complete (backups older than the marker) the newest dated folder is used.
     /// </summary>
-    public static string? FindNewest(string backupBase, Func<string, IEnumerable<string>>? listFolders = null)
+    public static string? FindNewest(string backupBase, Func<string, IEnumerable<string>>? listFolders = null,
+        Func<string, bool>? isComplete = null)
     {
         listFolders ??= dir => Directory.Exists(dir) ? Directory.GetDirectories(dir) : [];
-        IEnumerable<string> folders;
-        try { folders = listFolders(backupBase).ToList(); }
+        isComplete ??= IsComplete;
+        try
+        {
+            var folders = listFolders(backupBase)
+                .Select(folder => (Folder: folder, Name: Path.GetFileName(folder.TrimEnd('\\', '/'))))
+                .Where(x => ParseDatePrefix(x.Name).HasValue)
+                .OrderByDescending(x => x.Name, StringComparer.Ordinal)
+                .Select(x => x.Folder)
+                .ToList();
+            return folders.FirstOrDefault(isComplete) ?? folders.FirstOrDefault();
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
-        return folders
-            .Select(folder => (Folder: folder, Name: Path.GetFileName(folder.TrimEnd('\\', '/'))))
-            .Where(x => ParseDatePrefix(x.Name).HasValue)
-            .OrderByDescending(x => x.Name, StringComparer.Ordinal)
-            .Select(x => x.Folder)
-            .FirstOrDefault();
     }
 
     internal static DateTime? ParseDatePrefix(string folderName)

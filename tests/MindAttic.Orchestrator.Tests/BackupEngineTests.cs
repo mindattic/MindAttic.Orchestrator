@@ -147,7 +147,11 @@ public sealed class BackupEngineTests
     {
         var root = Path.Combine(temp, "backups");
         foreach (var d in new[] { "2026-11-20", "2026-11-21", "2026-11-21_a", "2026-11-22", "keep-me" })
-            Directory.CreateDirectory(Path.Combine(root, d));
+        {
+            var marker = BackupFolders.ResolveCompleteMarkerPath(Path.Combine(root, d));
+            Directory.CreateDirectory(Path.GetDirectoryName(marker)!);
+            File.WriteAllText(marker, "");
+        }
 
         var removed = new BackupService(root).Prune(1);
 

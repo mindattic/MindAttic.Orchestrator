@@ -181,6 +181,13 @@ public sealed class SqliteBackup
         sw.Stop();
 
         var ok = ComputeOk(code, cancelled || ct.IsCancellationRequested);
+        if (ok && string.IsNullOrWhiteSpace(output))
+        {
+            // Even an empty database dumps BEGIN/COMMIT; nothing at all means the dump was lost (M.ORCH-T2296).
+            ok = false;
+            code = -1;
+            output = "sqlite3 exited 0 but produced an empty dump.";
+        }
         if (ok)
         {
             try { File.WriteAllText(file, output); }
@@ -227,9 +234,13 @@ public sealed class SqliteBackup
         }
 
         try { p.WaitForExit(5000); } catch { }
-        try { Task.WaitAll([stdoutTask, stderrTask], TimeSpan.FromSeconds(5)); } catch { }
-
-        if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
+        if (ct.IsCancellationRequested)
+        {
+            try { Task.WaitAll([stdoutTask, stderrTask], TimeSpan.FromSeconds(5)); } catch { }
+            throw new OperationCanceledException(ct);
+        }
+        // The dump is all of stdout: wait for the reader to finish, however long a big database takes (M.ORCH-T2296).
+        try { p.WaitForExit(); Task.WaitAll(stdoutTask, stderrTask); } catch { }
 
         int code;
         try { code = p.ExitCode; }

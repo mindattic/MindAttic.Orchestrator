@@ -42,6 +42,8 @@ public sealed class SqliteRestore
         try
         {
             var sql = File.ReadAllText(dumpFile);
+            if (string.IsNullOrWhiteSpace(sql))
+                return new SqliteRestoreResult(project, dbFile, false, -1, sw.Elapsed, dumpFile, $"Dump file is empty, refusing to replace the database: {dumpFile}");
             if (File.Exists(dbFile))
             {
                 DeleteWithSidecars(aside);
@@ -75,7 +77,7 @@ public sealed class SqliteRestore
         catch (Exception ex)
         {
             sw.Stop();
-            if (replayed && movedAside) DeleteWithSidecars(dbFile);
+            if (replayed) DeleteWithSidecars(dbFile);
             PutBack(aside, dbFile, ref movedAside);
             var message = ex is System.ComponentModel.Win32Exception { NativeErrorCode: 2 }
                 ? $"'{Executable}' not found on PATH; install the sqlite3 command-line tool."

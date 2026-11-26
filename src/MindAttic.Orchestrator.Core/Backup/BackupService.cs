@@ -63,18 +63,29 @@ public sealed class BackupService
         var zip = ct.IsCancellationRequested
             ? new AppDataBackupResult(false, AppDataBackup.ResolveZipPath(folder), 0, TimeSpan.Zero, "cancelled")
             : appData.Zip(folder);
-        return new BackupRunResult(folder, dumps, zip, exports);
+        var result = new BackupRunResult(folder, dumps, zip, exports);
+        if (result.Ok && !ct.IsCancellationRequested)
+        {
+            var marker = BackupFolders.ResolveCompleteMarkerPath(folder);
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(marker)!);
+                File.WriteAllText(marker, DateTime.Now.ToString("O"));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* unmarked: it just won't count toward keep */ }
+        }
+        return result;
     }
 
     /// <summary>
-    /// Deletes all but the newest <paramref name="keep"/> dated folders under the backup base (a date's
+    /// Deletes all but the newest <paramref name="keep"/> complete dated folders under the backup base (a date's
     /// <c>_a</c>..<c>_z</c> siblings go with it). Returns the folders it removed; one that can't be deleted is skipped.
     /// </summary>
     public IReadOnlyList<string> Prune(int keep)
     {
         if (!Directory.Exists(BackupBase)) return [];
         var removed = new List<string>();
-        foreach (var stale in BackupFolders.ResolveStale(Directory.GetDirectories(BackupBase), keep))
+        foreach (var stale in BackupFolders.ResolveStale(Directory.GetDirectories(BackupBase), keep, BackupFolders.IsComplete))
         {
             try
             {
