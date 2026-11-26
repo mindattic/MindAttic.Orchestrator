@@ -115,7 +115,7 @@ public sealed class AccountsViewTests
         var logins = xaml.IndexOf("x:Name=\"LoginsModal\"", StringComparison.Ordinal);
         Assert.That(logins, Is.GreaterThan(0));
         Assert.That(xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal), Is.GreaterThan(logins), "in the Logins dialog");
-        var top = xaml[xaml.IndexOf("x:Name=\"TopRow\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
+        var top = xaml[xaml.IndexOf("x:Name=\"TopRow\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)];
         Assert.That(top, Does.Not.Contain("{Binding AddAccountCommand}").And.Not.Contain("{Binding SignInAllCommand}").And.Not.Contain("{Binding UsageReportCommand}"),
             "off the main dashboard");
         Assert.That(code, Does.Contain("OrgToolbar.DataContext = model;"));
