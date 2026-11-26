@@ -108,8 +108,14 @@ public sealed record SchedulePlan(
     /// <summary>The pace whose subagent allowance <c>orchestrator next</c> counts against (M.ORCH-T2246): <see cref="Pace"/>, or,
     /// unpaced, the login's own allowance (<see cref="AccountPacer"/>, M.ORCH-T660) that <see cref="Pace"/> leaves out. Before,
     /// an unpaced login (a solo Ultra account under its weekly line) reached Allocate with no pace at all and was handed the
-    /// session setting less every ticket being worked anywhere in the workspace, which another busy repo drove below zero.</summary>
-    public Pace? AllowancePace { get; init; }
+    /// session setting less every ticket being worked anywhere in the workspace, which another busy repo drove below zero.
+    /// Derived, never stored (M.ORCH-T2267): a stored copy went stale when a plan was remade <c>with { Pace = ... }</c>, so
+    /// <c>next</c> counted against the pace the plan was first made under instead of the one it carries.</summary>
+    public Pace? AllowancePace => Pace ?? UnpacedAllowance;
+
+    /// <summary>The login's own pace while it is unpaced (pacing off or <see cref="Pace.IsPaced"/> false), when it carries a
+    /// subagent allowance; <see cref="AllowancePace"/> falls back to it when <see cref="Pace"/> is null (M.ORCH-T2246).</summary>
+    public Pace? UnpacedAllowance { get; init; }
 
     /// <summary>The window is at its target: nothing new starts. <see cref="Pace"/> is only kept when pacing is on, but the
     /// stop doesn't depend on pacing (the pace gate refuses every call either way).</summary>
@@ -385,7 +391,7 @@ public static partial class Scheduler
         return new SchedulePlan(queue, proposals, settings.MaxConcurrentSessions, occupied, hold, finished)
         {
             Cap = cap, UnknownRepos = snapshot.UnknownRepos, Pace = pace,
-            AllowancePace = pace ?? (snapshot.Pace is { SubagentAllowance: not null } own ? own : null), Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig, RoomForRest = roomForRest,
+            UnpacedAllowance = pace is null && snapshot.Pace is { SubagentAllowance: not null } own ? own : null, Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig, RoomForRest = roomForRest,
             // Waiting for approval too: an old feature nobody approved is the likeliest to close as wont-do.
             Groom = [.. queue.Concat(awaiting).Where(q => q.Old && q.Assignment is null)],
             AwaitingApproval = awaiting, Worked = worked,
