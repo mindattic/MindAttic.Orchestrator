@@ -50,9 +50,10 @@ public sealed class TicketsDesktopTests
         var links = doc.Descendants(p + "Hyperlink").Where(h => (string?)h.Attribute("Style") == "{StaticResource TicketLink}").ToList();
         // The per-user Tickets view's ticket (M.ORCH-T668), its title and its Assign in Tickets (M.ORCH-T762) and a finished
         // ticket; the Repos and Queue views' links went with them to Tickets Desktop, the agent card's snippet with its board (M.ORCH-T837).
-        // The owner inbox's ticket rows link theirs too (M.ORCH-T1689).
+        // The owner inbox's ticket rows link theirs too (M.ORCH-T1689); the per-user Tickets view and finished-ticket links went
+        // with the login's home page (M.ORCH-T2225, M.ORCH-T2238), leaving the inbox's one.
         Assert.That(links.Select(h => (string)h.Attribute("CommandParameter")!),
-            Is.EquivalentTo(new[] { "{Binding Id}", "{Binding Id}", "{Binding Id}", "{Binding TicketId}", "{Binding TicketId}" }));
+            Is.EquivalentTo(new[] { "{Binding TicketId}" }));
         // Each one opens through the same style's OpenInTicketsCommand (no link overrides it with its own Command).
         Assert.That(links, Has.None.Matches<XElement>(h => h.Attribute("Command") is not null));
         Assert.That(links, Has.All.Matches<XElement>(h => h.Attribute(XName.Get("AutomationProperties.Name")) is not null));
