@@ -15,7 +15,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
 {
     private const int HeadScanLimit = 256 * 1024;
     private const int ReadChunk = 1024 * 1024;
-    private const int CacheVersion = 5;
+    // 6 (M.ORCH-T2276): subagents handed a ticket by a "ticket X ... X.prompt" handoff are read again from their opening prompt.
+    private const int CacheVersion = 6;
     private static readonly TimeSpan SaveEvery = TimeSpan.FromMinutes(1);
 
     /// <summary>A file written this recently is opened every poll whatever its directory entry says (a file held open can
@@ -28,6 +29,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
     private static readonly byte[] TicketMarker = Encoding.UTF8.GetBytes(TicketAttribution.PromptMarker);
     private static readonly byte[] ToolResultMarker = Encoding.UTF8.GetBytes("\"tool_result\"");
     private static readonly byte[] GoalMarker = Encoding.UTF8.GetBytes("\"goal_status\"");
+    // A transcript's opening line (a subagent's prompt, M.ORCH-T2276) is the one with no parent.
+    private static readonly byte[] OpeningMarker = Encoding.UTF8.GetBytes("\"parentUuid\":null");
 
     private readonly Dictionary<string, FileState> files = new(StringComparer.OrdinalIgnoreCase);
     private DateTime countingSinceUtc;
@@ -68,6 +71,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         public string? Model;
         public string? TicketId;
         public string? TicketType;
+        /// <summary>The other tickets a subagent's opening prompt handed it besides <see cref="TicketId"/> (M.ORCH-T2276).</summary>
+        public readonly List<string> AlsoTickets = [];
         /// <summary>Set for a subagent's transcript (<c>&lt;session&gt;\subagents\agent-&lt;id&gt;.jsonl</c>): it shares its parent's
         /// session id, but a ticket its prompt names is its own, not the parent's (M.ORCH-T252).</summary>
         public string? AgentId;
@@ -230,7 +235,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     TicketId = ticket.Id ?? own.Select(s => TicketAttribution.FromWorktree(s.Cwd, worktreeRoot)).FirstOrDefault(id => id is not null),
                     TicketType = ticket.Type,
                     TicketedSubagents = [.. g.Where(s => s.AgentId is not null && s.TicketId is not null)
-                        .Select(s => new TicketedSubagent(s.AgentId!, s.TicketId!, s.TicketType, s.Cwd!, [.. s.Events.OrderBy(e => e.AtUtc)], s.Model))],
+                        .Select(s => new TicketedSubagent(s.AgentId!, s.TicketId!, s.TicketType, s.Cwd!, [.. s.Events.OrderBy(e => e.AtUtc)], s.Model,
+                            s.AlsoTickets.Count > 0 ? [.. s.AlsoTickets] : null))],
                     Filing = [.. g.SelectMany(s => s.Filed.Select(id => new FiledTicket(id, s.AgentId, s.LastWriteUtc)))],
                     // The CLI's own transcript's latest goal_status says whether a /goal is still running (M.ORCH-T1856).
                     Goal = own.Where(s => s.GoalAtUtc != default).MaxBy(s => s.GoalAtUtc)?.Goal,
@@ -255,7 +261,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
     // Events as [ticks, input, cache write, cache read, output]: a third the size of named fields.
     private sealed record CachedFile(string Path, long Offset, string? Cwd, string? SessionId, string? Model, string? TicketId, string? TicketType, DateTime LastWriteUtc,
         long[][] Events, LimitHit[] Hits, Dictionary<string, long[]> Counted, string[]? Pending = null, string[]? Filed = null, bool ForkPrologue = false, string? ForkToolUseId = null,
-        string? Goal = null, DateTime GoalAtUtc = default);
+        string? Goal = null, DateTime GoalAtUtc = default, string[]? Also = null);
 
     private sealed record Cache(int Version, DateTime SinceUtc, List<CachedFile> Files);
 
@@ -286,6 +292,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                 if (u.Length == 4) state.CountedMessages[id] = new TokenUsage(u[0], u[1], u[2], u[3]);
             state.PendingFiles.UnionWith(f.Pending ?? []);
             state.Filed.AddRange(f.Filed ?? []);
+            state.AlsoTickets.AddRange(f.Also ?? []);
             files[f.Path] = state;
         }
         countingSinceUtc = cache.SinceUtc;
@@ -302,7 +309,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             kv.Key, kv.Value.Offset, kv.Value.Cwd, kv.Value.SessionId, kv.Value.Model, kv.Value.TicketId, kv.Value.TicketType, kv.Value.LastWriteUtc,
             [.. kv.Value.Events.Select(e => new[] { e.AtUtc.Ticks, e.Usage.Input, e.Usage.CacheCreation, e.Usage.CacheRead, e.Usage.Output })],
             [.. kv.Value.Hits], kv.Value.CountedMessages.ToDictionary(c => c.Key, c => new[] { c.Value.Input, c.Value.CacheCreation, c.Value.CacheRead, c.Value.Output }),
-            [.. kv.Value.PendingFiles], [.. kv.Value.Filed], kv.Value.ForkPrologue, kv.Value.ForkToolUseId, kv.Value.Goal, kv.Value.GoalAtUtc))]);
+            [.. kv.Value.PendingFiles], [.. kv.Value.Filed], kv.Value.ForkPrologue, kv.Value.ForkToolUseId, kv.Value.Goal, kv.Value.GoalAtUtc,
+            kv.Value.AlsoTickets.Count > 0 ? [.. kv.Value.AlsoTickets] : null))]);
         // The daemon, the dashboard and CLI runs share the cache: each writes a private temp file and
         // swaps it in whole, so a reader never sees half of one.
         var temp = $"{cachePath}.{Environment.ProcessId}.tmp";
@@ -369,6 +377,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         state.PendingFiles.Clear();
         state.Filed.Clear();
         (state.TicketId, state.TicketType) = (null, null);
+        state.AlsoTickets.Clear();
         return true;
     }
 
@@ -424,6 +433,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     consumed = consumed[(nl + 1)..];
                     if (line.IsEmpty) continue;
                     if (state.Cwd is null || state.ForkPrologue || line.IndexOf(UsageMarker) >= 0 || (state.TicketId is null && line.IndexOf(TicketMarker) >= 0) ||
+                        (state.TicketId is null && state.AgentId is not null && line.IndexOf(OpeningMarker) >= 0) ||
                         (state.PendingFiles.Count > 0 && line.IndexOf(ToolResultMarker) >= 0) || line.IndexOf(GoalMarker) >= 0)
                         Apply(Encoding.UTF8.GetString(line), state, sinceUtc);
                 }
@@ -478,10 +488,26 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             }
             // The orchestrator's dispatch prompt names the ticket: that's what ties a session's cost to it.
             if (sink.TicketId is null && Str(root, "type") == "user" && root.TryGetProperty("message", out var prompt) &&
-                prompt.ValueKind == JsonValueKind.Object && TicketAttribution.FromPrompt(Text(prompt)) is { } ticket)
+                prompt.ValueKind == JsonValueKind.Object)
             {
-                (sink.TicketId, sink.TicketType) = ticket;
-                return;
+                var text = Text(prompt);
+                // A subagent's opening prompt (M.ORCH-T2276) may hand the dispatch prompt over by file ("Your complete task prompt
+                // for ticket X (Repo, fix) is in ...\X.prompt"), or hand it several tickets: it's working each one it names so.
+                if (IsSubagentOpening(root) && TicketAttribution.FromHandoff(text) is { } handoff)
+                {
+                    (sink.TicketId, sink.TicketType) = (handoff.Id, handoff.Type);
+                    if (sink.AlsoTickets is { } also)
+                    {
+                        also.Clear();
+                        also.AddRange(handoff.Also);
+                    }
+                    return;
+                }
+                if (TicketAttribution.FromPrompt(text) is { } ticket)
+                {
+                    (sink.TicketId, sink.TicketType) = ticket;
+                    return;
+                }
             }
             if (!root.TryGetProperty("message", out var message) || message.ValueKind != JsonValueKind.Object) return;
             if (sink.PendingFiles.Count > 0 && Str(root, "type") == "user") NoteFiled(message, sink);
@@ -532,6 +558,12 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         }
     }
 
+    /// <summary>Whether <paramref name="root"/> is a subagent transcript's opening line: its prompt, the sidechain line with no
+    /// parent (M.ORCH-T2276).</summary>
+    private static bool IsSubagentOpening(JsonElement root) =>
+        root.TryGetProperty("isSidechain", out var side) && side.ValueKind == JsonValueKind.True &&
+        root.TryGetProperty("parentUuid", out var parent) && parent.ValueKind == JsonValueKind.Null;
+
     /// <summary>How much a later line of the same response adds to what its earlier lines were counted at (never less than none).</summary>
     internal static TokenUsage TokenUsageGrowth(TokenUsage counted, TokenUsage line) => new(
         Math.Max(0, line.Input - counted.Input), Math.Max(0, line.CacheCreation - counted.CacheCreation),
@@ -555,6 +587,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         {
             Cwd = state.Cwd, SessionId = state.SessionId, Model = state.Model, TicketId = state.TicketId, TicketType = state.TicketType,
             ForkPrologue = state.ForkPrologue, ForkToolUseId = state.ForkToolUseId, Goal = state.Goal, GoalAtUtc = state.GoalAtUtc,
+            AlsoTickets = state.AlsoTickets,
         };
         ApplyLine(line, sink, countFrom);
         state.Goal = sink.Goal;
@@ -689,6 +722,8 @@ internal sealed class TranscriptLineSink(Dictionary<string, TokenUsage> countedM
     public string? Model { get; set; }
     public string? TicketId { get; set; }
     public string? TicketType { get; set; }
+    /// <summary>The other tickets a subagent's opening prompt handed it (M.ORCH-T2276); null where they aren't kept.</summary>
+    public List<string>? AlsoTickets { get; set; }
     public bool ForkPrologue { get; set; }
     public string? ForkToolUseId { get; set; }
     public string? Goal { get; set; }

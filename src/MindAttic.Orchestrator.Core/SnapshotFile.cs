@@ -36,7 +36,7 @@ public sealed class SnapshotFile(string path)
     // Ticketed subagents per repo, per session, likewise (M.ORCH-T255 reads them to tell what a live subagent is working).
     private sealed record Published(int Version, int Pid, Snapshot Snapshot, List<List<long[][]>> Events, List<List<PublishedSubagent[]>>? Subagents = null);
 
-    private sealed record PublishedSubagent(string AgentId, string TicketId, string? TicketType, string Cwd, long[][] Events);
+    private sealed record PublishedSubagent(string AgentId, string TicketId, string? TicketType, string Cwd, long[][] Events, string[]? Also = null);
 
     private static long[] Pack(UsageEvent e) => [e.AtUtc.Ticks, e.Usage.Input, e.Usage.CacheCreation, e.Usage.CacheRead, e.Usage.Output];
 
@@ -47,7 +47,8 @@ public sealed class SnapshotFile(string path)
     {
         var events = snapshot.Repos.Select(r => r.Sessions.Select(s => s.Events.Select(Pack).ToArray()).ToList()).ToList();
         var subagents = snapshot.Repos.Select(r => r.Sessions.Select(s => s.TicketedSubagents
-            .Select(a => new PublishedSubagent(a.AgentId, a.TicketId, a.TicketType, a.Cwd, [.. a.Events.Select(Pack)])).ToArray()).ToList()).ToList();
+            .Select(a => new PublishedSubagent(a.AgentId, a.TicketId, a.TicketType, a.Cwd, [.. a.Events.Select(Pack)],
+                a.Also is { Count: > 0 } also ? [.. also] : null)).ToArray()).ToList()).ToList();
         var temp = $"{Path}.{Environment.ProcessId}.tmp";
         try
         {
@@ -93,7 +94,7 @@ public sealed class SnapshotFile(string path)
             {
                 Events = [.. p.Events[i][j].Select(Unpack)],
                 TicketedSubagents = p.Subagents is null ? [] : [.. p.Subagents[i][j].Select(a =>
-                    new TicketedSubagent(a.AgentId, a.TicketId, a.TicketType, a.Cwd, [.. a.Events.Select(Unpack)]))],
+                    new TicketedSubagent(a.AgentId, a.TicketId, a.TicketType, a.Cwd, [.. a.Events.Select(Unpack)], Also: a.Also))],
             })],
         }).ToList();
         // Lookups are case-insensitive where they're built; JSON brings back plain ordinal ones.

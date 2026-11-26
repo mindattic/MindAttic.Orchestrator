@@ -37,7 +37,7 @@ internal static class TicketActivity
             foreach (var s in repo.Sessions)
             {
                 if (recent(s.LastWriteUtc) && Works(s.Cwd, s.TicketId, a, byFolder)) return true;
-                if (s.TicketedSubagents.Any(t => t.Events.Count > 0 && recent(t.Events[^1].AtUtc) && Works(t.Cwd, t.TicketId, a, byFolder))) return true;
+                if (s.TicketedSubagents.Any(t => t.Events.Count > 0 && recent(t.Events[^1].AtUtc) && t.Tickets.Any(id => Works(t.Cwd, id, a, byFolder)))) return true;
             }
         }
         return false;

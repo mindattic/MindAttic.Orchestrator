@@ -132,8 +132,15 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
 public sealed record FiledTicket(string TicketId, string? AgentId, DateTime LastWriteUtc);
 
 /// <summary>A session's subagent that works a ticket of its own, with every response it made in the reader's window, and the
-/// model it ran on as its transcript names it (M.ORCH-T563), null when it names none.</summary>
-public sealed record TicketedSubagent(string AgentId, string TicketId, string? TicketType, string Cwd, IReadOnlyList<UsageEvent> Events, string? Model = null);
+/// model it ran on as its transcript names it (M.ORCH-T563), null when it names none. <c>Also</c> holds the other tickets its
+/// opening prompt handed it (M.ORCH-T2276: a coordinator that gives one subagent several); its cost is charged to
+/// <c>TicketId</c> alone, but it's working them all.</summary>
+public sealed record TicketedSubagent(string AgentId, string TicketId, string? TicketType, string Cwd, IReadOnlyList<UsageEvent> Events, string? Model = null,
+    IReadOnlyList<string>? Also = null)
+{
+    /// <summary>Every ticket it's working: its own, then the others it was handed.</summary>
+    public IEnumerable<string> Tickets => Also is { Count: > 0 } also ? [TicketId, .. also] : [TicketId];
+}
 
 /// <summary>One repo as the dashboard shows it: its state, hosted tabs, transcript sessions, open tickets and today's usage.
 /// <c>Name</c> and <c>Path</c> identify the repo; <c>Hosts</c> are its Launcher tabs, <c>Sessions</c> its transcript sessions,

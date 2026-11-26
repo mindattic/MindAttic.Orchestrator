@@ -468,8 +468,10 @@ public static partial class Scheduler
             if (s.TicketId is { } own && Live(s.LastWriteUtc)) worked.Add(new(own, s.SessionId, null, "started on it"));
             foreach (var f in s.Filing.Where(f => Live(f.LastWriteUtc)))
                 worked.Add(new(f.TicketId, s.SessionId, f.AgentId, f.AgentId is null ? "filed it this turn" : $"its subagent {f.AgentId} filed it", Filed: true));
+            // Every ticket it was handed (M.ORCH-T2276): a coordinator may give one subagent several.
             foreach (var sub in s.TicketedSubagents.Where(t => t.Events.Count > 0 && Live(t.Events[^1].AtUtc)))
-                worked.Add(new(sub.TicketId, s.SessionId, sub.AgentId, $"its subagent {sub.AgentId} was handed it"));
+                foreach (var id in sub.Tickets)
+                    worked.Add(new(id, s.SessionId, sub.AgentId, $"its subagent {sub.AgentId} was handed it"));
         }
         return [.. worked.Where(w => open.Contains(w.TicketId)).DistinctBy(w => (w.TicketId.ToUpperInvariant(), w.SessionId, w.AgentId))];
     }
@@ -495,7 +497,7 @@ public static partial class Scheduler
                 // Checked unconditionally (M.ORCH-T1164), the same as TicketActivity.Active: a legacy worktree
                 // assignment with a quiet parent session but an actively-writing subagent must count as live too.
                 foreach (var t in s.TicketedSubagents)
-                    if (t.Events.Count > 0 && t.Events[^1].AtUtc > last && TicketActivity.Works(t.Cwd, t.TicketId, a, byFolder)) last = t.Events[^1].AtUtc;
+                    if (t.Events.Count > 0 && t.Events[^1].AtUtc > last && t.Tickets.Any(id => TicketActivity.Works(t.Cwd, id, a, byFolder))) last = t.Events[^1].AtUtc;
             }
         }
         return last;
