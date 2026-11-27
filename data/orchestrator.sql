@@ -40501,8 +40501,9 @@ INSERT INTO state (name, value) VALUES ('reminders', '[
     "Text": "M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator.",
     "DueUtc": "2026-11-27T15:00:00Z",
     "CreatedUtc": "2026-11-22T22:04:28.5550589Z",
+    "SentUtc": "2026-11-27T15:00:01.6128734Z",
     "Failures": 0,
-    "Pending": true,
+    "Pending": false,
     "ToLabel": "you",
     "Message": "Reminder: M.ORCH-T1811: owner steps - re-invite honey@ and waffle@mindattic.com (claude.ai Settings \u003E Organization \u003E Members), sign each in via private window, run their tokens out, then remove them and reduce Total seats BEFORE the renewal date. See ticket note. Renewal date still unknown: tell the Orchestrator."
   },
