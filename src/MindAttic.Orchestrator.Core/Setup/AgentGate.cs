@@ -4027,6 +4027,7 @@ public static class AgentGate
         # in its prompt) counts its own fresh tokens (input + cache creation + output, cache reads not, each response once at the
         # most its lines say) from its transcript, read on from where the last call stopped. Past the UnitTokenBudget setting it
         # is told once to land what's done and split the rest; past twice that, once more to stop. Any error says nothing.
+        # Parallel tool calls run their hooks at once, so one agent's mark is read, counted and written under a lock file.
         def budget_note():
             try:
                 agent = re.sub(r"[^A-Za-z0-9_.-]", "_", str(data.get("agent_id") or ""))
@@ -4040,8 +4041,37 @@ public static class AgentGate
                     return None
                 mark = DIR / "budget" / (re.sub(r"[^A-Za-z0-9_.-]", "_", sid) + "." + agent + ".json")
                 mark.parent.mkdir(parents=True, exist_ok=True)
+                lock = mark.with_suffix(".lock")
+                give_up = time.monotonic() + 5
+                while True:
+                    try:
+                        os.close(os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+                        break
+                    except FileExistsError:
+                        try:
+                            if time.time() - lock.stat().st_mtime > 10:
+                                lock.unlink()
+                                continue
+                        except Exception:
+                            pass
+                        if time.monotonic() > give_up:
+                            return None
+                        time.sleep(0.03)
+                try:
+                    return budget_count(mark, path)
+                finally:
+                    try:
+                        lock.unlink()
+                    except Exception:
+                        pass
+            except Exception:
+                return None
+        def budget_count(mark, path):
+            try:
                 def save_mark(value):
-                    mark.write_text(json.dumps(value), encoding="utf-8")
+                    tmp = mark.with_name(mark.name + "." + str(os.getpid()) + ".tmp")
+                    tmp.write_text(json.dumps(value), encoding="utf-8")
+                    os.replace(tmp, mark)
                 try:
                     st = json.loads(mark.read_text(encoding="utf-8"))
                 except Exception:
