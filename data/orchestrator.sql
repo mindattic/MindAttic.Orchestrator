@@ -1858,7 +1858,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 24686140);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 27553);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 35322);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 2572744);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 2575898);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -5639,7 +5639,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ab3088ad4a4bcf635', 'US-T528', 'feature', 'SpaceGod.Unreal', 89734, '2026-11-24T04:48:41.687Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ab350bbbf5931517a', 'US-T517', 'feature', 'SpaceGod.Unreal', 208640, '2026-11-24T06:19:22.492Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ab35e34ff5386213d', 'US-T642', 'feature', 'SpaceGod.Unreal', 88256, '2026-11-24T08:24:16.185Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ab3f47fd071c42ff8', 'US-T924', 'claimed', 'SpaceGod.Unreal', 52747, '2026-11-27T20:49:26.426Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ab3f47fd071c42ff8', 'US-T924', 'claimed', 'SpaceGod.Unreal', 55901, '2026-11-27T20:58:42.102Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ab4955f8400f4dc88', 'US-T453', 'feature', 'SpaceGod.Unreal', 91145, '2026-11-23T20:17:29.014Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ab679542c44812aff', 'US-T862', '', 'SpaceGod.Unreal', 123638, '2026-11-25T18:08:02.704Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ab722b55d3e172f48', 'US-T487', 'feature', 'SpaceGod.Unreal', 76735, '2026-11-23T21:56:05.6Z', 0, 'opus');
@@ -33264,32 +33264,14 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 96.495,
+      "Degraded": 96.28500000000001,
       "Unhealthy": 97,
-      "Reason": "p90 of 130 readings is 91.9 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-27T20:40:01.0369114\u002B00:00",
-      "Basis": 130
+      "Reason": "p90 of 160 readings is 91.7 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-27T21:00:21.6718484\u002B00:00",
+      "Basis": 160
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T15:14:43.1179711\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 90.615,
-      "FromUnhealthy": 97,
-      "ToDegraded": 90.72000000000001,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 86.4 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T16:08:50.2413732\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.0494999999999997,
-      "FromUnhealthy": 1.0494999999999997,
-      "ToDegraded": 2.0235,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 60 readings is 2.13 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
     {
       "At": "2026-11-26T16:08:50.2413732\u002B00:00",
       "Check": "CommitPercent",
@@ -35071,6 +35053,24 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 96.495,
       "ToUnhealthy": 97,
       "Reason": "p90 of 130 readings is 91.9 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T20:53:06.411658\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 96.495,
+      "FromUnhealthy": 97,
+      "ToDegraded": 96.39,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 150 readings is 91.8 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T21:00:21.6718484\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 96.39,
+      "FromUnhealthy": 97,
+      "ToDegraded": 96.28500000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 160 readings is 91.7 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
@@ -35638,7 +35638,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "ae41015c4b897ff2ca06dc25a73cb45578659cca"
   },
   "MindAttic.Orchestrator.SIDEBAR": {
-    "Tested": "30164e90ddc949fa692009f61ce6dbf6c87c9983",
+    "Tested": "1d8ae02bf47b6c83d8bcec3dc96bcf37d34f4843",
     "Green": "6b561073ef56e4e8340e62c36f6cc69a919d370f"
   },
   "ipt392tmp": {
