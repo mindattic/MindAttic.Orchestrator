@@ -34921,9 +34921,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T06:55:31.8874672Z",
-    "StoppedUtc": "2026-11-27T01:55:34.3194615Z",
-    "DueUtc": "2026-11-27T06:57:31.8874672Z"
+    "UntilUtc": "2026-11-27T07:10:34.942087Z",
+    "StoppedUtc": "2026-11-27T02:10:37.5312741Z",
+    "DueUtc": "2026-11-27T07:12:34.942087Z"
   },
   "24400": {
     "SessionId": "a8807a82-1dd3-4855-b80b-a04b51f0814d",
@@ -34998,9 +34998,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "28368": {
     "SessionId": "9aa417dc-00ec-48db-aaea-59ffddf8b7f3",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T06:58:02.3796768Z",
-    "StoppedUtc": "2026-11-27T01:58:04.4803475Z",
-    "DueUtc": "2026-11-27T07:00:02.3796768Z"
+    "UntilUtc": "2026-11-27T07:13:02.9457995Z",
+    "StoppedUtc": "2026-11-27T02:13:05.4528598Z",
+    "DueUtc": "2026-11-27T07:15:02.9457995Z"
   },
   "61472": {
     "SessionId": "718f6c47-2f74-43f9-b8fb-ec90517f4bc4",
@@ -35047,9 +35047,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "73420": {
     "SessionId": "8b26624c-b794-4842-a4ae-87041419b1a9",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T06:51:02.7297491Z",
-    "StoppedUtc": "2026-11-27T01:51:05.0071881Z",
-    "DueUtc": "2026-11-27T06:53:02.7297491Z"
+    "UntilUtc": "2026-11-27T07:06:23.4936086Z",
+    "StoppedUtc": "2026-11-27T02:06:25.7076062Z",
+    "DueUtc": "2026-11-27T07:08:23.4936086Z"
   },
   "42804": {
     "SessionId": "72ee51a8-6018-4d9d-91c1-e4d8a68a71c2",
