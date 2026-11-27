@@ -923,6 +923,36 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 40)]
     public double LoginTreeGutterPx { get; set; } = OrchestratorSettings.DefaultLoginTreeGutterPx;
 
+    /// <summary>The width of one Roadmap block.</summary>
+    [Setting("Roadmap block width (px)", Group = "Roadmap", Order = 1,
+        Help = "The width of one block in the Roadmap page's repo grid and in each epic, feature, story and task row.")]
+    [SettingRange(80, 600)]
+    public double RoadmapBlockWidthPx { get; set; } = OrchestratorSettings.DefaultRoadmapBlockWidthPx;
+
+    /// <summary>The gap between two Roadmap level rows.</summary>
+    [Setting("Roadmap row gap (px)", Group = "Roadmap", Order = 2,
+        Help = "The gap between two of the Roadmap page's level rows, where the lines from a block to its children run.")]
+    [SettingRange(8, 200)]
+    public double RoadmapRowGapPx { get; set; } = OrchestratorSettings.DefaultRoadmapRowGapPx;
+
+    /// <summary>How many days a closed epic stays on the Roadmap.</summary>
+    [Setting("Roadmap closed epics kept (days)", Group = "Roadmap", Order = 3,
+        Help = "How many days a closed epic stays on the Roadmap after it closed, so finished work stays visible for a while.")]
+    [SettingRange(0, 365)]
+    public int RoadmapClosedEpicDays { get; set; } = OrchestratorSettings.DefaultRoadmapClosedEpicDays;
+
+    /// <summary>How long the Roadmap waits after a ticket change before reading the tickets again.</summary>
+    [Setting("Roadmap refresh delay (ms)", Group = "Roadmap", Order = 4,
+        Help = "How long the Roadmap waits after a ticket change before it reads the tickets again, so a burst of changes reads once.")]
+    [SettingRange(0, 60000)]
+    public int RoadmapRefreshDebounceMs { get; set; } = OrchestratorSettings.DefaultRoadmapRefreshDebounceMs;
+
+    /// <summary>What a task being worked on counts toward its parents' percent.</summary>
+    [Setting("Roadmap credit for a task being worked on", Group = "Roadmap", Order = 5,
+        Help = "What an open task someone is working on counts toward its parents' percent on the Roadmap; a closed task counts 1 and an untouched one 0.")]
+    [SettingRange(0, 1)]
+    public double RoadmapWorkingCredit { get; set; } = OrchestratorSettings.DefaultRoadmapWorkingCredit;
+
     /// <summary>A busy login's green play arrow blinks once for every this many tokens it spends, so the busiest blink fastest.</summary>
     [Setting("Blink once per (tokens)", Group = "Dashboard", Order = 3,
         Help = "A busy login's green play arrow blinks once for every this many tokens it spends, so the busiest blink fastest.")]
@@ -1456,6 +1486,11 @@ public sealed class OrchestratorVaultSettings
         AutoTabNameMaxChars = s.AutoTabNameMaxChars,
         CliTooltipDelayMs = s.CliTooltipDelayMs,
         LoginTreeGutterPx = s.LoginTreeGutterPx,
+        RoadmapBlockWidthPx = s.RoadmapBlockWidthPx,
+        RoadmapRowGapPx = s.RoadmapRowGapPx,
+        RoadmapClosedEpicDays = s.RoadmapClosedEpicDays,
+        RoadmapRefreshDebounceMs = s.RoadmapRefreshDebounceMs,
+        RoadmapWorkingCredit = s.RoadmapWorkingCredit,
         PlansFolder = s.PlansFolder,
         PlanSummaryMaxChars = s.PlanSummaryMaxChars,
         PlanHeadKb = s.PlanHeadKb,
@@ -1686,6 +1721,11 @@ public sealed class OrchestratorVaultSettings
         AutoTabNameMaxChars = AutoTabNameMaxChars,
         CliTooltipDelayMs = CliTooltipDelayMs,
         LoginTreeGutterPx = LoginTreeGutterPx,
+        RoadmapBlockWidthPx = RoadmapBlockWidthPx,
+        RoadmapRowGapPx = RoadmapRowGapPx,
+        RoadmapClosedEpicDays = RoadmapClosedEpicDays,
+        RoadmapRefreshDebounceMs = RoadmapRefreshDebounceMs,
+        RoadmapWorkingCredit = RoadmapWorkingCredit,
         PlansFolder = string.IsNullOrWhiteSpace(PlansFolder) ? s.PlansFolder : PlansFolder,
         PlanSummaryMaxChars = PlanSummaryMaxChars,
         PlanHeadKb = PlanHeadKb,

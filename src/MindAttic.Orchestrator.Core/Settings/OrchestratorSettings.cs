@@ -396,6 +396,38 @@ public sealed record OrchestratorSettings
     /// <summary>The default <see cref="LoginTreeGutterPx"/>.</summary>
     public const double DefaultLoginTreeGutterPx = 10;
 
+    /// <summary>The width of one block in the Roadmap page's repo grid and level rows (M.ORCH-T2382).</summary>
+    public double RoadmapBlockWidthPx { get; init; } = DefaultRoadmapBlockWidthPx;
+
+    /// <summary>The default <see cref="RoadmapBlockWidthPx"/>.</summary>
+    public const double DefaultRoadmapBlockWidthPx = 200;
+
+    /// <summary>The gap between two of the Roadmap page's level rows, where the connector lines run (M.ORCH-T2382).</summary>
+    public double RoadmapRowGapPx { get; init; } = DefaultRoadmapRowGapPx;
+
+    /// <summary>The default <see cref="RoadmapRowGapPx"/>.</summary>
+    public const double DefaultRoadmapRowGapPx = 36;
+
+    /// <summary>How many days a closed epic stays on the Roadmap after it closed (M.ORCH-T2382).</summary>
+    public int RoadmapClosedEpicDays { get; init; } = DefaultRoadmapClosedEpicDays;
+
+    /// <summary>The default <see cref="RoadmapClosedEpicDays"/>.</summary>
+    public const int DefaultRoadmapClosedEpicDays = 14;
+
+    /// <summary>How long the Roadmap waits after a ticket change before it reads the tickets again, so a burst reads once
+    /// (M.ORCH-T2382).</summary>
+    public int RoadmapRefreshDebounceMs { get; init; } = DefaultRoadmapRefreshDebounceMs;
+
+    /// <summary>The default <see cref="RoadmapRefreshDebounceMs"/>.</summary>
+    public const int DefaultRoadmapRefreshDebounceMs = 2000;
+
+    /// <summary>What an open task someone is working on counts toward its parents' percent on the Roadmap, a closed one
+    /// counting 1 (M.ORCH-T2382).</summary>
+    public double RoadmapWorkingCredit { get; init; } = DefaultRoadmapWorkingCredit;
+
+    /// <summary>The default <see cref="RoadmapWorkingCredit"/>.</summary>
+    public const double DefaultRoadmapWorkingCredit = 0.5;
+
     /// <summary>Whether the Team Wall (M.ORCH-T936) leaves out the Launcher's own menu pane (M.ORCH-T1256): off by default
     /// (included, as it always was before this setting existed), since the Launcher is itself a live CLI someone may want to
     /// watch like any other.</summary>
