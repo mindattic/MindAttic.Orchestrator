@@ -154,7 +154,10 @@ public sealed class JsonStore
         }
     }
 
-    /// <summary>Whether <paramref name="name"/> is kept at all (a value saved, even an empty one).</summary>
+    /// <summary>Whether <paramref name="name"/> is kept at all: for a <c>state</c> name, a value saved, even an empty one. The
+    /// settings and the assignments are kept a row each, and their tables hold nothing that tells "saved empty" from "never
+    /// saved", so for those two it's whether any row is kept: an empty list saved reads as none saved, as it loads and as the
+    /// one-time import takes it (M.ORCH-T2331).</summary>
     public bool Has(string name)
     {
         try
