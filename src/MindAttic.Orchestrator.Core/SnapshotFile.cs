@@ -62,6 +62,17 @@ public sealed class SnapshotFile(string path)
         }
     }
 
+    /// <summary>How long ago the published file was last written; null when there is none.</summary>
+    public TimeSpan? Age(DateTime nowUtc)
+    {
+        try
+        {
+            var info = new FileInfo(Path);
+            return info.Exists ? nowUtc - info.LastWriteTimeUtc : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
     /// <summary>The published snapshot when there's one younger than <see cref="MaxAge"/>; reread only when the file changed.</summary>
     public Snapshot? Read(DateTime nowUtc)
     {

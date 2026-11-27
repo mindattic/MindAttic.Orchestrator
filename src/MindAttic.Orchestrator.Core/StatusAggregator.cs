@@ -217,6 +217,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     public Snapshot Refresh(DateTime? nowUtc = null)
     {
         LastWasShared = false;
+        if (nowUtc is null && statusLease is not null && !statusLease.IsHeld && !statusLease.TryAcquire() && HolderWedged(DateTime.UtcNow))
+            statusLease.TakeOver();
         if (nowUtc is null && statusLease is not null && !statusLease.IsHeld && !statusLease.TryAcquire() &&
             Published.Read(DateTime.UtcNow) is { } shared && !ResetSince(shared, DateTime.UtcNow))
         {
@@ -224,9 +226,17 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             return KnownRepos(WithLiveBilling(WithLiveQueue(shared), DateTime.UtcNow));
         }
         var snapshot = Build(nowUtc ?? DateTime.UtcNow);
-        if (nowUtc is null && statusLease is { IsHeld: true }) Published.Write(snapshot);
+        if (nowUtc is null && statusLease is { IsHeld: true } && statusLease.TryAcquire()) Published.Write(snapshot);
         return KnownRepos(snapshot);
     }
+
+    /// <summary>How long the lease holder's published snapshot may go unwritten before it counts as wedged and another process
+    /// takes the lease over (M.ORCH-T2310). Past <see cref="SnapshotFile.MaxAge"/> a reader only built its own snapshot, which
+    /// never asks Claude's meter: a hung dashboard holding the lease left every login unread for 19 hours (Nov 23 18:25Z to
+    /// Nov 24 13:40Z). Well past the longest refresh seen, so a slow holder isn't robbed mid-build.</summary>
+    public static readonly TimeSpan HolderWedgedAfter = TimeSpan.FromMinutes(10);
+
+    private bool HolderWedged(DateTime nowUtc) => Published.Age(nowUtc) is { } age && age > HolderWedgedAfter;
 
     /// <summary>Refreshes <see cref="Sessions.SessionControl.KnownRepoNames"/> from every snapshot this process shows,
     /// built here or shown from another's: the one roster a repo-name display with no workspace of its own (a tab-matching

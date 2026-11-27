@@ -60,6 +60,15 @@ public sealed class DispatchLease(string directory, string name = "dispatch.lock
         }
     }
 
+    /// <summary>Takes the lease from a holder that is alive but wedged (its pid runs, nothing it does lands), which
+    /// <see cref="TryAcquire"/> never takes from. The holder, still running, finds the row another's at its next
+    /// <see cref="TryAcquire"/> and lets go. True when this one holds it now.</summary>
+    public bool TakeOver()
+    {
+        try { return held = Take(force: true); }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or UnauthorizedAccessException) { return held; }
+    }
+
     /// <summary>Gives up the lease if held, deleting its row so the next process to ask takes it; a failed delete is ignored.</summary>
     public void Dispose()
     {
@@ -77,7 +86,7 @@ public sealed class DispatchLease(string directory, string name = "dispatch.lock
     }
 
     /// <summary>Takes the row unless a live process other than this one holds it; true when it's this one's.</summary>
-    private bool Take()
+    private bool Take(bool force = false)
     {
         var taken = false;
         Db.Write((connection, tx) =>
@@ -88,7 +97,7 @@ public sealed class DispatchLease(string directory, string name = "dispatch.lock
                 command.CommandText = "SELECT holder, pid, started FROM leases WHERE name = $name;";
                 command.Parameters.AddWithValue("$name", Name);
                 using var r = command.ExecuteReader();
-                if (r.Read() && r.GetString(0) != holder && Alive(r.GetInt64(1), r.IsDBNull(2) ? null : r.GetDouble(2), r.GetString(0))) return;
+                if (!force && r.Read() && r.GetString(0) != holder && Alive(r.GetInt64(1), r.IsDBNull(2) ? null : r.GetDouble(2), r.GetString(0))) return;
             }
             Run(connection, tx, "INSERT OR REPLACE INTO leases (name, holder, pid, started, taken_at) VALUES ($name, $holder, $pid, $started, $at);",
                 ("$name", Name), ("$holder", holder), ("$pid", (long)Environment.ProcessId), ("$started", OwnStart),
