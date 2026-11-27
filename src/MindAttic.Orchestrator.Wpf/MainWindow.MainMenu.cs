@@ -25,6 +25,7 @@ public partial class MainWindow
                 menu.Items.Add(MenuCommand("", model.HasInbox ? $"Inbox ({model.InboxBadge})" : "Inbox", model.ToggleInboxCommand));
                 menu.Items.Add(MenuCommand("", model.HasNotifications ? $"Notifications ({model.NotificationsBadge})" : "Notifications", model.ToggleNotificationsCommand));
                 menu.Items.Add(MenuCommand("", "Plans", model.TogglePlansCommand));
+                menu.Items.Add(MenuCommand("", "Roadmap", model.ShowRoadmapCommand));
                 menu.Items.Add(MenuCommand("", "Open Tickets", model.OpenTicketsAppCommand));
                 menu.Items.Add(MenuCommand("", "User Management", model.ToggleLoginsCommand));
                 menu.Items.Add(MenuCommand("", "Settings", model.OpenSettingsCommand));

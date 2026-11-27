@@ -224,6 +224,7 @@ public sealed partial class MainViewModel
     public ICommand SelectTreeChildCommand => selectTreeChildCommand ??= new RelayCommand(p =>
     {
         StripSelection = this;
+        Root.IsRoadmapShown = false;
         if (p is TerminalPaneViewModel pane) Terminals.SelectedPane = pane;
     });
 

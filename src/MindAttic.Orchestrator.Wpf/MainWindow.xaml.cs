@@ -90,6 +90,11 @@ public partial class MainWindow : Window
         // Its drive and RAM bars, the sidebar's This PC panel since M.ORCH-T2177, likewise: this machine's, not the shown login's.
         HostStatsBars.DataContext = model;
         PhoneStatus.DataContext = model;
+        // The Roadmap (M.ORCH-T2384): its sidebar row and its page are the global login's tab's, which reads every repo.
+        RoadmapPanel.DataContext = model;
+        RoadmapHost.DataContext = model;
+        RoadmapHost.Children.Add(new Views.RoadmapPage());
+        Loaded += (_, _) => model.Roadmap.Load();
         // The sidebar's panel order and collapsed panels, as last left (M.ORCH-T2179).
         AttachSidebarPanels();
         Root.SizeChanged += (_, _) => SizeTerminalRow();
@@ -579,7 +584,7 @@ public partial class MainWindow : Window
     private void UpdateTerminalsCover()
     {
         var shown = Shown;
-        var covered = shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsInboxOpen || shown.IsPlansOpen || RenameTabModal.IsOpen || CloseCliModal.IsOpen || model.IsLoading || model.IsOrgEmpty;
+        var covered = shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsInboxOpen || shown.IsPlansOpen || model.IsRoadmapShown || RenameTabModal.IsOpen || CloseCliModal.IsOpen || model.IsLoading || model.IsOrgEmpty;
         TerminalPanesHost.Visibility = covered ? Visibility.Hidden : Visibility.Visible;
     }
 
@@ -594,7 +599,7 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() =>
         {
             var shown = Shown;
-            if (!IsActive || shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsInboxOpen || shown.IsPlansOpen || RenameTabModal.IsOpen || CloseCliModal.IsOpen
+            if (!IsActive || shown.IsLoginsOpen || shown.IsUserSettingsOpen || shown.IsInboxOpen || shown.IsPlansOpen || model.IsRoadmapShown || RenameTabModal.IsOpen || CloseCliModal.IsOpen
                 || TerminalPanesHost.Visibility != Visibility.Visible) return;
             if (model.AllTerminals.SelectedPane?.Control is not { IsVisible: true } terminal) return;
             var focused = Keyboard.FocusedElement as DependencyObject;
@@ -623,9 +628,11 @@ public partial class MainWindow : Window
     private void OnShownChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (sender != Shown) return;
-        if (e.PropertyName is nameof(MainViewModel.IsLoginsOpen) or nameof(MainViewModel.IsUserSettingsOpen) or nameof(MainViewModel.IsInboxOpen) or nameof(MainViewModel.IsPlansOpen))
+        if (e.PropertyName is nameof(MainViewModel.IsLoginsOpen) or nameof(MainViewModel.IsUserSettingsOpen) or nameof(MainViewModel.IsInboxOpen) or nameof(MainViewModel.IsPlansOpen)
+            or nameof(MainViewModel.IsRoadmapShown))
         {
             UpdateTerminalsCover();
+            SizeTerminalRow();
             PinTerminalFocus(); // a dialog closing hands the keyboard back to the CLI
         }
         if (e.PropertyName == nameof(MainViewModel.StatusMessage)) Announce(Shown.StatusMessage);
@@ -647,6 +654,8 @@ public partial class MainWindow : Window
     {
         try
         {
+            // The Roadmap covers the body (M.ORCH-T2384): the terminal keeps its size under it, sized again when it closes.
+            if (model.IsRoadmapShown) return;
             var shows = TerminalFrame.IsVisible;
             AgentsBody.VerticalScrollBarVisibility = shows ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
             if (!shows) return;

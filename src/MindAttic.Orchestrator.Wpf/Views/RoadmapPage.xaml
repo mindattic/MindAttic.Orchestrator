@@ -1,0 +1,16 @@
+<Grid x:Class="MindAttic.Orchestrator.Wpf.Views.RoadmapPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="{DynamicResource MaChrome}">
+    <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <DockPanel Margin="{StaticResource SpaceM}">
+        <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Back to terminal" Padding="{StaticResource SpaceHLVS}"
+                Command="{Binding ShowTerminalCommand}" AutomationProperties.Name="Close the Roadmap and show the terminal" />
+        <TextBlock Style="{StaticResource MaHeading}" VerticalAlignment="Center">
+            <Run Text="Roadmap" /><Run Text="  " /><Run Text="{Binding Roadmap.SummaryText, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
+        </TextBlock>
+    </DockPanel>
+</Grid>

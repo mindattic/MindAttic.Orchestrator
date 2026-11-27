@@ -147,6 +147,26 @@
             <Thickness x:Key="MaPanelInset">0,6,0,10</Thickness>
         </Border.Resources>
         <mc:MaPanelGroup x:Name="TopRow">
+        <!-- Roadmap (M.ORCH-T2384): one row for every repo's open work, its overall percent and how many milestones are active;
+             clicking it shows the Roadmap page in the main area in place of the terminal. -->
+        <mc:MaPanel x:Name="RoadmapPanel" Title="Roadmap" IsCollapsible="True" mc:MaPanelGroup.PanelKey="roadmap" mc:MaPanelGroup.IsDraggable="True">
+            <Button Style="{StaticResource MaTextButton}" Command="{Binding ShowRoadmapCommand}" HorizontalContentAlignment="Stretch"
+                    Padding="{StaticResource SpaceHSVXS}" Margin="0" mc:MaCallout.ToolTip="Show every repo's milestone, epics, features and tasks"
+                    AutomationProperties.Name="{Binding Roadmap.SummaryText, StringFormat='Roadmap, all repos: {0}'}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="All repos" VerticalAlignment="Center" />
+                    <ProgressBar Grid.Column="1" Style="{StaticResource MaProgressBar}" Height="5" VerticalAlignment="Center"
+                                 Margin="{StaticResource SpaceLS}" Value="{Binding Roadmap.OverallPercent, Mode=OneWay}" />
+                    <TextBlock Grid.Column="2" Text="{Binding Roadmap.SummaryText}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center"
+                               Margin="{StaticResource SpaceLS}" />
+                </Grid>
+            </Button>
+        </mc:MaPanel>
         <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
              with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
              tab (MainWindow.xaml.cs), which holds every org, like the person strip under it; the panel shows and hides with it. -->
@@ -1111,6 +1131,13 @@
                 </Grid>
             </StackPanel>
         </ScrollViewer>
+
+        <!-- The Roadmap page (M.ORCH-T2384) over the body while it's shown, the terminal hidden under it (UpdateTerminalsCover);
+             the page itself is added in MainWindow.xaml.cs, bound to the global login's tab. -->
+        <Grid x:Name="RoadmapHost" Grid.Column="1"
+              Grid.Row="{Binding TreeMenuLayout, Converter={x:Static vm:Converters.BodyRow}}"
+              Grid.RowSpan="{Binding TreeMenuLayout, Converter={x:Static vm:Converters.BodyRowSpan}}"
+              Visibility="{Binding IsRoadmapShown, Converter={StaticResource Visible}}" />
 
         <!-- An org with no Claude login yet (M.ORCH-T655): said over the body rather than showing another org's person. On the
              global login's tab (MainWindow.xaml.cs), which knows the orgs. -->
