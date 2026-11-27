@@ -33187,32 +33187,14 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 88.30499999999999,
+      "Degraded": 88.515,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 84.1 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-27T16:15:39.1255476\u002B00:00",
+      "Reason": "p90 of 360 readings is 84.3 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-27T16:30:08.5799624\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T13:59:41.6348099\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.61,
-      "FromUnhealthy": 1.6099999999999999,
-      "ToDegraded": 3.5909999999999997,
-      "ToUnhealthy": 1.5909999999999997,
-      "Reason": "p10 of 360 readings is 3.78 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T14:00:44.9810355\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.5909999999999997,
-      "FromUnhealthy": 1.5909999999999997,
-      "ToDegraded": 3.5719999999999996,
-      "ToUnhealthy": 1.5719999999999996,
-      "Reason": "p10 of 360 readings is 3.76 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
     {
       "At": "2026-11-26T14:03:35.8666867\u002B00:00",
       "Check": "RamFreeGb",
@@ -34994,6 +34976,24 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 88.30499999999999,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 84.1 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T16:24:53.6667873\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 88.30499999999999,
+      "FromUnhealthy": 97,
+      "ToDegraded": 88.41000000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.2 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T16:30:08.5799624\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 88.41000000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 88.515,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.3 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
