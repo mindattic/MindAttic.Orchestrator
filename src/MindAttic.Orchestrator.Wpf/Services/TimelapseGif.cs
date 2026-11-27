@@ -25,7 +25,11 @@ public static class TimelapseGif
         }
         if (frames.Count == 0) return false;
 
-        var delay = (ushort)Math.Max(1, (int)Math.Round(100.0 / Math.Max(1, fps)));
+        // The GIF delay unit is 1/100s, so 100 fps is the fastest this format can carry; above that, Math.Round would floor
+        // the delay to the same 1 (10ms) silently, so the fps is clamped here first and the clamp is logged once (M.ORCH-T2337).
+        var clampedFps = Math.Min(Math.Max(1, fps), 100);
+        if (clampedFps < fps) Serilog.Log.Warning("TimelapseGif: {Fps} fps exceeds the GIF format's 100 fps limit; writing at {ClampedFps} fps instead", fps, clampedFps);
+        var delay = (ushort)Math.Max(1, (int)Math.Round(100.0 / clampedFps));
         var width = (ushort)frames.Max(f => f.Width);
         var height = (ushort)frames.Max(f => f.Height);
         var temp = path + ".tmp";
