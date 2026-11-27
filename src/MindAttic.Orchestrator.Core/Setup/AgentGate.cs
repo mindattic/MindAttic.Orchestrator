@@ -3875,7 +3875,7 @@ public static class AgentGate
                             if text:
                                 out.append(text)
                     except Exception:
-                        pass
+                        continue  # unreadable for now (another hook has it open): left for the next hook, dropped once stale
                     try:
                         nf.unlink()
                     except Exception:
