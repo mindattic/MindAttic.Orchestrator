@@ -1829,7 +1829,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', '2026-11-26T22:00:00Z', 2322641);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Android.Emulator.Suite', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T22:00:00Z', 8804);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Automata', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T22:00:00Z', 15689);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1901463);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2217016);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T22:00:00Z', 4186083);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3335672);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T22:00:00Z', 8137573);
@@ -3312,7 +3312,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5ad89c14-79aa-4653-8793-95a0890762e7', 'SS-T19', 'chore', 'Prose', 36900, '2026-10-15T11:56:21.312Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c34bf68-6599-47fd-8f65-87b3adb44f9e/agent-a70b380564fb2f622', 'MAT-T219', 'repo', '(workspace root)', 114394, '2026-11-25T19:35:11.977Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c34bf68-6599-47fd-8f65-87b3adb44f9e/agent-aaf93830b4ffc6a3d', 'M.ORCH-T2221', '', 'MindAttic.Orchestrator', 204483, '2026-11-25T18:52:51.788Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a0250ee9449547ccd', 'GAD-T822', '', 'Gadfly', 39137, '2026-11-27T01:25:03.819Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a0250ee9449547ccd', 'GAD-T822', '', 'Gadfly', 49743, '2026-11-27T01:27:02.543Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a083ed6e745923e95', 'GAD-T789', '', 'Gadfly', 1902768, '2026-11-26T06:01:05.27Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a14578f9901d2efd7', 'GAD-T775', 'feature', 'Gadfly', 95524, '2026-11-25T18:17:12.145Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a1db8fed25dadc140', 'GAD-T774', 'chore', 'Gadfly', 237117, '2026-11-25T18:27:00.706Z', 0, 'sonnet');
@@ -3335,6 +3335,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a7ab600c0c1fb1b06', 'GAD-T765', 'fix', 'Gadfly', 69381, '2026-11-25T16:22:51.748Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a81494d903866f964', 'GAD-T767', 'fix', 'Gadfly', 56078, '2026-11-25T15:41:36.978Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a818c3fb68d7f9131', 'GAD-T740', 'fix', 'Gadfly', 36277, '2026-11-25T15:45:41.276Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a87d8cc2e35345d98', 'GAD-T824', '', 'Gadfly', 119882, '2026-11-27T01:34:14.215Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a8d6493324a1e9e5b', 'GAD-T770', 'chore', 'Gadfly', 76045, '2026-11-25T17:45:20.821Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a8ed3957c1549e834', 'GAD-T772', 'chore', 'Gadfly', 110073, '2026-11-25T19:40:22.364Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5c87f115-96a3-43aa-8559-17d8764da8f6/agent-a9d86c2fb3ffb7441', 'GAD-T821', '', 'Gadfly', 145364, '2026-11-27T01:10:03.127Z', 0, 'opus');
@@ -34892,9 +34893,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "4620": {
     "SessionId": "5c87f115-96a3-43aa-8559-17d8764da8f6",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T06:17:59.2441527Z",
-    "StoppedUtc": "2026-11-27T01:18:01.8408163Z",
-    "DueUtc": "2026-11-27T06:19:59.2441527Z"
+    "UntilUtc": "2026-11-27T06:33:08.0749315Z",
+    "StoppedUtc": "2026-11-27T01:33:10.7044058Z",
+    "DueUtc": "2026-11-27T06:35:08.0749315Z"
   },
   "41304": {
     "SessionId": "f8ff71be-40a7-4867-8742-0592d8f38294",
@@ -34913,9 +34914,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39088": {
     "SessionId": "b773a79b-ba7e-46cb-9786-f886660e3188",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T06:15:45.7434525Z",
-    "StoppedUtc": "2026-11-27T01:15:48.244901Z",
-    "DueUtc": "2026-11-27T06:17:45.7434525Z"
+    "UntilUtc": "2026-11-27T06:30:55.3623181Z",
+    "StoppedUtc": "2026-11-27T01:30:57.7365673Z",
+    "DueUtc": "2026-11-27T06:32:55.3623181Z"
   },
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
@@ -34997,9 +34998,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "28368": {
     "SessionId": "9aa417dc-00ec-48db-aaea-59ffddf8b7f3",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T06:12:48.5403927Z",
-    "StoppedUtc": "2026-11-27T01:12:51.997206Z",
-    "DueUtc": "2026-11-27T06:14:48.5403927Z"
+    "UntilUtc": "2026-11-27T06:27:48.818778Z",
+    "StoppedUtc": "2026-11-27T01:27:51.7916369Z",
+    "DueUtc": "2026-11-27T06:29:48.818778Z"
   },
   "61472": {
     "SessionId": "718f6c47-2f74-43f9-b8fb-ec90517f4bc4",
@@ -35279,24 +35280,24 @@ INSERT INTO state (name, value) VALUES ('login-locks', '{
 }');
 INSERT INTO state (name, value) VALUES ('mainline-tests', '{
   "Automata": {
-    "Tested": "56c2dfd9699033ac043f48ac0bc65a59abdeceed",
-    "Green": "56c2dfd9699033ac043f48ac0bc65a59abdeceed"
+    "Tested": "7177f428c16908ea7110ecf9035e2aaac59c84f5",
+    "Green": "7177f428c16908ea7110ecf9035e2aaac59c84f5"
   },
   "AutoWebNav": {
     "Tested": "dcd257b4640d3ae97fa2ae0fb306234feec90d7d",
     "Green": "dcd257b4640d3ae97fa2ae0fb306234feec90d7d"
   },
   "Cursory": {
-    "Tested": "c59b5cee3ad06f784de6b80322d91df7bf06ff78",
-    "Green": "c59b5cee3ad06f784de6b80322d91df7bf06ff78"
+    "Tested": "a05c145024acfe337cf2b5aef684c9be0d694471",
+    "Green": "a05c145024acfe337cf2b5aef684c9be0d694471"
   },
   "Formicarium": {
-    "Tested": "de60beee6b2df9e11d01926edb15d4f28ebc5185",
-    "Green": "de60beee6b2df9e11d01926edb15d4f28ebc5185"
+    "Tested": "37af947a759ff6da7f7aefdc41f807ff86017cb0",
+    "Green": "37af947a759ff6da7f7aefdc41f807ff86017cb0"
   },
   "Gadfly": {
-    "Tested": "228845a1142a304186aa8cb329d47df0a4488dfa",
-    "Green": "228845a1142a304186aa8cb329d47df0a4488dfa"
+    "Tested": "9923ca836d3e4852995117c176bcaac6d5589a1b",
+    "Green": "9923ca836d3e4852995117c176bcaac6d5589a1b"
   },
   "IdiotProof": {
     "Tested": "b559413ca18d38cca4db8266a90b16c6238778d4",
@@ -35584,7 +35585,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "5fa438626e39fe6d5823e3b6dd881bd6065f9af7"
   },
   "IdeaCms": {
-    "Tested": "1268c0226faa8b4e96fcca830c4441b1c639b491",
+    "Tested": "a042c62aa8dcaf5fc2870612a15f47118f6c98ce",
     "Green": "1268c0226faa8b4e96fcca830c4441b1c639b491"
   },
   "Mods.GTFO.EZ.AbsurdItems": {
