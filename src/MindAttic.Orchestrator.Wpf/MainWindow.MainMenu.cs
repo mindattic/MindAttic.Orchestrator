@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Sessions;
 
 namespace MindAttic.Orchestrator.Wpf;
@@ -33,6 +34,8 @@ public partial class MainWindow
                 menu.Items.Add(MenuAction("", "Quick Save All", async () => await RunQuickAllAsync(isSave: true)));
                 menu.Items.Add(MenuCommand("", "Quicksave shown CLI", model.QuicksaveShownCommand));
                 menu.Items.Add(MenuAction("", "Quick Load All", async () => await RunQuickAllAsync(isSave: false)));
+                menu.Items.Add(DropdownSeparator());
+                menu.Items.Add(MenuAction("", "About", ShowAbout));
                 break;
             case "Projects":
                 menu.Items.Add(MenuAction("", "Open Project…", () => ShowOpenProjectWindow(shown), shown.IsTabSignedIn));
@@ -124,6 +127,11 @@ public partial class MainWindow
         };
         return item;
     }
+
+    /// <summary>Dashboard &gt; About (M.ORCH-T2402): the version and whether this is a Debug or Release build, since the
+    /// title bar no longer carries the version.</summary>
+    private void ShowAbout() =>
+        MaMessageBox.Show(this, AboutText(typeof(MainWindow).Assembly.GetName().Version), "About", MessageBoxButton.OK, MessageBoxImage.Information);
 
     /// <summary>Settings &gt; Users (M.ORCH-T2184): every login, with Lock/Unlock and the only Delete. One window at a time.</summary>
     private void OpenUsers()

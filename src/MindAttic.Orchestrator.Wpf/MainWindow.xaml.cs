@@ -60,16 +60,24 @@ public partial class MainWindow : Window
         protected override List<System.Windows.Automation.Peers.AutomationPeer>? GetChildrenCore() => null;
     }
 
-    /// <summary>The window's title (M.ORCH-T1888): the app's name and its whole-number version, the build's major
-    /// (the csproj's OrchestratorVersionFromGit: one more for every commit that touches src\), so the deployed version shows.</summary>
-    internal static string VersionedTitle(Version? version) =>
-        version is { Major: > 0 } v ? $"MindAttic Orchestrator v{v.Major}" : "MindAttic Orchestrator";
+    /// <summary>The Dashboard &gt; About box's text (M.ORCH-T2402): the app's name, its whole-number version (the csproj's
+    /// OrchestratorVersionFromGit: one more for every commit that touches src\) and whether this build is Debug or Release;
+    /// moved off the title bar so the title stays plain.</summary>
+    internal static string AboutText(Version? version)
+    {
+        var ver = version is { Major: > 0 } v ? $"v{v.Major}" : "unversioned";
+#if DEBUG
+        const string config = "Debug";
+#else
+        const string config = "Release";
+#endif
+        return $"MindAttic Orchestrator {ver} ({config})";
+    }
 
-    /// <summary>Creates the main window: the global login's tab as its view model, titled with the app's version.</summary>
+    /// <summary>Creates the main window: the global login's tab as its view model.</summary>
     public MainWindow()
     {
         InitializeComponent();
-        Title = VersionedTitle(typeof(MainWindow).Assembly.GetName().Version);
         DataContext = model;
         // One dashboard tab per Claude login (M.ORCH-T613): the whole window shows the chosen login's tab, while the tab strip
         // keeps the global login's, which lists them all.
