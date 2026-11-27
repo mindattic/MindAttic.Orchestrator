@@ -162,6 +162,31 @@ public sealed class StatusAggregatorTests
         Assert.That(File.Exists(rlPath), Is.True, "nobody held it: free to take, and it writes");
     }
 
+    [TestCase(11, true)]
+    [TestCase(5, false)]
+    public void A_lease_holder_whose_snapshot_went_unwritten_past_the_wedge_limit_is_taken_over(int minutesUnwritten, bool takenOver)
+    {
+        // M.ORCH-T2310: a hung dashboard held the status lease with its pid alive and wrote nothing for 19 hours (Nov 23-24),
+        // so every other process only built its own snapshot, which never asks Claude's meter, and no login was read.
+        store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });
+        var snapshotPath = Path.Combine(dir, "status-snapshot.json");
+        StatusAggregator With(MindAttic.Orchestrator.Scheduling.DispatchLease lease) =>
+            new(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store,
+                new RateLimitStatusWriter(Path.Combine(dir, "rl-status.json")), lease)
+            { SnapshotPath = snapshotPath, ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")) };
+
+        using var wedgedLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(Path.Combine(dir, "store"));
+        using var windowLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(Path.Combine(dir, "store"));
+        With(wedgedLease).Refresh();
+        Assert.That((wedgedLease.IsHeld, File.Exists(snapshotPath)), Is.EqualTo((true, true)));
+        File.SetLastWriteTimeUtc(snapshotPath, DateTime.UtcNow.AddMinutes(-minutesUnwritten));
+
+        With(windowLease).Refresh();
+
+        Assert.That(windowLease.IsHeld, Is.EqualTo(takenOver));
+        Assert.That(wedgedLease.TryAcquire(), Is.EqualTo(!takenOver), "the wedged holder, if it wakes, finds the row another's and lets go");
+    }
+
     [Test]
     public void Only_the_lease_holder_builds_a_snapshot_and_every_other_process_shows_the_one_it_published()
     {
