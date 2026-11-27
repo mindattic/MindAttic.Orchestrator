@@ -3861,9 +3861,17 @@ public static class AgentGate
                         continue  # gone while listed: another hook took it
                     if held and not stale:
                         continue
+                    # Claimed by rename before it's read, so a read that succeeds but a delete that then fails
+                    # (Windows file in use) can't leave it for a later hook to deliver again (M.ORCH-T2346): once
+                    # renamed, no later scan's glob matches the old name, claimed or not.
+                    claimed = nf.with_name(nf.name + ".claimed")
+                    try:
+                        nf.rename(claimed)
+                    except Exception:
+                        continue  # already claimed (or taken) by another hook
                     try:
                         if not stale:
-                            text = nf.read_text(encoding="utf-8", errors="replace").strip()
+                            text = claimed.read_text(encoding="utf-8", errors="replace").strip()
                             # A nudge to start subagents says nothing while the pace has no room for one (M.ORCH-T1253), and a claims
                             # nudge drops each ticket the orchestrator no longer has assigned (it was released or closed since it was
                             # written: `orchestrator release` says "isn't assigned"), and all of it when none is left.
@@ -3875,11 +3883,15 @@ public static class AgentGate
                             if text:
                                 out.append(text)
                     except Exception:
-                        continue  # unreadable for now (another hook has it open): left for the next hook, dropped once stale
+                        try:
+                            claimed.rename(nf)
+                        except Exception:
+                            pass
+                        continue  # unreadable for now (another process has it open): given back for a later hook, dropped once stale
                     try:
-                        nf.unlink()
+                        claimed.unlink()
                     except Exception:
-                        pass
+                        pass  # already claimed under a name no later scan matches, so this alone can't double-deliver it
             except Exception:
                 pass
             return out
