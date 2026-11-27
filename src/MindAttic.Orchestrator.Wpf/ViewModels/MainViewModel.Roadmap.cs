@@ -12,7 +12,7 @@ public sealed partial class MainViewModel
     private ICommand? showTerminalCommand;
 
     /// <summary>The Roadmap's own view model; the global login's tab holds the one.</summary>
-    public RoadmapViewModel Roadmap => Root.roadmap ??= new RoadmapViewModel(() => Root.WorkspaceRoot, () => Root.ShownSettings);
+    public RoadmapViewModel Roadmap => Root.roadmap ??= new RoadmapViewModel(() => Root.WorkspaceRoot, () => Root.ShownSettings, Root.NameOf);
 
     /// <summary>Whether the Roadmap fills the main area in place of the terminal; the same on every tab.</summary>
     public bool IsRoadmapShown

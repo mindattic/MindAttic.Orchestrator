@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
 using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Tickets;
@@ -6,17 +9,122 @@ using MindAttic.Orchestrator.Tickets;
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// The Roadmap (M.ORCH-T2384): every repo's open work as a tree of epics, features, stories and tasks with how far along each
-/// is, read from the ticket database off the UI thread.
+/// One block on the Roadmap page (M.ORCH-T2386): a repo in the repo grid (<see cref="Row"/> 0) or a ticket in a level row under
+/// it, with its fill, percent and who has it.
 /// </summary>
-public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<OrchestratorSettings> settings) : ObservableObject
+public sealed class RoadmapBlockViewModel : ObservableObject
 {
+    private bool isSelected;
+
+    internal RoadmapBlockViewModel(int row, RoadmapRepo repo)
+    {
+        Row = row;
+        Repo = repo;
+        Id = repo.Repo;
+        Name = repo.Repo;
+        Subtitle = repo.Milestone ?? "No active milestone";
+        Fraction = repo.Fraction;
+        Detail = (repo.ChecksTotal > 0 ? $"checks {repo.ChecksPassed}/{repo.ChecksTotal} · " : "") + $"{repo.OpenTasks} open";
+        Tip = repo.MilestoneId is { } m ? $"{m} · {repo.Milestone}" : repo.Repo;
+        Fill = Fraction >= 1 ? Palette.Working : Fraction > 0 ? Palette.Accent : Palette.Quiet;
+    }
+
+    internal RoadmapBlockViewModel(int row, RoadmapNode node, Func<string, string> nameOf)
+    {
+        Row = row;
+        Node = node;
+        Id = node.Id;
+        Name = node.Name;
+        Subtitle = node.Id;
+        Fraction = node.Fraction;
+        Detail = node.Children.Count > 0 ? $"{node.Children.Count} {node.Children[0].Level}{(node.Children.Count == 1 ? "" : "s")}" : node.Status;
+        Tip = node.Summary;
+        if (node.Who is { } who)
+        {
+            WhoName = nameOf(who);
+            Initials = InitialsOf(WhoName);
+        }
+        Fill = Fraction >= 1 ? Palette.Working : node.WorkingLogin is not null || Fraction > 0 ? Palette.Accent : Palette.Quiet;
+    }
+
+    /// <summary>0 for the repo grid, then 1 for the repo's top-level tickets, and one more per level down.</summary>
+    public int Row { get; }
+    /// <summary>The repo's name, or the ticket's id.</summary>
+    public string Id { get; }
+    public string Name { get; }
+    /// <summary>The repo's milestone, or the ticket's id (muted).</summary>
+    public string Subtitle { get; }
+    public double Fraction { get; }
+    public double Percent => Math.Round(Fraction * 100);
+    public string PercentText => $"{Percent:0}%";
+    /// <summary>The repo's checks and open tasks, or what the ticket holds.</summary>
+    public string Detail { get; }
+    /// <summary>The ticket summary's first line, or the repo's milestone.</summary>
+    public string Tip { get; }
+    /// <summary>Done (MaGood), being worked (MaAccent) or not started (MaMuted).</summary>
+    public Brush Fill { get; }
+    /// <summary>Whoever is working on the ticket, else whoever it's assigned to; null for nobody.</summary>
+    public string? WhoName { get; }
+    public string Initials { get; } = "";
+    public bool HasWho => WhoName is not null;
+    public RoadmapNode? Node { get; }
+    public RoadmapRepo? Repo { get; }
+    public string SpokenName => $"{Name}, {Subtitle}, {PercentText} done" + (WhoName is { } w ? $", {w}" : "");
+
+    /// <summary>Whether it's the selected block of its row, whose children open in the row below.</summary>
+    public bool IsSelected { get => isSelected; internal set => Set(ref isSelected, value); }
+
+    internal static string InitialsOf(string name)
+    {
+        var at = name.IndexOf('@');
+        var words = (at > 0 ? name[..at] : name).Split([' ', '.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+        return words.Length switch
+        {
+            0 => "?",
+            1 => words[0][..Math.Min(2, words[0].Length)].ToUpperInvariant(),
+            _ => $"{char.ToUpperInvariant(words[0][0])}{char.ToUpperInvariant(words[^1][0])}",
+        };
+    }
+}
+
+/// <summary>One level row under the selection: its blocks in priority order.</summary>
+public sealed record RoadmapLevelViewModel(string Title, IReadOnlyList<RoadmapBlockViewModel> Blocks);
+
+/// <summary>One breadcrumb: a name and how deep it is (0 the repo).</summary>
+public sealed record RoadmapCrumb(string Name, int Depth, bool IsFirst)
+{
+    public string Text => IsFirst ? Name : $"› {Name}";
+}
+
+/// <summary>
+/// The Roadmap (M.ORCH-T2384, M.ORCH-T2386): every repo's open work as a tree of epics, features, stories and tasks with how far
+/// along each is, read from the ticket database off the UI thread. The repo grid on top, then one row per level under the
+/// selected block.
+/// </summary>
+public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<OrchestratorSettings> settings, Func<string, string> nameOf)
+    : ObservableObject
+{
+    public const string PortfolioSort = "Portfolio order";
+    public const string LeastDoneSort = "Least done";
+    public const string MostOpenSort = "Most open tasks";
+
     private readonly RoadmapSource source = new();
     private RoadmapTree tree = RoadmapTree.Empty;
     private bool reading, readAgain;
+    private string filter = "";
+    private string sort = PortfolioSort;
+    private List<string> path = [];
+    private IReadOnlyList<RoadmapBlockViewModel> repos = [];
+    private IReadOnlyList<RoadmapLevelViewModel> levels = [];
+    private IReadOnlyList<RoadmapCrumb> crumbs = [];
+    private ICommand? selectCommand, crumbCommand;
 
     /// <summary>The tree as last read.</summary>
-    public RoadmapTree Tree { get => tree; private set { tree = value; Raise(); Raise(nameof(OverallPercent)); Raise(nameof(SummaryText)); Applied(); } }
+    public RoadmapTree Tree
+    {
+        get => tree;
+        private set { tree = value; Raise(); Raise(nameof(OverallPercent)); Raise(nameof(SummaryText)); Rebuild(); }
+    }
 
     /// <summary>Every repo's done leaves over all of them, 0 to 100.</summary>
     public double OverallPercent => Math.Round(tree.Fraction * 100);
@@ -26,6 +134,39 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
 
     /// <summary>The live settings the page draws with.</summary>
     internal OrchestratorSettings Settings => settings();
+
+    public double BlockWidth => settings().RoadmapBlockWidthPx;
+    public double RowGap => settings().RoadmapRowGapPx;
+    public Thickness RowGapMargin => new(0, RowGap, 0, 0);
+
+    /// <summary>What the repo grid is narrowed to: repos whose name or milestone holds it.</summary>
+    public string Filter { get => filter; set { if (Set(ref filter, value ?? "")) Rebuild(); } }
+
+    public IReadOnlyList<string> Sorts { get; } = [PortfolioSort, LeastDoneSort, MostOpenSort];
+    public string Sort { get => sort; set { if (Set(ref sort, value ?? PortfolioSort)) Rebuild(); } }
+
+    public IReadOnlyList<RoadmapBlockViewModel> Repos { get => repos; private set => Set(ref repos, value); }
+    public IReadOnlyList<RoadmapLevelViewModel> Levels { get => levels; private set => Set(ref levels, value); }
+    public IReadOnlyList<RoadmapCrumb> Crumbs { get => crumbs; private set => Set(ref crumbs, value); }
+
+    /// <summary>The selection as repo then ticket ids, top down.</summary>
+    public IReadOnlyList<string> SelectedPath => path;
+
+    /// <summary>A block's click: selects it, opening its children in the row below.</summary>
+    public ICommand SelectCommand => selectCommand ??= new RelayCommand(p =>
+    {
+        if (p is not RoadmapBlockViewModel block) return;
+        path = [.. path.Take(block.Row), block.Id];
+        Rebuild();
+    });
+
+    /// <summary>A breadcrumb's click: back up to that level.</summary>
+    public ICommand CrumbCommand => crumbCommand ??= new RelayCommand(p =>
+    {
+        if (p is not RoadmapCrumb crumb) return;
+        path = [.. path.Take(crumb.Depth + 1)];
+        Rebuild();
+    });
 
     /// <summary>Reads the tree off the UI thread, then shows it; a read asked for while one runs follows it.</summary>
     public void Load()
@@ -49,6 +190,53 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         }, CancellationToken.None, TaskContinuationOptions.None, ui);
     }
 
-    /// <summary>Rebuilds what the page shows from a new tree.</summary>
-    private void Applied() { }
+    /// <summary>Rebuilds the repo grid, the level rows and the breadcrumb from the tree and the selection; a selected id no
+    /// longer in the tree ends the selection there.</summary>
+    private void Rebuild()
+    {
+        var shown = tree.Repos.Where(r => filter.Length == 0 || r.Repo.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || (r.Milestone?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false));
+        shown = sort switch
+        {
+            LeastDoneSort => shown.OrderBy(r => r.Fraction),
+            MostOpenSort => shown.OrderByDescending(r => r.OpenTasks),
+            _ => shown,
+        };
+        var repoBlocks = shown.Select(r => new RoadmapBlockViewModel(0, r)).ToList();
+        var repo = path.Count > 0 ? tree.Repos.FirstOrDefault(r => string.Equals(r.Repo, path[0], StringComparison.OrdinalIgnoreCase)) : null;
+        var kept = new List<string>();
+        var rows = new List<RoadmapLevelViewModel>();
+        var trail = new List<RoadmapCrumb>();
+        if (repo is not null)
+        {
+            kept.Add(repo.Repo);
+            trail.Add(new(repo.Repo, 0, true));
+            foreach (var b in repoBlocks) b.IsSelected = string.Equals(b.Id, repo.Repo, StringComparison.OrdinalIgnoreCase);
+            IReadOnlyList<RoadmapNode> children = repo.Epics;
+            for (var row = 1; children.Count > 0; row++)
+            {
+                var blocks = children.Select(n => new RoadmapBlockViewModel(row, n, nameOf)).ToList();
+                rows.Add(new(TitleOf(children), blocks));
+                var picked = path.Count > row ? blocks.FirstOrDefault(b => string.Equals(b.Id, path[row], StringComparison.OrdinalIgnoreCase)) : null;
+                if (picked?.Node is not { } node) break;
+                picked.IsSelected = true;
+                kept.Add(node.Id);
+                trail.Add(new(node.Name, row, false));
+                children = node.Children;
+            }
+        }
+        path = kept;
+        Repos = repoBlocks;
+        Levels = rows;
+        Crumbs = trail;
+        Raise(nameof(SelectedPath));
+    }
+
+    /// <summary>A row's title from its tickets' levels: "Epics", or "Features and tasks" for a mix.</summary>
+    private static string TitleOf(IReadOnlyList<RoadmapNode> nodes)
+    {
+        var names = nodes.Select(n => n.Level).Distinct(StringComparer.OrdinalIgnoreCase).Select(l => l + "s").ToList();
+        var text = names.Count == 1 ? names[0] : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
+        return char.ToUpperInvariant(text[0]) + text[1..];
+    }
 }
