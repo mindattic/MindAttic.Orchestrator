@@ -183,26 +183,11 @@ public static class WorkspaceBootstrap
         return failed;
     }
 
-    private static (int Code, string Output) Git(string dir, params string[] args)
-    {
-        var psi = new ProcessStartInfo("git")
-        {
-            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
-        };
-        psi.ArgumentList.Add("-C");
-        psi.ArgumentList.Add(dir);
-        foreach (var a in args) psi.ArgumentList.Add(a);
-        try
-        {
-            using var p = Process.Start(psi)!;
-            var stdout = p.StandardOutput.ReadToEndAsync();
-            var stderr = p.StandardError.ReadToEnd();
-            p.WaitForExit();
-            return (p.ExitCode, stdout.Result + stderr);
-        }
-        catch (System.ComponentModel.Win32Exception)
-        {
-            return (-1, "git isn't installed (https://git-scm.com/download/win)");
-        }
-    }
+    /// <summary>How long one git command (a clone) may run before it's killed as hung.</summary>
+    internal static TimeSpan GitTimeout { get; set; } = TimeSpan.FromMinutes(30);
+
+    // Bounded and with no credential prompt, as MachineSetup's own git runs: a private remote asking for a password, or a
+    // credential helper holding git's pipes open, would otherwise hang the bootstrap for good.
+    private static (int Code, string Output) Git(string dir, params string[] args) =>
+        MachineSetup.Run("git", ["-C", dir, .. args], GitTimeout);
 }

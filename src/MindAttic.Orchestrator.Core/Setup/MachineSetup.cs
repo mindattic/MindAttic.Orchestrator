@@ -513,10 +513,13 @@ public sealed partial class MachineSetup(Action<string> say, string? workspaceRo
                 if (File.Exists(mirror + "-wal")) File.Copy(mirror + "-wal", kept + "-wal", overwrite: true);
                 say($"Tickets written on this machine since the last pull were kept in {kept}; the host's tickets replace them. File them on the host.");
             }
+            // Copied beside it first, so a copy that fails partway leaves the old mirror and its WAL whole.
+            var fresh = mirror + ".tmp";
+            File.Copy(source, fresh, overwrite: true);
             // The old mirror's WAL and shared-memory index would otherwise be replayed over the fresh copy and corrupt it.
             foreach (var sidecar in Backup.SqliteRestore.Sidecars)
                 if (File.Exists(mirror + sidecar)) File.Delete(mirror + sidecar);
-            File.Copy(source, mirror, overwrite: true);
+            File.Move(fresh, mirror, overwrite: true);
             File.WriteAllText(stamp, File.GetLastWriteTimeUtc(mirror).Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { say($"The ticket mirror couldn't be refreshed (in use?): {ex.Message}"); }
@@ -546,7 +549,7 @@ public sealed partial class MachineSetup(Action<string> say, string? workspaceRo
     private static string FirstLine(string text) =>
         text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? "";
 
-    private static (int Code, string Output) Run(string file, string[] args, TimeSpan timeout)
+    internal static (int Code, string Output) Run(string file, string[] args, TimeSpan timeout)
     {
         var psi = new ProcessStartInfo(file)
         {

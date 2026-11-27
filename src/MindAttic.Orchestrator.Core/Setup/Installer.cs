@@ -496,22 +496,6 @@ public sealed class Installer
         return AgentGateRemoval.Remove();
     }
 
-    private static (int Code, string Output) Run(string file, params string[] args)
-    {
-        var psi = new ProcessStartInfo(file)
-        {
-            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
-            StandardOutputEncoding = Encoding.UTF8,
-        };
-        foreach (var a in args) psi.ArgumentList.Add(a);
-        try
-        {
-            using var p = Process.Start(psi)!;
-            var stdout = p.StandardOutput.ReadToEndAsync();
-            var stderr = p.StandardError.ReadToEnd();
-            p.WaitForExit();
-            return (p.ExitCode, stdout.Result + stderr);
-        }
-        catch (System.ComponentModel.Win32Exception ex) { return (-1, ex.Message); }
-    }
+    // Bounded: a hung schtasks would otherwise hang uninstall with the daemon already stopped.
+    private static (int Code, string Output) Run(string file, params string[] args) => MachineSetup.Run(file, args, TimeSpan.FromMinutes(1));
 }
