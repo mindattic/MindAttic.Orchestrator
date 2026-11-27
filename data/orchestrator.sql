@@ -1858,7 +1858,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 24686140);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 27553);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 35322);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 1671761);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 2051330);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -5497,6 +5497,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-afd89b14f269dabad', 'RTB-T227', 'chore', 'RogueTraderBrevity', 103050, '2026-10-25T11:37:28.265Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-afe00f70b1e48b5c3', 'RTB-T173', 'chore', 'RogueTraderBrevity', 82619, '2026-10-25T09:16:18.146Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a012a1ff2d46d6d3c', 'US-T519', 'fix', 'SpaceGod.Unreal', 37681, '2026-11-24T03:33:17.296Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a038940eaaad83938', 'US-T913', 'claimed', 'SpaceGod.Unreal', 64304, '2026-11-27T20:20:04.923Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a03a73a1c72623824', 'US-T881', '', 'SpaceGod.Unreal', 90854, '2026-11-26T19:43:45.772Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a04099b54c64c3188', 'US-T856', 'docs', 'SpaceGod.Unreal', 62222, '2026-11-25T23:29:35.072Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a044b19d7a4e0769a', 'US-T624', 'feature', 'SpaceGod.Unreal', 161066, '2026-11-24T06:14:17.892Z', 0, 'opus');
@@ -5586,7 +5587,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a7771db1e31d559bb', 'US-T886', '', 'SpaceGod.Unreal', 51611, '2026-11-26T20:17:03.534Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a7791abf866a00ffd', 'US-T673', 'feature', 'SpaceGod.Unreal', 13904, '2026-11-24T08:53:29.168Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a78bd90d222e5b962', 'US-T454', 'feature', 'SpaceGod.Unreal', 137633, '2026-11-23T21:19:42.438Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a78e53aa554fae984', 'US-T908', 'claimed', 'SpaceGod.Unreal', 45018, '2026-11-27T20:08:07.262Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a78e53aa554fae984', 'US-T908', 'claimed', 'SpaceGod.Unreal', 62799, '2026-11-27T20:17:20.8Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a793eaa1dfc7f4e59', 'US-T659', 'feature', 'SpaceGod.Unreal', 81782, '2026-11-24T07:44:44.025Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a7abb5447aa82f85d', 'US-T590', 'feature', 'SpaceGod.Unreal', 67501, '2026-11-24T05:45:18.225Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a7ac9c3856552ad50', 'US-T476', 'feature', 'SpaceGod.Unreal', 95611, '2026-11-23T21:10:41.724Z', 0, 'opus');
@@ -5599,7 +5600,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a8678f1f867ddf425', 'US-T613', 'feature', 'SpaceGod.Unreal', 105857, '2026-11-24T07:11:24.086Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a87e4ec9c5a0e3ce0', 'US-T518', 'feature', 'SpaceGod.Unreal', 184362, '2026-11-24T07:06:45.177Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a886bba6969cb3c55', 'US-T673', 'feature', 'SpaceGod.Unreal', 189258, '2026-11-24T08:51:43.717Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a8ab9a6e78891c208', 'US-T901', 'claimed', 'SpaceGod.Unreal', 92053, '2026-11-27T19:59:52.041Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a8ab9a6e78891c208', 'US-T901', 'claimed', 'SpaceGod.Unreal', 195522, '2026-11-27T20:16:06.61Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a8dd34aff28b22683', 'US-T622', 'feature', 'SpaceGod.Unreal', 197316, '2026-11-24T07:31:34.045Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a8dec014209032282', 'US-T607', 'feature', 'SpaceGod.Unreal', 188291, '2026-11-24T07:04:04.844Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a91d8bfa26b085857', 'US-T635', 'feature', 'SpaceGod.Unreal', 89168, '2026-11-24T08:06:43.971Z', 0, 'opus');
@@ -5608,6 +5609,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a93b75760fe71e234', 'US-T527', 'feature', 'SpaceGod.Unreal', 95753, '2026-11-24T03:50:17.734Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a959a9d3772811173', 'US-T865', '', 'SpaceGod.Unreal', 56004, '2026-11-25T18:51:12.379Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a973a3ac878b9d0de', 'US-T658', 'feature', 'SpaceGod.Unreal', 92037, '2026-11-24T07:43:47.272Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a97439f12e2272ff2', 'US-T910', 'claimed', 'SpaceGod.Unreal', 83593, '2026-11-27T20:20:02.647Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a989f025012057f26', 'US-T555', 'feature', 'SpaceGod.Unreal', 167339, '2026-11-24T04:03:50.849Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a9a5e8ae7b20a8d8f', 'US-T663', 'feature', 'SpaceGod.Unreal', 91753, '2026-11-24T07:33:49.932Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-a9a8036ffcec0ac77', 'US-T552', 'feature', 'SpaceGod.Unreal', 172617, '2026-11-24T05:30:54.87Z', 0, 'opus');
@@ -5622,6 +5624,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-aaa0deef4dcc36dca', 'US-T568', 'feature', 'SpaceGod.Unreal', 50746, '2026-11-24T04:16:25.858Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-aaa45d6a71f89da04', 'US-T477', 'feature', 'SpaceGod.Unreal', 97122, '2026-11-23T20:48:31.831Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-aaa5cde1b903825cf', 'US-T882', '', 'SpaceGod.Unreal', 69130, '2026-11-26T19:42:27.924Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-aacf1f3fa034d2999', 'US-T911', 'claimed', 'SpaceGod.Unreal', 62696, '2026-11-27T20:18:29.858Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-aad722e099adbd5be', 'US-T631', 'feature', 'SpaceGod.Unreal', 115366, '2026-11-24T06:17:26.452Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-aada91bb86ecba72b', 'US-T495', 'feature', 'SpaceGod.Unreal', 90715, '2026-11-23T22:35:54.503Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-aadad976256691185', 'US-T521', 'fix', 'SpaceGod.Unreal', 36873, '2026-11-24T03:34:37.741Z', 0, 'sonnet');
@@ -5648,7 +5651,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ac44d6083cf02de02', 'US-T537', 'feature', 'SpaceGod.Unreal', 149309, '2026-11-24T04:44:45.119Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ac5794a6dece47479', 'US-T626', 'feature', 'SpaceGod.Unreal', 43265, '2026-11-24T07:53:45.053Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ac7056ed3bd71c5b9', 'US-T563', 'feature', 'SpaceGod.Unreal', 193621, '2026-11-24T11:11:23.391Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ac770aea64b846ca7', 'US-T920', 'claimed', 'SpaceGod.Unreal', 35900, '2026-11-27T20:07:39.096Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ac770aea64b846ca7', 'US-T920', 'claimed', 'SpaceGod.Unreal', 63178, '2026-11-27T20:18:11.292Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ac7b29a886d4101c6', 'US-T512', 'feature', 'SpaceGod.Unreal', 100689, '2026-11-24T05:33:49.573Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ac7ec6fdc85a37d07', 'US-T824', 'chore', 'SpaceGod.Unreal', 195233, '2026-11-26T03:27:40.355Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-ac8ef268408b376fb', 'US-T539', 'feature', 'SpaceGod.Unreal', 101732, '2026-11-24T05:01:07.726Z', 0, 'opus');
@@ -5685,7 +5688,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-af0fe12679b2e45c2', 'US-T472', 'feature', 'SpaceGod.Unreal', 99055, '2026-11-23T20:40:22.771Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-af4ac7d3c7d64f928', 'US-T564', 'feature', 'SpaceGod.Unreal', 86091, '2026-11-24T06:40:33.888Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-af52076a06f83eef3', 'US-T535', 'feature', 'SpaceGod.Unreal', 59335, '2026-11-24T04:09:39.902Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-af58af7b377500e34', 'US-T906', 'claimed', 'SpaceGod.Unreal', 67672, '2026-11-27T20:07:12.193Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-af58af7b377500e34', 'US-T906', 'claimed', 'SpaceGod.Unreal', 142955, '2026-11-27T20:16:31.751Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-af637b40413429eb9', 'US-T614', 'feature', 'SpaceGod.Unreal', 90114, '2026-11-24T08:02:54.566Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-af7ed4693374bb94f', 'US-T525', 'feature', 'SpaceGod.Unreal', 97226, '2026-11-24T03:57:07.369Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b773a79b-ba7e-46cb-9786-f886660e3188/agent-afa28f1354ec13823', 'US-T654', 'feature', 'SpaceGod.Unreal', 85531, '2026-11-24T06:24:45.164Z', 0, 'opus');
@@ -7061,11 +7064,9 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (39, 'PRS-T1263', 'Prose', 'D:\Projects\MindAttic\Prose', 'Claude', '2026-11-27T09:03:42.5161708Z', 1, NULL, NULL, NULL, 28368, '9aa417dc-00ec-48db-aaea-59ffddf8b7f3', 'sonnet', NULL, 'ohleo199@mindattic.com', NULL, 'implementer');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (40, 'GG-T1386', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-27T13:55:33.3436218Z', 1, NULL, NULL, NULL, 39860, '6082ff94-ff59-4f19-92da-270fca91363e', 'opus', NULL, 'pdftransferjr@mindattic.com', NULL, 'implementer');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (41, 'US-T897', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-27T19:29:57.6365892Z', 1, NULL, NULL, NULL, 39088, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'ryandebraal@gmail.com', NULL, 'implementer');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (42, 'US-T901', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-27T19:53:15.5365579Z', 1, NULL, NULL, NULL, 39088, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'opus', NULL, 'ryandebraal@gmail.com', NULL, 'implementer');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (43, 'US-T903', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-27T20:05:15.4308678Z', 1, NULL, NULL, NULL, 39088, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'ryandebraal@gmail.com', NULL, 'implementer');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (44, 'US-T906', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-27T20:05:15.4308678Z', 1, NULL, NULL, NULL, 39088, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'opus', NULL, 'ryandebraal@gmail.com', NULL, 'implementer');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (45, 'US-T920', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-27T20:06:49.6383742Z', 1, NULL, NULL, NULL, 39088, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'ryandebraal@gmail.com', NULL, 'implementer');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (46, 'US-T908', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-27T20:06:49.6383742Z', 1, NULL, NULL, NULL, 39088, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'ryandebraal@gmail.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (42, 'US-T908', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-27T20:06:49.6383742Z', 1, NULL, NULL, NULL, 39088, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'ryandebraal@gmail.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (43, 'US-T910', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-27T20:18:19.2790786Z', 1, NULL, NULL, NULL, 39088, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'sonnet', NULL, 'ryandebraal@gmail.com', NULL, 'implementer');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (44, 'US-T913', 'SpaceGod.Unreal', 'D:\Projects\MindAttic\SpaceGod.Unreal', 'Claude', '2026-11-27T20:18:36.6988601Z', 1, NULL, NULL, NULL, 39088, 'b773a79b-ba7e-46cb-9786-f886660e3188', 'opus', NULL, 'ryandebraal@gmail.com', NULL, 'implementer');
 
 -- organizations
 
@@ -35837,8 +35838,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-9": {
     "FirstProjectedUtc": "2026-12-10T03:33:03.4149034Z",
     "FirstAtUtc": "2026-11-27T09:49:15.5973864Z",
-    "LatestProjectedUtc": "2026-12-10T06:46:23.8740647Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-10T08:42:12.5561647Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-10T03:33:03.4149034Z",
@@ -35848,8 +35849,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-1": {
     "FirstProjectedUtc": "2026-12-05T20:35:28.6176978Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-06T10:07:42.4925615Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-06T11:46:30.586978Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-05T20:35:28.6176978Z",
@@ -35859,8 +35860,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-7": {
     "FirstProjectedUtc": "2026-11-27T16:54:59.2203852Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-28T01:24:15.1477308Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-11-28T02:26:12.0371183Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-27T16:54:59.2203852Z",
@@ -35870,8 +35871,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-8": {
     "FirstProjectedUtc": "2027-11-25T15:06:40.7972544Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-12-05T08:22:02.9487519Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-12-06T12:44:28.575622Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-11-25T15:06:40.7972544Z",
@@ -35881,8 +35882,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-10": {
     "FirstProjectedUtc": "2026-12-05T16:55:22.1238677Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-06T06:21:55.2024037Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-06T08:00:01.8416145Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-05T16:55:22.1238677Z",
@@ -35892,8 +35893,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-11": {
     "FirstProjectedUtc": "2026-12-07T08:27:38.7795916Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-07T22:55:24.8852152Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-08T00:40:58.319421Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-07T08:27:38.7795916Z",
@@ -35903,8 +35904,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-12": {
     "FirstProjectedUtc": "2026-12-08T10:57:19.0128087Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-09T02:06:06.4252436Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-09T03:56:39.2581572Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-08T10:57:19.0128087Z",
@@ -35914,8 +35915,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-13": {
     "FirstProjectedUtc": "2027-01-06T19:18:05.8281791Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-08T04:37:26.135536Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-01-08T08:40:38.367946Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-06T19:18:05.8281791Z",
@@ -35925,8 +35926,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-14": {
     "FirstProjectedUtc": "2026-11-28T01:56:27.5118897Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-28T10:39:41.8063735Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-11-28T08:45:20.3343517Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-28T01:56:27.5118897Z",
@@ -35936,8 +35937,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-15": {
     "FirstProjectedUtc": "2026-12-16T12:09:41.0211915Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-13T23:24:28.1598169Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-12T02:24:15.8382756Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-16T12:09:41.0211915Z",
@@ -35947,8 +35948,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-16": {
     "FirstProjectedUtc": "2026-11-30T15:41:18.9468173Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-01T02:00:09.518142Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-01T03:15:26.161507Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-30T15:41:18.9468173Z",
@@ -35961,8 +35962,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-18": {
     "FirstProjectedUtc": "2027-02-16T03:46:40.1993136Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-18T14:05:30.737188Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-02-18T21:11:07.1439055Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-16T03:46:40.1993136Z",
@@ -35972,8 +35973,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-19": {
     "FirstProjectedUtc": "2026-12-06T10:02:32.428408Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-06T23:55:35.8898066Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-07T01:36:55.9866441Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-06T10:02:32.428408Z",
@@ -35983,8 +35984,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-20": {
     "FirstProjectedUtc": "2026-12-06T01:58:18.1419818Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-06T08:47:35.3896022Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-06T08:47:08.3006501Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-06T01:58:18.1419818Z",
@@ -35994,8 +35995,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-21": {
     "FirstProjectedUtc": "2026-12-16T16:00:16.3956802Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-17T12:14:09.4394325Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-17T14:41:49.00911Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-16T16:00:16.3956802Z",
@@ -36005,8 +36006,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-22": {
     "FirstProjectedUtc": "2026-12-03T05:50:28.0653416Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-03T17:45:32.5293364Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-03T19:12:31.52155Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-03T05:50:28.0653416Z",
@@ -36016,8 +36017,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-23": {
     "FirstProjectedUtc": "2026-11-28T06:28:00.7968649Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-28T15:49:18.2201689Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-11-28T14:12:20.4295604Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": true,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-28T06:28:00.7968649Z",
@@ -36027,8 +36028,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-24": {
     "FirstProjectedUtc": "2026-12-28T04:42:43.3588614Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-29T08:05:02.1827617Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-29T11:24:48.6593842Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-28T04:42:43.3588614Z",
@@ -36038,8 +36039,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-25": {
     "FirstProjectedUtc": "2026-11-30T00:11:20.0811111Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-30T10:06:10.7510685Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-11-30T11:18:32.2417029Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-30T00:11:20.0811111Z",
@@ -36049,8 +36050,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-26": {
     "FirstProjectedUtc": "2026-12-01T09:46:26.5914697Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-01T20:33:17.2791439Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-01T21:51:58.2955119Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-01T09:46:26.5914697Z",
@@ -36060,8 +36061,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-27": {
     "FirstProjectedUtc": "2026-11-30T23:44:24.2968468Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-29T01:22:23.4988007Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-11-29T01:44:08.592908Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-30T23:44:24.2968468Z",
@@ -36071,8 +36072,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-28": {
     "FirstProjectedUtc": "2026-12-15T00:58:54.1316418Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-15T20:12:22.0012707Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-15T22:32:40.5968919Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-15T00:58:54.1316418Z",
@@ -36082,8 +36083,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-29": {
     "FirstProjectedUtc": "2026-12-06T12:22:53.9607054Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-07T02:19:34.7415014Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-07T04:01:21.2735426Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-06T12:22:53.9607054Z",
@@ -36093,8 +36094,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-30": {
     "FirstProjectedUtc": "2026-12-27T17:10:57.2353955Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-28T20:15:24.9851229Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-28T23:33:01.1739561Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-27T17:10:57.2353955Z",
@@ -36104,8 +36105,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-31": {
     "FirstProjectedUtc": "2026-12-03T18:08:59.3275345Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-04T06:23:07.2528921Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-04T07:52:25.3382301Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": true,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-03T18:08:59.3275345Z",
@@ -36115,8 +36116,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-32": {
     "FirstProjectedUtc": "2026-12-07T19:09:09.5009254Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-08T09:53:28.8676409Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-08T11:41:03.1242838Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-07T19:09:09.5009254Z",
@@ -36126,8 +36127,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-33": {
     "FirstProjectedUtc": "2026-12-11T20:42:35.1610213Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-12T13:57:57.4630454Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-12T16:03:54.1548291Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-11T20:42:35.1610213Z",
@@ -36137,8 +36138,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-34": {
     "FirstProjectedUtc": "2027-01-15T18:31:06.7995423Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-17T09:23:40.4914586Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-01-17T14:07:24.7626036Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-15T18:31:06.7995423Z",
@@ -36148,8 +36149,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-35": {
     "FirstProjectedUtc": "2027-04-10T23:04:46.0274928Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-04-14T18:42:56.872724Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-04-15T05:51:45.5118515Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-04-10T23:04:46.0274928Z",
@@ -36159,8 +36160,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-36": {
     "FirstProjectedUtc": "2026-12-02T09:11:40.9912945Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-02T20:34:47.4296414Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-02T21:57:53.1090482Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-02T09:11:40.9912945Z",
@@ -36170,8 +36171,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-37": {
     "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-04T18:56:09.203304Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-02-05T01:00:57.551919Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
@@ -36181,8 +36182,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-38": {
     "FirstProjectedUtc": "2026-11-30T19:31:54.3213059Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-01T05:56:41.9173549Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-01T07:12:41.9899831Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-30T19:31:54.3213059Z",
@@ -36192,8 +36193,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-39": {
     "FirstProjectedUtc": "2026-12-18T23:20:45.7883164Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-19T21:00:19.9880983Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-19T23:38:24.9391649Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-18T23:20:45.7883164Z",
@@ -36206,8 +36207,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-41": {
     "FirstProjectedUtc": "2027-04-10T23:04:46.0274928Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-04-14T18:42:56.872724Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-04-15T05:51:45.5118515Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": true,
     "Baseline": {
       "FirstProjectedUtc": "2027-04-10T23:04:46.0274928Z",
@@ -36217,8 +36218,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-42": {
     "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-11T14:18:43.0677679Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-11T16:20:19.183973Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
@@ -36228,8 +36229,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-43": {
     "FirstProjectedUtc": "2027-01-02T23:03:56.8404521Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-04T06:00:28.5544262Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-01-04T09:46:18.4845212Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-02T23:03:56.8404521Z",
@@ -36242,8 +36243,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-45": {
     "FirstProjectedUtc": "2026-12-02T12:58:32.008359Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-03T00:27:29.6818401Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-03T01:51:18.0862516Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-02T12:58:32.008359Z",
@@ -36253,8 +36254,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-46": {
     "FirstProjectedUtc": "2026-12-08T15:50:47.6712487Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-09T07:07:09.4787873Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-09T08:58:37.5853085Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-08T15:50:47.6712487Z",
@@ -36264,8 +36265,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-47": {
     "FirstProjectedUtc": "2026-12-15T09:15:33.3997712Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-16T04:41:50.2457293Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-16T07:03:42.3813018Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-15T09:15:33.3997712Z",
@@ -36275,8 +36276,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-48": {
     "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-11T14:18:43.067768Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-11T16:20:19.183973Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
@@ -36286,8 +36287,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-49": {
     "FirstProjectedUtc": "2027-08-23T11:20:00.5979408Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-08-30T18:16:32.211564Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-08-31T15:33:21.4317165Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-08-23T11:20:00.5979408Z",
@@ -36297,8 +36298,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-50": {
     "FirstProjectedUtc": "2026-12-12T05:56:00.059794Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-12T23:25:39.2211563Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-13T01:33:20.1431716Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-12T05:56:00.059794Z",
@@ -36308,8 +36309,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-51": {
     "FirstProjectedUtc": "2027-01-28T07:49:20.1594508Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-30T06:28:24.5897503Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-01-30T12:08:53.7151244Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-28T07:49:20.1594508Z",
@@ -36319,8 +36320,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-52": {
     "FirstProjectedUtc": "2026-12-06T20:48:11.4769761Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-07T10:57:54.6076027Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-07T12:41:16.306377Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-06T20:48:11.4769761Z",
@@ -36330,8 +36331,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-53": {
     "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-11T14:18:43.0677679Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-11T16:20:19.183973Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
@@ -36344,8 +36345,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-55": {
     "FirstProjectedUtc": "2027-06-30T16:01:54.7697616Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-07-06T13:39:06.0760279Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-07-07T06:52:43.0637705Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-06-30T16:01:54.7697616Z",
@@ -36355,8 +36356,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-56": {
     "FirstProjectedUtc": "2027-01-13T12:42:51.5567015Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-15T02:12:06.902478Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-01-15T06:45:43.1639392Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-13T12:42:51.5567015Z",
@@ -36366,8 +36367,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-57": {
     "FirstProjectedUtc": "2026-12-09T09:46:52.7521957Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-10T01:31:00.6751142Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-10T03:25:51.45153Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-09T09:46:52.7521957Z",
@@ -36377,8 +36378,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-58": {
     "FirstProjectedUtc": "2027-02-09T10:21:54.4707912Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-11T16:30:49.9702459Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-02-11T23:06:02.3479122Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-09T10:21:54.4707912Z",
@@ -36388,8 +36389,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-59": {
     "FirstProjectedUtc": "2026-12-15T09:15:33.3997712Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-16T04:41:50.2457293Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-16T07:03:42.3813018Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-15T09:15:33.3997712Z",
@@ -36399,8 +36400,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-60": {
     "FirstProjectedUtc": "2026-12-07T12:56:40.0498284Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-08T03:31:22.684297Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-08T05:17:46.7859763Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-07T12:56:40.0498284Z",
@@ -36410,8 +36411,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-61": {
     "FirstProjectedUtc": "2026-11-30T21:36:04.1383383Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-01T08:04:03.9784696Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-01T09:20:27.4360856Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-30T21:36:04.1383383Z",
@@ -36421,8 +36422,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-62": {
     "FirstProjectedUtc": "2026-12-12T09:31:13.0759834Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-13T03:06:25.4604217Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-13T05:14:46.9164159Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-12T09:31:13.0759834Z",
@@ -36432,8 +36433,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-63": {
     "FirstProjectedUtc": "2026-12-20T23:46:11.5068731Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-21T22:40:44.218181Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-22T01:27:56.3779628Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-20T23:46:11.5068731Z",
@@ -36443,8 +36444,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-64": {
     "FirstProjectedUtc": "2026-12-24T08:28:34.3711344Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-25T09:28:04.601652Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-25T12:30:28.7759595Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-24T08:28:34.3711344Z",
@@ -36454,8 +36455,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-65": {
     "FirstProjectedUtc": "2026-12-07T01:24:53.9263625Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-07T15:41:45.4866582Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-07T17:25:59.3005482Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-07T01:24:53.9263625Z",
@@ -36468,8 +36469,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-67": {
     "FirstProjectedUtc": "2026-12-17T15:03:48.642612Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-18T11:53:23.83471Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-18T14:25:23.9799662Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-17T15:03:48.642612Z",
@@ -36479,8 +36480,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-68": {
     "FirstProjectedUtc": "2026-12-17T15:03:48.642612Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-18T11:53:23.83471Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-18T14:25:23.9799662Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-17T15:03:48.642612Z",
@@ -36490,8 +36491,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-69": {
     "FirstProjectedUtc": "2027-05-07T20:43:48.9415824Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-05-12T09:01:39.940492Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-05-12T22:12:04.6958245Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-05-07T20:43:48.9415824Z",
@@ -36501,8 +36502,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-70": {
     "FirstProjectedUtc": "2026-12-05T12:31:14.3312716Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-06T01:50:58.4542143Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-06T03:28:15.3471784Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-05T12:31:14.3312716Z",
@@ -36518,8 +36519,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-73": {
     "FirstProjectedUtc": "2026-12-18T14:07:20.8895437Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-19T11:32:38.2299874Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-19T14:08:58.9508224Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-18T14:07:20.8895437Z",
@@ -36529,8 +36530,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-74": {
     "FirstProjectedUtc": "2026-12-19T20:52:03.8854527Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-20T19:04:57.4236906Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-20T21:47:05.5786306Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-19T20:52:03.8854527Z",
@@ -36540,8 +36541,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-75": {
     "FirstProjectedUtc": "2026-12-02T14:59:20.4789851Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-03T02:31:25.2007624Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-03T03:55:36.3581351Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-02T14:59:20.4789851Z",
@@ -36551,8 +36552,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-76": {
     "FirstProjectedUtc": "2026-12-13T06:37:11.9947445Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-14T00:45:04.5149239Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-14T02:57:24.4060882Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-13T06:37:11.9947445Z",
@@ -36562,8 +36563,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-77": {
     "FirstProjectedUtc": "2026-12-14T06:21:25.7783508Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-15T01:06:03.451239Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-15T03:22:51.5819696Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-14T06:21:25.7783508Z",
@@ -36573,8 +36574,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-78": {
     "FirstProjectedUtc": "2027-01-11T06:54:36.3138607Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-12T19:00:33.3134973Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-01-12T23:24:01.5652748Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-11T06:54:36.3138607Z",
@@ -36587,8 +36588,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-80": {
     "FirstProjectedUtc": "2026-12-18T23:20:45.7883164Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-19T21:00:19.9880983Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-19T23:38:24.9391649Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-18T23:20:45.7883164Z",
@@ -36601,8 +36602,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-82": {
     "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-04T18:56:09.203304Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-02-05T01:00:57.551919Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
@@ -36615,8 +36616,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-84": {
     "FirstProjectedUtc": "2027-02-20T15:23:10.6849951Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-23T04:28:37.9151493Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-02-23T11:54:30.3412343Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-20T15:23:10.6849951Z",
@@ -36626,8 +36627,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-85": {
     "FirstProjectedUtc": "2026-12-08T23:31:58.420226Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-09T15:00:14.2772131Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2026-12-09T16:53:09.2422606Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-08T23:31:58.420226Z",
@@ -36637,8 +36638,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-86": {
     "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-04T18:56:09.203304Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-02-05T01:00:57.551919Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
@@ -36654,8 +36655,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-89": {
     "FirstProjectedUtc": "2027-03-08T08:00:57.3848807Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-03-11T06:49:33.038014Z",
-    "LatestAtUtc": "2026-11-27T19:09:21.533884Z",
+    "LatestProjectedUtc": "2027-03-11T15:26:21.5318852Z",
+    "LatestAtUtc": "2026-11-27T20:10:09.5919865Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-03-08T08:00:57.3848807Z",
