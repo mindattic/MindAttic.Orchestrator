@@ -6,6 +6,8 @@
       xmlns:views="clr-namespace:MindAttic.Orchestrator.Wpf.Views"
       Background="{DynamicResource MaChrome}">
     <Grid.Resources>
+        <!-- The last breadcrumb's padding: a crumb button's SpaceHSVXS plus MaTextButton's 1px transparent border. -->
+        <Thickness x:Key="RoadmapCrumbTextPadding">9,5,9,5</Thickness>
         <!-- One list row (M.ORCH-T2394): a repo, or a ticket in the column of its parent's children. Its name (wrapping), its id,
              level and what it holds muted, its description as plain text up to the Vault's line count, a fill bar and percent,
              and who has it. -->
@@ -56,10 +58,20 @@
             </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
+            <!-- A classic rail (M.ORCH-T2399): a chevron between crumbs, outside them; every crumb but the last a button back
+                 there, the last plain text padded as the button's padding plus its 1px transparent border, so both line up. -->
             <DataTemplate DataType="{x:Type vm:RoadmapCrumb}">
-                <Button Style="{StaticResource MaTextButton}" Content="{Binding Text}" Padding="{StaticResource SpaceHSVXS}" Margin="0"
-                        Command="{Binding DataContext.Roadmap.CrumbCommand, RelativeSource={RelativeSource AncestorType={x:Type views:RoadmapPage}}}"
-                        CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Back to {0}'}" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE76C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Foreground="{DynamicResource MaMuted}"
+                               Margin="{StaticResource SpaceHSVXS}" VerticalAlignment="Center" AutomationProperties.Name="then"
+                               Visibility="{Binding HasChevron, Converter={StaticResource Visible}}" />
+                    <Button Style="{StaticResource MaTextButton}" Content="{Binding Name}" Padding="{StaticResource SpaceHSVXS}" Margin="0"
+                            VerticalAlignment="Center" Visibility="{Binding IsLink, Converter={StaticResource Visible}}"
+                            Command="{Binding DataContext.Roadmap.CrumbCommand, RelativeSource={RelativeSource AncestorType={x:Type views:RoadmapPage}}}"
+                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Back to {0}'}" />
+                    <TextBlock Text="{Binding Name}" Padding="{StaticResource RoadmapCrumbTextPadding}" Margin="0" VerticalAlignment="Center"
+                               Visibility="{Binding IsLast, Converter={StaticResource Visible}}" AutomationProperties.Name="{Binding Name, StringFormat='You are at {0}'}" />
+                </StackPanel>
             </DataTemplate>
         </ItemsControl.ItemTemplate>
     </ItemsControl>

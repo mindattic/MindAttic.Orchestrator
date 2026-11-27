@@ -129,10 +129,12 @@ public sealed class RoadmapRowViewModel : ObservableObject
 /// them and their parent ("Features of M.ORCH-T2380 · Roadmap view").</summary>
 public sealed record RoadmapColumnViewModel(string Title, int Depth, IReadOnlyList<RoadmapRowViewModel> Rows);
 
-/// <summary>One breadcrumb: a name and how deep it is (0 the repo).</summary>
-public sealed record RoadmapCrumb(string Name, int Depth, bool IsFirst)
+/// <summary>One breadcrumb: a name and how deep it is (0 the repo). A chevron leads every one but the first; the last is where
+/// you are, shown as text rather than a button (M.ORCH-T2399).</summary>
+public sealed record RoadmapCrumb(string Name, int Depth, bool IsFirst, bool IsLast = false)
 {
-    public string Text => IsFirst ? Name : $"› {Name}";
+    public bool IsLink => !IsLast;
+    public bool HasChevron => !IsFirst;
 }
 
 /// <summary>
@@ -315,6 +317,7 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         path = kept;
         Repos = repoRows;
         Columns = opened;
+        trail[^1] = trail[^1] with { IsLast = true };
         Crumbs = trail;
         Raise(nameof(SelectedPath));
         Raise(nameof(ColumnWidth));
