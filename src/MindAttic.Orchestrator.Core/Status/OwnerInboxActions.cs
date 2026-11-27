@@ -36,6 +36,23 @@ public static class OwnerInboxActions
         return email is null ? db.Unassign(id) : db.Assign(id, email);
     }
 
+    /// <summary><see cref="Delegate"/> for each of <paramref name="ids"/> on one open database (the Roadmap's whole-branch
+    /// assign, M.ORCH-T2395); one that fails doesn't stop the rest. Returns the ids that failed, with why.</summary>
+    public static IReadOnlyList<(string Id, string Error)> DelegateAll(string workspaceRoot, IEnumerable<string> ids, string? email)
+    {
+        using var db = Open(workspaceRoot);
+        var failed = new List<(string Id, string Error)>();
+        foreach (var id in ids)
+        {
+            try { _ = email is null ? db.Unassign(id) : db.Assign(id, email); }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or System.Data.Common.DbException)
+            {
+                failed.Add((id, ex.Message));
+            }
+        }
+        return failed;
+    }
+
     /// <summary>The owner approves a pending milestone addition (M.ORCH-T1685, <see cref="TicketsDb.ApproveMilestoneAddition"/>):
     /// <paramref name="item"/> becomes a member of <paramref name="milestone"/>, approved by <paramref name="by"/>.</summary>
     public static void ApproveAddition(string workspaceRoot, string milestone, string item, string by)

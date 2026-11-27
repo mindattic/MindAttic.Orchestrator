@@ -20,6 +20,23 @@ public sealed record RoadmapNode(string Id, string Repo, string Name, string Sum
 
     /// <summary>Open leaf tasks under it (itself when it's an open leaf).</summary>
     public int OpenTasks => Children.Count == 0 ? (Status == TicketRules.Open ? 1 : 0) : Children.Sum(c => c.OpenTasks);
+
+    /// <summary>It and every ticket under it that's open, top down, each once: what assigning the whole branch assigns
+    /// (M.ORCH-T2395).</summary>
+    public IReadOnlyList<string> OpenBranch()
+    {
+        var ids = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var stack = new Stack<RoadmapNode>([this]);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (!seen.Add(node.Id)) continue;
+            if (node.Status == TicketRules.Open) ids.Add(node.Id);
+            for (var i = node.Children.Count - 1; i >= 0; i--) stack.Push(node.Children[i]);
+        }
+        return ids;
+    }
 }
 
 /// <summary>One repo on the Roadmap: its active milestone and that milestone's acceptance checks, and its top-level tickets.</summary>

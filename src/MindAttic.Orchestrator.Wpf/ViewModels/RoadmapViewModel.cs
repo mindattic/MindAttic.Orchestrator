@@ -256,16 +256,19 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         Load();
     }
 
-    /// <summary>Assigns a row's ticket to <paramref name="email"/> (null: unassigns it), the one change the Roadmap makes,
-    /// off the UI thread; the tree is read again after it.</summary>
+    /// <summary>Assigns a row's ticket and every open ticket under it (M.ORCH-T2395) to <paramref name="email"/> (null:
+    /// unassigns them), the one change the Roadmap makes, off the UI thread; the tree is read again after it.</summary>
     public void Assign(RoadmapRowViewModel row, string? email)
     {
         if (row.Node is not { } node) return;
+        var ids = node.OpenBranch();
+        if (ids.Count == 0) return;
         var root = workspaceRoot();
         var ui = TaskScheduler.FromCurrentSynchronizationContext();
-        Task.Run(() => OwnerInboxActions.Delegate(root, node.Id, email)).ContinueWith(done =>
+        Task.Run(() => OwnerInboxActions.DelegateAll(root, ids, email)).ContinueWith(done =>
         {
             if (done.Exception is { } ex) Trace.TraceWarning($"Roadmap assign of {node.Id} failed: {ex.GetBaseException().Message}");
+            else foreach (var (id, error) in done.Result) Trace.TraceWarning($"Roadmap assign of {id} failed: {error}");
             Load();
         }, CancellationToken.None, TaskContinuationOptions.None, ui);
     }

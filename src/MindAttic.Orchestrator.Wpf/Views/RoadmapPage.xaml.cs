@@ -29,8 +29,8 @@ public partial class RoadmapPage : Grid
             column.BringIntoView();
     }, System.Windows.Threading.DispatcherPriority.Loaded);
 
-    /// <summary>A ticket row's right-click (M.ORCH-T2388): assign it to someone of the org (the one change the Roadmap makes),
-    /// copy its id, or open it in Tickets Desktop.</summary>
+    /// <summary>A ticket row's right-click (M.ORCH-T2388, M.ORCH-T2395): assign it and everything open under it to someone of
+    /// the org, or unassign them (the one change the Roadmap makes), copy its id, or open it in Tickets Desktop.</summary>
     private void Row_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         if (sender is not Button { DataContext: RoadmapRowViewModel { Node: { } node } row } button || DataContext is not MainViewModel model) return;
@@ -38,16 +38,23 @@ public partial class RoadmapPage : Grid
         var menu = new ContextMenu { PlacementTarget = button, Placement = e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint };
         menu.SetResourceReference(StyleProperty, "MaDropdownMenu");
         AutomationProperties.SetName(menu, $"{node.Id} actions");
+        var tasks = node.OpenTasks == 1 ? "1 task" : $"{node.OpenTasks} tasks";
+        var hasOpen = node.OpenBranch().Count > 0;
         var assign = Item("Assign to…");
-        foreach (var person in model.People)
+        assign.IsEnabled = hasOpen;
+        foreach (var person in model.People.Where(p => p.Email is not null))
         {
-            var who = Item(person.Name);
+            var who = Item($"Assign to {person.Name} ({tasks})");
             who.IsChecked = string.Equals(person.Email, node.Assignee, StringComparison.OrdinalIgnoreCase);
             var email = person.Email;
             who.Click += (_, _) => model.Roadmap.Assign(row, email);
             assign.Items.Add(who);
         }
         menu.Items.Add(assign);
+        var unassign = Item($"Unassign ({tasks})");
+        unassign.IsEnabled = hasOpen;
+        unassign.Click += (_, _) => model.Roadmap.Assign(row, null);
+        menu.Items.Add(unassign);
         var copy = Item("Copy id");
         copy.Click += (_, _) =>
         {
