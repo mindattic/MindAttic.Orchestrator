@@ -6,31 +6,38 @@
       xmlns:views="clr-namespace:MindAttic.Orchestrator.Wpf.Views"
       Background="{DynamicResource MaChrome}">
     <Grid.Resources>
-        <!-- One block (M.ORCH-T2386): a repo in the grid, or a ticket in a level row. Name (two lines, then trimmed), its id or
-             milestone muted, a fill bar and percent, what it holds, and who has it. -->
-        <DataTemplate x:Key="RoadmapBlock" DataType="{x:Type vm:RoadmapBlockViewModel}">
+        <!-- One list row (M.ORCH-T2394): a repo, or a ticket in the column of its parent's children. Its name (wrapping), its id,
+             level and what it holds muted, its description as plain text up to the Vault's line count, a fill bar and percent,
+             and who has it. -->
+        <DataTemplate x:Key="RoadmapRow" DataType="{x:Type vm:RoadmapRowViewModel}">
             <Button Style="{StaticResource MaTileButton}" Height="Auto" Margin="0" Padding="{StaticResource SpaceS}"
                     HorizontalContentAlignment="Stretch" VerticalContentAlignment="Top"
                     Command="{Binding DataContext.Roadmap.SelectCommand, RelativeSource={RelativeSource AncestorType={x:Type views:RoadmapPage}}}"
-                    CommandParameter="{Binding}" mc:MaTile.IsSelected="{Binding IsSelected}" ContextMenuOpening="Block_ContextMenuOpening" mc:MaCallout.ToolTip="{Binding Tip}" AutomationProperties.Name="{Binding SpokenName}">
+                    CommandParameter="{Binding}" mc:MaTile.IsSelected="{Binding IsSelected}" ContextMenuOpening="Row_ContextMenuOpening"
+                    AutomationProperties.Name="{Binding SpokenName}">
                 <StackPanel>
                     <DockPanel>
                         <mc:MaBadge DockPanel.Dock="Right" Style="{StaticResource MaTag}" Content="{Binding Initials}" Margin="{StaticResource SpaceLS}"
-                                    mc:MaCallout.ToolTip="{Binding WhoName}" Visibility="{Binding HasWho, Converter={StaticResource Visible}}" />
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="38" />
+                                    VerticalAlignment="Top" mc:MaCallout.ToolTip="{Binding WhoName}" Visibility="{Binding HasWho, Converter={StaticResource Visible}}" />
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
                     </DockPanel>
-                    <TextBlock Text="{Binding Subtitle}" Style="{StaticResource MaMutedText}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Meta}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Description}" Margin="{StaticResource SpaceTS}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                               LineStackingStrategy="BlockLineHeight" LineHeight="{x:Static vm:RoadmapRowViewModel.DescriptionLineHeight}"
+                               MaxHeight="{Binding DescriptionMaxHeight}" Visibility="{Binding HasDescription, Converter={StaticResource Visible}}" />
                     <DockPanel Margin="{StaticResource SpaceTS}">
                         <TextBlock DockPanel.Dock="Right" Text="{Binding PercentText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" />
-                        <ProgressBar Style="{StaticResource MaProgressBar}" Height="6" VerticalAlignment="Center"
+                        <ProgressBar Style="{StaticResource MaProgressBar}" Height="4" VerticalAlignment="Center"
                                      Value="{Binding Percent, Mode=OneWay}" Foreground="{Binding Fill}" />
                     </DockPanel>
-                    <TextBlock Text="{Binding Detail}" Style="{StaticResource MaMutedText}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Detail}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap"
+                               Visibility="{Binding HasDetail, Converter={StaticResource Visible}}" />
                 </StackPanel>
             </Button>
         </DataTemplate>
     </Grid.Resources>
     <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
     </Grid.RowDefinitions>
@@ -41,47 +48,66 @@
             <Run Text="Roadmap" /><Run Text="  " /><Run Text="{Binding Roadmap.SummaryText, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
         </TextBlock>
     </DockPanel>
-    <ScrollViewer x:Name="Body" Grid.Row="1" Style="{StaticResource MaBodyScroll}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <Grid x:Name="Content" Margin="{StaticResource SpaceM}">
-            <StackPanel x:Name="Rows">
-                <DockPanel Visibility="{Binding Roadmap.ShowsRepoTools, Converter={StaticResource Visible}}">
-                    <ListBox DockPanel.Dock="Right" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Roadmap.Sorts}"
-                             SelectedItem="{Binding Roadmap.Sort}" AutomationProperties.Name="Sort the repos" />
+    <ItemsControl Grid.Row="1" Style="{StaticResource MaList}" ItemsSource="{Binding Roadmap.Crumbs}" Margin="{StaticResource SpaceHMVXS}"
+                  AutomationProperties.Name="Where you are: repo, epic, feature, story">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <WrapPanel />
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="{x:Type vm:RoadmapCrumb}">
+                <Button Style="{StaticResource MaTextButton}" Content="{Binding Text}" Padding="{StaticResource SpaceHSVXS}" Margin="0"
+                        Command="{Binding DataContext.Roadmap.CrumbCommand, RelativeSource={RelativeSource AncestorType={x:Type views:RoadmapPage}}}"
+                        CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Back to {0}'}" />
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <!-- Drill-down columns (M.ORCH-T2394): the repos, then one list per opened row, side by side and scrolling sideways; each
+         column scrolls down on its own. -->
+    <ScrollViewer x:Name="Body" Grid.Row="2" Style="{StaticResource MaBodyScroll}" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <StackPanel Orientation="Horizontal">
+            <Grid Width="{Binding Roadmap.ColumnWidth}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="Repos" Style="{StaticResource MaSectionLabel}" />
+                <StackPanel Grid.Row="1">
                     <TextBox Style="{StaticResource MaTextBox}" Text="{Binding Roadmap.Filter, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="{StaticResource SpaceRS}" AutomationProperties.Name="Filter the repos by name or milestone" />
-                </DockPanel>
-                <ItemsControl Style="{StaticResource MaList}" ItemsSource="{Binding Roadmap.Crumbs}" Margin="{StaticResource SpaceTS}"
-                              AutomationProperties.Name="Where you are: repo, epic, feature, story">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:RoadmapCrumb}">
-                            <Button Style="{StaticResource MaTextButton}" Content="{Binding Text}" Padding="{StaticResource SpaceHSVXS}" Margin="0"
-                                    Command="{Binding DataContext.Roadmap.CrumbCommand, RelativeSource={RelativeSource AncestorType={x:Type views:RoadmapPage}}}"
-                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Back to {0}'}" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <ItemsControl x:Name="RepoGrid" Style="{StaticResource MaTileList}" ItemsSource="{Binding Roadmap.Repos}" Margin="{StaticResource SpaceTS}"
-                              mc:MaList.MinItemWidth="{Binding Roadmap.BlockWidth}" ItemTemplate="{StaticResource RoadmapBlock}"
-                              AutomationProperties.Name="Repos" />
-                <ItemsControl x:Name="LevelRows" Style="{StaticResource MaList}" ItemsSource="{Binding Roadmap.Levels}" AutomationProperties.Name="Levels under the selection">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:RoadmapLevelViewModel}">
-                            <StackPanel Margin="{Binding DataContext.Roadmap.RowGapMargin, RelativeSource={RelativeSource AncestorType={x:Type views:RoadmapPage}}}">
-                                <TextBlock Text="{Binding Title}" Style="{StaticResource MaSectionLabel}" />
-                                <ItemsControl Style="{StaticResource MaTileList}" ItemsSource="{Binding Blocks}" ItemTemplate="{StaticResource RoadmapBlock}"
-                                              mc:MaList.MinItemWidth="{Binding DataContext.Roadmap.BlockWidth, RelativeSource={RelativeSource AncestorType={x:Type views:RoadmapPage}}}"
+                             AutomationProperties.Name="Filter the repos by name or milestone" />
+                    <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Roadmap.Sorts}" Margin="{StaticResource SpaceTS}"
+                             SelectedItem="{Binding Roadmap.Sort}" AutomationProperties.Name="Sort the repos" />
+                </StackPanel>
+                <ScrollViewer Grid.Row="2" Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,8,12,0">
+                    <ItemsControl Style="{StaticResource MaRowList}" ItemsSource="{Binding Roadmap.Repos}" ItemTemplate="{StaticResource RoadmapRow}"
+                                  AutomationProperties.Name="Repos" />
+                </ScrollViewer>
+            </Grid>
+            <ItemsControl x:Name="OpenColumns" Style="{StaticResource MaList}" ItemsSource="{Binding Roadmap.Columns}" AutomationProperties.Name="Opened lists">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:RoadmapColumnViewModel}">
+                        <Grid Margin="{StaticResource SpaceLM}"
+                              Width="{Binding DataContext.Roadmap.ColumnWidth, RelativeSource={RelativeSource AncestorType={x:Type views:RoadmapPage}}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{Binding Title}" Style="{StaticResource MaSectionLabel}" TextWrapping="Wrap" />
+                            <ScrollViewer Grid.Row="1" Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,8,12,0">
+                                <ItemsControl Style="{StaticResource MaRowList}" ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource RoadmapRow}"
                                               AutomationProperties.Name="{Binding Title}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-            <Canvas x:Name="Connectors" IsHitTestVisible="False" />
-        </Grid>
+                            </ScrollViewer>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
     </ScrollViewer>
 </Grid>

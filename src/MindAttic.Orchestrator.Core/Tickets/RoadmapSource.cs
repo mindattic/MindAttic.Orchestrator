@@ -5,7 +5,7 @@ namespace MindAttic.Orchestrator.Tickets;
 
 /// <summary>
 /// Reads the Roadmap (M.ORCH-T2382) from the ticket database, read-only and with the fewest columns it can: tickets, their
-/// <c>part-of</c> links, levels, names, priorities and who has them, plus each repo's active milestone and its checks. Call it
+/// <c>part-of</c> links, levels, names, priorities, descriptions (M.ORCH-T2394) and who has them, plus each repo's active milestone and its checks. Call it
 /// off the UI thread. A read while the store's change version hasn't moved (<see cref="TicketDbVersion"/>) gives the last tree.
 /// </summary>
 public sealed class RoadmapSource
@@ -17,6 +17,11 @@ public sealed class RoadmapSource
 
     // Closed epic → when it closed, by the status it had when its history was read.
     private readonly Dictionary<string, (string Status, DateTime? At)> closedAt = new(StringComparer.OrdinalIgnoreCase);
+
+    // Ticket → its description, read once per ticket in the tree while the store's change version holds; a new version reads
+    // them again, since a description changes without the ticket's row changing.
+    private readonly Dictionary<string, string?> descriptions = new(StringComparer.OrdinalIgnoreCase);
+    private long? descriptionsVersion;
 
     /// <summary>The store's change version for a database path; a test's stands in for a server.</summary>
     internal Func<string, long?> VersionOf { get; init; } = TicketDbVersion.Of;
@@ -31,6 +36,8 @@ public sealed class RoadmapSource
         var readUtc = DateTime.UtcNow;
         using var db = TicketsDb.OpenIfMigrated(workspaceRoot);
         if (db is null) return RoadmapTree.Empty;
+        if (descriptionsVersion is null || descriptionsVersion != version) descriptions.Clear();
+        descriptionsVersion = version;
         var tickets = db.Tickets();
         var parents = db.AllLinks()
             .Where(l => l.Kind == "part-of" && !l.To.StartsWith(MilestonePrefix, StringComparison.OrdinalIgnoreCase))
@@ -45,9 +52,19 @@ public sealed class RoadmapSource
             .Where(t => ClosedAt(t.Ticket, db) is { } at && at >= cutoff)
             .Select(t => t.Ticket.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var tree = RoadmapTree.Build(tickets, parents, levels, db.Names(), priorities, db.WorkStates(), recentEpics, Milestones(db),
-            workingCredit);
+            workingCredit, id => DescriptionOf(id, db));
         last = (workspaceRoot, version, readUtc, closedEpicDays, workingCredit, tree);
         return tree;
+    }
+
+    private string? DescriptionOf(string id, TicketsDb db)
+    {
+        if (descriptions.TryGetValue(id, out var known)) return known;
+        string? text;
+        try { text = db.Description(id); }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException) { text = null; }
+        descriptions[id] = text;
+        return text;
     }
 
     private DateTime? ClosedAt(Ticket ticket, TicketsDb db)

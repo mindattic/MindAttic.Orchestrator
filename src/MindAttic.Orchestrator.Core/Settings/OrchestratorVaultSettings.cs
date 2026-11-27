@@ -928,17 +928,18 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 40)]
     public double LoginTreeGutterPx { get; set; } = OrchestratorSettings.DefaultLoginTreeGutterPx;
 
-    /// <summary>The width of one Roadmap block.</summary>
-    [Setting("Roadmap block width (px)", Group = "Roadmap", Order = 1,
-        Help = "The width of one block in the Roadmap page's repo grid and in each epic, feature, story and task row.")]
-    [SettingRange(80, 600)]
-    public double RoadmapBlockWidthPx { get; set; } = OrchestratorSettings.DefaultRoadmapBlockWidthPx;
+    /// <summary>The width of one Roadmap column.</summary>
+    [Setting("Roadmap column width (px)", Group = "Roadmap", Order = 1,
+        Help = "The width of one of the Roadmap page's drill-down columns: the repo list, and each list of epics, features, " +
+            "stories and tasks opened from it.")]
+    [SettingRange(200, 1200)]
+    public double RoadmapColumnWidthPx { get; set; } = OrchestratorSettings.DefaultRoadmapColumnWidthPx;
 
-    /// <summary>The gap between two Roadmap level rows.</summary>
-    [Setting("Roadmap row gap (px)", Group = "Roadmap", Order = 2,
-        Help = "The gap between two of the Roadmap page's level rows, where the lines from a block to its children run.")]
-    [SettingRange(8, 200)]
-    public double RoadmapRowGapPx { get; set; } = OrchestratorSettings.DefaultRoadmapRowGapPx;
+    /// <summary>How many description lines a Roadmap row shows.</summary>
+    [Setting("Roadmap description lines", Group = "Roadmap", Order = 2,
+        Help = "How many lines of a ticket's description each Roadmap row shows before the rest is trimmed.")]
+    [SettingRange(0, 40)]
+    public int RoadmapDescriptionLines { get; set; } = OrchestratorSettings.DefaultRoadmapDescriptionLines;
 
     /// <summary>How many days a closed epic stays on the Roadmap.</summary>
     [Setting("Roadmap closed epics kept (days)", Group = "Roadmap", Order = 3,
@@ -1492,8 +1493,8 @@ public sealed class OrchestratorVaultSettings
         AutoTabNameMaxChars = s.AutoTabNameMaxChars,
         CliTooltipDelayMs = s.CliTooltipDelayMs,
         LoginTreeGutterPx = s.LoginTreeGutterPx,
-        RoadmapBlockWidthPx = s.RoadmapBlockWidthPx,
-        RoadmapRowGapPx = s.RoadmapRowGapPx,
+        RoadmapColumnWidthPx = s.RoadmapColumnWidthPx,
+        RoadmapDescriptionLines = s.RoadmapDescriptionLines,
         RoadmapClosedEpicDays = s.RoadmapClosedEpicDays,
         RoadmapRefreshDebounceMs = s.RoadmapRefreshDebounceMs,
         RoadmapWorkingCredit = s.RoadmapWorkingCredit,
@@ -1728,8 +1729,8 @@ public sealed class OrchestratorVaultSettings
         AutoTabNameMaxChars = AutoTabNameMaxChars,
         CliTooltipDelayMs = CliTooltipDelayMs,
         LoginTreeGutterPx = LoginTreeGutterPx,
-        RoadmapBlockWidthPx = RoadmapBlockWidthPx,
-        RoadmapRowGapPx = RoadmapRowGapPx,
+        RoadmapColumnWidthPx = RoadmapColumnWidthPx,
+        RoadmapDescriptionLines = RoadmapDescriptionLines,
         RoadmapClosedEpicDays = RoadmapClosedEpicDays,
         RoadmapRefreshDebounceMs = RoadmapRefreshDebounceMs,
         RoadmapWorkingCredit = RoadmapWorkingCredit,

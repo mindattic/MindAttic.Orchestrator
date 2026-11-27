@@ -7,8 +7,9 @@ namespace MindAttic.Orchestrator.Tickets;
 /// One ticket on the Roadmap (M.ORCH-T2382): its level (epic, feature, story, task; levels may skip), who has it, and how far
 /// along it is. <see cref="DoneLeaves"/> of <see cref="TotalLeaves"/> are the leaf tasks under it (itself when it has none): a
 /// closed one counts 1, one someone is working on the working credit, an open one 0; wont-do ones are left out of both.
+/// <see cref="Description"/> is the ticket's markdown description, null when it has none (M.ORCH-T2394).
 /// </summary>
-public sealed record RoadmapNode(string Id, string Repo, string Name, string Summary, string Level, string Status, string? Assignee,
+public sealed record RoadmapNode(string Id, string Repo, string Name, string Summary, string? Description, string Level, string Status, string? Assignee,
     string? WorkingLogin, long Priority, IReadOnlyList<RoadmapNode> Children, double DoneLeaves, int TotalLeaves)
 {
     /// <summary>Done leaves over all leaves, 0 to 1; a node with no counted leaf is done when it's closed.</summary>
@@ -54,12 +55,14 @@ public sealed record RoadmapTree(IReadOnlyList<RoadmapRepo> Repos)
     /// <summary>
     /// Builds the tree from rows already read. <paramref name="parents"/> is ticket → its <c>part-of</c> targets, milestone
     /// targets already dropped. <paramref name="keptClosed"/> are closed tickets shown as though open (recently closed epics).
+    /// <paramref name="descriptionOf"/> reads a ticket's description, once per ticket in the tree.
     /// </summary>
     public static RoadmapTree Build(IReadOnlyList<(string Repo, Ticket Ticket)> tickets,
         IReadOnlyDictionary<string, IReadOnlyList<string>> parents, IReadOnlyDictionary<string, string> levels,
         IReadOnlyDictionary<string, string> names, IReadOnlyDictionary<string, long> priorities,
         IReadOnlyDictionary<string, TicketWork> work, IReadOnlySet<string> keptClosed,
-        IReadOnlyDictionary<string, (string Id, string Name, long Order, int Passed, int Total)> milestones, double workingCredit)
+        IReadOnlyDictionary<string, (string Id, string Name, long Order, int Passed, int Total)> milestones, double workingCredit,
+        Func<string, string?>? descriptionOf = null)
     {
         var byId = new Dictionary<string, (string Repo, Ticket Ticket)>(StringComparer.OrdinalIgnoreCase);
         foreach (var t in tickets)
@@ -114,7 +117,7 @@ public sealed record RoadmapTree(IReadOnlyList<RoadmapRepo> Repos)
             }
             var summary = ticket.Summary.Split('\n', 2)[0].Trim();
             return new RoadmapNode(id, repo, names.TryGetValue(id, out var name) && !string.IsNullOrWhiteSpace(name) ? name : summary,
-                summary, levels.TryGetValue(id, out var level) ? level : "task", ticket.Status, TicketsDb.NormalizeEmail(w?.Assignee),
+                summary, descriptionOf?.Invoke(id), levels.TryGetValue(id, out var level) ? level : "task", ticket.Status, TicketsDb.NormalizeEmail(w?.Assignee),
                 login, priorities.TryGetValue(id, out var pr) ? pr : 0, kids, done, total);
         }
 

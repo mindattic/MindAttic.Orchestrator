@@ -400,17 +400,18 @@ public sealed record OrchestratorSettings
     /// <summary>The default <see cref="LoginTreeGutterPx"/>.</summary>
     public const double DefaultLoginTreeGutterPx = 10;
 
-    /// <summary>The width of one block in the Roadmap page's repo grid and level rows (M.ORCH-T2382).</summary>
-    public double RoadmapBlockWidthPx { get; init; } = DefaultRoadmapBlockWidthPx;
+    /// <summary>The width of one of the Roadmap page's drill-down columns: the repo list, then one list per opened ticket
+    /// (M.ORCH-T2394).</summary>
+    public double RoadmapColumnWidthPx { get; init; } = DefaultRoadmapColumnWidthPx;
 
-    /// <summary>The default <see cref="RoadmapBlockWidthPx"/>.</summary>
-    public const double DefaultRoadmapBlockWidthPx = 200;
+    /// <summary>The default <see cref="RoadmapColumnWidthPx"/>.</summary>
+    public const double DefaultRoadmapColumnWidthPx = 420;
 
-    /// <summary>The gap between two of the Roadmap page's level rows, where the connector lines run (M.ORCH-T2382).</summary>
-    public double RoadmapRowGapPx { get; init; } = DefaultRoadmapRowGapPx;
+    /// <summary>How many lines of a ticket's description a Roadmap row shows before it's trimmed (M.ORCH-T2394).</summary>
+    public int RoadmapDescriptionLines { get; init; } = DefaultRoadmapDescriptionLines;
 
-    /// <summary>The default <see cref="RoadmapRowGapPx"/>.</summary>
-    public const double DefaultRoadmapRowGapPx = 36;
+    /// <summary>The default <see cref="RoadmapDescriptionLines"/>.</summary>
+    public const int DefaultRoadmapDescriptionLines = 6;
 
     /// <summary>How many days a closed epic stays on the Roadmap after it closed (M.ORCH-T2382).</summary>
     public int RoadmapClosedEpicDays { get; init; } = DefaultRoadmapClosedEpicDays;
