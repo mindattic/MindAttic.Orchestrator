@@ -2789,8 +2789,8 @@ public static class AgentGate
             mine = limit = clis = None
             warming = turn = False
             busy = allowed = 0
-            slot = None  # referenced in the finally below even on a wait iteration that never takes one (M.ORCH-T2340)
             while True:
+                slot = None  # referenced in the finally below even on a wait iteration that never takes one (M.ORCH-T2340)
                 TX = slot_db()
                 has_lock = TX is None and locked()
                 # Neither the db nor the lock: counting and taking a slot now would race the other gates (M.ORCH-T197), so
