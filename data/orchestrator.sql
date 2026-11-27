@@ -1850,11 +1850,11 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Tutor', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T22:00:00Z', 38309);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Unity.Rea.Hare', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 33328);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7987328);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7154463);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7250603);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 9236068);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 856754);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'Gadfly', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 55606);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21395916);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21403185);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 27553);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 35322);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 650404);
@@ -33188,23 +33188,14 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 89.25,
+      "Degraded": 89.355,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 85 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-27T17:35:52.2950849\u002B00:00",
+      "Reason": "p90 of 360 readings is 85.1 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-27T17:43:09.9035187\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T15:02:52.5628062\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 89.565,
-      "FromUnhealthy": 97,
-      "ToDegraded": 89.67000000000002,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 85.4 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-26T15:03:24.671259\u002B00:00",
       "Check": "RamFreeGb",
@@ -34995,6 +34986,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 89.25,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 85 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T17:43:09.9035187\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.25,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.355,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.1 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
@@ -40002,7 +40002,9 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|GG-T1602": "2026-11-27T11:19:32.5146316Z",
     "approval|GG-T1632": "2026-11-27T13:25:17.0122495Z",
     "approval|GG-T1636": "2026-11-27T13:38:48.233514Z",
-    "approval|GG-T1639": "2026-11-27T13:43:29.7785362Z"
+    "approval|GG-T1639": "2026-11-27T13:43:29.7785362Z",
+    "milestone-addition|MS-23/M.ORCH-T2380": "2026-11-27T17:46:23.9550044Z",
+    "milestone-growth|MS-23|\u002B9/1": "2026-11-27T17:47:30.920283Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
