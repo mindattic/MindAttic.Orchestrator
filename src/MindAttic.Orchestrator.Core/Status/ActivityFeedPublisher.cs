@@ -100,10 +100,11 @@ public sealed class ActivityFeedPublisher(AppBusHub hub, string folder)
 
     private FileSystemWatcher? TryWatch()
     {
+        FileSystemWatcher? w = null;
         try
         {
             Directory.CreateDirectory(folder);
-            var w = new FileSystemWatcher(folder, "*.json") { NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite, InternalBufferSize = 16384 };
+            w = new FileSystemWatcher(folder, "*.json") { NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite, InternalBufferSize = 16384 };
             w.Changed += (_, e) => MarkDirty(e.FullPath);
             w.Created += (_, e) => MarkDirty(e.FullPath);
             // The hook writes a temp file and replaces the record with it: the record's name is the rename's new one.
@@ -115,6 +116,7 @@ public sealed class ActivityFeedPublisher(AppBusHub hub, string folder)
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or PlatformNotSupportedException)
         {
+            w?.Dispose();
             log.Debug(ex, "Couldn't watch the activity folder {Folder:l}; reading it at each rescan only", folder);
             return null;
         }

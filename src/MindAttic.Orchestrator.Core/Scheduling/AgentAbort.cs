@@ -86,7 +86,7 @@ public static partial class AgentAbort
     /// </summary>
     public static IReadOnlyList<AbortCandidate> Choose(Utilization window, IReadOnlyList<AbortCandidate> running, IReadOnlyList<AbortMark> recent, DateTime nowUtc)
     {
-        var hoursLeft = (window.EndUtc - window.NowUtc).TotalHours;
+        var hoursLeft = (window.EndUtc - nowUtc).TotalHours;
         if (hoursLeft <= 0 || running.Count == 0) return [];
         var fading = recent.Sum(m => Math.Max(0, m.PercentPerHour) * Math.Clamp(1 - (nowUtc - m.AtUtc) / Settle, 0, 1));
         var need = (window.ProjectedEndPercent - window.TargetPercent) / hoursLeft - fading;

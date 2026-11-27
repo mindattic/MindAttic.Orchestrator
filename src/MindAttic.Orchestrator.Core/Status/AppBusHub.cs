@@ -549,11 +549,12 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     /// <summary>A watcher that wakes <paramref name="wake"/> when <paramref name="path"/> or its -wal/-shm moves; null when it can't.</summary>
     private static FileSystemWatcher? WatchTicketsDb(string path, SemaphoreSlim wake)
     {
+        FileSystemWatcher? w = null;
         try
         {
             var folder = Path.GetDirectoryName(path);
             if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) return null;
-            var w = new FileSystemWatcher(folder, Path.GetFileName(path) + "*")
+            w = new FileSystemWatcher(folder, Path.GetFileName(path) + "*")
             {
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
             };
@@ -573,6 +574,7 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
+            w?.Dispose();
             log.Debug(ex, "Couldn't watch the ticket database's folder; looking on a timer instead");
             return null;
         }

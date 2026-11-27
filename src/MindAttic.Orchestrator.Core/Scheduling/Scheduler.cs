@@ -378,7 +378,7 @@ public static partial class Scheduler
             }
             if (reposTaken.Contains(item.Repo)) continue;
             // A reserved ticket gets its slice even while pacing coasts or caps, never past a limit.
-            if (reserved ? overLimit || proposals.Count >= free || pace?.RoomTokens < item.Reserved
+            if (reserved ? overLimit || proposals.Count >= free || roomForRest < item.Reserved
                          : hold is not null || proposals.Count >= slots) continue;
             if (OrchestratorSettings.ForRepo(settings.RepoBudgetPercent, item.Repo, 0) is > 0 and var pct && limit5h > 0 &&
                 RepoSpent(item.Repo) >= limit5h * pct / 100) continue;
