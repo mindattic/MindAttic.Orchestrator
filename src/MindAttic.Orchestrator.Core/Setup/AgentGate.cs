@@ -190,11 +190,18 @@ public static class AgentGate
             except Exception:
                 pass
         def claude_config():
-            try:
-                config = json.loads(CLAUDE_JSON.read_text(encoding="utf-8", errors="ignore"))
-                return config if isinstance(config, dict) else {}
-            except Exception:
-                return {}
+            # Retried like read_json: CLAUDE_JSON is rewritten often (Claude Code itself, set_aside_key's own replace), and a
+            # hook that reads it mid-replace on Windows sees a sharing violation (PermissionError), not a missing file; without
+            # the retry that read {} and config_account() took it for signed out until the next tool call.
+            for _ in range(20):
+                try:
+                    config = json.loads(CLAUDE_JSON.read_text(encoding="utf-8", errors="ignore"))
+                    return config if isinstance(config, dict) else {}
+                except PermissionError:
+                    time.sleep(0.05)
+                except Exception:
+                    return {}
+            return {}
         def config_account(config):
             # Keyed as ClaudeAccount.Current: a Claude login by account and organization, an API key as "{{Budget.ClaudeAccount.ApiKey}}"; None signed out.
             text = lambda o, k: o.get(k) if isinstance(o, dict) and isinstance(o.get(k), str) and o.get(k) else None
