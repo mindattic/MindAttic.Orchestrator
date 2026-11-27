@@ -33187,23 +33187,14 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 88.515,
+      "Degraded": 88.62,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 84.3 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-27T16:30:08.5799624\u002B00:00",
+      "Reason": "p90 of 360 readings is 84.4 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-27T16:39:32.72167\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T14:03:35.8666867\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.5719999999999996,
-      "FromUnhealthy": 1.5719999999999996,
-      "ToDegraded": 3.5244999999999997,
-      "ToUnhealthy": 1.5244999999999997,
-      "Reason": "p10 of 360 readings is 3.71 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
     {
       "At": "2026-11-26T14:39:17.0316874\u002B00:00",
       "Check": "CommitPercent",
@@ -34994,6 +34985,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 88.515,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 84.3 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T16:39:32.72167\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 88.515,
+      "FromUnhealthy": 97,
+      "ToDegraded": 88.62,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.4 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
@@ -35127,9 +35127,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T21:17:05.8133387Z",
-    "StoppedUtc": "2026-11-27T16:17:07.6278122Z",
-    "DueUtc": "2026-11-27T21:19:05.8133387Z"
+    "UntilUtc": "2026-11-27T21:32:08.8580554Z",
+    "StoppedUtc": "2026-11-27T16:32:10.9714689Z",
+    "DueUtc": "2026-11-27T21:34:08.8580554Z"
   },
   "24400": {
     "SessionId": "a8807a82-1dd3-4855-b80b-a04b51f0814d",
