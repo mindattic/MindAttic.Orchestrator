@@ -9,7 +9,7 @@ namespace MindAttic.Orchestrator.Tickets;
 /// The daemon's reader of the ticket database's change feed (M.ORCH-T879, <see cref="TicketsDb.Activity"/>): every change any writer
 /// makes (the tickets CLI, Tickets.Desktop, the Orchestrator) becomes a <see cref="TicketBusEvent"/> on the app bus within a couple of
 /// seconds, so no writer has to publish for every app to hear it. It starts at the feed's newest event (what came before isn't
-/// news), looks again only when the database's files moved (or every <see cref="ForceEvery"/>, for a database on SQL Server), and
+/// news), reads it again only when the store's change version moved (<see cref="TicketDbVersion"/>, one scalar, M.ORCH-T2401), and
 /// skips a change the Orchestrator already published as it acted (<see cref="Published"/>). Not thread-safe: one poll at a time.
 /// Nothing here throws into its caller.
 /// </summary>
@@ -20,7 +20,7 @@ public sealed class TicketActivityFeed
     /// <summary>The most events one look reads; a burst past it is read on the next look.</summary>
     public const int Batch = 500;
 
-    /// <summary>How often the feed is read even when no file moved (a database on SQL Server changes no file here).</summary>
+    /// <summary>How often the feed is read with no change version to go by (the server couldn't be asked) and no file moved.</summary>
     public static readonly TimeSpan ForceEvery = TimeSpan.FromSeconds(30);
 
     /// <summary>How long a change the Orchestrator published itself keeps the feed's copy of it from going out again.</summary>
@@ -29,8 +29,12 @@ public sealed class TicketActivityFeed
     private readonly Dictionary<(string Id, string Event), DateTime> published = [];
     private long? after;
     private (DateTime, DateTime, long) stamp;
+    private long? version;
     private DateTime readUtc = DateTime.MinValue;
     private string? lastError;
+
+    /// <summary>The store's change version for a database path; a test's stands in for a server.</summary>
+    internal Func<string, long?> VersionOf { get; init; } = TicketDbVersion.Of;
 
     /// <summary>The newest event read so far; null until the first look.</summary>
     public long? After => after;
@@ -51,12 +55,16 @@ public sealed class TicketActivityFeed
         {
             var path = TicketsDb.DefaultPath(workspaceRoot);
             if (!File.Exists(path)) return 0;
-            var now = Stamp(path);
-            if (after is not null && now == stamp && nowUtc - readUtc < ForceEvery) return 0;
+            // The version first, so a change landing mid-read moves it past what's read and is read next time. A file store
+            // (or a server that can't be asked) has none: its files' stamp stands in, with the forced read as the safety net.
+            var current = VersionOf(path);
+            var now = current is null ? Stamp(path) : default;
+            if (after is not null && (current is not null ? current == version : now == stamp && nowUtc - readUtc < ForceEvery)) return 0;
             using var db = TicketsDb.OpenIfMigrated(workspaceRoot);
             if (db is null) return 0;
             var events = db.Activity(after ?? 0, after is null ? 1 : Batch);
             stamp = now;
+            version = current;
             readUtc = nowUtc;
             lastError = null;
             if (after is null)

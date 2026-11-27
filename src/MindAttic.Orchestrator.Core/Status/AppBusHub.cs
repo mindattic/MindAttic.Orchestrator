@@ -511,72 +511,22 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     public void PublishFromFeed(TicketBusEvent change) => Take(StatusEnvelope.Of(AppBus.Ticket, change, AppBus.Version));
 
     /// <summary>
-    /// Reads the ticket database's change feed until <paramref name="ct"/> ends, publishing each change: <paramref name="every"/>
-    /// after the database's files change (a burst of writes is one read), and every <see cref="TicketActivityFeed.ForceEvery"/>
-    /// regardless, for a database on SQL Server (M.ORCH-T2216). With no folder to watch it looks every <paramref name="every"/>.
-    /// <paramref name="workspaceRoot"/> is asked each time, as the daemon's workspace can change while it runs.
+    /// Reads the ticket database's change feed until <paramref name="ct"/> ends, publishing each change: it asks the store's change
+    /// version every <paramref name="every"/> (a Vault setting, asked each time) and reads the feed only when it moved
+    /// (M.ORCH-T2401), not on the database file's moves, which on SQL Server come late (the local copy is written after the
+    /// server) or not at all. <paramref name="workspaceRoot"/> is asked each time, as the daemon's workspace can change while it runs.
     /// </summary>
-    public async Task FollowFeedAsync(Func<string?> workspaceRoot, TimeSpan every, CancellationToken ct)
+    public async Task FollowFeedAsync(Func<string?> workspaceRoot, Func<TimeSpan> every, CancellationToken ct)
     {
-        using var wake = new SemaphoreSlim(0, 1);
-        FileSystemWatcher? watcher = null;
-        string? watched = null;
-        try
+        while (!ct.IsCancellationRequested)
         {
-            while (!ct.IsCancellationRequested)
-            {
-                var root = workspaceRoot();
-                try { feed.Poll(root, PublishFromFeed, DateTime.UtcNow); }
-                catch (Exception ex) when (ex is not OutOfMemoryException) { log.Warning(ex, "The ticket change feed failed; trying again"); }
-                var path = TicketsDb.DefaultPath(root);
-                if (path != watched)
-                {
-                    watcher?.Dispose();
-                    watcher = WatchTicketsDb(path, wake);
-                    watched = watcher is null ? null : path;
-                }
-                try
-                {
-                    if (await wake.WaitAsync(watcher is null ? every : TicketActivityFeed.ForceEvery, ct).ConfigureAwait(false))
-                        await Task.Delay(every, ct).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) { return; }
-            }
-        }
-        finally { watcher?.Dispose(); }
-    }
-
-    /// <summary>A watcher that wakes <paramref name="wake"/> when <paramref name="path"/> or its -wal/-shm moves; null when it can't.</summary>
-    private static FileSystemWatcher? WatchTicketsDb(string path, SemaphoreSlim wake)
-    {
-        FileSystemWatcher? w = null;
-        try
-        {
-            var folder = Path.GetDirectoryName(path);
-            if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) return null;
-            w = new FileSystemWatcher(folder, Path.GetFileName(path) + "*")
-            {
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
-            };
-            void Wake()
-            {
-                try { if (wake.CurrentCount == 0) wake.Release(); }
-                catch (Exception ex) when (ex is SemaphoreFullException or ObjectDisposedException) { }
-            }
-            w.Changed += (_, _) => Wake();
-            w.Created += (_, _) => Wake();
-            w.Deleted += (_, _) => Wake();
-            w.Renamed += (_, _) => Wake();
-            // A lost buffer may have hidden a change: read now.
-            w.Error += (_, _) => Wake();
-            w.EnableRaisingEvents = true;
-            return w;
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            w?.Dispose();
-            log.Debug(ex, "Couldn't watch the ticket database's folder; looking on a timer instead");
-            return null;
+            try { feed.Poll(workspaceRoot(), PublishFromFeed, DateTime.UtcNow); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { log.Warning(ex, "The ticket change feed failed; trying again"); }
+            TimeSpan wait;
+            try { wait = every(); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { wait = TimeSpan.FromSeconds(MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultTicketFeedPollSeconds); log.Debug(ex, "Reading the feed's poll setting failed"); }
+            try { await Task.Delay(wait > TimeSpan.Zero ? wait : TimeSpan.FromSeconds(1), ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return; }
         }
     }
 }

@@ -239,6 +239,9 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         }, CancellationToken.None, TaskContinuationOptions.None, ui);
     }
 
+    /// <summary>A ticket's links changed: the next read reads them again (M.ORCH-T2401).</summary>
+    public void LinksChanged() => source.LinksChanged();
+
     /// <summary>A ticket changed (M.ORCH-T2388): reads the tree again once changes stop for the Vault's refresh delay, so a
     /// burst (a sync, an import) reads once.</summary>
     public void ScheduleLoad()

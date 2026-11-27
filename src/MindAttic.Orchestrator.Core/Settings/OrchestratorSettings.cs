@@ -433,6 +433,13 @@ public sealed record OrchestratorSettings
     /// <summary>The default <see cref="RoadmapWorkingCredit"/>.</summary>
     public const double DefaultRoadmapWorkingCredit = 0.5;
 
+    /// <summary>How often the daemon reads the ticket database's change version, reading its change feed only when it moved
+    /// (M.ORCH-T2401).</summary>
+    public int TicketFeedPollSeconds { get; init; } = DefaultTicketFeedPollSeconds;
+
+    /// <summary>The default <see cref="TicketFeedPollSeconds"/>.</summary>
+    public const int DefaultTicketFeedPollSeconds = 3;
+
     /// <summary>Whether the Team Wall (M.ORCH-T936) leaves out the Launcher's own menu pane (M.ORCH-T1256): off by default
     /// (included, as it always was before this setting existed), since the Launcher is itself a live CLI someone may want to
     /// watch like any other.</summary>

@@ -18,13 +18,23 @@ public sealed class RoadmapSource
     // Closed epic → when it closed, by the status it had when its history was read.
     private readonly Dictionary<string, (string Status, DateTime? At)> closedAt = new(StringComparer.OrdinalIgnoreCase);
 
+    // Ticket → its part-of parents (milestones aside), as last read, and the cache snapshot they were read against: read again
+    // only when a ticket's parent moved in the cache or a link changed (M.ORCH-T2401), not on every change.
+    private IReadOnlyDictionary<string, IReadOnlyList<string>>? parents;
+    private TicketCacheSnapshot? parentsOf;
+    private volatile bool linksChanged;
+
+    /// <summary>A ticket's links changed (a pushed <c>linked</c> event): the next read reads the links again.</summary>
+    public void LinksChanged() => linksChanged = true;
+
     /// <summary>The store's change version for a database path; a test's stands in for a server.</summary>
     internal Func<string, long?> VersionOf { get; init; } = TicketDbVersion.Of;
 
     /// <summary>The Roadmap for the workspace at <paramref name="workspaceRoot"/>; empty when it has no ticket database. Every
     /// ticket's row (name, level, status, priority, description, who has it) comes from the process's <see cref="TicketCache"/>,
-    /// which reads only what changed; the links, active milestones and their checks are one query each, and closed epics'
-    /// close times one status-history read only while one isn't known yet (M.ORCH-T2400).</summary>
+    /// which reads only what changed; the links are one query only when a ticket's parent moved or a link changed (M.ORCH-T2401),
+    /// the active milestones and their checks one query each, and closed epics' close times one status-history read only while
+    /// one isn't known yet (M.ORCH-T2400).</summary>
     public RoadmapTree Read(string? workspaceRoot, int closedEpicDays, double workingCredit, DateTime nowUtc)
     {
         var version = VersionOf(TicketsDb.DefaultPath(workspaceRoot));
@@ -36,12 +46,18 @@ public sealed class RoadmapSource
         if (db is null) return RoadmapTree.Empty;
         var cache = TicketCache.For(workspaceRoot);
         cache.Refresh(db);
-        var rows = cache.Snapshot.Rows.Values.ToList();
+        var snapshot = cache.Snapshot;
+        var rows = snapshot.Rows.Values.ToList();
         var tickets = rows.Select(r => (r.Repo, new Ticket(r.Id, "", "", r.Status, r.Summary, ""))).ToList();
-        var parents = db.AllLinks()
-            .Where(l => l.Kind == "part-of" && !l.To.StartsWith(MilestonePrefix, StringComparison.OrdinalIgnoreCase))
-            .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
+        if (parents is null || linksChanged || ParentMoved(parentsOf, snapshot))
+        {
+            linksChanged = false;
+            parents = db.AllLinks()
+                .Where(l => l.Kind == "part-of" && !l.To.StartsWith(MilestonePrefix, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
+        }
+        parentsOf = snapshot;
         var levels = rows.Where(r => !string.IsNullOrWhiteSpace(r.Level))
             .ToDictionary(r => r.Id, r => r.Level!.Trim().ToLowerInvariant(), StringComparer.OrdinalIgnoreCase);
         var names = rows.Where(r => !string.IsNullOrWhiteSpace(r.Name)).ToDictionary(r => r.Id, r => r.Name!, StringComparer.OrdinalIgnoreCase);
@@ -59,6 +75,12 @@ public sealed class RoadmapSource
         last = (workspaceRoot, version, readUtc, closedEpicDays, workingCredit, tree);
         return tree;
     }
+
+    /// <summary>Whether a ticket's parent in <paramref name="now"/> differs from <paramref name="before"/>'s, or a new ticket has one.</summary>
+    private static bool ParentMoved(TicketCacheSnapshot? before, TicketCacheSnapshot now) =>
+        before is null || (!ReferenceEquals(before, now) && now.Rows.Values.Any(r => before.Rows.TryGetValue(r.Id, out var was)
+            ? !string.Equals(was.Parent, r.Parent, StringComparison.OrdinalIgnoreCase)
+            : r.Parent is not null));
 
     /// <summary>Each closed epic's close time not yet known at its status, from one read of every ticket's status history.</summary>
     private void ReadClosedAt(IReadOnlyList<TicketRow> closedEpics, TicketsDb db)

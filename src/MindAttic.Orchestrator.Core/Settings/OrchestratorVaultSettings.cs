@@ -988,6 +988,12 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 1)]
     public double RoadmapWorkingCredit { get; set; } = OrchestratorSettings.DefaultRoadmapWorkingCredit;
 
+    /// <summary>How often the daemon asks the ticket database whether anything changed.</summary>
+    [Setting("Ticket change check every (s)", Group = "Scheduler", Order = 116,
+        Help = "How often the daemon asks the ticket database for its change version; the change feed is read only when it moved, and each change then reaches every app.")]
+    [SettingRange(1, 300)]
+    public int TicketFeedPollSeconds { get; set; } = OrchestratorSettings.DefaultTicketFeedPollSeconds;
+
     /// <summary>A busy login's green play arrow blinks once for every this many tokens it spends, so the busiest blink fastest.</summary>
     [Setting("Blink once per (tokens)", Group = "Dashboard", Order = 3,
         Help = "A busy login's green play arrow blinks once for every this many tokens it spends, so the busiest blink fastest.")]
@@ -1532,6 +1538,7 @@ public sealed class OrchestratorVaultSettings
         RoadmapClosedEpicDays = s.RoadmapClosedEpicDays,
         RoadmapRefreshDebounceMs = s.RoadmapRefreshDebounceMs,
         RoadmapWorkingCredit = s.RoadmapWorkingCredit,
+        TicketFeedPollSeconds = s.TicketFeedPollSeconds,
         PlansFolder = s.PlansFolder,
         PlanSummaryMaxChars = s.PlanSummaryMaxChars,
         PlanHeadKb = s.PlanHeadKb,
@@ -1773,6 +1780,7 @@ public sealed class OrchestratorVaultSettings
         RoadmapClosedEpicDays = RoadmapClosedEpicDays,
         RoadmapRefreshDebounceMs = RoadmapRefreshDebounceMs,
         RoadmapWorkingCredit = RoadmapWorkingCredit,
+        TicketFeedPollSeconds = TicketFeedPollSeconds,
         PlansFolder = string.IsNullOrWhiteSpace(PlansFolder) ? s.PlansFolder : PlansFolder,
         PlanSummaryMaxChars = PlanSummaryMaxChars,
         PlanHeadKb = PlanHeadKb,

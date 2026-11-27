@@ -85,7 +85,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         if (hub is not null)
         {
             Status.AppBusClient.Hub = hub;
-            _ = Task.Run(() => hub.FollowFeedAsync(() => options.WorkspaceRoot, TimeSpan.FromSeconds(2), cancel));
+            _ = Task.Run(() => hub.FollowFeedAsync(() => options.WorkspaceRoot, () => TimeSpan.FromSeconds(store.LoadSettings().TicketFeedPollSeconds), cancel));
             // Every change this process writes to them is pushed from now on (through the hub, in this process), and each as it
             // stands now is kept for the dashboards that connect, whatever changed while no daemon ran (M.ORCH-T891).
             Status.StateBus.Enable(background: false);

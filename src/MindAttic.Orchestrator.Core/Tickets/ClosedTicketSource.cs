@@ -38,8 +38,11 @@ public sealed class ClosedTicketSource
     {
         // The database's change version where the last read left it (M.ORCH-T1938): nothing changed, so the candidates and
         // assignees stand and only the window moves; the database is opened only for a history still to read.
+        // The candidates come from the process's ticket cache (M.ORCH-T2401): its snapshot unchanged, they stand.
+        var cache = TicketCache.For(workspaceRoot);
         var version = VersionOf(TicketsDb.DefaultPath(workspaceRoot));
-        if (last is { } kept && kept.Root == workspaceRoot && TicketDbVersion.Unchanged(kept.Version, version, kept.ReadUtc, DateTime.UtcNow))
+        if (last is { } kept && kept.Root == workspaceRoot && ReferenceEquals(kept.Snapshot, cache.Snapshot)
+            && TicketDbVersion.Unchanged(kept.Version, version, kept.ReadUtc, DateTime.UtcNow))
         {
             TicketsDb? lazy = null;
             try { return Recent(kept.Candidates, kept.Assignees, HistoryOf(() => lazy ??= TicketsDb.OpenIfMigrated(workspaceRoot)), nowUtc); }
@@ -49,13 +52,17 @@ public sealed class ClosedTicketSource
         var readUtc = DateTime.UtcNow;
         using var db = TicketsDb.OpenIfMigrated(workspaceRoot);
         if (db is null) return [];
-        var assignees = OpenTicketSource.WorkState.Of(db).Assignees;
+        cache.Refresh(db);
+        var snapshot = cache.Snapshot;
+        var assigned = snapshot.Rows.Values.Where(r => TicketsDb.NormalizeEmail(r.Assignee) is not null).ToList();
+        var assignees = assigned.ToDictionary(r => r.Id, r => TicketsDb.NormalizeEmail(r.Assignee)!, StringComparer.OrdinalIgnoreCase);
         // Open tickets aren't filtered out here (M.ORCH-T1163): Recent needs to see a ticket go through Open itself,
         // so a reopen-then-reclose can't reuse the stale close time its cache keyed only on the "closed" status string.
-        List<(string Repo, Ticket Ticket)> candidates = assignees.Count == 0 ? [] : [.. db.Tickets()
-            .Where(t => assignees.ContainsKey(t.Ticket.Id))
-            .OrderByDescending(t => t.Ticket.Date, StringComparer.Ordinal).ThenByDescending(t => t.Ticket.Number ?? 0)];
-        last = (workspaceRoot, version, readUtc, candidates, assignees);
+        // The cache has no filing date: a ticket's created event stands in for one with no close event (Recent).
+        List<(string Repo, Ticket Ticket)> candidates = [.. assigned
+            .Select(r => (r.Repo, new Ticket(r.Id, "", "", r.Status, r.Summary, "")))
+            .OrderByDescending(t => t.Item2.Number ?? 0)];
+        last = (workspaceRoot, snapshot, version, readUtc, candidates, assignees);
         return assignees.Count == 0 ? [] : Recent(candidates, assignees, HistoryOf(() => db), nowUtc);
     }
 
@@ -71,7 +78,7 @@ public sealed class ClosedTicketSource
     internal Func<string, long?> VersionOf { get; init; } = TicketDbVersion.Of;
 
     // The last full read (M.ORCH-T1938): kept while the database's change version stays where it was.
-    private (string? Root, long? Version, DateTime ReadUtc, IReadOnlyList<(string Repo, Ticket Ticket)> Candidates,
+    private (string? Root, TicketCacheSnapshot Snapshot, long? Version, DateTime ReadUtc, IReadOnlyList<(string Repo, Ticket Ticket)> Candidates,
         IReadOnlyDictionary<string, string> Assignees)? last;
 
     /// <summary>The candidates closed within the window (<see cref="Read"/>, with the database's parts given).</summary>
@@ -100,7 +107,8 @@ public sealed class ClosedTicketSource
                     continue;
                 }
                 reads++;
-                known = (ticket.Status, ClosedAt(history(ticket.Id)));
+                var events = history(ticket.Id);
+                known = (ticket.Status, ClosedAt(events) ?? (ticket.Date.Length == 0 ? CreatedAt(events) : null));
                 closedAt[ticket.Id] = known;
             }
             var when = known.At ?? opened;
@@ -120,6 +128,10 @@ public sealed class ClosedTicketSource
         }
         return null;
     }
+
+    /// <summary>When the ticket was filed, from its history's created event; null when it doesn't say.</summary>
+    private static DateTime? CreatedAt(IReadOnlyList<TicketEvent> events) =>
+        events.FirstOrDefault(e => e.Field == "created") is { } created ? ParseUtc(created.At) : null;
 
     private static DateTime? OpenedUtc(Ticket ticket) => ParseUtc(ticket.Date);
 

@@ -375,13 +375,39 @@ public sealed class OpenTicketSource
             Union(reads.Select(r => r.AutoFiled)));
     }
 
+    // Database path → each ticket's filed record (date, type, ref, which never change) and its place in its repo's log, so a
+    // read takes status, summary and the rest from the ticket cache and reads tickets only for a repo with one filed since.
+    private static readonly Dictionary<string, Dictionary<string, (int Order, Ticket Ticket)>> filed = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Every ticket (repo, then log order) as the cache's <paramref name="rows"/> have it, its filed record from
+    /// <see cref="filed"/>; a repo with a ticket not known there yet is read again, alone.</summary>
+    private static List<(string Repo, Ticket Ticket)> TicketsOf(TicketsDb db, string path, IReadOnlyCollection<TicketRow> rows)
+    {
+        lock (filed)
+        {
+            if (!filed.TryGetValue(path, out var known)) filed[path] = known = new(StringComparer.OrdinalIgnoreCase);
+            var fresh = rows.Where(r => !known.ContainsKey(r.Id)).Select(r => r.Repo).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (fresh.Count > 0)
+                foreach (var (_, ticket) in known.Count == 0 ? db.Tickets() : [.. fresh.SelectMany(r => db.Tickets(r))])
+                    known[ticket.Id] = (known.Count, ticket);
+            return [.. rows.Where(r => known.ContainsKey(r.Id))
+                .Select(r => (r.Repo, Order: known[r.Id].Order, Ticket: known[r.Id].Ticket with { Status = r.Status, Summary = r.Summary }))
+                .OrderBy(t => t.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(t => t.Order)
+                .Select(t => (t.Repo, t.Ticket))];
+        }
+    }
+
     /// <summary>One read of the ticket database at <paramref name="path"/> (written at <paramref name="written"/>), on a background
     /// thread (M.ORCH-T1937): null when the workspace isn't migrated. <paramref name="prior"/> is the last good read of it, whose
-    /// milestones stand when theirs can't be read.</summary>
+    /// milestones stand when theirs can't be read. Tickets, names, the queue, who works what and levels come from the process's
+    /// <see cref="TicketCache"/>, which reads only what changed (M.ORCH-T2401); the links and labels are one read each.</summary>
     private static DbRead? Read(string? root, string path, DateTime written, DbRead? prior)
     {
         using var db = TicketsDb.OpenIfMigrated(root);
         if (db is null) return null;
+        var cache = TicketCache.For(root);
+        cache.Refresh(db);
+        var rows = cache.Snapshot.Rows.Values.ToList();
         var links = db.AllLinks();
         var requires = links.Where(l => l.Kind == "requires")
             .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
@@ -389,9 +415,14 @@ public sealed class OpenTicketSource
         var partOf = links.Where(l => l.Kind == "part-of")
             .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
-        var queue = db.QueueStates();
-        var tickets = db.Tickets();
-        var names = db.Names();
+        var tickets = TicketsOf(db, path, rows);
+        var names = rows.Where(r => !string.IsNullOrWhiteSpace(r.Name)).ToDictionary(r => r.Id, r => r.Name!, StringComparer.OrdinalIgnoreCase);
+        var levels = rows.Where(r => !string.IsNullOrWhiteSpace(r.Level))
+            .ToDictionary(r => r.Id, r => r.Level!.Trim().ToLowerInvariant(), StringComparer.OrdinalIgnoreCase);
+        var work = new WorkState(
+            rows.Where(r => TicketsDb.NormalizeEmail(r.Assignee) is not null)
+                .ToDictionary(r => r.Id, r => TicketsDb.NormalizeEmail(r.Assignee)!, StringComparer.OrdinalIgnoreCase),
+            db.Reservations());
         // One graph from the rows already read (M.ORCH-T1938): GraphWeights() and MilestoneScope.Read each read the whole
         // tickets, links and names tables again for their own TicketsDb.Graph(), three of each per refresh.
         var graph = TicketGraph.Build(tickets, links, names);
@@ -404,16 +435,16 @@ public sealed class OpenTicketSource
         return (path, written,
             open.ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
             db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires,
-            queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+            rows.Where(r => r.Approval == TicketsDb.Approved).Select(r => r.Id).ToHashSet(StringComparer.OrdinalIgnoreCase),
             labels.Where(l => l.Value.Contains(EpicLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
-            queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
-            WorkState.Of(db), partOf,
+            rows.Where(r => r.Priority != 0).ToDictionary(r => r.Id, r => r.Priority, StringComparer.OrdinalIgnoreCase),
+            work, partOf,
             labels.Where(l => l.Value.Contains(WaitingOnOwnerLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
             GraphWeight.Of(graph).Where(w => w.Value.Value != 0).ToDictionary(w => w.Key, w => (long)w.Value.Value, StringComparer.OrdinalIgnoreCase),
             names.ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
             MilestonesOf(db, openIds, prior?.Milestones, graph),
             MilestoneScope.ReadOr(db, prior?.MilestoneScopes, graph),
-            containers, LevelsOf(labels), PrefixedOf(labels, RoleLabelPrefix),
+            containers, levels, PrefixedOf(labels, RoleLabelPrefix),
             labels.Where(l => l.Value.Contains(AutoFiledLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase));
     }
 }
