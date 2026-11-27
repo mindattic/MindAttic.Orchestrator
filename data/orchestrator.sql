@@ -1850,11 +1850,11 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Tutor', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T22:00:00Z', 38309);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Unity.Rea.Hare', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 33328);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7987328);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7250603);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7386204);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 9236068);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 856754);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'Gadfly', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 55606);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21403185);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21653931);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 27553);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 35322);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 650404);
@@ -33188,50 +33188,14 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 89.355,
+      "Degraded": 89.775,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 85.1 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-27T17:43:09.9035187\u002B00:00",
+      "Reason": "p90 of 360 readings is 85.5 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-27T18:02:01.2297961\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T15:03:24.671259\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.4294999999999995,
-      "FromUnhealthy": 1.4294999999999995,
-      "ToDegraded": 3.4105,
-      "ToUnhealthy": 1.4104999999999999,
-      "Reason": "p10 of 360 readings is 3.59 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T15:05:37.5800626\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 3.4105,
-      "FromUnhealthy": 1.4104999999999999,
-      "ToDegraded": 3.3534999999999995,
-      "ToUnhealthy": 1.3534999999999995,
-      "Reason": "p10 of 360 readings is 3.53 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T15:05:37.5800626\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 89.67000000000002,
-      "FromUnhealthy": 97,
-      "ToDegraded": 89.88,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 85.6 %, past the configured degraded line 80 %; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T15:06:09.9065563\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 89.88,
-      "FromUnhealthy": 97,
-      "ToDegraded": 89.98500000000001,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 85.7 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-26T15:06:41.9363209\u002B00:00",
       "Check": "RamFreeGb",
@@ -34995,6 +34959,42 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 89.355,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 85.1 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T17:54:39.5402357\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.355,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.46000000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.2 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T17:57:15.8843781\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.46000000000001,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.565,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.3 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T17:58:45.9831159\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.565,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.67000000000002,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.4 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T18:02:01.2297961\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 89.67000000000002,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.775,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 85.5 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
