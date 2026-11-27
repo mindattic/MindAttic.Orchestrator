@@ -40,7 +40,7 @@ public sealed class ContextCycler(string? directory = null)
         if (!System.IO.Directory.Exists(Directory)) return [];
         var rows = SessionStates.Rows();
         // A session that hasn't drawn its statusline yet has only the hook's state file.
-        return System.IO.Directory.EnumerateFiles(Directory, "*.json")
+        return DirectoryFiles("*.json")
             .Select(f => Path.GetFileName(f) is var n && n.EndsWith(".state.json", StringComparison.OrdinalIgnoreCase) ? n[..^".state.json".Length] : n[..^".json".Length])
             .Distinct(StringComparer.Ordinal)
             .Select(id => Read(id, rows))
@@ -196,6 +196,13 @@ public sealed class ContextCycler(string? directory = null)
         return count;
     }
 
+    /// <summary>The files in the session-context folder; none when it is gone or goes while it is listed.</summary>
+    private List<string> DirectoryFiles(string pattern = "*")
+    {
+        try { return [.. System.IO.Directory.EnumerateFiles(Directory, pattern)]; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
+    }
+
     /// <summary>The agent ids (mark file names) of subagents running now across every CLI.</summary>
     public IReadOnlyList<string> AliveSubagentIds(DateTime nowUtc) =>
         [.. SubagentMarks().Where(f => SubagentAlive(f, nowUtc, idle: true)).Select(f => Path.GetFileName(f))];
@@ -250,7 +257,7 @@ public sealed class ContextCycler(string? directory = null)
         SessionStates.ReadIn(Directory);
         if (!System.IO.Directory.Exists(Directory)) return;
         foreach (var prefix in new[] { "unthrottled-", "crossrepo-", "allocate-", "noallocate-" })
-            foreach (var f in System.IO.Directory.EnumerateFiles(Directory, prefix + "*"))
+            foreach (var f in DirectoryFiles(prefix + "*"))
             {
                 // A read-in mark's .bak and a removal's .cleared go when their CLI does.
                 var rest = Path.GetFileName(f)[prefix.Length..];
@@ -351,7 +358,7 @@ public sealed class ContextCycler(string? directory = null)
     {
         if (!System.IO.Directory.Exists(Directory)) return new Dictionary<string, bool>();
         var newest = new Dictionary<int, (string Session, DateTime At, bool Busy)>();
-        foreach (var file in System.IO.Directory.EnumerateFiles(Directory, "*.state.json"))
+        foreach (var file in DirectoryFiles("*.state.json"))
         {
             try
             {
@@ -385,7 +392,7 @@ public sealed class ContextCycler(string? directory = null)
         var found = new HashSet<string>(StringComparer.Ordinal);
         if (!System.IO.Directory.Exists(Directory)) return found;
         var newest = new Dictionary<int, (string Session, DateTime At, bool Asking)>();
-        foreach (var file in System.IO.Directory.EnumerateFiles(Directory, "*.state.json"))
+        foreach (var file in DirectoryFiles("*.state.json"))
         {
             try
             {
@@ -503,11 +510,20 @@ public sealed class ContextCycler(string? directory = null)
         return found;
     }
 
+    private readonly object authsLock = new();
+
+    /// <summary>A copy of the per-session auth readings, taken under a lock: the dashboard and the daemon both ask, and a shared
+    /// dictionary read while the other refreshes it throws.</summary>
     private Dictionary<string, (DateTime Stamp, string? Auth, string? ConfigDir)> ReadAuths()
+    {
+        lock (authsLock) return new Dictionary<string, (DateTime Stamp, string? Auth, string? ConfigDir)>(ReadAuthsLocked());
+    }
+
+    private Dictionary<string, (DateTime Stamp, string? Auth, string? ConfigDir)> ReadAuthsLocked()
     {
         if (!System.IO.Directory.Exists(Directory)) return auths;
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var file in System.IO.Directory.EnumerateFiles(Directory, "*.state.json"))
+        foreach (var file in DirectoryFiles("*.state.json"))
         {
             var session = Path.GetFileName(file)[..^".state.json".Length];
             seen.Add(session);
@@ -539,6 +555,7 @@ public sealed class ContextCycler(string? directory = null)
         try { using var p = System.Diagnostics.Process.GetProcessById(pid); return Providers.IsClaudeProcess(p.ProcessName); }
         catch (ArgumentException) { return false; }
         catch (InvalidOperationException) { return false; }
+        catch (System.ComponentModel.Win32Exception) { return false; }
     }
 
     /// <summary>Drops files for sessions not heard from in a week, so the folder doesn't grow forever.</summary>
@@ -551,7 +568,7 @@ public sealed class ContextCycler(string? directory = null)
         // switch /allocate back on in a CLI where it was typed off (M.ORCH-T484). The billing mode holds until it's switched,
         // however long (M.ORCH-T436), and when a key was set aside is needed as long as a CLI started on it before then runs,
         // however long (M.ORCH-T457).
-        foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) is var n && n != AllocateFile &&
+        foreach (var f in DirectoryFiles().Where(f => Path.GetFileName(f) is var n && n != AllocateFile &&
                      n != Billing.BillingModeFile.FileName && n != Setup.AgentGate.ApiKeySetAsideName &&
                      !n.StartsWith("unthrottled-", StringComparison.Ordinal) && !n.StartsWith("crossrepo-", StringComparison.Ordinal) &&
                      !n.StartsWith("allocate-", StringComparison.Ordinal) && !n.StartsWith("noallocate-", StringComparison.Ordinal)))

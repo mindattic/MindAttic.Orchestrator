@@ -34,7 +34,7 @@ public static class CliMarks
         var files = new Dictionary<int, string>();
         var cleared = new HashSet<int>();
         if (Directory.Exists(directory))
-            foreach (var f in Directory.EnumerateFiles(directory, kind + "-*"))
+            foreach (var f in Marks(directory, kind))
             {
                 var rest = Path.GetFileName(f)[(kind.Length + 1)..];
                 if (IsPid(rest, out var pid)) { if (ReadText(f) is { } text) files[pid] = text; }
@@ -100,6 +100,13 @@ public static class CliMarks
         return since;
     }
 
+    /// <summary>The kind's mark files; none when the folder goes while it is listed.</summary>
+    private static List<string> Marks(string directory, string kind)
+    {
+        try { return [.. Directory.EnumerateFiles(directory, kind + "-*")]; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
+    }
+
     private static double Seconds(DateTime utc) => (utc - DateTime.UnixEpoch).TotalSeconds;
 
     private static DateTime? FileTime(string path)
@@ -121,7 +128,7 @@ public static class CliMarks
         if (!File.Exists(db.Path)) return;
         foreach (var kind in Kinds)
         {
-            var files = Directory.EnumerateFiles(directory, kind + "-*").ToList();
+            var files = Marks(directory, kind);
             var present = new HashSet<string>(files, StringComparer.OrdinalIgnoreCase);
             foreach (var f in files)
             {
