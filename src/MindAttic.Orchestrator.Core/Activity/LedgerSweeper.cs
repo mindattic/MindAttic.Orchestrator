@@ -177,7 +177,7 @@ public static class LedgerSweeper
     private static readonly TimeSpan PidSlack = TimeSpan.FromSeconds(2);
 
     /// <summary>Whether <paramref name="name"/> is one of the daemon's own worktrees under <c>WorktreeRoot\&lt;repo&gt;</c>:
-    /// main-tests, main-bisect, local-tests, merge-main, milestone-build, or a branch build's (<c>branch-*</c>). A ticket's old
+    /// main-tests, main-bisect, local-tests, merge-main, milestone-build, feature-gate, or a branch build's (<c>branch-*</c>). A ticket's old
     /// worktree or a work-&lt;ticket&gt; one isn't: agents work there.</summary>
     public static bool IsDaemonTree(string name) =>
         name.Equals(MainlineTests.WorktreeName, StringComparison.OrdinalIgnoreCase)
@@ -185,6 +185,7 @@ public static class LedgerSweeper
         || name.Equals(BisectTreeName, StringComparison.OrdinalIgnoreCase)
         || name.Equals(BranchTestRun.WorktreeName, StringComparison.OrdinalIgnoreCase)
         || name.Equals(BranchMerges.MergeTreeName, StringComparison.OrdinalIgnoreCase)
+        || name.Equals(FeatureGate.WorktreeName, StringComparison.OrdinalIgnoreCase)
         || name.StartsWith(BranchBuilds.WorktreeName, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>

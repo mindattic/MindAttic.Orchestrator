@@ -126,7 +126,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var mainTests = new MainlineTests(store)
         {
             MaxRunning = 1,
-            Held = MachineHeld,
+            Held = () => MachineHeld() ?? (featureGate?.Running is { } gated ? $"the feature gate is running {gated}'s suite" : null),
         };
         // The remote host's work-branch builds (M.ORCH-T1501), off unless RemoteBranchBuilds; one daemon builds them.
         using var branchLease = new DispatchLease(store.Directory, BranchBuilds.LeaseName, store.Db);
@@ -519,6 +519,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 tick.Lap("main-line tests");
                 RunMilestoneChecks(testsLease.TryAcquire(), mainTests.Running.Count > 0, snapshot, s, options.WorkspaceRoot);
                 tick.Lap("milestone checks");
+                RunFeatureGate(testsLease.TryAcquire(), mainTests.Running.Count > 0, snapshot, s, options.WorkspaceRoot);
+                tick.Lap("feature gate");
                 // Off (the default): nothing; turned off mid-build, the builds running are still recorded, none start.
                 // Where a merged branch's ticket is closed (M.ORCH-T1661): branch tickets stay open until the host's merge.
                 branchMerges.WorkspaceRoot = options.WorkspaceRoot;

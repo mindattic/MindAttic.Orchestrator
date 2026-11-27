@@ -941,6 +941,12 @@ public sealed record OrchestratorSettings
     /// <summary>Seconds between the daemon's looks for assigned-branch tasks to start (M.ORCH-T2397).</summary>
     public double AssignedDispatchCheckSeconds { get; init; } = 60;
 
+    /// <summary>Seconds between the feature test gate's looks for an assigned branch whose tasks are all done (M.ORCH-T2398).</summary>
+    public double FeatureGateCheckSeconds { get; init; } = 60;
+
+    /// <summary>Minutes one feature-gate suite may run before it's ended and counted as not completed (M.ORCH-T2398).</summary>
+    public double FeatureGateTimeoutMinutes { get; init; } = 90;
+
     /// <summary>Readings of the 5-hour chart closer together than this many seconds are thinned to one point (was
     /// UtilizationSeries.MinSpacing).</summary>
     public double UtilizationMinSpacingSeconds { get; init; } = 60;

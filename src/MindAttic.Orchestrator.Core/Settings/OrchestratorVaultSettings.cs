@@ -453,6 +453,18 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(5, 3600)]
     public double AssignedDispatchCheckSeconds { get; set; } = 60;
 
+    /// <summary>Seconds between the feature test gate's looks for an assigned branch whose tasks are all done.</summary>
+    [Setting("Feature test gate: look every (s)", Group = "Scheduler", Order = 109,
+        Help = "Seconds between the feature test gate's looks for an assigned branch (labelled gate:tests) whose tasks are all done; one is found, its repo's full suite runs on main with no LLM, closing the branch when it passes and filing a fix task per failing test when it doesn't.")]
+    [SettingRange(5, 3600)]
+    public double FeatureGateCheckSeconds { get; set; } = 60;
+
+    /// <summary>Minutes one feature-gate suite may run before it's ended and counted as not completed.</summary>
+    [Setting("Feature test gate: suite timeout (minutes)", Group = "Scheduler", Order = 115,
+        Help = "Minutes one feature-gate suite may run before it's ended and counted as not completed; it's tried again later.")]
+    [SettingRange(1, 1440)]
+    public double FeatureGateTimeoutMinutes { get; set; } = 90;
+
     /// <summary>Seconds tickets db sync, and the git calls that commit orchestrator.db, may run before they're killed, so a hung push can't stall the daemon.</summary>
     [Setting("Stop a ticket db sync after (s)", Group = "Scheduler", Order = 104,
         Help = "Seconds tickets db sync, and the git calls that commit orchestrator.db, may run before they're killed, so a hung push can't stall the daemon.")]
@@ -1436,6 +1448,8 @@ public sealed class OrchestratorVaultSettings
         AssignedDispatchEnabled = s.AssignedDispatchEnabled,
         AssignedDispatchMaxPerLogin = s.AssignedDispatchMaxPerLogin,
         AssignedDispatchCheckSeconds = s.AssignedDispatchCheckSeconds,
+        FeatureGateCheckSeconds = s.FeatureGateCheckSeconds,
+        FeatureGateTimeoutMinutes = s.FeatureGateTimeoutMinutes,
         ApiCostReadMinutes = s.ApiCostReadMinutes,
         UtilizationMinSpacingSeconds = s.UtilizationMinSpacingSeconds,
         SyncTimeoutSeconds = s.SyncTimeoutSeconds,
@@ -1675,6 +1689,8 @@ public sealed class OrchestratorVaultSettings
         AssignedDispatchEnabled = AssignedDispatchEnabled,
         AssignedDispatchMaxPerLogin = AssignedDispatchMaxPerLogin,
         AssignedDispatchCheckSeconds = AssignedDispatchCheckSeconds,
+        FeatureGateCheckSeconds = FeatureGateCheckSeconds,
+        FeatureGateTimeoutMinutes = FeatureGateTimeoutMinutes,
         ApiCostReadMinutes = ApiCostReadMinutes,
         UtilizationMinSpacingSeconds = UtilizationMinSpacingSeconds,
         SyncTimeoutSeconds = SyncTimeoutSeconds,
