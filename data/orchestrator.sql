@@ -33188,23 +33188,14 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 88.62,
+      "Degraded": 88.72500000000001,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 84.4 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-27T16:39:32.72167\u002B00:00",
+      "Reason": "p90 of 360 readings is 84.5 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-27T17:00:32.1495957\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T14:39:17.0316874\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 89.67000000000002,
-      "FromUnhealthy": 97,
-      "ToDegraded": 89.565,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 85.3 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-26T14:43:52.3060072\u002B00:00",
       "Check": "RamFreeGb",
@@ -34995,6 +34986,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 88.62,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 84.4 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T17:00:32.1495957\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 88.62,
+      "FromUnhealthy": 97,
+      "ToDegraded": 88.72500000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.5 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
