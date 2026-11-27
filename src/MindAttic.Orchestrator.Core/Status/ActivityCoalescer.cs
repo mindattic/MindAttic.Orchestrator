@@ -50,7 +50,6 @@ public sealed class ActivityCoalescer
         lock (gate)
         {
             var known = sessions.TryGetValue(next.Session, out var e);
-            if (known && e!.Seq is { } seen && next.Seq is { } seq && seq <= seen) return null;
             if (next.State == ActivityStates.Ended)
             {
                 // An end for a session nobody was shown is news to no one (an old record read at the daemon's start).
@@ -58,6 +57,7 @@ public sealed class ActivityCoalescer
                 sessions.Remove(next.Session);
                 return e!.Sent is null ? null : next;
             }
+            if (known && e!.Seq is { } seen && next.Seq is { } seq && seq <= seen) return null;
             if (!known) sessions[next.Session] = e = new Entry();
             e!.SeenAt = now;
             if (next.Seq is not null) e.Seq = next.Seq;

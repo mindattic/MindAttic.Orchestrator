@@ -110,7 +110,7 @@ public static class LoginLocks
     public static IReadOnlyList<string> LockedEmails(IEnumerable<LoginLock>? locks) => [.. (locks ?? []).Select(l => l.Email)];
 
     private static readonly object liveGate = new();
-    private static (DateTime At, IReadOnlySet<string> Emails) liveLocked = (DateTime.MinValue, new HashSet<string>());
+    private static (DateTime At, IReadOnlySet<string> Emails) liveLocked = (DateTime.MinValue, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
     /// <summary>The live database's locked logins' emails, read at most every few seconds; none when it can't be read.</summary>
     public static IReadOnlySet<string> LiveLocked()
@@ -120,7 +120,7 @@ public static class LoginLocks
         {
             if (now - liveLocked.At < TimeSpan.FromSeconds(10)) return liveLocked.Emails;
             IReadOnlySet<string> emails;
-            try { emails = LockedEmails(Load(new JsonStore())).ToHashSet(StringComparer.Ordinal); }
+            try { emails = LockedEmails(Load(new JsonStore())).ToHashSet(StringComparer.OrdinalIgnoreCase); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or DbException) { emails = liveLocked.Emails; }
             liveLocked = (now, emails);
             return emails;
