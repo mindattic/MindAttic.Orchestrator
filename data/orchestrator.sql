@@ -33188,23 +33188,14 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 88.935,
+      "Degraded": 89.04,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 84.7 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-27T17:21:11.4422861\u002B00:00",
+      "Reason": "p90 of 360 readings is 84.8 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-27T17:26:58.4841271\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T14:59:00.2678365\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 89.355,
-      "FromUnhealthy": 97,
-      "ToDegraded": 89.565,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 85.3 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-26T15:01:32.403472\u002B00:00",
       "Check": "RamFreeGb",
@@ -34995,359 +34986,31 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 88.935,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 84.7 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T17:26:58.4841271\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 88.935,
+      "FromUnhealthy": 97,
+      "ToDegraded": 89.04,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.8 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
 INSERT INTO state (name, value) VALUES ('limit-resumes', '{
-  "58360": {
-    "SessionId": "7370bb8d-9868-420d-bfc7-311507b47dc4",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:59:18.0550598Z",
-    "StoppedUtc": "2026-11-25T00:59:38.5772625Z",
-    "DueUtc": "2026-11-25T06:01:18.0550598Z"
-  },
-  "45688": {
-    "SessionId": "2c651f03-aee6-4f4d-9420-5957d23af195",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:59:18.0550598Z",
-    "StoppedUtc": "2026-11-25T00:59:38.5772625Z",
-    "DueUtc": "2026-11-25T06:01:18.0550598Z"
-  },
-  "32860": {
-    "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:59:18.0550598Z",
-    "StoppedUtc": "2026-11-25T00:59:38.5772625Z",
-    "DueUtc": "2026-11-25T06:01:18.0550598Z"
-  },
-  "12320": {
-    "SessionId": "1edef0f8-e7aa-46ce-8301-2ef575ebd437",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T02:24:03.2484185Z",
-    "StoppedUtc": "2026-11-24T21:24:12.9415355Z",
-    "DueUtc": "2026-11-25T02:26:03.2484185Z"
-  },
-  "50588": {
-    "SessionId": "1425bfa2-838e-4336-82ad-0fb56ee27a01",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:59:18.0550598Z",
-    "StoppedUtc": "2026-11-25T00:59:38.5772625Z",
-    "DueUtc": "2026-11-25T06:01:18.0550598Z"
-  },
-  "38496": {
-    "SessionId": "109a2e12-4cc3-4eb7-ab09-6fe14f3e85bd",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:59:18.0550598Z",
-    "StoppedUtc": "2026-11-25T00:59:38.5772625Z",
-    "DueUtc": "2026-11-25T06:01:18.0550598Z"
-  },
-  "27180": {
-    "SessionId": "80c2dcfc-724d-4f17-b117-a1ca0ac13e12",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T02:25:18.2857591Z",
-    "StoppedUtc": "2026-11-24T21:25:26.0635981Z",
-    "DueUtc": "2026-11-25T02:27:18.2857591Z"
-  },
-  "38484": {
-    "SessionId": "21b33405-aaa0-4b4a-9a6a-fe7cd24d8654",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T05:51:54.7497287Z",
-    "StoppedUtc": "2026-11-25T00:52:08.2735346Z",
-    "DueUtc": "2026-11-25T05:53:54.7497287Z"
-  },
-  "35124": {
-    "SessionId": "eadedf26-1c6c-4249-a2d3-6e7f6f011e68",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T02:46:32.4533846Z",
-    "StoppedUtc": "2026-11-24T21:46:37.6454437Z",
-    "DueUtc": "2026-11-25T02:48:32.4533846Z"
-  },
-  "25932": {
-    "SessionId": "5c87f115-96a3-43aa-8559-17d8764da8f6",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T22:03:52.9922809Z",
-    "StoppedUtc": "2026-11-25T17:03:58.8694625Z",
-    "DueUtc": "2026-11-25T22:05:52.9922809Z"
-  },
-  "13840": {
-    "SessionId": "ad0eac04-fc01-44a6-b73b-341ed53b10cb",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T22:03:52.9922809Z",
-    "StoppedUtc": "2026-11-25T17:03:58.8694625Z",
-    "DueUtc": "2026-11-25T22:05:52.9922809Z"
-  },
-  "41908": {
-    "SessionId": "f8ff71be-40a7-4867-8742-0592d8f38294",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T22:03:52.9922809Z",
-    "StoppedUtc": "2026-11-25T17:03:58.8694625Z",
-    "DueUtc": "2026-11-25T22:05:52.9922809Z"
-  },
-  "23500": {
-    "SessionId": "831346a9-59b9-428b-b943-300f041d1493",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T22:03:52.9922809Z",
-    "StoppedUtc": "2026-11-25T17:03:58.8694625Z",
-    "DueUtc": "2026-11-25T22:05:52.9922809Z"
-  },
-  "22348": {
-    "SessionId": "2ab5ec2e-99d8-43ea-96f0-731b96efbe6d",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-25T21:45:28.2649475Z",
-    "StoppedUtc": "2026-11-25T16:45:34.0853391Z",
-    "DueUtc": "2026-11-25T21:47:28.2649475Z"
-  },
-  "4620": {
-    "SessionId": "5c87f115-96a3-43aa-8559-17d8764da8f6",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T13:49:28.1022563Z",
-    "StoppedUtc": "2026-11-27T08:49:30.9523293Z",
-    "DueUtc": "2026-11-27T13:51:28.1022563Z"
-  },
-  "41304": {
-    "SessionId": "f8ff71be-40a7-4867-8742-0592d8f38294",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T22:35:18.1455072Z",
-    "StoppedUtc": "2026-11-26T17:35:23.4459966Z",
-    "DueUtc": "2026-11-26T22:37:18.1455072Z"
-  },
-  "20140": {
-    "SessionId": "831346a9-59b9-428b-b943-300f041d1493",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T00:46:56.1619661Z",
-    "StoppedUtc": "2026-11-26T19:47:03.8459387Z",
-    "DueUtc": "2026-11-27T00:48:56.1619661Z"
-  },
-  "39088": {
-    "SessionId": "b773a79b-ba7e-46cb-9786-f886660e3188",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T15:57:33.517563Z",
-    "StoppedUtc": "2026-11-27T10:57:42.7597821Z",
-    "DueUtc": "2026-11-27T15:59:33.517563Z"
-  },
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
     "UntilUtc": "2026-11-27T22:17:53.8750394Z",
     "StoppedUtc": "2026-11-27T17:17:55.6767648Z",
     "DueUtc": "2026-11-27T22:19:53.8750394Z"
-  },
-  "24400": {
-    "SessionId": "a8807a82-1dd3-4855-b80b-a04b51f0814d",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T01:28:14.1656711Z",
-    "StoppedUtc": "2026-11-25T20:28:50.7706929Z",
-    "DueUtc": "2026-11-26T01:30:14.1656711Z"
-  },
-  "42076": {
-    "SessionId": "5c34bf68-6599-47fd-8f65-87b3adb44f9e",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T01:00:24.7798254Z",
-    "StoppedUtc": "2026-11-25T20:00:34.7420001Z",
-    "DueUtc": "2026-11-26T01:02:24.7798254Z"
-  },
-  "58244": {
-    "SessionId": "c6112df4-43d8-42d0-98d8-19541e2057ec",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T07:00:19.5119847Z",
-    "StoppedUtc": "2026-11-26T02:00:33.2005304Z",
-    "DueUtc": "2026-11-26T07:02:19.5119847Z"
-  },
-  "39332": {
-    "SessionId": "3a3ec029-07bb-40dd-a1f6-578b671ff17b",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T00:43:35.1180632Z",
-    "StoppedUtc": "2026-11-26T19:43:40.3625796Z",
-    "DueUtc": "2026-11-27T00:45:35.1180632Z"
-  },
-  "57504": {
-    "SessionId": "bb1c10a1-f527-4aff-b271-ba4beeb8a07c",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T07:39:23.5156799Z",
-    "StoppedUtc": "2026-11-26T02:39:26.6507213Z",
-    "DueUtc": "2026-11-26T07:41:23.5156799Z"
-  },
-  "46440": {
-    "SessionId": "37621f32-78b3-499c-a522-1f30b4705e6e",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T04:24:55.8371626Z",
-    "StoppedUtc": "2026-11-25T23:25:06.8881855Z",
-    "DueUtc": "2026-11-26T04:26:55.8371626Z"
-  },
-  "62528": {
-    "SessionId": "cd5b6369-5e13-47e2-a787-e5aaf1517a2a",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T11:03:26.1179423Z",
-    "StoppedUtc": "2026-11-26T06:03:31.789354Z",
-    "DueUtc": "2026-11-26T11:05:26.1179423Z"
-  },
-  "67520": {
-    "SessionId": "1535cf0a-29a1-43fc-893d-d8c91c3800e8",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T07:54:33.2936818Z",
-    "StoppedUtc": "2026-11-26T02:55:50.9534036Z",
-    "DueUtc": "2026-11-26T07:56:33.2936818Z"
-  },
-  "59564": {
-    "SessionId": "b55da335-3884-4204-9018-6acee333c36e",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T07:12:02.4690968Z",
-    "StoppedUtc": "2026-11-26T02:12:05.7843851Z",
-    "DueUtc": "2026-11-26T07:14:02.4690968Z"
-  },
-  "18056": {
-    "SessionId": "0df8dfac-3f1d-402f-b79b-91f6a33e207d",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T07:59:42.1513797Z",
-    "StoppedUtc": "2026-11-26T03:00:03.0917288Z",
-    "DueUtc": "2026-11-26T08:01:42.1513797Z"
-  },
-  "28368": {
-    "SessionId": "9aa417dc-00ec-48db-aaea-59ffddf8b7f3",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T13:49:28.1022563Z",
-    "StoppedUtc": "2026-11-27T08:49:30.9523293Z",
-    "DueUtc": "2026-11-27T13:51:28.1022563Z"
-  },
-  "61472": {
-    "SessionId": "718f6c47-2f74-43f9-b8fb-ec90517f4bc4",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T01:41:15.9154052Z",
-    "StoppedUtc": "2026-11-26T20:41:18.8426555Z",
-    "DueUtc": "2026-11-27T01:43:15.9154052Z"
-  },
-  "60752": {
-    "SessionId": "a09437da-501c-4b91-89b6-09e5a4f4ff02",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T05:02:08.0124325Z",
-    "StoppedUtc": "2026-11-27T00:02:17.6768432Z",
-    "DueUtc": "2026-11-27T05:04:08.0124325Z"
-  },
-  "33504": {
-    "SessionId": "91b94039-25f5-4745-bff2-7955b6ecdfee",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T15:52:19.5457808Z",
-    "StoppedUtc": "2026-11-26T10:52:35.7027108Z",
-    "DueUtc": "2026-11-26T15:54:19.5457808Z"
-  },
-  "65884": {
-    "SessionId": "de3d6622-02c0-4ad9-af6f-f69102cc3569",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T20:52:45.0669422Z",
-    "StoppedUtc": "2026-11-26T15:52:50.2102214Z",
-    "DueUtc": "2026-11-26T20:54:45.0669422Z"
-  },
-  "30004": {
-    "SessionId": "e2ba99f7-1c6a-40eb-86ce-d1c9393396c7",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T22:03:38.8371494Z",
-    "StoppedUtc": "2026-11-26T17:03:44.0370023Z",
-    "DueUtc": "2026-11-26T22:05:38.8371494Z"
-  },
-  "72088": {
-    "SessionId": "2efdddc0-00b7-43eb-b6dc-1b1b52f2e8f9",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-26T22:21:27.2011438Z",
-    "StoppedUtc": "2026-11-26T17:21:40.516067Z",
-    "DueUtc": "2026-11-26T22:23:27.2011438Z"
-  },
-  "73420": {
-    "SessionId": "8b26624c-b794-4842-a4ae-87041419b1a9",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T15:57:33.517563Z",
-    "StoppedUtc": "2026-11-27T10:57:42.7597821Z",
-    "DueUtc": "2026-11-27T15:59:33.517563Z"
-  },
-  "42804": {
-    "SessionId": "72ee51a8-6018-4d9d-91c1-e4d8a68a71c2",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T02:05:35.3908286Z",
-    "StoppedUtc": "2026-11-26T21:05:38.2585832Z",
-    "DueUtc": "2026-11-27T02:07:35.3908286Z"
-  },
-  "55756": {
-    "SessionId": "3ae09e27-b536-414a-a10c-0ac7ff4057f6",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T02:40:39.4877476Z",
-    "StoppedUtc": "2026-11-26T21:40:46.9158688Z",
-    "DueUtc": "2026-11-27T02:42:39.4877476Z"
-  },
-  "35012": {
-    "SessionId": "9e7cecfb-af75-44c4-913d-7797002d8136",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T03:27:31.7629326Z",
-    "StoppedUtc": "2026-11-26T22:27:35.8461158Z",
-    "DueUtc": "2026-11-27T03:29:31.7629326Z"
-  },
-  "6764": {
-    "SessionId": "84ed16fc-3c08-41e7-be0e-b7e022d30caf",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T16:10:04.0028934Z",
-    "StoppedUtc": "2026-11-27T11:10:09.4192741Z",
-    "DueUtc": "2026-11-27T16:12:04.0028934Z"
-  },
-  "57000": {
-    "SessionId": "47893cf3-1d9d-419d-ab96-01481cfa8db6",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T13:44:57.9747325Z",
-    "StoppedUtc": "2026-11-27T08:45:00.8384507Z",
-    "DueUtc": "2026-11-27T13:46:57.9747325Z"
-  },
-  "2052": {
-    "SessionId": "55d4c56f-8a2d-4d3e-b282-1e0edc2154bb",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T13:51:38.6983995Z",
-    "StoppedUtc": "2026-11-27T08:51:41.5125982Z",
-    "DueUtc": "2026-11-27T13:53:38.6983995Z"
-  },
-  "32000": {
-    "SessionId": "763b91b3-46c8-4d35-90da-dd32389298e3",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T13:54:42.5343906Z",
-    "StoppedUtc": "2026-11-27T08:54:45.2291975Z",
-    "DueUtc": "2026-11-27T13:56:42.5343906Z"
-  },
-  "67316": {
-    "SessionId": "80416890-f435-453c-b050-8ae6dc258708",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T14:02:01.7555369Z",
-    "StoppedUtc": "2026-11-27T09:02:07.4862131Z",
-    "DueUtc": "2026-11-27T14:04:01.7555369Z"
-  },
-  "14756": {
-    "SessionId": "faac573f-9871-499e-b921-54256635418f",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T14:02:49.5491889Z",
-    "StoppedUtc": "2026-11-27T09:02:52.7413752Z",
-    "DueUtc": "2026-11-27T14:04:49.5491889Z"
-  },
-  "63016": {
-    "SessionId": "d3c24eb4-3aed-42a2-93f1-63c926f3e1e7",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T14:12:36.8412959Z",
-    "StoppedUtc": "2026-11-27T09:12:39.5735038Z",
-    "DueUtc": "2026-11-27T14:14:36.8412959Z"
-  },
-  "47640": {
-    "SessionId": "67089f96-516c-4732-9ef0-34d20c55ab92",
-    "Window": "5-hour",
-    "UntilUtc": "2026-11-27T14:24:08.8990124Z",
-    "StoppedUtc": "2026-11-27T09:24:12.1997373Z",
-    "DueUtc": "2026-11-27T14:26:08.8990124Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
-  "04ebe23b-384e-491e-9934-b90d8e2c7dba@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
-  "1d5e6ae3-3c9b-4bae-ae6e-bc30eaa0754e@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
-  "79f48ff5-62b2-4ce7-9721-81b71ec86304@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
-  "eb1b844d-aac5-4d6f-b09e-568f63bab16b@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
-  "f462c151-9494-4fa8-ae52-0483677420c2@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
-  "d1df465e-8bc3-450f-8874-3e5decdc58c8@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
-  "08290c60-f9fe-42f5-b290-b76be813b0d3@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
-  "92d4ade2-20d6-4c3f-a3a2-dc0e7aa7318e@2026-11-18T01:50:00Z": "2026-11-18T01:50:00Z",
-  "04ebe23b-384e-491e-9934-b90d8e2c7dba@2026-11-18T05:00:00Z": "2026-11-18T05:00:00Z",
-  "79f48ff5-62b2-4ce7-9721-81b71ec86304@2026-11-18T05:00:00Z": "2026-11-18T05:00:00Z",
-  "04ebe23b-384e-491e-9934-b90d8e2c7dba@2026-11-18T10:00:00Z": "2026-11-18T10:00:00Z"
+  "84ed16fc-3c08-41e7-be0e-b7e022d30caf@2026-11-27T16:10:04Z": "2026-11-27T16:10:04.0028934Z",
+  "8b26624c-b794-4842-a4ae-87041419b1a9@2026-11-27T15:57:33Z": "2026-11-27T15:57:33.517563Z",
+  "b773a79b-ba7e-46cb-9786-f886660e3188@2026-11-27T15:57:33Z": "2026-11-27T15:57:33.517563Z"
 }');
 INSERT INTO state (name, value) VALUES ('limits', '[
   {
@@ -35499,15 +35162,7 @@ INSERT INTO state (name, value) VALUES ('limits', '[
   }
 ]');
 INSERT INTO state (name, value) VALUES ('login-locks', '{
-  "Locks": [
-    {
-      "Email": "ryandebraal@mindattic.com",
-      "Name": "Ryan",
-      "Reason": "manual",
-      "SinceUtc": "2026-11-24T19:14:03.9875569Z",
-      "By": "you"
-    }
-  ],
+  "Locks": [],
   "Log": [
     {
       "AtUtc": "2026-11-24T19:14:03.9875569Z",
@@ -35528,6 +35183,10 @@ INSERT INTO state (name, value) VALUES ('login-locks', '{
     {
       "AtUtc": "2026-11-26T23:54:08.3700762Z",
       "Text": "Amy (shampoo1232@mindattic.com) unlocked by you."
+    },
+    {
+      "AtUtc": "2026-11-27T17:29:30.5993025Z",
+      "Text": "Ryan (ryandebraal@mindattic.com) unlocked by you."
     }
   ],
   "UnlockedInWeek": [
@@ -35538,6 +35197,10 @@ INSERT INTO state (name, value) VALUES ('login-locks', '{
     {
       "Email": "shampoo1232@mindattic.com",
       "WeekResetUtc": "2026-12-03T21:00:00Z"
+    },
+    {
+      "Email": "ryandebraal@mindattic.com",
+      "WeekResetUtc": "2026-12-04T14:00:00Z"
     }
   ]
 }');
