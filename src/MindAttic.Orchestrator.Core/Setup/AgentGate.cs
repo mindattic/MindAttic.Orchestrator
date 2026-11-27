@@ -142,7 +142,7 @@ public static class AgentGate
             # A file being replaced can't be opened for a moment on Windows: that's a retry, not a missing file.
             for _ in range(20):
                 try:
-                    return json.loads(path.read_text())
+                    return json.loads(path.read_text(encoding="utf-8-sig"))
                 except PermissionError:
                     time.sleep(0.05)
             raise PermissionError(str(path))
@@ -430,10 +430,13 @@ public static class AgentGate
                 usage = claude_usage()
                 limits = usage["rate_limits"] if owns(usage) and (usage.get("account") or not before_switch(usage.get("at"))) else {}
                 for key, by, name in windows:
-                    w = limits.get(key)
-                    if w and float(w["used_percentage"]) >= line(key) and float(w["resets_at"]) > time.time():
-                        latch(by, float(w["resets_at"]), percent=float(w["used_percentage"]))
-                        return float(w["used_percentage"]), float(w["resets_at"]), name
+                    try:
+                        w = limits.get(key)
+                        if w and float(w["used_percentage"]) >= line(key) and float(w["resets_at"]) > time.time():
+                            latch(by, float(w["resets_at"]), percent=float(w["used_percentage"]))
+                            return float(w["used_percentage"]), float(w["resets_at"]), name
+                    except Exception:
+                        pass
             except Exception:
                 pass
             for key, by, name in windows:
