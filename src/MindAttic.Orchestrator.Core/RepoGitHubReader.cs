@@ -74,7 +74,13 @@ public sealed class RepoGitHubReader
             foreach (var p in paths.Keys.Where(p => !slugs.ContainsKey(p)).ToList())
             {
                 try { slugs[p] = ReadSlug(p); }
-                catch (Exception ex) when (ex is not OutOfMemoryException) { slugs[p] = null; }
+                catch (Exception ex) when (ex is not OutOfMemoryException)
+                {
+                    // Left out of slugs (not cached as null) so a transient failure (e.g. .git/config
+                    // momentarily locked by another process) is retried on the next pass instead of
+                    // permanently marking the repo as having no GitHub remote.
+                    Serilog.Log.Warning("GitHub repo reader: reading {Path:l}'s remote failed: {Error:l}", p, ex.Message);
+                }
             }
             if (!sweep) return;
             var token = Token();

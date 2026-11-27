@@ -90,7 +90,7 @@ public sealed partial class Daemon
                 if (!probeExeMissingSaid)
                     Say(LogEventLevel.Warning, "health probes: no orchestrator CLI to run them (not installed in C:\\Apps\\MindAttic.Orchestrator\\Cli); the dashboard gets no fresh reports");
                 probeExeMissingSaid = true;
-                return;
+                continue;
             }
             probeExeMissingSaid = false;
             Start(name, run, exe, seconds, now);
@@ -111,7 +111,7 @@ public sealed partial class Daemon
         {
             var p = Process.Start(info) ?? throw new InvalidOperationException("the process didn't start");
             // Both pipes drained so a chatty probe never blocks on a full one; only stderr says why one couldn't run.
-            _ = p.StandardOutput.ReadToEndAsync();
+            _ = DrainAsync(p.StandardOutput);
             run.Stderr = p.StandardError.ReadToEndAsync();
             run.Running = p;
             run.StartedUtc = now;
@@ -121,6 +121,14 @@ public sealed partial class Daemon
         {
             Fail(name, run, $"couldn't start it: {ex.Message}");
         }
+    }
+
+    /// <summary>Drains a probe's stdout so a chatty one never blocks on a full pipe; the output itself isn't used, and a
+    /// broken pipe (e.g. an <see cref="IOException"/>) is swallowed instead of becoming an unobserved task exception.</summary>
+    private static async Task DrainAsync(StreamReader reader)
+    {
+        try { await reader.ReadToEndAsync(); }
+        catch { /* best-effort drain; stderr says why a probe couldn't run */ }
     }
 
     private void Finish(string name, ProbeRun run, string? failure)
