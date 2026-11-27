@@ -243,13 +243,22 @@ public sealed class OrchestratorDb(string path)
     {
         if (Server is not { } server) return;
         using var connection = server.Open();
-        // The saved state in one read (M.ORCH-T1748), not one per row: three round trips a sync however many rows there are.
-        var state = Sql.Read(connection, null, "SELECT name, value, written_at FROM state;", MirrorRow)
-            .Select(row => (Name: (string)row[0].Value!, Row: row)).Where(s => !Volatile.Contains(s.Name)).ToList();
-        var names = state.Select(s => s.Name).ToList();
-        Mirror([("settings", Sql.Read(connection, null, "SELECT * FROM settings;", MirrorRow)),
-            ("assignments", Sql.Read(connection, null, "SELECT * FROM assignments;", MirrorRow)),
-            .. state.Select(s => (Name: "state:" + s.Name, Rows: new List<(string Column, object? Value)[]> { s.Row }))]);
+        List<(string Name, List<(string Column, object? Value)[]> Rows)> copies;
+        List<string> names;
+        using (var tx = connection.BeginTransaction())
+        {
+            // The write lock, so this reads one snapshot: a concurrent WriteData's row can't land between these reads and be
+            // overwritten here, or be read half-written.
+            OrchestratorServer.Lock(connection, tx);
+            // The saved state in one read (M.ORCH-T1748), not one per row: three round trips a sync however many rows there are.
+            var state = Sql.Read(connection, tx, "SELECT name, value, written_at FROM state;", MirrorRow)
+                .Select(row => (Name: (string)row[0].Value!, Row: row)).Where(s => !Volatile.Contains(s.Name)).ToList();
+            names = state.Select(s => s.Name).ToList();
+            copies = [("settings", Sql.Read(connection, tx, "SELECT * FROM settings;", MirrorRow)),
+                ("assignments", Sql.Read(connection, tx, "SELECT * FROM assignments;", MirrorRow)),
+                .. state.Select(s => (Name: "state:" + s.Name, Rows: new List<(string Column, object? Value)[]> { s.Row }))];
+        }
+        Mirror(copies);
         // A saved row gone from the server (deleted there) goes from here too, but never a volatile one, which only this file keeps.
         Write((c, tx) =>
         {

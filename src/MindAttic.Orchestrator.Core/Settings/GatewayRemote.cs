@@ -118,7 +118,7 @@ public static class GatewayRemotes
             var padded = parts[1].Replace('-', '+').Replace('_', '/');
             padded += new string('=', (4 - padded.Length % 4) % 4);
             using var doc = JsonDocument.Parse(Convert.FromBase64String(padded));
-            return doc.RootElement.TryGetProperty("exp", out var exp) && exp.TryGetInt64(out var seconds)
+            return doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("exp", out var exp) && exp.TryGetInt64(out var seconds)
                 ? DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime : null;
         }
         catch (Exception ex) when (ex is FormatException or JsonException or ArgumentOutOfRangeException) { return null; }

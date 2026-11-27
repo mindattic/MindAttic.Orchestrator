@@ -426,7 +426,11 @@ public sealed class JsonStore
         {
             NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.CreationTime | NotifyFilters.Size,
         };
-        FileSystemEventHandler handler = (_, _) => debounce.Change(300, Timeout.Infinite);
+        FileSystemEventHandler handler = (_, _) =>
+        {
+            try { debounce.Change(300, Timeout.Infinite); }
+            catch (ObjectDisposedException) { } // disposed between the event firing and the Change call
+        };
         watcher.Changed += handler;
         watcher.Created += handler;
         watcher.Renamed += (s, e) => handler(s, e);
