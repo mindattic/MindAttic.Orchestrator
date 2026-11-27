@@ -432,11 +432,17 @@ public static class AgentGate
                 for key, by, name in windows:
                     try:
                         w = limits.get(key)
-                        if w and float(w["used_percentage"]) >= line(key) and float(w["resets_at"]) > time.time():
-                            latch(by, float(w["resets_at"]), percent=float(w["used_percentage"]))
-                            return float(w["used_percentage"]), float(w["resets_at"]), name
+                        if not w:
+                            continue
+                        used, resets = float(w["used_percentage"]), float(w["resets_at"])
                     except Exception:
-                        pass
+                        continue
+                    if used >= line(key) and resets > time.time():
+                        try:
+                            latch(by, resets, percent=used)
+                        except Exception:
+                            pass
+                        return used, resets, name
             except Exception:
                 pass
             for key, by, name in windows:
