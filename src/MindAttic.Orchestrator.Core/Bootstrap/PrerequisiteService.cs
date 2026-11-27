@@ -259,7 +259,7 @@ public sealed class PrerequisiteService
             psi.ArgumentList.Add(command);
             using var p = Process.Start(psi);
             if (p is null) return false;
-            if (!p.WaitForExit(5000)) { try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { } return false; }
+            if (!p.WaitForExit(5000)) { try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { } return false; }
             return p.ExitCode == 0;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { return false; }
@@ -282,7 +282,7 @@ public sealed class PrerequisiteService
 
         while (!p.HasExited)
         {
-            if (ct.IsCancellationRequested) { try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { } break; }
+            if (ct.IsCancellationRequested) { try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { } break; }
             p.WaitForExit(250);
         }
         try { p.WaitForExit(10_000); } catch (InvalidOperationException) { }
