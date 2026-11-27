@@ -49,7 +49,7 @@ internal sealed class GatewayRemoteAddCommand : Command<GatewayRemoteAddCommand.
             if (pin is null) { AnsiConsole.MarkupLine("[red]--pin is the certificate's SHA-256: 64 hex characters.[/]"); return 1; }
         }
         var token = ReadToken(settings.Token);
-        if (string.IsNullOrWhiteSpace(token)) { AnsiConsole.MarkupLine("[red]No token given.[/]"); return 1; }
+        if (string.IsNullOrWhiteSpace(token)) { AnsiConsole.MarkupLine("[red]No token given: pass --token <token>, or --token - to read it from standard input.[/]"); return 1; }
         if (GatewayRemotes.ExpiresUtc(token) is not { } expires)
             AnsiConsole.MarkupLine("[yellow]That doesn't look like a gateway token (v1.…); kept anyway.[/]");
         else if (expires <= DateTime.UtcNow)
@@ -82,6 +82,8 @@ internal sealed class GatewayRemoteAddCommand : Command<GatewayRemoteAddCommand.
         // Only an explicit "--token -" reads stdin (M.ORCH-T1161): omitting --token always prompts, even when stdin
         // happens to be redirected, so a forgotten flag never silently seals whatever's on stdin as the token.
         if (given == "-") return Console.In.ReadLine()?.Trim();
+        // A prompt on a console that can't answer it throws; with none to ask, "No token given" says what to do instead.
+        if (!AnsiConsole.Profile.Capabilities.Interactive) return null;
         return AnsiConsole.Prompt(new TextPrompt<string>("Token:").Secret()).Trim();
     }
 }
