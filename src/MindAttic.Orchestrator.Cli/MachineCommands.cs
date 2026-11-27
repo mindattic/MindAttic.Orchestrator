@@ -367,7 +367,7 @@ internal sealed class MachineStartCommand : AsyncCommand<MachineStartCommand.Set
         }
         using var client = MachineHub.Client();
         if (client is null) return 1;
-        var (code, output) = await client.StartSessionAsync(settings.Repo.Trim(), settings.Login?.Trim(), CancellationToken.None);
+        var (code, output) = await client.StartSessionAsync(settings.Repo.Trim(), settings.Login is not null ? login : null, CancellationToken.None);
         return MachineHub.Say(code, code == 0 && output.Trim().Length == 0 ? $"Started a CLI in {settings.Repo.Trim()} on the host." : output);
     }
 }

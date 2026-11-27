@@ -161,7 +161,7 @@ internal static class GatewayApp
             {
                 var from = http.Connection.RemoteIpAddress ?? IPAddress.None;
                 // Counted before the key is checked (M.ORCH-T987), so concurrent guesses can't slip past the limit.
-                if (!g.Throttle.TryBegin(from)) return TypedResults.StatusCode(StatusCodes.Status429TooManyRequests);
+                if (!g.Throttle.TryBegin(from, out var attempt)) return TypedResults.StatusCode(StatusCodes.Status429TooManyRequests);
                 if (request is null) return TypedResults.BadRequest();
                 string subject;
                 if (GatewayKeys.Matches(g.OwnerKey, request.OwnerKey)) subject = g.Options.Owner;
@@ -190,7 +190,7 @@ internal static class GatewayApp
                     AuditRefusal(g, "", from.ToString(), "wrong owner key");
                     return TypedResults.Unauthorized();
                 }
-                g.Throttle.Succeeded(from);
+                g.Throttle.Succeeded(from, attempt);
                 var scope = request.Scope is null ? GatewayScopes.Interact : request.Scope.ToLowerInvariant();
                 if (!GatewayScopes.IsValid(scope)) return TypedResults.BadRequest();
                 var minutes = Math.Clamp(request.Minutes ?? g.Options.TokenMinutes, 1, GatewayOptions.MaxTokenMinutes);
@@ -836,16 +836,24 @@ internal sealed class LoginThrottle(Func<DateTime>? clock = null, int capacity =
 
     /// <summary>An owner key is about to be checked: false when the address is blocked; otherwise the attempt counts as a failure
     /// until <see cref="Succeeded"/> takes it back, atomically with the check.</summary>
-    public bool TryBegin(IPAddress from)
+    public bool TryBegin(IPAddress from) => TryBegin(from, out _);
+
+    /// <summary>As <see cref="TryBegin(IPAddress)"/>, also giving back the counted attempt so <see cref="Succeeded(IPAddress, Attempt)"/>
+    /// takes back this caller's own slot, never another concurrent caller's.</summary>
+    public bool TryBegin(IPAddress from, out Attempt attempt)
     {
         lock (gate)
         {
             var key = Key(from);
+            attempt = default;
             if (entries.TryGetValue(key, out var e) && Recent(e) >= MaxFailures) return false;
-            Record(key, e);
+            attempt = Record(key, e);
             return true;
         }
     }
+
+    /// <summary>One counted attempt: the slot it took and the time written there.</summary>
+    public readonly record struct Attempt(int Slot, DateTime At);
 
     public void Failed(IPAddress from)
     {
@@ -853,6 +861,21 @@ internal sealed class LoginThrottle(Func<DateTime>? clock = null, int capacity =
         {
             var key = Key(from);
             Record(key, entries.GetValueOrDefault(key));
+        }
+    }
+
+    public void Succeeded(IPAddress from, Attempt attempt)
+    {
+        lock (gate)
+        {
+            var key = Key(from);
+            if (!entries.TryGetValue(key, out var e)) return;
+            if (e.Times[attempt.Slot] == attempt.At)
+            {
+                e.Times[attempt.Slot] = default;
+                if (attempt.Slot == (e.Next + MaxFailures - 1) % MaxFailures) e.Next = attempt.Slot;
+            }
+            if (Array.TrueForAll(e.Times, t => t == default) && entries.Remove(key)) order.Remove(e.Node);
         }
     }
 
@@ -874,7 +897,7 @@ internal sealed class LoginThrottle(Func<DateTime>? clock = null, int capacity =
         }
     }
 
-    private void Record(IPAddress key, Entry? e)
+    private Attempt Record(IPAddress key, Entry? e)
     {
         if (e is null)
         {
@@ -891,8 +914,10 @@ internal sealed class LoginThrottle(Func<DateTime>? clock = null, int capacity =
             order.Remove(e.Node);
             order.AddLast(e.Node);
         }
-        e.Times[e.Next] = now();
+        var attempt = new Attempt(e.Next, now());
+        e.Times[attempt.Slot] = attempt.At;
         e.Next = (e.Next + 1) % MaxFailures;
+        return attempt;
     }
 
     private int Recent(Entry e)

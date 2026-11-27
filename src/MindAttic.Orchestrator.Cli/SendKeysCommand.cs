@@ -109,7 +109,7 @@ internal static class SendKeysTarget
 /// </summary>
 internal static class SendKeys
 {
-    /// <summary>How long connecting to the pipe, and the attach that follows, may each take.</summary>
+    /// <summary>How long connecting to the pipe (with its Hello), the attach that follows, and the final writes may each take.</summary>
     internal static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
     /// <summary>How long, once attached, this waits for a Title or Exit frame the host already had queued behind Live (its
@@ -126,18 +126,19 @@ internal static class SendKeys
     /// viewer, and types <paramref name="text"/> then Enter.</summary>
     internal static async Task SendAsync(string pipeName, string text, Func<string, CancellationToken, Task<Stream>> connect)
     {
-        using var timeout = new CancellationTokenSource(Timeout);
-        await using var stream = await connect(pipeName, timeout.Token).ConfigureAwait(false);
+        using var connecting = new CancellationTokenSource(Timeout);
+        await using var stream = await connect(pipeName, connecting.Token).ConfigureAwait(false);
 
         // 0x0: never takes the session's size, and its typing can't apply one (ViewerPolicy.Join/OwnerSize, M.ORCH-T2302).
         await stream.WriteAsync(TermProtocol.Frame(TermFrameKind.Hello,
-            TermProtocol.Hello(TermProtocol.Version, 0, 0, interactive: true, ViewerId)), timeout.Token).ConfigureAwait(false);
+            TermProtocol.Hello(TermProtocol.Version, 0, 0, interactive: true, ViewerId)), connecting.Token).ConfigureAwait(false);
 
         var bracketed = false;
         var live = false;
+        using var attaching = new CancellationTokenSource(Timeout);
         while (!live)
         {
-            var (kind, payload) = await TermProtocol.ReadFrameAsync(stream, timeout.Token).ConfigureAwait(false);
+            var (kind, payload) = await TermProtocol.ReadFrameAsync(stream, attaching.Token).ConfigureAwait(false);
             switch (kind)
             {
                 case TermFrameKind.Replay when TermProtocol.ReadReplay(payload) is { } replay:
@@ -168,10 +169,11 @@ internal static class SendKeys
             catch (OperationCanceledException) { }
         }
 
+        using var writing = new CancellationTokenSource(Timeout);
         var pasted = TermProtocol.PastePayload(text, bracketed);
         if (pasted.Length > 0)
-            await stream.WriteAsync(TermProtocol.Frame(TermFrameKind.Input, Encoding.UTF8.GetBytes(pasted)), timeout.Token).ConfigureAwait(false);
-        await stream.WriteAsync(TermProtocol.Frame(TermFrameKind.Input, "\r"u8), timeout.Token).ConfigureAwait(false);
+            await stream.WriteAsync(TermProtocol.Frame(TermFrameKind.Input, Encoding.UTF8.GetBytes(pasted)), writing.Token).ConfigureAwait(false);
+        await stream.WriteAsync(TermProtocol.Frame(TermFrameKind.Input, "\r"u8), writing.Token).ConfigureAwait(false);
     }
 
     /// <summary>Connects to a TermHost pipe (current user only), giving up after <paramref name="ct"/> cancels (mirrors
