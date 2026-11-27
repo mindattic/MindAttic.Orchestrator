@@ -198,8 +198,16 @@ public sealed partial class MainViewModel
             var (title, body) = ConsentToast(c);
             Toasts.Insert(0, new ToastViewModel(title, body, Palette.Waiting, null) { Lifetime = c.DeadlineUtc - now });
         }
-        if (consentsToasted.Count > 512) consentsToasted.Clear();
+        // Trimmed down to the newest half rather than Clear()'d outright (M.ORCH-T2325): a Clear() dropped every id at
+        // once, including ones from requests still pending, so the next poll saw them as new again and re-toasted a
+        // consent the member had already been shown.
+        if (consentsToasted.Count > 512) consentsToasted.ExceptWith(consentsToasted.Take(consentsToasted.Count - 256).ToList());
     }
+
+    /// <summary>Releases the host connection opened for consent polling (<see cref="ConsentsNow"/>), once at app
+    /// shutdown (M.ORCH-T2325): <see cref="consentClient"/> is a <see cref="MindAttic.Orchestrator.Sessions.GatewayClient"/>,
+    /// made once and reused for the dashboard's whole life, so it was never otherwise disposed.</summary>
+    internal void DisposeConsentClient() => consentClient?.Dispose();
 
     private void SetHostStats(IReadOnlyList<(string Root, double FreeGb, double? UsedPercent)> drives, double? ramPercent, MemoryState? memoryNow = null, bool allocatePausedNow = false, DiskHold? diskHoldNow = null)
     {

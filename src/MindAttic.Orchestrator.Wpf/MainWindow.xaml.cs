@@ -206,6 +206,9 @@ public partial class MainWindow : Window
         // Names whatever keeps typing waiting on this thread, for good (M.ORCH-T1733).
         var stalls = new MindAttic.Orchestrator.Term.Wpf.UiStallProbe(Dispatcher, () => DashboardTimings.UiStallLog);
         Closed += (_, _) => stalls.Dispose();
+        // The consent-polling GatewayClient a member's PC opens (M.ORCH-T2325): made once, reused for the dashboard's
+        // whole life (MainViewModel.HostStats.cs), so only released here, at the window's own close.
+        Closed += (_, _) => model.DisposeConsentClient();
         // Armed by real input only (M.ORCH-T2206), handled or not, and idle while nobody can type into the window.
         AddHandler(PreviewKeyDownEvent, new KeyEventHandler((_, _) => stalls.Arm()), handledEventsToo: true);
         AddHandler(PreviewMouseDownEvent, new MouseButtonEventHandler((_, _) => stalls.Arm()), handledEventsToo: true);

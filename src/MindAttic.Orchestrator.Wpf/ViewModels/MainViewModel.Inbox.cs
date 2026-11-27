@@ -76,6 +76,11 @@ public sealed partial class MainViewModel
     private ICommand? toggleInboxCommand, closeInboxCommand, copyInboxActionCommand;
     private ICommand? approveInboxCommand, clearWaitingInboxCommand, releaseInboxCommand, delegateInboxCommand, workInboxNowCommand;
     private ICommand? approveAdditionInboxCommand, declineAdditionInboxCommand;
+    /// <summary>Row keys with an inbox action in flight right now (between the guard check below and its own
+    /// `finally`), so a double click on Approve/Clear/Delegate/Work it now/Approve addition/Decline addition never
+    /// races a second backend call against the same row - the <c>movingSessions</c>/<c>starting</c> guards' own
+    /// pattern elsewhere (M.ORCH-T2325).</summary>
+    private readonly HashSet<string> actingInbox = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The inbox for <paramref name="built"/> and its <paramref name="plan"/>; null (the last one stays) when the refresh
     /// made no plan or a repo's tickets couldn't be read, when the list would be partial. Never throws.</summary>
@@ -177,25 +182,31 @@ public sealed partial class MainViewModel
     public async void AnswerAdditionInbox(InboxRowViewModel row, bool approve)
     {
         if (!row.CanAnswerAddition) return;
-        var what = approve ? "Approve" : "Decline";
-        if (PersonEmail is not { } by)
-        {
-            QueueMessage = $"{what} failed: nobody is signed in on this tab, so there is no one to record. Run the command below with --by instead.";
-            return;
-        }
+        var acting = Root.actingInbox;
+        if (!acting.Add(row.Key)) return;
         try
         {
-            if (approve) OwnerInboxActions.ApproveAddition(WorkspaceRoot, row.MilestoneId!, row.MilestoneItem!, by);
-            else OwnerInboxActions.DeclineAddition(WorkspaceRoot, row.MilestoneId!, row.MilestoneItem!, by);
-            QueueMessage = approve ? $"{row.MilestoneItem} is on {row.MilestoneId} now." : $"{row.MilestoneItem} is declined for {row.MilestoneId}.";
-            await RefreshAsync();
-            if (full is not null) Root.ApplyPlan(full);
+            var what = approve ? "Approve" : "Decline";
+            if (PersonEmail is not { } by)
+            {
+                QueueMessage = $"{what} failed: nobody is signed in on this tab, so there is no one to record. Run the command below with --by instead.";
+                return;
+            }
+            try
+            {
+                if (approve) OwnerInboxActions.ApproveAddition(WorkspaceRoot, row.MilestoneId!, row.MilestoneItem!, by);
+                else OwnerInboxActions.DeclineAddition(WorkspaceRoot, row.MilestoneId!, row.MilestoneItem!, by);
+                QueueMessage = approve ? $"{row.MilestoneItem} is on {row.MilestoneId} now." : $"{row.MilestoneItem} is declined for {row.MilestoneId}.";
+                await RefreshAsync();
+                if (full is not null) Root.ApplyPlan(full);
+            }
+            catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException or KeyNotFoundException or InvalidOperationException)
+            {
+                QueueMessage = $"{what} failed: {ex.Message}";
+                OrchestratorLog.For("Dashboard").Error(ex, "Answering a milestone addition from the Inbox failed");
+            }
         }
-        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException or KeyNotFoundException or InvalidOperationException)
-        {
-            QueueMessage = $"{what} failed: {ex.Message}";
-            OrchestratorLog.For("Dashboard").Error(ex, "Answering a milestone addition from the Inbox failed");
-        }
+        finally { acting.Remove(row.Key); }
     }
 
     /// <summary>Approves <paramref name="row"/>'s ticket (<see cref="OwnerInboxActions.Approve"/>), then refreshes: the row
@@ -203,6 +214,8 @@ public sealed partial class MainViewModel
     public async void ApproveInbox(InboxRowViewModel row)
     {
         if (!row.CanApprove || Locked(row.Id)) return;
+        var acting = Root.actingInbox;
+        if (!acting.Add(row.Key)) return;
         try
         {
             OwnerInboxActions.Approve(WorkspaceRoot, row.Id);
@@ -215,6 +228,7 @@ public sealed partial class MainViewModel
             QueueMessage = $"Approve failed: {ex.Message}";
             OrchestratorLog.For("Dashboard").Error(ex, "Approve from the Inbox failed");
         }
+        finally { acting.Remove(row.Key); }
     }
 
     /// <summary>Clears <paramref name="row"/>'s <c>waiting-on-owner</c> label (<see cref="OwnerInboxActions.ClearWaiting"/>),
@@ -222,6 +236,8 @@ public sealed partial class MainViewModel
     public async void ClearWaitingInbox(InboxRowViewModel row)
     {
         if (!row.CanClearWaiting || Locked(row.Id)) return;
+        var acting = Root.actingInbox;
+        if (!acting.Add(row.Key)) return;
         try
         {
             OwnerInboxActions.ClearWaiting(WorkspaceRoot, row.Id);
@@ -234,6 +250,7 @@ public sealed partial class MainViewModel
             QueueMessage = $"Clear failed: {ex.Message}";
             OrchestratorLog.For("Dashboard").Error(ex, "Clear from the Inbox failed");
         }
+        finally { acting.Remove(row.Key); }
     }
 
     /// <summary>Releases <paramref name="row"/>'s stale or orphaned claim: the same <see cref="Release"/> the Queue's own
@@ -248,6 +265,8 @@ public sealed partial class MainViewModel
     public async void DelegateInbox(InboxRowViewModel row)
     {
         if (!row.CanDelegate || Locked(row.Id)) return;
+        var acting = Root.actingInbox;
+        if (!acting.Add(row.Key)) return;
         try
         {
             var change = OwnerInboxActions.Delegate(WorkspaceRoot, row.Id, row.Assignee?.Email);
@@ -260,6 +279,7 @@ public sealed partial class MainViewModel
             QueueMessage = $"Delegate failed: {ex.Message}";
             OrchestratorLog.For("Dashboard").Error(ex, "Delegate from the Inbox failed");
         }
+        finally { acting.Remove(row.Key); }
     }
 
     /// <summary>Approves (or clears) <paramref name="row"/>, refreshes, then starts it at once through the same
@@ -268,6 +288,8 @@ public sealed partial class MainViewModel
     public async void WorkInboxNow(InboxRowViewModel row)
     {
         if (!row.CanWorkNow || Locked(row.Id)) return;
+        var acting = Root.actingInbox;
+        if (!acting.Add(row.Key)) return;
         try
         {
             QueueMessage = $"Starting {row.Id}…";
@@ -286,5 +308,6 @@ public sealed partial class MainViewModel
             QueueMessage = $"Failed: {ex.Message}";
             OrchestratorLog.For("Dashboard").Error(ex, "Work-it-now from the Inbox failed");
         }
+        finally { acting.Remove(row.Key); }
     }
 }
