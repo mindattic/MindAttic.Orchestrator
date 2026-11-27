@@ -165,7 +165,7 @@ internal static class GatewayApp
                 if (request is null) return TypedResults.BadRequest();
                 string subject;
                 if (GatewayKeys.Matches(g.OwnerKey, request.OwnerKey)) subject = g.Options.Owner;
-                else if (request.OwnerKey is null && !string.IsNullOrWhiteSpace(request.MemberKey))
+                else if (string.IsNullOrEmpty(request.OwnerKey) && !string.IsNullOrWhiteSpace(request.MemberKey))
                 {
                     // An org member's own key (hub phase 1, M.ORCH-T1640): its token is theirs, never the owner's, and only while they
                     // are an active member; the ACL decides what it sees, the tickets allowlist what it runs.
