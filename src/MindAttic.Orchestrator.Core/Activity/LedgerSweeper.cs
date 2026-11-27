@@ -208,8 +208,8 @@ public static class LedgerSweeper
         if (Owned(r.Owner, "ticket:") is { } ticket)
         {
             if (owners.Ticket(ticket) is not { } t) return (false, $"kept: {ticket}'s state can't be read from the ticket database now");
-            if (t.Claimed && !t.Closed) return (false, $"kept: {ticket} is still claimed");
             if (t.Closed && t.Landed) return (true, $"delivered: {ticket} is closed and its commit is on origin's main line");
+            if (t.Claimed) return (false, $"kept: {ticket} is still claimed");
             if (r.IsReleased && !t.Closed) return (true, $"handed back: {ticket}'s claim ended and nobody holds it");
             var state = t.Closed ? $"{ticket} is closed but no commit naming it is on origin's main line"
                 : t.Exists ? $"{ticket} is no longer claimed" : $"{ticket} isn't in the ticket database";

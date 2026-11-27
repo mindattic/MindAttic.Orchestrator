@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using MindAttic.Orchestrator.Term;
 
@@ -57,8 +58,8 @@ public static class ToolCallText
     public static string? Program(string? command)
     {
         if (string.IsNullOrWhiteSpace(command)) return null;
-        var words = command.Trim().Split('\n', 2)[0].Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
-        for (var i = 0; i < words.Length; i++)
+        var words = Tokenize(command.Trim().Split('\n', 2)[0]);
+        for (var i = 0; i < words.Count; i++)
         {
             var w = words[i].Trim('"', '\'', '(', ')', ';').TrimStart('&');
             if (w.Length == 0 || w.Contains('=')) continue;
@@ -68,7 +69,7 @@ public static class ToolCallText
             // `cd somewhere && dotnet build` runs dotnet.
             if (name is "cd" or "Set-Location" or "pushd")
             {
-                while (i + 1 < words.Length)
+                while (i + 1 < words.Count)
                 {
                     var next = words[++i];
                     if (next is "&&" or ";" or "||" || next.EndsWith(';')) break;
@@ -78,6 +79,33 @@ public static class ToolCallText
             return Trim(SecretShapes.MaskActivity(name.Length <= 40 ? name : name[..39] + "…"));
         }
         return null;
+    }
+
+    /// <summary>Splits a command line on whitespace, but not inside a single- or double-quoted span (so <c>"C:\Program
+    /// Files\dotnet\dotnet.exe"</c> stays one word); the quotes themselves are dropped.</summary>
+    private static List<string> Tokenize(string line)
+    {
+        var words = new List<string>();
+        var sb = new StringBuilder();
+        char? quote = null;
+        foreach (var c in line)
+        {
+            if (quote is { } q)
+            {
+                if (c == q) quote = null;
+                else sb.Append(c);
+                continue;
+            }
+            if (c is '"' or '\'') { quote = c; continue; }
+            if (c is ' ' or '\t')
+            {
+                if (sb.Length > 0) { words.Add(sb.ToString()); sb.Clear(); }
+                continue;
+            }
+            sb.Append(c);
+        }
+        if (sb.Length > 0) words.Add(sb.ToString());
+        return words;
     }
 
     private static string Trim(string s) => s.Length <= MaxLength ? s : s[..(MaxLength - 1)].TrimEnd() + "…";
