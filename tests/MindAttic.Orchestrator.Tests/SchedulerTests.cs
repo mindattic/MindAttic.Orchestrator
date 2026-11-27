@@ -102,6 +102,38 @@ public sealed class SchedulerTests
     }
 
     [Test]
+    public void A_task_under_a_non_epic_container_under_a_further_ancestor_is_never_blocked_by_split_style_requires()
+    {
+        // M.ORCH-T2309 (re-verifying M.ORCH-T2287 post M.ORCH-T2286): A-T3 is a level:task, approved leaf with no own
+        // requires, part-of the non-epic container A-T2 (a story, so IsContainer per M.ORCH-T1904), itself part-of the
+        // further ancestor A-T1. Every split-style requires combination 'tickets ticket split' can leave behind is on at
+        // once (parent requires child, grandparent requires parent, grandparent requires child directly) plus a redundant
+        // direct part-of straight to the grandparent. A-T1 also requires the outside A-T9, which still blocks A-T3 (the
+        // mechanism still works for a real blocker, this isn't just vacuously empty).
+        var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1", "feature"), T("A-T2", "feature"), T("A-T3"), T("A-T9"))) with
+        {
+            Levels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["A-T2"] = "story", ["A-T3"] = "task" },
+            Approved = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "A-T3" },
+            PartOf = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["A-T2"] = ["A-T1"], ["A-T3"] = ["A-T2", "A-T1"] },
+            Requires = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["A-T2"] = ["A-T3"], ["A-T1"] = ["A-T2", "A-T3", "A-T9"] },
+        };
+
+        Assert.That(Scheduler.Plan(snap, new OrchestratorSettings(), []).Queue.Single(q => q.Id == "A-T3").BlockedBy,
+            Is.EqualTo(new[] { "A-T9" }), "not its own container A-T2, grandparent A-T1 or itself, only the real outside blocker");
+
+        // Same shape, further ancestor unapproved-epic instead of a plain story, and no redundant direct link (so the
+        // only part-of path to the epic is two levels up through the container): AncestorRequires' exclusion doesn't
+        // care whether the ancestor it's walking is an epic, only whether a 'requires' target is part-of it.
+        var epicSnap = snap with
+        {
+            Epics = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "A-T1" },
+            PartOf = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["A-T2"] = ["A-T1"], ["A-T3"] = ["A-T2"] },
+        };
+        Assert.That(Scheduler.Plan(epicSnap, new OrchestratorSettings(), []).Queue.Single(q => q.Id == "A-T3").BlockedBy,
+            Is.EqualTo(new[] { "A-T9" }));
+    }
+
+    [Test]
     public void Only_fixes_and_approved_tickets_are_work_and_the_rest_wait_for_your_yes()
     {
         var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1", "feature"), T("A-T2", "fix"), T("A-T3", "chore"), T("A-T4", "docs")));
