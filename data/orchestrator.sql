@@ -11,7 +11,7 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at, ali
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at, alias) VALUES ('ohleo199@mindattic.com', 'Erin', 'member', 'premium', 'active', 1792771886.302, 1795632599.6453776, 'Erin');
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at, alias) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1795632597.5988386, 'Jordan');
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at, alias) VALUES ('ryandebraal@gmail.com', 'Ryan', 'admin', 'premium', 'active', 1795633340.487, 1795662472.8669937, 'Ultra');
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at, alias) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1795802690.7559433, 'Ryan');
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at, alias) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1795805209.0820544, 'Ryan');
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at, alias) VALUES ('shampoo1232@mindattic.com', 'Amy', 'member', 'premium', 'active', 1792771885.882, 1795632595.8876479, 'Amy');
 
 -- usage_samples
@@ -1850,11 +1850,11 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Tutor', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-11-26T22:00:00Z', 38309);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-26', 'Unity.Rea.Hare', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 33328);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7987328);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7422742);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7461266);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', '(workspace root)', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 9236068);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 856754);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'Gadfly', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 55606);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21797903);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 21841938);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 27553);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 35322);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 650404);
@@ -6758,6 +6758,7 @@ INSERT INTO settings (name, value) VALUES ('BranchBuildsTimeoutMinutes', '30');
 INSERT INTO settings (name, value) VALUES ('BranchQueueFetchMinutes', '10');
 INSERT INTO settings (name, value) VALUES ('BranchTestsDiskWaitMinutes', '30');
 INSERT INTO settings (name, value) VALUES ('BranchTestsMemoryWaitMinutes', '30');
+INSERT INTO settings (name, value) VALUES ('BurstMarginFromPercent', '96');
 INSERT INTO settings (name, value) VALUES ('BusyCountRefreshSeconds', '5');
 INSERT INTO settings (name, value) VALUES ('CliMarksPruneHours', '24');
 INSERT INTO settings (name, value) VALUES ('CliTooltipDelayMs', '0');
@@ -6798,6 +6799,7 @@ INSERT INTO settings (name, value) VALUES ('Gateway', '{"Enabled":false,"Bind":"
 INSERT INTO settings (name, value) VALUES ('GitHubIntake', 'false');
 INSERT INTO settings (name, value) VALUES ('GitHubIntakeMinutes', '60');
 INSERT INTO settings (name, value) VALUES ('GroomAfterDays', '30');
+INSERT INTO settings (name, value) VALUES ('HeadroomPerSubagentPercent', '3');
 INSERT INTO settings (name, value) VALUES ('HealthAlerts', 'true');
 INSERT INTO settings (name, value) VALUES ('HealthCommitDegradedPercent', '80');
 INSERT INTO settings (name, value) VALUES ('HealthCommitLearnCeilingPercent', '97');
@@ -6844,6 +6846,7 @@ INSERT INTO settings (name, value) VALUES ('HubMemberWindowsUsers', 'false');
 INSERT INTO settings (name, value) VALUES ('HubTrustedOrg', 'false');
 INSERT INTO settings (name, value) VALUES ('InboxAlerts', 'true');
 INSERT INTO settings (name, value) VALUES ('KeepGoing', 'true');
+INSERT INTO settings (name, value) VALUES ('LauncherExe', '"R:\\MindAttic\\Apps\\MindAttic.Launcher\\Release\\MindAttic.Launcher.exe"');
 INSERT INTO settings (name, value) VALUES ('LauncherRespawnSeconds', '30');
 INSERT INTO settings (name, value) VALUES ('LedgerSweepBuildOutputHours', '72');
 INSERT INTO settings (name, value) VALUES ('LedgerSweepDryRun', 'true');
@@ -6916,6 +6919,12 @@ INSERT INTO settings (name, value) VALUES ('Reservations', '{}');
 INSERT INTO settings (name, value) VALUES ('ResumeAfterReset', 'true');
 INSERT INTO settings (name, value) VALUES ('ReviewDiffLines', '300');
 INSERT INTO settings (name, value) VALUES ('RiskyFiles', '["*AgentGate*.cs","*pace-gate*","*context-gate*","*commit-msg*","*/hooks/*","*/Budget/Pacer.cs","*/Budget/BudgetCalculator.cs","*/Budget/PaceLedger*.cs","*/Scheduling/SubagentShare.cs","*RateLimitStatus*","*/Scheduling/Dispatcher.cs","*/Scheduling/Autopilot.cs","*land*.ps1","*deploy.ps1"]');
+INSERT INTO settings (name, value) VALUES ('RoadmapBlockWidthPx', '200');
+INSERT INTO settings (name, value) VALUES ('RoadmapClosedEpicDays', '14');
+INSERT INTO settings (name, value) VALUES ('RoadmapRefreshDebounceMs', '2000');
+INSERT INTO settings (name, value) VALUES ('RoadmapRowGapPx', '36');
+INSERT INTO settings (name, value) VALUES ('RoadmapSelection', '["Gadfly"]');
+INSERT INTO settings (name, value) VALUES ('RoadmapWorkingCredit', '0.5');
 INSERT INTO settings (name, value) VALUES ('ScratchLeaseHours', '48');
 INSERT INTO settings (name, value) VALUES ('SessionTempPruneMinutes', '10');
 INSERT INTO settings (name, value) VALUES ('SidebarCollapsedPanels', '[]');
@@ -6924,6 +6933,7 @@ INSERT INTO settings (name, value) VALUES ('SqlFreshnessCheck', 'false');
 INSERT INTO settings (name, value) VALUES ('SqlFreshnessCheckAt', '"04:00"');
 INSERT INTO settings (name, value) VALUES ('SqlServerMaxMemoryMb', '0');
 INSERT INTO settings (name, value) VALUES ('StaleAfterHours', '12');
+INSERT INTO settings (name, value) VALUES ('StopBurstMarginPercent', '2');
 INSERT INTO settings (name, value) VALUES ('StoryApproved', '[]');
 INSERT INTO settings (name, value) VALUES ('StoryPriorities', '{}');
 INSERT INTO settings (name, value) VALUES ('SymbolTabLabels', 'true');
@@ -6931,6 +6941,7 @@ INSERT INTO settings (name, value) VALUES ('SyncTimeoutSeconds', '120');
 INSERT INTO settings (name, value) VALUES ('TabBlinkMinSpacingMs', '320');
 INSERT INTO settings (name, value) VALUES ('TabBlinkTokens', '1000');
 INSERT INTO settings (name, value) VALUES ('TempRetentionHours', '48');
+INSERT INTO settings (name, value) VALUES ('TempRoot', '"R:\\Temp"');
 INSERT INTO settings (name, value) VALUES ('TermHostCleanupMinutes', '30');
 INSERT INTO settings (name, value) VALUES ('TermHostCleanupRetryMinutes', '5');
 INSERT INTO settings (name, value) VALUES ('TermLogKeepDays', '7');
@@ -6940,6 +6951,10 @@ INSERT INTO settings (name, value) VALUES ('TestTermHostSweepMinutes', '5');
 INSERT INTO settings (name, value) VALUES ('Theme', '"Dark"');
 INSERT INTO settings (name, value) VALUES ('ThrottleAgents', 'true');
 INSERT INTO settings (name, value) VALUES ('TicketsDbSyncMinutes', '10');
+INSERT INTO settings (name, value) VALUES ('Timelapse', 'true');
+INSERT INTO settings (name, value) VALUES ('TimelapseFps', '2');
+INSERT INTO settings (name, value) VALUES ('TimelapseFrameRate', '2');
+INSERT INTO settings (name, value) VALUES ('TimelapseIntervalMinutes', '15');
 INSERT INTO settings (name, value) VALUES ('TranscriptKeepDays', '365');
 INSERT INTO settings (name, value) VALUES ('TreeMenuLayout', 'true');
 INSERT INTO settings (name, value) VALUES ('UiAutomation', 'false');
@@ -40004,7 +40019,73 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "approval|GG-T1636": "2026-11-27T13:38:48.233514Z",
     "approval|GG-T1639": "2026-11-27T13:43:29.7785362Z",
     "milestone-addition|MS-23/M.ORCH-T2380": "2026-11-27T17:46:23.9550044Z",
-    "milestone-growth|MS-23|\u002B9/1": "2026-11-27T17:47:30.920283Z"
+    "milestone-growth|MS-23|\u002B9/1": "2026-11-27T17:47:30.920283Z",
+    "approval|GG-T1653": "2026-11-27T18:42:08.7514225Z",
+    "approval|GG-T1654": "2026-11-27T18:42:08.7514225Z",
+    "approval|GG-T1655": "2026-11-27T18:42:08.7514225Z",
+    "approval|GG-T1656": "2026-11-27T18:42:08.7514225Z",
+    "approval|GG-T1657": "2026-11-27T18:42:08.7514225Z",
+    "approval|GG-T1658": "2026-11-27T18:42:08.7514225Z",
+    "approval|GG-T1659": "2026-11-27T18:42:08.7514225Z",
+    "approval|GG-T1660": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1661": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1662": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1663": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1664": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1665": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1666": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1667": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1668": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1669": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1670": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1671": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1672": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1673": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1674": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1675": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1676": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1677": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1678": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1679": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1680": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1681": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1682": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1683": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1684": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1685": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1686": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1687": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1688": "2026-11-27T18:43:14.2974395Z",
+    "approval|GG-T1689": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1690": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1691": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1692": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1693": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1694": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1695": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1696": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1697": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1698": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1699": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1700": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1701": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1702": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1703": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1704": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1705": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1706": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1707": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1708": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1709": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1710": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1711": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1712": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1713": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1714": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1715": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1716": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1717": "2026-11-27T18:44:46.0276306Z",
+    "approval|GG-T1718": "2026-11-27T18:44:46.0276306Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
@@ -40332,6 +40413,9 @@ INSERT INTO state (name, value) VALUES ('vault-settings', '{
   "weeklyAwareLinePercent": 75,
   "paceCurveK": 0.1,
   "maxAgentDelaySeconds": 300,
+  "headroomPerSubagentPercent": 3,
+  "burstMarginFromPercent": 96,
+  "stopBurstMarginPercent": 2,
   "agentAbort": true,
   "agentAbortAfterMinutes": 3,
   "allocate": true,
@@ -40491,7 +40575,15 @@ INSERT INTO state (name, value) VALUES ('vault-settings', '{
   "treeMenuLayout": true,
   "sidebarPanelOrder": [],
   "sidebarCollapsedPanels": [],
+  "roadmapSelection": [
+    "Gadfly"
+  ],
   "loginTreeGutterPx": 10,
+  "roadmapBlockWidthPx": 200,
+  "roadmapRowGapPx": 36,
+  "roadmapClosedEpicDays": 14,
+  "roadmapRefreshDebounceMs": 2000,
+  "roadmapWorkingCredit": 0.5,
   "tabBlinkTokens": 1000,
   "excludeLauncherFromTeamWall": false,
   "autoOpenLaunchers": false,
@@ -40538,9 +40630,14 @@ INSERT INTO state (name, value) VALUES ('vault-settings', '{
   "closedTicketsReadLiveMinutes": 15,
   "confirmCliClose": true,
   "uiAutomation": false,
+  "timelapse": true,
+  "timelapseFps": 2,
+  "timelapseIntervalMinutes": 15,
   "testTermHostSweepMinutes": 5,
   "workspaceRoot": null,
   "worktreeRoot": "D:\\Projects\\MindAttic.worktrees",
+  "tempRoot": "R:\\Temp",
+  "launcherExe": "R:\\MindAttic\\Apps\\MindAttic.Launcher\\Release\\MindAttic.Launcher.exe",
   "memberUntil": "honey@mindattic.com=2026-11-11T00:00;waffle@mindattic.com=2026-11-11T00:00",
   "gateway": {
     "enabled": false,
