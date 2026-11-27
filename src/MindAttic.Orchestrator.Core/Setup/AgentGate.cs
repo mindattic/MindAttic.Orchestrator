@@ -191,13 +191,14 @@ public static class AgentGate
                 pass
         def claude_config():
             # Retried like read_json: CLAUDE_JSON is rewritten often (Claude Code itself, set_aside_key's own replace), and a
-            # hook that reads it mid-replace on Windows sees a sharing violation (PermissionError), not a missing file; without
-            # the retry that read {} and config_account() took it for signed out until the next tool call.
+            # hook that reads it mid-write sees either a sharing violation (PermissionError) or truncated, undecodable JSON
+            # (ValueError) on Windows, not a missing file; without the retry that read {} and config_account() took it for
+            # signed out until the next tool call.
             for _ in range(20):
                 try:
                     config = json.loads(CLAUDE_JSON.read_text(encoding="utf-8", errors="ignore"))
                     return config if isinstance(config, dict) else {}
-                except PermissionError:
+                except (PermissionError, ValueError):
                     time.sleep(0.05)
                 except Exception:
                     return {}
