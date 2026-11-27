@@ -162,7 +162,15 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         path = [.. path.Take(block.Row), block.Id];
         Rebuild();
         savePath(path);
+        Drilled?.Invoke();
     });
+
+    /// <summary>The selection moved by a click (M.ORCH-T2392): the page scrolls the deepest row into view.</summary>
+    public event Action? Drilled;
+
+    /// <summary>Whether a repo is picked: the repo grid then shows only it, and the filter and sort hide (M.ORCH-T2392).</summary>
+    public bool IsDrilled => path.Count > 0;
+    public bool ShowsRepoTools => !IsDrilled;
 
     /// <summary>A breadcrumb's click: back up to that level.</summary>
     public ICommand CrumbCommand => crumbCommand ??= new RelayCommand(p =>
@@ -171,6 +179,7 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         path = [.. path.Take(crumb.Depth + 1)];
         Rebuild();
         savePath(path);
+        Drilled?.Invoke();
     });
 
     /// <summary>Reads the tree off the UI thread, then shows it; a read asked for while one runs follows it.</summary>
@@ -249,8 +258,11 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         if (repo is not null)
         {
             kept.Add(repo.Repo);
-            trail.Add(new(repo.Repo, 0, true));
-            foreach (var b in repoBlocks) b.IsSelected = string.Equals(b.Id, repo.Repo, StringComparison.OrdinalIgnoreCase);
+            // Drilled in (M.ORCH-T2392): the grid shrinks to the picked repo, so its epics open right under it rather than
+            // below ~90 other repo blocks, and "All repos" goes back to the full grid.
+            trail.Add(new("All repos", -1, true));
+            trail.Add(new(repo.Repo, 0, false));
+            repoBlocks = [new RoadmapBlockViewModel(0, repo) { IsSelected = true }];
             IReadOnlyList<RoadmapNode> children = repo.Epics;
             for (var row = 1; children.Count > 0; row++)
             {
@@ -269,6 +281,8 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         Levels = rows;
         Crumbs = trail;
         Raise(nameof(SelectedPath));
+        Raise(nameof(IsDrilled));
+        Raise(nameof(ShowsRepoTools));
     }
 
     /// <summary>A row's title from its tickets' levels: "Epics", or "Features and tasks" for a mix.</summary>

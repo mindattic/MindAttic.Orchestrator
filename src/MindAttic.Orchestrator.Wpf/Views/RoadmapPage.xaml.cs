@@ -23,7 +23,21 @@ public partial class RoadmapPage : Grid
         InitializeComponent();
         LayoutUpdated += (_, _) => DrawConnectors();
         SizeChanged += (_, _) => DrawConnectors();
+        DataContextChanged += (_, e) =>
+        {
+            if (e.OldValue is MainViewModel old) old.Roadmap.Drilled -= ScrollToDeepest;
+            if (e.NewValue is MainViewModel now) now.Roadmap.Drilled += ScrollToDeepest;
+        };
     }
+
+    /// <summary>After a click opens a row (M.ORCH-T2392), brings the deepest row into view once it's laid out, so the
+    /// children of what was clicked are on screen; back at the full repo grid, scrolls to the top.</summary>
+    private void ScrollToDeepest() => Dispatcher.BeginInvoke(() =>
+    {
+        if (LevelRows.Items.Count == 0) { Body.ScrollToTop(); return; }
+        if (LevelRows.ItemContainerGenerator.ContainerFromIndex(LevelRows.Items.Count - 1) is FrameworkElement row)
+            row.BringIntoView();
+    }, System.Windows.Threading.DispatcherPriority.Loaded);
 
     /// <summary>Draws one path from the bottom centre of each row's selected block to the top centre of every block in the row
     /// below it: an elbow down, across and down, halfway through the gap. The selected child's path takes the accent.</summary>

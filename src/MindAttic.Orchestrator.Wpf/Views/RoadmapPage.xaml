@@ -44,7 +44,7 @@
     <ScrollViewer x:Name="Body" Grid.Row="1" Style="{StaticResource MaBodyScroll}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
         <Grid x:Name="Content" Margin="{StaticResource SpaceM}">
             <StackPanel x:Name="Rows">
-                <DockPanel>
+                <DockPanel Visibility="{Binding Roadmap.ShowsRepoTools, Converter={StaticResource Visible}}">
                     <ListBox DockPanel.Dock="Right" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Roadmap.Sorts}"
                              SelectedItem="{Binding Roadmap.Sort}" AutomationProperties.Name="Sort the repos" />
                     <TextBox Style="{StaticResource MaTextBox}" Text="{Binding Roadmap.Filter, UpdateSourceTrigger=PropertyChanged}"
@@ -68,7 +68,7 @@
                 <ItemsControl x:Name="RepoGrid" Style="{StaticResource MaTileList}" ItemsSource="{Binding Roadmap.Repos}" Margin="{StaticResource SpaceTS}"
                               mc:MaList.MinItemWidth="{Binding Roadmap.BlockWidth}" ItemTemplate="{StaticResource RoadmapBlock}"
                               AutomationProperties.Name="Repos" />
-                <ItemsControl Style="{StaticResource MaList}" ItemsSource="{Binding Roadmap.Levels}" AutomationProperties.Name="Levels under the selection">
+                <ItemsControl x:Name="LevelRows" Style="{StaticResource MaList}" ItemsSource="{Binding Roadmap.Levels}" AutomationProperties.Name="Levels under the selection">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:RoadmapLevelViewModel}">
                             <StackPanel Margin="{Binding DataContext.Roadmap.RowGapMargin, RelativeSource={RelativeSource AncestorType={x:Type views:RoadmapPage}}}">
