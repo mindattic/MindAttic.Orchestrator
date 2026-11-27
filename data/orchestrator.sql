@@ -33188,23 +33188,14 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 88.83,
+      "Degraded": 88.935,
       "Unhealthy": 97,
-      "Reason": "p90 of 360 readings is 84.6 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-27T17:11:52.2413767\u002B00:00",
+      "Reason": "p90 of 360 readings is 84.7 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-27T17:21:11.4422861\u002B00:00",
       "Basis": 360
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T14:51:15.0653201\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 89.565,
-      "FromUnhealthy": 97,
-      "ToDegraded": 89.355,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 360 readings is 85.1 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-26T14:59:00.2678365\u002B00:00",
       "Check": "CommitPercent",
@@ -34995,6 +34986,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 88.83,
       "ToUnhealthy": 97,
       "Reason": "p90 of 360 readings is 84.6 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-27T17:21:11.4422861\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 88.83,
+      "FromUnhealthy": 97,
+      "ToDegraded": 88.935,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 360 readings is 84.7 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
@@ -35128,9 +35128,9 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
   "39860": {
     "SessionId": "6082ff94-ff59-4f19-92da-270fca91363e",
     "Window": "5-hour",
-    "UntilUtc": "2026-11-27T22:02:49.5769508Z",
-    "StoppedUtc": "2026-11-27T17:02:51.3803453Z",
-    "DueUtc": "2026-11-27T22:04:49.5769508Z"
+    "UntilUtc": "2026-11-27T22:17:53.8750394Z",
+    "StoppedUtc": "2026-11-27T17:17:55.6767648Z",
+    "DueUtc": "2026-11-27T22:19:53.8750394Z"
   },
   "24400": {
     "SessionId": "a8807a82-1dd3-4855-b80b-a04b51f0814d",
@@ -36107,8 +36107,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-9": {
     "FirstProjectedUtc": "2026-12-10T03:33:03.4149034Z",
     "FirstAtUtc": "2026-11-27T09:49:15.5973864Z",
-    "LatestProjectedUtc": "2026-12-10T01:16:16.9815519Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-10T03:10:45.3618133Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-10T03:33:03.4149034Z",
@@ -36118,8 +36118,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-1": {
     "FirstProjectedUtc": "2026-12-05T20:35:28.6176978Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-06T05:26:04.7373865Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-06T07:03:44.3242969Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-05T20:35:28.6176978Z",
@@ -36129,8 +36129,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-7": {
     "FirstProjectedUtc": "2026-11-27T16:54:59.2203852Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-27T22:27:40.3288113Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-11-27T23:28:54.2642907Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-27T16:54:59.2203852Z",
@@ -36140,8 +36140,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-8": {
     "FirstProjectedUtc": "2027-11-25T15:06:40.7972544Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-12-01T23:29:21.6288143Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-12-03T03:32:06.8186559Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-11-25T15:06:40.7972544Z",
@@ -36151,8 +36151,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-10": {
     "FirstProjectedUtc": "2026-12-05T16:55:22.1238677Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-06T01:42:15.6133488Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-06T03:19:14.224127Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-05T16:55:22.1238677Z",
@@ -36162,8 +36162,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-11": {
     "FirstProjectedUtc": "2026-12-07T08:27:38.7795916Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-07T17:54:31.727977Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-07T19:38:51.9704027Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-07T08:27:38.7795916Z",
@@ -36173,8 +36173,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-12": {
     "FirstProjectedUtc": "2026-12-08T10:57:19.0128087Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-08T20:50:59.8460269Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-08T22:40:16.0271854Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-08T10:57:19.0128087Z",
@@ -36184,8 +36184,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-13": {
     "FirstProjectedUtc": "2027-01-06T19:18:05.8281791Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-07T17:04:11.6612592Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-01-07T21:04:35.259808Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-06T19:18:05.8281791Z",
@@ -36195,8 +36195,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-14": {
     "FirstProjectedUtc": "2026-11-28T01:56:27.5118897Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-28T07:38:16.2959649Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-11-28T08:41:11.0337122Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-28T01:56:27.5118897Z",
@@ -36206,8 +36206,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-15": {
     "FirstProjectedUtc": "2026-12-16T12:09:41.0211915Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-16T19:50:30.9967555Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-16T22:14:45.1558848Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": true,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-16T12:09:41.0211915Z",
@@ -36217,8 +36217,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-16": {
     "FirstProjectedUtc": "2026-11-30T15:41:18.9468173Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-30T22:25:35.0380088Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-11-30T23:39:59.4851786Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-30T15:41:18.9468173Z",
@@ -36231,8 +36231,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-18": {
     "FirstProjectedUtc": "2027-02-16T03:46:40.1993136Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-17T17:52:20.4072035Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-02-18T00:53:01.704664Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-16T03:46:40.1993136Z",
@@ -36242,8 +36242,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-19": {
     "FirstProjectedUtc": "2026-12-06T10:02:32.428408Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-06T19:06:44.8588579Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-06T20:46:54.6915866Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-06T10:02:32.428408Z",
@@ -36253,8 +36253,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-20": {
     "FirstProjectedUtc": "2026-12-06T01:58:18.1419818Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-06T04:06:39.5643409Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-06T05:44:04.6113334Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-06T01:58:18.1419818Z",
@@ -36264,8 +36264,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-21": {
     "FirstProjectedUtc": "2026-12-16T16:00:16.3956802Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-17T05:13:15.6514787Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-17T07:39:12.836312Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-16T16:00:16.3956802Z",
@@ -36275,8 +36275,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-22": {
     "FirstProjectedUtc": "2026-12-03T05:50:28.0653416Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-03T13:37:36.0367422Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-03T15:03:34.7161275Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-03T05:50:28.0653416Z",
@@ -36286,8 +36286,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-23": {
     "FirstProjectedUtc": "2026-11-28T06:28:00.7968649Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-28T11:41:51.4990873Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-11-28T12:45:30.8320363Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": true,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-28T06:28:00.7968649Z",
@@ -36297,8 +36297,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-24": {
     "FirstProjectedUtc": "2026-12-28T04:42:43.3588614Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-28T22:35:35.2931771Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-29T01:53:03.249128Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-28T04:42:43.3588614Z",
@@ -36308,8 +36308,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-25": {
     "FirstProjectedUtc": "2026-11-30T00:11:20.0811111Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-30T06:39:55.5355812Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-11-30T07:51:26.8541577Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-30T00:11:20.0811111Z",
@@ -36319,8 +36319,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-26": {
     "FirstProjectedUtc": "2026-12-01T09:46:26.5914697Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-01T16:49:00.2433485Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-01T18:06:46.7017025Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-01T09:46:26.5914697Z",
@@ -36330,8 +36330,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-27": {
     "FirstProjectedUtc": "2026-11-30T23:44:24.2968468Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-11-28T23:11:20.2593834Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-11-29T00:17:05.8203566Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-30T23:44:24.2968468Z",
@@ -36341,8 +36341,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-28": {
     "FirstProjectedUtc": "2026-12-15T00:58:54.1316418Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-15T13:32:25.189188Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-15T15:51:06.496043Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-15T00:58:54.1316418Z",
@@ -36352,8 +36352,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-29": {
     "FirstProjectedUtc": "2026-12-06T12:22:53.9607054Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-06T21:29:28.3582443Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-06T23:10:04.3206805Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-06T12:22:53.9607054Z",
@@ -36363,8 +36363,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-30": {
     "FirstProjectedUtc": "2026-12-27T17:10:57.2353955Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-28T10:52:09.474773Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-28T14:07:28.648594Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-27T17:10:57.2353955Z",
@@ -36374,8 +36374,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-31": {
     "FirstProjectedUtc": "2026-12-03T18:08:59.3275345Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-04T02:08:34.2818686Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-04T03:36:50.4469607Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": true,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-03T18:08:59.3275345Z",
@@ -36385,8 +36385,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-32": {
     "FirstProjectedUtc": "2026-12-07T19:09:09.5009254Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-08T04:46:51.3117107Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-08T06:33:10.9802996Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-07T19:09:09.5009254Z",
@@ -36396,8 +36396,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-33": {
     "FirstProjectedUtc": "2026-12-11T20:42:35.1610213Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-12T07:58:57.4674377Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-12T10:03:26.830972Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-11T20:42:35.1610213Z",
@@ -36407,8 +36407,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-34": {
     "FirstProjectedUtc": "2027-01-15T18:31:06.7995423Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-16T19:54:53.6048023Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-01-17T00:35:21.1364426Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-15T18:31:06.7995423Z",
@@ -36418,8 +36418,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-35": {
     "FirstProjectedUtc": "2027-04-10T23:04:46.0274928Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-04-13T10:56:32.0684627Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-04-13T21:57:36.9644719Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-04-10T23:04:46.0274928Z",
@@ -36429,8 +36429,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-36": {
     "FirstProjectedUtc": "2026-12-02T09:11:40.9912945Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-02T16:37:55.9842635Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-02T18:00:04.047101Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-02T09:11:40.9912945Z",
@@ -36440,8 +36440,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-37": {
     "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-04T01:36:17.4918887Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-02-04T07:36:52.8897119Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
@@ -36451,8 +36451,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-38": {
     "FirstProjectedUtc": "2026-11-30T19:31:54.3213059Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-01T02:20:03.6441434Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-01T03:35:11.01869Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-30T19:31:54.3213059Z",
@@ -36462,8 +36462,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-39": {
     "FirstProjectedUtc": "2026-12-18T23:20:45.7883164Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-19T13:29:43.5798184Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-19T16:05:58.9188752Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-18T23:20:45.7883164Z",
@@ -36476,8 +36476,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-41": {
     "FirstProjectedUtc": "2027-04-10T23:04:46.0274928Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-04-13T10:56:32.0684627Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-04-13T21:57:36.9644719Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": true,
     "Baseline": {
       "FirstProjectedUtc": "2027-04-10T23:04:46.0274928Z",
@@ -36487,8 +36487,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-42": {
     "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-11T08:32:05.8306295Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-11T10:32:17.629904Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
@@ -36498,8 +36498,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-43": {
     "FirstProjectedUtc": "2027-01-02T23:03:56.8404521Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-03T19:16:45.1140263Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-01-03T22:59:58.455536Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-02T23:03:56.8404521Z",
@@ -36512,8 +36512,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-45": {
     "FirstProjectedUtc": "2026-12-02T12:58:32.008359Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-02T20:28:36.4508393Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-02T21:51:26.7449338Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-02T12:58:32.008359Z",
@@ -36523,8 +36523,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-46": {
     "FirstProjectedUtc": "2026-12-08T15:50:47.6712487Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-09T01:49:25.3447437Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-09T03:39:36.1607453Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-08T15:50:47.6712487Z",
@@ -36534,8 +36534,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-47": {
     "FirstProjectedUtc": "2026-12-15T09:15:33.3997712Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-15T21:57:26.8024011Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-16T00:17:40.5682213Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-15T09:15:33.3997712Z",
@@ -36545,8 +36545,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-48": {
     "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-11T08:32:05.8306295Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-11T10:32:17.629904Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
@@ -36556,8 +36556,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-49": {
     "FirstProjectedUtc": "2027-08-23T11:20:00.5979408Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-08-28T05:37:01.2216107Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-08-29T02:39:05.1139919Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-08-23T11:20:00.5979408Z",
@@ -36567,8 +36567,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-50": {
     "FirstProjectedUtc": "2026-12-12T05:56:00.059794Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-12T17:21:42.122161Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-12T19:27:54.5113992Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-12T05:56:00.059794Z",
@@ -36578,8 +36578,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-51": {
     "FirstProjectedUtc": "2027-01-28T07:49:20.1594508Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-29T14:17:52.3257628Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-01-29T19:54:25.3637312Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-28T07:49:20.1594508Z",
@@ -36589,8 +36589,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-52": {
     "FirstProjectedUtc": "2026-12-06T20:48:11.4769761Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-07T06:03:16.9560351Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-07T07:45:26.9854184Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-06T20:48:11.4769761Z",
@@ -36600,8 +36600,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-53": {
     "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-11T08:32:05.8306295Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-11T10:32:17.629904Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-10T21:39:02.9140895Z",
@@ -36614,8 +36614,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-55": {
     "FirstProjectedUtc": "2027-06-30T16:01:54.7697616Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-07-04T12:32:49.5603515Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-07-05T05:34:29.8541839Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-06-30T16:01:54.7697616Z",
@@ -36625,8 +36625,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-56": {
     "FirstProjectedUtc": "2027-01-13T12:42:51.5567015Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-14T13:12:13.1189165Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-01-14T17:42:39.667284Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-13T12:42:51.5567015Z",
@@ -36636,8 +36636,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-57": {
     "FirstProjectedUtc": "2026-12-09T09:46:52.7521957Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-09T20:03:38.840039Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-09T21:57:09.9837982Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-09T09:46:52.7521957Z",
@@ -36647,8 +36647,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-58": {
     "FirstProjectedUtc": "2027-02-09T10:21:54.4707912Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-10T21:44:18.9495461Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-02-11T04:14:57.297188Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-09T10:21:54.4707912Z",
@@ -36658,8 +36658,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-59": {
     "FirstProjectedUtc": "2026-12-15T09:15:33.3997712Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-15T21:57:26.8024011Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-16T00:17:40.5682213Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-15T09:15:33.3997712Z",
@@ -36669,8 +36669,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-60": {
     "FirstProjectedUtc": "2026-12-07T12:56:40.0498284Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-07T22:28:05.1018008Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-08T00:13:15.426166Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-07T12:56:40.0498284Z",
@@ -36680,8 +36680,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-61": {
     "FirstProjectedUtc": "2026-11-30T21:36:04.1383383Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-01T04:26:19.0474467Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-01T05:41:49.5367345Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-11-30T21:36:04.1383383Z",
@@ -36691,8 +36691,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-62": {
     "FirstProjectedUtc": "2026-12-12T09:31:13.0759834Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-12T21:00:32.8212201Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-12T23:07:25.2760097Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-12T09:31:13.0759834Z",
@@ -36702,8 +36702,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-63": {
     "FirstProjectedUtc": "2026-12-20T23:46:11.5068731Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-21T14:44:08.0171156Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-21T17:29:24.241118Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-20T23:46:11.5068731Z",
@@ -36713,8 +36713,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-64": {
     "FirstProjectedUtc": "2026-12-24T08:28:34.3711344Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-25T00:48:08.7459443Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-25T03:48:26.4448559Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-24T08:28:34.3711344Z",
@@ -36724,8 +36724,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-65": {
     "FirstProjectedUtc": "2026-12-07T01:24:53.9263625Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-07T10:44:39.2833967Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-07T12:27:40.825632Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-07T01:24:53.9263625Z",
@@ -36738,8 +36738,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-67": {
     "FirstProjectedUtc": "2026-12-17T15:03:48.642612Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-18T04:40:07.2882869Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-18T07:10:22.03738Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-17T15:03:48.642612Z",
@@ -36749,8 +36749,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-68": {
     "FirstProjectedUtc": "2026-12-17T15:03:48.642612Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-18T04:40:07.2882869Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-18T07:10:22.03738Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-17T15:03:48.642612Z",
@@ -36760,8 +36760,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-69": {
     "FirstProjectedUtc": "2027-05-07T20:43:48.9415824Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-05-10T19:28:37.8990923Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-05-11T08:29:54.594376Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-05-07T20:43:48.9415824Z",
@@ -36771,8 +36771,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-70": {
     "FirstProjectedUtc": "2026-12-05T12:31:14.3312716Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-05T21:13:40.6645036Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-05T22:49:50.1039232Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-05T12:31:14.3312716Z",
@@ -36788,8 +36788,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-73": {
     "FirstProjectedUtc": "2026-12-18T14:07:20.8895437Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-19T04:06:58.9250951Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-19T06:41:31.238448Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-18T14:07:20.8895437Z",
@@ -36799,8 +36799,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-74": {
     "FirstProjectedUtc": "2026-12-19T20:52:03.8854527Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-20T11:22:47.7741727Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-20T14:03:03.5065386Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-19T20:52:03.8854527Z",
@@ -36810,8 +36810,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-75": {
     "FirstProjectedUtc": "2026-12-02T14:59:20.4789851Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-02T22:31:27.1135127Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-02T23:54:39.8976258Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-02T14:59:20.4789851Z",
@@ -36821,8 +36821,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-76": {
     "FirstProjectedUtc": "2026-12-13T06:37:11.9947445Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-13T18:27:52.2274498Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-13T20:38:40.3619543Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-13T06:37:11.9947445Z",
@@ -36832,8 +36832,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-77": {
     "FirstProjectedUtc": "2026-12-14T06:21:25.7783508Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-14T18:36:06.5594582Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-14T20:51:19.8336419Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-14T06:21:25.7783508Z",
@@ -36843,8 +36843,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-78": {
     "FirstProjectedUtc": "2027-01-11T06:54:36.3138607Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-01-12T06:29:32.6330307Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-01-12T10:49:58.1981253Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-01-11T06:54:36.3138607Z",
@@ -36857,8 +36857,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-80": {
     "FirstProjectedUtc": "2026-12-18T23:20:45.7883164Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-19T13:29:43.5798184Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-19T16:05:58.9188752Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-18T23:20:45.7883164Z",
@@ -36871,8 +36871,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-82": {
     "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-04T01:36:17.4918887Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-02-04T07:36:52.8897119Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
@@ -36885,8 +36885,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-84": {
     "FirstProjectedUtc": "2027-02-20T15:23:10.6849951Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-22T07:17:41.3789751Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-02-22T14:38:24.6429813Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-20T15:23:10.6849951Z",
@@ -36896,8 +36896,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-85": {
     "FirstProjectedUtc": "2026-12-08T23:31:58.420226Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2026-12-09T09:38:22.5570131Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2026-12-09T11:29:59.227768Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2026-12-08T23:31:58.420226Z",
@@ -36907,8 +36907,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-86": {
     "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-02-04T01:36:17.4918887Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-02-04T07:36:52.8897119Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-02-02T16:57:08.7422688Z",
@@ -36924,8 +36924,8 @@ INSERT INTO state (name, value) VALUES ('milestone-forecasts', '{
   "MS-89": {
     "FirstProjectedUtc": "2027-03-08T08:00:57.3848807Z",
     "FirstAtUtc": "2026-11-27T10:49:31.4570448Z",
-    "LatestProjectedUtc": "2027-03-10T06:16:24.7801757Z",
-    "LatestAtUtc": "2026-11-27T16:16:02.9153148Z",
+    "LatestProjectedUtc": "2027-03-10T14:47:14.9270919Z",
+    "LatestAtUtc": "2026-11-27T17:16:08.814952Z",
     "AtRisk": false,
     "Baseline": {
       "FirstProjectedUtc": "2027-03-08T08:00:57.3848807Z",
