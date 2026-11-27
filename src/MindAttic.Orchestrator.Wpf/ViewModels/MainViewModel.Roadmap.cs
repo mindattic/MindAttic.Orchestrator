@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows.Input;
 using MindAttic.Components.Wpf.Mvvm;
 
@@ -12,7 +13,23 @@ public sealed partial class MainViewModel
     private ICommand? showTerminalCommand;
 
     /// <summary>The Roadmap's own view model; the global login's tab holds the one.</summary>
-    public RoadmapViewModel Roadmap => Root.roadmap ??= new RoadmapViewModel(() => Root.WorkspaceRoot, () => Root.ShownSettings, Root.NameOf);
+    public RoadmapViewModel Roadmap => Root.roadmap ??= new RoadmapViewModel(() => Root.WorkspaceRoot, () => Root.ShownSettings, Root.NameOf,
+        Root.ShownSettings.RoadmapSelection, Root.SaveRoadmapSelection);
+
+    /// <summary>Saves where the Roadmap was left (M.ORCH-T2388), so coming back opens there.</summary>
+    private void SaveRoadmapSelection(IReadOnlyList<string> selection)
+    {
+        try
+        {
+            var settings = store.LoadSettingsToChange();
+            if (settings.RoadmapSelection.SequenceEqual(selection)) return;
+            store.SaveSettings(settings with { RoadmapSelection = [.. selection] });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            OrchestratorLog.For("Dashboard").Warning(ex, "Couldn't save where the Roadmap was left");
+        }
+    }
 
     /// <summary>Whether the Roadmap fills the main area in place of the terminal; the same on every tab.</summary>
     public bool IsRoadmapShown

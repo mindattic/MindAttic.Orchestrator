@@ -915,6 +915,11 @@ public sealed class OrchestratorVaultSettings
     [SettingIgnore]
     public List<string> SidebarCollapsedPanels { get; set; } = [];
 
+    /// <summary>Where the Roadmap page was left: the selected repo, then each level's selected ticket. UI state the dashboard
+    /// saves as blocks are picked, so it's kept out of the manifest.</summary>
+    [SettingIgnore]
+    public List<string> RoadmapSelection { get; set; } = [];
+
     /// <summary>The gap below each login's whole tree node in the sidebar, so one person's section visibly ends before the
     /// next one's colour stripe begins.</summary>
     [Setting("Login tree section gutter (px)", Group = "Dashboard", Order = 30,
@@ -1468,6 +1473,7 @@ public sealed class OrchestratorVaultSettings
         TreeMenuLayout = s.TreeMenuLayout,
         SidebarPanelOrder = [.. s.SidebarPanelOrder ?? []],
         SidebarCollapsedPanels = [.. s.SidebarCollapsedPanels ?? []],
+        RoadmapSelection = [.. s.RoadmapSelection ?? []],
         TabBlinkTokens = s.TabBlinkTokens,
         UnitTokenBudget = s.UnitTokenBudget,
         FirstLoadWaitSeconds = s.FirstLoadWaitSeconds,
@@ -1703,6 +1709,7 @@ public sealed class OrchestratorVaultSettings
         TreeMenuLayout = TreeMenuLayout,
         SidebarPanelOrder = [.. SidebarPanelOrder ?? []],
         SidebarCollapsedPanels = [.. SidebarCollapsedPanels ?? []],
+        RoadmapSelection = [.. RoadmapSelection ?? []],
         TabBlinkTokens = TabBlinkTokens,
         UnitTokenBudget = UnitTokenBudget,
         FirstLoadWaitSeconds = FirstLoadWaitSeconds,

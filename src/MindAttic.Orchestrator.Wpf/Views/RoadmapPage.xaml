@@ -12,7 +12,7 @@
             <Button Style="{StaticResource MaTileButton}" Height="Auto" Margin="0" Padding="{StaticResource SpaceS}"
                     HorizontalContentAlignment="Stretch" VerticalContentAlignment="Top"
                     Command="{Binding DataContext.Roadmap.SelectCommand, RelativeSource={RelativeSource AncestorType={x:Type views:RoadmapPage}}}"
-                    CommandParameter="{Binding}" mc:MaTile.IsSelected="{Binding IsSelected}" mc:MaCallout.ToolTip="{Binding Tip}" AutomationProperties.Name="{Binding SpokenName}">
+                    CommandParameter="{Binding}" mc:MaTile.IsSelected="{Binding IsSelected}" ContextMenuOpening="Block_ContextMenuOpening" mc:MaCallout.ToolTip="{Binding Tip}" AutomationProperties.Name="{Binding SpokenName}">
                 <StackPanel>
                     <DockPanel>
                         <mc:MaBadge DockPanel.Dock="Right" Style="{StaticResource MaTag}" Content="{Binding Initials}" Margin="{StaticResource SpaceLS}"

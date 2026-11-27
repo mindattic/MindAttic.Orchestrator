@@ -388,6 +388,10 @@ public sealed record OrchestratorSettings
     /// ("tickets.pending"). Empty (the default) is every panel expanded. UI state the dashboard saves itself, not a tunable.</summary>
     public List<string> SidebarCollapsedPanels { get; init; } = [];
 
+    /// <summary>Where the Roadmap page was left (M.ORCH-T2388): the selected repo, then the selected ticket of each level under
+    /// it. Empty is nothing selected. UI state the dashboard saves itself, not a tunable.</summary>
+    public List<string> RoadmapSelection { get; init; } = [];
+
     /// <summary>The gap below each login's whole tree node (its header and, expanded, its open panes) in the sidebar
     /// (M.ORCH-T1824, the owner's mockup): enough that one person's section visibly ends before the next one's colour
     /// stripe begins, instead of the old 2px row gap every sibling row already had.</summary>

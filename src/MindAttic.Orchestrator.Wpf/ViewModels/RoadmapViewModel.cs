@@ -2,8 +2,10 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Settings;
+using MindAttic.Orchestrator.Status;
 using MindAttic.Orchestrator.Tickets;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
@@ -101,8 +103,8 @@ public sealed record RoadmapCrumb(string Name, int Depth, bool IsFirst)
 /// along each is, read from the ticket database off the UI thread. The repo grid on top, then one row per level under the
 /// selected block.
 /// </summary>
-public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<OrchestratorSettings> settings, Func<string, string> nameOf)
-    : ObservableObject
+public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<OrchestratorSettings> settings, Func<string, string> nameOf,
+    IReadOnlyList<string> savedPath, Action<IReadOnlyList<string>> savePath) : ObservableObject
 {
     public const string PortfolioSort = "Portfolio order";
     public const string LeastDoneSort = "Least done";
@@ -113,7 +115,8 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
     private bool reading, readAgain;
     private string filter = "";
     private string sort = PortfolioSort;
-    private List<string> path = [];
+    private List<string> path = [.. savedPath];
+    private DispatcherTimer? reloadTimer;
     private IReadOnlyList<RoadmapBlockViewModel> repos = [];
     private IReadOnlyList<RoadmapLevelViewModel> levels = [];
     private IReadOnlyList<RoadmapCrumb> crumbs = [];
@@ -158,6 +161,7 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         if (p is not RoadmapBlockViewModel block) return;
         path = [.. path.Take(block.Row), block.Id];
         Rebuild();
+        savePath(path);
     });
 
     /// <summary>A breadcrumb's click: back up to that level.</summary>
@@ -166,6 +170,7 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         if (p is not RoadmapCrumb crumb) return;
         path = [.. path.Take(crumb.Depth + 1)];
         Rebuild();
+        savePath(path);
     });
 
     /// <summary>Reads the tree off the UI thread, then shows it; a read asked for while one runs follows it.</summary>
@@ -190,10 +195,44 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         }, CancellationToken.None, TaskContinuationOptions.None, ui);
     }
 
+    /// <summary>A ticket changed (M.ORCH-T2388): reads the tree again once changes stop for the Vault's refresh delay, so a
+    /// burst (a sync, an import) reads once.</summary>
+    public void ScheduleLoad()
+    {
+        if (SynchronizationContext.Current is null) return;
+        reloadTimer ??= new DispatcherTimer(DispatcherPriority.Background);
+        reloadTimer.Stop();
+        reloadTimer.Interval = TimeSpan.FromMilliseconds(Math.Max(0, settings().RoadmapRefreshDebounceMs));
+        reloadTimer.Tick -= ReloadTick;
+        reloadTimer.Tick += ReloadTick;
+        reloadTimer.Start();
+    }
+
+    private void ReloadTick(object? sender, EventArgs e)
+    {
+        reloadTimer?.Stop();
+        Load();
+    }
+
+    /// <summary>Assigns a block's ticket to <paramref name="email"/> (null: unassigns it), the one change the Roadmap makes,
+    /// off the UI thread; the tree is read again after it.</summary>
+    public void Assign(RoadmapBlockViewModel block, string? email)
+    {
+        if (block.Node is not { } node) return;
+        var root = workspaceRoot();
+        var ui = TaskScheduler.FromCurrentSynchronizationContext();
+        Task.Run(() => OwnerInboxActions.Delegate(root, node.Id, email)).ContinueWith(done =>
+        {
+            if (done.Exception is { } ex) Trace.TraceWarning($"Roadmap assign of {node.Id} failed: {ex.GetBaseException().Message}");
+            Load();
+        }, CancellationToken.None, TaskContinuationOptions.None, ui);
+    }
+
     /// <summary>Rebuilds the repo grid, the level rows and the breadcrumb from the tree and the selection; a selected id no
     /// longer in the tree ends the selection there.</summary>
     private void Rebuild()
     {
+        if (ReferenceEquals(tree, RoadmapTree.Empty)) return;
         var shown = tree.Repos.Where(r => filter.Length == 0 || r.Repo.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || (r.Milestone?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false));
         shown = sort switch

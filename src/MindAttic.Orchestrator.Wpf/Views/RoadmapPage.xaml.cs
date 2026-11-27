@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Text;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using MindAttic.Orchestrator.Wpf.ViewModels;
@@ -53,6 +55,47 @@ public partial class RoadmapPage : Grid
             path.SetResourceReference(Shape.StrokeProperty, selected ? "MaAccent" : "MaChromeBorder");
             Connectors.Children.Add(path);
         }
+    }
+
+    /// <summary>A ticket block's right-click (M.ORCH-T2388): assign it to someone of the org (the one change the Roadmap makes),
+    /// copy its id, or open it in Tickets Desktop.</summary>
+    private void Block_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is not Button { DataContext: RoadmapBlockViewModel { Node: { } node } block } button || DataContext is not MainViewModel model) return;
+        e.Handled = true;
+        var menu = new ContextMenu { PlacementTarget = button, Placement = e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint };
+        menu.SetResourceReference(StyleProperty, "MaDropdownMenu");
+        AutomationProperties.SetName(menu, $"{node.Id} actions");
+        var assign = Item("Assign to…");
+        foreach (var person in model.People)
+        {
+            var who = Item(person.Name);
+            who.IsChecked = string.Equals(person.Email, node.Assignee, StringComparison.OrdinalIgnoreCase);
+            var email = person.Email;
+            who.Click += (_, _) => model.Roadmap.Assign(block, email);
+            assign.Items.Add(who);
+        }
+        menu.Items.Add(assign);
+        var copy = Item("Copy id");
+        copy.Click += (_, _) =>
+        {
+            try { Clipboard.SetText(node.Id); }
+            catch (System.Runtime.InteropServices.ExternalException) { }
+        };
+        menu.Items.Add(copy);
+        var open = Item("Open in Tickets");
+        open.Command = model.OpenInTicketsCommand;
+        open.CommandParameter = node.Id;
+        menu.Items.Add(open);
+        menu.IsOpen = true;
+    }
+
+    private static MenuItem Item(string header)
+    {
+        var item = new MenuItem { Header = header };
+        item.SetResourceReference(StyleProperty, "MaDropdownMenuItem");
+        AutomationProperties.SetName(item, header);
+        return item;
     }
 
     /// <summary>Every block button under <paramref name="root"/>, with its block.</summary>

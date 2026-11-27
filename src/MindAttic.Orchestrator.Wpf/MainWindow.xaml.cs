@@ -550,6 +550,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnTicketChange(Status.TicketBusEvent change)
     {
+        // The Roadmap reads again once the burst is over (M.ORCH-T2388), its own debounce from the Vault.
+        model.Roadmap.ScheduleLoad();
         if (queueReloadQueued) return;
         queueReloadQueued = true;
         Dispatcher.InvokeAsync(() =>
