@@ -25,7 +25,7 @@ public static class QuicksaveCapture
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
             var root = doc.RootElement;
             if (!root.TryGetProperty("updatedAt", out var updatedEl) || updatedEl.ValueKind != JsonValueKind.String
-                || !DateTime.TryParse(updatedEl.GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind, out var updated))
+                || !DateTime.TryParse(updatedEl.GetString(), null, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var updated))
                 return null;
             if (updated.ToUniversalTime() < baselineUtc) return null;
             return root.TryGetProperty("code", out var codeEl) && codeEl.ValueKind == JsonValueKind.String ? codeEl.GetString() : null;
