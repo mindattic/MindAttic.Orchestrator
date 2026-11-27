@@ -121,6 +121,24 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(0, 3600)]
     public int MaxAgentDelaySeconds { get; set; } = 300;
 
+    /// <summary>The points of the 5-hour window one more subagent is assumed to spend before the stop can reach it.</summary>
+    [Setting("Subagent headroom (% of window)", Group = "Pacing", Order = 10,
+        Help = "The points of the 5-hour window one more subagent is assumed to spend before the stop can reach it (M.ORCH-T959): no more subagents start than the room to the stop holds at this many points each.")]
+    [SettingRange(0.1, 100)]
+    public double HeadroomPerSubagentPercent { get; set; } = OrchestratorSettings.DefaultHeadroomPerSubagentPercent;
+
+    /// <summary>The lowest 5-hour stop that gets the burst margin below: the old 96% default (M.ORCH-T1462).</summary>
+    [Setting("Burst margin applies from stop (%)", Group = "Pacing", Order = 10,
+        Help = "The lowest 5-hour stop that gets the burst margin below (M.ORCH-T1462): the old 96% default. A member-set cutoff under this keeps its own room unchanged.")]
+    [SettingRange(0, 100)]
+    public double BurstMarginFromPercent { get; set; } = OrchestratorSettings.DefaultBurstMarginFromPercent;
+
+    /// <summary>Extra room past the stop, for a cutoff at or above the burst margin line, so a burst that starts with little room left doesn't overshoot (M.ORCH-T1462/M.ORCH-T1608).</summary>
+    [Setting("Burst margin (points past the stop)", Group = "Pacing", Order = 10,
+        Help = "Extra room past the stop, for a 5-hour cutoff at or above \"Burst margin applies from stop\", so a burst started with little room left can't overshoot the stop before it's noticed (M.ORCH-T1462/M.ORCH-T1608).")]
+    [SettingRange(0, 100)]
+    public double StopBurstMarginPercent { get; set; } = OrchestratorSettings.DefaultStopBurstMarginPercent;
+
     /// <summary>Last resort: when a login's live 5-hour trend stays past its pace line with new subagents already slowed, abort just enough of its ticket subagents to bend it back under.</summary>
     [Setting("Cool off by aborting subagents", Group = "Pacing", Order = 9,
         Help = "Last resort: when a login's live 5-hour trend stays past its pace line with new subagents already slowed, abort just enough of its ticket subagents to bend it back under.")]
@@ -1256,6 +1274,9 @@ public sealed class OrchestratorVaultSettings
         WeeklyAwareLinePercent = s.WeeklyAwareLinePercent,
         PaceCurveK = s.PaceCurveK,
         MaxAgentDelaySeconds = s.MaxAgentDelaySeconds,
+        HeadroomPerSubagentPercent = s.HeadroomPerSubagentPercent,
+        BurstMarginFromPercent = s.BurstMarginFromPercent,
+        StopBurstMarginPercent = s.StopBurstMarginPercent,
         AgentAbort = s.AgentAbort,
         AgentAbortAfterMinutes = s.AgentAbortAfterMinutes,
         Allocate = s.Allocate,
@@ -1485,6 +1506,9 @@ public sealed class OrchestratorVaultSettings
         WeeklyAwareLinePercent = WeeklyAwareLinePercent,
         PaceCurveK = PaceCurveK,
         MaxAgentDelaySeconds = MaxAgentDelaySeconds,
+        HeadroomPerSubagentPercent = HeadroomPerSubagentPercent,
+        BurstMarginFromPercent = BurstMarginFromPercent,
+        StopBurstMarginPercent = StopBurstMarginPercent,
         AgentAbort = AgentAbort,
         AgentAbortAfterMinutes = AgentAbortAfterMinutes,
         Allocate = Allocate,

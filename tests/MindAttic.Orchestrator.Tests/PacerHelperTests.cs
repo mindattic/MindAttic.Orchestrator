@@ -154,19 +154,19 @@ public sealed class PacerHelperTests
     [TestCase(99.0, 0)]
     [TestCase(100.0, 0)]
     public void Room_under_the_stop_limits_how_many_subagents_start(double percent, int expected) =>
-        Assert.That(Pacer.CapByStopHeadroom(Allowing(4), percent, 99).SubagentAllowance, Is.EqualTo(expected));
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(4), percent, 99, new OrchestratorSettings()).SubagentAllowance, Is.EqualTo(expected));
 
     [Test]
     public void Subagents_already_running_are_never_cut_by_the_headroom() =>
-        Assert.That(Pacer.CapByStopHeadroom(Allowing(6, running: 5), 97, 99).SubagentAllowance, Is.EqualTo(5));
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(6, running: 5), 97, 99, new OrchestratorSettings()).SubagentAllowance, Is.EqualTo(5));
 
     [Test]
     public void Plenty_of_room_no_report_or_the_stop_leave_the_allowance_alone()
     {
-        Assert.That(Pacer.CapByStopHeadroom(Allowing(4), 40, 99).SubagentAllowance, Is.EqualTo(4));
-        Assert.That(Pacer.CapByStopHeadroom(Allowing(4), null, 99).SubagentAllowance, Is.EqualTo(4));
-        Assert.That(Pacer.CapByStopHeadroom(Allowing(0), 98, 99).SubagentAllowance, Is.Zero);
-        Assert.That(Pacer.CapByStopHeadroom(Allowing(4, stop: true), 98, 99).SubagentAllowance, Is.EqualTo(4));
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(4), 40, 99, new OrchestratorSettings()).SubagentAllowance, Is.EqualTo(4));
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(4), null, 99, new OrchestratorSettings()).SubagentAllowance, Is.EqualTo(4));
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(0), 98, 99, new OrchestratorSettings()).SubagentAllowance, Is.Zero);
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(4, stop: true), 98, 99, new OrchestratorSettings()).SubagentAllowance, Is.EqualTo(4));
     }
 
     [Test]
@@ -179,6 +179,6 @@ public sealed class PacerHelperTests
         var week = new WeeklyCap(80, null, null, 72.5, 3, 98);
         Assert.That(Pacer.StopPercent(new OrchestratorSettings(), week), Is.EqualTo(72.5), "the week's ceiling, at full precision");
         // At a 90% stop and 84% used, 2 more fit, not 5.
-        Assert.That(Pacer.CapByStopHeadroom(Allowing(5), 84, Pacer.StopPercent(new OrchestratorSettings { PaceTargetPercent = 90 })).SubagentAllowance, Is.EqualTo(2));
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(5), 84, Pacer.StopPercent(new OrchestratorSettings { PaceTargetPercent = 90 }), new OrchestratorSettings()).SubagentAllowance, Is.EqualTo(2));
     }
 }

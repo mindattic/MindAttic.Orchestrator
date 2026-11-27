@@ -280,7 +280,7 @@ public sealed class AccountPacer
         if (pace is { IsPaced: false, SubagentAllowance: null, Stop: false })
             pace = pace with { SubagentAllowance = Math.Max(1, Math.Min(settings.MaxConcurrentSessions, settings.MaxSubagents)), Subagents = subagents };
         // The room under the stop limits a burst of new subagents (M.ORCH-T959): they spend past the stop while it waits for a tool call.
-        pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, Pacer.StopPercent(settings, week));
+        pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, Pacer.StopPercent(settings, week), settings);
         // Short of RAM, nothing new starts, whatever the windows allow (M.ORCH-T1494).
         pace = Pacer.CapByMemory(pace, Activity.MemoryGuard.Shared.Observe(settings, now), settings);
         // Under the disk floor even after a self-cleanup, nothing new starts either (M.ORCH-T1679): the pace carries why.

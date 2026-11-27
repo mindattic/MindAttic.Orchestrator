@@ -530,7 +530,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         else
         {
             // The room under the stop limits a burst of new subagents (M.ORCH-T959): they spend past the stop while it waits for a tool call.
-            pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, Pacer.StopPercent(paceSettings));
+            pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, Pacer.StopPercent(paceSettings), paceSettings);
             // The global login's own lock (M.ORCH-T2117), scoped exactly as its own weekly cutoff just above: never the API key's.
             if (cutoffEmail is { Length: > 0 } ownEmail && LoginLocks.For(Locks(), ownEmail) is { } locked)
                 pace = AccountPacer.LockedPace(pace, ownEmail, locked);

@@ -74,6 +74,32 @@ public sealed record OrchestratorSettings
     /// <summary>The default <see cref="WeeklyPaceTargetPercent"/>.</summary>
     public const double DefaultWeeklyPaceTargetPercent = 95;
 
+    /// <summary>The points of the 5-hour window one more subagent is assumed to spend before the stop can reach it
+    /// (M.ORCH-T959: four subagents started together at 88% burned the window to Claude's 100% in the 7 minutes the 99%
+    /// stop needed to land; M.ORCH-T2336 made it a setting).</summary>
+    public double HeadroomPerSubagentPercent { get; init; } = DefaultHeadroomPerSubagentPercent;
+
+    /// <summary>The default <see cref="HeadroomPerSubagentPercent"/>.</summary>
+    public const double DefaultHeadroomPerSubagentPercent = 3;
+
+    /// <summary>The lowest 5-hour stop that gets <see cref="StopBurstMarginPercent"/>: the old 96% default
+    /// (M.ORCH-T1462; M.ORCH-T2336 made it a setting).</summary>
+    public double BurstMarginFromPercent { get; init; } = DefaultBurstMarginFromPercent;
+
+    /// <summary>The default <see cref="BurstMarginFromPercent"/>.</summary>
+    public const double DefaultBurstMarginFromPercent = 96;
+
+    /// <summary>The burst-overshoot margin M.ORCH-T1462 built by lowering the default stop to 96%, under the 98% line
+    /// (M.ORCH-T1608: the subagent headroom counts it as room, not a second margin). M.ORCH-T1750 (2026-11-17) put the
+    /// default stop back to 98% at the user's explicit request, now that the restored per-call hold (ThrottleAgents)
+    /// is the real defense against a burst throughout the window; this margin is kept from <see cref="BurstMarginFromPercent"/>
+    /// (the old 96% stop) so a 5-hour cutoff at or above it keeps the same ±2-point room up to the hooks' hard line
+    /// (M.ORCH-T2336 made it a setting).</summary>
+    public double StopBurstMarginPercent { get; init; } = DefaultStopBurstMarginPercent;
+
+    /// <summary>The default <see cref="StopBurstMarginPercent"/>.</summary>
+    public const double DefaultStopBurstMarginPercent = 98 - DefaultBurstMarginFromPercent;
+
     /// <summary>The share of each account's week kept back (M.ORCH-T609): every CLI on an account stops at
     /// <see cref="WeeklyStopPercent"/> (100 minus this) of that account's week instead of burning it all. 0 to
     /// <see cref="MaxWeeklyReservePercent"/>; applies to each login on its own.</summary>

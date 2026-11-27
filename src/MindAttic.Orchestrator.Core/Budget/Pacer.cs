@@ -155,7 +155,7 @@ public sealed record Pace(
         var a => $"Subagents: {a} at once across all agents ({Subagents} running now). Usage is ahead of the 5-hour pace, so don't start extra subagents; a new one waits for a free slot.",
     };
 
-    /// <summary>Less room under the 5-hour stop than one subagent's burn (<see cref="Pacer.HeadroomPerSubagentPercent"/>), so even the
+    /// <summary>Less room under the 5-hour stop than one subagent's burn (<see cref="OrchestratorSettings.HeadroomPerSubagentPercent"/>), so even the
     /// running session can spend past the stop before the next reading (M.ORCH-T1426: told to keep working at 96%, refused minutes
     /// later); <see cref="AgentNote"/> then says to wrap up instead.</summary>
     public bool WindDown { get; init; }
@@ -396,39 +396,25 @@ public static class Pacer
         return stop;
     }
 
-    /// <summary>The points of the 5-hour window one more subagent is assumed to spend before the stop can reach it (M.ORCH-T959:
-    /// four subagents started together at 88% burned the window to Claude's 100% in the 7 minutes the 99% stop needed to land).</summary>
-    public const double HeadroomPerSubagentPercent = 3;
-
-    /// <summary>The burst-overshoot margin M.ORCH-T1462 built by lowering the default stop to 96%, under the 98% line
-    /// (M.ORCH-T1608: the subagent headroom counts it as room, not a second margin). M.ORCH-T1750 (2026-11-17) put the
-    /// default stop back to 98% at the user's explicit request, now that the restored per-call hold (ThrottleAgents)
-    /// is the real defense against a burst throughout the window; this margin is kept from <see cref="BurstMarginFromPercent"/>
-    /// (the old 96% stop) so a 5-hour cutoff at or above it keeps the same ±2-point room up to the hooks' hard line.</summary>
-    public const double StopBurstMarginPercent = 98 - BurstMarginFromPercent;
-
-    /// <summary>The lowest 5-hour stop that gets <see cref="StopBurstMarginPercent"/>: the old 96% default (M.ORCH-T1462).</summary>
-    public const int BurstMarginFromPercent = 96;
-
     /// <summary>
     /// The room under the 5-hour stop limits how many subagents run at once (M.ORCH-T959). The stop is only read at tool calls, and
     /// a subagent mid-turn spends past it, so a burst started with little room left overshoots the stop and reaches the limit. With
     /// Claude's <paramref name="percent"/> of the window and the <paramref name="stopPercent"/>, no more subagents start than
-    /// the room holds at <see cref="HeadroomPerSubagentPercent"/> each; the ones already running are never cut (the allowance
-    /// never drops below them) and none start once there's no room for one. It only ever lowers the allowance, and
+    /// the room holds at <see cref="OrchestratorSettings.HeadroomPerSubagentPercent"/> each; the ones already running are never cut
+    /// (the allowance never drops below them) and none start once there's no room for one. It only ever lowers the allowance, and
     /// is left alone at the stop, when none are allowed, when unpaced with no allowance, or with no report of the window.
     /// </summary>
-    public static Pace CapByStopHeadroom(Pace pace, double? percent, double stopPercent)
+    public static Pace CapByStopHeadroom(Pace pace, double? percent, double stopPercent, OrchestratorSettings s)
     {
         // M.ORCH-T1608: counting the room to the stop alone charged M.ORCH-T1462's 96%-under-98% margin twice (wind-down
         // began at 93%, subagents capped 2 points sooner, windows ended near 94-95%), so the room counts to the stop plus
         // that margin instead (never past the hooks' own line). M.ORCH-T1750 put the stop itself back to 98%, so this
         // margin now just extends the room to the hooks' 99% line for anyone at or above the old 96% default.
         // Only a stop at the default or above has that margin: a lower, member-set cutoff (org limit --5h) keeps its own room unchanged.
-        var room = stopPercent >= BurstMarginFromPercent
-            ? Math.Min(stopPercent + StopBurstMarginPercent, Math.Max(stopPercent, PaceLedger.TargetPercent))
+        var room = stopPercent >= s.BurstMarginFromPercent
+            ? Math.Min(stopPercent + s.StopBurstMarginPercent, Math.Max(stopPercent, PaceLedger.TargetPercent))
             : stopPercent;
-        if (percent is { } near && pace is { Stop: false, WindDown: false } && room - near < HeadroomPerSubagentPercent)
+        if (percent is { } near && pace is { Stop: false, WindDown: false } && room - near < s.HeadroomPerSubagentPercent)
             pace = pace with
             {
                 WindDown = true,
@@ -436,7 +422,7 @@ public static class Pacer
                             "Wind down now: start no new work or subagents, finish the current step, commit what is done, and end your turn at a clean point rather than being cut off mid-step.",
             };
         if (percent is not { } p || pace is not { Stop: false, SubagentAllowance: { } allowed and > 0 }) return pace;
-        var fits = (int)Math.Floor(Math.Max(0, room - p) / HeadroomPerSubagentPercent);
+        var fits = (int)Math.Floor(Math.Max(0, room - p) / s.HeadroomPerSubagentPercent);
         // With no room for even one more, none start (a new one spends ~3 points before the stop reaches it); the running ones continue.
         var capped = Math.Min(allowed, Math.Max(pace.Subagents, fits));
         if (capped >= allowed) return pace;
