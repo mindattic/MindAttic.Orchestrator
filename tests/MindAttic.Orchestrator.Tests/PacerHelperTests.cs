@@ -181,4 +181,46 @@ public sealed class PacerHelperTests
         // At a 90% stop and 84% used, 2 more fit, not 5.
         Assert.That(Pacer.CapByStopHeadroom(Allowing(5), 84, Pacer.StopPercent(new OrchestratorSettings { PaceTargetPercent = 90 }), new OrchestratorSettings()).SubagentAllowance, Is.EqualTo(2));
     }
+
+    [Test]
+    public void A_bigger_headroom_setting_fits_fewer_subagents()
+    {
+        // Stop 90, used 84, no burst margin (90 is under the default 96 margin line): 6 points of room.
+        // The default 3-point headroom fits 2 (M.ORCH-T1003's own case above); a 6-point headroom fits only 1.
+        var wide = new OrchestratorSettings { HeadroomPerSubagentPercent = 6 };
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(5), 84, 90, wide).SubagentAllowance, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void A_higher_burst_margin_line_removes_the_margin_for_a_stop_under_it()
+    {
+        // Stop 97 is at or above the default 96 margin line, so the default settings add the burst margin (capped at
+        // PaceLedger.TargetPercent, 99): room 99, 3 more fit at 90% used. Raising the margin line past 97 removes it:
+        // room is the stop itself, 97, so only 2 fit.
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(5), 90, 97, new OrchestratorSettings()).SubagentAllowance, Is.EqualTo(3));
+        var raised = new OrchestratorSettings { BurstMarginFromPercent = 98 };
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(5), 90, 97, raised).SubagentAllowance, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void A_non_positive_headroom_setting_falls_back_to_the_default_instead_of_dividing_by_zero()
+    {
+        var zero = new OrchestratorSettings { HeadroomPerSubagentPercent = 0 };
+        // Same as the default-settings case at 96% against a 99% stop (TestCase above): 1 fits, not Infinity/NaN/MinValue.
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(4), 96, 99, zero).SubagentAllowance, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void The_three_settings_round_trip_through_the_vault_values()
+    {
+        var s = new OrchestratorSettings { HeadroomPerSubagentPercent = 6, BurstMarginFromPercent = 97, StopBurstMarginPercent = 4 };
+        var vault = OrchestratorVaultSettings.From(s);
+        Assert.That(vault.HeadroomPerSubagentPercent, Is.EqualTo(6));
+        Assert.That(vault.BurstMarginFromPercent, Is.EqualTo(97));
+        Assert.That(vault.StopBurstMarginPercent, Is.EqualTo(4));
+        var back = vault.ApplyTo(new OrchestratorSettings());
+        Assert.That(back.HeadroomPerSubagentPercent, Is.EqualTo(6));
+        Assert.That(back.BurstMarginFromPercent, Is.EqualTo(97));
+        Assert.That(back.StopBurstMarginPercent, Is.EqualTo(4));
+    }
 }

@@ -406,15 +406,19 @@ public static class Pacer
     /// </summary>
     public static Pace CapByStopHeadroom(Pace pace, double? percent, double stopPercent, OrchestratorSettings s)
     {
+        // A setting read from the Vault bypasses the settings-modal range check, so a stray 0 or negative value is
+        // guarded here too: a non-positive headroom would divide by zero below and never wind the session down.
+        var headroom = s.HeadroomPerSubagentPercent > 0 ? s.HeadroomPerSubagentPercent : OrchestratorSettings.DefaultHeadroomPerSubagentPercent;
+        var burstMargin = Math.Max(0, s.StopBurstMarginPercent);
         // M.ORCH-T1608: counting the room to the stop alone charged M.ORCH-T1462's 96%-under-98% margin twice (wind-down
         // began at 93%, subagents capped 2 points sooner, windows ended near 94-95%), so the room counts to the stop plus
         // that margin instead (never past the hooks' own line). M.ORCH-T1750 put the stop itself back to 98%, so this
         // margin now just extends the room to the hooks' 99% line for anyone at or above the old 96% default.
         // Only a stop at the default or above has that margin: a lower, member-set cutoff (org limit --5h) keeps its own room unchanged.
         var room = stopPercent >= s.BurstMarginFromPercent
-            ? Math.Min(stopPercent + s.StopBurstMarginPercent, Math.Max(stopPercent, PaceLedger.TargetPercent))
+            ? Math.Min(stopPercent + burstMargin, Math.Max(stopPercent, PaceLedger.TargetPercent))
             : stopPercent;
-        if (percent is { } near && pace is { Stop: false, WindDown: false } && room - near < s.HeadroomPerSubagentPercent)
+        if (percent is { } near && pace is { Stop: false, WindDown: false } && room - near < headroom)
             pace = pace with
             {
                 WindDown = true,
@@ -422,7 +426,7 @@ public static class Pacer
                             "Wind down now: start no new work or subagents, finish the current step, commit what is done, and end your turn at a clean point rather than being cut off mid-step.",
             };
         if (percent is not { } p || pace is not { Stop: false, SubagentAllowance: { } allowed and > 0 }) return pace;
-        var fits = (int)Math.Floor(Math.Max(0, room - p) / s.HeadroomPerSubagentPercent);
+        var fits = (int)Math.Floor(Math.Max(0, room - p) / headroom);
         // With no room for even one more, none start (a new one spends ~3 points before the stop reaches it); the running ones continue.
         var capped = Math.Min(allowed, Math.Max(pace.Subagents, fits));
         if (capped >= allowed) return pace;
