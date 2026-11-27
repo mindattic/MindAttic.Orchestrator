@@ -42,7 +42,7 @@ public sealed class ClosedTicketSource
         if (last is { } kept && kept.Root == workspaceRoot && TicketDbVersion.Unchanged(kept.Version, version, kept.ReadUtc, DateTime.UtcNow))
         {
             TicketsDb? lazy = null;
-            try { return Recent(kept.Candidates, kept.Assignees, id => (lazy ??= TicketsDb.OpenIfMigrated(workspaceRoot))?.History(id) ?? [], nowUtc); }
+            try { return Recent(kept.Candidates, kept.Assignees, HistoryOf(() => lazy ??= TicketsDb.OpenIfMigrated(workspaceRoot)), nowUtc); }
             finally { lazy?.Dispose(); }
         }
         last = null;
@@ -56,7 +56,15 @@ public sealed class ClosedTicketSource
             .Where(t => assignees.ContainsKey(t.Ticket.Id))
             .OrderByDescending(t => t.Ticket.Date, StringComparer.Ordinal).ThenByDescending(t => t.Ticket.Number ?? 0)];
         last = (workspaceRoot, version, readUtc, candidates, assignees);
-        return assignees.Count == 0 ? [] : Recent(candidates, assignees, id => db.History(id), nowUtc);
+        return assignees.Count == 0 ? [] : Recent(candidates, assignees, HistoryOf(() => db), nowUtc);
+    }
+
+    /// <summary>A ticket's status history from one read of every ticket's (M.ORCH-T2400), made the first time one is asked for,
+    /// not a history read per ticket.</summary>
+    private static Func<string, IReadOnlyList<TicketEvent>> HistoryOf(Func<TicketsDb?> db)
+    {
+        ILookup<string, TicketEvent>? all = null;
+        return id => [.. (all ??= (db()?.StatusHistory() ?? []).ToLookup(e => e.TicketId, StringComparer.OrdinalIgnoreCase))[id]];
     }
 
     /// <summary>The store's change version for a database path (<see cref="TicketDbVersion.Of"/>); a test's stands in for a server.</summary>

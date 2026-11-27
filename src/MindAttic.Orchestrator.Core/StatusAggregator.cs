@@ -247,8 +247,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         return snapshot;
     }
 
-    // Each workspace root's ticket-database queue as last read, by its database path and write time (M.ORCH-T396, M.ORCH-T2277).
-    private readonly Dictionary<string, (DateTime WriteUtc, IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities, OpenTicketSource.WorkState Work)> liveQueues =
+    // Each workspace root's ticket-database queue as last read, by its database path and the ticket cache's snapshot it was read
+    // from (M.ORCH-T396, M.ORCH-T2277, M.ORCH-T2400).
+    private readonly Dictionary<string, (MindAttic.Tickets.Data.TicketCacheSnapshot Snapshot, IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities, OpenTicketSource.WorkState Work)> liveQueues =
         new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -272,15 +273,16 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             {
                 var path = MindAttic.Tickets.Data.TicketsDb.DefaultPath(root);
                 if (!File.Exists(path)) continue;
-                var written = File.GetLastWriteTimeUtc(path);
-                if (!liveQueues.TryGetValue(path, out var live) || live.WriteUtc != written)
+                using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
+                if (db is null) return shared; // as one that can't be read: its approvals are the holder's
+                var cache = MindAttic.Tickets.Data.TicketCache.For(root);
+                cache.Refresh(db);
+                var rows = cache.Snapshot;
+                if (!liveQueues.TryGetValue(path, out var live) || !ReferenceEquals(live.Snapshot, rows))
                 {
-                    using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
-                    if (db is null) return shared; // as one that can't be read: its approvals are the holder's
-                    var queue = db.QueueStates();
-                    liveQueues[path] = live = (written,
-                        queue.Where(q => q.Value.Approval == MindAttic.Tickets.Data.TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                        queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
+                    liveQueues[path] = live = (rows,
+                        rows.Rows.Values.Where(r => r.Approval == MindAttic.Tickets.Data.TicketsDb.Approved).Select(r => r.Id).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                        rows.Rows.Values.Where(r => r.Priority != 0).ToDictionary(r => r.Id, r => r.Priority, StringComparer.OrdinalIgnoreCase),
                         OpenTicketSource.WorkState.Of(db));
                 }
                 any = true;

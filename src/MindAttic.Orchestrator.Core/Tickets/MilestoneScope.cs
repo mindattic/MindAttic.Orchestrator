@@ -35,7 +35,8 @@ public sealed record MilestoneScope(string Id, string Name, string State, int At
         if (locked.Count == 0) return [];
         graph ??= db.Graph();
         var pending = db.MilestonePending().ToLookup(p => p.MilestoneId, StringComparer.OrdinalIgnoreCase);
-        return [.. locked.Select(m => Of(m, db.MilestoneGrowth(m.Id, graph), [.. pending[m.Id]]))];
+        var growth = db.MilestoneGrowthAll(graph);
+        return [.. locked.Select(m => Of(m, growth.GetValueOrDefault(m.Id), [.. pending[m.Id]]))];
     }
 
     /// <summary>As <see cref="Read"/>, but a read that fails (a database from before the scope lock, or one locked) gives

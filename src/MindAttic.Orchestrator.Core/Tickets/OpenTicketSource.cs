@@ -119,14 +119,18 @@ public sealed class OpenTicketSource
     /// <summary>Read from <paramref name="db"/> for the tickets in <paramref name="open"/>. A read that fails (a database from
     /// before milestones, or one locked) gives <paramref name="last"/>, the read before it, or none: never a failed ticket read.</summary>
     internal static IReadOnlyDictionary<string, TicketMilestone> MilestonesOf(TicketsDb db, IReadOnlySet<string> open,
-        IReadOnlyDictionary<string, TicketMilestone>? last = null)
+        IReadOnlyDictionary<string, TicketMilestone>? last = null, TicketGraph? graph = null)
     {
         try
         {
-            var on = db.ActiveMilestoneTickets();
-            if (on.Count == 0) return NoMilestones;
             var rank = db.Milestones(MilestoneStates.Active).Select((m, i) => (m.Id, Rank: i))
                 .ToDictionary(m => m.Id, m => m.Rank, StringComparer.OrdinalIgnoreCase);
+            if (rank.Count == 0) return NoMilestones;
+            // Every milestone's members in one read, from the caller's graph (M.ORCH-T2400), not a members read per milestone.
+            var on = db.MilestoneMembersAll(graph).Where(m => rank.ContainsKey(m.Key))
+                .SelectMany(m => m.Value.Where(x => x.IsTicket).Select(x => (Ticket: x.Id, Milestone: m.Key)))
+                .GroupBy(x => x.Ticket, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Milestone).ToList(), StringComparer.OrdinalIgnoreCase);
             return on.Where(t => open.Contains(t.Key))
                 .Select(t => (t.Key, First: t.Value.Where(rank.ContainsKey).OrderBy(id => rank[id]).FirstOrDefault()))
                 .Where(t => t.First is not null)
@@ -407,7 +411,7 @@ public sealed class OpenTicketSource
             labels.Where(l => l.Value.Contains(WaitingOnOwnerLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
             GraphWeight.Of(graph).Where(w => w.Value.Value != 0).ToDictionary(w => w.Key, w => (long)w.Value.Value, StringComparer.OrdinalIgnoreCase),
             names.ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
-            MilestonesOf(db, openIds, prior?.Milestones),
+            MilestonesOf(db, openIds, prior?.Milestones, graph),
             MilestoneScope.ReadOr(db, prior?.MilestoneScopes, graph),
             containers, LevelsOf(labels), PrefixedOf(labels, RoleLabelPrefix),
             labels.Where(l => l.Value.Contains(AutoFiledLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase));

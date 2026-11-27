@@ -16,7 +16,7 @@ public sealed class AssignedDispatch(JsonStore store)
 {
     /// <summary>The label a branch assign puts on its container: its tasks go to the assignee's login, and once none is open its
     /// suite runs before it closes.</summary>
-    public const string GateLabel = "gate:tests";
+    public const string GateLabel = TicketsDb.GateTestsLabel;
 
     /// <summary>Opens a new tab on a ticket in its repo's checkout with the prompt given (seam); null opens none.</summary>
     internal Func<QueueItem, string, Dispatcher.Result>? OpenTab { get; init; }

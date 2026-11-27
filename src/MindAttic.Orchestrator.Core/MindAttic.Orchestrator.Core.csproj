@@ -15,7 +15,7 @@
     <!-- 9.0.0: MindAtticGlobalSettings.DefaultToDesktop1, which the dashboard's DesktopPinWatcher reads (M.ORCH-T2030). -->
     <PackageReference Include="MindAttic.Vault" Version="9.0.0" />
     <!-- 4.1.0: TicketsDb.Activity, the workspace's change feed the daemon turns into ticket events on the bus (M.ORCH-T879). -->
-    <PackageReference Include="MindAttic.Tickets" Version="6.0.1" />
+    <PackageReference Include="MindAttic.Tickets" Version="6.1.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.7" />
     <!-- M.ORCH-T2047: the Azure SQL backup's schema-and-data .sql export, as the Launcher's AzureSqlExportService does. -->

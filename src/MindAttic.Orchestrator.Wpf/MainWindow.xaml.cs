@@ -543,13 +543,19 @@ public partial class MainWindow : Window
 
     private bool queueReloadQueued;
 
+    // Ticket ids pushed since the last reload, re-read into the ticket cache before the views read it (M.ORCH-T2400).
+    private readonly HashSet<string> changedTickets = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// A ticket changed (M.ORCH-T879), on the UI thread: the Queue's tabs are read again (<see cref="ViewModels.MainViewModel.ReloadTicketQueues"/>)
     /// instead of waiting for the next timed read. A burst (a sync, an import) is read once, after it, at background priority;
-    /// the open tickets' own move (claimed, closed) follows with the snapshot the daemon builds for it within seconds.
+    /// the open tickets' own move (claimed, closed) follows with the snapshot the daemon builds for it within seconds. The changed
+    /// tickets alone are re-read into the process's <see cref="MindAttic.Tickets.Data.TicketCache"/> first (M.ORCH-T2400), so
+    /// the views rebuild from its snapshot instead of reading every ticket again.
     /// </summary>
     private void OnTicketChange(Status.TicketBusEvent change)
     {
+        if (!string.IsNullOrWhiteSpace(change.Id)) changedTickets.Add(change.Id);
         // The Roadmap reads again once the burst is over (M.ORCH-T2388), its own debounce from the Vault.
         model.Roadmap.ScheduleLoad();
         if (queueReloadQueued) return;
@@ -557,6 +563,17 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() =>
         {
             queueReloadQueued = false;
+            if (changedTickets.Count > 0)
+            {
+                string[] ids = [.. changedTickets];
+                changedTickets.Clear();
+                var root = model.WorkspaceRoot;
+                _ = Task.Run(() =>
+                {
+                    try { MindAttic.Tickets.Data.TicketCache.For(root).Apply(ids); }
+                    catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("TicketBus").Error(ex, "Re-reading {Count} pushed tickets failed", ids.Length); }
+                });
+            }
             try { model.ReloadTicketQueues(); }
             catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("TicketBus").Error(ex, "Reloading the Queue for {Ticket:l} failed", change.Id); }
         }, DispatcherPriority.Background);
