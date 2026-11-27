@@ -4043,14 +4043,23 @@ public static class AgentGate
                 mark.parent.mkdir(parents=True, exist_ok=True)
                 lock = mark.with_suffix(".lock")
                 give_up = time.monotonic() + 5
+                token = str(os.getpid()) + "-" + str(time.time_ns())
                 while True:
                     try:
-                        os.close(os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+                        fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                        os.write(fd, token.encode())
+                        os.close(fd)
                         break
                     except FileExistsError:
                         try:
                             if time.time() - lock.stat().st_mtime > 10:
-                                lock.unlink()
+                                # Moved aside first, so a waiter that saw the same stale lock can't delete a fresh one.
+                                stale = lock.with_name(lock.name + "." + token + ".stale")
+                                os.replace(lock, stale)
+                                if time.time() - stale.stat().st_mtime > 10:
+                                    stale.unlink()
+                                else:
+                                    os.replace(stale, lock)
                                 continue
                         except Exception:
                             pass
@@ -4061,7 +4070,8 @@ public static class AgentGate
                     return budget_count(mark, path)
                 finally:
                     try:
-                        lock.unlink()
+                        if lock.read_text() == token:
+                            lock.unlink()
                     except Exception:
                         pass
             except Exception:
