@@ -1029,8 +1029,8 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
 
     /// <summary>
     /// Ticket <paramref name="id"/>'s prerequisites still open right now, read from the ticket database at claim time
-    /// (M.ORCH-T2059): what it requires, what its part-of ancestors require (M.ORCH-T1909) and a part-of epic not yet approved
-    /// (M.ORCH-T1210), as <see cref="Scheduler"/>'s blockers judge them, an approved epic required waiting no longer (M.ORCH-T1146).
+    /// (M.ORCH-T2059): what it requires, what its part-of ancestors require (M.ORCH-T1909) and a part-of epic not yet approved at any depth
+    /// (M.ORCH-T1210, M.ORCH-T2349), as <see cref="Scheduler"/>'s blockers judge them, an approved epic required waiting no longer (M.ORCH-T1146).
     /// The plan's own links can trail a `tickets ticket link A requires B` by a daemon tick and the published snapshot's age.
     /// Only this ticket's links and their ends are read, not the whole links table. Empty when the database can't be read or
     /// the workspace isn't migrated (the plan's own read stands).
@@ -1071,8 +1071,8 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                     if (link.Kind == "requires") { if (!ancestor || !Under(link.To, at)) candidates.Add(link.To); }
                     else if (link.Kind == "part-of")
                     {
-                        // Only the ticket's own part-of epic blocks it until approved; an ancestor's requires blocks it too.
-                        if (at.Equals(id, StringComparison.OrdinalIgnoreCase) && IsEpic(link.To) && !IsApproved(link.To)) candidates.Add(link.To);
+                        // A part-of epic at any depth blocks it until approved (M.ORCH-T2349); an ancestor's requires blocks it too.
+                        if (IsEpic(link.To) && !IsApproved(link.To)) candidates.Add(link.To);
                         if (seen.Add(link.To)) pending.Push(link.To);
                     }
                 }

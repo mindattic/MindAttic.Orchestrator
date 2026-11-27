@@ -3503,6 +3503,11 @@ public static class AgentGate
                     parked = {e.upper() for (e,) in db.execute("SELECT ticket_id FROM ticket_labels WHERE label = 'waiting-on-owner'").fetchall()}
                 except Exception:
                     parked = set()
+                # A fix automation filed (label source:auto, M.ORCH-T2349) waits for approval like any other ticket.
+                try:
+                    auto = {e.upper() for (e,) in db.execute("SELECT ticket_id FROM ticket_labels WHERE label = 'source:auto'").fetchall()}
+                except Exception:
+                    auto = set()
                 db.close()
                 settings = orch_settings()
                 def blocked(r):
@@ -3535,7 +3540,7 @@ public static class AgentGate
                 claimed |= held
                 named = {r.lower() for r in repos}
                 return [r[0] for r in rows if any(fnmatch.fnmatchcase((r[2] or "").lower(), n) for n in named) and (r[2] or "").lower() not in skip and
-                        ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed and r[0].upper() not in epics and r[0].upper() not in parked and not blocked(r)]
+                        (((r[1] or "").lower() == "fix" and r[0].upper() not in auto) or r[0].upper() in approved) and r[0].upper() not in claimed and r[0].upper() not in epics and r[0].upper() not in parked and not blocked(r)]
             except Exception:
                 return None
 

@@ -234,7 +234,8 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// are not finished and nothing is proposed from them (M.ORCH-T727).</summary>
     public IReadOnlySet<string> UnknownRepos { get; init; } = new HashSet<string>();
 
-    /// <summary>Tickets approved for work in the ticket database's queue. Fixes need no approval; any other open ticket
+    /// <summary>Tickets approved for work in the ticket database's queue. Fixes need no approval unless automation filed them
+    /// (<see cref="AutoFiled"/>, M.ORCH-T2349); any other open ticket
     /// waits outside the queue until it's here, so no agent works a feature you didn't ask for (M.ORCH-T384).</summary>
     public IReadOnlySet<string> Approved { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -306,13 +307,36 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// aren't handed out again, until a failed run hands one back or the host's merge closes it.</summary>
     public IReadOnlySet<string> AwaitingBranch { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one approved in the database's queue; never an epic
-    /// (M.ORCH-T1146), and never one that's part-of an epic that isn't itself approved yet (M.ORCH-T1210) — a fix is no
-    /// exception to that part: nothing in an unapproved epic has started, so there's nothing in it to fix yet either.
+    /// <summary>Tickets labelled <c>source:auto</c> (M.ORCH-T2349): filed by automation (nightly, soaks, bughunt, milestone
+    /// steward), so even a fix among them waits for the owner's approval.</summary>
+    public IReadOnlySet<string> AutoFiled { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Whether <paramref name="ticket"/> needs no approval to be worked: a fix a person filed, not one labelled
+    /// <c>source:auto</c> (M.ORCH-T2349).</summary>
+    public bool SkipsApproval(Ticket ticket) =>
+        ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) && !AutoFiled.Contains(ticket.Id);
+
+    /// <summary>Every part-of ancestor of <paramref name="id"/>, any depth, each once (a visited set against part-of cycles).</summary>
+    public IEnumerable<string> PartOfAncestors(string id)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { id };
+        var pending = new Stack<string>(PartOf.GetValueOrDefault(id) ?? []);
+        while (pending.TryPop(out var parent))
+        {
+            if (!seen.Add(parent)) continue;
+            yield return parent;
+            foreach (var up in PartOf.GetValueOrDefault(parent) ?? []) pending.Push(up);
+        }
+    }
+
+    /// <summary>Whether <paramref name="ticket"/> may be worked: a fix a person filed (<see cref="SkipsApproval"/>), or one
+    /// approved in the database's queue; never an epic (M.ORCH-T1146), and never one with a part-of ancestor, at any depth,
+    /// that's an epic not itself approved yet (M.ORCH-T1210, M.ORCH-T2349) — a fix is no exception to that part: nothing in an
+    /// unapproved epic has started, so there's nothing in it to fix yet either.
     /// Nor a container (an open ticket with open part-of children, M.ORCH-T1904): its children are the work.</summary>
     public bool MayWork(Ticket ticket) => !IsContainer(ticket.Id) && !OwnerWaiting.Contains(ticket.Id) &&
-        (PartOf.GetValueOrDefault(ticket.Id) ?? []).All(parent => !Epics.Contains(parent) || Approved.Contains(parent)) &&
-        (ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id));
+        PartOfAncestors(ticket.Id).All(parent => !Epics.Contains(parent) || Approved.Contains(parent)) &&
+        (SkipsApproval(ticket) || Approved.Contains(ticket.Id));
 
     /// <summary>Every live Claude session and allocate background agent, with its running subagents nested under it.</summary>
     public IReadOnlyList<Activity.AgentBoardRow> Agents { get; init; } = [];

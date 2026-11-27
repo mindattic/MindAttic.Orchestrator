@@ -49,8 +49,11 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// <summary>One work unit in uncached tokens (<see cref="WorkUnits.Budget"/>), named in the prompt; 0 means the default.</summary>
     public long UnitBudget { get; init; }
 
-    /// <summary>Whether it may be worked: a fix, or approved.</summary>
-    public bool MayWork => Approved || Ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase);
+    /// <summary>Labelled <c>source:auto</c> (<see cref="Snapshot.AutoFiled"/>, M.ORCH-T2349): filed by automation.</summary>
+    public bool AutoFiled { get; init; }
+
+    /// <summary>Whether it may be worked: approved, or a fix automation didn't file (M.ORCH-T2349).</summary>
+    public bool MayWork => Approved || (!AutoFiled && Ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>The move holding it (M.ORCH-T637): its CLI is on its way to another login, and it stays that CLI's, never
     /// proposed, handed out, claimed or started elsewhere, until the move lands or fails. Null when it isn't moving.</summary>
@@ -228,7 +231,7 @@ public static partial class Scheduler
                 .Concat(snapshot.Requires.GetValueOrDefault(t.Id) ?? [])
                 .Concat(AncestorRequires(t.Id))
                 .Where(id => !(IsEpic(id) && IsApproved(id)))
-                .Concat((snapshot.PartOf.GetValueOrDefault(t.Id) ?? []).Where(id => IsEpic(id) && !IsApproved(id)))
+                .Concat(snapshot.PartOfAncestors(t.Id).Where(id => IsEpic(id) && !IsApproved(id)))
                 .Where(id => id != t.Id && openIds.Contains(id))
                 .Distinct(StringComparer.Ordinal)];
 
@@ -253,7 +256,7 @@ public static partial class Scheduler
         var awaiting = snapshot.Repos
             // An epic or container waits here for its yes, and once approved (started) it's neither waiting nor work (M.ORCH-T1146, M.ORCH-T1904).
             .SelectMany(r => r.OpenTickets.Where(t => !MayWork(t) && !(IsContainer(t.Id) && IsApproved(t.Id)) && (assigned.GetValueOrDefault(t.Id) is not { } a || StaleSince(a) is not null))
-                .Select(t => new QueueItem(r.Name, r.Path, t, Priority(t.Id), null, false) { Old = IsOld(t), Approved = IsApproved(t.Id), Assignee = assignees.GetValueOrDefault(t.Id) }))
+                .Select(t => new QueueItem(r.Name, r.Path, t, Priority(t.Id), null, false) { Old = IsOld(t), Approved = IsApproved(t.Id), AutoFiled = snapshot.AutoFiled.Contains(t.Id), Assignee = assignees.GetValueOrDefault(t.Id) }))
             .OrderBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Ticket.Number ?? int.MaxValue)
             .ToList();
         var queue = snapshot.Repos
@@ -270,6 +273,7 @@ public static partial class Scheduler
                     BlockedBy = Blockers(t),
                     Old = IsOld(t),
                     Approved = IsApproved(t.Id),
+                    AutoFiled = snapshot.AutoFiled.Contains(t.Id),
                     Moving = MovingOf(t.Id),
                     Assignee = assignees.GetValueOrDefault(t.Id),
                     GraphWeight = snapshot.GraphWeights?.GetValueOrDefault(t.Id) ?? 0,

@@ -37,7 +37,7 @@ public sealed class UnderTarget
         return Message(snapshot, plan, allocateClis, u, left);
     }
 
-    /// <summary>The tickets some CLI would work now: open fixes and approved tickets, not claimed, blocked or already being
+    /// <summary>The tickets some CLI would work now: open fixes not filed by automation and approved tickets, not claimed, blocked or already being
     /// worked, in a repo that has a CLI open or that /allocate works, and not estimated past what's left before the reset
     /// (M.ORCH-T373). A too-big one doesn't keep the warning quiet: allocate won't start it, so the window goes unused unless
     /// a person picks it up, which is what the warning is for; the message names them instead (<see cref="TooBig"/>).</summary>
@@ -105,7 +105,7 @@ public sealed class UnderTarget
     public static bool HasRoom(SchedulePlan plan) => plan.Pace?.SubagentAllowance is { } allowed && allowed > plan.Pace.Subagents &&
         plan.Pace.CoolOffPercent is null; // while the cool-off is on the abort gate fires on new starts (M.ORCH-T1253): no room
 
-    /// <summary>The tickets an /allocate CLI could start now in the repos it works: open fixes and approved tickets nobody
+    /// <summary>The tickets an /allocate CLI could start now in the repos it works: open fixes not filed by automation and approved tickets nobody
     /// has, not blocked, not too big for what's left. A ticket outside every CLI's repos isn't counted: no CLI's repos are
     /// widened on its own.</summary>
     internal static IReadOnlyList<QueueItem> ForAllocate(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> allocateClis)

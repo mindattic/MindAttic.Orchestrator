@@ -11,7 +11,7 @@ using DbRead = (string Path, System.DateTime WriteUtc, System.Linq.ILookup<strin
     System.Collections.Generic.IReadOnlyDictionary<string, MindAttic.Orchestrator.TicketMilestone> Milestones,
     System.Collections.Generic.IReadOnlyList<MindAttic.Orchestrator.Tickets.MilestoneScope> MilestoneScopes,
     System.Collections.Generic.IReadOnlySet<string> Containers, System.Collections.Generic.IReadOnlyDictionary<string, string> Levels,
-    System.Collections.Generic.IReadOnlyDictionary<string, string> Roles);
+    System.Collections.Generic.IReadOnlyDictionary<string, string> Roles, System.Collections.Generic.IReadOnlySet<string> AutoFiled);
 
 namespace MindAttic.Orchestrator.Tickets;
 
@@ -35,6 +35,10 @@ public sealed class OpenTicketSource
     /// <summary>The label that parks a ticket as waiting on the owner (M.ORCH-T1425): <c>orchestrator release --waiting-on-owner</c>
     /// adds it; nothing hands the ticket out or counts it as work until the owner removes it.</summary>
     public const string WaitingOnOwnerLabel = "waiting-on-owner";
+
+    /// <summary>The label automation puts on a ticket it files (nightly, soaks, bughunt, milestone steward; M.ORCH-T2349): a fix
+    /// carrying it waits for the owner's approval like any other ticket.</summary>
+    public const string AutoFiledLabel = "source:auto";
 
     /// <summary>The prefix of a ticket's level label: <c>level:epic|feature|story|task</c> (M.ORCH-T1904).</summary>
     public const string LevelLabelPrefix = "level:";
@@ -139,6 +143,9 @@ public sealed class OpenTicketSource
 
     /// <summary>Tickets labelled <see cref="WaitingOnOwnerLabel"/>: held back from work until the owner acts (M.ORCH-T1425).</summary>
     public IReadOnlySet<string> OwnerWaiting => fromDb?.OwnerWaiting ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Tickets labelled <see cref="AutoFiledLabel"/>: filed by automation, so even a fix waits for approval (M.ORCH-T2349).</summary>
+    public IReadOnlySet<string> AutoFiled => fromDb?.AutoFiled ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Ticket → the tickets it requires (prerequisite links in the database: <c>tickets ticket block</c> writes them).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires => fromDb?.Requires ?? new Dictionary<string, IReadOnlyList<string>>();
@@ -360,7 +367,8 @@ public sealed class OpenTicketSource
             [.. reads.SelectMany(r => r.MilestoneScopes)],
             Union(reads.Select(r => r.Containers)),
             First(reads.Select(r => r.Levels)),
-            First(reads.Select(r => r.Roles)));
+            First(reads.Select(r => r.Roles)),
+            Union(reads.Select(r => r.AutoFiled)));
     }
 
     /// <summary>One read of the ticket database at <paramref name="path"/> (written at <paramref name="written"/>), on a background
@@ -401,6 +409,7 @@ public sealed class OpenTicketSource
             names.ToDictionary(n => n.Key, n => n.Value, StringComparer.OrdinalIgnoreCase),
             MilestonesOf(db, openIds, prior?.Milestones),
             MilestoneScope.ReadOr(db, prior?.MilestoneScopes, graph),
-            containers, LevelsOf(labels), PrefixedOf(labels, RoleLabelPrefix));
+            containers, LevelsOf(labels), PrefixedOf(labels, RoleLabelPrefix),
+            labels.Where(l => l.Value.Contains(AutoFiledLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase));
     }
 }

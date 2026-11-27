@@ -122,6 +122,7 @@ public sealed class SnapshotFile(string path)
             Levels = (s.Levels ?? new Dictionary<string, string>()).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             Roles = (s.Roles ?? new Dictionary<string, string>()).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             OwnerWaiting = new HashSet<string>(s.OwnerWaiting ?? new HashSet<string>(), StringComparer.OrdinalIgnoreCase),
+            AutoFiled = new HashSet<string>(s.AutoFiled ?? new HashSet<string>(), StringComparer.OrdinalIgnoreCase),
             Priorities = s.Priorities.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             GraphWeights = s.GraphWeights?.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             Names = s.Names?.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
