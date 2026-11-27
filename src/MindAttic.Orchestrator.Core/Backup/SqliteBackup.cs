@@ -94,7 +94,9 @@ public sealed class SqliteBackup
         Path.Combine(targetFolder, DatabasesSubfolder, SqliteSubfolder, SanitizeFileName(project),
             Path.GetFileNameWithoutExtension(databaseFile) + ".sql");
 
-    private static string SanitizeFileName(string name)
+    /// <summary>Path-illegal characters replaced with <c>_</c>; shared with <see cref="BackupRestore.MatchDumps"/>,
+    /// which must sanitize a roster project name the same way to find the on-disk folder this made for it.</summary>
+    internal static string SanitizeFileName(string name)
     {
         var trimmed = name.Trim();
         foreach (var c in Path.GetInvalidFileNameChars())

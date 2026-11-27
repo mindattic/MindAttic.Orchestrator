@@ -80,7 +80,9 @@ public sealed class BackupRestore
     /// entry of that project whose file stem matches the dump's, or the project's only file. A project can list
     /// several files, so matching on the project alone would replay every dump over its first. A dump the backup's
     /// <see cref="SqliteBackup.SourcesFileName"/> names goes back to that roster file, else matches by the source's stem,
-    /// so <c>app-2.sql</c> finds its own <c>app.db</c>. No match is null.
+    /// so <c>app-2.sql</c> finds its own <c>app.db</c>. The on-disk folder name is the roster project name run through
+    /// <see cref="SqliteBackup.SanitizeFileName"/>, so the roster is looked up by that same sanitized form rather than
+    /// the raw name, and the pair reports back the roster's real (unsanitized) project name. No match is null.
     /// </summary>
     public static IReadOnlyList<(string Project, string Dump, string? DatabaseFile)> MatchDumps(
         string folder, IReadOnlyList<SqliteBackupTarget> databases)
@@ -90,18 +92,22 @@ public sealed class BackupRestore
 
         var byProject = databases
             .GroupBy(t => t.Project, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(g => SqliteBackup.SanitizeFileName(g.Key), g => (Project: g.Key, Dbs: g.ToList()),
+                StringComparer.OrdinalIgnoreCase);
 
         var sources = SqliteBackup.ReadSources(folder);
         var pairs = new List<(string, string, string?)>();
         foreach (var projectDir in Directory.GetDirectories(root).OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
         {
-            var project = Path.GetFileName(projectDir);
+            var folderName = Path.GetFileName(projectDir);
+            var matched = byProject.TryGetValue(folderName, out var entry);
+            var project = matched ? entry.Project : folderName;
             foreach (var dump in Directory.GetFiles(projectDir, "*.sql").OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
                 string? dbFile = null;
-                if (byProject.TryGetValue(project, out var dbs))
+                if (matched)
                 {
+                    var dbs = entry.Dbs;
                     sources.TryGetValue(Path.GetFullPath(dump), out var source);
                     var stem = Path.GetFileNameWithoutExtension(source ?? dump);
                     dbFile = dbs.FirstOrDefault(t => source is not null && string.Equals(t.DatabaseFile, source, StringComparison.OrdinalIgnoreCase)).DatabaseFile
