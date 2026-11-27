@@ -237,41 +237,57 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         return snapshot;
     }
 
-    // The ticket database's queue as last read, by its write time (M.ORCH-T396).
-    private (string Path, DateTime WriteUtc, IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities, OpenTicketSource.WorkState Work)? liveQueue;
+    // Each workspace root's ticket-database queue as last read, by its database path and write time (M.ORCH-T396, M.ORCH-T2277).
+    private readonly Dictionary<string, (DateTime WriteUtc, IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities, OpenTicketSource.WorkState Work)> liveQueues =
+        new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// <paramref name="shared"/> with approvals, priorities, assignees and reservations as the ticket database holds them now
+    /// <paramref name="shared"/> with approvals, priorities, assignees and reservations as the ticket databases hold them now
     /// (M.ORCH-T396, M.ORCH-T762): the holder's snapshot can be up to <see cref="SnapshotFile.MaxAge"/> old, and a ticket just
-    /// approved in Tickets (then dispatched) or bumped would read as it was. Reread only when the database changes.
+    /// approved in Tickets (then dispatched) or bumped would read as it was. Every workspace root's database, the extra roots'
+    /// too (M.ORCH-T2277): the primary root's alone replaced the other roots' approvals with none, and laid the primary's over
+    /// a snapshot whose containers and levels were another root's, so `next` handed out its approved containers as work.
+    /// Each reread only when its database changes; any root that can't be read leaves <paramref name="shared"/> as it is.
     /// </summary>
     internal Snapshot WithLiveQueue(Snapshot shared)
     {
-        var path = MindAttic.Tickets.Data.TicketsDb.DefaultPath(workspace.Root);
+        var approved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var priorities = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        var assignees = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var reservations = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        var any = false;
         try
         {
-            if (!File.Exists(path)) return shared;
-            var written = File.GetLastWriteTimeUtc(path);
-            if (liveQueue is not { } last || last.Path != path || last.WriteUtc != written)
+            foreach (var root in new[] { workspace.Root }.Concat(options.ExtraWorkspaceRoots).Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(workspace.Root);
-                if (db is null) return shared;
-                var queue = db.QueueStates();
-                liveQueue = (path, written,
-                    queue.Where(q => q.Value.Approval == MindAttic.Tickets.Data.TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                    queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
-                    OpenTicketSource.WorkState.Of(db));
+                var path = MindAttic.Tickets.Data.TicketsDb.DefaultPath(root);
+                if (!File.Exists(path)) continue;
+                var written = File.GetLastWriteTimeUtc(path);
+                if (!liveQueues.TryGetValue(path, out var live) || live.WriteUtc != written)
+                {
+                    using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
+                    if (db is null) return shared; // as one that can't be read: its approvals are the holder's
+                    var queue = db.QueueStates();
+                    liveQueues[path] = live = (written,
+                        queue.Where(q => q.Value.Approval == MindAttic.Tickets.Data.TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                        queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
+                        OpenTicketSource.WorkState.Of(db));
+                }
+                any = true;
+                approved.UnionWith(live.Approved);
+                foreach (var p in live.Priorities) priorities.TryAdd(p.Key, p.Value);
+                foreach (var a in live.Work.Assignees) assignees.TryAdd(a.Key, a.Value);
+                foreach (var r in live.Work.Reservations) reservations.TryAdd(r.Key, r.Value);
             }
-            return shared with
-            {
-                Approved = liveQueue.Value.Approved, Priorities = liveQueue.Value.Priorities,
-                Assignees = liveQueue.Value.Work.Assignees, Reservations = liveQueue.Value.Work.Reservations,
-            };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
         {
             return shared; // the holder's, as read then: tried again next refresh
         }
+        return !any ? shared : shared with
+        {
+            Approved = approved, Priorities = priorities, Assignees = assignees, Reservations = reservations,
+        };
     }
 
     /// <summary>

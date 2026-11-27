@@ -43,14 +43,45 @@ public sealed class OpenTicketSource
     /// <see cref="Scheduling.Roles"/>).</summary>
     public const string RoleLabelPrefix = "role:";
 
-    private DateTime dbReadUtc;
+    /// <summary>
+    /// One workspace root's ticket database as last read (M.ORCH-T2277): each root keeps its own. One shared read for every
+    /// root (D:\Projects\MindAttic and D:\Projects\GunGreenEyes) had each root's refresh replace the other's, so the snapshot
+    /// carried only the last root's approvals, epics, containers and levels, and a repo of the other root, its read lost or
+    /// still running with no earlier one to stand on, fell back to its USER_STORIES.md.
+    /// </summary>
+    private sealed class RootRead
+    {
+        public DbRead? Last;
+        public DateTime ReadUtc;
+        // The store's change version as of Last, and when Last was last read in full (M.ORCH-T1938): a look that finds the
+        // version unmoved keeps Last (a scalar query, not the whole tickets, links and labels tables) up to TicketDbVersion.MaxAge.
+        public long? Version;
+        public DateTime FullReadUtc;
+        // The read in flight (M.ORCH-T1937): its task, and when a refresh stops waiting on it.
+        public (Task<(DbRead? Read, long? Version, bool Kept)> Read, DateTime WaitUntilUtc)? Reading;
+    }
 
-    private DbRead? fromDb;
+    // By database path, in the order first read: an earlier root's entry wins a ticket both name.
+    private readonly Dictionary<string, RootRead> roots = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> rootOrder = [];
 
-    // The store's change version as of fromDb, and when fromDb was last read in full (M.ORCH-T1938): a look that finds the
-    // version unmoved keeps fromDb (a scalar query, not the whole tickets, links and labels tables) up to TicketDbVersion.MaxAge.
-    private long? dbVersion;
-    private DateTime dbFullReadUtc;
+    // Every root's last read, merged, as the properties below give it; rebuilt only after a root's read changes.
+    private DbRead? merged;
+    private bool mergedStale;
+
+    /// <summary>Every root's last good read merged into one (M.ORCH-T2277); null before any root's database was read.</summary>
+    private DbRead? fromDb
+    {
+        get
+        {
+            if (mergedStale)
+            {
+                merged = Merge([.. rootOrder.Select(p => roots[p].Last).OfType<DbRead>()]);
+                mergedStale = false;
+            }
+            return merged;
+        }
+    }
 
     /// <summary>The store's change version for a database path (<see cref="TicketDbVersion.Of"/>, M.ORCH-T1938); a test's stands
     /// in for a server.</summary>
@@ -66,9 +97,6 @@ public sealed class OpenTicketSource
 
     /// <summary>Runs at the start of each background database read; a test's blocks it to stand in for a slow database.</summary>
     internal Action? BeforeRead { get; init; }
-
-    // The database read in flight (M.ORCH-T1937): its database path, its task, and when a refresh stops waiting on it.
-    private (string Path, Task<(DbRead? Read, long? Version, bool Kept)> Read, DateTime WaitUntilUtc)? reading;
 
     /// <summary>Each active and accepting milestone's scope (M.ORCH-T1685): what waits for its owner's approval and how much it
     /// has grown since activation; empty with none, or with a database that predates the scope lock.</summary>
@@ -217,17 +245,23 @@ public sealed class OpenTicketSource
         var path = TicketsDb.DefaultPath(root);
         if (!File.Exists(path)) return null;
         var written = File.GetLastWriteTimeUtc(path);
-        if (fromDb is not { } c || c.Path != path || c.WriteUtc != written || DateTime.UtcNow - dbReadUtc >= DbMaxAge)
+        // This root's own read (M.ORCH-T2277): another root's never stands in for it, nor replaces it.
+        if (!roots.TryGetValue(path, out var state))
+        {
+            roots[path] = state = new RootRead();
+            rootOrder.Add(path);
+        }
+        if (state.Last is not { } c || c.WriteUtc != written || DateTime.UtcNow - state.ReadUtc >= DbMaxAge)
         {
             // Read off the caller's thread, waited on for ReadWait at most per read (M.ORCH-T1937): past it the last good read
             // stands, as it does for a read that fails, and the read lands on a later refresh.
-            var prior = fromDb is { } p && p.Path == path ? p : (DbRead?)null;
-            if (reading is not { } r || r.Path != path)
+            var prior = state.Last;
+            if (state.Reading is not { } r)
             {
                 var before = BeforeRead;
                 var versionOf = VersionOf;
-                var (priorVersion, priorFullUtc) = (dbVersion, dbFullReadUtc);
-                reading = r = (path, Task.Run(() =>
+                var (priorVersion, priorFullUtc) = (state.Version, state.FullReadUtc);
+                state.Reading = r = (Task.Run(() =>
                 {
                     before?.Invoke();
                     // The change version first (M.ORCH-T1938), read before the rows it stands for: unmoved, the last read stands.
@@ -247,24 +281,25 @@ public sealed class OpenTicketSource
             {
                 var slow = prior is null
                     ? $"ticket database: a read is still running after {ReadWait.TotalSeconds:0}s, with no earlier read to stand on (M.ORCH-T1937)"
-                    : $"ticket database: a read is still running after {ReadWait.TotalSeconds:0}s; using the read from {dbReadUtc.ToLocalTime():T} until it lands (M.ORCH-T1937)";
+                    : $"ticket database: a read is still running after {ReadWait.TotalSeconds:0}s; using the read from {state.ReadUtc.ToLocalTime():T} until it lands (M.ORCH-T1937)";
                 if (!warnings.Contains(slow)) warnings.Add(slow);
-                if (prior is null)
+                if (prior is not { } stands)
                 {
                     unknown.Add(repo.Name); // unknown, not none, as for a first read that fails (M.ORCH-T1538)
                     return null;
                 }
-                return fromDb!.Value.Repos.Contains(repo.Name) ? [.. fromDb.Value.Open[repo.Name]] : null;
+                return stands.Repos.Contains(repo.Name) ? [.. stands.Open[repo.Name]] : null;
             }
-            reading = null;
+            state.Reading = null;
             try
             {
                 var (got, version, kept) = r.Read.GetAwaiter().GetResult();
                 if (got is not { } read) return null;
-                fromDb = read;
-                dbReadUtc = DateTime.UtcNow;
-                dbVersion = version;
-                if (!kept) dbFullReadUtc = dbReadUtc;
+                state.Last = read;
+                state.ReadUtc = DateTime.UtcNow;
+                state.Version = version;
+                if (!kept) state.FullReadUtc = state.ReadUtc;
+                mergedStale = true;
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)
             {
@@ -274,7 +309,7 @@ public sealed class OpenTicketSource
                 // its live assignment. The read is tried again next time, since the cached time still differs.
                 // With no good read at all (a daemon just restarted), the open tickets are unknown, not none: say so, so
                 // nothing reads the claims in this repo as finished.
-                if (fromDb is not { } last || last.Path != path)
+                if (state.Last is null)
                 {
                     unknown.Add(repo.Name);
                     // Bughunt, M.ORCH-T1538: this returned [] (empty list), which OpenFor's `is { } db` null-check treats as
@@ -285,7 +320,47 @@ public sealed class OpenTicketSource
                 }
             }
         }
-        return fromDb!.Value.Repos.Contains(repo.Name) ? [.. fromDb.Value.Open[repo.Name]] : null;
+        var mine = state.Last!.Value;
+        return mine.Repos.Contains(repo.Name) ? [.. mine.Open[repo.Name]] : null;
+    }
+
+    /// <summary>Every root's read as one (M.ORCH-T2277): the open tickets, repos, sets and links of each, and for a ticket two
+    /// roots both name (ids carry each repo's code, so none should), the first root's value. Null with none; one as it is.</summary>
+    private static DbRead? Merge(IReadOnlyList<DbRead> reads)
+    {
+        if (reads.Count == 0) return null;
+        if (reads.Count == 1) return reads[0];
+        static HashSet<string> Union(IEnumerable<IEnumerable<string>> sets) =>
+            sets.SelectMany(s => s).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        static Dictionary<string, TValue> First<TValue>(IEnumerable<IReadOnlyDictionary<string, TValue>> maps)
+        {
+            var all = new Dictionary<string, TValue>(StringComparer.OrdinalIgnoreCase);
+            foreach (var map in maps)
+                foreach (var kv in map) all.TryAdd(kv.Key, kv.Value);
+            return all;
+        }
+        static Dictionary<string, IReadOnlyList<string>> Links(IEnumerable<IReadOnlyDictionary<string, IReadOnlyList<string>>> maps) =>
+            maps.SelectMany(m => m).GroupBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.SelectMany(kv => kv.Value).Distinct(StringComparer.OrdinalIgnoreCase)],
+                    StringComparer.OrdinalIgnoreCase);
+        return (reads[0].Path, reads[0].WriteUtc,
+            reads.SelectMany(r => r.Open.SelectMany(g => g.Select(t => (Repo: g.Key, Ticket: t))))
+                .ToLookup(x => x.Repo, x => x.Ticket, StringComparer.OrdinalIgnoreCase),
+            Union(reads.Select(r => r.Repos)),
+            Links(reads.Select(r => r.Requires)),
+            Union(reads.Select(r => r.Approved)),
+            Union(reads.Select(r => r.Epics)),
+            First(reads.Select(r => r.Priorities)),
+            new WorkState(First(reads.Select(r => r.Work.Assignees)), First(reads.Select(r => r.Work.Reservations))),
+            Links(reads.Select(r => r.PartOf)),
+            Union(reads.Select(r => r.OwnerWaiting)),
+            First(reads.Select(r => r.GraphWeights)),
+            First(reads.Select(r => r.Names)),
+            First(reads.Select(r => r.Milestones)),
+            [.. reads.SelectMany(r => r.MilestoneScopes)],
+            Union(reads.Select(r => r.Containers)),
+            First(reads.Select(r => r.Levels)),
+            First(reads.Select(r => r.Roles)));
     }
 
     /// <summary>One read of the ticket database at <paramref name="path"/> (written at <paramref name="written"/>), on a background

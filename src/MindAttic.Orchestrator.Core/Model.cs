@@ -256,8 +256,12 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Whether <paramref name="id"/> is labelled <c>level:task</c> (M.ORCH-T1904).</summary>
     public bool IsTask(string id) => Levels.GetValueOrDefault(id) is { } level && level.Equals("task", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Whether <paramref name="id"/> is never work itself: an epic (M.ORCH-T1146) or a container (M.ORCH-T1904).</summary>
-    public bool IsContainer(string id) => Epics.Contains(id) || Containers.Contains(id);
+    /// <summary>Whether <paramref name="id"/> is never work itself: an epic (M.ORCH-T1146), a container (M.ORCH-T1904), or one
+    /// levelled anything but <c>task</c> (an epic, feature or story, M.ORCH-T2277), open children or not. Only a <c>level:task</c>
+    /// leaf, or a legacy ticket with no level and no open part-of children, is handed out; a feature or story with no open
+    /// child is the planner's to split or close, never a subagent's to work whole.</summary>
+    public bool IsContainer(string id) => Epics.Contains(id) || Containers.Contains(id) ||
+        Levels.GetValueOrDefault(id) is { } level && !level.Equals("task", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Tickets parked as waiting on the owner (label <c>waiting-on-owner</c>, M.ORCH-T1425): never handed out as work until the label is removed.</summary>
     public IReadOnlySet<string> OwnerWaiting { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
