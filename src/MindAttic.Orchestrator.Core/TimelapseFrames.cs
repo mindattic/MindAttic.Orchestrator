@@ -11,7 +11,12 @@ namespace MindAttic.Orchestrator;
 public static class TimelapseFrames
 {
     /// <summary>Where the timelapse's frames and GIFs go.</summary>
-    public const string DefaultRoot = @"R:\MindAttic\Capture\MindAttic.Orchestrator";
+    public const string DefaultRoot = @"R:\MindAttic\Media\Capture\MindAttic.Orchestrator";
+
+    /// <summary>The root before captures moved under R:\MindAttic\Media (M.CAPT-T199, M.CAPT-T208); any frames still there
+    /// from before the move are read once for timing, so a dashboard that hasn't captured since isn't treated as idle
+    /// longer than it was. LEGACY-ROOT</summary>
+    public const string LegacyRoot = @"R:\MindAttic\Capture\MindAttic.Orchestrator"; // LEGACY-ROOT
 
     private const string Prefix = "frame-";
     private const string Extension = ".png";

@@ -66,7 +66,12 @@ public sealed class TimelapseCapture : IDisposable
     /// <summary>Starts timing from the newest frame already on disk; the first check is one <c>check</c> from now.</summary>
     public void Start()
     {
-        try { last = TimelapseFrames.Latest(dir); }
+        try
+        {
+            last = TimelapseFrames.Latest(dir);
+            if (last is null && root == TimelapseFrames.DefaultRoot) // LEGACY-ROOT
+                last = TimelapseFrames.Latest(TimelapseFrames.FramesDir(TimelapseFrames.LegacyRoot));
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Warning(ex, "Couldn't read the timelapse frames in {Dir:l}; timing from now", dir); }
         timer.Start();
     }
