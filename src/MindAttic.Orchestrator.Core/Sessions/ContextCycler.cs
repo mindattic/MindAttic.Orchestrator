@@ -186,7 +186,7 @@ public sealed class ContextCycler(string? directory = null)
         if (!System.IO.Directory.Exists(SubagentDirectory)) return 0;
         var now = DateTime.UtcNow;
         var count = 0;
-        foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory))
+        foreach (var f in SubagentMarks())
         {
             // A mark deleted since it was listed reads as 1601: it's gone, so it's nothing to see.
             if (File.GetLastWriteTimeUtc(f) is var at && at > DateTime.UnixEpoch && (seenThrough is null || at > seenThrough))
@@ -197,8 +197,16 @@ public sealed class ContextCycler(string? directory = null)
     }
 
     /// <summary>The agent ids (mark file names) of subagents running now across every CLI.</summary>
-    public IReadOnlyList<string> AliveSubagentIds(DateTime nowUtc) => !System.IO.Directory.Exists(SubagentDirectory) ? []
-        : [.. System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => SubagentAlive(f, nowUtc, idle: true)).Select(f => Path.GetFileName(f))];
+    public IReadOnlyList<string> AliveSubagentIds(DateTime nowUtc) =>
+        [.. SubagentMarks().Where(f => SubagentAlive(f, nowUtc, idle: true)).Select(f => Path.GetFileName(f))];
+
+    /// <summary>The subagent mark files; none when the folder is gone or goes while it is listed (a login's folder removed under
+    /// the daemon's tick).</summary>
+    private List<string> SubagentMarks()
+    {
+        try { return System.IO.Directory.Exists(SubagentDirectory) ? [.. System.IO.Directory.EnumerateFiles(SubagentDirectory)] : []; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
+    }
 
     /// <summary>The subagents running now, each with the CLI that runs it (its mark's process id; null when none was recorded).</summary>
     public IReadOnlyList<(string Agent, int? Cli)> AliveSubagents(DateTime nowUtc) => [.. AliveSubagentIds(nowUtc).Select(id =>
@@ -226,9 +234,8 @@ public sealed class ContextCycler(string? directory = null)
     /// a Claude login's own folder (M.ORCH-T559), which keeps only its subagents' marks.</summary>
     public void PruneSubagentMarks()
     {
-        if (System.IO.Directory.Exists(SubagentDirectory))
-            foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => !SubagentAlive(f, DateTime.UtcNow, idle: false)))
-                try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        foreach (var f in SubagentMarks().Where(f => !SubagentAlive(f, DateTime.UtcNow, idle: false)))
+            try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     /// <summary>Drops /pacing off marks whose CLI has closed, so a reused process id never inherits one, and
