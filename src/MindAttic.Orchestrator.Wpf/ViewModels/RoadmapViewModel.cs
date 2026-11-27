@@ -259,7 +259,8 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
     }
 
     /// <summary>Assigns a row's ticket and every open ticket under it (M.ORCH-T2395) to <paramref name="email"/> (null:
-    /// unassigns them), the one change the Roadmap makes, off the UI thread; the tree is read again after it.</summary>
+    /// unassigns them), the one change the Roadmap makes, off the UI thread; the tree is read again after it. Assigned to someone,
+    /// the branch is also approved and a container gated on its tests (M.ORCH-T2397), so its tasks start on that user's login.</summary>
     public void Assign(RoadmapRowViewModel row, string? email)
     {
         if (row.Node is not { } node) return;
@@ -267,7 +268,9 @@ public sealed class RoadmapViewModel(Func<string> workspaceRoot, Func<Orchestrat
         if (ids.Count == 0) return;
         var root = workspaceRoot();
         var ui = TaskScheduler.FromCurrentSynchronizationContext();
-        Task.Run(() => OwnerInboxActions.DelegateAll(root, ids, email)).ContinueWith(done =>
+        var container = node.Children.Count > 0 || node.Level.ToLowerInvariant() is "epic" or "feature" or "story";
+        Task.Run(() => email is null ? OwnerInboxActions.DelegateAll(root, ids, email)
+            : OwnerInboxActions.AssignBranch(root, node.Id, container, ids, email)).ContinueWith(done =>
         {
             if (done.Exception is { } ex) Trace.TraceWarning($"Roadmap assign of {node.Id} failed: {ex.GetBaseException().Message}");
             else foreach (var (id, error) in done.Result) Trace.TraceWarning($"Roadmap assign of {id} failed: {error}");

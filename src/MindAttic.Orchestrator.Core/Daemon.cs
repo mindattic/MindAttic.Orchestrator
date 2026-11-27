@@ -342,6 +342,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                             foreach (var line in orgReach.Tick(plan, s, orgs, allocateClis, cliLogins!, DateTime.UtcNow))
                                 Say(LogEventLevel.Information, line);
                         }
+                        // A branch the owner assigned to a user (M.ORCH-T2397): each of its tasks in its own tab on their login.
+                        assignedDispatch ??= new AssignedDispatch(store)
+                        {
+                            OpenTab = (item, prompt) => new Dispatcher(new SessionControl(options), store).Dispatch(item, Providers.Claude, submit: true, prompt: prompt),
+                        };
+                        foreach (var line in assignedDispatch.Tick(plan, snapshot, s, options.WorkspaceRoot, DateTime.UtcNow))
+                            Say(LogEventLevel.Information, line);
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
                     {
@@ -694,6 +701,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     private OrphanWatch? orphans;
     private OrgReach? orgReach;
+    private AssignedDispatch? assignedDispatch;
 
     /// <summary>Logs what <see cref="OrphanWatch"/> found and did, and raises each alert it carries (M.ORCH-T748).</summary>
     internal void ReportOrphans(IEnumerable<OrphanWatch.Event> events)

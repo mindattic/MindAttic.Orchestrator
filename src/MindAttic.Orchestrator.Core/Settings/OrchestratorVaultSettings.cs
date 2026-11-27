@@ -436,6 +436,23 @@ public sealed class OrchestratorVaultSettings
     [SettingRange(1, 10080)]
     public double OrgReachSpacingMinutes { get; set; } = 5;
 
+    /// <summary>On (the default): each task of a branch the owner assigned to a user starts in its own CLI tab on their login.</summary>
+    [Setting("Start assigned branches' tasks", Group = "Scheduler", Order = 106,
+        Help = "On (the default): when you assign a branch on the Roadmap to a user, each of its open tasks starts in its own CLI tab on that user's login, one per task, while they're signed in and their pace has room.")]
+    public bool AssignedDispatchEnabled { get; set; } = true;
+
+    /// <summary>The most assigned-branch task CLIs open at once on one user's login.</summary>
+    [Setting("Assigned tasks: most CLIs per login", Group = "Scheduler", Order = 107,
+        Help = "The most assigned-branch task CLIs open at once on one user's login.")]
+    [SettingRange(1, 64)]
+    public double AssignedDispatchMaxPerLogin { get; set; } = 10;
+
+    /// <summary>Seconds between the daemon's looks for assigned-branch tasks to start.</summary>
+    [Setting("Assigned tasks: look every (s)", Group = "Scheduler", Order = 108,
+        Help = "Seconds between the daemon's looks for assigned-branch tasks to start.")]
+    [SettingRange(5, 3600)]
+    public double AssignedDispatchCheckSeconds { get; set; } = 60;
+
     /// <summary>Seconds tickets db sync, and the git calls that commit orchestrator.db, may run before they're killed, so a hung push can't stall the daemon.</summary>
     [Setting("Stop a ticket db sync after (s)", Group = "Scheduler", Order = 104,
         Help = "Seconds tickets db sync, and the git calls that commit orchestrator.db, may run before they're killed, so a hung push can't stall the daemon.")]
@@ -1416,6 +1433,9 @@ public sealed class OrchestratorVaultSettings
         UiStallLogMs = s.UiStallLogMs,
         TestTermHostSweepMinutes = s.TestTermHostSweepMinutes,
         OrgReachSpacingMinutes = s.OrgReachSpacingMinutes,
+        AssignedDispatchEnabled = s.AssignedDispatchEnabled,
+        AssignedDispatchMaxPerLogin = s.AssignedDispatchMaxPerLogin,
+        AssignedDispatchCheckSeconds = s.AssignedDispatchCheckSeconds,
         ApiCostReadMinutes = s.ApiCostReadMinutes,
         UtilizationMinSpacingSeconds = s.UtilizationMinSpacingSeconds,
         SyncTimeoutSeconds = s.SyncTimeoutSeconds,
@@ -1652,6 +1672,9 @@ public sealed class OrchestratorVaultSettings
         UiStallLogMs = UiStallLogMs,
         TestTermHostSweepMinutes = TestTermHostSweepMinutes,
         OrgReachSpacingMinutes = OrgReachSpacingMinutes,
+        AssignedDispatchEnabled = AssignedDispatchEnabled,
+        AssignedDispatchMaxPerLogin = AssignedDispatchMaxPerLogin,
+        AssignedDispatchCheckSeconds = AssignedDispatchCheckSeconds,
         ApiCostReadMinutes = ApiCostReadMinutes,
         UtilizationMinSpacingSeconds = UtilizationMinSpacingSeconds,
         SyncTimeoutSeconds = SyncTimeoutSeconds,

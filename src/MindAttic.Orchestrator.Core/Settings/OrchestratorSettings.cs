@@ -931,6 +931,16 @@ public sealed record OrchestratorSettings
     /// <summary>The least minutes between two tabs org-reach opens for the same org (was <see cref="Scheduling.OrgReach"/>'s Spacing).</summary>
     public double OrgReachSpacingMinutes { get; init; } = 5;
 
+    /// <summary>On (the default): the daemon starts each task of a branch the owner assigned to a user (M.ORCH-T2397) in its own
+    /// CLI tab on that user's login (<see cref="Scheduling.AssignedDispatch"/>).</summary>
+    public bool AssignedDispatchEnabled { get; init; } = true;
+
+    /// <summary>The most assigned-branch task CLIs open at once on one user's login (M.ORCH-T2397).</summary>
+    public double AssignedDispatchMaxPerLogin { get; init; } = 10;
+
+    /// <summary>Seconds between the daemon's looks for assigned-branch tasks to start (M.ORCH-T2397).</summary>
+    public double AssignedDispatchCheckSeconds { get; init; } = 60;
+
     /// <summary>Readings of the 5-hour chart closer together than this many seconds are thinned to one point (was
     /// UtilizationSeries.MinSpacing).</summary>
     public double UtilizationMinSpacingSeconds { get; init; } = 60;

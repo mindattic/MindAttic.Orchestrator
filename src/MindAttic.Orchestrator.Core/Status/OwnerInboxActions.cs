@@ -53,6 +53,33 @@ public static class OwnerInboxActions
         return failed;
     }
 
+    /// <summary>The Roadmap's whole-branch assign to a user (M.ORCH-T2397): <see cref="DelegateAll"/>, then each of
+    /// <paramref name="ids"/> approved (the owner's yes, so the branch is work), and <paramref name="root"/> labelled
+    /// <see cref="Scheduling.AssignedDispatch.GateLabel"/> when it's a container, so its tasks are dispatched to the user's login
+    /// and its suite runs once they're all done (the feature test gate). Returns the ids that failed, with why.</summary>
+    public static IReadOnlyList<(string Id, string Error)> AssignBranch(string workspaceRoot, string root, bool container, IReadOnlyList<string> ids, string email)
+    {
+        var failed = DelegateAll(workspaceRoot, ids, email).ToList();
+        using var db = Open(workspaceRoot);
+        foreach (var id in ids)
+        {
+            try { db.Approve(id); }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or System.Data.Common.DbException)
+            {
+                failed.Add((id, ex.Message));
+            }
+        }
+        if (container)
+        {
+            try { db.AddLabels(root, [Scheduling.AssignedDispatch.GateLabel]); }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or System.Data.Common.DbException)
+            {
+                failed.Add((root, ex.Message));
+            }
+        }
+        return failed;
+    }
+
     /// <summary>The owner approves a pending milestone addition (M.ORCH-T1685, <see cref="TicketsDb.ApproveMilestoneAddition"/>):
     /// <paramref name="item"/> becomes a member of <paramref name="milestone"/>, approved by <paramref name="by"/>.</summary>
     public static void ApproveAddition(string workspaceRoot, string milestone, string item, string by)
