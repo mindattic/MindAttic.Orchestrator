@@ -32,6 +32,7 @@ public sealed class DesktopPinWatcher : IDisposable
 {
     private const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
     private const uint EVENT_OBJECT_SHOW = 0x8002;
+    private const uint EVENT_OBJECT_DESTROY = 0x8001;
     private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
     private const uint WINEVENT_SKIPOWNPROCESS = 0x0002;
     private const int OBJID_WINDOW = 0;
@@ -94,9 +95,11 @@ public sealed class DesktopPinWatcher : IDisposable
     // delegate nothing managed references is fair game for the GC.
     private WinEventProc? showCallback;
     private WinEventProc? foregroundCallback;
+    private WinEventProc? destroyCallback;
 
     private IntPtr showHook;
     private IntPtr foregroundHook;
+    private IntPtr destroyHook;
     private Thread? thread;
     private volatile uint nativeThreadId;
 
@@ -123,12 +126,17 @@ public sealed class DesktopPinWatcher : IDisposable
         nativeThreadId = GetCurrentThreadId();
         showCallback = OnWinEvent;
         foregroundCallback = OnWinEvent;
+        destroyCallback = OnWindowDestroyed;
 
         try
         {
             showHook = SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW, IntPtr.Zero, showCallback,
                 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
             foregroundHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, foregroundCallback,
+                0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+            // Clears `settled` as each window closes (M.ORCH-T2315), so a later window that reuses the same HWND (Windows
+            // recycles them once destroyed) is never skipped as "already home" on the strength of a different window's past.
+            destroyHook = SetWinEventHook(EVENT_OBJECT_DESTROY, EVENT_OBJECT_DESTROY, IntPtr.Zero, destroyCallback,
                 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
 
             if (showHook == IntPtr.Zero && foregroundHook == IntPtr.Zero)
@@ -154,6 +162,20 @@ public sealed class DesktopPinWatcher : IDisposable
         {
             if (showHook != IntPtr.Zero) { UnhookWinEvent(showHook); showHook = IntPtr.Zero; }
             if (foregroundHook != IntPtr.Zero) { UnhookWinEvent(foregroundHook); foregroundHook = IntPtr.Zero; }
+            if (destroyHook != IntPtr.Zero) { UnhookWinEvent(destroyHook); destroyHook = IntPtr.Zero; }
+        }
+    }
+
+    private void OnWindowDestroyed(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+    {
+        try
+        {
+            if (idObject != OBJID_WINDOW || idChild != CHILDID_SELF || hwnd == IntPtr.Zero) return;
+            settled.Remove(hwnd);
+        }
+        catch (Exception ex)
+        {
+            try { Log.Warning(ex, "DesktopPinWatcher: failed to clear a destroyed window from the settled set"); } catch { /* logging must never throw further */ }
         }
     }
 
@@ -222,6 +244,12 @@ public sealed class DesktopPinWatcher : IDisposable
         if (thread is null) return;
         try
         {
+            // RunMessageLoop sets nativeThreadId as its first statement, but Start() returns right after thread.Start(),
+            // so a Dispose() this early used to see 0, skip the quit message entirely, and just block out the Join
+            // below with no way to end it, leaving the hook thread (and its hooks) running un-stopped (M.ORCH-T2315).
+            var deadline = Environment.TickCount64 + 2000;
+            while (nativeThreadId == 0 && thread.IsAlive && Environment.TickCount64 < deadline)
+                Thread.Sleep(5);
             if (nativeThreadId != 0) PostThreadMessage(nativeThreadId, WM_QUIT, IntPtr.Zero, IntPtr.Zero);
             thread.Join(TimeSpan.FromSeconds(2));
         }

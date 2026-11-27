@@ -39,66 +39,72 @@ public sealed partial class MainViewModel
             StatusMessage = $"The CLI in {repo} is already moving to another account; try again once it lands.";
             return;
         }
-        // The tickets it and its subagents hold (M.ORCH-T637): its claims, and the one it was started on.
-        var row = full?.Agents.FirstOrDefault(a => a.SessionId == sessionId);
-        List<string> holding = [.. (row?.Claims ?? []).Concat(row?.TicketId is { Length: > 0 } own ? [own] : []).Distinct(StringComparer.OrdinalIgnoreCase)];
-        // This tab's own pane for the CLI, if one's open (M.ORCH-T1883): by its SessionId, else (just started, not learned
-        // yet) its Launcher tab's host pid, the same two keys TerminalPaneViewModel.IsMoving itself watches below.
-        var pane = AllTerminals.Panes.FirstOrDefault(p => string.Equals(p.SessionId, sessionId, StringComparison.Ordinal))
-            ?? (row?.Host?.ProcessId is { } byHost ? AllTerminals.Panes.FirstOrDefault(p => p.HostPid == byHost) : null);
-        var fromLogin = pane?.Login;
-        // Locked at once (M.ORCH-T638): the CLI only moves at its next idle point, so without this it looks like nothing happened.
-        PendingMoves.Begin(new MoveLock
-        {
-            SessionId = sessionId, Pid = cliPid ?? 0, HostPid = row?.Host?.ProcessId, HostPipe = row?.Host?.PipeName, Repo = repo,
-            FromEmail = fromLogin, ToEmail = target.Email, ToName = NameOf(target), StartedUtc = DateTime.UtcNow, Tickets = holding,
-        });
-        // The pane disappears from its own login's tree/tab strip and shows at the target's at once (M.ORCH-T1883), rather
-        // than waiting for the real transfer (about a minute) to land: moved for real into SyncTerminals' own reckoning of
-        // whose page it's on (OwnerOf, keyed by Login, the same field a landed move changes for real once the next refresh's
-        // Update sees its CLI there), while it renders as a faded/dashed placeholder with a spinner the whole time
-        // (TerminalPaneViewModel.IsMoving, driven by the PendingMoves lock just begun above) - put back below if it doesn't land.
-        if (pane is not null && !string.Equals(fromLogin, target.Email, StringComparison.OrdinalIgnoreCase))
-        {
-            pane.Login = target.Email;
-            SyncTerminals();
-        }
-        var hosts = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
-        var mover = AccountMover;
-        AccountMoveResult result;
+        // Guarded by the outer try/finally below (M.ORCH-T2315): anything here throwing used to skip the
+        // `finally` at the bottom entirely, leaving sessionId stuck in movingSessions (and its PendingMoves
+        // lock, once begun) forever - every later "Move to" on that CLI reported it as already moving.
         try
         {
-            result = await Task.Run(async () =>
+            // The tickets it and its subagents hold (M.ORCH-T637): its claims, and the one it was started on.
+            var row = full?.Agents.FirstOrDefault(a => a.SessionId == sessionId);
+            List<string> holding = [.. (row?.Claims ?? []).Concat(row?.TicketId is { Length: > 0 } own ? [own] : []).Distinct(StringComparer.OrdinalIgnoreCase)];
+            // This tab's own pane for the CLI, if one's open (M.ORCH-T1883): by its SessionId, else (just started, not learned
+            // yet) its Launcher tab's host pid, the same two keys TerminalPaneViewModel.IsMoving itself watches below.
+            var pane = AllTerminals.Panes.FirstOrDefault(p => string.Equals(p.SessionId, sessionId, StringComparison.Ordinal))
+                ?? (row?.Host?.ProcessId is { } byHost ? AllTerminals.Panes.FirstOrDefault(p => p.HostPid == byHost) : null);
+            var fromLogin = pane?.Login;
+            // Locked at once (M.ORCH-T638): the CLI only moves at its next idle point, so without this it looks like nothing happened.
+            PendingMoves.Begin(new MoveLock
             {
-                var move = mover();
-                var now = DateTime.UtcNow;
-                var live = move.Live(hosts, now);
-                var cli = live.FirstOrDefault(c => c.SessionId == sessionId) ?? (cliPid is { } pid ? live.FirstOrDefault(c => c.Pid == pid) : null);
-                return cli is null
-                    ? new AccountMoveResult(false, $"The CLI in {repo} isn't running any more, so it wasn't moved.")
-                    : await move.MoveAsync(cli, target.Email, now, holding, repo);
+                SessionId = sessionId, Pid = cliPid ?? 0, HostPid = row?.Host?.ProcessId, HostPipe = row?.Host?.PipeName, Repo = repo,
+                FromEmail = fromLogin, ToEmail = target.Email, ToName = NameOf(target), StartedUtc = DateTime.UtcNow, Tickets = holding,
             });
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            result = new AccountMoveResult(false, $"Couldn't move the CLI in {repo}: {ex.Message}");
-            OrchestratorLog.For("Dashboard").Error(ex, "move to account failed");
-        }
-        finally { movingSessions.Remove(sessionId); }
-        StatusMessage = result.Message;
-        AccountsMessage = result.Message;
-        if (!result.Ok)
-        {
-            PendingMoves.End(sessionId);
-            // Didn't land: the placeholder goes back to a real row under its old login (M.ORCH-T1883), not left stranded
-            // under the target's; a no-op when there was no pane to move in the first place, or it already moved on its own.
-            if (pane is not null && string.Equals(pane.Login, target.Email, StringComparison.OrdinalIgnoreCase))
+            // The pane disappears from its own login's tree/tab strip and shows at the target's at once (M.ORCH-T1883), rather
+            // than waiting for the real transfer (about a minute) to land: moved for real into SyncTerminals' own reckoning of
+            // whose page it's on (OwnerOf, keyed by Login, the same field a landed move changes for real once the next refresh's
+            // Update sees its CLI there), while it renders as a faded/dashed placeholder with a spinner the whole time
+            // (TerminalPaneViewModel.IsMoving, driven by the PendingMoves lock just begun above) - put back below if it doesn't land.
+            if (pane is not null && !string.Equals(fromLogin, target.Email, StringComparison.OrdinalIgnoreCase))
             {
-                pane.Login = fromLogin;
+                pane.Login = target.Email;
                 SyncTerminals();
             }
-            Toasts.Insert(0, new ToastViewModel($"{repo} not moved to {target.Label}", result.Message, Palette.Over, null));
+            var hosts = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
+            var mover = AccountMover;
+            AccountMoveResult result;
+            try
+            {
+                result = await Task.Run(async () =>
+                {
+                    var move = mover();
+                    var now = DateTime.UtcNow;
+                    var live = move.Live(hosts, now);
+                    var cli = live.FirstOrDefault(c => c.SessionId == sessionId) ?? (cliPid is { } pid ? live.FirstOrDefault(c => c.Pid == pid) : null);
+                    return cli is null
+                        ? new AccountMoveResult(false, $"The CLI in {repo} isn't running any more, so it wasn't moved.")
+                        : await move.MoveAsync(cli, target.Email, now, holding, repo);
+                });
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                result = new AccountMoveResult(false, $"Couldn't move the CLI in {repo}: {ex.Message}");
+                OrchestratorLog.For("Dashboard").Error(ex, "move to account failed");
+            }
+            StatusMessage = result.Message;
+            AccountsMessage = result.Message;
+            if (!result.Ok)
+            {
+                PendingMoves.End(sessionId);
+                // Didn't land: the placeholder goes back to a real row under its old login (M.ORCH-T1883), not left stranded
+                // under the target's; a no-op when there was no pane to move in the first place, or it already moved on its own.
+                if (pane is not null && string.Equals(pane.Login, target.Email, StringComparison.OrdinalIgnoreCase))
+                {
+                    pane.Login = fromLogin;
+                    SyncTerminals();
+                }
+                Toasts.Insert(0, new ToastViewModel($"{repo} not moved to {target.Label}", result.Message, Palette.Over, null));
+            }
         }
+        finally { movingSessions.Remove(sessionId); }
     }
 
     /// <summary>Says why a dragged CLI wasn't moved here (M.ORCH-T1849), in the status bar and the Accounts view.</summary>

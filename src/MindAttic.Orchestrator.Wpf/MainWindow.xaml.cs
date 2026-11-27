@@ -1884,7 +1884,7 @@ public partial class MainWindow : Window
                 Verb = "runas",
                 UseShellExecute = true,
                 WorkingDirectory = root,
-            });
+            })?.Dispose();
         }
         catch (System.ComponentModel.Win32Exception) { /* the UAC prompt was declined */ }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Opening an admin shell from the toolbar failed; contained"); }

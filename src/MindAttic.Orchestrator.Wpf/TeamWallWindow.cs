@@ -468,6 +468,7 @@ internal sealed class TeamWallWindow : Window
         closed = true;
         timer.Stop();
         try { lifetime.Cancel(); } catch (Exception) { }
+        lifetime.Dispose();
         foreach (var tile in tiles.Values)
             try { tile.Dispose(); } catch (Exception ex) { log.Error(ex, "Closing a tile failed; contained"); }
         tiles.Clear();

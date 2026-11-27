@@ -130,6 +130,7 @@ public sealed class Tray : IDisposable
     {
         timer.Stop();
         icon.Visible = false;
+        icon.ContextMenuStrip?.Dispose();
         icon.Dispose();
     }
 }
