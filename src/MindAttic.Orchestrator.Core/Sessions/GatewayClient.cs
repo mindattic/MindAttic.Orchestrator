@@ -333,7 +333,7 @@ public sealed class GatewayClient : IDisposable
         {
             using var doc = JsonDocument.Parse(text);
             var root = doc.RootElement;
-            var output = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("output", out var o) ? o.GetString() ?? "" : "";
+            var output = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("output", out var o) && o.ValueKind == JsonValueKind.String ? o.GetString() ?? "" : "";
             return (code == 200 ? 0 : 1, output.Length > 0 ? output : $"The host answered {code} to the {what}.");
         }
         catch (JsonException) { return (code == 200 ? 0 : 1, code == 200 ? "" : $"The host answered {code} to the {what}."); }

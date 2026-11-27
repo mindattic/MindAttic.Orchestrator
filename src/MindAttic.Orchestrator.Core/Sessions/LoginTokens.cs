@@ -314,9 +314,10 @@ public sealed partial class LoginTokens(TokenStore? store = null)
             try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
             throw new TimeoutException($"claude setup-token didn't finish within {MintTimeout.TotalMinutes:0} minutes.");
         }
-        var output = outTask.GetAwaiter().GetResult();
-        // Whatever it said, masked, so the person sees how it went without the token ever reaching the screen or a log.
-        foreach (var line in output.Split('\n').Select(l => Mask(l.TrimEnd('\r'))).Where(l => l.Trim().Length > 0))
+        // It exited, but the BROWSER opener's browser can inherit the pipe and hold it open: the output is waited for briefly, never without a limit.
+        var output = outTask.Wait(TimeSpan.FromSeconds(10)) ? outTask.Result : "";
+        // Whatever it said, masked as a whole before it's split, so a hard-wrapped token's continuation lines can't print unmasked.
+        foreach (var line in Mask(output).Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.Trim().Length > 0))
             Console.Out.WriteLine(line);
         return output;
     };

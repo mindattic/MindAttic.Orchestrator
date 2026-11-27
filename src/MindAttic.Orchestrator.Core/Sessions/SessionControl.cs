@@ -451,7 +451,12 @@ public sealed class SessionControl(OrchestratorOptions options)
             process.Start();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
-            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            try { await process.WaitForExitAsync(ct).ConfigureAwait(false); }
+            catch (OperationCanceledException)
+            {
+                try { process.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or AggregateException or System.ComponentModel.Win32Exception) { }
+                throw;
+            }
             return process.ExitCode;
         }
         catch (System.ComponentModel.Win32Exception ex)
