@@ -4,9 +4,8 @@ namespace MindAttic.Orchestrator.Sessions;
 
 /// <summary>
 /// Whether a CLI the dispatcher opened under TermHost (M.ORCH-T2406, M.ORCH-T2411) actually came up, and submitting its
-/// pre-filled prompt once it has (M.ORCH-T2409): the TermHost-hosted counterpart of <see cref="SessionControl.WaitForHostAsync"/>
-/// and <see cref="SessionControl.SubmitWhenReadyAsync"/>, which wait out a Windows Terminal tab's agent failing to start before
-/// pressing its own Enter -- here the tell is the session's registry record (<see cref="TermSessions.Get(string, string?)"/>)
+/// pre-filled prompt once it has (M.ORCH-T2409): the TermHost-hosted counterpart of the wt.exe tab's own wait-and-press-Enter
+/// (retired, M.ORCH-T2414) -- here the tell is the session's registry record (<see cref="TermSessions.Get(string, string?)"/>)
 /// reading <see cref="TermSessionStates.Running"/>, confirmed <see cref="StillUpAfter"/> later, and the Enter goes through the
 /// TermHost pipe (<see cref="TermSendKeys.SendEnterAsync"/>) rather than a Launcher control pipe.
 /// <para>The registry lookup, the clock and the send are seams (the internal overloads), so tests drive this with a fake

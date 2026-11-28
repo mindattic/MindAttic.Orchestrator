@@ -4,19 +4,6 @@ using System.Text;
 
 namespace MindAttic.Orchestrator.Sessions;
 
-/// <summary>What <see cref="SessionControl.Start"/> did (M.ORCH-T1743): the agent id the new tab's CLI runs as, or why it
-/// didn't start.</summary>
-/// <param name="AgentId">The new agent's stable id (<see cref="Term.AgentIds"/>); null when it didn't start.</param>
-/// <param name="Error">Why it didn't start; null when it did.</param>
-public sealed record SessionStart(string? AgentId, string? Error)
-{
-    /// <summary>Whether it started: no <see cref="Error"/>.</summary>
-    public bool Started => Error is null;
-
-    /// <summary>A start that failed for <paramref name="error"/>.</summary>
-    public static SessionStart Failed(string error) => new(null, error);
-}
-
 /// <summary>
 /// Starts and talks to agent sessions through the Launcher, the same way its own menus do: a new
 /// Windows Terminal tab running <c>MindAttic.Launcher.exe host --path …</c>, and text written to a
@@ -31,47 +18,6 @@ public sealed class SessionControl(OrchestratorOptions options)
 
     /// <summary>The agent providers a new tab can run.</summary>
     public static readonly IReadOnlyList<string> Providers = ["Claude", "Codex", "Gemini", "Kimi"];
-
-    /// <summary>Opens a new tab for <paramref name="directory"/>; returns the agent id its CLI runs as (M.ORCH-T1743), or the
-    /// error it didn't start for.</summary>
-    /// <param name="configDir">A Claude login of its own (M.ORCH-T559, <see cref="AccountDir.Directory"/>) the tab's CLI runs
-    /// under; null runs it on the global login, as every tab did before.</param>
-    /// <param name="resumeSession">Undock's own reopen (M.ORCH-Tnnn): <c>claude --resume &lt;session&gt;</c> instead of a fresh
-    /// start, so the relocated CLI's conversation carries over. Claude only (as <see cref="Start"/>'s own provider check
-    /// already implies for <paramref name="configDir"/>); ignored alongside <paramref name="prompt"/>, which a relocation
-    /// never sets anyway.</param>
-    /// <param name="agentId">The agent id to start it as (a caller that records it before the tab opens, as the dispatcher's
-    /// claim does); null makes a new one. A Claude tab on a login of its own carries it as <see cref="Term.AgentIds.EnvVar"/>,
-    /// set by the PowerShell that already sets its <c>CLAUDE_CONFIG_DIR</c>; a tab on the global login starts the Launcher
-    /// directly, from Windows Terminal's environment, so its CLI doesn't (the id is still returned and recorded).</param>
-    public SessionStart Start(string title, string directory, string provider, string? prompt = null, string? configDir = null, string? resumeSession = null,
-        string? agentId = null)
-    {
-        if (configDir is not null && provider != "Claude")
-            return SessionStart.Failed($"--account is a Claude login: {provider} has none.");
-        var launcher = LauncherPath();
-        if (!File.Exists(launcher))
-            return SessionStart.Failed($"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1 -Redeploy).");
-        if (!Directory.Exists(directory))
-            return SessionStart.Failed($"Folder not found: {directory}");
-        var agent = Term.AgentIds.Normalize(agentId) ?? Term.AgentIds.New();
-
-        // Kimi's Vault key into its config.toml before it starts (M.ORCH-T2042). A Windows Terminal tab takes its environment
-        // from Windows Terminal, not this process, so Codex's and Gemini's keys are left to the Launcher's host here.
-        PrepareProvider(provider);
-        var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
-        foreach (var a in StartArguments(title, directory, provider, prompt, configDir, resumeSession, agent, launcher)) psi.ArgumentList.Add(a);
-        try
-        {
-            // Outside the caller's job (M.ORCH-T1691): a terminal opened by a command run in a hosted CLI outlives that CLI.
-            Term.Breakaway.Start(psi);
-            return new SessionStart(agent, null);
-        }
-        catch (System.ComponentModel.Win32Exception ex)
-        {
-            return SessionStart.Failed($"Couldn't start Windows Terminal: {ex.Message}");
-        }
-    }
 
     /// <summary>
     /// Opens the Launcher's menu as one person (M.ORCH-T615): <c>MindAttic.Launcher --account &lt;email&gt;</c> (M.LNCH-T54), so
@@ -164,19 +110,17 @@ public sealed class SessionControl(OrchestratorOptions options)
     }
 
     /// <summary>A repo (or the workspace root, for "General Prompt") CLI as a <see cref="PaneRequest"/> (M.ORCH-T1730), to open
-    /// embedded as a Terminals panel tab for <paramref name="email"/>'s login instead of its own Windows Terminal window: the
-    /// same <c>MindAttic.Launcher.exe host …</c> command <see cref="StartArguments"/>'s Windows Terminal tab runs, with
+    /// embedded as a Terminals panel tab for <paramref name="email"/>'s login: a <c>MindAttic.Launcher.exe host …</c> command, with
     /// <paramref name="configDir"/> passed as <c>--config-dir</c> (MindAttic.Launcher's <c>host --config-dir</c>, its own
     /// escape hatch for a tab whose process doesn't inherit a Windows Terminal tab's environment setup) rather than set as an
     /// environment variable.
-    /// Every CLI the login-tab's right-click menu opens (Open Project, General Prompt) and the tile grid's Start use this, so
-    /// none of them opens outside the dashboard the way <see cref="Start"/>'s Windows Terminal tab (still scanned for and
-    /// tracked, never embedded) used to.</summary>
+    /// Every CLI the login-tab's right-click menu opens (Open Project, General Prompt), the tile grid's Start and a dispatched
+    /// ticket's claim (<see cref="TicketLaunch"/>) use this, so every one of them docks under its login in the dashboard
+    /// (M.ORCH-T2410/M.ORCH-T2414) rather than opening outside it the way a wt.exe tab once did.</summary>
     /// <param name="agentId">The agent id (M.ORCH-T1743) to carry on the pane, when the caller already named one (a dispatched
     /// ticket's claim, <see cref="TicketLaunch"/>); null mints a new one, as every caller before had it.</param>
     /// <param name="resumeSession">orchestrator start's own <c>--resume</c> (M.ORCH-T2413): <c>host --resume &lt;session&gt;</c>
-    /// instead of a fresh start, so a Claude conversation carries over the same way <see cref="Start"/>'s own
-    /// <paramref name="resumeSession"/> (via <see cref="StartArguments"/>) does today; ignored alongside <paramref name="prompt"/>,
+    /// instead of a fresh start, so a Claude conversation carries over; ignored alongside <paramref name="prompt"/>,
     /// which a resume never sets anyway.</param>
     public PaneRequest RepoPaneRequest(string title, string directory, string provider, string? prompt, string? configDir, string? email, string? agentId = null,
         string? resumeSession = null)
@@ -290,7 +234,7 @@ public sealed class SessionControl(OrchestratorOptions options)
 
     /// <summary>Same as <see cref="ShortName(string)"/>, but checked against <paramref name="knownRepos"/> (not read until a
     /// dot-prefix is actually found, so a title with none never pays for it) instead of the process-wide
-    /// <see cref="KnownRepoNames"/> — what a caller with its own live workspace (<see cref="StartArguments"/>) uses.</summary>
+    /// <see cref="KnownRepoNames"/> — what a caller with its own live workspace (<see cref="RepoPaneRequest"/>) uses.</summary>
     internal static string ShortName(string repo, Func<IReadOnlyCollection<string>> knownRepos)
     {
         var dot = repo.IndexOf('.');
@@ -313,47 +257,6 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// read the real workspace.</summary>
     internal Func<IReadOnlyCollection<string>> RepoNames { get; init; } =
         () => [.. new MindAttic.Tickets.Workspace(options.WorkspaceRoot).Repos().Select(r => r.Name)];
-
-    internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt, string? configDir = null, string? resumeSession = null,
-        string? agentId = null, string? launcher = null)
-    {
-        launcher ??= LauncherPath();
-        // A Claude tab gathers in its login's own window, badged and colored as that login; other providers have no login.
-        var look = provider == "Claude" ? Look(configDir) : null;
-        var tabTitle = TabTitle(title, provider, look, RepoNames);
-        string[] tab = look is null
-            ? ["-w", "0", "new-tab", "--title", tabTitle]
-            : ["-w", look.Window, "new-tab", "--title", tabTitle, "--tabColor", look.TabColor];
-        // A relocation never sets a prompt (there's nothing to pre-fill into a resumed conversation), but if both were ever
-        // given, resuming wins: HostAgentCommand's own --resume handling ignores --prompt the same way.
-        var resumeArg = resumeSession is { Length: > 0 } s ? $" --resume {AccountDirs.Ps(s)}" : "";
-        if (configDir is not null)
-        {
-            // Windows Terminal starts the tab itself, from its own environment, not this process's: the Launcher (and the
-            // CLI it hosts) is started by a PowerShell that sets CLAUDE_CONFIG_DIR first. Encoded, so no quote, space or ';' in
-            // the folder, title or prompt reaches wt's parse.
-            // Its long-lived token (M.ORCH-T696), when the login has one, goes in beside the folder.
-            // Its agent id (M.ORCH-T1743) beside them, which the Launcher's CLI inherits through /clear and its restarts.
-            var agentEnv = Term.AgentIds.Normalize(agentId) is { } agent ? $"$env:{Term.AgentIds.EnvVar} = {AccountDirs.Ps(agent)}; " : "";
-            var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}{agentEnv}& {AccountDirs.Ps(launcher)} host --path {AccountDirs.Ps(directory)} " +
-                $"--title {AccountDirs.Ps(tabTitle)} --provider {AccountDirs.Ps(provider)}" + resumeArg +
-                (resumeArg.Length > 0 || string.IsNullOrWhiteSpace(prompt) ? "" : $" --prompt {AccountDirs.Ps(SafePrompt(prompt))}") + "; exit $LASTEXITCODE";
-            string[] wrapped = [.. tab, "-d", directory, "--",
-                "powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Convert.ToBase64String(Encoding.Unicode.GetBytes(script))];
-            return wrapped.Select(a => a.Replace(";", @"\;"));
-        }
-        string[] head =
-        [
-            .. tab, "-d", directory, "--",
-            launcher, "host", "--path", directory, "--title", tabTitle, "--provider", provider,
-        ];
-        if (resumeSession is { Length: > 0 }) head = [.. head, "--resume", resumeSession];
-        // A double quote (or a line break) in the prompt survives .NET's quoting but not wt's own re-parse,
-        // which splits the prompt into stray arguments the Launcher rejects ("Unknown command"), so the tab dies.
-        string[] all = resumeArg.Length > 0 || string.IsNullOrWhiteSpace(prompt) ? head : [.. head, "--prompt", SafePrompt(prompt)];
-        // wt splits its whole command line into subcommands on ';' unless it's escaped.
-        return all.Select(a => a.Replace(";", @"\;"));
-    }
 
     internal static string SafePrompt(string prompt) =>
         string.Join(' ', prompt.Replace('"', '\'').Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()));
@@ -397,46 +300,6 @@ public sealed class SessionControl(OrchestratorOptions options)
         if (!await SendAsync(pipeName, text.TrimEnd('\r', '\n'), submit: false, ct).ConfigureAwait(false)) return false;
         await Task.Delay(EnterAfter, ct).ConfigureAwait(false);
         return await SendAsync(pipeName, "", submit: true, ct).ConfigureAwait(false);
-    }
-
-    /// <summary>The Launcher host processes running now, so a tab opened next can be told apart from them.</summary>
-    public IReadOnlySet<int> HostIds() => new HostSessionScanner(options).Scan().Select(h => h.ProcessId).ToHashSet();
-
-    /// <summary>
-    /// Presses Enter in the tab just opened at <paramref name="directory"/> (the first host there that
-    /// isn't in <paramref name="before"/>), once it has been up for <paramref name="settle"/> so the agent
-    /// has loaded its pre-filled prompt. False if no such tab appears within <paramref name="timeout"/>.
-    /// </summary>
-    public async Task<bool> SubmitWhenReadyAsync(string directory, IReadOnlySet<int> before, TimeSpan settle, TimeSpan timeout, CancellationToken ct = default)
-    {
-        if (await WaitForHostAsync(directory, before, timeout, ct).ConfigureAwait(false) is not { } host) return false;
-        await Task.Delay(settle, ct).ConfigureAwait(false);
-        return await SendAsync(host.PipeName, "", submit: true, ct).ConfigureAwait(false);
-    }
-
-    /// <summary>The tab just opened at <paramref name="directory"/>, once it has stayed up for a few seconds
-    /// (a tab whose agent fails to start exits at once); null if none appears and stays within <paramref name="timeout"/>.</summary>
-    public async Task<HostSession?> WaitForHostAsync(string directory, IReadOnlySet<int> before, TimeSpan timeout, CancellationToken ct = default)
-    {
-        var scanner = new HostSessionScanner(options);
-        var deadline = DateTime.UtcNow + timeout;
-        while (DateTime.UtcNow < deadline)
-        {
-            if (NewHostAt(scanner.Scan(), directory, before) is { } host)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
-                if (scanner.Scan().Any(h => h.ProcessId == host.ProcessId)) return host;
-            }
-            await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
-        }
-        return null;
-    }
-
-    internal static HostSession? NewHostAt(IEnumerable<HostSession> hosts, string directory, IReadOnlySet<int> before)
-    {
-        var target = Path.GetFullPath(directory).TrimEnd('\\', '/');
-        return hosts.FirstOrDefault(h => !before.Contains(h.ProcessId) && h.WorkingDirectory is { } d &&
-            string.Equals(Path.GetFullPath(d).TrimEnd('\\', '/'), target, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary><c>MindAttic.Launcher.exe commit</c>'s arguments: every project on its roster, under <paramref name="message"/>

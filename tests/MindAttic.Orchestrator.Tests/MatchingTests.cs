@@ -79,15 +79,4 @@ public sealed class MatchingTests
         Assert.That(agg.Classify(now.AddHours(-5), 0, now), Is.EqualTo(RepoState.Dormant));
         Assert.That(agg.Classify(null, 0, now), Is.EqualTo(RepoState.Dormant));
     }
-
-    [Test]
-    public void Start_arguments_escape_semicolons_for_windows_terminal()
-    {
-        var control = new SessionControl(new OrchestratorOptions { LauncherExe = @"C:\L.exe" });
-        var args = control.StartArguments("Repo", @"D:\Repo", "Claude", "fix a; then b").ToList();
-
-        Assert.That(args, Does.Contain(@"fix a\; then b"));
-        Assert.That(args, Does.Contain("--path"));
-        Assert.That(args[args.IndexOf("--") + 1], Is.EqualTo(@"C:\L.exe"));
-    }
 }

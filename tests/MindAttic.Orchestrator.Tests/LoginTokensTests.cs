@@ -144,19 +144,21 @@ public sealed class LoginTokensTests
         Assert.That(tokens.TabEnv(null, Now), Is.EqualTo("Remove-Item Env:CLAUDE_CODE_OAUTH_TOKEN -ErrorAction SilentlyContinue; "), "the global login: never a stray token");
         Assert.That(tokens.TabEnv(dirs.For("c@example.com").Directory, Now), Does.StartWith("Remove-Item Env:CLAUDE_CODE_OAUTH_TOKEN"));
 
-        // Run the tab's own command as Windows Terminal would: the Launcher (a stub) sees the folder and the unsealed token.
+        // The login's own Launcher tab (M.ORCH-T699, in Windows Terminal since M.ORCH-T751) sets them the same way, so every
+        // CLI started from its menu inherits them: run it as Windows Terminal would, the Launcher (a stub) sees the folder
+        // and the unsealed token, with the API key and gateway token that would outrank it gone.
         var stub = Path.Combine(temps.New(), "launcher stub.cmd");
         File.WriteAllText(stub, "@echo %CLAUDE_CONFIG_DIR%^|%CLAUDE_CODE_OAUTH_TOKEN%^|%ANTHROPIC_API_KEY%^|%ANTHROPIC_AUTH_TOKEN%>\"%~dp0out.txt\"\r\n");
-        var control = new SessionControl(new OrchestratorOptions { LauncherExe = stub })
+        var launcherArgs = new SessionControl(new OrchestratorOptions { LauncherExe = stub })
         {
-            Look = d => LoginLook.For(d ?? @"C:\nowhere\global", d is null ? "jordan@example.com" : "b@example.com"),
+            Dirs = dirs,
+            Look = d => LoginLook.For(d ?? @"C:\nowhere\global", "b@example.com"),
             TokenEnv = d => tokens.TabEnv(d, Now),
-        };
-        var args = control.StartArguments("Repo", b.Directory, "Claude", null, b.Directory).ToList();
-        var encoded = args[args.IndexOf("-EncodedCommand") + 1];
-        var script = Encoding.Unicode.GetString(Convert.FromBase64String(encoded));
-        Assert.That(script, Does.StartWith($"$env:CLAUDE_CONFIG_DIR = '{b.Directory}'; Remove-Item Env:ANTHROPIC_API_KEY"));
-        Assert.That(script, Does.Not.Contain(Token));
+        }.LauncherArguments(b.Email).ToList();
+        var encoded = launcherArgs[launcherArgs.IndexOf("-EncodedCommand") + 1];
+        var launcherScript = Encoding.Unicode.GetString(Convert.FromBase64String(encoded));
+        Assert.That(launcherScript, Does.StartWith($"$env:CLAUDE_CONFIG_DIR = '{b.Directory}'; Remove-Item Env:ANTHROPIC_API_KEY"));
+        Assert.That(launcherScript, Does.EndWith($"'--account' '{b.Email}'; exit $LASTEXITCODE").And.Not.Contain(Token));
 
         var psi = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true };
         foreach (var a in new[] { "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded }) psi.ArgumentList.Add(a);
@@ -167,18 +169,6 @@ public sealed class LoginTokensTests
         var seen = File.ReadAllText(Path.Combine(Path.GetDirectoryName(stub)!, "out.txt")).Trim();
         Assert.That(seen, Is.EqualTo($"{b.Directory}|{Token}||"),
             "the folder and its own token; the API key and gateway token that would outrank it are gone");
-
-        // The login's own Launcher tab (M.ORCH-T699, in Windows Terminal since M.ORCH-T751) sets them the same way, so every
-        // CLI started from its menu inherits them.
-        var launcherArgs = new SessionControl(new OrchestratorOptions { LauncherExe = stub })
-        {
-            Dirs = dirs,
-            Look = d => LoginLook.For(d ?? @"C:\nowhere\global", "b@example.com"),
-            TokenEnv = d => tokens.TabEnv(d, Now),
-        }.LauncherArguments(b.Email).ToList();
-        var launcherScript = Encoding.Unicode.GetString(Convert.FromBase64String(launcherArgs[launcherArgs.IndexOf("-EncodedCommand") + 1]));
-        Assert.That(launcherScript, Does.StartWith($"$env:CLAUDE_CONFIG_DIR = '{b.Directory}'; Remove-Item Env:ANTHROPIC_API_KEY"));
-        Assert.That(launcherScript, Does.EndWith($"'--account' '{b.Email}'; exit $LASTEXITCODE").And.Not.Contain(Token));
     }
 
     [Test]

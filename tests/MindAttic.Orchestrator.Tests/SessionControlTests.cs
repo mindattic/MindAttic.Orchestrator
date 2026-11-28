@@ -20,16 +20,6 @@ public sealed class SessionControlTests
         finally { SessionControl.KnownRepoNames = saved; }
     }
 
-    [Test]
-    public void Start_says_what_is_missing_and_launches_nothing()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "orch-sc-" + Guid.NewGuid().ToString("N"));
-        Assert.That(new SessionControl(new OrchestratorOptions { LauncherExe = @"Z:\nope\MindAttic.Launcher.exe" }).Start("A", Path.GetTempPath(), "Claude").Error,
-            Does.StartWith("Launcher not found at"));
-        var launcher = typeof(SessionControlTests).Assembly.Location; // any file that exists stands in for the Launcher
-        Assert.That(new SessionControl(new OrchestratorOptions { LauncherExe = launcher }).Start("A", dir, "Claude").Error, Is.EqualTo($"Folder not found: {dir}"));
-    }
-
     [TestCase(true, "hello\n")]
     [TestCase(false, "hello")]
     public async Task SendAsync_delivers_the_text_with_one_newline_only_when_submitting(bool submit, string expected)
@@ -52,16 +42,6 @@ public sealed class SessionControlTests
     {
         Assert.That(await SessionControl.SendAsync("orch-nobody-" + Guid.NewGuid().ToString("N"), "x", submit: true), Is.False);
         Assert.That(await SessionControl.SubmitAsync("orch-nobody-" + Guid.NewGuid().ToString("N"), "x"), Is.False);
-    }
-
-    [Test]
-    public async Task Waiting_for_a_tab_that_never_opens_gives_up_after_the_timeout()
-    {
-        var control = new SessionControl(new OrchestratorOptions());
-        var dir = Path.Combine(Path.GetTempPath(), "orch-sc-never-" + Guid.NewGuid().ToString("N"));
-        var started = DateTime.UtcNow;
-        Assert.That(await control.SubmitWhenReadyAsync(dir, new HashSet<int>(), TimeSpan.Zero, TimeSpan.FromSeconds(2)), Is.False);
-        Assert.That(DateTime.UtcNow - started, Is.LessThan(TimeSpan.FromSeconds(15)));
     }
 
     private static SessionControl Control() => new(new OrchestratorOptions { LauncherExe = @"C:\L\MindAttic.Launcher.exe" })
@@ -99,6 +79,17 @@ public sealed class SessionControlTests
         var request = Control().RepoPaneRequest("Repo T1", @"D:\Repo", "Claude", "do the thing", null, "who@example.com");
         Assert.That(request.Command, Does.Contain("--prompt"));
         Assert.That(request.Command, Does.Not.Contain("--resume"));
+    }
+
+    [Test]
+    public void RepoPaneRequest_titles_the_pane_with_the_logins_initials_and_makes_the_prompt_safe()
+    {
+        var request = Control().RepoPaneRequest("Repo T1", @"D:\Repo", "Claude", "it's \"quoted\"; with a semicolon", null, "who@example.com");
+        Assert.That(request.Title, Is.EqualTo("RD: Repo T1"), "the login's own window, badged");
+        Assert.That(request.Command, Does.Contain("it's 'quoted'; with a semicolon"), "a double quote never reaches the CLI as one");
+
+        var codex = Control().RepoPaneRequest("Repo T1", @"D:\Repo", "Codex", null, null, "who@example.com");
+        Assert.That(codex.Title, Is.EqualTo("Repo T1 [Codex]"), "no login of its own: no initials, just the provider tag");
     }
 
     [Test]

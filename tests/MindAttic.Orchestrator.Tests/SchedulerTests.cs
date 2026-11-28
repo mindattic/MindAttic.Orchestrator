@@ -256,19 +256,6 @@ public sealed class SchedulerTests
     }
 
     [Test]
-    public void Auto_submit_presses_enter_only_in_the_tab_it_just_opened()
-    {
-        HostSession H(int pid, string? dir) => new("Claude", pid, "mindattic-host-claude-" + pid, dir);
-        var hosts = new[] { H(1, @"D:\W\A"), H(2, @"D:\W\A\sub"), H(3, null), H(4, @"d:\w\a\"), H(5, @"D:\W\A") };
-        var before = new HashSet<int> { 1 };
-
-        Assert.That(MindAttic.Orchestrator.Sessions.SessionControl.NewHostAt(hosts, @"D:\W\A", before)?.ProcessId, Is.EqualTo(4),
-            "skips the tab already open there, other folders and unreadable command lines");
-        Assert.That(MindAttic.Orchestrator.Sessions.SessionControl.NewHostAt(hosts[..3], @"D:\W\A", before), Is.Null,
-            "no new tab there yet: nothing to submit");
-    }
-
-    [Test]
     public void A_tab_opened_minutes_ago_holds_its_slot_before_it_shows_as_working()
     {
         var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1")), Repo("B", RepoState.Dormant, T("B-T1")));
@@ -278,12 +265,11 @@ public sealed class SchedulerTests
     }
 
     [Test]
-    public void A_quote_or_line_break_in_a_prompt_never_reaches_windows_terminal()
+    public void A_quote_or_line_break_in_a_prompt_is_made_safe()
     {
-        var control = new MindAttic.Orchestrator.Sessions.SessionControl(new OrchestratorOptions());
-        var args = control.StartArguments("A", @"D:\W\A", "Claude", "close it with --ref \"<the test>\"\nnext line").ToList();
-        Assert.That(args[^1], Is.EqualTo("close it with --ref '<the test>' next line"));
-        Assert.That(args.Any(a => a.Contains('"')), Is.False);
+        var safe = MindAttic.Orchestrator.Sessions.SessionControl.SafePrompt("close it with --ref \"<the test>\"\nnext line");
+        Assert.That(safe, Is.EqualTo("close it with --ref '<the test>' next line"));
+        Assert.That(safe.Contains('"'), Is.False);
     }
 
     private const string Worktree = @"D:\Projects\MindAttic.worktrees\A\A-T1";

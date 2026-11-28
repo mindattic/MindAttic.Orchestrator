@@ -278,33 +278,6 @@ public sealed class LoginScopeTests
     }
 
     [Test]
-    public void Undock_s_reopen_resumes_the_session_instead_of_a_fresh_start()
-    {
-        // M.ORCH-Tnnn: resumeSession adds --resume to the tab's command, mutually exclusive with a prompt (a relocation
-        // never sets one, but a hand-off from HostAgentCommand's own --resume handling treats them the same way).
-        var dirs = new AccountDirs(@"C:\accounts", @"C:\claude", @"C:\claude.json");
-        var control = new SessionControl(new OrchestratorOptions { LauncherExe = @"C:\L\MindAttic.Launcher.exe" })
-        {
-            Dirs = dirs,
-            Look = d => d is null ? new LoginLook("ryan", "RD", "#654321") : new LoginLook("Amy", "AR", "#123456"),
-            TokenEnv = d => d is null ? "CLEAR; " : "SET; ",
-        };
-        var amyDir = dirs.For("amy@example.com").Directory;
-
-        var resumed = control.StartArguments("Repo", @"D:\W\Repo", "Claude", prompt: null, amyDir, resumeSession: "sess-1").ToList();
-        var script = System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(resumed[^1]));
-        Assert.That(script, Does.Contain("--resume 'sess-1'"));
-        Assert.That(script, Does.Not.Contain("--prompt"));
-
-        var global = control.StartArguments("Repo", @"D:\W\Repo", "Claude", prompt: null, configDir: null, resumeSession: "sess-1").ToList();
-        Assert.That(global.SkipWhile(a => a != "--").Skip(1), Is.EqualTo(new[] { @"C:\L\MindAttic.Launcher.exe", "host", "--path", @"D:\W\Repo",
-            "--title", "RD: Repo", "--provider", "Claude", "--resume", "sess-1" }));
-
-        var ignored = control.StartArguments("Repo", @"D:\W\Repo", "Claude", prompt: "do it", configDir: null, resumeSession: "sess-1").ToList();
-        Assert.That(ignored.SkipWhile(a => a != "--").Skip(1), Does.Not.Contain("--prompt"), "resume wins over a prompt, as HostAgentCommand's own --resume already does");
-    }
-
-    [Test]
     public void A_login_whose_Launcher_menu_is_running_is_reused_not_opened_twice()
     {
         // M.ORCH-T699 / M.ORCH-T751: one Launcher tab per login, found by its running menu's --account.
