@@ -1871,7 +1871,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'SpaceGod.Unreal', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5134268);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 3449865);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-28', 'Gadfly', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2415918);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-28', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 18134763);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-28', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 18171725);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-28', 'SpaceGod.Unreal', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 5776498);
 
 -- ticket_costs
@@ -3623,7 +3623,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('56d0ce3c-12df-4298-81af-2ada578f54d7/agent-ae7953622fd6fabae', 'GG-T1622', 'fix', 'GridGame.Unity', 38927, '2026-11-27T21:20:59.109Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('56d0ce3c-12df-4298-81af-2ada578f54d7/agent-ae8ee2e0982a57325', 'GG-T1814', '', 'GridGame.Unity', 174422, '2026-11-28T04:31:59.724Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('56d0ce3c-12df-4298-81af-2ada578f54d7/agent-aea089a06eae940b8', 'GG-T1943', '', 'GridGame.Unity', 122627, '2026-11-28T11:38:31.982Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('56d0ce3c-12df-4298-81af-2ada578f54d7/agent-aebd0b20e18957d5c', 'GG-T1948', '', 'GridGame.Unity', 130571, '2026-11-28T13:12:09.921Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('56d0ce3c-12df-4298-81af-2ada578f54d7/agent-aebd0b20e18957d5c', 'GG-T1948', '', 'GridGame.Unity', 154450, '2026-11-28T13:15:54.843Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('56d0ce3c-12df-4298-81af-2ada578f54d7/agent-aebd8e7a784daab57', 'GG-T2138', '', 'GridGame.Unity', 126747, '2026-11-28T12:02:15.729Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('56d0ce3c-12df-4298-81af-2ada578f54d7/agent-aec96536d1ba0e63a', 'GG-T2043', '', 'GridGame.Unity', 104132, '2026-11-28T09:22:55.524Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('56d0ce3c-12df-4298-81af-2ada578f54d7/agent-aed95a72b11c6da02', 'GG-T1881', '', 'GridGame.Unity', 94751, '2026-11-28T05:51:38.374Z', 0, 'opus');
@@ -7459,7 +7459,6 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (52, 'GG-T2091', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-28T12:43:24.9822617Z', 1, NULL, NULL, NULL, 70628, '56d0ce3c-12df-4298-81af-2ada578f54d7', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (53, 'GG-T2090', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-28T12:44:30.9260365Z', 1, NULL, NULL, NULL, 70628, '56d0ce3c-12df-4298-81af-2ada578f54d7', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (54, 'GG-T2089', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-28T12:56:27.2234916Z', 1, NULL, NULL, NULL, 70628, '56d0ce3c-12df-4298-81af-2ada578f54d7', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account, agent, role) VALUES (55, 'GG-T1948', 'GridGame.Unity', 'D:\Projects\MindAttic\GridGame.Unity', 'Claude', '2026-11-28T13:05:43.1413403Z', 1, NULL, NULL, NULL, 70628, '56d0ce3c-12df-4298-81af-2ada578f54d7', 'opus', NULL, 'shampoo1232@mindattic.com', NULL, 'implementer');
 
 -- organizations
 
@@ -40817,7 +40816,11 @@ INSERT INTO state (name, value) VALUES ('owner-inbox-alerted', '{
     "stale|M.ORCH-T2335": "2026-11-28T08:41:02.0223266Z",
     "approval|GG-T2126": "2026-11-28T09:46:54.6492384Z",
     "orphaned|RB-T303": "2026-11-28T11:29:55.5913277Z",
-    "orphaned|M.ORCH-T2335": "2026-11-28T11:29:55.5913277Z"
+    "orphaned|M.ORCH-T2335": "2026-11-28T11:29:55.5913277Z",
+    "orphaned|M.TIX-T405": "2026-11-28T13:20:31.1244134Z",
+    "orphaned|M.TIX-T178": "2026-11-28T13:20:31.1244134Z",
+    "orphaned|M.TIX-T179": "2026-11-28T13:20:31.1244134Z",
+    "orphaned|M.TIX-T177": "2026-11-28T13:20:31.1244134Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
