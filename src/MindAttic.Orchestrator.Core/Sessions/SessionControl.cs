@@ -172,7 +172,9 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// Every CLI the login-tab's right-click menu opens (Open Project, General Prompt) and the tile grid's Start use this, so
     /// none of them opens outside the dashboard the way <see cref="Start"/>'s Windows Terminal tab (still scanned for and
     /// tracked, never embedded) used to.</summary>
-    public PaneRequest RepoPaneRequest(string title, string directory, string provider, string? prompt, string? configDir, string? email)
+    /// <param name="agentId">The agent id (M.ORCH-T1743) to carry on the pane, when the caller already named one (a dispatched
+    /// ticket's claim, <see cref="TicketLaunch"/>); null mints a new one, as every caller before had it.</param>
+    public PaneRequest RepoPaneRequest(string title, string directory, string provider, string? prompt, string? configDir, string? email, string? agentId = null)
     {
         // A non-Claude CLI starts authenticated (M.ORCH-T2042): Kimi's Vault key is synced into its config.toml now; Codex's and
         // Gemini's go on the hosted CLI's environment as it's launched (TermLaunchSpec.From, ProviderCredentials.EnvironmentFor).
@@ -181,7 +183,7 @@ public sealed class SessionControl(OrchestratorOptions options)
         var tabTitle = TabTitle(title, provider, look, RepoNames);
         List<string> command = [LauncherPath(), "host", "--path", directory, "--title", tabTitle, "--provider", provider];
         // Every repo CLI opened here is an agent with a stable id (M.ORCH-T1743), carried on the pane and its TermHost.
-        var agentId = Term.AgentIds.New();
+        var agent = Term.AgentIds.Normalize(agentId) ?? Term.AgentIds.New();
         if (configDir is not null) command.AddRange(["--config-dir", configDir]);
         if (!string.IsNullOrWhiteSpace(prompt)) command.AddRange(["--prompt", SafePrompt(prompt)]);
         return new PaneRequest(tabTitle, directory)
@@ -194,8 +196,29 @@ public sealed class SessionControl(OrchestratorOptions options)
             Initials = look?.Initials,
             Alias = look?.Alias,
             TabColor = look?.TabColor,
-            AgentId = agentId,
+            AgentId = agent,
         };
+    }
+
+    /// <summary>
+    /// A dispatched ticket's CLI (M.ORCH-T2410), built the way <see cref="RepoPaneRequest"/> builds a login tab's: a pure
+    /// builder (no process starts, no registry touched) that turns a ticket's dispatch parameters into the session id a
+    /// TermHost will register under, its <see cref="PaneRequest"/>, and the <see cref="TermLaunchSpec"/> to start it with
+    /// (<see cref="TermLaunchSpec.From(PaneRequest, string?)"/>, with <see cref="TermLaunchSpec.Id"/> set to that id up front
+    /// so a caller can write the <c>.pane</c> sidecar before the launch, as <c>TerminalsViewModel.StartHostedAsync</c> does).
+    /// <see cref="TermLaunchSpec.Login"/> comes from <see cref="PaneRequest.Login"/>: <paramref name="configDir"/>'s own login
+    /// when it names one, else <paramref name="email"/> (the assignee's), so the dispatched CLI registers under them and docks
+    /// in the dashboard the same way a manually-opened Terminals tab already does.
+    /// </summary>
+    /// <param name="title">The tab's title, "{Repo} {Id}" (<see cref="Scheduling.Dispatcher.Dispatch"/>'s own).</param>
+    /// <param name="agentId">The claim's own agent id (M.ORCH-T1743, <see cref="Settings.Assignment.AgentId"/>), carried
+    /// through rather than minted here, so the id a ticket's claim already recorded is the one its CLI runs as.</param>
+    public (string Id, PaneRequest Request, TermLaunchSpec Spec) TicketLaunch(string title, string directory, string provider, string? prompt, string? configDir, string? email, string? agentId)
+    {
+        var request = RepoPaneRequest(title, directory, provider, prompt, configDir, email, agentId);
+        var id = Term.TermProtocol.NewSessionId();
+        var spec = TermLaunchSpec.From(request) with { Id = id };
+        return (id, request, spec);
     }
 
     /// <summary>Readies a provider's credentials on disk before its CLI starts (M.ORCH-T2042, <see cref="ProviderCredentials.Prepare"/>);

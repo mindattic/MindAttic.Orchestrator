@@ -1,5 +1,6 @@
 using System.IO.Pipes;
 using MindAttic.Orchestrator.Sessions;
+using MindAttic.Orchestrator.Term;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -61,5 +62,53 @@ public sealed class SessionControlTests
         var started = DateTime.UtcNow;
         Assert.That(await control.SubmitWhenReadyAsync(dir, new HashSet<int>(), TimeSpan.Zero, TimeSpan.FromSeconds(2)), Is.False);
         Assert.That(DateTime.UtcNow - started, Is.LessThan(TimeSpan.FromSeconds(15)));
+    }
+
+    private static SessionControl Control() => new(new OrchestratorOptions { LauncherExe = @"C:\L\MindAttic.Launcher.exe" })
+    {
+        Look = _ => new LoginLook("w", "RD", "#112233"),
+        RepoNames = () => [],
+    };
+
+    [Test]
+    public void RepoPaneRequest_carries_the_callers_agent_id_instead_of_minting_one()
+    {
+        var request = Control().RepoPaneRequest("Repo T1", @"D:\Repo", "Claude", null, null, "who@example.com", "agt-given");
+        Assert.That(request.AgentId, Is.EqualTo("agt-given"));
+    }
+
+    [Test]
+    public void RepoPaneRequest_still_mints_a_new_agent_id_when_none_is_given()
+    {
+        var request = Control().RepoPaneRequest("Repo T1", @"D:\Repo", "Claude", null, null, "who@example.com");
+        Assert.That(request.AgentId, Is.Not.Null.And.Not.Empty);
+    }
+
+    [Test]
+    public void TicketLaunch_builds_a_spec_pinning_Login_Repo_Title_the_prompt_and_config_dir_args_and_the_agent_id()
+    {
+        var (id, request, spec) = Control().TicketLaunch("Repo M.ORCH-T2410", @"D:\Repo", "Claude", "do the thing", @"C:\logins\who@example.com",
+            "who@example.com", "agt-claim");
+
+        Assert.That(id, Is.Not.Null.And.Not.Empty);
+        Assert.That(request.AgentId, Is.EqualTo("agt-claim"));
+        Assert.That(request.Repo, Is.EqualTo("Repo M.ORCH-T2410"));
+        Assert.That(request.Command, Does.Contain("--prompt").And.Contain("--config-dir").And.Contain(@"C:\logins\who@example.com"));
+
+        Assert.That(spec.Id, Is.EqualTo(id));
+        Assert.That(spec.Login, Is.EqualTo("who@example.com"));
+        Assert.That(spec.Repo, Is.EqualTo("Repo M.ORCH-T2410"));
+        Assert.That(spec.Title, Is.EqualTo(request.Title));
+        Assert.That(spec.CommandLine, Is.EqualTo(request.ProcessCommandLine()));
+        Assert.That(spec.Environment[AgentIds.EnvVar], Is.EqualTo("agt-claim"));
+    }
+
+    [Test]
+    public void TicketLaunch_two_calls_for_the_same_ticket_mint_different_session_ids()
+    {
+        var control = Control();
+        var (first, _, _) = control.TicketLaunch("Repo T1", @"D:\Repo", "Claude", null, null, "who@example.com", "agt-claim");
+        var (second, _, _) = control.TicketLaunch("Repo T1", @"D:\Repo", "Claude", null, null, "who@example.com", "agt-claim");
+        Assert.That(second, Is.Not.EqualTo(first));
     }
 }
