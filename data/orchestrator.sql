@@ -33351,30 +33351,21 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 96.075,
+      "Degraded": 95.865,
       "Unhealthy": 97,
-      "Reason": "p90 of 140 readings is 91.5 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-28T02:09:26.2378355\u002B00:00",
-      "Basis": 140
+      "Reason": "p90 of 150 readings is 91.3 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-28T02:15:53.7894455\u002B00:00",
+      "Basis": 150
     },
     "RamFreeGb": {
-      "Degraded": 1.7575,
+      "Degraded": 1.767,
       "Unhealthy": 1,
-      "Reason": "p10 of 140 readings is 1.85 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-28T02:09:26.2378355\u002B00:00",
-      "Basis": 140
+      "Reason": "p10 of 150 readings is 1.86 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-28T02:15:53.7894455\u002B00:00",
+      "Basis": 150
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T17:28:51.1496666\u002B00:00",
-      "Check": "CommitPercent",
-      "FromDegraded": 96.60000000000001,
-      "FromUnhealthy": 97,
-      "ToDegraded": 96.495,
-      "ToUnhealthy": 97,
-      "Reason": "p90 of 150 readings is 91.9 %, past the configured degraded line 80 %; moved 5% past it"
-    },
     {
       "At": "2026-11-26T17:35:40.2439089\u002B00:00",
       "Check": "CommitPercent",
@@ -35165,6 +35156,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 96.075,
       "ToUnhealthy": 97,
       "Reason": "p90 of 140 readings is 91.5 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-28T02:15:53.7894455\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 96.075,
+      "FromUnhealthy": 97,
+      "ToDegraded": 95.865,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 150 readings is 91.3 %, past the configured degraded line 80 %; moved 5% past it"
     }
   ]
 }');
