@@ -33351,39 +33351,21 @@ INSERT INTO state (name, value) VALUES ('health-alerts', '{
 INSERT INTO state (name, value) VALUES ('health-lines', '{
   "Lines": {
     "CommitPercent": {
-      "Degraded": 96.705,
+      "Degraded": 96.60000000000001,
       "Unhealthy": 97,
-      "Reason": "p90 of 101 readings is 92.1 %, past the configured degraded line 80 %; moved 5% past it",
-      "At": "2026-11-28T01:39:15.6948235\u002B00:00",
-      "Basis": 101
+      "Reason": "p90 of 121 readings is 92 %, past the configured degraded line 80 %; moved 5% past it",
+      "At": "2026-11-28T01:58:15.8183516\u002B00:00",
+      "Basis": 121
     },
     "RamFreeGb": {
-      "Degraded": 1.577,
+      "Degraded": 1.6909999999999998,
       "Unhealthy": 1,
-      "Reason": "p10 of 101 readings is 1.66 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-28T01:39:15.6948235\u002B00:00",
-      "Basis": 101
+      "Reason": "p10 of 121 readings is 1.78 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-28T01:58:15.8183516\u002B00:00",
+      "Basis": 121
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T17:02:30.7577996\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.2895,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.5174999999999996,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 111 readings is 2.65 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
-    {
-      "At": "2026-11-26T17:09:38.1705496\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.5174999999999996,
-      "FromUnhealthy": 1,
-      "ToDegraded": 2.7169999999999996,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 121 readings is 2.86 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
     {
       "At": "2026-11-26T17:15:59.7152672\u002B00:00",
       "Check": "RamFreeGb",
@@ -35165,6 +35147,24 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 1.577,
       "ToUnhealthy": 1,
       "Reason": "p10 of 101 readings is 1.66 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-28T01:57:41.4527224\u002B00:00",
+      "Check": "CommitPercent",
+      "FromDegraded": 96.705,
+      "FromUnhealthy": 97,
+      "ToDegraded": 96.60000000000001,
+      "ToUnhealthy": 97,
+      "Reason": "p90 of 120 readings is 92 %, past the configured degraded line 80 %; moved 5% past it"
+    },
+    {
+      "At": "2026-11-28T01:58:15.8183516\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.5864999999999998,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.6909999999999998,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 121 readings is 1.78 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
