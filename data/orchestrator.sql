@@ -1857,10 +1857,10 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'Gadfly', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 856754);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'Gadfly', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 55606);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 104737);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4080075);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4084746);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'GridGame.Unity', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 25229208);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 27553);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 760817);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1145454);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Orchestrator', 'Claude', '5de330c0-8668-4720-a25f-58e233351711/98d7ae20-f0c3-4bf6-858c-26810cdb0325', NULL, 35322);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Tickets', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 936118);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-11-27', 'MindAttic.Tickets', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5988419);
@@ -5355,7 +5355,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('a65aead5-56bb-429b-898d-67cb68fa5b27/agent-af274d2704d8ef5f4', 'M.ORCH-T490', 'feature', 'MindAttic.Orchestrator', 581844, '2026-10-20T01:34:30.336Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('a65aead5-56bb-429b-898d-67cb68fa5b27/agent-afa4414d300ad131f', 'M.ORCH-T479', 'fix', 'MindAttic.Orchestrator', 315599, '2026-10-19T22:44:32.323Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('a6835340-05af-4aea-8054-86d732cb7769/agent-a5405228f12dcd323', 'M.ORCH-T2409', '', 'MindAttic.Orchestrator', 210118, '2026-11-28T01:08:12.714Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('a6835340-05af-4aea-8054-86d732cb7769/agent-a6e81d2d5f6e43f9d', 'M.ORCH-T2411', '', 'MindAttic.Orchestrator', 75823, '2026-11-28T01:10:03.96Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('a6835340-05af-4aea-8054-86d732cb7769/agent-a6e81d2d5f6e43f9d', 'M.ORCH-T2411', '', 'MindAttic.Orchestrator', 166267, '2026-11-28T01:16:03.124Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('a6835340-05af-4aea-8054-86d732cb7769/agent-a9c543a3eb532cbe0', 'M.ORCH-T2410', '', 'MindAttic.Orchestrator', 175173, '2026-11-28T01:09:04.368Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('a697ee44-c933-4ec2-97b6-ce3724647c0c', 'M.HELP-T7', 'docs', 'MindAttic.Helpers', 17551, '2026-10-21T18:10:28.109Z', 1, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('a6e2ca3a-7e78-4fc7-a9ce-b74ba69680c9', 'U.SPC-T538', 'fix', 'Unity.SpaceGod', 173319, '2026-10-25T03:38:43.219Z', 1, 'opus');
@@ -33353,28 +33353,19 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
     "CommitPercent": {
       "Degraded": 97,
       "Unhealthy": 97,
-      "Reason": "p90 of 61 readings is 94.2 %, past the configured degraded line 80 %; moved 5% past it, held at the bound 97 %",
-      "At": "2026-11-28T01:06:47.8200126\u002B00:00",
-      "Basis": 61
+      "Reason": "p90 of 71 readings is 93 %, past the configured degraded line 80 %; moved 5% past it, held at the bound 97 %",
+      "At": "2026-11-28T01:15:00.7746173\u002B00:00",
+      "Basis": 71
     },
     "RamFreeGb": {
-      "Degraded": 1.2635,
+      "Degraded": 1.406,
       "Unhealthy": 1,
-      "Reason": "p10 of 61 readings is 1.33 GB, past the configured degraded line 4 GB; moved 5% past it",
-      "At": "2026-11-28T01:06:47.8200126\u002B00:00",
-      "Basis": 61
+      "Reason": "p10 of 71 readings is 1.48 GB, past the configured degraded line 4 GB; moved 5% past it",
+      "At": "2026-11-28T01:15:00.7746173\u002B00:00",
+      "Basis": 71
     }
   },
   "Changes": [
-    {
-      "At": "2026-11-26T16:40:56.7066166\u002B00:00",
-      "Check": "RamFreeGb",
-      "FromDegraded": 2.0235,
-      "FromUnhealthy": 1,
-      "ToDegraded": 1.9284999999999997,
-      "ToUnhealthy": 1,
-      "Reason": "p10 of 80 readings is 2.03 GB, past the configured degraded line 4 GB; moved 5% past it"
-    },
     {
       "At": "2026-11-26T16:42:53.4424964\u002B00:00",
       "Check": "RamFreeGb",
@@ -35165,6 +35156,15 @@ INSERT INTO state (name, value) VALUES ('health-lines', '{
       "ToDegraded": 1.2635,
       "ToUnhealthy": 1,
       "Reason": "p10 of 61 readings is 1.33 GB, past the configured degraded line 4 GB; moved 5% past it"
+    },
+    {
+      "At": "2026-11-28T01:15:00.7746173\u002B00:00",
+      "Check": "RamFreeGb",
+      "FromDegraded": 1.2635,
+      "FromUnhealthy": 1,
+      "ToDegraded": 1.406,
+      "ToUnhealthy": 1,
+      "Reason": "p10 of 71 readings is 1.48 GB, past the configured degraded line 4 GB; moved 5% past it"
     }
   ]
 }');
@@ -35483,7 +35483,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "1f479046f240061b1c2529a690299609f3d681f8"
   },
   "MindAttic.Tickets": {
-    "Tested": "10bf9947eb26f481ef4ac9729f369fd281d74c7a",
+    "Tested": "c9ce8b727e037ae787262215bbace280f70502b8",
     "Green": "b1559a29c44056ee6351a126cd79358fa2d06e75"
   },
   "MindAttic.Vault": {
@@ -37464,6 +37464,62 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "DeadStartedUtc": "2026-11-27T08:37:30.6231451Z",
     "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
     "Cli": 73420,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "M.TIX-T405",
+    "Repo": "MindAttic.Tickets",
+    "Directory": "D:\\Projects\\MindAttic\\MindAttic.Tickets",
+    "FirstSeenUtc": "2026-11-28T01:19:39.1940693Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-27T21:37:53.5235701Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "M.TIX-T178",
+    "Repo": "MindAttic.Tickets",
+    "Directory": "D:\\Projects\\MindAttic\\MindAttic.Tickets",
+    "FirstSeenUtc": "2026-11-28T01:19:39.1940693Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-27T21:59:52.4331858Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "M.TIX-T179",
+    "Repo": "MindAttic.Tickets",
+    "Directory": "D:\\Projects\\MindAttic\\MindAttic.Tickets",
+    "FirstSeenUtc": "2026-11-28T01:19:39.1940693Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-27T21:59:56.9827942Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "M.TIX-T177",
+    "Repo": "MindAttic.Tickets",
+    "Directory": "D:\\Projects\\MindAttic\\MindAttic.Tickets",
+    "FirstSeenUtc": "2026-11-28T01:19:39.1940693Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-11-27T23:45:12.6747533Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
     "Ahead": 0,
     "Uncommitted": [],
     "Open": true
