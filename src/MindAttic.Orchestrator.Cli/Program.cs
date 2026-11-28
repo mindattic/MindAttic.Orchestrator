@@ -4,6 +4,7 @@ using MindAttic.Orchestrator;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
+using MindAttic.Orchestrator.Term;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -455,8 +456,12 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             AnsiConsole.MarkupLine($"[red]{Markup.Escape(full)}. Not started.[/]");
             return 1;
         }
-        var started = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Resume is null ? settings.Prompt : null, configDir, settings.Resume);
-        if (started.Error is { } error) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }
+        var request = new SessionControl(options).RepoPaneRequest(repo.Name, repo.Path, provider, settings.Resume is null ? settings.Prompt : null, configDir, email,
+            resumeSession: settings.Resume);
+        if (request.Problem() is { } problem) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(problem)}[/]"); return 1; }
+        TermSessionRecord started;
+        try { started = TermLauncher.Start(request); }
+        catch (InvalidOperationException ex) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]"); return 1; }
         AnsiConsole.MarkupLine($"{(settings.Resume is null ? "Started" : "Resumed")} [bold]{provider}[/] in {Markup.Escape(repo.Name)}" +
             (email is null ? "" : $" on {Markup.Escape(email)}'s own login") + $" as agent {Markup.Escape(started.AgentId ?? "?")}.");
         return 0;

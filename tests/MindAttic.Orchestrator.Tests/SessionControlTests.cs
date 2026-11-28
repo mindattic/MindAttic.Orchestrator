@@ -85,6 +85,23 @@ public sealed class SessionControlTests
     }
 
     [Test]
+    public void RepoPaneRequest_resume_session_adds_resume_and_drops_the_prompt()
+    {
+        var request = Control().RepoPaneRequest("Repo T1", @"D:\Repo", "Claude", "a prompt a resume never sends", null, "who@example.com",
+            resumeSession: "sess-123");
+        Assert.That(request.Command, Does.Contain("--resume").And.Contain("sess-123"));
+        Assert.That(request.Command, Does.Not.Contain("--prompt"));
+    }
+
+    [Test]
+    public void RepoPaneRequest_with_no_resume_session_keeps_the_prompt()
+    {
+        var request = Control().RepoPaneRequest("Repo T1", @"D:\Repo", "Claude", "do the thing", null, "who@example.com");
+        Assert.That(request.Command, Does.Contain("--prompt"));
+        Assert.That(request.Command, Does.Not.Contain("--resume"));
+    }
+
+    [Test]
     public void TicketLaunch_builds_a_spec_pinning_Login_Repo_Title_the_prompt_and_config_dir_args_and_the_agent_id()
     {
         var (id, request, spec) = Control().TicketLaunch("Repo M.ORCH-T2410", @"D:\Repo", "Claude", "do the thing", @"C:\logins\who@example.com",

@@ -174,7 +174,12 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// tracked, never embedded) used to.</summary>
     /// <param name="agentId">The agent id (M.ORCH-T1743) to carry on the pane, when the caller already named one (a dispatched
     /// ticket's claim, <see cref="TicketLaunch"/>); null mints a new one, as every caller before had it.</param>
-    public PaneRequest RepoPaneRequest(string title, string directory, string provider, string? prompt, string? configDir, string? email, string? agentId = null)
+    /// <param name="resumeSession">orchestrator start's own <c>--resume</c> (M.ORCH-T2413): <c>host --resume &lt;session&gt;</c>
+    /// instead of a fresh start, so a Claude conversation carries over the same way <see cref="Start"/>'s own
+    /// <paramref name="resumeSession"/> (via <see cref="StartArguments"/>) does today; ignored alongside <paramref name="prompt"/>,
+    /// which a resume never sets anyway.</param>
+    public PaneRequest RepoPaneRequest(string title, string directory, string provider, string? prompt, string? configDir, string? email, string? agentId = null,
+        string? resumeSession = null)
     {
         // A non-Claude CLI starts authenticated (M.ORCH-T2042): Kimi's Vault key is synced into its config.toml now; Codex's and
         // Gemini's go on the hosted CLI's environment as it's launched (TermLaunchSpec.From, ProviderCredentials.EnvironmentFor).
@@ -185,7 +190,8 @@ public sealed class SessionControl(OrchestratorOptions options)
         // Every repo CLI opened here is an agent with a stable id (M.ORCH-T1743), carried on the pane and its TermHost.
         var agent = Term.AgentIds.Normalize(agentId) ?? Term.AgentIds.New();
         if (configDir is not null) command.AddRange(["--config-dir", configDir]);
-        if (!string.IsNullOrWhiteSpace(prompt)) command.AddRange(["--prompt", SafePrompt(prompt)]);
+        if (resumeSession is { Length: > 0 } session) command.AddRange(["--resume", session]);
+        else if (!string.IsNullOrWhiteSpace(prompt)) command.AddRange(["--prompt", SafePrompt(prompt)]);
         return new PaneRequest(tabTitle, directory)
         {
             Command = command,
