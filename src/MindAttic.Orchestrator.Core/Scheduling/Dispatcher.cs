@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
+using MindAttic.Orchestrator.Term;
 
 namespace MindAttic.Orchestrator.Scheduling;
 
@@ -122,6 +123,11 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     /// task that says whether it came up. Tests swap it so no Windows Terminal tab opens.</summary>
     internal Func<string, string, string, string, bool, (string? Error, Task<bool>? CameUp)>? OpenTab { get; init; }
 
+    /// <summary>Where <see cref="Open"/> writes a dispatched ticket's <see cref="TermPaneFile"/> sidecar; null is its default
+    /// (<see cref="TermSessions.DefaultDirectory"/>), as <c>TerminalsViewModel.PaneDirectory</c> is. Tests point this at a temp
+    /// folder so a run never touches the real one.</summary>
+    internal string? PaneDirectory { get; init; }
+
     /// <summary>Seam: whether the owner has API billing on (M.ORCH-T706); null reads the billing mode in force.</summary>
     internal Func<bool>? ApiBilling { get; init; }
 
@@ -198,8 +204,6 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit, TabLogin? login, Func<string, bool>? eligible,
         string? agentId, out string? pickedEmail)
     {
-        var before = sessions.HostIds();
-        var focus = Foreground.Current();
         var noLogin = false;
         var apiBillingOn = false;
         string? picked = null;
@@ -223,14 +227,33 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         if (Activity.MemoryGuard.StartHeld(store.LoadSettings()) is { } low) return (low, null);
         // Nor under the disk floor (M.ORCH-T1679): a new CLI's transcript, scratch and builds are what fill the last few GB.
         if (Activity.DiskGuard.StartHeld(store.LoadSettings()) is { } full) return ($"{full}; no new CLI starts until then.", null);
-        var started = sessions.Start(title, directory, provider, prompt, configDir, agentId: agentId);
-        if (started.Error is { } startError) return (startError, null);
-        _ = Foreground.RestoreAsync(focus, TimeSpan.FromSeconds(2));
+        // A TermHost-hosted session (M.ORCH-T2411), not a standalone wt.exe tab (M.ORCH-T2403): registered under the claim's
+        // agent id and the assignee's login, so the dashboard's TerminalsViewModel docks it under them the same way a
+        // manually-opened Terminals tab already is.
+        var (id, request, spec) = sessions.TicketLaunch(title, directory, provider, prompt, configDir, login?.Email ?? pickedEmail, agentId);
+        // Written before the host starts (TerminalsViewModel.StartHostedAsync's own order), so a dashboard that restarts
+        // meanwhile reattaches the tab with its title, badge and login rather than whatever a bare record would guess.
+        TermPaneFile.Write(id, request, PaneDirectory);
+        try { StartHost(spec); }
+        catch (InvalidOperationException ex)
+        {
+            TermPaneFile.Delete(id, PaneDirectory);
+            return (ex.Message, null);
+        }
         // Every tab is checked: one whose agent never starts would otherwise look like a free slot.
-        return (null, Task.Run(async () => submit
-            ? await sessions.SubmitWhenReadyAsync(directory, before, SubmitSettle, SubmitTimeout)
-            : await sessions.WaitForHostAsync(directory, before, SubmitTimeout) is not null));
+        return (null, submit
+            ? TermSessionReadiness.SubmitWhenReadyAsync(id, SubmitSettle, SubmitTimeout)
+            : TermSessionReadiness.WaitUpAsync(id, SubmitTimeout));
     }
+
+    /// <summary>Seam: starts <paramref name="spec"/>'s CLI under a TermHost and returns its session record; the real
+    /// implementation mirrors <c>TerminalsViewModel</c>'s own Launch (<see cref="TermLauncher.StartElevated"/> for an elevated
+    /// spec, which dispatch never builds today, else <see cref="TermLauncher.Start(TermLaunchSpec, TimeSpan?)"/>). Throws
+    /// <see cref="InvalidOperationException"/> when the host can't be found or fails to launch; <see cref="Open"/> turns that
+    /// into the dispatch error, so <c>Dispatch</c>'s claim rolls back exactly as it did for "Launcher not found". Tests fake
+    /// this so no real TermHost starts.</summary>
+    internal Func<TermLaunchSpec, TermSessionRecord> StartHost { get; init; } =
+        spec => spec.Elevated ? TermLauncher.StartElevated(spec, TermLauncher.DefaultElevatedWait) : TermLauncher.Start(spec);
 
     /// <summary>The config folder a new tab's CLI runs under: none for a provider with no Claude login; the chosen
     /// <paramref name="login"/>'s; else what <paramref name="picked"/> picks.</summary>

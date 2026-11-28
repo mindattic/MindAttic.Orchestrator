@@ -259,6 +259,9 @@ public sealed class DispatcherTests
                 // Faked (never the real Vault/account folders, M.ORCH-T1422): counts whether Open's picker reached for it.
                 ApiKeyLogin = () => { apiKeyLoginCalls++; return new Dispatcher.TabLogin(Path.Combine(dir, "api-key"), "api-key@mindattic.vault"); },
                 Logins = new LoginPicker(empty, () => []),
+                // No real TermHost starts: a start that throws is what Open turns into the dispatch error past the gate.
+                StartHost = _ => throw new InvalidOperationException("Launcher not found"),
+                PaneDirectory = Path.Combine(dir, "terms"),
             };
 
         var off = Real(false).Dispatch(Item("A-T1"), "Claude");
@@ -268,7 +271,7 @@ public sealed class DispatcherTests
         Assert.That(apiKeyLoginCalls, Is.Zero, "billing off: the API key fallback is never tried");
 
         var on = Real(true).Dispatch(Item("A-T1"), "Claude");
-        Assert.That(on.Message, Does.Not.Contain("API billing is off"), "past the gate; the missing launcher is what stops it here");
+        Assert.That(on.Message, Does.Not.Contain("API billing is off"), "past the gate; the faked host failure is what stops it here");
         Assert.That(on.Message, Does.Contain("Launcher not found"));
         Assert.That(apiKeyLoginCalls, Is.EqualTo(1),
             "M.ORCH-T1422: billing on, nothing free -- the tab's picker must land on the API key's login, never silently fall through to the global one");
