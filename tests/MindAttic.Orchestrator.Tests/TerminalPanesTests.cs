@@ -663,6 +663,39 @@ public sealed class TerminalPanesTests
         pane.DisposeControl();
     }
 
+    /// <summary>M.ORCH-T2412: Dispatcher.Open (M.ORCH-T2411) writes a dispatched ticket's <c>.pane</c> sidecar for its
+    /// assignee's login before its TermHost starts, then the host's own Started bus event arrives here, same as a manually
+    /// opened tab's would. The bus event itself carries no login here (an older host, or one that raced the sidecar write),
+    /// so the only way the pane lands on its assignee rather than ungrouped is by actually reading the sidecar
+    /// (TermPaneFile.Read) rather than falling back to a bare record (TermPaneFile.FromRecord). Also proves a pane with it
+    /// groups under that assignee's panel the way MainViewModel.SyncTerminals (TreeLoginKey => pane.Login) does.</summary>
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_dispatched_ticket_s_started_session_reattaches_under_its_assignee_s_person_panel()
+    {
+        var dir = temp.New();
+        var terminals = new TerminalsViewModel { PaneDirectory = dir };
+        const string login = "jordan@example.com";
+        var request = new PaneRequest("JO: Repo [Claude]", temp.New())
+        {
+            CommandLine = "cmd.exe", Repo = "Repo", ConfigDir = @"C:\a\.claude-accounts\" + login, Email = login, AgentId = "agt-7",
+        };
+        TermPaneFile.Write("disp1", request, dir);
+        var session = new Term.TermSessionRecord
+        {
+            Id = "disp1", HostPid = 999999, Pipe = "mindattic-term-nobody-disp1", CommandLine = "cmd.exe",
+        };
+
+        terminals.OnTermSession(new Term.TermSessionEvent(session, Term.TermSessionEvents.Started));
+
+        var pane = terminals.Panes.Single();
+        Assert.That(pane.Login, Is.EqualTo(login), "reattached with the dispatched sidecar's login, not left ungrouped");
+
+        var person = new PersonTerminalsViewModel(terminals);
+        person.SyncTo(terminals.Panes.Where(p => string.Equals(p.Login, login, StringComparison.OrdinalIgnoreCase)).ToList());
+        Assert.That(person.Panes, Is.EqualTo(new[] { pane }), "lists under its assignee's panel");
+        pane.DisposeControl();
+    }
+
     [Test, Apartment(ApartmentState.STA)]
     public void Opening_tabs_in_order_stamps_each_one_with_a_rising_position_that_a_reattach_keeps()
     {

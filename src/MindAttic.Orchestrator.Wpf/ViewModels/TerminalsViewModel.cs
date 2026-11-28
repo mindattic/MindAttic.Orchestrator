@@ -1452,7 +1452,7 @@ public sealed class TerminalsViewModel : ObservableObject
                     // A host whose tab was closed here lately is going (M.ORCH-T1034): no tab back for it, as in ResyncAsync.
                     if (ClosedLately(message.Id)) break;
                     var record = TermSessions.Get(message.Id) ?? message.ToRecord();
-                    Reattach(record, TermPaneFile.Read(record.Id));
+                    Reattach(record, TermPaneFile.Read(record.Id, PaneDirectory));
                     break;
                 case TermSessionEvents.Started when pane is { Ended: true, IsHosted: true, KillRequested: false }:
                     // Its host registered after the tab gave up on it (M.ORCH-T972): the tab comes back to life.
